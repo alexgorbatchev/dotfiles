@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo "fooo"
-
 git-log() {
   git log --pretty=format:"%Cgreen%h%Creset %ad %Cgreen%ae%Creset %s" --date=short $*
 }
