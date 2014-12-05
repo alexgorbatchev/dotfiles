@@ -1,5 +1,5 @@
 source $HOME/.oh-my-zsh
-source $HOME/.dotfiles/*.inc
+for f in $HOME/.dotfiles/*.inc; do source $f; done
 
 export NVM_DIR="$HOME/.nvm"
 export DOTFILES_DIR="$HOME/.dotfiles"

@@ -1,5 +1,15 @@
 #!/bin/bash
 
+echo "fooo"
+
+git-log() {
+  git log --pretty=format:"%Cgreen%h%Creset %ad %Cgreen%ae%Creset %s" --date=short $*
+}
+
+git-log-mine() {
+  git-log --author="Alex Gorbatchev"
+}
+
 git-find-string() {
   git log --source --all -S '$1'
 }
