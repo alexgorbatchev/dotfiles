@@ -1,5 +1,9 @@
 #!/bin/bash
 
+alias gco="git checkout"
+alias gm="gco master"
+alias gl="git-log"
+
 git-log() {
   git log --pretty=format:"%Cgreen%h%Creset %ad %Cgreen%ae%Creset %s" --date=short $*
 }
