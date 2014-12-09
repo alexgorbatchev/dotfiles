@@ -32,9 +32,9 @@ git-find-string() {
 }
 
 git-history-rewrite-author() {
-  old_email="$1"
-  new_name="$2"
-  new_email="$3"
+  local old_email="$1"
+  local new_name="$2"
+  local new_email="$3"
 
   filter="
     if [ \"\$GIT_COMMITTER_EMAIL\" = \"$old_email\" ]
