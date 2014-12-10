@@ -17,6 +17,7 @@ git-merge-master() {
   git checkout master
   git pull
   git checkout $current_branch
+  git merge master
   git stash pop
 }
 
