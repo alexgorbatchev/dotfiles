@@ -4,6 +4,11 @@ alias gco="git checkout"
 alias gm="gco master"
 alias gl="git-log"
 
+git-set-local-author() {
+  git config user.name "Alex Gorbatchev"
+  git config user.email "alex.gorbatchev@gmail.com"
+}
+
 git-current-branch() {
   local branch_name=$(git symbolic-ref -q HEAD)
   branch_name=${branch_name##refs/heads/}
