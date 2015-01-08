@@ -4,6 +4,11 @@ alias gco="git checkout"
 alias gm="gco master"
 alias gl="git-log"
 
+# shows the commit that added the file
+git-what-added() {
+  git log --diff-filter=A -- $*
+}
+
 git-set-local-author() {
   git config user.name "Alex Gorbatchev"
   git config user.email "alex.gorbatchev@gmail.com"
