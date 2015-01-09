@@ -4,6 +4,11 @@ alias gco="git checkout"
 alias gm="gco master"
 alias gl="git-log"
 
+git-show-in-master() {
+  local filepath=`echo $1 | sed 's/^\///'`
+  git show origin/master:$filepath
+}
+
 # shows the commit that added the file
 git-what-added() {
   git log --diff-filter=A -- $*
