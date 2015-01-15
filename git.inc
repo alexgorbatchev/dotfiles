@@ -27,13 +27,17 @@ git-current-branch() {
 }
 
 git-merge-master() {
-  local current_branch=$(git-current-branch)
-  git stash
+  local current_branch="$(git-current-branch)"
+  local stashed="$(git stash)"
+
   git checkout master
   git pull
   git checkout $current_branch
   git merge master
-  git stash pop
+
+  if [[ "$stashed" != "No local changes to save" ]]; then
+    git stash pop
+  fi
 }
 
 git-log() {
