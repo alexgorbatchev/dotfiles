@@ -40,6 +40,20 @@ git-merge-master() {
   fi
 }
 
+git-rebase-master() {
+  local current_branch="$(git-current-branch)"
+  local stashed="$(git stash)"
+
+  git checkout master
+  git pull
+  git checkout $current_branch
+  git rebase master
+
+  if [[ "$stashed" != "No local changes to save" ]]; then
+    git stash pop
+  fi
+}
+
 git-log() {
   git log --pretty=format:"%Cgreen%h%Creset %ad %Cgreen%ae%Creset %s" --date=short $*
 }
