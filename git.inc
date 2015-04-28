@@ -1,8 +1,14 @@
 #!/bin/bash
 
+green=`tput setaf 2`
+reset=`tput sgr0`
+
 alias gco="git checkout"
 alias gm="gco master"
 alias gl="git-log"
+alias gbl="git-branch-list"
+alias gbc="git-branch-create"
+alias gbd="git-branch-describe"
 
 git-show-in-master() {
   local filepath=`echo $1 | sed 's/^\///'`
@@ -86,4 +92,40 @@ git-history-rewrite-author() {
   "
 
   git filter-branch -f --env-filter $filter --tag-name-filter cat -- --branches --tags
+}
+
+git-branch-create() {
+  local branch="$1"
+  local description="$2"
+
+  git checkout -b $branch
+  git-branch-describe $description
+}
+
+git-branch-current() {
+  git rev-parse --abbrev-ref HEAD
+}
+
+git-branch-describe() {
+  git config "branch.$(git-branch-current).description" $1
+}
+
+git-branch-list() {
+  set -f
+  git branch | while read line; do
+    current="  "
+    name=${line##\* }   ## removes leading * for current
+
+    if [ ! "$name" = "$line" ]; then
+      current="${green}* "
+    fi
+
+    description=`git config branch.$name.description`
+
+    if [ "$description" != "" ]; then
+      description=" : $description"
+    fi
+
+    echo "${reset}${current}${name}${description}"
+  done
 }
