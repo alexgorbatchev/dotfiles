@@ -1,6 +1,7 @@
 #!/bin/bash
 
 green=`tput setaf 2`
+yellow=`tput setaf 3`
 reset=`tput sgr0`
 
 alias gco="git checkout"
@@ -111,21 +112,40 @@ git-branch-describe() {
 }
 
 git-branch-list() {
-  set -f
-  git branch | while read line; do
-    current="  "
-    name=${line##\* }   ## removes leading * for current
+  set -o noglob
 
-    if [ ! "$name" = "$line" ]; then
-      current="${green}* "
+  local merged_branches=( )
+
+  git branch --merged master | while read branch_name; do
+    branch_name=${branch_name##\* }
+
+    if [[ "$branch_name" != "master" ]]; then
+      merged_branches+=("$branch_name")
+    fi
+  done
+
+  git branch | while read branch_name; do
+    local prefix="  "
+    local color=$reset
+
+    if [[ "$branch_name" == \** ]]; then
+      color=$green
+      prefix="> "
     fi
 
-    description=`git config branch.$name.description`
+    branch_name=${branch_name##\* }
 
-    if [ "$description" != "" ]; then
+    if [[ ${merged_branches[*]} =~ "$branch_name" ]]; then
+      prefix="✔ "
+      color=$yellow
+    fi
+
+    description=`git config branch.$branch_name.description`
+
+    if [[ "$description" != "" ]]; then
       description=" : $description"
     fi
 
-    echo "${reset}${current}${name}${description}"
+    echo "${color}${prefix}${branch_name}${description}"
   done
 }
