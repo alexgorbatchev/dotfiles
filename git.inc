@@ -6,7 +6,8 @@ reset=`tput sgr0`
 
 alias gco="git checkout"
 alias gm="gco master"
-alias gl="git-log"
+alias gl="git-log --no-merges"
+alias glm="git-log"
 alias gbl="git-branch-list"
 alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
