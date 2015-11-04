@@ -12,6 +12,28 @@ alias gbl="git-branch-list"
 alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
 
+_git-with-stash() {
+  set -x
+
+  local current_branch="$(git-current-branch)"
+  local stashed="$(git stash)"
+  local has_stash
+
+  if [[ "$stashed" != "No local changes to save" ]]; then
+    local has_stash=TRUE
+  fi
+
+  if [ "$has_stash" == TRUE ]; then
+    echo "Stashed changes"
+  fi
+
+  "$@"
+
+  if [ "$has_stash" == TRUE ]; then
+    git stash pop
+  fi
+}
+
 git-show-in-master() {
   local filepath=`echo $1 | sed 's/^\///'`
   git show origin/master:$filepath
@@ -35,31 +57,34 @@ git-current-branch() {
 }
 
 git-merge-master() {
-  local current_branch="$(git-current-branch)"
-  local stashed="$(git stash)"
+  _git-with-stash _git-merge-master
+}
 
+_git-merge-master() {
   git checkout master
   git pull
   git checkout $current_branch
   git merge master
+}
 
-  if [[ "$stashed" != "No local changes to save" ]]; then
-    git stash pop
-  fi
+git-keep-up-to-date() {
+  _git-with-stash _git-keep-up-to-date
+}
+
+_git-keep-up-to-date() {
+  git pull
+  _git-rebase-master
 }
 
 git-rebase-master() {
-  local current_branch="$(git-current-branch)"
-  local stashed="$(git stash)"
+  _git-with-stash _git-rebase-master
+}
 
+_git-rebase-master() {
   git checkout master
   git pull
   git checkout $current_branch
   git rebase master
-
-  if [[ "$stashed" != "No local changes to save" ]]; then
-    git stash pop
-  fi
 }
 
 git-log() {
