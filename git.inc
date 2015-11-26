@@ -12,6 +12,40 @@ alias gbl="git-branch-list"
 alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
 
+git-bulk() {
+  local current_dir=$(pwd)
+
+  for dir in `find . -maxdepth 2 -path "*/.git" -print 2>/dev/null`; do
+    dir=`cd "${dir}/.."; pwd`
+    echo "${yellow}${dir}${reset}"
+    (
+      for cmd in "$@"; do
+        cd $dir && eval $cmd
+      done
+    )
+  done
+}
+
+git-bulk-fix-author() {
+  git-bulk "git-set-local-author" "git push -f"
+}
+
+git-bulk-pull() {
+  git-bulk "git pull"
+}
+
+git-bulk-push() {
+  git-bulk "git push"
+}
+
+git-bulk-push-f() {
+  git-bulk "git push -f"
+}
+
+git-bulk-status() {
+  git-bulk "git status"
+}
+
 _git-with-stash() {
   set -x
 
