@@ -13,7 +13,7 @@ alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
 
 git-rebase-show-patch() {
-  cat .git/rebase-apply/patch
+  git show $(cat .git/rebase-apply/patch | head -n1)
 }
 
 git-rebase-show-conflict-in() {
