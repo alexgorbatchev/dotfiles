@@ -199,12 +199,16 @@ git-branch-describe() {
 git-branch-list() {
   set -o noglob
 
+  local current_branch=$(git rev-parse --abbrev-ref HEAD)
   local merged_branches=( )
 
-  git branch --merged master | while read branch_name; do
-    branch_name=${branch_name##\* }
+  echo "$yellow✔ branches$reset are merged to $green> $current_branch"
+  echo ""
 
-    if [[ "$branch_name" != "master" ]]; then
+  git branch --merged $current_branch | while read branch_name; do
+    local branch_name=${branch_name##\* }
+
+    if [[ "$branch_name" != "$current_branch" ]]; then
       merged_branches+=("$branch_name")
     fi
   done
