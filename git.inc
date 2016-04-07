@@ -12,6 +12,26 @@ alias gbl="git-branch-list"
 alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
 
+git-rebase-show-patch() {
+  cat .git/rebase-apply/patch
+}
+
+git-rebase-show-conflict-in() {
+  local branch=$1
+  local pattern=$2
+  local file=$(git status -s | grep "^UU.*$pattern" | head -n1 | sed "s/^UU //")
+  if [ "$file" == "" ]; then
+    echo "Didn't match anything with $pattern"
+    git status --short
+    exit 1
+  fi
+  git-show-in $branch $file
+}
+
+git-rebase-show-conflict-in-master() {
+  git-rebase-show-conflict-in master $1
+}
+
 git-bulk() {
   local current_dir=$(pwd)
 
@@ -68,9 +88,14 @@ _git-with-stash() {
   fi
 }
 
+git-show-in() {
+  local branch="$1"
+  local filepath=`echo $2 | sed 's/^\///'`
+  git show origin/$branch:$filepath
+}
+
 git-show-in-master() {
-  local filepath=`echo $1 | sed 's/^\///'`
-  git show origin/master:$filepath
+  git-show-in master $1
 }
 
 # shows the commit that added the file

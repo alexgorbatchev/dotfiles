@@ -6,3 +6,7 @@ alias l="ls -la"
 my-ips() {
   ifconfig | egrep "inet.*\d+.\d+.\d+.\d+" | awk '{print $2}'
 }
+
+h() {
+  history | grep $1
+}
