@@ -12,6 +12,31 @@ alias gbl="git-branch-list"
 alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
 
+git-branch-repos() {
+  for repo in *; do 
+    if [ -d $repo ]; then 
+      echo "$repo [$yellow$(cd $repo; if [ -d .git ]; then git-current-branch; fi)$reset]"
+    fi
+  done
+}
+
+git-rebase-and-cherry-pick() {
+  local branch=$1
+  local sha=$2
+
+  if [[ "$branch" == "" && "$sha" == "" ]]; then
+    echo "Usage: $(basename "$0") [branch] [sha]"
+    echo "    Recreates current branch from [branch] and cherry pick [sha] into it."
+    return 1
+  fi
+
+  local current_branch=$(git-current-branch)
+  git checkout $branch
+  git branch -D $current_branch
+  git checkout -b $current_branch
+  git cherry-pick $sha
+}
+
 git-rebase-show-patch() {
   git show $(cat .git/rebase-apply/patch | head -n1)
 }
@@ -19,6 +44,15 @@ git-rebase-show-patch() {
 git-rebase-show-conflict-in() {
   local branch=$1
   local pattern=$2
+
+  if [[ "$branch" == "" ]]; then
+    echo "Usage: $(basename "$0") [branch] [pattern]"
+    echo "    During a rebase conflict, will display content of a CONFLICT file that"
+    echo "    matches [pattern] from the [branch]. If [pattern] not provided, first"
+    echo "    CONFLICT file will be displayed."
+    return 1
+  fi
+
   local file=$(git status -s | grep "^UU.*$pattern" | head -n1 | sed "s/^UU //")
   if [ "$file" == "" ]; then
     echo "Didn't match anything with $pattern"
@@ -91,10 +125,25 @@ _git-with-stash() {
 git-show-in() {
   local branch="$1"
   local filepath=`echo $2 | sed 's/^\///'`
+
+  if [[ "$branch" == "" && "$filepath" == "" ]]; then
+    echo "Usage: $(basename "$0") [branch] [filepath]"
+    echo "    Shows [file] content in the [branch]. [file] can start with a /
+    echo "    that will be stripped away and treated as relative path to the
+    echo "    current project."
+    return 1
+  fi
+
   git show origin/$branch:$filepath
 }
 
 git-show-in-master() {
+  if [[ "$1" == "" ]]; then
+    echo "Usage: $(basename "$0") [file]"
+    echo "    Shows [file] content in master branch."
+    return 1
+  fi
+
   git-show-in master $1
 }
 
@@ -109,10 +158,7 @@ git-set-local-author() {
 }
 
 git-current-branch() {
-  local branch_name=$(git symbolic-ref -q HEAD)
-  branch_name=${branch_name##refs/heads/}
-  branch_name=${branch_name:-HEAD}
-  echo $branch_name
+  git rev-parse --abbrev-ref HEAD
 }
 
 git-merge-master() {
@@ -188,18 +234,14 @@ git-branch-create() {
   git-branch-describe $description
 }
 
-git-branch-current() {
-  git rev-parse --abbrev-ref HEAD
-}
-
 git-branch-describe() {
-  git config "branch.$(git-branch-current).description" $1
+  git config "branch.$(git-current-branch).description" $1
 }
 
 git-branch-list() {
   set -o noglob
 
-  local current_branch=$(git rev-parse --abbrev-ref HEAD)
+  local current_branch=$(git-current-branch)
   local merged_branches=( )
 
   echo "$yellow✔ branches$reset are merged to $green> $current_branch"

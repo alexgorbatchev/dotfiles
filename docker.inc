@@ -8,3 +8,14 @@ docker-rm-all() {
   docker rm $(docker ps -a -q)
 }
 
+docker-images-grep() {
+  docker images | grep $1 | awk {'print $3'} | sort | uniq
+}
+
+docker-rmi-grep() {
+  docker rmi --force $(docker-images-grep $1)
+}
+
+docker-rmi-untagged() {
+  docker rmi $(docker images | grep "^<none>" | awk "{print $3}")
+}
