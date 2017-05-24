@@ -1,0 +1,39 @@
+#!/bin/bash
+ 
+# converts a mov to a gif using an optimized color palette to reduce dithering
+ 
+if [ -z `which ffmpeg` ]; then
+  echo "ffmpeg not found; brew install ffmpeg"
+  exit 1
+fi
+ 
+in=$1
+ 
+if [ -z "$in" ]; then
+  echo "usage: ${0##*/} INPUT [OUTPUT] [FPS] [SCALE]"
+  exit 1
+fi
+ 
+if [ ! -e "$in" ]; then
+  echo "$in: no such file"
+  exit 1
+fi
+ 
+# an output file was given, or it is created based on the input file name
+out=${2:-"${1%.*}.gif"}
+ 
+fps=${3:-10}   # default: 10
+scale=${4:-iw} # default: original size
+ 
+palette="/tmp/palette.png"
+filters="fps=$fps,scale=$scale:-1:flags=lanczos"
+log="-v error"
+ 
+echo -n "Generating optimal color palette..."
+ffmpeg -i "$in" $log -vf "$filters",palettegen -y "$palette"
+echo " done."
+ 
+echo "Converting $in to $out..."
+ffmpeg -i "$in" -i "$palette" $log -stats -filter_complex "$filters [x];[x][1:v]paletteuse" -y "$out"
+echo "Done!"
+

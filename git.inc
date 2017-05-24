@@ -57,7 +57,7 @@ git-rebase-show-conflict-in() {
   if [ "$file" == "" ]; then
     echo "Didn't match anything with $pattern"
     git status --short
-    exit 1
+    return 1
   fi
   git-show-in $branch $file
 }
