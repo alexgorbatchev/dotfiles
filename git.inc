@@ -123,8 +123,9 @@ _git-with-stash() {
 }
 
 git-show-in() {
+  local git_root=`git rev-parse --show-toplevel`
   local branch="$1"
-  local filepath=`echo $2 | sed 's/^\///'`
+  local filepath=`echo $2 | sed s:^$git_root/::`
 
   if [[ "$branch" == "" && "$filepath" == "" ]]; then
     echo "Usage: $(basename "$0") [branch] [filepath]"
