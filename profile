@@ -13,6 +13,3 @@ export PATH="$PATH:$DOTFILES_DIR/bin:./node_modules/.bin"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 [ -s "$DOTFILES_DIR/local" ] && source $DOTFILES_DIR/local
 
-source ~/.iterm2_shell_integration.`basename $SHELL`
-
-alias e="atom -nw"
