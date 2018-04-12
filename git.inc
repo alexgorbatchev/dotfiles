@@ -11,10 +11,11 @@ alias glm="git-log"
 alias gbl="git-branch-list"
 alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
+alias gbca="git-branch-create-agorbatchev"
 
 git-branch-repos() {
-  for repo in *; do 
-    if [ -d $repo ]; then 
+  for repo in *; do
+    if [ -d $repo ]; then
       echo "$repo [$yellow$(cd $repo; if [ -d .git ]; then git-current-branch; fi)$reset]"
     fi
   done
@@ -233,6 +234,10 @@ git-branch-create() {
 
   git checkout -b $branch
   git-branch-describe $description
+}
+
+git-branch-create-agorbatchev () {
+  git-branch-create agorbatchev/$@
 }
 
 git-branch-describe() {

@@ -3,6 +3,10 @@
 alias ll="ls -la"
 alias l="ls -la"
 
+whos-listening() {
+  ps aux | grep "$(lsof -n -i4TCP:$0 | grep LISTEN)"
+}
+
 my-ips() {
   ifconfig | egrep "inet.*\d+.\d+.\d+.\d+" | awk '{print $2}'
 }
