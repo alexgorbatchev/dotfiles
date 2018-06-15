@@ -13,14 +13,6 @@ alias gbc="git-branch-create"
 alias gbd="git-branch-describe"
 alias gbca="git-branch-create-agorbatchev"
 
-git-branch-repos() {
-  for repo in *; do
-    if [ -d $repo ]; then
-      echo "$repo [$yellow$(cd $repo; if [ -d .git ]; then git-current-branch; fi)$reset]"
-    fi
-  done
-}
-
 git-rebase-and-cherry-pick() {
   local branch=$1
   local sha=$2
@@ -65,40 +57,6 @@ git-rebase-show-conflict-in() {
 
 git-rebase-show-conflict-in-master() {
   git-rebase-show-conflict-in master $1
-}
-
-git-bulk() {
-  local current_dir=$(pwd)
-
-  for dir in `find . -maxdepth 2 -path "*/.git" -print 2>/dev/null`; do
-    dir=`cd "${dir}/.."; pwd`
-    echo "${yellow}${dir}${reset}"
-    (
-      for cmd in "$@"; do
-        cd $dir && eval $cmd
-      done
-    )
-  done
-}
-
-git-bulk-fix-author() {
-  git-bulk "git-set-local-author" "git push -f"
-}
-
-git-bulk-pull() {
-  git-bulk "git pull"
-}
-
-git-bulk-push() {
-  git-bulk "git push"
-}
-
-git-bulk-push-f() {
-  git-bulk "git push -f"
-}
-
-git-bulk-status() {
-  git-bulk "git status"
 }
 
 _git-with-stash() {
@@ -232,12 +190,33 @@ git-branch-create() {
   local branch="$1"
   local description="$2"
 
+  if [[ "$branch" == "" ]]; then
+    echo "Usage: $(basename "$0") [branch] [description]"
+    echo "    Create a branch in using sluggified [branch] and sets description."
+    return 1
+  fi
+
+  branch=$(echo $branch | tr -d '[:space:]')
+  branch=$(slugify -l "$@")
+  # replace new lines with dashes
+  branch=$(echo $branch | sed -e 'H;${x;s/\n/-/g;s/^-//;p;};d')
+
   git checkout -b $branch
   git-branch-describe $description
 }
 
 git-branch-create-agorbatchev () {
-  git-branch-create agorbatchev/$@
+  local branch="$1"
+  local description="$2"
+
+  if [[ "$branch" == "" ]]; then
+    echo "Usage: $(basename "$0") [branch] [description]"
+    echo "    Create a branch in using sluggified [branch] and sets description."
+    echo "    Full branch name will be `agorbatchev/[branch]`".
+    return 1
+  fi
+
+  git-branch-create "agorbatchev/$branch" $description
 }
 
 git-branch-describe() {
