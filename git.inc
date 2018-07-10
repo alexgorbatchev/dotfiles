@@ -197,7 +197,7 @@ git-branch-create() {
   fi
 
   branch=$(echo $branch | tr -d '[:space:]')
-  branch=$(slugify -l "$@")
+  branch=$(slugify -l -x "$@")
   # replace new lines with dashes
   branch=$(echo $branch | sed -e 'H;${x;s/\n/-/g;s/^-//;p;};d')
 
