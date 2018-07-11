@@ -186,22 +186,37 @@ git-history-rewrite-author() {
   git filter-branch -f --env-filter $filter --tag-name-filter cat -- --branches --tags
 }
 
+git-slugify-branch() {
+  local branch="$@"
+
+  # replace new lines with spaces
+  branch=$(echo $branch | sed -e 'H;${x;s/\n/ /g;s/^ //;p;};d')
+
+  local namespace=$(echo $branch | cut -d'/' -s -f 1)
+  local branchname=$(echo $branch | cut -d'/' -f 2)
+
+  #branch=$(echo $branch | tr -d '[:space:]')
+  branch=$(slugify -l -x "$branchname")
+
+  if [ "$namespace" != "" ]; then
+    namespace=$(slugify -l -x "$namespace")
+    branch="$namespace/$branch"
+  fi
+
+  echo $branch
+}
+
 git-branch-create() {
   local branch="$1"
   local description="$2"
 
   if [[ "$branch" == "" ]]; then
     echo "Usage: $(basename "$0") [branch] [description]"
-    echo "    Create a branch in using sluggified [branch] and sets description."
+    echo "    Create a branch in using slugified [branch] and sets description."
     return 1
   fi
 
-  branch=$(echo $branch | tr -d '[:space:]')
-  branch=$(slugify -l -x "$@")
-  # replace new lines with dashes
-  branch=$(echo $branch | sed -e 'H;${x;s/\n/-/g;s/^-//;p;};d')
-
-  git checkout -b $branch
+  git checkout -b "$(git-slugify-branch $branch)"
   git-branch-describe $description
 }
 
