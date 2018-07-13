@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+
+/**
+ * $ slugify-branch-name username/JIRA-NNN This is ticket description
+ * username/JIRA-NNN-this-is-ticket-description
+ *
+ * $ slugify-branch-name JIRA-NNN This is ticket description
+ * JIRA-NNN-this-is-ticket-description
+ *
+ * $ slugify-branch-name This is ticket description
+ * this-is-ticket-description
+ *
+ * $ slugify-branch-name username/This is ticket description
+ * username/this-is-ticket-description
+ */
+
+const [node, jsFile, ...branchNameArgs] = process.argv;
+let branchName = branchNameArgs.join(' ');
+const jiraTicketRegrex = /^[A-Z]+-[0-9]+\b/;
+const namespaceRegrex = /^\w+\//;
+let namespace = branchName.match(namespaceRegrex);
+branchName = branchName.replace(namespaceRegrex, '');
+let jiraTicket = branchName.match(jiraTicketRegrex);
+
+branchName = branchName
+  .replace(jiraTicketRegrex, '')
+  .toLowerCase()
+  .replace(/\s+/g, '-')           // Replace spaces with -
+  .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+  .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+  .replace(/^-+/, '')             // Trim - from start of text
+  .replace(/-+$/, '');            // Trim - from end of text
+
+namespace = namespace ? namespace[0] : '';
+
+if (jiraTicket) {
+  console.log(`${namespace}${jiraTicket[0]}-${branchName}`);
+} else {
+  console.log(namespace + branchName);
+}
