@@ -10,8 +10,12 @@ alias gl="git-log --no-merges"
 alias glm="git-log"
 alias gbl="git-branch-list"
 alias gbc="git-branch-create"
-alias gbd="git-branch-describe"
+alias gbd="git-delete-merged-branches"
 alias gbca="git-branch-create-agorbatchev"
+
+git-delete-merged-branches() {
+  git branch --merged | egrep -v "(^\*|master|dev)" | xargs git branch -d
+}
 
 git-rebase-and-cherry-pick() {
   local branch=$1
