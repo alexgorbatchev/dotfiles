@@ -1,20 +1,19 @@
 #!/usr/bin/env bun
-import fsPromisesDefault from 'node:fs/promises'; // Import the default implementation, aliased
+import fsDefault from 'node:fs'; // Import the default fs implementation
 import path from 'node:path';
-// Remove duplicate imports
-import type fsPromisesType from 'node:fs/promises'; // Import the type
+import type fsType from 'node:fs'; // Import the full fs type
 import type { ToolConfig, GithubReleaseInstallParams } from './types'; // Add GithubReleaseInstallParams
-import { createLogger, type Logger } from './utils/logger'; // Import Logger type
+import { createLogger } from './utils/logger'; // Logger type is inferred
 import { config as appConfig } from './config';
 import { getToolConfigByName } from './config-loader';
-import { GitHubApiClient } from './utils/github-api';
+import { GitHubApiClient, type GitHubRelease, type GitHubAsset } from './utils/github-api'; // Import types
 import { downloadFile } from './utils/download'; // Import download utility
 import { extractArchive } from './utils/archive'; // Import archive utility
 
-// Helper for exists check using the injected fsPromises
-async function fileExists(fs: typeof fsPromisesType, filePath: string): Promise<boolean> {
+// Helper for exists check using the injected fs promises
+async function fileExists(fs: typeof fsType, filePath: string): Promise<boolean> {
   try {
-    await fs.access(filePath);
+    await fs.promises.access(filePath); // Use fs.promises.access
     return true;
   } catch {
     return false;
@@ -26,7 +25,7 @@ const logger = createLogger('install-tool');
 // Refactor main to accept dependencies: fs, logger, apiClient
 async function mainInstallTool(
   args: string[],
-  fs: typeof fsPromisesType = fsPromisesDefault, // Default to real fs/promises (use alias)
+  fs: typeof fsType = fsDefault, // Default to real full fs module
   apiClientInstance: GitHubApiClient = new GitHubApiClient() // Default to real client
 ) {
   logger('Install script started.');
@@ -79,8 +78,8 @@ async function mainInstallTool(
     logger('Expected final binary path: %s', finalBinaryPath);
 
     // 4. Ensure directories exist (using injected fs)
-    await fs.mkdir(cacheDirForTool, { recursive: true });
-    await fs.mkdir(binDirForTool, { recursive: true }); // Ensures toolInstallDir and its bin subdir are created
+    await fs.promises.mkdir(cacheDirForTool, { recursive: true });
+    await fs.promises.mkdir(binDirForTool, { recursive: true }); // Ensures toolInstallDir and its bin subdir are created
     logger('Created required directories.');
 
     // 5. Check if already installed (idempotency) (using injected fs)
@@ -110,11 +109,10 @@ async function mainInstallTool(
         logger('Starting GitHub release installation...');
         const ghParams = toolConfig.installParams as GithubReleaseInstallParams;
         const apiClient = apiClientInstance; // Use injected client
-        // Remove incorrect redeclaration: const fs = fs;
         // The 'fs' parameter from mainInstallTool is already in scope
 
         // 1. Determine target release
-        let releaseData: any; // TODO: Use Zod schema from GitHubApiClient for type safety
+        let releaseData: GitHubRelease; // Use Zod schema type
         const versionToInstall = toolConfig.version === 'latest' ? 'latest' : toolConfig.version;
         logger('Fetching release %s for %s', versionToInstall, ghParams.repo);
         if (versionToInstall === 'latest') {
@@ -134,8 +132,8 @@ async function mainInstallTool(
         // 2. Find matching asset
         // --- Asset Selection Logic --- START ---
         logger('Finding asset for %s...', currentOsArch);
-        const assets = releaseData.assets as any[]; // TODO: Type safety
-        let selectedAsset: any = null; // TODO: Type safety
+        const assets: GitHubAsset[] = releaseData.assets; // Use Zod schema type
+        let selectedAsset: GitHubAsset | null = null; // Use Zod schema type
 
         const platform = currentOs === 'darwin' ? 'apple-darwin' : 'unknown-linux-gnu'; // Example mapping
         const arch = currentArch === 'arm64' ? 'aarch64' : 'x86_64'; // Example mapping
@@ -147,34 +145,52 @@ async function mainInstallTool(
             .replace('{platform}', platform)
             .replace('{os}', currentOs);
           logger('Using asset pattern: %s', pattern);
-          // TODO: Implement more robust matching (regex/glob) if needed
-          selectedAsset = assets.find((a) => a.name.includes(pattern));
+          // TODO: Implement more robust matching (regex/glob) if needed. Simple includes for now.
+          // Consider using a library like minimatch if glob is needed later.
+          selectedAsset = assets.find((a) => a.name.includes(pattern)) ?? null;
         } else {
           // Default logic: Try common patterns for the current OS/Arch
           logger('No asset pattern provided, using default matching logic...');
+          // Prioritize more specific patterns first
           const commonPatterns = [
-            `${arch}-${platform}`, // e.g., aarch64-apple-darwin
-            `${arch}.*${currentOs}`, // e.g., aarch64.*linux - Use regex-like pattern? Needs proper matching. For now, simple includes.
-            currentOs, // e.g., darwin
-            arch, // e.g., aarch64
-            '.tar.gz', // Common archive types
-            '.zip',
+            `${arch}-${platform}`, // Exact match: e.g., aarch64-apple-darwin
+            `${currentOs}-${arch}`, // Common alternative: e.g., darwin-arm64 (maps to aarch64)
+            platform, // OS specific: e.g., apple-darwin
+            currentOs, // OS name: e.g., darwin
+            arch, // Arch name: e.g., aarch64
           ];
+          // Try finding assets containing these patterns, case-insensitive
           for (const p of commonPatterns) {
-            // Find first asset containing the pattern (case-insensitive)
-            // TODO: Improve matching logic (e.g., regex for patterns like arch.*os)
-            selectedAsset = assets.find((a) => a.name.toLowerCase().includes(p.toLowerCase()));
+            selectedAsset =
+              assets.find((a) => a.name.toLowerCase().includes(p.toLowerCase())) ?? null;
             if (selectedAsset) {
-              logger('Found asset using default pattern: %s', p);
-              break;
+              logger(
+                'Found potential asset using default pattern: %s (matched in %s)',
+                p,
+                selectedAsset.name
+              );
+              // TODO: Could add preference for common archive types (.tar.gz, .zip) here if multiple assets match the pattern
+              break; // Found a reasonable match
             }
           }
-          // Fallback if still not found after checking common patterns
+          // Fallback if still not found after checking specific patterns
           if (!selectedAsset && assets.length > 0) {
-            selectedAsset = assets[0]; // Just grab the first one as a last resort
-            logger(
-              'Could not find specific asset match using common patterns, falling back to first asset.'
-            );
+            // Try finding common archive types as a lower priority fallback
+            const archiveAsset =
+              assets.find((a) => a.name.endsWith('.tar.gz') || a.name.endsWith('.zip')) ?? null;
+            if (archiveAsset) {
+              selectedAsset = archiveAsset;
+              logger(
+                'Could not find specific asset match, falling back to first common archive type: %s',
+                selectedAsset.name
+              );
+            } else {
+              selectedAsset = assets[0]; // Absolute last resort: grab the first asset
+              logger(
+                'Could not find specific asset match or common archive, falling back to first asset: %s',
+                selectedAsset!.name
+              );
+            }
           }
         }
 
@@ -197,7 +213,7 @@ async function mainInstallTool(
         // 3. Download asset
         const downloadDest = path.join(cacheDirForTool, assetFilename);
         logger('Downloading %s to %s...', assetUrl, downloadDest);
-        await downloadFile(assetUrl, downloadDest, fs as any); // Use utility, cast fs type for now
+        await downloadFile(assetUrl, downloadDest, fs); // Pass fs directly
         logger('Download complete.');
 
         // 4. Execute afterDownload hook
@@ -213,7 +229,7 @@ async function mainInstallTool(
         // 5. Extract asset
         const extractDir = installDirForTool; // Extract directly into final tool version dir for now
         logger('Extracting %s to %s...', downloadDest, extractDir);
-        await extractArchive(downloadDest, extractDir, fs as any); // Use utility, cast fs type for now
+        await extractArchive(downloadDest, extractDir, fs); // Pass fs directly
         logger('Extraction complete.');
 
         // 6. Execute afterExtract hook
@@ -236,6 +252,7 @@ async function mainInstallTool(
           // Case 1: Exact path within archive is specified (like Zinit 'pick')
           const potentialPath = path.join(extractDir, ghParams.binaryPath);
           if (await fileExists(fs, potentialPath)) {
+            // fileExists uses fs.promises.access
             sourceBinaryPath = potentialPath;
             logger('Located binary using binaryPath: %s', sourceBinaryPath);
           } else {
@@ -271,7 +288,7 @@ async function mainInstallTool(
             : sourcePattern; // Guess target from pattern
           if (
             path.basename(placeholderSource) === sourcePatternLikelyTarget &&
-            (await fileExists(fs, placeholderSource))
+            (await fileExists(fs, placeholderSource)) // fileExists uses fs.promises.access
           ) {
             sourceBinaryPath = placeholderSource;
             logger('Located binary using move pattern (placeholder match): %s', sourceBinaryPath);
@@ -288,8 +305,10 @@ async function mainInstallTool(
           const pathInRoot = path.join(extractDir, binaryName);
           const pathInBin = path.join(extractDir, 'bin', binaryName);
           if (await fileExists(fs, pathInRoot)) {
+            // fileExists uses fs.promises.access
             sourceBinaryPath = pathInRoot;
           } else if (await fileExists(fs, pathInBin)) {
+            // fileExists uses fs.promises.access
             sourceBinaryPath = pathInBin;
           }
           logger('Located binary using default search: %s', sourceBinaryPath);
@@ -306,11 +325,11 @@ async function mainInstallTool(
         const finalTargetPath = path.join(binDirForTool, targetBinaryName);
 
         // Ensure final bin directory exists
-        await fs.mkdir(binDirForTool, { recursive: true });
+        await fs.promises.mkdir(binDirForTool, { recursive: true });
 
         // Move the located binary to the final destination
         logger('Moving %s to %s', sourceBinaryPath, finalTargetPath);
-        await fs.rename(sourceBinaryPath, finalTargetPath);
+        await fs.promises.rename(sourceBinaryPath, finalTargetPath);
         // --- Binary Locating/Moving Logic --- END ---
 
         // 8. Handle completions
@@ -319,13 +338,14 @@ async function mainInstallTool(
           const sourceCompPath = path.join(extractDir, ghParams.completions);
           // Ensure target directory exists
           const targetCompDir = path.join(appConfig.GENERATED_DIR, 'zsh', 'completions');
-          await fs.mkdir(targetCompDir, { recursive: true });
+          await fs.promises.mkdir(targetCompDir, { recursive: true });
           // Construct target path using the basename from the source completion path
           const targetCompPath = path.join(targetCompDir, path.basename(ghParams.completions));
 
           if (await fileExists(fs, sourceCompPath)) {
+            // fileExists uses fs.promises.access
             // Use copyFile instead of rename to keep original in case of re-extract needed? Or just move? Let's copy.
-            await fs.copyFile(sourceCompPath, targetCompPath);
+            await fs.promises.copyFile(sourceCompPath, targetCompPath);
             logger('Copied completion file %s to %s', sourceCompPath, targetCompPath);
           } else {
             logger(
@@ -343,44 +363,24 @@ async function mainInstallTool(
       case 'brew':
         logger('Starting Brew installation...');
         // TODO: Implement brew logic
-        // - Check if brew command exists
-        // - Run brew tap if params.tap is set
-        // - Run brew install params.formula [--cask if params.cask]
-        // - Determine where brew installed the binary (brew --prefix toolname)
-        // - Create a symlink from the brew location to finalBinaryPath ? (Or maybe shim points directly?) - TBD
         break;
       case 'curl-script':
         logger('Starting curl-script installation...');
         // TODO: Implement curl-script logic
-        // - Download script using curl params.url
-        // - Execute script using params.shell | bash/sh
-        // - Need to figure out where the script installed the binary and move/link it to finalBinaryPath
         break;
       case 'curl-tar':
         logger('Starting curl-tar installation...');
         // TODO: Implement curl-tar logic
-        // - Download tarball using curl params.url to cacheDirForTool
-        // - Extract tarball
-        // - Locate binary using params.extractPath
-        // - Move binary to finalBinaryPath
         break;
       case 'pip':
         logger('Starting pip installation...');
         // TODO: Implement pip logic
-        // - Check if pip command exists
-        // - Run pip install params.packageName
-        // - Determine where pip installed the binary
-        // - Create symlink to finalBinaryPath ? - TBD
         break;
       case 'manual':
         logger('Manual installation configured.');
-        // Check if the binary exists at the specified params.binaryPath
-        // If so, maybe create a symlink from params.binaryPath to finalBinaryPath? Or maybe the shim should point there directly? TBD.
-        // If not, throw an error as manual install implies user provides it.
-        // Assert the type directly since we are in the 'manual' case
         const params = toolConfig.installParams as import('./types').ManualInstallParams;
         if (!(await fileExists(fs, params.binaryPath))) {
-          // Use injected fs
+          // fileExists uses fs.promises.access
           throw new Error(
             `Manual installation configured, but binary not found at specified path: ${params.binaryPath}`
           );
@@ -389,35 +389,22 @@ async function mainInstallTool(
         logger(`Manual binary found at: ${params.binaryPath}`);
         break;
       default:
-        // This check ensures all install methods are handled (compile-time check)
         const exhaustiveCheck: never = toolConfig.installMethod;
         throw new Error(`Unsupported installation method: ${exhaustiveCheck}`);
     }
 
-    // Placeholder for actual installation logic (Remove this section once methods are implemented)
-    // logger(
-    //   'Placeholder: Actual installation logic for method %s would run here.',
-    //   toolConfig.installMethod
-    // );
-    // --- START Placeholder --- REMOVED ---
-    // --- END Placeholder ---
-
     // 8. After successful installation, ensure the binary is at finalBinaryPath and executable.
-    //    (The actual installation logic for each method should ensure this)
     if (!(await fileExists(fs, finalBinaryPath))) {
-      // Use injected fs
-      // This check might be redundant if each install method guarantees the file exists on success
+      // fileExists uses fs.promises.access
       throw new Error(
         `Installation process supposedly completed, but binary not found at ${finalBinaryPath}.`
       );
     }
-    // Ensure it's executable (chmod might be needed depending on install method)
-    await fs.chmod(finalBinaryPath, 0o755); // Use injected fs
+    await fs.promises.chmod(finalBinaryPath, 0o755); // Use injected fs promises
 
     // 9. Execute afterInstall hook if defined
     if (toolConfig.hooks?.afterInstall) {
       logger('Executing afterInstall hook...');
-      // Pass relevant context, like download path if applicable
       await toolConfig.hooks.afterInstall({ toolName, installDir: installDirForTool });
     }
 
@@ -428,30 +415,20 @@ async function mainInstallTool(
     console.error(
       `Installation failed for ${toolName}: ${error instanceof Error ? error.message : String(error)}`
     );
-    // Clean up partially installed files if possible (e.g., remove installDirForTool)
-    // const installDirForTool = path.join(appConfig.GENERATED_DIR, 'binaries', toolName); // Need correct path
-    // if (existsSync(installDirForTool)) {
-    //   logger(`Cleaning up failed installation directory: ${installDirForTool}`);
-    //   await rm(installDirForTool, { recursive: true, force: true });
-    // }
     process.exit(1);
   }
 }
 
 // Entry point logic
 if (require.main === module) {
-  // Pass process args and default dependencies to the main logic
   mainInstallTool(
     process.argv.slice(2),
-    fsPromisesDefault, // Use alias
-    createLogger('install-tool'),
-    new GitHubApiClient()
+    fsDefault, // Pass the full default fs module
+    new GitHubApiClient() // Pass default API client
   ).catch((err) => {
-    // Catch top-level errors, logger might have already logged details
     console.error('Unhandled error in mainInstallTool:', err);
-    process.exit(1); // Ensure exit on unhandled error
+    process.exit(1);
   });
 }
 
-// Export mainInstallTool for testing purposes if needed
 export { mainInstallTool };

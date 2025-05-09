@@ -17,14 +17,15 @@ const streamPipeline = promisify(pipeline); // Used for piping streams
 export async function downloadFile(
   url: string,
   destinationPath: string,
-  fs: typeof fsType // Expect the full fs module type
+  fs: typeof fsType, // Expect the full fs module type
+  customFetch: typeof fetch = fetch // Allow fetch to be injected
 ): Promise<void> {
   logger('Downloading %s to %s', url, destinationPath);
 
   let response: Response;
   try {
-    // Use global fetch (available in Bun and Node 18+)
-    response = await fetch(url, {
+    // Use injected fetch or global fetch
+    response = await customFetch(url, {
       method: 'GET',
       redirect: 'follow', // Follow redirects
     });

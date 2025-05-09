@@ -1,74 +1,63 @@
 import type fsType from 'node:fs';
 import path from 'node:path';
+import { $ } from 'zx';
 import { createLogger } from './logger';
-// TODO: Potentially import libraries for extraction like 'adm-zip', 'tar' or use Bun's built-ins if available
 
 const logger = createLogger('archive');
 
 /**
- * Extracts an archive file to a specified destination directory.
- * Supports .zip and .tar.gz formats (based on file extension).
+ * Extracts an archive file to a specified destination directory using system tools via zx.
+ * Supports .zip, .tar.gz, .tgz, and .gz formats (based on file extension).
  *
  * @param archivePath The path to the archive file.
  * @param destinationDir The directory where the contents should be extracted.
- * @param fs The file system implementation (e.g., node:fs or memfs instance).
+ * @param fs The file system implementation (e.g., node:fs or memfs instance) for mkdir.
  */
 export async function extractArchive(
   archivePath: string,
   destinationDir: string,
-  fs: typeof fsType
+  fs: typeof fsType // fs is used for mkdir
 ): Promise<void> {
-  logger('Extracting %s to %s', archivePath, destinationDir);
+  logger('Extracting %s to %s using system tools via zx', archivePath, destinationDir);
 
   // Ensure destination directory exists
   await fs.promises.mkdir(destinationDir, { recursive: true });
 
-  const extension = path.extname(archivePath).toLowerCase();
+  // Use zx's built-in cd to change directory for extraction if needed,
+  // or ensure commands correctly target destinationDir.
+  // For tar and unzip, -C and -d flags handle this. For gunzip, redirection is used.
+
+  // Make zx commands quieter by default unless verbose logging is on
+  $.quiet = !logger.enabled; // if logger is enabled, zx will not be quiet
+
+  const lowerArchivePath = archivePath.toLowerCase();
 
   try {
-    if (extension === '.zip') {
-      logger('Detected .zip format.');
-      // TODO: Implement zip extraction
-      // Example using adm-zip (requires installation):
-      // const AdmZip = require('adm-zip');
-      // const zip = new AdmZip(archivePath); // Might need buffer from fs.readFile
-      // zip.extractAllTo(destinationDir, /*overwrite*/ true);
-      logger('TODO: Implement .zip extraction logic.');
-      // Placeholder: Create a dummy file
-      await fs.promises.writeFile(path.join(destinationDir, 'extracted.zip.dummy'), 'zip content');
-    } else if (extension === '.gz' && archivePath.endsWith('.tar.gz')) {
-      logger('Detected .tar.gz format.');
-      // TODO: Implement tar.gz extraction
-      // Example using tar (requires installation):
-      // const tar = require('tar');
-      // await tar.x({ file: archivePath, cwd: destinationDir });
-      // Example using shell command (less portable):
-      // await $`tar -xzf ${archivePath} -C ${destinationDir}`;
-      logger('TODO: Implement .tar.gz extraction logic.');
-      // Placeholder: Create a dummy file
-      await fs.promises.writeFile(
-        path.join(destinationDir, 'extracted.tar.gz.dummy'),
-        'tar content'
-      );
-    } else if (extension === '.gz') {
-      logger('Detected .gz format (assuming single file).');
-      // TODO: Implement single file gzip decompression
-      // Example using zlib and streams:
-      // const zlib = require('zlib');
-      // const source = fs.createReadStream(archivePath);
-      // const destination = fs.createWriteStream(path.join(destinationDir, path.basename(archivePath, '.gz')));
-      // await require('node:stream/promises').pipeline(source, zlib.createGunzip(), destination);
-      logger('TODO: Implement single .gz file decompression.');
-      await fs.promises.writeFile(path.join(destinationDir, 'extracted.gz.dummy'), 'gz content');
+    if (lowerArchivePath.endsWith('.zip')) {
+      logger('Detected .zip format. Using system "unzip".');
+      await $`unzip -o ${archivePath} -d ${destinationDir}`;
+      logger('.zip extraction complete.');
+    } else if (lowerArchivePath.endsWith('.tar.gz') || lowerArchivePath.endsWith('.tgz')) {
+      logger('Detected .tar.gz/.tgz format. Using system "tar".');
+      await $`tar -xzf ${archivePath} -C ${destinationDir}`;
+      logger('.tar.gz/.tgz extraction complete.');
+    } else if (lowerArchivePath.endsWith('.gz')) {
+      logger('Detected single .gz file format. Using system "gunzip".');
+      const destinationFilePath = path.join(destinationDir, path.basename(archivePath, '.gz'));
+      // Ensure the output of gunzip is a string that can be used in the command template
+      await $`gunzip -c ${archivePath} > ${destinationFilePath}`;
+      logger('Single .gz file decompression complete: %s', destinationFilePath);
     } else {
-      throw new Error(`Unsupported archive format: ${extension}`);
+      throw new Error(`Unsupported archive format: ${archivePath}`);
     }
-    logger('Extraction complete (mocked/placeholder).');
-  } catch (error) {
+  } catch (error: any) {
+    // Catching 'any' as zx.ProcessOutput has a specific structure
     logger('Extraction failed for %s: %o', archivePath, error);
-    // Attempt to clean up partially extracted files? Difficult to do reliably.
+    // zx errors (ProcessOutputObject) contain stdout, stderr, exitCode
+    const errorMessage =
+      error.stderr || error.stdout || (error instanceof Error ? error.message : String(error));
     throw new Error(
-      `Failed to extract archive ${archivePath}: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to extract archive ${archivePath} using system tools. Exit code: ${error.exitCode}. Error: ${errorMessage}`
     );
   }
 }
