@@ -56,24 +56,24 @@ describe('ToolConfigBuilder', () => {
     const params: GithubReleaseInstallParams = { repo: 'owner/repo', assetPattern: '*.zip' };
     builder.install('github-release', params);
     const config = builder.getConfig();
-    expect(config.installation?.method).toBe('github-release');
-    expect(config.installation?.params).toEqual(params);
+    expect(config.installMethod).toBe('github-release');
+    expect(config.installParams).toEqual({ ...params, hooks: {} });
   });
 
   it('should configure brew installation', () => {
     const params: BrewInstallParams = { formula: 'myformula', cask: true };
     builder.install('brew', params);
     const config = builder.getConfig();
-    expect(config.installation?.method).toBe('brew');
-    expect(config.installation?.params).toEqual(params);
+    expect(config.installMethod).toBe('brew');
+    expect(config.installParams).toEqual({ ...params, hooks: {} });
   });
 
   it('should configure curl-script installation', () => {
     const params: CurlScriptInstallParams = { url: 'http://example.com/install.sh', shell: 'bash' };
     builder.install('curl-script', params);
     const config = builder.getConfig();
-    expect(config.installation?.method).toBe('curl-script');
-    expect(config.installation?.params).toEqual(params);
+    expect(config.installMethod).toBe('curl-script');
+    expect(config.installParams).toEqual({ ...params, hooks: {} });
   });
 
   it('should configure curl-tar installation', () => {
@@ -83,38 +83,38 @@ describe('ToolConfigBuilder', () => {
     };
     builder.install('curl-tar', params);
     const config = builder.getConfig();
-    expect(config.installation?.method).toBe('curl-tar');
-    expect(config.installation?.params).toEqual(params);
+    expect(config.installMethod).toBe('curl-tar');
+    expect(config.installParams).toEqual({ ...params, hooks: {} });
   });
 
   it('should configure pip installation', () => {
     const params: PipInstallParams = { packageName: 'mypackage' };
     builder.install('pip', params);
     const config = builder.getConfig();
-    expect(config.installation?.method).toBe('pip');
-    expect(config.installation?.params).toEqual(params);
+    expect(config.installMethod).toBe('pip');
+    expect(config.installParams).toEqual({ ...params, hooks: {} });
   });
 
   it('should configure manual installation', () => {
     const params: ManualInstallParams = { binaryPath: '/usr/local/bin/tool' };
     builder.install('manual', params);
     const config = builder.getConfig();
-    expect(config.installation?.method).toBe('manual');
-    expect(config.installation?.params).toEqual(params);
+    expect(config.installMethod).toBe('manual');
+    expect(config.installParams).toEqual({ ...params, hooks: {} });
   });
 
   it('should add Zsh initialization code', () => {
     const zshCode = 'alias tt="echo test"';
     builder.zsh(zshCode);
     const config = builder.getConfig();
-    expect(config.zshInit).toContain(zshCode);
+    expect(config.zshContent).toEqual([zshCode]);
   });
 
   it('should append multiple Zsh initialization codes', () => {
-    builder.zsh('alias t1="echo 1"\n');
-    builder.zsh('export T2=2\n');
+    builder.zsh('alias t1="echo 1"');
+    builder.zsh('export T2=2');
     const config = builder.getConfig();
-    expect(config.zshInit).toBe('alias t1="echo 1"\nexport T2=2\n');
+    expect(config.zshContent).toEqual(['alias t1="echo 1"', 'export T2=2']);
   });
 
   it('should add a symbolic link', () => {
@@ -136,16 +136,24 @@ describe('ToolConfigBuilder', () => {
   });
 
   it('should configure architecture-specific overrides', () => {
-    builder.arch('darwin-aarch64', (macBuilder) => {
+    const osArch = 'darwin-aarch64';
+    builder.arch(osArch, (macBuilder) => {
       macBuilder.version('1.0.0-mac');
       macBuilder.install('brew', { formula: 'test-tool-mac' });
+      macBuilder.zsh('alias mactool="test-tool-mac"');
     });
-    const config = builder.getConfig();
-    expect(config.archOverrides).toHaveProperty('darwin-aarch64');
-    const override = config.archOverrides!['darwin-aarch64']!; // Assert override itself is defined
-    expect(override.version!).toBe('1.0.0-mac'); // Assert version is defined
-    expect(override.installation!.method).toBe('brew'); // Assert installation is defined
-    expect((override.installation!.params as BrewInstallParams).formula).toBe('test-tool-mac');
+    // Get the config resolved for the specific architecture
+    const config = builder.getConfig(osArch);
+    expect(config.version).toBe('1.0.0-mac');
+    expect(config.installMethod).toBe('brew');
+    expect((config.installParams as BrewInstallParams)?.formula).toBe('test-tool-mac');
+    expect(config.zshContent).toContain('alias mactool="test-tool-mac"');
+
+    // Check that base config is not affected
+    const baseConfig = builder.getConfig();
+    expect(baseConfig.version).toBe('latest'); // Default
+    expect(baseConfig.installMethod).toBeUndefined();
+    expect(baseConfig.zshContent).toEqual([]);
   });
 
   it('should allow chaining of methods', () => {
@@ -159,51 +167,61 @@ describe('ToolConfigBuilder', () => {
     expect(config.name).toBe(toolName); // Name is set in constructor
     expect(config.binaries).toEqual(['chained-tool']);
     expect(config.version).toBe('0.1.0');
-    expect(config.installation?.method).toBe('manual');
-    expect(config.zshInit).toContain('alias ct="chained-tool"');
+    expect(config.installMethod).toBe('manual');
+    expect(config.zshContent).toContain('alias ct="chained-tool"');
     expect(config.symlinks).toEqual([{ source: 'conf.yaml', target: '.chained-tool/conf.yaml' }]);
   });
 
   it('should add hooks via install params', async () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const afterInstallHook: AsyncInstallHook = async (ctx: InstallHookContext) => {
-      console.log('Installed');
+      // console.log('Installed'); // Keep console logs out of tests
     };
     builder.install('github-release', {
       repo: 'owner/repo',
       hooks: { afterInstall: afterInstallHook },
     });
     const config = builder.getConfig();
-    expect(config.installation?.params.hooks?.afterInstall).toBe(afterInstallHook);
+    expect(config.hooks?.afterInstall).toBe(afterInstallHook);
+    expect(config.installParams?.hooks?.afterInstall).toBe(afterInstallHook);
   });
 
   it('should add hooks via hooks() method', async () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const beforeInstallHook: AsyncInstallHook = async (ctx: InstallHookContext) => {
-      console.log('Preparing install');
+      // console.log('Preparing install');
     };
     builder.install('manual', { binaryPath: '/bin/true' }); // Need an install method first
     builder.hooks({ beforeInstall: beforeInstallHook });
     const config = builder.getConfig();
-    expect(config.installation?.params.hooks?.beforeInstall).toBe(beforeInstallHook);
+    expect(config.hooks?.beforeInstall).toBe(beforeInstallHook);
+    expect(config.installParams?.hooks?.beforeInstall).toBe(beforeInstallHook);
   });
 
   it('should merge hooks from install() and hooks() method, with hooks() taking precedence for overlaps', async () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const hook1: AsyncInstallHook = async (ctx) => {};
+    const hook1: AsyncInstallHook = async (ctx) => {}; // afterDownload from install()
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const hook2: AsyncInstallHook = async (ctx) => {};
+    const hook2: AsyncInstallHook = async (ctx) => {}; // afterInstall from install()
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const hook3: AsyncInstallHook = async (ctx) => {};
+    const hook3: AsyncInstallHook = async (ctx) => {}; // afterInstall from hooks() - should override hook2
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const hook4: AsyncInstallHook = async (ctx) => {}; // beforeInstall from hooks()
 
     builder.install('manual', {
       binaryPath: '/bin/true',
       hooks: { afterDownload: hook1, afterInstall: hook2 },
     });
-    builder.hooks({ afterInstall: hook3 }); // hook3 for afterInstall should override hook2
+    builder.hooks({ afterInstall: hook3, beforeInstall: hook4 });
 
     const config = builder.getConfig();
-    expect(config.installation?.params.hooks?.afterDownload).toBe(hook1);
-    expect(config.installation?.params.hooks?.afterInstall).toBe(hook3); // hook3 from .hooks() overrides hook2 from .install()
+    expect(config.hooks?.afterDownload).toBe(hook1);
+    expect(config.hooks?.afterInstall).toBe(hook3); // hook3 from .hooks() overrides hook2 from .install()
+    expect(config.hooks?.beforeInstall).toBe(hook4);
+
+    // Also check installParams.hooks for consistency, though primary assertion is on config.hooks
+    expect(config.installParams?.hooks?.afterDownload).toBe(hook1);
+    expect(config.installParams?.hooks?.afterInstall).toBe(hook3);
+    expect(config.installParams?.hooks?.beforeInstall).toBe(hook4);
   });
 });

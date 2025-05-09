@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach } from 'bun:test';
 import fetchMock from 'fetch-mock';
-// Removed duplicate import line
 import { GitHubApiClient, type GitHubRelease } from '../github-api'; // Import GitHubRelease type
 import {
   FIXTURE_GITHUB_API_LATEST_RELEASE_EZA,
@@ -17,9 +16,8 @@ describe('GitHubApiClient', () => {
   const tag = 'v0.17.0'; // A specific tag from the fixture
 
   beforeEach(() => {
-    // Inject fetchMock's handler into the client
-    // Need to cast fetchMock to FetchFunction type
-    client = new GitHubApiClient(fetchMock.mockGlobal().fetchHandler as any);
+    fetchMock.mockGlobal();
+    client = new GitHubApiClient();
   });
 
   afterEach(() => {

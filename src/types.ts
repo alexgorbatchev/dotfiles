@@ -4,8 +4,7 @@ export interface InstallHookContext {
   installDir: string; // The directory where the tool's binary will be installed
   downloadPath?: string; // Path to the downloaded file/archive (available after download hook)
   extractDir?: string; // Path to the extracted contents (available after extract hook)
-  // TODO: Consider adding google/zx for running commands and file system operations within hooks
-  // For now, hooks will rely on Bun's built-in capabilities or external tools.
+  // Use google/zx for running commands and file system operations within hooks
 }
 
 // Define the type for asynchronous TypeScript hook functions
@@ -34,6 +33,8 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
   assetPattern?: string; // Pattern to match the release asset filename (corresponds to Zinit's bpick)
   binaryPath?: string; // Path to the executable within the extracted archive (corresponds to Zinit's pick)
   moveBinaryTo?: string; // Path/name to move the extracted binary to (corresponds to Zinit's mv)
+  completions?: string; // Path to completion file within archive (corresponds to Zinit's completions=)
+  // atclone is replaced by hooks.afterDownload or hooks.afterExtract
 }
 
 export interface BrewInstallParams extends BaseInstallParams {
@@ -61,16 +62,6 @@ export interface ManualInstallParams extends BaseInstallParams {
   binaryPath: string; // Expected path to the binary if not installed by the tool
 }
 
-// Union type for all possible installation parameters
-export type InstallParams =
-  | GithubReleaseInstallParams
-  | BrewInstallParams
-  | CurlScriptInstallParams
-  | CurlTarInstallParams
-  | PipInstallParams
-  | ManualInstallParams;
-
-// Define the installation methods
 export type InstallMethod =
   | 'github-release'
   | 'brew'
@@ -78,6 +69,14 @@ export type InstallMethod =
   | 'curl-tar'
   | 'pip'
   | 'manual';
+
+export type InstallParams =
+  | GithubReleaseInstallParams
+  | BrewInstallParams
+  | CurlScriptInstallParams
+  | CurlTarInstallParams
+  | PipInstallParams
+  | ManualInstallParams;
 
 // Define the ToolConfigBuilder interface with camelCase methods
 export interface ToolConfigBuilder {
@@ -104,11 +103,10 @@ export interface ToolConfigBuilder {
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
   install(method: 'pip', params: PipInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
+  // Add overloads for other methods if needed
 
   /**
    * Defines asynchronous TypeScript hook functions to run during the installation lifecycle.
-   * This is an alternative way to set hooks if not provided directly in install() params.
-   * If hooks are provided in both, they might be merged or one might take precedence (TBD).
    * @param hooks An object containing optional hook functions for different stages.
    */
   hooks(hooks: {
@@ -145,22 +143,29 @@ export interface ToolConfigBuilder {
  * It receives a ToolConfigBuilder and defines the tool's configuration.
  * @param c The ToolConfigBuilder instance.
  */
-export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void> | void;
+export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
 
-// Represents the fully configured state of a tool, after the builder has run.
-// This is what the generator will consume.
+// Represents the fully built and validated configuration for a single tool.
+// This is what the generator will ultimately work with after the ToolConfigBuilder has run.
 export interface ToolConfig {
-  name: string; // Name of the tool, derived from the filename
+  name: string; // Name of the tool, derived from the filename usually
   binaries: string[];
   version: string;
-  installation?: {
-    method: InstallMethod;
-    params: InstallParams;
+  installMethod?: 'github-release' | 'brew' | 'curl-script' | 'curl-tar' | 'pip' | 'manual';
+  installParams?:
+    | GithubReleaseInstallParams
+    | BrewInstallParams
+    | CurlScriptInstallParams
+    | CurlTarInstallParams
+    | PipInstallParams
+    | ManualInstallParams;
+  hooks?: {
+    beforeInstall?: AsyncInstallHook;
+    afterDownload?: AsyncInstallHook;
+    afterExtract?: AsyncInstallHook;
+    afterInstall?: AsyncInstallHook;
   };
-  zshInit?: string;
-  symlinks?: { source: string; target: string }[];
-  archOverrides?: {
-    [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>>;
-  };
-  // Hooks are part of installation.params
+  zshContent: string[];
+  symlinks: { source: string; target: string }[];
+  // Architecture-specific configurations are resolved before this stage
 }

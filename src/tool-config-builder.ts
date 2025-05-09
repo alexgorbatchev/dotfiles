@@ -13,26 +13,43 @@ import type {
 } from './types';
 
 export class ToolConfigBuilder implements IToolConfigBuilder {
-  private config: Partial<ToolConfig> = {
+  private partialConfig: {
+    name?: string;
+    binaries: string[];
+    version: string;
+    installMethod?: InstallMethod;
+    installParams?: InstallParams;
+    hooks?: {
+      beforeInstall?: AsyncInstallHook;
+      afterDownload?: AsyncInstallHook;
+      afterExtract?: AsyncInstallHook;
+      afterInstall?: AsyncInstallHook;
+    };
+    zshContent: string[];
+    symlinks: { source: string; target: string }[];
+    // Store arch-specific configurations separately to be resolved later
+    archConfigs: Record<string, Partial<Omit<ToolConfig, 'name' | 'archOverrides'>>>;
+  } = {
     binaries: [],
     version: 'latest', // Default version
+    zshContent: [],
     symlinks: [],
-    archOverrides: {},
+    archConfigs: {},
   };
   private toolName: string;
 
   constructor(name: string) {
     this.toolName = name;
-    this.config.name = name;
+    this.partialConfig.name = name;
   }
 
   bin(names: string | string[]): this {
-    this.config.binaries = Array.isArray(names) ? names.slice() : [names];
+    this.partialConfig.binaries = Array.isArray(names) ? names.slice() : [names];
     return this;
   }
 
   version(version: string): this {
-    this.config.version = version;
+    this.partialConfig.version = version;
     return this;
   }
 
@@ -45,11 +62,20 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
   install(method: 'manual', params: ManualInstallParams): this;
   // Implementation
   install(method: InstallMethod, params: InstallParams): this {
-    this.config.installation = { method, params: { ...params } };
-    // Ensure hooks object exists on params if not provided
-    if (this.config.installation.params && !this.config.installation.params.hooks) {
-      this.config.installation.params.hooks = {};
+    this.partialConfig.installMethod = method;
+    this.partialConfig.installParams = { ...params };
+    // Ensure hooks object exists on params if not provided, and also on partialConfig
+    if (!this.partialConfig.installParams.hooks) {
+      this.partialConfig.installParams.hooks = {};
     }
+    if (!this.partialConfig.hooks) {
+      this.partialConfig.hooks = {};
+    }
+    // Sync hooks from params to the top-level hooks property
+    this.partialConfig.hooks = {
+      ...this.partialConfig.hooks,
+      ...this.partialConfig.installParams.hooks,
+    };
     return this;
   }
 
@@ -59,73 +85,102 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
     afterExtract?: AsyncInstallHook;
     afterInstall?: AsyncInstallHook;
   }): this {
-    if (!this.config.installation) {
-      // Initialize with a default or throw an error if install() must be called first
-      // For now, let's assume a manual install if not specified, or require install() first.
-      // Throwing an error might be safer to enforce proper usage.
+    if (!this.partialConfig.installMethod) {
       throw new Error('Cannot call hooks() before install(). Define an installation method first.');
     }
-    // Merge with existing hooks, with new ones taking precedence
-    this.config.installation.params.hooks = {
-      ...(this.config.installation.params.hooks || {}),
+    // Merge with existing hooks on partialConfig.hooks
+    this.partialConfig.hooks = {
+      ...(this.partialConfig.hooks || {}),
       ...hooks,
     };
+    // Also update hooks within installParams if it exists
+    if (this.partialConfig.installParams) {
+      this.partialConfig.installParams.hooks = {
+        ...(this.partialConfig.installParams.hooks || {}),
+        ...hooks,
+      };
+    }
     return this;
   }
 
   zsh(code: string): this {
-    this.config.zshInit = (this.config.zshInit || '') + code.trim() + '\n';
+    this.partialConfig.zshContent.push(code.trim());
     return this;
   }
 
   symlink(source: string, target: string): this {
-    if (!this.config.symlinks) {
-      this.config.symlinks = [];
-    }
-    this.config.symlinks.push({ source, target });
+    this.partialConfig.symlinks.push({ source, target });
     return this;
   }
 
   arch(osArch: string, configureOverrides: (c: IToolConfigBuilder) => void): this {
-    // Create a new builder instance for the override.
-    // Pass the original tool name to maintain context, or a derived name for clarity.
-    const overrideBuilder = new ToolConfigBuilder(this.toolName); // Or `${this.toolName}-${osArch}`
+    const overrideBuilder = new ToolConfigBuilder(`${this.toolName}-${osArch}`);
     configureOverrides(overrideBuilder);
 
-    if (!this.config.archOverrides) {
-      this.config.archOverrides = {};
-    }
+    // Retrieve the partial config from the override builder
+    const overridePartialConfig = overrideBuilder.getPartialConfig();
 
-    // Get the configuration from the override builder.
-    // We need to exclude 'name' and 'archOverrides' from the override config itself
-    // as they are contextual to the main config.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { name, archOverrides, ...overrideConfig } = overrideBuilder.getConfig();
-
-    this.config.archOverrides[osArch] = overrideConfig;
+    // We want to store the *differences* or specific settings for this arch.
+    // The getConfig method will handle merging these.
+    this.partialConfig.archConfigs[osArch] = overridePartialConfig;
     return this;
+  }
+
+  // Helper to get the current partial config, used by arch method
+  private getPartialConfig(): Partial<Omit<ToolConfig, 'name'>> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { name, archConfigs, ...rest } = this.partialConfig;
+    return rest;
   }
 
   // Method to retrieve the fully built configuration
   // This should be called by the generator to get the final config object.
-  getConfig(): ToolConfig {
-    // Perform any final validation or default assignments here if needed
-    if (!this.config.name) {
+  getConfig(currentOsArch?: string): ToolConfig {
+    if (!this.partialConfig.name) {
       throw new Error('Tool name must be set.');
     }
-    if (this.config.binaries?.length === 0 && this.config.name) {
-      // Default binary name to tool name if not specified
-      this.config.binaries = [this.config.name];
+
+    let finalConfig: ToolConfig = {
+      name: this.partialConfig.name,
+      binaries:
+        this.partialConfig.binaries.length > 0
+          ? this.partialConfig.binaries
+          : [this.partialConfig.name],
+      version: this.partialConfig.version,
+      installMethod: this.partialConfig.installMethod,
+      installParams: this.partialConfig.installParams,
+      hooks: this.partialConfig.hooks,
+      zshContent: this.partialConfig.zshContent,
+      symlinks: this.partialConfig.symlinks,
+    };
+
+    // Apply architecture-specific overrides if currentOsArch is provided and an override exists
+    if (currentOsArch && this.partialConfig.archConfigs[currentOsArch]) {
+      const archOverride = this.partialConfig.archConfigs[currentOsArch];
+      finalConfig = {
+        ...finalConfig,
+        ...archOverride,
+        // Ensure arrays are merged or replaced correctly if needed, for now, it's a shallow merge.
+        // For instance, if archOverride has binaries, it replaces, not merges.
+        // Hooks might need deeper merging if that's the desired behavior.
+        hooks: { ...(finalConfig.hooks || {}), ...(archOverride.hooks || {}) },
+        zshContent: archOverride.zshContent || finalConfig.zshContent, // Arch overrides if present
+        symlinks: archOverride.symlinks || finalConfig.symlinks, // Arch overrides if present
+      };
     }
 
-    return {
-      name: this.config.name,
-      binaries: this.config.binaries || [],
-      version: this.config.version || 'latest',
-      installation: this.config.installation,
-      zshInit: this.config.zshInit,
-      symlinks: this.config.symlinks || [],
-      archOverrides: this.config.archOverrides || {},
-    };
+    // Ensure installParams.hooks and top-level hooks are consistent
+    if (finalConfig.installParams && finalConfig.hooks) {
+      finalConfig.installParams.hooks = {
+        ...(finalConfig.installParams.hooks || {}),
+        ...finalConfig.hooks,
+      };
+    } else if (finalConfig.hooks) {
+      // If installParams doesn't exist but top-level hooks do, this might be an issue
+      // or imply manual installation where hooks are still relevant.
+      // For now, we assume hooks are primarily tied to installParams.
+    }
+
+    return finalConfig;
   }
 }

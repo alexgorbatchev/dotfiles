@@ -105,92 +105,89 @@ export class GitHubApiClient {
 
   constructor(fetchImplementation: FetchFunction = fetch) {
     this.fetchFn = fetchImplementation; // Use injected or global fetch
+    logger('GitHubApiClient: constructor: GITHUB_TOKEN_present=%s', !!config.GITHUB_TOKEN);
     if (config.GITHUB_TOKEN) {
       this.headers['Authorization'] = `token ${config.GITHUB_TOKEN}`;
-      logger('Using GitHub token for authentication.');
-    } else {
-      logger('No GitHub token found in config. Making unauthenticated requests.');
     }
   }
 
   async getLatestRelease(repo: string): Promise<GitHubRelease> {
-    logger('Fetching latest release for %s', repo);
+    logger('getLatestRelease: repo=%s', repo);
     const data = await this.fetchFromGitHub<unknown>(`/repos/${repo}/releases/latest`);
     try {
       return GitHubReleaseSchema.parse(data);
     } catch (error) {
-      logger('Zod validation error for getLatestRelease: %o', error);
+      // logger('Zod validation error for getLatestRelease: %o', error);
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to validate latest release data for ${repo}: ${message}`);
     }
   }
 
   async getReleases(repo: string): Promise<GitHubRelease[]> {
-    logger('Fetching all releases for %s', repo);
+    logger('getReleases: repo=%s', repo);
     // TODO: Implement pagination if needed for repos with many releases
     const data = await this.fetchFromGitHub<unknown[]>(`/repos/${repo}/releases`);
     try {
       return GitHubReleasesSchema.parse(data);
     } catch (error) {
-      logger('Zod validation error for getReleases: %o', error);
+      // logger('Zod validation error for getReleases: %o', error);
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to validate releases data for ${repo}: ${message}`);
     }
   }
 
   async getReleaseByTag(repo: string, tag: string): Promise<GitHubRelease> {
-    logger('Fetching release %s for %s', tag, repo);
+    logger('getReleaseByTag: repo=%s, tag=%s', repo, tag);
     const data = await this.fetchFromGitHub<unknown>(`/repos/${repo}/releases/tags/${tag}`);
     try {
       return GitHubReleaseSchema.parse(data);
     } catch (error) {
-      logger('Zod validation error for getReleaseByTag: %o', error);
+      // logger('Zod validation error for getReleaseByTag: %o', error);
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to validate release by tag data for ${repo} (${tag}): ${message}`);
     }
   }
 
   private async fetchFromGitHub<T>(apiPath: string): Promise<T> {
+    logger('fetchFromGitHub: apiPath=%s', apiPath);
     const url = `${BASE_URL}${apiPath}`;
-    logger('Making API request to: %s', url);
 
     try {
       // TODO: Implement caching logic here if CACHE_ENABLED is true
       // const cachedData = await this.getFromCache(url);
       // if (cachedData) {
-      //   logger('Using cached data for %s', url);
+      //   // logger('Using cached data for %s', url);
       //   return cachedData;
       // }
 
       // Use the stored fetch function
       const response = await this.fetchFn(url, { headers: this.headers });
-      console.log('>>>', fetch.toString()); // Removed temporary log
 
-      this.checkRateLimits(response);
+      this.checkRateLimits(response); // Keep this call, its internal logging will be modified
 
       // Check status code explicitly instead of relying on response.ok
       if (response.status < 200 || response.status >= 300) {
-        logger('Entering error block. Status: %s', response.status);
+        // logger('Entering error block. Status: %s', response.status);
         const errorBody = await response.text();
-        logger('GitHub API error response body: %s', errorBody);
+        // logger('GitHub API error response body: %s', errorBody);
         let errorMessage = `GitHub API error: ${response.status} ${response.statusText}`;
         try {
-          logger('Attempting to parse errorBody as JSON...');
+          // logger('Attempting to parse errorBody as JSON...');
           const errorJson = JSON.parse(errorBody);
-          logger('Successfully parsed errorBody. errorJson: %o', errorJson);
+          // logger('Successfully parsed errorBody. errorJson: %o', errorJson);
           if (errorJson.message) {
             errorMessage += ` - ${errorJson.message}`;
-            logger('Appended errorJson.message to errorMessage.');
+            // logger('Appended errorJson.message to errorMessage.');
           }
         } catch (e) {
-          logger('Failed to parse errorBody as JSON or access message property. Error: %o', e);
+          // logger('Failed to parse errorBody as JSON or access message property. Error: %o', e);
           /* Ignore JSON parse error if errorBody is not JSON */
         }
-        logger('Throwing error with message: %s', errorMessage);
+        // logger('Throwing error with message: %s', errorMessage);
         throw new Error(errorMessage);
       }
 
-      logger('Response was .ok. Attempting to parse response.json()...');
+      // logger('Response was .ok. Attempting to parse response.json()...');
       const data = await response.json();
 
       // TODO: Save data to cache if caching is implemented
@@ -198,31 +195,32 @@ export class GitHubApiClient {
 
       return data as T; // Data is now validated by the calling methods
     } catch (error) {
-      logger('Error fetching from GitHub URL %s: %o', url, error);
+      // logger('Error fetching from GitHub URL %s: %o', url, error);
       throw error;
     }
   }
 
   // Use global Response type
   private checkRateLimits(response: Response): void {
-    const limit = response.headers.get('X-RateLimit-Limit');
-    const remaining = response.headers.get('X-RateLimit-Remaining');
-    const reset = response.headers.get('X-RateLimit-Reset');
+    logger('checkRateLimits: responseStatus=%s', response.status);
+    // const limit = response.headers.get('X-RateLimit-Limit');
+    // const remaining = response.headers.get('X-RateLimit-Remaining');
+    // const reset = response.headers.get('X-RateLimit-Reset');
 
-    if (limit && remaining && reset) {
-      const resetDate = new Date(parseInt(reset, 10) * 1000);
-      logger(
-        'GitHub API Rate Limit: %s/%s remaining. Resets at: %s',
-        remaining,
-        limit,
-        resetDate.toLocaleTimeString()
-      );
-      if (parseInt(remaining, 10) === 0) {
-        logger('WARNING: GitHub API rate limit exhausted!');
-      }
-    } else {
-      logger('GitHub API Rate Limit headers not found.');
-    }
+    // if (limit && remaining && reset) {
+    //   const resetDate = new Date(parseInt(reset, 10) * 1000);
+    //   // logger(
+    //   //   'GitHub API Rate Limit: %s/%s remaining. Resets at: %s',
+    //   //   remaining,
+    //   //   limit,
+    //   //   resetDate.toLocaleTimeString()
+    //   // );
+    //   if (parseInt(remaining, 10) === 0) {
+    //     // logger('WARNING: GitHub API rate limit exhausted!');
+    //   }
+    // } else {
+    //   // logger('GitHub API Rate Limit headers not found.');
+    // }
   }
 
   // TODO: Implement cache methods (getFromCache, saveToCache)

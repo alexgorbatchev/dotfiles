@@ -1,9 +1,27 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test'; // Import mock
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { loadConfig, Config } from '../config'; // Assuming Config type is exported
 
-const dotfilesDir = process.cwd(); // Assuming tests run from .dotfiles root
+// Ensure this test file uses the *actual* config module, not a mocked one from other tests.
+// This is a way to tell Bun to not use any previously registered mock for '../config' for this file.
+// If there's a more direct "unmock" or "useActual" for a specific file, that would be better.
+// For now, explicitly calling mock.module with a factory that re-imports the original might work,
+// or simply relying on mock.restore() from other files and hoping for the best.
+// A more robust way is to ensure test isolation if the runner supports it, or use dynamic imports.
+
+// Let's try to force a fresh import by using a dynamic import within tests or beforeEach,
+// after ensuring mocks from other files are cleared.
+// For now, we'll assume mock.restore() in other files is sufficient and see.
+// If not, we might need `mock.module('../config', () => jest.requireActual('../config'))`
+// or Bun's equivalent at the top of this file.
+
+// Removed the explicit unmock attempt as it used 'jest' (which caused an error)
+// and might not be necessary if other test files correctly restore their mocks.
+
+import { loadConfig } from '../config'; // Import loadConfig
+import type { Config } from '../config'; // Import Config as a type for verbatimModuleSyntax
+
+const dotfilesDir = process.cwd(); // Assuming tests run from .dotfiles project root
 const envFilePath = path.join(dotfilesDir, '.env');
 const tempEnvFilePath = path.join(dotfilesDir, '.env.test_temp');
 
