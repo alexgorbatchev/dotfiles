@@ -3,6 +3,16 @@ import type { ToolConfig, CurlScriptInstallParams } from '../types';
 import { createLogger } from '../utils/logger';
 import { $ } from 'zx';
 
+// Helper for exists check using the injected fs promises
+async function fileExists(fs: typeof fsType, filePath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const logger = createLogger('installer:curl-script');
 
 /**

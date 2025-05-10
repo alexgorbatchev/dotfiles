@@ -5,6 +5,7 @@ import type {
   ToolConfigBuilder as IToolConfigBuilder,
 } from './types';
 import { ToolConfigBuilder } from './tool-config-builder';
+import fs from 'node:fs/promises'; // Import fs promises
 import { createLogger } from './utils/logger';
 import { config as appConfig } from './config';
 
@@ -81,22 +82,44 @@ export async function getToolConfigByName(
 
 /**
  * Loads all tool configurations.
- * (This might be needed by the main generator script, not necessarily by install-tool.ts directly)
- * @param currentOsArch The current OS and architecture string.
  * @returns A map of tool names to their resolved ToolConfig.
  */
-// export async function getAllToolConfigs(currentOsArch: string): Promise<Map<string, ToolConfig>> {
-//   const configs = new Map<string, ToolConfig>();
-//   // TODO: Need a way to discover all tool config files in generator/src/tools/
-//   const toolNames = []; // e.g., by reading the directory
-//   for (const toolName of toolNames) {
-//     try {
-//       const config = await getToolConfigByName(toolName, currentOsArch);
-//       configs.set(toolName, config);
-//     } catch (error) {
-//       logger('Failed to load config for tool %s during getAllToolConfigs: %o', toolName, error);
-//       // Decide whether to throw, or collect errors and continue
-//     }
-//   }
-//   return configs;
-// }
+export async function loadToolConfigs(): Promise<Map<string, ToolConfig>> {
+  const configs = new Map<string, ToolConfig>();
+  const currentOs = process.platform;
+  const currentArch = process.arch;
+  const currentOsArch = `${currentOs}-${currentArch}`;
+
+  if (!appConfig.DOTFILES_DIR) {
+    throw new Error('DOTFILES_DIR is not configured.');
+  }
+  const toolsDir = path.join(appConfig.DOTFILES_DIR, 'generator', 'src', 'tools');
+
+  try {
+    // Discover all tool config files in the tools directory
+    const files = await fs.readdir(toolsDir);
+    const toolNames = files
+      .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+      .map((file) => file.replace(/\.ts$/, ''));
+
+    logger('Discovered tool config files: %o', toolNames);
+
+    for (const toolName of toolNames) {
+      try {
+        const config = await getToolConfigByName(toolName, currentOsArch);
+        configs.set(toolName, config);
+      } catch (error) {
+        logger('Failed to load config for tool %s: %o', toolName, error);
+        // Decide whether to throw, or collect errors and continue
+        // For now, we'll log and continue to load other configs
+      }
+    }
+  } catch (error) {
+    logger('Error discovering tool config files in %s: %o', toolsDir, error);
+    throw new Error(
+      `Failed to discover tool configuration files: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  return configs;
+}

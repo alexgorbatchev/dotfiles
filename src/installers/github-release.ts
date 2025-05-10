@@ -206,38 +206,55 @@ export async function installGithubRelease(
     targetBinaryName = targetNameFromMv;
     logger('Locating binary using move pattern: %s in %s', sourcePattern, extractDir);
 
-    // TODO: Implement robust glob matching within extractDir to find sourcePattern.
-    // Placeholder logic needs replacement.
-    const placeholderSource = path.join(extractDir, `some-dir-${currentOsArch}/${binaryName}`);
-    const sourcePatternLikelyTarget = sourcePattern.includes('/')
-      ? path.basename(sourcePattern)
-      : sourcePattern;
-    if (
-      path.basename(placeholderSource) === sourcePatternLikelyTarget &&
-      (await fileExists(fs, placeholderSource))
-    ) {
-      sourceBinaryPath = placeholderSource;
-      logger('Located binary using move pattern (placeholder match): %s', sourceBinaryPath);
+    // Convert wildcard pattern to regex for matching
+    const regexPattern = sourcePattern.replace(/\*/g, '.*');
+    const regex = new RegExp(regexPattern);
+
+    // Find files in the extracted directory that match the pattern
+    const files = await fs.promises.readdir(extractDir, { recursive: true });
+    const matchingFiles = files.filter((file) => regex.test(file as string)); // Explicitly cast to string
+
+    if (matchingFiles.length > 0) {
+      // Assuming the first match is the correct binary
+      sourceBinaryPath = path.join(extractDir, matchingFiles[0] as string); // Explicitly cast to string
+      logger(
+        'Located binary using move pattern: %s (matched %s)',
+        sourceBinaryPath,
+        matchingFiles[0]
+      );
     } else {
       logger(
-        'Warning: moveBinaryTo specified, but could not find match for %s (placeholder check failed)',
-        sourcePattern
+        'Warning: moveBinaryTo specified, but could not find match for %s in %s',
+        sourcePattern,
+        extractDir
       );
-      // TODO: List files?
+      // TODO: List files in extractDir for debugging?
     }
   } else {
-    const pathInRoot = path.join(extractDir, binaryName);
-    const pathInBin = path.join(extractDir, 'bin', binaryName);
-    if (await fileExists(fs, pathInRoot)) {
-      sourceBinaryPath = pathInRoot;
-    } else if (await fileExists(fs, pathInBin)) {
-      sourceBinaryPath = pathInBin;
+    // Default search logic (no 'pick' or 'mv')
+    // Look for the binary named `binaryName` directly in `extractDir` or `extractDir/bin`
+    const potentialPaths = [
+      path.join(extractDir, binaryName),
+      path.join(extractDir, 'bin', binaryName),
+    ];
+    for (const potentialPath of potentialPaths) {
+      if (await fileExists(fs, potentialPath)) {
+        sourceBinaryPath = potentialPath;
+        logger('Located binary using default search: %s', sourceBinaryPath);
+        break;
+      }
     }
-    logger('Located binary using default search: %s', sourceBinaryPath);
   }
 
   if (!sourceBinaryPath) {
-    // TODO: List files in extractDir before throwing?
+    logger('Could not locate binary for %s within extracted files at %s', toolName, extractDir);
+    // List files in extractDir for debugging
+    try {
+      const extractedFiles = await fs.promises.readdir(extractDir, { recursive: true });
+      logger('Files found in extracted directory (%s): %o', extractDir, extractedFiles);
+    } catch (listError) {
+      logger('Failed to list files in extracted directory %s: %o', extractDir, listError);
+    }
     throw new Error(
       `Could not locate binary for ${toolName} within extracted files at ${extractDir}`
     );
@@ -270,7 +287,13 @@ export async function installGithubRelease(
         ghParams.completions,
         sourceCompPath
       );
-      // TODO: List files?
+      // List files in extractDir for debugging
+      try {
+        const extractedFiles = await fs.promises.readdir(extractDir, { recursive: true });
+        logger('Files found in extracted directory (%s): %o', extractDir, extractedFiles);
+      } catch (listError) {
+        logger('Failed to list files in extracted directory %s: %o', extractDir, listError);
+      }
     }
   }
   // --- Completion Handling Logic --- END ---

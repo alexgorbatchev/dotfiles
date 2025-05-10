@@ -10,6 +10,9 @@ import { GitHubApiClient, type GitHubRelease, type GitHubAsset } from './utils/g
 import { downloadFile } from './utils/download'; // Import download utility
 import { extractArchive } from './utils/archive'; // Import archive utility
 import { installGithubRelease } from './installers/github-release'; // Import the new installer
+import { installBrew } from './installers/brew'; // Import installBrew
+import { installPip } from './installers/pip'; // Import installPip
+import { installManual } from './installers/manual'; // Import installManual
 
 // Helper for exists check using the injected fs promises
 async function fileExists(fs: typeof fsType, filePath: string): Promise<boolean> {
@@ -137,21 +140,28 @@ async function mainInstallTool(
         // TODO: Implement curl-tar logic
         break;
       case 'pip':
-        logger('Starting pip installation...');
-        // TODO: Implement pip logic
+        await installPip(
+          toolName,
+          toolConfig,
+          binaryName,
+          finalBinaryPath,
+          currentOs,
+          currentArch,
+          fs
+        );
         break;
-      case 'manual':
-        logger('Manual installation configured.');
-        const params = toolConfig.installParams as import('./types').ManualInstallParams;
-        if (!(await fileExists(fs, params.binaryPath))) {
-          // fileExists uses fs.promises.access
-          throw new Error(
-            `Manual installation configured, but binary not found at specified path: ${params.binaryPath}`
-          );
-        }
-        // TODO: Decide how to handle manual installs - symlink or direct path in shim?
-        logger(`Manual binary found at: ${params.binaryPath}`);
+      case 'manual': {
+        await installManual(
+          toolName,
+          toolConfig,
+          binaryName,
+          finalBinaryPath,
+          currentOs,
+          currentArch,
+          fs
+        );
         break;
+      }
       default:
         const exhaustiveCheck: never = toolConfig.installMethod;
         throw new Error(`Unsupported installation method: ${exhaustiveCheck}`);

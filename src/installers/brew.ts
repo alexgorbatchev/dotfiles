@@ -3,6 +3,16 @@ import type { ToolConfig, BrewInstallParams } from '../types';
 import { createLogger } from '../utils/logger';
 import { $ } from 'zx';
 
+// Helper for exists check using the injected fs promises
+async function fileExists(fs: typeof fsType, filePath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const logger = createLogger('installer:brew');
 
 /**
@@ -62,10 +72,21 @@ export async function installBrew(
 
     logger('Brew installation complete.');
 
-    // TODO: Verify installation by checking if the binary exists at finalBinaryPath
-    // This might require finding the actual installation path after brew install,
-    // as brew might install to different locations.
-    // For now, we rely on the check in install-tool.ts after the installer runs.
+    // Verify installation by checking if the binary exists at finalBinaryPath
+    // Note: Brew might install to different locations, so this check might need refinement
+    // if the binary is not directly in a standard PATH location after brew install.
+    // For now, we rely on the check in install-tool.ts after the installer runs,
+    // but this adds an extra layer of verification within the installer itself.
+    if (!(await fileExists(fs, finalBinaryPath))) {
+      logger(
+        'Warning: Brew installation reported success, but binary not found at expected path: %s',
+        finalBinaryPath
+      );
+      // We don't throw here because the check in install-tool.ts is the primary verification.
+      // This is just an informative warning within the installer.
+    } else {
+      logger('Binary found at expected path after Brew installation: %s', finalBinaryPath);
+    }
   } catch (error: any) {
     logger('Brew installation failed for %s: %o', toolName, error);
     const errorMessage =
