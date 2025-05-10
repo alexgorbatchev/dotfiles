@@ -1,3 +1,31 @@
+/**
+ * @file src/types.ts
+ * @description Project-wide shared type definitions for the dotfiles generator.
+ *
+ * ## Development Plan
+ *
+ * ### Mandatory Pre-read:
+ * - `memory-bank/techContext.md` (TypeScript Configuration Structure (Detailed Requirements) section)
+ * - `.clinerules` (for file structure, naming, and content guidelines)
+ *
+ * ### Tasks:
+ * - [x] Define `InstallHookContext` interface.
+ * - [x] Define `AsyncInstallHook` type.
+ * - [x] Define `BaseInstallParams` interface.
+ * - [x] Define `GithubReleaseInstallParams` interface.
+ * - [x] Define `BrewInstallParams` interface.
+ * - [x] Define `CurlScriptInstallParams` interface.
+ * - [x] Define `CurlTarInstallParams` interface.
+ * - [x] Define `PipInstallParams` interface.
+ * - [x] Define `ManualInstallParams` interface.
+ * - [x] Define `ToolConfigBuilder` interface.
+ * - [x] Define `AsyncConfigureTool` type.
+ * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .clinerules)
+ * - [ ] Cleanup all linting errors and warnings (after initial creation).
+ * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
+ */
+
 // Define context passed to TypeScript hooks
 export interface InstallHookContext {
   toolName: string;
@@ -33,7 +61,6 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
   assetPattern?: string; // Pattern to match the release asset filename (corresponds to Zinit's bpick)
   binaryPath?: string; // Path to the executable within the extracted archive (corresponds to Zinit's pick)
   moveBinaryTo?: string; // Path/name to move the extracted binary to (corresponds to Zinit's mv)
-  completions?: string; // Path to completion file within archive (corresponds to Zinit's completions=)
   // atclone is replaced by hooks.afterDownload or hooks.afterExtract
 }
 
@@ -62,14 +89,7 @@ export interface ManualInstallParams extends BaseInstallParams {
   binaryPath: string; // Expected path to the binary if not installed by the tool
 }
 
-export type InstallMethod =
-  | 'github-release'
-  | 'brew'
-  | 'curl-script'
-  | 'curl-tar'
-  | 'pip'
-  | 'manual';
-
+// Union type for all possible installation parameters
 export type InstallParams =
   | GithubReleaseInstallParams
   | BrewInstallParams
@@ -103,7 +123,6 @@ export interface ToolConfigBuilder {
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
   install(method: 'pip', params: PipInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
-  // Add overloads for other methods if needed
 
   /**
    * Defines asynchronous TypeScript hook functions to run during the installation lifecycle.
@@ -145,27 +164,76 @@ export interface ToolConfigBuilder {
  */
 export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
 
-// Represents the fully built and validated configuration for a single tool.
-// This is what the generator will ultimately work with after the ToolConfigBuilder has run.
+// Additional types that might be useful from techContext.md or systemPatterns.md
+
+/**
+ * Represents a tool's complete configuration.
+ * This will be built by the ToolConfigBuilder.
+ */
 export interface ToolConfig {
-  name: string; // Name of the tool, derived from the filename usually
+  name: string; // Name of the tool, derived from its config file name
   binaries: string[];
   version: string;
-  installMethod?: 'github-release' | 'brew' | 'curl-script' | 'curl-tar' | 'pip' | 'manual';
-  installParams?:
-    | GithubReleaseInstallParams
-    | BrewInstallParams
-    | CurlScriptInstallParams
-    | CurlTarInstallParams
-    | PipInstallParams
-    | ManualInstallParams;
-  hooks?: {
-    beforeInstall?: AsyncInstallHook;
-    afterDownload?: AsyncInstallHook;
-    afterExtract?: AsyncInstallHook;
-    afterInstall?: AsyncInstallHook;
-  };
-  zshContent: string[];
-  symlinks: { source: string; target: string }[];
-  // Architecture-specific configurations are resolved before this stage
+  installationMethod?: 'github-release' | 'brew' | 'curl-script' | 'curl-tar' | 'pip' | 'manual';
+  installParams?: InstallParams; // Holds the specific params for the chosen method
+  zshInit?: string;
+  symlinks?: { source: string; target: string }[];
+  archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> }; // Simplified, direct overrides
+  // Hooks are part of InstallParams
+}
+
+/**
+ * Represents an entry in the manifest file.
+ */
+export interface ManifestEntry {
+  toolName: string;
+  shimPath: string;
+  binaryPath?: string; // Actual path to the installed binary
+  version?: string;
+  installedOn?: string; // ISO date string
+  configPath: string; // Path to the tool's TypeScript config file
+}
+
+/**
+ * Represents the structure of the manifest file.
+ */
+export interface Manifest {
+  [toolName: string]: ManifestEntry;
+}
+
+/**
+ * Represents a GitHub Release asset.
+ */
+export interface GitHubReleaseAsset {
+  name: string;
+  browser_download_url: string;
+  // Add other relevant fields if needed
+}
+
+/**
+ * Represents a GitHub Release.
+ */
+export interface GitHubRelease {
+  tag_name: string;
+  assets: GitHubReleaseAsset[];
+  // Add other relevant fields if needed
+}
+
+/**
+ * Configuration for the application, loaded from .env and CLI args.
+ */
+export interface AppConfig {
+  targetDir: string;
+  dotfilesDir: string;
+  generatedDir: string;
+  toolConfigDir: string;
+  debug: string;
+  cacheEnabled: boolean;
+  sudoPrompt?: string;
+  // Derived paths
+  cacheDir: string;
+  binariesDir: string; // Dir for actual binaries: .generated/binaries/
+  binDir: string; // Dir for symlinks: .generated/bin/
+  zshInitDir: string;
+  manifestPath: string;
 }
