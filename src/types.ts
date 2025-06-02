@@ -7,6 +7,8 @@
  * ### Mandatory Pre-read:
  * - `memory-bank/techContext.md` (TypeScript Configuration Structure (Detailed Requirements) section)
  * - `.clinerules` (for file structure, naming, and content guidelines)
+ * - `memory-bank/zinit-analysis-consolidated.md` (for Zinit analysis findings)
+ * - `memory-bank/types-summary.md` (for new type definitions)
  *
  * ### Tasks:
  * - [x] Define `InstallHookContext` interface.
@@ -20,11 +22,257 @@
  * - [x] Define `ManualInstallParams` interface.
  * - [x] Define `ToolConfigBuilder` interface.
  * - [x] Define `AsyncConfigureTool` type.
+ * - [x] Add download system types (DownloadProgress, DownloadOptions, DownloadStrategy, IDownloader).
+ * - [x] Add archive extraction types (ArchiveFormat, ExtractOptions, ExtractResult, IArchiveExtractor).
+ * - [x] Add completion management types (ShellType, ShellCompletionConfig, CompletionConfig, ICompletionInstaller).
+ * - [x] Add version management types (UpdateInfo, VersionConstraint, IVersionChecker).
+ * - [x] Enhance GitHub API types (GitHubRateLimit, GitHubReleaseAsset, GitHubRelease, IGitHubApiClient).
+ * - [x] Update existing types (InstallHookContext, ToolConfig, ManifestEntry, AppConfig, GithubReleaseInstallParams).
  * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .clinerules)
  * - [ ] Cleanup all linting errors and warnings (after initial creation).
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
+
+// ============================================
+// Download System Types
+// ============================================
+
+/**
+ * Progress information for downloads
+ */
+export interface DownloadProgress {
+  bytesDownloaded: number;
+  totalBytes?: number;
+  percentage?: number;
+  speed?: number; // bytes per second
+}
+
+/**
+ * Options for downloading files
+ */
+export interface DownloadOptions {
+  headers?: Record<string, string>;
+  timeout?: number; // milliseconds
+  retryCount?: number;
+  retryDelay?: number; // milliseconds
+  onProgress?: (progress: DownloadProgress) => void;
+}
+
+/**
+ * Strategy interface for swappable download implementations
+ */
+export interface DownloadStrategy {
+  name: string;
+  isAvailable(): Promise<boolean>;
+  download(url: string, options: DownloadOptions): Promise<Buffer>;
+}
+
+/**
+ * Interface for the download service
+ */
+export interface IDownloader {
+  registerStrategy(strategy: DownloadStrategy): void;
+  download(url: string, options?: DownloadOptions): Promise<Buffer>;
+  downloadToFile(url: string, filePath: string, options?: DownloadOptions): Promise<void>;
+}
+
+// ============================================
+// Archive Extraction Types
+// ============================================
+
+/**
+ * Supported archive formats
+ */
+export type ArchiveFormat =
+  | 'auto' // Auto-detect based on file extension
+  | 'tar' // Plain tar
+  | 'tar.gz' // Gzipped tar
+  | 'tar.bz2' // Bzip2 tar
+  | 'tar.xz' // XZ tar
+  | 'tar.lzma' // LZMA tar
+  | 'zip' // ZIP archive
+  | 'rar' // RAR archive
+  | '7z' // 7-Zip archive
+  | 'deb' // Debian package
+  | 'rpm' // RPM package
+  | 'dmg'; // macOS disk image
+
+/**
+ * Options for extracting archives
+ */
+export interface ExtractOptions {
+  format?: ArchiveFormat;
+  stripComponents?: number;
+  targetDir?: string;
+  preservePermissions?: boolean;
+  detectExecutables?: boolean;
+}
+
+/**
+ * Result of archive extraction
+ */
+export interface ExtractResult {
+  extractedFiles: string[];
+  executables: string[]; // Files that were made executable
+  rootDir?: string; // Top-level directory if archive contained one
+}
+
+/**
+ * Interface for the archive extraction service
+ */
+export interface IArchiveExtractor {
+  extract(archivePath: string, options?: ExtractOptions): Promise<ExtractResult>;
+  detectFormat(filePath: string): Promise<ArchiveFormat>;
+  isSupported(format: ArchiveFormat): boolean;
+}
+
+// ============================================
+// Completion Management Types
+// ============================================
+
+/**
+ * Shell type for completions
+ */
+export type ShellType = 'zsh' | 'bash' | 'fish';
+
+/**
+ * Configuration for a single shell's completions
+ */
+export interface ShellCompletionConfig {
+  source: string; // Path within the extracted archive
+  name?: string; // Custom completion name (defaults to _toolName)
+  targetDir?: string; // Custom target directory
+}
+
+/**
+ * Completion configuration for a tool
+ */
+export interface CompletionConfig {
+  zsh?: ShellCompletionConfig;
+  bash?: ShellCompletionConfig;
+  fish?: ShellCompletionConfig;
+}
+
+/**
+ * Interface for the completion installer service
+ */
+export interface ICompletionInstaller {
+  installCompletions(
+    toolName: string,
+    extractedDir: string,
+    config: CompletionConfig
+  ): Promise<void>;
+
+  getInstalledCompletions(toolName: string): Promise<Record<ShellType, string | undefined>>;
+  removeCompletions(toolName: string): Promise<void>;
+}
+
+// ============================================
+// Version Management Types
+// ============================================
+
+/**
+ * Information about available updates
+ */
+export interface UpdateInfo {
+  toolName: string;
+  currentVersion: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+  releaseNotes?: string;
+  downloadUrl?: string;
+  publishedAt?: string; // ISO date string
+}
+
+/**
+ * Version constraint operators
+ */
+export type VersionConstraintOperator = '=' | '>' | '>=' | '<' | '<=' | '~' | '^';
+
+/**
+ * Version constraint specification
+ */
+export interface VersionConstraint {
+  operator: VersionConstraintOperator;
+  version: string;
+}
+
+/**
+ * Interface for the version checker service
+ */
+export interface IVersionChecker {
+  checkForUpdate(tool: ToolConfig): Promise<UpdateInfo | null>;
+  checkAllForUpdates(): Promise<UpdateInfo[]>;
+  parseVersionConstraint(constraint: string): VersionConstraint[];
+  satisfiesConstraint(version: string, constraint: string): boolean;
+}
+
+// ============================================
+// GitHub API Types
+// ============================================
+
+/**
+ * GitHub rate limit information
+ */
+export interface GitHubRateLimit {
+  limit: number;
+  remaining: number;
+  reset: number; // Unix timestamp
+}
+
+/**
+ * Enhanced GitHub Release Asset with additional metadata
+ */
+export interface GitHubReleaseAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+  content_type: string;
+  state: 'uploaded' | 'open';
+  download_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Enhanced GitHub Release with additional metadata
+ */
+export interface GitHubRelease {
+  id: number;
+  tag_name: string;
+  name: string;
+  draft: boolean;
+  prerelease: boolean;
+  created_at: string;
+  published_at: string;
+  assets: GitHubReleaseAsset[];
+  body?: string; // Release notes
+  html_url: string;
+}
+
+/**
+ * Interface for the GitHub API client
+ */
+export interface IGitHubApiClient {
+  getLatestRelease(owner: string, repo: string): Promise<GitHubRelease>;
+  getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease>;
+  getAllReleases(
+    owner: string,
+    repo: string,
+    options?: { perPage?: number; includePrerelease?: boolean }
+  ): Promise<GitHubRelease[]>;
+  getReleaseByConstraint(
+    owner: string,
+    repo: string,
+    constraint: string
+  ): Promise<GitHubRelease | null>;
+  getRateLimit(): Promise<GitHubRateLimit>;
+}
+
+// ============================================
+// Original Types (Updated)
+// ============================================
 
 // Define context passed to TypeScript hooks
 export interface InstallHookContext {
@@ -32,6 +280,8 @@ export interface InstallHookContext {
   installDir: string; // The directory where the tool's binary will be installed
   downloadPath?: string; // Path to the downloaded file/archive (available after download hook)
   extractDir?: string; // Path to the extracted contents (available after extract hook)
+  extractResult?: ExtractResult; // NEW: Result of extraction with executables list
+  systemInfo?: SystemInfo; // NEW: System information for hooks
   // Use google/zx for running commands and file system operations within hooks
 }
 
@@ -61,6 +311,12 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
   assetPattern?: string; // Pattern to match the release asset filename (corresponds to Zinit's bpick)
   binaryPath?: string; // Path to the executable within the extracted archive (corresponds to Zinit's pick)
   moveBinaryTo?: string; // Path/name to move the extracted binary to (corresponds to Zinit's mv)
+  version?: string; // NEW: Specific version or constraint
+  includePrerelease?: boolean; // NEW: Whether to include pre-releases
+  assetSelector?: (
+    assets: GitHubReleaseAsset[],
+    systemInfo: SystemInfo
+  ) => GitHubReleaseAsset | undefined; // NEW: Custom asset selection function
   // atclone is replaced by hooks.afterDownload or hooks.afterExtract
 }
 
@@ -155,6 +411,12 @@ export interface ToolConfigBuilder {
    * @param configureOverrides A callback function that receives a new ToolConfigBuilder to define the overrides.
    */
   arch(osArch: string, configureOverrides: (c: ToolConfigBuilder) => void): this;
+
+  /**
+   * Configures shell completions for the tool.
+   * @param config An object containing completion configuration for different shells.
+   */
+  completions(config: CompletionConfig): this;
 }
 
 /**
@@ -163,8 +425,6 @@ export interface ToolConfigBuilder {
  * @param c The ToolConfigBuilder instance.
  */
 export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
-
-// Additional types that might be useful from techContext.md or systemPatterns.md
 
 /**
  * Represents a tool's complete configuration.
@@ -179,6 +439,12 @@ export interface ToolConfig {
   zshInit?: string;
   symlinks?: { source: string; target: string }[];
   archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> }; // Simplified, direct overrides
+  completions?: CompletionConfig; // NEW: Completion configuration
+  updateCheck?: {
+    // NEW: Update checking configuration
+    enabled?: boolean;
+    constraint?: string; // e.g., ">=1.0.0", "~1.2.0"
+  };
   // Hooks are part of InstallParams
 }
 
@@ -191,7 +457,13 @@ export interface ManifestEntry {
   binaryPath?: string; // Actual path to the installed binary
   version?: string;
   installedOn?: string; // ISO date string
+  lastChecked?: string; // NEW: Last update check timestamp
+  lastUpdated?: string; // NEW: Last actual update timestamp
   configPath: string; // Path to the tool's TypeScript config file
+  completions?: {
+    // NEW: Installed completion files
+    [K in ShellType]?: string;
+  };
 }
 
 /**
@@ -199,24 +471,6 @@ export interface ManifestEntry {
  */
 export interface Manifest {
   [toolName: string]: ManifestEntry;
-}
-
-/**
- * Represents a GitHub Release asset.
- */
-export interface GitHubReleaseAsset {
-  name: string;
-  browser_download_url: string;
-  // Add other relevant fields if needed
-}
-
-/**
- * Represents a GitHub Release.
- */
-export interface GitHubRelease {
-  tag_name: string;
-  assets: GitHubReleaseAsset[];
-  // Add other relevant fields if needed
 }
 
 /**
@@ -230,12 +484,22 @@ export interface AppConfig {
   debug: string;
   cacheEnabled: boolean;
   sudoPrompt?: string;
+
   // Derived paths
   cacheDir: string;
   binariesDir: string; // Dir for actual binaries: .generated/binaries/
   binDir: string; // Dir for symlinks: .generated/bin/
   zshInitDir: string;
   manifestPath: string;
+  completionsDir: string; // NEW: Base directory for completions
+
+  // New configuration options
+  githubToken?: string; // NEW: Optional GitHub token
+  checkUpdatesOnRun?: boolean; // NEW: Check for updates automatically
+  updateCheckInterval?: number; // NEW: Seconds between update checks
+  downloadTimeout?: number; // NEW: Download timeout in milliseconds
+  downloadRetryCount?: number; // NEW: Number of download retries
+  downloadRetryDelay?: number; // NEW: Delay between retries in milliseconds
 }
 
 /**

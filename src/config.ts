@@ -18,6 +18,7 @@
  *   - [x] It must use `EnvSchema` to parse and validate the `ConfigEnvironment` argument.
  *   - [x] It must not call `dotenv` or access `process.env` directly.
  *   - [x] It must return a new `AppConfig` object based on inputs and defaults.
+ * - [x] Update `ConfigEnvironment` and `EnvSchema` with new properties from Zinit analysis.
  * - [ ] (No top-level appConfig constant initialized at module load time)
  * - [ ] (Application entry point will be responsible for gathering inputs and calling createAppConfig)
  * - [ ] Update tests for `createAppConfig`.
@@ -51,6 +52,14 @@ export interface ConfigEnvironment {
   DEBUG?: string;
   CACHE_ENABLED?: string; // Raw string from env
   SUDO_PROMPT?: string;
+  // New environment variables from Zinit analysis
+  GITHUB_TOKEN?: string;
+  CHECK_UPDATES_ON_RUN?: string; // Raw string from env
+  UPDATE_CHECK_INTERVAL?: string; // Raw string from env
+  DOWNLOAD_TIMEOUT?: string; // Raw string from env
+  DOWNLOAD_RETRY_COUNT?: string; // Raw string from env
+  DOWNLOAD_RETRY_DELAY?: string; // Raw string from env
+  COMPLETIONS_DIR?: string;
 }
 
 // Zod schema for validating and transforming the raw environment variables
@@ -65,6 +74,29 @@ const EnvSchema = z.object({
     .optional()
     .transform((val) => val === undefined || val.toLowerCase() === 'true'), // Default true if undefined or "true"
   SUDO_PROMPT: z.string().optional(),
+  // New environment variables from Zinit analysis
+  GITHUB_TOKEN: z.string().optional(),
+  CHECK_UPDATES_ON_RUN: z
+    .string()
+    .optional()
+    .transform((val) => (val === undefined ? true : val.toLowerCase() === 'true')), // Default true if undefined
+  UPDATE_CHECK_INTERVAL: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 86400)), // Default 24 hours in seconds
+  DOWNLOAD_TIMEOUT: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 300000)), // Default 5 minutes in milliseconds
+  DOWNLOAD_RETRY_COUNT: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 3)), // Default 3 retries
+  DOWNLOAD_RETRY_DELAY: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 1000)), // Default 1 second in milliseconds
+  COMPLETIONS_DIR: z.string().optional(),
 });
 
 type ValidatedEnv = z.infer<typeof EnvSchema>;
@@ -96,5 +128,14 @@ export function createAppConfig(
     binDir: join(GENERATED_DIR, 'bin'),
     zshInitDir: join(GENERATED_DIR, 'zsh'),
     manifestPath: join(GENERATED_DIR, 'manifest.json'),
+    completionsDir: env.COMPLETIONS_DIR || join(GENERATED_DIR, 'completions'),
+
+    // New configuration options from Zinit analysis
+    githubToken: env.GITHUB_TOKEN,
+    checkUpdatesOnRun: env.CHECK_UPDATES_ON_RUN,
+    updateCheckInterval: env.UPDATE_CHECK_INTERVAL,
+    downloadTimeout: env.DOWNLOAD_TIMEOUT,
+    downloadRetryCount: env.DOWNLOAD_RETRY_COUNT,
+    downloadRetryDelay: env.DOWNLOAD_RETRY_DELAY,
   };
 }
