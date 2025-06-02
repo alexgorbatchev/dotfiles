@@ -1,0 +1,360 @@
+/**
+ * @file src/utils/__tests__/getArchitectureRegex.test.ts
+ * @description Tests for architecture detection utilities.
+ */
+
+import { describe, it, expect } from 'bun:test';
+import {
+  getArchitecturePatterns,
+  createArchitectureRegex,
+  getArchitectureRegex,
+  matchesArchitecture,
+} from '../getArchitectureRegex';
+import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../../types';
+
+describe('getArchitecturePatterns', () => {
+  it('should generate correct patterns for macOS ARM64', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'darwin',
+      arch: 'arm64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual([
+      'apple',
+      'darwin',
+      'apple-darwin',
+      'dmg',
+      'mac',
+      'macos',
+      'mac-os',
+      'osx',
+      'os-x',
+      'os64x',
+    ]);
+    expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'arm', 'aarch']);
+    expect(patterns.variants).toEqual(['darwin']);
+  });
+
+  it('should generate correct patterns for macOS x86_64', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'darwin',
+      arch: 'x64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual([
+      'apple',
+      'darwin',
+      'apple-darwin',
+      'dmg',
+      'mac',
+      'macos',
+      'mac-os',
+      'osx',
+      'os-x',
+      'os64x',
+    ]);
+    expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
+    expect(patterns.variants).toEqual(['darwin']);
+  });
+
+  it('should generate correct patterns for Linux x86_64', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'linux',
+      arch: 'x86_64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual(['linux']);
+    expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
+    expect(patterns.variants).toEqual(['musl', 'gnu', 'unknown-linux']);
+  });
+
+  it('should generate correct patterns for Linux ARM64', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'linux',
+      arch: 'aarch64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual(['linux']);
+    expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'arm', 'aarch']);
+    expect(patterns.variants).toEqual(['musl', 'gnu', 'unknown-linux']);
+  });
+
+  it('should generate correct patterns for Windows x64', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'win32',
+      arch: 'x64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual(['windows', 'win32', 'win64', 'pc-windows-gnu']);
+    expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
+    expect(patterns.variants).toEqual(['mingw', 'msys', 'cygwin', 'pc-windows']);
+  });
+
+  it('should handle various x86 architecture variants', () => {
+    const testCases = ['ia32', 'x86', 'i386', 'i486', 'i686', 'i786'];
+
+    testCases.forEach((arch) => {
+      const systemInfo: SystemInfo = {
+        platform: 'linux',
+        arch,
+      };
+
+      const patterns = getArchitecturePatterns(systemInfo);
+      expect(patterns.cpu).toEqual(['i386', 'i486', 'i686', 'i786', 'x86', 'ia32']);
+    });
+  });
+
+  it('should handle ARM variants with eabihf', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'linux',
+      arch: 'armv6l',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.cpu).toEqual(['armv6l', 'armv6', 'arm6']);
+    expect(patterns.variants).toContain('eabihf');
+  });
+
+  it('should handle ARMv7/v8 variants', () => {
+    const testCases = ['armv7l', 'armv8l'];
+
+    testCases.forEach((arch) => {
+      const systemInfo: SystemInfo = {
+        platform: 'linux',
+        arch,
+      };
+
+      const patterns = getArchitecturePatterns(systemInfo);
+      expect(patterns.cpu).toEqual(['armv7l', 'armv8l', 'armv7', 'armv8', 'arm7', 'arm8']);
+      expect(patterns.variants).toContain('eabihf');
+    });
+  });
+
+  it('should handle unknown platforms gracefully', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'freebsd',
+      arch: 'x64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual(['freebsd']);
+    expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
+    expect(patterns.variants).toEqual(['freebsd']);
+  });
+
+  it('should handle unknown architectures gracefully', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'linux',
+      arch: 'riscv64',
+    };
+
+    const patterns = getArchitecturePatterns(systemInfo);
+
+    expect(patterns.system).toEqual(['linux']);
+    expect(patterns.cpu).toEqual(['riscv64']);
+    expect(patterns.variants).toEqual(['musl', 'gnu', 'unknown-linux']);
+  });
+});
+
+describe('createArchitectureRegex', () => {
+  it('should create proper regex patterns from architecture patterns', () => {
+    const patterns: ArchitecturePatterns = {
+      system: ['darwin', 'macos'],
+      cpu: ['arm64', 'aarch64'],
+      variants: ['darwin'],
+    };
+
+    const regex = createArchitectureRegex(patterns);
+
+    expect(regex.systemPattern).toBe('(darwin|macos)');
+    expect(regex.cpuPattern).toBe('(arm64|aarch64)');
+    expect(regex.variantPattern).toBe('(darwin)');
+  });
+
+  it('should handle empty pattern arrays', () => {
+    const patterns: ArchitecturePatterns = {
+      system: [],
+      cpu: [],
+      variants: [],
+    };
+
+    const regex = createArchitectureRegex(patterns);
+
+    expect(regex.systemPattern).toBe('');
+    expect(regex.cpuPattern).toBe('');
+    expect(regex.variantPattern).toBe('');
+  });
+
+  it('should escape special regex characters', () => {
+    const patterns: ArchitecturePatterns = {
+      system: ['x86-64', 'pc-windows-gnu'],
+      cpu: ['amd64'],
+      variants: ['gnu'],
+    };
+
+    const regex = createArchitectureRegex(patterns);
+
+    expect(regex.systemPattern).toBe('(x86-64|pc-windows-gnu)');
+    expect(regex.cpuPattern).toBe('(amd64)');
+    expect(regex.variantPattern).toBe('(gnu)');
+  });
+
+  it('should handle patterns with regex special characters', () => {
+    const patterns: ArchitecturePatterns = {
+      system: ['test.system', 'test+system'],
+      cpu: ['test*cpu'],
+      variants: ['test(variant)'],
+    };
+
+    const regex = createArchitectureRegex(patterns);
+
+    expect(regex.systemPattern).toBe('(test\\.system|test\\+system)');
+    expect(regex.cpuPattern).toBe('(test\\*cpu)');
+    expect(regex.variantPattern).toBe('(test\\(variant\\))');
+  });
+});
+
+describe('getArchitectureRegex', () => {
+  it('should combine pattern generation and regex creation', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'darwin',
+      arch: 'arm64',
+    };
+
+    const regex = getArchitectureRegex(systemInfo);
+
+    expect(regex.systemPattern).toBe(
+      '(apple|darwin|apple-darwin|dmg|mac|macos|mac-os|osx|os-x|os64x)'
+    );
+    expect(regex.cpuPattern).toBe('(arm64|aarch64|arm|aarch)');
+    expect(regex.variantPattern).toBe('(darwin)');
+  });
+
+  it('should work for Linux systems', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'linux',
+      arch: 'x86_64',
+    };
+
+    const regex = getArchitectureRegex(systemInfo);
+
+    expect(regex.systemPattern).toBe('(linux)');
+    expect(regex.cpuPattern).toBe('(amd64|x86_64|x64|x86-64)');
+    expect(regex.variantPattern).toBe('(musl|gnu|unknown-linux)');
+  });
+
+  it('should work for Windows systems', () => {
+    const systemInfo: SystemInfo = {
+      platform: 'win32',
+      arch: 'x64',
+    };
+
+    const regex = getArchitectureRegex(systemInfo);
+
+    expect(regex.systemPattern).toBe('(windows|win32|win64|pc-windows-gnu)');
+    expect(regex.cpuPattern).toBe('(amd64|x86_64|x64|x86-64)');
+    expect(regex.variantPattern).toBe('(mingw|msys|cygwin|pc-windows)');
+  });
+});
+
+describe('matchesArchitecture', () => {
+  const darwinArm64Regex: ArchitectureRegex = {
+    systemPattern: '(apple|darwin|macos)',
+    cpuPattern: '(arm64|aarch64)',
+    variantPattern: '(darwin)',
+  };
+
+  const linuxX64Regex: ArchitectureRegex = {
+    systemPattern: '(linux)',
+    cpuPattern: '(amd64|x86_64|x64)',
+    variantPattern: '(musl|gnu)',
+  };
+
+  it('should match Darwin ARM64 assets correctly', () => {
+    const testCases = [
+      { asset: 'tool-darwin-arm64.tar.gz', expected: true },
+      { asset: 'tool-macos-aarch64.zip', expected: true },
+      { asset: 'tool-apple-arm64.dmg', expected: true },
+      { asset: 'tool-linux-arm64.tar.gz', expected: false },
+      { asset: 'tool-darwin-x86_64.tar.gz', expected: false },
+      { asset: 'tool-windows-arm64.exe', expected: false },
+    ];
+
+    testCases.forEach(({ asset, expected }) => {
+      expect(matchesArchitecture(asset, darwinArm64Regex)).toBe(expected);
+    });
+  });
+
+  it('should match Linux x64 assets correctly', () => {
+    const testCases = [
+      { asset: 'tool-linux-x86_64.tar.gz', expected: true },
+      { asset: 'tool-linux-amd64.zip', expected: true },
+      { asset: 'tool-linux-x64.tar.gz', expected: true },
+      { asset: 'tool-darwin-x86_64.tar.gz', expected: false },
+      { asset: 'tool-linux-arm64.tar.gz', expected: false },
+      { asset: 'tool-windows-x64.exe', expected: false },
+    ];
+
+    testCases.forEach(({ asset, expected }) => {
+      expect(matchesArchitecture(asset, linuxX64Regex)).toBe(expected);
+    });
+  });
+
+  it('should handle case insensitive matching', () => {
+    const testCases = [
+      'Tool-Darwin-ARM64.TAR.GZ',
+      'TOOL-MACOS-AARCH64.ZIP',
+      'tool-APPLE-arm64.DMG',
+    ];
+
+    testCases.forEach((asset) => {
+      expect(matchesArchitecture(asset, darwinArm64Regex)).toBe(true);
+    });
+  });
+
+  it('should handle empty patterns gracefully', () => {
+    const emptyRegex: ArchitectureRegex = {
+      systemPattern: '',
+      cpuPattern: '',
+      variantPattern: '',
+    };
+
+    expect(matchesArchitecture('any-asset-name.tar.gz', emptyRegex)).toBe(true);
+  });
+
+  it('should handle partial matches correctly', () => {
+    const partialRegex: ArchitectureRegex = {
+      systemPattern: '(linux)',
+      cpuPattern: '',
+      variantPattern: '',
+    };
+
+    expect(matchesArchitecture('tool-linux-anything.tar.gz', partialRegex)).toBe(true);
+    expect(matchesArchitecture('tool-windows-anything.exe', partialRegex)).toBe(false);
+  });
+
+  it('should handle complex asset names', () => {
+    const complexAssets = [
+      'exa-linux-x86_64-v0.10.1.zip',
+      'ripgrep-13.0.0-x86_64-apple-darwin.tar.gz',
+      'bat-v0.18.3-x86_64-pc-windows-msvc.zip',
+      'fd-v8.2.1-aarch64-apple-darwin.tar.gz',
+    ];
+
+    expect(matchesArchitecture(complexAssets[0]!, linuxX64Regex)).toBe(true);
+    expect(matchesArchitecture(complexAssets[1]!, darwinArm64Regex)).toBe(false); // x86_64, not arm64
+    expect(matchesArchitecture(complexAssets[3]!, darwinArm64Regex)).toBe(true);
+  });
+});

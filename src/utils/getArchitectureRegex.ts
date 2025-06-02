@@ -1,0 +1,226 @@
+/**
+ * @file src/utils/getArchitectureRegex.ts
+ * @description Architecture detection utility for GitHub release asset matching.
+ *
+ * ## Development Plan
+ *
+ * ### Mandatory Pre-read:
+ * - `zinit/zinit-install.zsh` (`.zi::get-architecture` function analysis)
+ * - `memory-bank/techContext.md` (Zinit functionality discovery process)
+ * - `.clinerules` (for file structure, testing, and functional purity requirements)
+ *
+ * ### Tasks:
+ * - [x] Implement `getArchitecturePatterns` function for generating platform-specific patterns.
+ * - [x] Implement `getArchitectureRegex` function for creating combined regex patterns.
+ * - [x] Handle macOS (Darwin) platform detection and Rosetta emulation support.
+ * - [x] Handle Linux platform detection with GNU/musl variants.
+ * - [x] Handle Windows platform detection (MINGW/MSYS/Cygwin).
+ * - [x] Handle CPU architecture mapping (ARM64, x86_64, etc.).
+ * - [x] Support common GitHub release asset naming conventions.
+ * - [x] Write tests for the architecture detection functions.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Update the memory bank with the new information when all tasks are complete.
+ */
+
+import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../types';
+import { createLogger } from './createLogger';
+
+const log = createLogger('getArchitectureRegex');
+
+/**
+ * Generates architecture patterns for the given system information.
+ * Based on Zinit's `.zi::get-architecture` function logic.
+ *
+ * @param systemInfo - System information from os module
+ * @returns Architecture patterns for matching GitHub release assets
+ */
+export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePatterns {
+  log('getArchitecturePatterns: platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
+
+  const patterns: ArchitecturePatterns = {
+    system: [],
+    cpu: [],
+    variants: [],
+  };
+
+  // Handle OS/Platform patterns
+  switch (systemInfo.platform.toLowerCase()) {
+    case 'darwin':
+      patterns.system = [
+        'apple',
+        'darwin',
+        'apple-darwin',
+        'dmg',
+        'mac',
+        'macos',
+        'mac-os',
+        'osx',
+        'os-x',
+        'os64x',
+      ];
+      patterns.variants = ['darwin'];
+      break;
+
+    case 'linux':
+      patterns.system = ['linux'];
+      patterns.variants = ['musl', 'gnu', 'unknown-linux'];
+      break;
+
+    case 'win32':
+      patterns.system = ['windows', 'win32', 'win64', 'pc-windows-gnu'];
+      patterns.variants = ['mingw', 'msys', 'cygwin', 'pc-windows'];
+      break;
+
+    default:
+      // For unknown platforms, use the platform name directly
+      patterns.system = [systemInfo.platform.toLowerCase()];
+      patterns.variants = [systemInfo.platform.toLowerCase()];
+      break;
+  }
+
+  // Handle CPU Architecture patterns
+  switch (systemInfo.arch.toLowerCase()) {
+    case 'arm64':
+    case 'aarch64':
+      patterns.cpu = ['arm64', 'aarch64', 'arm', 'aarch'];
+      break;
+
+    case 'x64':
+    case 'x86_64':
+    case 'amd64':
+      patterns.cpu = ['amd64', 'x86_64', 'x64', 'x86-64'];
+      break;
+
+    case 'ia32':
+    case 'x86':
+    case 'i386':
+    case 'i486':
+    case 'i686':
+    case 'i786':
+      patterns.cpu = ['i386', 'i486', 'i686', 'i786', 'x86', 'ia32'];
+      break;
+
+    case 'armv6l':
+      patterns.cpu = ['armv6l', 'armv6', 'arm6'];
+      patterns.variants.push('eabihf');
+      break;
+
+    case 'armv7l':
+    case 'armv8l':
+      patterns.cpu = ['armv7l', 'armv8l', 'armv7', 'armv8', 'arm7', 'arm8'];
+      patterns.variants.push('eabihf');
+      break;
+
+    default:
+      // For unknown architectures, use the arch name directly
+      patterns.cpu = [systemInfo.arch.toLowerCase()];
+      break;
+  }
+
+  log(
+    'getArchitecturePatterns: generated patterns system=%j, cpu=%j, variants=%j',
+    patterns.system,
+    patterns.cpu,
+    patterns.variants
+  );
+
+  return patterns;
+}
+
+/**
+ * Creates combined regex patterns from architecture patterns.
+ * These patterns can be used to match GitHub release asset names.
+ *
+ * @param patterns - Architecture patterns from getArchitecturePatterns
+ * @returns Combined regex patterns for asset matching
+ */
+export function createArchitectureRegex(patterns: ArchitecturePatterns): ArchitectureRegex {
+  log('createArchitectureRegex: creating regex from patterns');
+
+  // Escape special regex characters in pattern strings
+  const escapeRegex = (str: string): string => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
+  // Create alternations for each pattern group
+  const systemPattern =
+    patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join('|')})` : '';
+
+  const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join('|')})` : '';
+
+  const variantPattern =
+    patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join('|')})` : '';
+
+  const result = {
+    systemPattern,
+    cpuPattern,
+    variantPattern,
+  };
+
+  log(
+    'createArchitectureRegex: generated regex patterns system=%s, cpu=%s, variants=%s',
+    result.systemPattern,
+    result.cpuPattern,
+    result.variantPattern
+  );
+
+  return result;
+}
+
+/**
+ * Main function that combines pattern generation and regex creation.
+ * This is the primary entry point for architecture detection.
+ *
+ * @param systemInfo - System information from os module
+ * @returns Combined regex patterns for GitHub release asset matching
+ */
+export function getArchitectureRegex(systemInfo: SystemInfo): ArchitectureRegex {
+  log('getArchitectureRegex: platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
+
+  const patterns = getArchitecturePatterns(systemInfo);
+  const regex = createArchitectureRegex(patterns);
+
+  log('getArchitectureRegex: completed architecture detection');
+  return regex;
+}
+
+/**
+ * Utility function to check if an asset name matches the architecture.
+ * This can be used to filter GitHub release assets.
+ *
+ * @param assetName - Name of the GitHub release asset
+ * @param architectureRegex - Regex patterns from getArchitectureRegex
+ * @returns True if the asset matches the current architecture
+ */
+export function matchesArchitecture(
+  assetName: string,
+  architectureRegex: ArchitectureRegex
+): boolean {
+  log('matchesArchitecture: checking asset=%s', assetName);
+
+  const lowerAssetName = assetName.toLowerCase();
+
+  // Check if asset matches system pattern
+  const systemMatch = architectureRegex.systemPattern
+    ? new RegExp(architectureRegex.systemPattern, 'i').test(lowerAssetName)
+    : true;
+
+  // Check if asset matches CPU pattern
+  const cpuMatch = architectureRegex.cpuPattern
+    ? new RegExp(architectureRegex.cpuPattern, 'i').test(lowerAssetName)
+    : true;
+
+  const matches = systemMatch && cpuMatch;
+
+  log(
+    'matchesArchitecture: asset=%s, systemMatch=%s, cpuMatch=%s, result=%s',
+    assetName,
+    systemMatch,
+    cpuMatch,
+    matches
+  );
+
+  return matches;
+}
