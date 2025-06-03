@@ -20,6 +20,7 @@
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
+    "types": ["bun", "node"], // Added "node" for built-in module types
 
     // Some stricter flags (disabled by default)
     "noUnusedLocals": true,
