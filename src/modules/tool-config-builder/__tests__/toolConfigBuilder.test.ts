@@ -21,9 +21,8 @@
  */
 
 import { expect, test, describe } from 'bun:test';
-import { ToolConfigBuilder } from '../toolConfigBuilder';
-import type { AsyncInstallHook, GithubReleaseInstallParams } from '../types';
-import type { IToolConfigBuilder } from '../toolConfigBuilder';
+import { ToolConfigBuilder, type IToolConfigBuilder } from '../index'; // Updated import path
+import type { AsyncInstallHook, GithubReleaseInstallParams } from '../../../types'; // Updated import path
 
 describe('ToolConfigBuilder', () => {
   test('constructor initializes with default values', () => {

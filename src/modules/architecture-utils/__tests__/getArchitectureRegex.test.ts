@@ -1,5 +1,5 @@
 /**
- * @file src/utils/__tests__/getArchitectureRegex.test.ts
+ * @file generator/src/modules/architecture-utils/__tests__/getArchitectureRegex.test.ts
  * @description Tests for architecture detection utilities.
  */
 
@@ -9,8 +9,8 @@ import {
   createArchitectureRegex,
   getArchitectureRegex,
   matchesArchitecture,
-} from '../getArchitectureRegex';
-import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../../types';
+} from '../index'; // Updated import path
+import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../../../types'; // Updated import path
 
 describe('getArchitecturePatterns', () => {
   it('should generate correct patterns for macOS ARM64', () => {

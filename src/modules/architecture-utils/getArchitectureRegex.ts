@@ -1,5 +1,5 @@
 /**
- * @file src/utils/getArchitectureRegex.ts
+ * @file generator/src/modules/architecture-utils/getArchitectureRegex.ts
  * @description Architecture detection utility for GitHub release asset matching.
  *
  * ## Development Plan
@@ -24,8 +24,8 @@
  * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../types';
-import { createLogger } from './createLogger';
+import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../../types';
+import { createLogger } from '../logger';
 
 const log = createLogger('getArchitectureRegex');
 

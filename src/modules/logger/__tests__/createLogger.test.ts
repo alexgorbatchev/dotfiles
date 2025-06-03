@@ -1,5 +1,5 @@
 /**
- * @file src/utils/__tests__/createLogger.test.ts
+ * @file generator/src/modules/logger/__tests__/createLogger.test.ts
  * @description Tests for the createLogger utility.
  *
  * ## Development Plan

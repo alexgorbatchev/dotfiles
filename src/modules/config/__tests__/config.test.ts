@@ -1,5 +1,5 @@
 /**
- * @file src/__tests__/config.test.ts
+ * @file generator/src/modules/config/__tests__/config.test.ts
  * @description Tests for the application configuration.
  *
  * ## Development Plan
@@ -7,7 +7,7 @@
  * ### Mandatory Pre-read:
  * - `.clinerules` (for testing requirements)
  * - `memory-bank/techContext.md` (Configuration System (.env) section)
- * - `generator/src/config.ts`
+ * - `generator/src/modules/config/config.ts`
  * - `generator/src/types.ts` (for AppConfig type)
  *
  * ### Tasks:
@@ -29,7 +29,7 @@ import { join, resolve } from 'path';
 // homedir will be mocked or passed via SystemInfo
 // import { homedir } from 'os'; // No longer needed directly here for default homedir
 // import type { AppConfig } from '../types'; // AppConfig type is implicitly used by createAppConfig return
-import { createAppConfig, type SystemInfo, type ConfigEnvironment } from '../config';
+import { createAppConfig, type SystemInfo, type ConfigEnvironment } from '../index'; // Updated import path
 
 describe('createAppConfig', () => {
   const mockSystemInfoBase: SystemInfo = {

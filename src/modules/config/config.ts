@@ -1,5 +1,5 @@
 /**
- * @file src/config.ts
+ * @file generator/src/modules/config/config.ts
  * @description Application configuration management.
  * This module exports a pure function `createAppConfig` to generate configuration.
  *
@@ -30,7 +30,7 @@
 
 import { resolve, join } from 'path';
 import { z } from 'zod';
-import type { AppConfig } from './types';
+import type { AppConfig } from '../../types'; // Updated import path
 
 // Interface for system-specific values needed by createAppConfig
 export interface SystemInfo {
