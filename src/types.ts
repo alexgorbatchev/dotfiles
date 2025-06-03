@@ -436,7 +436,7 @@ export interface ToolConfig {
   version: string;
   installationMethod?: 'github-release' | 'brew' | 'curl-script' | 'curl-tar' | 'pip' | 'manual';
   installParams?: InstallParams; // Holds the specific params for the chosen method
-  zshInit?: string;
+  zshInit?: string[]; // Corrected type to string[]
   symlinks?: { source: string; target: string }[];
   archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> }; // Simplified, direct overrides
   completions?: CompletionConfig; // NEW: Completion configuration
