@@ -50,6 +50,14 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 // Using mock from bun:test
 import { GitHubApiClient } from '../GitHubApiClient';
 import type { IDownloader } from '../../downloader/IDownloader';
+import {
+  NotFoundError,
+  RateLimitError,
+  ClientError,
+  ServerError,
+  HttpError,
+  NetworkError,
+} from '../../downloader/errors';
 import type { AppConfig, GitHubRateLimit, GitHubRelease } from '../../../types';
 // import { createLogger } from '../../logger'; // Logger is no-op, no need to import or mock
 
@@ -96,6 +104,7 @@ describe('GitHubApiClient', () => {
       zshInitDir: '/test/dotfiles/.generated/zsh',
       manifestPath: '/test/dotfiles/.generated/manifest.json',
       completionsDir: '/test/dotfiles/.generated/completions',
+      githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
     };
 
     apiClient = new GitHubApiClient(mockAppConfig, mockDownloaderInstance);
@@ -148,56 +157,45 @@ describe('GitHubApiClient', () => {
         {
           headers: {
             Accept: 'application/vnd.github.v3+json',
-            'User-Agent': 'dotfiles-generator/1.0.0',
+            'User-Agent': 'dotfiles-generator-test/1.0.0',
           },
         }
       );
-      // expect(mockDownloader).toHaveBeenCalledWith( // Bun's expect might not have toHaveBeenCalledWith
-      //   'https://api.github.com/repos/test-owner/test-repo/releases/latest',
-      //   {
-      //     headers: {
-      //       Accept: 'application/vnd.github.v3+json',
-      //       'User-Agent': 'dotfiles-generator/1.0.0',
-      //     },
-      //   }
-      // );
-      // Logging is no-op, cannot assert log calls directly.
     });
 
     it('should throw an error if the release is not found (404)', async () => {
-      mockDownloadFn.mockRejectedValue(new Error('Request failed with status code 404'));
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
+      mockDownloadFn.mockRejectedValue(new NotFoundError(url, 'Not Found Body'));
       await expect(apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        'GitHub resource not found: https://api.github.com/repos/test-owner/test-repo/releases/latest'
+        `GitHub resource not found: ${url}. Status: 404`
       );
     });
 
-    it('should throw an error with rate limit details if a 403 error occurs', async () => {
-      const rateLimitData: GitHubRateLimit = {
-        limit: 100,
-        remaining: 0,
-        reset: Math.floor(Date.now() / 1000) + 3600,
-      };
-      mockDownloadFn.mockImplementation(async (url: string) => {
-        if (url.includes('/repos/test-owner/test-repo/releases/latest')) {
-          throw new Error('Request failed with status code 403');
-        }
-        if (url.includes('/rate_limit')) {
-          return Buffer.from(JSON.stringify({ resources: { core: rateLimitData } }));
-        }
-        return Buffer.from('');
-      });
+    it('should throw an error with rate limit details if a RateLimitError is thrown by downloader', async () => {
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
+      const resetTimestamp = Date.now() + 3600 * 1000;
+      mockDownloadFn.mockRejectedValue(
+        new RateLimitError(
+          'API rate limit exceeded',
+          url,
+          403,
+          'Forbidden',
+          'Rate limit details',
+          {},
+          resetTimestamp
+        )
+      );
 
-      const resetTime = new Date(rateLimitData.reset * 1000);
       await expect(apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        `GitHub API rate limit exceeded. Resets at ${resetTime.toISOString()}. Limit: ${rateLimitData.limit}, Remaining: ${rateLimitData.remaining}`
+        `GitHub API rate limit exceeded for ${url}. Status: 403. Resets at ${new Date(resetTimestamp).toISOString()}.`
       );
     });
 
-    it('should throw a generic error for other failures', async () => {
-      const genericError = new Error('Network connection lost');
-      mockDownloadFn.mockRejectedValue(genericError);
+    it('should throw a generic error for other failures (NetworkError)', async () => {
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
+      mockDownloadFn.mockRejectedValue(new NetworkError('Connection lost', url));
       await expect(apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        'Network connection lost'
+        `Network error while requesting ${url}: Connection lost`
       );
     });
   });
@@ -240,36 +238,38 @@ describe('GitHubApiClient', () => {
     });
 
     it('should throw an error if the release tag is not found (404)', async () => {
-      mockDownloadFn.mockRejectedValue(new Error('Request failed with status code 404'));
+      const url =
+        'https://api.github.com/repos/test-owner/test-repo/releases/tags/non-existent-tag';
+      mockDownloadFn.mockRejectedValue(new NotFoundError(url, 'Tag not found'));
       await expect(
         apiClient.getReleaseByTag('test-owner', 'test-repo', 'non-existent-tag')
-      ).rejects.toThrow(
-        'GitHub resource not found: https://api.github.com/repos/test-owner/test-repo/releases/tags/non-existent-tag'
+      ).rejects.toThrow(`GitHub resource not found: ${url}. Status: 404`);
+    });
+
+    it('should throw an error with rate limit details if a RateLimitError occurs', async () => {
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0';
+      const resetTimestamp = Date.now() + 1800 * 1000;
+      mockDownloadFn.mockRejectedValue(
+        new RateLimitError(
+          'Rate limited',
+          url,
+          429,
+          'Too Many Requests',
+          undefined,
+          {},
+          resetTimestamp
+        )
+      );
+      await expect(apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
+        `GitHub API rate limit exceeded for ${url}. Status: 429. Resets at ${new Date(resetTimestamp).toISOString()}.`
       );
     });
 
-    it('should throw an error with rate limit details if a 403 error occurs', async () => {
-      const rateLimitData: GitHubRateLimit = {
-        limit: 50,
-        remaining: 0,
-        reset: Math.floor(Date.now() / 1000) + 1800,
-      };
-      mockDownloadFn.mockImplementation(async (url: string) => {
-        if (url.includes('/releases/tags/')) throw new Error('Request failed with status code 403');
-        if (url.includes('/rate_limit'))
-          return Buffer.from(JSON.stringify({ resources: { core: rateLimitData } }));
-        return Buffer.from('');
-      });
-      const resetTime = new Date(rateLimitData.reset * 1000);
+    it('should throw a generic error for other failures (ClientError)', async () => {
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0';
+      mockDownloadFn.mockRejectedValue(new ClientError(url, 400, 'Bad Request'));
       await expect(apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
-        `GitHub API rate limit exceeded. Resets at ${resetTime.toISOString()}. Limit: ${rateLimitData.limit}, Remaining: ${rateLimitData.remaining}`
-      );
-    });
-
-    it('should throw a generic error for other failures', async () => {
-      mockDownloadFn.mockRejectedValue(new Error('Some other API error'));
-      await expect(apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
-        'Some other API error'
+        `GitHub API client error for ${url}. Status: 400 Bad Request.`
       );
     });
   });
@@ -281,17 +281,15 @@ describe('GitHubApiClient', () => {
       const page1Releases: GitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
         createMockRelease(i + 1, `v1.${i}.0`)
       );
-      // Adjust page2Releases to also have 30 items to force a third call
       const page2Releases: GitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
         createMockRelease(i + 31, `v0.${i}.0`)
       );
 
-      // Reset and prime mock for exactly this test case's expected sequence
-      mockDownloadFn.mockReset(); // Clears previous mockResolvedValueOnce calls
+      mockDownloadFn.mockReset();
       mockDownloadFn
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases))) // Page 1
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases))) // Page 2
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // Page 3 (empty)
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases)))
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases)))
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
       const releases = await apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releases).toEqual([...page1Releases, ...page2Releases]);
@@ -325,7 +323,7 @@ describe('GitHubApiClient', () => {
       const releases = await apiClient.getAllReleases('test-owner', 'test-repo', {
         includePrerelease: false,
       });
-      expect(releases).toEqual([mixedReleases[0]!, mixedReleases[2]!]); // Added non-null assertion for clarity
+      expect(releases).toEqual([mixedReleases[0]!, mixedReleases[2]!]);
     });
 
     it('should return all releases (including prereleases) if includePrerelease is true or undefined', async () => {
@@ -335,16 +333,14 @@ describe('GitHubApiClient', () => {
       ];
       mockDownloadFn
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // For page 2, which is empty
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
       const releasesUndefined = await apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releasesUndefined).toEqual(mixedReleases);
 
-      // mockDownloadFn.mockClear(); // This clears implementations.
-      // Instead, reset and re-prime for the second part of the test.
       mockDownloadFn.mockReset();
       mockDownloadFn
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases))) // Page 1 for releasesTrue
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // Page 2 for releasesTrue (empty)
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
       const releasesTrue = await apiClient.getAllReleases('test-owner', 'test-repo', {
         includePrerelease: true,
@@ -358,29 +354,31 @@ describe('GitHubApiClient', () => {
       expect(releases).toEqual([]);
     });
 
-    it('should throw an error with rate limit details if a 403 error occurs', async () => {
-      const rateLimitData: GitHubRateLimit = {
-        limit: 20,
-        remaining: 0,
-        reset: Date.now() / 1000 + 600,
-      };
-      mockDownloadFn.mockImplementation(async (url: string) => {
-        if (url.includes('/releases?per_page='))
-          throw new Error('Request failed with status code 403');
-        if (url.includes('/rate_limit'))
-          return Buffer.from(JSON.stringify({ resources: { core: rateLimitData } }));
-        return Buffer.from('');
-      });
-      const resetTime = new Date(rateLimitData.reset * 1000);
+    it('should throw an error with rate limit details if a RateLimitError occurs', async () => {
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
+      const resetTimestamp = Date.now() + 600 * 1000;
+      mockDownloadFn.mockRejectedValue(
+        new RateLimitError(
+          'Rate limited on getAllReleases',
+          url,
+          403,
+          'Forbidden',
+          {},
+          {},
+          resetTimestamp
+        )
+      );
+
       await expect(apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
-        `GitHub API rate limit exceeded. Resets at ${resetTime.toISOString()}. Limit: ${rateLimitData.limit}, Remaining: ${rateLimitData.remaining}`
+        `GitHub API rate limit exceeded for ${url}. Status: 403. Resets at ${new Date(resetTimestamp).toISOString()}.`
       );
     });
 
-    it('should throw a generic error for other failures', async () => {
-      mockDownloadFn.mockRejectedValue(new Error('Server unavailable'));
+    it('should throw a generic error for other failures (ServerError)', async () => {
+      const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
+      mockDownloadFn.mockRejectedValue(new ServerError(url, 503, 'Service Unavailable'));
       await expect(apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
-        'Server unavailable'
+        `GitHub API server error for ${url}. Status: 503 Service Unavailable.`
       );
     });
   });
@@ -394,12 +392,14 @@ describe('GitHubApiClient', () => {
       expect(release).toEqual(mockLatestRelease);
       expect(mockDownloadFn).toHaveBeenCalledWith(
         'https://api.github.com/repos/test-owner/test-repo/releases/latest',
-        expect.anything() // Headers are tested in getLatestRelease tests
+        expect.anything()
       );
     });
 
-    it("should return null if constraint is 'latest' and getLatestRelease fails", async () => {
-      mockDownloadFn.mockRejectedValue(new Error('Failed to fetch latest'));
+    it("should return null if constraint is 'latest' and getLatestRelease fails with NotFoundError", async () => {
+      mockDownloadFn.mockRejectedValue(
+        new NotFoundError('https://api.github.com/repos/test-owner/test-repo/releases/latest')
+      );
       const release = await apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
       expect(release).toBeNull();
     });
@@ -408,20 +408,18 @@ describe('GitHubApiClient', () => {
       const releasesList: GitHubRelease[] = [
         createMockRelease(1, 'v1.0.0'),
         createMockRelease(2, 'v1.1.0'),
-        createMockRelease(3, 'v1.0.1-beta'), // prerelease
+        createMockRelease(3, 'v1.0.1-beta'),
         createMockRelease(4, 'v1.2.0'),
         createMockRelease(5, 'v0.9.0'),
-        createMockRelease(6, '2.0.0'), // No 'v' prefix
+        createMockRelease(6, '2.0.0'),
       ];
-      // Mock getAllReleases to return this list
-      mockDownloadFn.mockReset(); // Clear any previous mock implementations
+      mockDownloadFn.mockReset();
       mockDownloadFn
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // For pagination termination
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
       const release = await apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.1.0');
-      expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.2.0')!); // v1.2.0 is latest satisfying ^1.1.0
-      // Since releasesList has < 30 items, getAllReleases will only make one call.
+      expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.2.0')!);
       expect(mockDownloadFn).toHaveBeenCalledTimes(1);
     });
 
@@ -437,7 +435,6 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      // The semver.satisfies in implementation has includePrerelease: true
       const release = await apiClient.getReleaseByConstraint(
         'test-owner',
         'test-repo',
@@ -483,28 +480,24 @@ describe('GitHubApiClient', () => {
     });
 
     it('should stop fetching pages if the best match is found on a non-full page', async () => {
-      const page1Releases: GitHubRelease[] = Array.from(
-        { length: 30 },
-        (_, i) => createMockRelease(i + 1, `v0.${i + 1}.0`) // Older versions on page 1
+      const page1Releases: GitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
+        createMockRelease(i + 1, `v0.${i + 1}.0`)
       );
       const targetRelease = createMockRelease(31, 'v1.2.3');
       const page2Releases: GitHubRelease[] = [
-        createMockRelease(32, 'v1.2.4'), // A newer satisfying one
-        targetRelease, // The one we expect
-        createMockRelease(33, 'v1.1.0'), // Older, also satisfying
-      ]; // Page 2 is not full (3 items < 30)
+        createMockRelease(32, 'v1.2.4'),
+        targetRelease,
+        createMockRelease(33, 'v1.1.0'),
+      ];
 
       mockDownloadFn.mockReset();
       mockDownloadFn
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases))) // Page 1
-        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases))); // Page 2
-      // No mock for page 3, as it shouldn't be called
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases)))
+        .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases)));
 
       const release = await apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.2.0');
-
-      // We expect v1.2.4 because it's the latest on page 2 that satisfies ^1.2.0
       expect(release).toEqual(page2Releases.find((r) => r.tag_name === 'v1.2.4')!);
-      expect(mockDownloadFn).toHaveBeenCalledTimes(2); // Should only fetch page 1 and page 2
+      expect(mockDownloadFn).toHaveBeenCalledTimes(2);
       expect(mockDownloadFn.mock.calls?.[0]?.[0]).toContain('page=1');
       expect(mockDownloadFn.mock.calls?.[1]?.[0]).toContain('page=2');
     });
@@ -517,14 +510,13 @@ describe('GitHubApiClient', () => {
         remaining: 4999,
         reset: Math.floor(Date.now() / 1000) + 3600,
       };
-      // The API returns a nested structure, so we mock that
       const mockApiResponse = {
         resources: {
           core: mockRateLimitData,
           search: { limit: 30, remaining: 18, reset: Math.floor(Date.now() / 1000) + 60 },
           graphql: { limit: 5000, remaining: 5000, reset: Math.floor(Date.now() / 1000) + 3600 },
         },
-        rate: mockRateLimitData, // The top-level 'rate' usually mirrors 'core'
+        rate: mockRateLimitData,
       };
       mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(mockApiResponse)));
 
@@ -538,9 +530,14 @@ describe('GitHubApiClient', () => {
       );
     });
 
-    it('should throw an error if fetching rate limit fails', async () => {
-      mockDownloadFn.mockRejectedValue(new Error('API unavailable'));
-      await expect(apiClient.getRateLimit()).rejects.toThrow('API unavailable');
+    it('should throw an error if fetching rate limit fails with HttpError', async () => {
+      const url = 'https://api.github.com/rate_limit';
+      mockDownloadFn.mockRejectedValue(
+        new HttpError('API unavailable', url, 500, 'Internal Server Error')
+      );
+      await expect(apiClient.getRateLimit()).rejects.toThrow(
+        `GitHub API HTTP error for ${url}. Status: 500 Internal Server Error.`
+      );
     });
   });
 });

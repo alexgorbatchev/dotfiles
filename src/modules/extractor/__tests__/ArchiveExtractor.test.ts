@@ -3,18 +3,17 @@
  * @description Tests for the ArchiveExtractor class.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
 import { MemFileSystem } from '../../file-system/MemFileSystem';
 import type { IFileSystem } from '../../file-system/IFileSystem';
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '../../../types';
-import { $ } from 'zx';
+import type { ExtractOptions } from '../../../types';
 
 // Mock zx's $ command
 // We'll need to be more specific with mockImplementation for different commands
-const mockZx = mock(async (chunks: TemplateStringsArray, ...args: any[]) => {
-  const cmd = chunks.join('') + args.join('');
+const mockZx = mock(async (_chunks: TemplateStringsArray, ..._args: any[]) => {
+  // const cmd = chunks.join('') + args.join(''); // Unused variable
   // Default mock, can be overridden in tests
   // console.log(`Mocked zx command: ${cmd}`);
   return { stdout: '', stderr: '', exitCode: 0 };

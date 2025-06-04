@@ -49,9 +49,18 @@
  */
 
 import type { IGitHubApiClient } from './IGitHubApiClient';
-import type { AppConfig, GitHubRateLimit, GitHubRelease, GitHubReleaseAsset } from '../../types';
+import type { AppConfig, GitHubRateLimit, GitHubRelease } from '../../types';
 // Attempting direct import to resolve module issue
 import type { IDownloader } from '../downloader/IDownloader';
+import {
+  NotFoundError,
+  ForbiddenError,
+  RateLimitError,
+  ClientError,
+  ServerError,
+  HttpError,
+  NetworkError,
+} from '../downloader/errors';
 import { createLogger } from '../logger';
 import semver from 'semver';
 
@@ -92,40 +101,87 @@ export class GitHubApiClient implements IGitHubApiClient {
       const responseBuffer = await this.downloader.download(url, { headers });
       if (!responseBuffer || responseBuffer.length === 0) {
         log('request: Empty response buffer from downloader for URL: %s', url);
-        throw new Error(`Empty response from ${url}`);
+        // This case might indicate a successful download of an empty file,
+        // or an issue with the downloader not throwing an error for an empty response
+        // when it should have. For API calls, an empty buffer is usually an error.
+        throw new NetworkError('Empty response received from API', url);
       }
       const responseText = responseBuffer.toString('utf-8');
-      // Note: Robustness of downloader.download (e.g., returning status codes)
-      // would require changes to IDownloader and its implementations.
-      // Current implementation relies on downloader throwing an error for non-successful responses.
       return JSON.parse(responseText) as T;
-    } catch (e) {
-      const error = e as Error;
-      log('request: Error during request to %s: %s', url, error.message);
-      // TODO: More specific error handling based on actual HTTP status codes
-      if (error.message.includes('404')) {
-        // Simplistic check
-        throw new Error(`GitHub resource not found: ${url}`);
+    } catch (error) {
+      log(
+        'request: Error during request to %s. Error type: %s, Message: %s',
+        url,
+        error?.constructor?.name,
+        (error as Error)?.message
+      );
+
+      if (error instanceof NotFoundError) {
+        log('request: GitHub resource not found (404): %s. Body: %s', url, error.responseBody);
+        throw new Error(`GitHub resource not found: ${url}. Status: ${error.statusCode}`);
       }
-      if (error.message.includes('403')) {
-        // Simplistic check for rate limit
-        // Attempt to parse rate limit info if possible, or re-throw generic
-        const rateLimitInfo = await this.getRateLimit().catch(() => null);
-        if (rateLimitInfo) {
-          const resetTime = new Date(rateLimitInfo.reset * 1000);
-          log(
-            'request: GitHub API rate limit likely exceeded. Limit: %d, Remaining: %d, Resets at: %s',
-            rateLimitInfo.limit,
-            rateLimitInfo.remaining,
-            resetTime.toISOString()
-          );
-          throw new Error(
-            `GitHub API rate limit exceeded. Resets at ${resetTime.toISOString()}. Limit: ${rateLimitInfo.limit}, Remaining: ${rateLimitInfo.remaining}`
-          );
-        }
-        throw new Error(`GitHub API request failed (possibly rate limit): ${error.message}`);
+      if (error instanceof RateLimitError) {
+        const resetTime = error.resetTimestamp
+          ? new Date(error.resetTimestamp).toISOString()
+          : 'N/A';
+        log(
+          'request: GitHub API rate limit exceeded. URL: %s, Status: %d, Reset: %s. Body: %s',
+          url,
+          error.statusCode,
+          resetTime,
+          error.responseBody
+        );
+        throw new Error(
+          `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`
+        );
       }
-      throw error;
+      if (error instanceof ForbiddenError) {
+        log('request: GitHub API access forbidden (403): %s. Body: %s', url, error.responseBody);
+        throw new Error(`GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`);
+      }
+      if (error instanceof ClientError) {
+        log(
+          'request: GitHub API client error (%d): %s. Body: %s',
+          error.statusCode,
+          url,
+          error.responseBody
+        );
+        throw new Error(
+          `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`
+        );
+      }
+      if (error instanceof ServerError) {
+        log(
+          'request: GitHub API server error (%d): %s. Body: %s',
+          error.statusCode,
+          url,
+          error.responseBody
+        );
+        throw new Error(
+          `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`
+        );
+      }
+      if (error instanceof HttpError) {
+        log(
+          'request: Generic HTTP error (%d) for %s. Body: %s',
+          error.statusCode,
+          url,
+          error.responseBody
+        );
+        throw new Error(
+          `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`
+        );
+      }
+      if (error instanceof NetworkError) {
+        log('request: Network error for %s: %s', url, error.message);
+        throw new Error(`Network error while requesting ${url}: ${error.message}`);
+      }
+      // Fallback for unknown errors
+      log('request: Unknown error for %s: %o', url, error);
+      if (error instanceof Error) {
+        throw new Error(`Unknown error during GitHub API request to ${url}: ${error.message}`);
+      }
+      throw new Error(`Unknown error during GitHub API request to ${url}`);
     }
   }
 

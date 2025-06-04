@@ -6,6 +6,7 @@
 import type { IDownloader, DownloadOptions } from './IDownloader';
 import type { DownloadStrategy } from './DownloadStrategy';
 import { NodeFetchStrategy } from './NodeFetchStrategy'; // Default strategy
+import { NodeFileSystem } from '../file-system/NodeFileSystem'; // Added for default IFileSystem
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];
@@ -16,7 +17,7 @@ export class Downloader implements IDownloader {
       this.strategies = strategies;
     } else {
       // Only add default if strategies argument is undefined
-      this.strategies.push(new NodeFetchStrategy());
+      this.strategies.push(new NodeFetchStrategy(new NodeFileSystem())); // Provide NodeFileSystem
     }
   }
 

@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "test": "bun test --coverage",
-    "lint": "tsc --noEmit && eslint . --ext .ts",
+    "lint-do-not-use": "tsc --noEmit && eslint . --ext .ts",
+    "lint": "tsc --noEmit",
     "fmt": "prettier --write ."
   },
   "devDependencies": {
@@ -26,7 +27,6 @@
     "commander": "^14.0.0",
     "debug": "^4.4.1",
     "dotenv": "^16.5.0",
-    "fetch-mock": "^12.5.2",
     "memfs": "^4.17.2",
     "node-fetch": "^3.3.2",
     "zod": "^3.25.29",

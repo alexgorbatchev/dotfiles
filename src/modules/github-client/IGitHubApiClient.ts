@@ -26,7 +26,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { GitHubRateLimit, GitHubRelease, GitHubReleaseAsset } from '../../types';
+import type { GitHubRateLimit, GitHubRelease } from '../../types';
 
 /**
  * Interface for a client that interacts with the GitHub API.

@@ -5,7 +5,7 @@
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { Downloader } from '../Downloader';
-import type { IDownloader, DownloadOptions } from '../IDownloader';
+import type { DownloadOptions } from '../IDownloader';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 

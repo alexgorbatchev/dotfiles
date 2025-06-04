@@ -49,7 +49,14 @@ export interface IDownloader {
    * @param url The URL to download the file from.
    * @param options Options for the download.
    * @returns A promise that resolves with a Buffer if no destinationPath is set, or void if it is.
-   * @throws Will throw an error if the download fails.
+   * @throws {DownloaderError} If a generic download error occurs.
+   * @throws {NetworkError} If a network-level error occurs.
+   * @throws {HttpError} If a generic HTTP error occurs.
+   * @throws {NotFoundError} If the resource is not found (404).
+   * @throws {ForbiddenError} If access is forbidden (403).
+   * @throws {RateLimitError} If rate limits are exceeded.
+   * @throws {ClientError} If a generic client-side HTTP error occurs (4xx).
+   * @throws {ServerError} If a server-side HTTP error occurs (5xx).
    */
   download(url: string, options?: DownloadOptions): Promise<Buffer | void>;
 }

@@ -26,7 +26,7 @@ import type {
   ManualInstallParams,
   AsyncInstallHook,
   CompletionConfig,
-  SystemInfo, // SystemInfo is not directly used by ToolConfigBuilder but might be relevant for arch overrides context
+  // SystemInfo, // SystemInfo is not directly used by ToolConfigBuilder but might be relevant for arch overrides context
 } from '../../types'; // Updated import path
 
 // Define the ToolConfigBuilder interface with camelCase methods
