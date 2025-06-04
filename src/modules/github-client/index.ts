@@ -8,3 +8,4 @@
 
 export * from './IGitHubApiClient';
 export * from './GitHubApiClient';
+export type { GitHubRelease, GitHubRateLimit } from '../../types';
