@@ -38,10 +38,11 @@ import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { VersionChecker } from '../VersionChecker.ts';
 import { VersionComparisonStatus } from '../IVersionChecker.ts';
 import type { IGitHubApiClient, GitHubRelease } from '../../github-client/index.ts';
+import { GitHubApiClientError } from '../../github-client/index.ts';
 
 // Mock IGitHubApiClient
 class MockGitHubApiClient implements IGitHubApiClient {
-  getLatestRelease = mock(async (owner: string, repo: string): Promise<GitHubRelease> => {
+  getLatestRelease = mock(async (owner: string, repo: string): Promise<GitHubRelease | null> => {
     // Default behavior for an unconfigured call should be to throw,
     // as resolving with a generic GitHubRelease might hide issues.
     // Tests should explicitly mockResolvedValueOnce or mockRejectedValueOnce.
@@ -63,10 +64,9 @@ class MockGitHubApiClient implements IGitHubApiClient {
   getRateLimit = mock(async () => {
     // Return a structure matching GitHubRateLimit from '../../types.ts'
     return {
-      core: { limit: 5000, used: 0, remaining: 5000, reset: Math.floor(Date.now() / 1000) + 3600 },
-      search: { limit: 30, used: 0, remaining: 30, reset: Math.floor(Date.now() / 1000) + 60 },
-      // Add other categories if the type defines them, e.g., graphql, source_import, etc.
-      // For this mock, core and search are usually sufficient.
+      limit: 5000,
+      remaining: 5000,
+      reset: Math.floor(Date.now() / 1000) + 3600,
     };
   });
 
@@ -102,31 +102,8 @@ describe('VersionChecker', () => {
         published_at: '',
         prerelease: false,
         id: 0,
-        upload_url: '',
-        url: '',
-        tarball_url: '',
-        zipball_url: '',
-        node_id: '',
-        author: {
-          login: '',
-          id: 0,
-          node_id: '',
-          avatar_url: '',
-          gravatar_id: '',
-          url: '',
-          html_url: '',
-          followers_url: '',
-          following_url: '',
-          gists_url: '',
-          starred_url: '',
-          subscriptions_url: '',
-          organizations_url: '',
-          repos_url: '',
-          events_url: '',
-          received_events_url: '',
-          type: '',
-          site_admin: false,
-        },
+        created_at: '',
+        draft: false,
       });
       const version = await versionChecker.getLatestToolVersion('owner', 'repo');
       expect(version).toBe('1.2.3');
@@ -143,31 +120,8 @@ describe('VersionChecker', () => {
         published_at: '',
         prerelease: false,
         id: 0,
-        upload_url: '',
-        url: '',
-        tarball_url: '',
-        zipball_url: '',
-        node_id: '',
-        author: {
-          login: '',
-          id: 0,
-          node_id: '',
-          avatar_url: '',
-          gravatar_id: '',
-          url: '',
-          html_url: '',
-          followers_url: '',
-          following_url: '',
-          gists_url: '',
-          starred_url: '',
-          subscriptions_url: '',
-          organizations_url: '',
-          repos_url: '',
-          events_url: '',
-          received_events_url: '',
-          type: '',
-          site_admin: false,
-        },
+        created_at: '',
+        draft: false,
       });
       const version = await versionChecker.getLatestToolVersion('owner', 'repo');
       expect(version).toBe('0.5.0');
@@ -184,38 +138,23 @@ describe('VersionChecker', () => {
         published_at: '',
         prerelease: false,
         id: 0,
-        upload_url: '',
-        url: '',
-        tarball_url: '',
-        zipball_url: '',
-        node_id: '',
-        author: {
-          login: '',
-          id: 0,
-          node_id: '',
-          avatar_url: '',
-          gravatar_id: '',
-          url: '',
-          html_url: '',
-          followers_url: '',
-          following_url: '',
-          gists_url: '',
-          starred_url: '',
-          subscriptions_url: '',
-          organizations_url: '',
-          repos_url: '',
-          events_url: '',
-          received_events_url: '',
-          type: '',
-          site_admin: false,
-        },
+        created_at: '',
+        draft: false,
       });
       const version = await versionChecker.getLatestToolVersion('owner', 'repo');
       expect(version).toBeNull();
     });
 
+    it('should return null if GitHub client returns null (404 error)', async () => {
+      mockGithubClient.getLatestRelease.mockResolvedValueOnce(null);
+      const version = await versionChecker.getLatestToolVersion('owner', 'repo');
+      expect(version).toBeNull();
+    });
+
     it('should return null if GitHub client throws an error', async () => {
-      mockGithubClient.getLatestRelease.mockRejectedValueOnce(new Error('API Error'));
+      mockGithubClient.getLatestRelease.mockRejectedValueOnce(
+        new GitHubApiClientError('API Error', 500)
+      );
       const version = await versionChecker.getLatestToolVersion('owner', 'repo');
       expect(version).toBeNull();
     });

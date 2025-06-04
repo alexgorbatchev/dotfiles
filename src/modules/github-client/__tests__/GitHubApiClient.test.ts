@@ -47,7 +47,6 @@
  */
 
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-// Using mock from bun:test
 import { GitHubApiClient } from '../GitHubApiClient';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import type { IDownloader } from '../../downloader/IDownloader';
@@ -60,9 +59,6 @@ import {
   NetworkError,
 } from '../../downloader/errors';
 import type { AppConfig, GitHubRateLimit, GitHubRelease } from '../../../types';
-// import { createLogger } from '../../logger'; // Logger is no-op, no need to import or mock
-
-// Logger mock fully removed.
 
 describe('GitHubApiClient', () => {
   let mockDownloadFn: ReturnType<typeof mock<IDownloader['download']>>;
