@@ -17,6 +17,8 @@ let mockStrategy1: DownloadStrategy;
 let mockStrategy2: DownloadStrategy;
 let unavailableStrategy: DownloadStrategy;
 let failingStrategy: DownloadStrategy;
+let nonErrorObjectThrowingStrategy: DownloadStrategy;
+let nonErrorStringThrowingStrategy: DownloadStrategy;
 let fileSystem: IFileSystem;
 
 describe('Downloader', () => {
@@ -52,6 +54,24 @@ describe('Downloader', () => {
       isAvailable: mock(async () => true),
       download: mock(async () => {
         throw new Error('failingStrategy failed');
+      }),
+    };
+
+    nonErrorObjectThrowingStrategy = {
+      name: 'nonErrorObjectThrowingStrategy',
+      isAvailable: mock(async () => true),
+      download: mock(async () => {
+        // eslint-disable-next-line no-throw-literal
+        throw { message: 'simulated non-error object', code: 123 };
+      }),
+    };
+
+    nonErrorStringThrowingStrategy = {
+      name: 'nonErrorStringThrowingStrategy',
+      isAvailable: mock(async () => true),
+      download: mock(async () => {
+        // eslint-disable-next-line no-throw-literal
+        throw 'simulated string error';
       }),
     };
   });
@@ -153,5 +173,83 @@ describe('Downloader', () => {
 
     expect(mockStrategy1.download).toHaveBeenCalledWith(url, { destinationPath });
     expect(result).toBeUndefined();
+  });
+
+  it('should handle plain objects thrown by a strategy and re-throw as an Error with "[object Object]" message', async () => {
+    const downloader = new Downloader(fileSystem, [nonErrorObjectThrowingStrategy]);
+    const url = 'http://example.com/file.txt';
+
+    await expect(downloader.download(url)).rejects.toThrowError(
+      // String({ message: 'simulated non-error object', code: 123 }) becomes '[object Object]'
+      new Error('[object Object]')
+    );
+    expect((nonErrorObjectThrowingStrategy.download as any).mock.calls.length).toBe(1);
+  });
+
+  it('should handle strings thrown by a strategy and re-throw as an Error with the string as message', async () => {
+    const downloader = new Downloader(fileSystem, [nonErrorStringThrowingStrategy]);
+    const url = 'http://example.com/file.txt';
+
+    await expect(downloader.download(url)).rejects.toThrowError(
+      new Error('simulated string error')
+    );
+    expect((nonErrorStringThrowingStrategy.download as any).mock.calls.length).toBe(1);
+  });
+
+  describe('onProgress callback', () => {
+    it('should call onProgress callback if provided via options', async () => {
+      const mockOnProgress = mock(() => {}); // vi.fn() equivalent in bun:test is just mock()
+      const mockStrategyDownload = mock(async (_url: string, opts: DownloadOptions) => {
+        if (opts.onProgress) {
+          opts.onProgress(50, 100); // Simulate progress
+          opts.onProgress(100, 100); // Simulate completion
+        }
+        return Buffer.from('downloaded data');
+      });
+
+      const mockProgressStrategy: DownloadStrategy = {
+        name: 'MockProgressStrategy',
+        isAvailable: mock(async () => true),
+        download: mockStrategyDownload,
+      };
+
+      const downloader = new Downloader(fileSystem, [mockProgressStrategy]);
+
+      await downloader.download('http://example.com/file', { onProgress: mockOnProgress });
+
+      expect(mockOnProgress).toHaveBeenCalledTimes(2);
+      expect(mockOnProgress).toHaveBeenNthCalledWith(1, 50, 100);
+      expect(mockOnProgress).toHaveBeenNthCalledWith(2, 100, 100);
+      expect(mockStrategyDownload).toHaveBeenCalledWith(
+        'http://example.com/file',
+        expect.objectContaining({ onProgress: mockOnProgress })
+      );
+    });
+
+    it('should not fail if onProgress is not provided and strategy handles its absence', async () => {
+      const mockStrategyDownload = mock(async (_url: string, opts: DownloadOptions) => {
+        // Strategy should be robust enough not to try calling a non-existent onProgress
+        if (opts.onProgress) {
+          // This should not be reached if onProgress is not provided
+          throw new Error('onProgress was called unexpectedly');
+        }
+        return Buffer.from('data');
+      });
+
+      const mockNoProgressStrategy: DownloadStrategy = {
+        name: 'MockNoProgressStrategy',
+        isAvailable: mock(async () => true),
+        download: mockStrategyDownload,
+      };
+      const downloader = new Downloader(fileSystem, [mockNoProgressStrategy]);
+
+      await expect(downloader.download('http://example.com/file', {})).resolves.toBeInstanceOf(
+        Buffer
+      );
+      expect(mockStrategyDownload).toHaveBeenCalledWith(
+        'http://example.com/file',
+        expect.not.objectContaining({ onProgress: expect.any(Function) })
+      );
+    });
   });
 });

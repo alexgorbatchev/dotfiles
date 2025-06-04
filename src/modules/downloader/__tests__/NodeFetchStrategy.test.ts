@@ -6,6 +6,7 @@
  *
  * - [x] Refactor fetch mocking to use FetchMockHelper.
  * - [x] Ensure NodeFetchStrategy is instantiated with IFileSystem (verified, no change needed).
+ * - [x] Update tests for onProgress callback signature and add new test cases.
  * - [ ] Ensure all tests pass with 100% coverage.
  * - [ ] Cleanup linting errors.
  * - [ ] Update memory bank if necessary (not for this subtask).
@@ -24,7 +25,6 @@ import {
 } from 'bun:test';
 import { FetchMockHelper } from '../../../testing-helpers';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
-import type { DownloadProgress } from '../IDownloader';
 import {
   NetworkError,
   HttpError,
@@ -145,8 +145,79 @@ describe('NodeFetchStrategy', () => {
   });
 
   describe('onProgress callback', () => {
-    it('should call onProgress with correct data', async () => {
-      const onProgressMock = mock((_progress: DownloadProgress) => {});
+    it('should call onProgress with correct data when Content-Length is available', async () => {
+      const onProgressMock = mock((_bytesDownloaded: number, _totalBytes: number | null) => {});
+      const chunk1 = mockFileData.substring(0, 10);
+      const chunk2 = mockFileData.substring(10);
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(chunk1));
+          controller.enqueue(new TextEncoder().encode(chunk2));
+          controller.close();
+        },
+      });
+      fetchMockHelper.mockResponseOnce({
+        body: stream,
+        status: 200,
+        headers: { 'Content-Length': String(mockFileBuffer.length) },
+      });
+
+      await strategy.download(testUrl, { onProgress: onProgressMock });
+
+      expect(onProgressMock).toHaveBeenCalledTimes(3); // Initial call (0, total) + 2 chunks
+
+      // Initial call
+      expect(onProgressMock.mock.calls[0]?.[0]).toBe(0); // bytesDownloaded
+      expect(onProgressMock.mock.calls[0]?.[1]).toBe(mockFileBuffer.length); // totalBytes
+
+      // First chunk
+      expect(onProgressMock.mock.calls[1]?.[0]).toBe(chunk1.length); // bytesDownloaded
+      expect(onProgressMock.mock.calls[1]?.[1]).toBe(mockFileBuffer.length); // totalBytes
+
+      // Second chunk (final)
+      expect(onProgressMock.mock.calls[2]?.[0]).toBe(mockFileBuffer.length); // bytesDownloaded
+      expect(onProgressMock.mock.calls[2]?.[1]).toBe(mockFileBuffer.length); // totalBytes
+    });
+
+    it('should call onProgress with null totalBytes when Content-Length is missing', async () => {
+      const onProgressMock = mock((_bytesDownloaded: number, _totalBytes: number | null) => {});
+      const chunk1 = mockFileData.substring(0, 10);
+      const chunk2 = mockFileData.substring(10);
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(chunk1));
+          controller.enqueue(new TextEncoder().encode(chunk2));
+          controller.close();
+        },
+      });
+      fetchMockHelper.mockResponseOnce({
+        body: stream,
+        status: 200,
+        // No Content-Length header
+      });
+
+      await strategy.download(testUrl, { onProgress: onProgressMock });
+
+      expect(onProgressMock).toHaveBeenCalledTimes(3); // Initial call + 2 chunks
+
+      // Initial call
+      expect(onProgressMock.mock.calls[0]?.[0]).toBe(0); // bytesDownloaded
+      expect(onProgressMock.mock.calls[0]?.[1]).toBeNull(); // totalBytes
+
+      // First chunk
+      expect(onProgressMock.mock.calls[1]?.[0]).toBe(chunk1.length); // bytesDownloaded
+      expect(onProgressMock.mock.calls[1]?.[1]).toBeNull(); // totalBytes
+
+      // Second chunk (final)
+      expect(onProgressMock.mock.calls[2]?.[0]).toBe(mockFileBuffer.length); // bytesDownloaded
+      expect(onProgressMock.mock.calls[2]?.[1]).toBeNull(); // totalBytes
+    });
+
+    it('should not call onProgress if it is not provided in options', async () => {
+      // Create a mock that we expect NOT to be called.
+      // If we don't pass it to download, it shouldn't be called.
+      const onProgressMock = mock((_bytes: number, _total: number | null) => {});
+
       const stream = new ReadableStream({
         start(controller) {
           controller.enqueue(new TextEncoder().encode(mockFileData.substring(0, 10)));
@@ -160,58 +231,10 @@ describe('NodeFetchStrategy', () => {
         headers: { 'Content-Length': String(mockFileBuffer.length) },
       });
 
-      await strategy.download(testUrl, { onProgress: onProgressMock });
+      // Download without providing the onProgress option
+      await strategy.download(testUrl, {});
 
-      expect(onProgressMock).toHaveBeenCalled();
-      if (onProgressMock.mock.calls && onProgressMock.mock.calls.length > 0) {
-        expect(onProgressMock.mock.calls?.[0]?.[0]).toEqual({
-          bytesDownloaded: 0,
-          totalBytes: mockFileBuffer.length,
-          percentage: 0,
-        });
-        const lastCallArgs = onProgressMock.mock.calls?.[onProgressMock.mock.calls.length - 1]?.[0];
-        if (lastCallArgs) {
-          expect(lastCallArgs.bytesDownloaded).toBe(mockFileBuffer.length);
-          expect(lastCallArgs.totalBytes).toBe(mockFileBuffer.length);
-          expect(lastCallArgs.percentage).toBe(100);
-        } else {
-          expect(lastCallArgs).toBeDefined();
-        }
-      } else {
-        expect(onProgressMock.mock.calls.length).toBeGreaterThan(0);
-      }
-    });
-
-    it('should call onProgress without percentage if Content-Length is missing', async () => {
-      const onProgressMock = mock((_progress: DownloadProgress) => {});
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(mockFileData.substring(0, 10)));
-          controller.enqueue(new TextEncoder().encode(mockFileData.substring(10)));
-          controller.close();
-        },
-      });
-      fetchMockHelper.mockResponseOnce({
-        body: stream,
-        status: 200,
-      });
-
-      await strategy.download(testUrl, { onProgress: onProgressMock });
-
-      expect(onProgressMock).toHaveBeenCalled();
-      if (onProgressMock.mock.calls && onProgressMock.mock.calls.length > 0) {
-        expect(onProgressMock.mock.calls?.[0]?.[0]).toEqual({ bytesDownloaded: 0 });
-        const lastCallArgs = onProgressMock.mock.calls?.[onProgressMock.mock.calls.length - 1]?.[0];
-        if (lastCallArgs) {
-          expect(lastCallArgs.bytesDownloaded).toBe(mockFileBuffer.length);
-          expect(lastCallArgs.totalBytes).toBeUndefined();
-          expect(lastCallArgs.percentage).toBeUndefined();
-        } else {
-          expect(lastCallArgs).toBeDefined();
-        }
-      } else {
-        expect(onProgressMock.mock.calls.length).toBeGreaterThan(0);
-      }
+      expect(onProgressMock).not.toHaveBeenCalled();
     });
   });
 

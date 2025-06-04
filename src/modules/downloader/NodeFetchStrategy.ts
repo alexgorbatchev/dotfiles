@@ -7,6 +7,7 @@
  * [x] Implement basic fetch and retry logic.
  * [x] Handle successful download to buffer or file.
  * [x] Add progress reporting.
+ * [x] Implement `onProgress` callback handling in `download` method.
  * [x] Import custom error classes.
  * [x] Throw NetworkError for connection issues or pre-response errors.
  * [x] If response not ok:
@@ -202,13 +203,20 @@ export class NodeFetchStrategy implements DownloadStrategy {
           );
         }
 
-        const totalBytes = Number(response.headers.get('content-length')) || undefined;
+        const contentLength = response.headers.get('content-length');
+        let totalBytes: number | null = null;
+        if (contentLength) {
+          const parsedTotal = parseInt(contentLength, 10);
+          if (!isNaN(parsedTotal)) {
+            totalBytes = parsedTotal;
+          }
+        }
+
         let bytesDownloaded = 0;
 
-        if (onProgress && totalBytes !== undefined) {
-          onProgress({ bytesDownloaded, totalBytes, percentage: 0 });
-        } else if (onProgress) {
-          onProgress({ bytesDownloaded });
+        if (onProgress) {
+          // Initial call to onProgress, even if totalBytes is null
+          onProgress(bytesDownloaded, totalBytes);
         }
 
         const chunks: Buffer[] = [];
@@ -226,8 +234,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
             chunks.push(Buffer.from(value));
             bytesDownloaded += value.length;
             if (onProgress) {
-              const percentage = totalBytes ? (bytesDownloaded / totalBytes) * 100 : undefined;
-              onProgress({ bytesDownloaded, totalBytes, percentage });
+              onProgress(bytesDownloaded, totalBytes);
             }
           }
         }

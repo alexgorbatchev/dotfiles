@@ -1,7 +1,12 @@
 /**
  * @file generator/src/modules/downloader/IDownloader.ts
  * @description Defines interfaces for the downloader service and its options.
+ *
+ * @developmentPlan
+ * - [x] Add `onProgress` callback to `DownloadOptions` for progress reporting.
  */
+
+export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | null) => void;
 
 /**
  * Progress information for downloads.
@@ -30,7 +35,7 @@ export interface DownloadOptions {
   /** Optional delay in milliseconds between download retries. */
   retryDelay?: number;
   /** Optional callback function to report download progress. */
-  onProgress?: (progress: DownloadProgress) => void;
+  onProgress?: ProgressCallback;
   /** Optional: Path to save the downloaded file to. If not provided, content is returned as a Buffer. */
   destinationPath?: string;
 }
