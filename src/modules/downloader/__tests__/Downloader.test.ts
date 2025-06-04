@@ -8,6 +8,8 @@ import { Downloader } from '../Downloader';
 import type { DownloadOptions } from '../IDownloader';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
+import type { IFileSystem } from '../../file-system/IFileSystem';
+import { MemFileSystem } from '../../file-system/MemFileSystem';
 
 // Mock DownloadStrategy
 // Define types for our mock strategies to be reassigned in beforeEach
@@ -15,9 +17,11 @@ let mockStrategy1: DownloadStrategy;
 let mockStrategy2: DownloadStrategy;
 let unavailableStrategy: DownloadStrategy;
 let failingStrategy: DownloadStrategy;
+let fileSystem: IFileSystem;
 
 describe('Downloader', () => {
   beforeEach(() => {
+    fileSystem = new MemFileSystem();
     // Re-initialize mocks before each test to reset their state (e.g., call counts)
     mockStrategy1 = {
       name: 'mockStrategy1',
@@ -53,7 +57,7 @@ describe('Downloader', () => {
   });
 
   it('should use the first available strategy', async () => {
-    const downloader = new Downloader([mockStrategy1, mockStrategy2]);
+    const downloader = new Downloader(fileSystem, [mockStrategy1, mockStrategy2]);
     const url = 'http://example.com/file.txt';
     const result = (await downloader.download(url)) as Buffer;
 
@@ -71,7 +75,7 @@ describe('Downloader', () => {
       return Buffer.from(`content from ${url} via NodeFetchStrategy`);
     });
 
-    const downloader = new Downloader(); // No strategies provided
+    const downloader = new Downloader(fileSystem); // No strategies provided
     const url = 'http://example.com/file.txt';
     const result = (await downloader.download(url)) as Buffer;
 
@@ -82,7 +86,7 @@ describe('Downloader', () => {
   });
 
   it('should skip unavailable strategies and use the next available one', async () => {
-    const downloader = new Downloader([unavailableStrategy, mockStrategy1]);
+    const downloader = new Downloader(fileSystem, [unavailableStrategy, mockStrategy1]);
     const url = 'http://example.com/file.txt';
     const result = (await downloader.download(url)) as Buffer;
 
@@ -94,7 +98,7 @@ describe('Downloader', () => {
   });
 
   it('should try next strategy if one fails', async () => {
-    const downloader = new Downloader([failingStrategy, mockStrategy1]);
+    const downloader = new Downloader(fileSystem, [failingStrategy, mockStrategy1]);
     const url = 'http://example.com/file.txt';
     const result = (await downloader.download(url)) as Buffer;
 
@@ -106,7 +110,7 @@ describe('Downloader', () => {
   });
 
   it('should throw an error if all registered strategies are unavailable', async () => {
-    const downloader = new Downloader([unavailableStrategy]);
+    const downloader = new Downloader(fileSystem, [unavailableStrategy]);
     const url = 'http://example.com/file.txt';
 
     await expect(downloader.download(url)).rejects.toThrow(
@@ -115,7 +119,7 @@ describe('Downloader', () => {
   });
 
   it('should throw an error if all available strategies fail', async () => {
-    const downloader = new Downloader([failingStrategy, failingStrategy]); // Two instances of failing strategy
+    const downloader = new Downloader(fileSystem, [failingStrategy, failingStrategy]); // Two instances of failing strategy
     const url = 'http://example.com/file.txt';
 
     await expect(downloader.download(url)).rejects.toThrow('failingStrategy failed');
@@ -123,13 +127,13 @@ describe('Downloader', () => {
   });
 
   it('should throw an error if no strategies are registered and download is called', async () => {
-    const downloader = new Downloader([]); // Initialize with empty array
+    const downloader = new Downloader(fileSystem, []); // Initialize with empty array
     const url = 'http://example.com/file.txt';
     await expect(downloader.download(url)).rejects.toThrow('No download strategies registered.');
   });
 
   it('can register a new strategy which is then used first', async () => {
-    const downloader = new Downloader([mockStrategy1]); // Initial strategy
+    const downloader = new Downloader(fileSystem, [mockStrategy1]); // Initial strategy
     downloader.registerStrategy(mockStrategy2); // Register new one, should be prioritized
 
     const url = 'http://example.com/file.txt';
@@ -142,7 +146,7 @@ describe('Downloader', () => {
   });
 
   it('should handle destinationPath correctly by returning void', async () => {
-    const downloader = new Downloader([mockStrategy1]);
+    const downloader = new Downloader(fileSystem, [mockStrategy1]);
     const url = 'http://example.com/file.txt';
     const destinationPath = '/tmp/testfile.txt';
     const result = await downloader.download(url, { destinationPath });

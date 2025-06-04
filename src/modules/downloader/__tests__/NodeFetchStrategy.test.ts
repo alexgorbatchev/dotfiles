@@ -5,6 +5,7 @@
  * ## Development Plan
  *
  * - [x] Refactor fetch mocking to use FetchMockHelper.
+ * - [x] Ensure NodeFetchStrategy is instantiated with IFileSystem (verified, no change needed).
  * - [ ] Ensure all tests pass with 100% coverage.
  * - [ ] Cleanup linting errors.
  * - [ ] Update memory bank if necessary (not for this subtask).

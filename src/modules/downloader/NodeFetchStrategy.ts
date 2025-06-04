@@ -20,9 +20,9 @@
  *   [x] Throw ServerError for 5xx.
  *   [x] Throw HttpError for other non-ok statuses.
  * [x] Ensure originalError is included in NetworkError where applicable.
- * [x] Refactor to use IFileSystem for file writing.
- * [x] Update development plan at the top of the file. (This is the update)
- * [x] Write tests for the module. (Initial tests created in NodeFetchStrategy.test.ts)
+ * [x] Refactor to use IFileSystem for file writing. (Verified)
+ * [x] Update development plan at the top of the file. (This is the update for DI verification)
+ * [x] Write tests for the module. (Initial tests created in NodeFetchStrategy.test.ts, to be updated for DI)
  * [ ] Cleanup all linting errors and warnings.
  * [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * [ ] Ensure 100% test coverage for executable code (pending test run and linting).
