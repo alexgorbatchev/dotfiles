@@ -28,7 +28,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { valid, gt, eq, lt } from 'semver';
+import { valid, gt, eq } from 'semver';
 import type { IGitHubApiClient } from '../github-client/IGitHubApiClient.ts';
 import { createLogger } from '../logger/createLogger.ts';
 import type { IVersionChecker } from './IVersionChecker.ts';
