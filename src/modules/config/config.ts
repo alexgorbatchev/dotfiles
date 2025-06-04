@@ -18,14 +18,15 @@
  *   - [x] It must use `EnvSchema` to parse and validate the `ConfigEnvironment` argument.
  *   - [x] It must not call `dotenv` or access `process.env` directly.
  *   - [x] It must return a new `AppConfig` object based on inputs and defaults.
- * - [x] Update `ConfigEnvironment` and `EnvSchema` with new properties from Zinit analysis.
- * - [ ] (No top-level appConfig constant initialized at module load time)
- * - [ ] (Application entry point will be responsible for gathering inputs and calling createAppConfig)
- * - [ ] Update tests for `createAppConfig`.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
+ *   - [x] Update `ConfigEnvironment` and `EnvSchema` with new properties from Zinit analysis.
+ *   - [x] Add `GITHUB_CLIENT_USER_AGENT` to `ConfigEnvironment` and `EnvSchema`.
+ *   - [x] (No top-level appConfig constant initialized at module load time)
+ *   - [x] (Application entry point will be responsible for gathering inputs and calling createAppConfig)
+ *   - [x] Update tests for `createAppConfig`.
+ *   - [x] Cleanup all linting errors and warnings.
+ *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ *   - [x] Ensure 100% test coverage.
+ *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { resolve, join } from 'path';
@@ -60,6 +61,7 @@ export interface ConfigEnvironment {
   DOWNLOAD_RETRY_COUNT?: string; // Raw string from env
   DOWNLOAD_RETRY_DELAY?: string; // Raw string from env
   COMPLETIONS_DIR?: string;
+  GITHUB_CLIENT_USER_AGENT?: string; // Raw string from env
 }
 
 // Zod schema for validating and transforming the raw environment variables
@@ -97,6 +99,7 @@ const EnvSchema = z.object({
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : 1000)), // Default 1 second in milliseconds
   COMPLETIONS_DIR: z.string().optional(),
+  GITHUB_CLIENT_USER_AGENT: z.string().optional(),
 });
 
 type ValidatedEnv = z.infer<typeof EnvSchema>;
@@ -137,5 +140,6 @@ export function createAppConfig(
     downloadTimeout: env.DOWNLOAD_TIMEOUT,
     downloadRetryCount: env.DOWNLOAD_RETRY_COUNT,
     downloadRetryDelay: env.DOWNLOAD_RETRY_DELAY,
+    githubClientUserAgent: env.GITHUB_CLIENT_USER_AGENT, // Default will be handled by GitHubApiClient if undefined
   };
 }

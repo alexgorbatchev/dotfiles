@@ -25,13 +25,15 @@
  * - [x] Add download system types (DownloadProgress, DownloadOptions, DownloadStrategy, IDownloader).
  * - [x] Add archive extraction types (ArchiveFormat, ExtractOptions, ExtractResult, IArchiveExtractor).
  * - [x] Add completion management types (ShellType, ShellCompletionConfig, CompletionConfig, ICompletionInstaller).
- * - [x] Add version management types (UpdateInfo, VersionConstraint, IVersionChecker).
- * - [x] Enhance GitHub API types (GitHubRateLimit, GitHubReleaseAsset, GitHubRelease, IGitHubApiClient).
- * - [x] Update existing types (InstallHookContext, ToolConfig, ManifestEntry, AppConfig, GithubReleaseInstallParams).
- * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .clinerules)
- * - [ ] Cleanup all linting errors and warnings (after initial creation).
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
+ *   - [x] Add version management types (UpdateInfo, VersionConstraint, IVersionChecker).
+ *   - [x] Enhance GitHub API types (GitHubRateLimit, GitHubReleaseAsset, GitHubRelease, IGitHubApiClient).
+ *   - [x] Update existing types (InstallHookContext, ToolConfig, ManifestEntry, AppConfig, GithubReleaseInstallParams).
+ *   - [x] Add `githubClientUserAgent` to `AppConfig`.
+ *   - [x] Add JSDoc note to `AppConfig` about updating `config.ts`.
+ *   - [x] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .clinerules)
+ *   - [x] Cleanup all linting errors and warnings (after initial creation).
+ *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 // ============================================
@@ -475,6 +477,11 @@ export interface Manifest {
 
 /**
  * Configuration for the application, loaded from .env and CLI args.
+ * @remarks
+ * When adding new properties to this interface, ensure that `generator/src/modules/config/config.ts`
+ * (specifically the `EnvSchema` and the `createAppConfig` function)
+ * and its tests (`generator/src/modules/config/__tests__/config.test.ts`) are updated accordingly
+ * to handle loading, validation, and default values for the new properties.
  */
 export interface AppConfig {
   targetDir: string;
@@ -500,6 +507,7 @@ export interface AppConfig {
   downloadTimeout?: number; // NEW: Download timeout in milliseconds
   downloadRetryCount?: number; // NEW: Number of download retries
   downloadRetryDelay?: number; // NEW: Delay between retries in milliseconds
+  githubClientUserAgent?: string; // NEW: Custom User-Agent for GitHub API client
 }
 
 /**

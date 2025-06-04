@@ -16,13 +16,14 @@
  * - [x] Import `join`, `resolve` from `path`.
  * - [x] Import `homedir` from `os`.
  * - [x] Test default values when .env is empty or values are missing.
- * - [x] Test loading values from mocked process.env.
- * - [x] Test derived paths are correctly constructed.
- * - [x] Test boolean parsing for `CACHE_ENABLED`.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
+ *   - [x] Test loading values from mocked process.env.
+ *   - [x] Test derived paths are correctly constructed.
+ *   - [x] Test boolean parsing for `CACHE_ENABLED`.
+ *   - [x] Test `GITHUB_CLIENT_USER_AGENT` loading and default.
+ *   - [x] Cleanup all linting errors and warnings.
+ *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ *   - [x] Ensure 100% test coverage.
+ *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { describe, it, expect } from 'bun:test';
 import { join, resolve } from 'path';
@@ -58,6 +59,7 @@ describe('createAppConfig', () => {
     expect(appConfig.binDir).toBe(join(expectedGeneratedDir, 'bin'));
     expect(appConfig.zshInitDir).toBe(join(expectedGeneratedDir, 'zsh'));
     expect(appConfig.manifestPath).toBe(join(expectedGeneratedDir, 'manifest.json'));
+    expect(appConfig.githubClientUserAgent).toBeUndefined(); // Default is undefined in config.ts, handled by consumer
   });
 
   it('should load values from env argument', () => {
@@ -69,6 +71,7 @@ describe('createAppConfig', () => {
       DEBUG: 'test:*',
       CACHE_ENABLED: 'false',
       SUDO_PROMPT: 'Test sudo:',
+      GITHUB_CLIENT_USER_AGENT: 'MyCustomAgent/1.0',
     };
     const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
 
@@ -79,6 +82,7 @@ describe('createAppConfig', () => {
     expect(appConfig.debug).toBe('test:*');
     expect(appConfig.cacheEnabled).toBe(false); // Zod transform handles 'false' string
     expect(appConfig.sudoPrompt).toBe('Test sudo:');
+    expect(appConfig.githubClientUserAgent).toBe('MyCustomAgent/1.0');
 
     // Test derived paths with custom base paths
     expect(appConfig.cacheDir).toBe(join('/test/dotfiles/.custom_generated', 'cache'));
