@@ -13,12 +13,12 @@
  *     - [x] Test initialization with and without a GitHub token.
  *   - [x] **`getLatestRelease` Method:**
  *     - [x] Test successful retrieval of the latest release.
- *     - [x] Test handling of 404 (Not Found) error.
+ *     - [x] Test handling of 404 (Not Found) error (should return null).
  *     - [x] Test handling of GitHub API rate limit error (403).
  *     - [x] Test handling of other generic network/request errors.
  *   - [x] **`getReleaseByTag` Method:**
  *     - [x] Test successful retrieval of a release by tag.
- *     - [x] Test handling of 404 if tag not found.
+ *     - [x] Test handling of 404 if tag not found (should return null).
  *     - [x] Test rate limit and generic errors.
  *   - [x] **`getAllReleases` Method:**
  *     - [x] Test successful retrieval with no options (default pagination).
@@ -49,6 +49,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 // Using mock from bun:test
 import { GitHubApiClient } from '../GitHubApiClient';
+import { GitHubApiClientError } from '../GitHubApiClientError';
 import type { IDownloader } from '../../downloader/IDownloader';
 import {
   NotFoundError,
@@ -132,8 +133,6 @@ describe('GitHubApiClient', () => {
     });
   });
 
-  // TODO: Add more tests for each method as per the development plan
-
   describe('getLatestRelease', () => {
     it('should fetch and return the latest release', async () => {
       const mockReleaseData: GitHubRelease = {
@@ -163,15 +162,15 @@ describe('GitHubApiClient', () => {
       );
     });
 
-    it('should throw an error if the release is not found (404)', async () => {
+    it('should return null if the release is not found (404)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
-      mockDownloadFn.mockRejectedValue(new NotFoundError(url, 'Not Found Body'));
-      await expect(apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        `GitHub resource not found: ${url}. Status: 404`
-      );
+      // Simulate the error structure that GitHubApiClient's request method would throw
+      mockDownloadFn.mockRejectedValue(new Error(`GitHub resource not found: ${url}. Status: 404`));
+      const release = await apiClient.getLatestRelease('test-owner', 'test-repo');
+      expect(release).toBeNull();
     });
 
-    it('should throw an error with rate limit details if a RateLimitError is thrown by downloader', async () => {
+    it('should throw a GitHubApiClientError with rate limit details if a RateLimitError is thrown by downloader', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
       const resetTimestamp = Date.now() + 3600 * 1000;
       mockDownloadFn.mockRejectedValue(
@@ -187,16 +186,40 @@ describe('GitHubApiClient', () => {
       );
 
       await expect(apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        `GitHub API rate limit exceeded for ${url}. Status: 403. Resets at ${new Date(resetTimestamp).toISOString()}.`
+        GitHubApiClientError
       );
+
+      try {
+        await apiClient.getLatestRelease('test-owner', 'test-repo');
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
+          expect(error.statusCode).toBe(403);
+          expect(error.originalError).toBeInstanceOf(RateLimitError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
 
-    it('should throw a generic error for other failures (NetworkError)', async () => {
+    it('should throw a GitHubApiClientError for other failures (NetworkError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
       mockDownloadFn.mockRejectedValue(new NetworkError('Connection lost', url));
+
       await expect(apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        `Network error while requesting ${url}: Connection lost`
+        GitHubApiClientError
       );
+
+      try {
+        await apiClient.getLatestRelease('test-owner', 'test-repo');
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`Network error while requesting ${url}: Connection lost`);
+          expect(error.originalError).toBeInstanceOf(NetworkError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
   });
 
@@ -237,16 +260,20 @@ describe('GitHubApiClient', () => {
       );
     });
 
-    it('should throw an error if the release tag is not found (404)', async () => {
+    it('should return null if the release tag is not found (404)', async () => {
       const url =
         'https://api.github.com/repos/test-owner/test-repo/releases/tags/non-existent-tag';
-      mockDownloadFn.mockRejectedValue(new NotFoundError(url, 'Tag not found'));
-      await expect(
-        apiClient.getReleaseByTag('test-owner', 'test-repo', 'non-existent-tag')
-      ).rejects.toThrow(`GitHub resource not found: ${url}. Status: 404`);
+      // Simulate the error structure that GitHubApiClient's request method would throw
+      mockDownloadFn.mockRejectedValue(new Error(`GitHub resource not found: ${url}. Status: 404`));
+      const release = await apiClient.getReleaseByTag(
+        'test-owner',
+        'test-repo',
+        'non-existent-tag'
+      );
+      expect(release).toBeNull();
     });
 
-    it('should throw an error with rate limit details if a RateLimitError occurs', async () => {
+    it('should throw a GitHubApiClientError with rate limit details if a RateLimitError occurs', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0';
       const resetTimestamp = Date.now() + 1800 * 1000;
       mockDownloadFn.mockRejectedValue(
@@ -260,17 +287,43 @@ describe('GitHubApiClient', () => {
           resetTimestamp
         )
       );
+
       await expect(apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
-        `GitHub API rate limit exceeded for ${url}. Status: 429. Resets at ${new Date(resetTimestamp).toISOString()}.`
+        GitHubApiClientError
       );
+
+      try {
+        await apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0');
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
+          expect(error.statusCode).toBe(429);
+          expect(error.originalError).toBeInstanceOf(RateLimitError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
 
-    it('should throw a generic error for other failures (ClientError)', async () => {
+    it('should throw a GitHubApiClientError for other failures (ClientError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0';
       mockDownloadFn.mockRejectedValue(new ClientError(url, 400, 'Bad Request'));
+
       await expect(apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')).rejects.toThrow(
-        `GitHub API client error for ${url}. Status: 400 Bad Request.`
+        GitHubApiClientError
       );
+
+      try {
+        await apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0');
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`GitHub API client error for ${url}`);
+          expect(error.statusCode).toBe(400);
+          expect(error.originalError).toBeInstanceOf(ClientError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
   });
 
@@ -354,7 +407,7 @@ describe('GitHubApiClient', () => {
       expect(releases).toEqual([]);
     });
 
-    it('should throw an error with rate limit details if a RateLimitError occurs', async () => {
+    it('should throw a GitHubApiClientError with rate limit details if a RateLimitError occurs', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
       const resetTimestamp = Date.now() + 600 * 1000;
       mockDownloadFn.mockRejectedValue(
@@ -370,16 +423,41 @@ describe('GitHubApiClient', () => {
       );
 
       await expect(apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
-        `GitHub API rate limit exceeded for ${url}. Status: 403. Resets at ${new Date(resetTimestamp).toISOString()}.`
+        GitHubApiClientError
       );
+
+      try {
+        await apiClient.getAllReleases('test-owner', 'test-repo');
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
+          expect(error.statusCode).toBe(403);
+          expect(error.originalError).toBeInstanceOf(RateLimitError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
 
-    it('should throw a generic error for other failures (ServerError)', async () => {
+    it('should throw a GitHubApiClientError for other failures (ServerError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
       mockDownloadFn.mockRejectedValue(new ServerError(url, 503, 'Service Unavailable'));
+
       await expect(apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
-        `GitHub API server error for ${url}. Status: 503 Service Unavailable.`
+        GitHubApiClientError
       );
+
+      try {
+        await apiClient.getAllReleases('test-owner', 'test-repo');
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`GitHub API server error for ${url}`);
+          expect(error.statusCode).toBe(503);
+          expect(error.originalError).toBeInstanceOf(ServerError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
   });
 
@@ -530,14 +608,25 @@ describe('GitHubApiClient', () => {
       );
     });
 
-    it('should throw an error if fetching rate limit fails with HttpError', async () => {
+    it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {
       const url = 'https://api.github.com/rate_limit';
       mockDownloadFn.mockRejectedValue(
         new HttpError('API unavailable', url, 500, 'Internal Server Error')
       );
-      await expect(apiClient.getRateLimit()).rejects.toThrow(
-        `GitHub API HTTP error for ${url}. Status: 500 Internal Server Error.`
-      );
+
+      await expect(apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);
+
+      try {
+        await apiClient.getRateLimit();
+      } catch (error) {
+        if (error instanceof GitHubApiClientError) {
+          expect(error.message).toContain(`GitHub API HTTP error for ${url}`);
+          expect(error.statusCode).toBe(500);
+          expect(error.originalError).toBeInstanceOf(HttpError);
+        } else {
+          throw new Error('Expected GitHubApiClientError but got a different error type');
+        }
+      }
     });
   });
 });

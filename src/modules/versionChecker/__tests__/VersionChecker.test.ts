@@ -38,7 +38,6 @@ import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { VersionChecker } from '../VersionChecker.ts';
 import { VersionComparisonStatus } from '../IVersionChecker.ts';
 import type { IGitHubApiClient, GitHubRelease } from '../../github-client';
-import { createLogger } from '../../logger';
 
 // Mock IGitHubApiClient
 class MockGitHubApiClient implements IGitHubApiClient {

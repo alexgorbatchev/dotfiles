@@ -20,9 +20,10 @@
  *   - [x] Test `getRateLimit`
  *   - [x] Test API error handling (404, 403, etc.)
  *   - [x] Test rate limit parsing and error handling.
- * - [ ] Implement caching for API responses (optional, consider for future enhancement if not in initial scope).
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Ensure 100% test coverage for executable code.
+ *   - [ ] Implement caching for API responses (optional, consider for future enhancement if not in initial scope).
+ *   - [x] Update `getLatestRelease` and `getReleaseByTag` to return `null` on 404.
+ *   - [x] Cleanup all linting errors and warnings.
+ *   - [x] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -37,9 +38,9 @@ export interface IGitHubApiClient {
    * Zinit uses: https://api.github.com/repos/{owner}/{repo}/releases/latest
    * @param owner The owner of the repository.
    * @param repo The name of the repository.
-   * @returns A promise that resolves to the latest GitHub release.
+   * @returns A promise that resolves to the latest GitHub release, or null if not found.
    */
-  getLatestRelease(owner: string, repo: string): Promise<GitHubRelease>;
+  getLatestRelease(owner: string, repo: string): Promise<GitHubRelease | null>;
 
   /**
    * Fetches a specific release by tag name.
@@ -47,9 +48,9 @@ export interface IGitHubApiClient {
    * @param owner The owner of the repository.
    * @param repo The name of the repository.
    * @param tag The tag name of the release.
-   * @returns A promise that resolves to the GitHub release.
+   * @returns A promise that resolves to the GitHub release, or null if not found.
    */
-  getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease>;
+  getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease | null>;
 
   /**
    * Fetches all releases for a given repository.

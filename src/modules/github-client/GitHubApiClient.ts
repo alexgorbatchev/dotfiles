@@ -14,10 +14,10 @@
  *     - [x] Construct URL: `/repos/{owner}/{repo}/releases/latest`.
  *     - [x] Make request using `downloader`.
  *     - [x] Validate response and parse JSON.
- *     - [x] Handle API errors (404, 403 rate limit, etc.).
+ *     - [x] Handle API errors (404 returns null, 403 rate limit, etc.).
  *   - [x] Implement `getReleaseByTag(owner, repo, tag)`:
  *     - [x] Construct URL: `/repos/{owner}/{repo}/releases/tags/{tag}`.
- *     - [x] Make request, validate, parse, handle errors.
+ *     - [x] Make request, validate, parse, handle errors (404 returns null).
  *   - [x] Implement `getAllReleases(owner, repo, options)`:
  *     - [x] Construct URL: `/repos/{owner}/{repo}/releases`.
  *     - [x] Handle `perPage` option.
@@ -63,6 +63,7 @@ import {
 } from '../downloader/errors';
 import { createLogger } from '../logger';
 import semver from 'semver';
+import { GitHubApiClientError } from './GitHubApiClientError';
 
 const log = createLogger('GitHubApiClient');
 
@@ -131,13 +132,19 @@ export class GitHubApiClient implements IGitHubApiClient {
           resetTime,
           error.responseBody
         );
-        throw new Error(
-          `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`
+        throw new GitHubApiClientError(
+          `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`,
+          error.statusCode,
+          error
         );
       }
       if (error instanceof ForbiddenError) {
         log('request: GitHub API access forbidden (403): %s. Body: %s', url, error.responseBody);
-        throw new Error(`GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`);
+        throw new GitHubApiClientError(
+          `GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`,
+          error.statusCode,
+          error
+        );
       }
       if (error instanceof ClientError) {
         log(
@@ -146,8 +153,10 @@ export class GitHubApiClient implements IGitHubApiClient {
           url,
           error.responseBody
         );
-        throw new Error(
-          `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`
+        throw new GitHubApiClientError(
+          `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
+          error.statusCode,
+          error
         );
       }
       if (error instanceof ServerError) {
@@ -157,8 +166,10 @@ export class GitHubApiClient implements IGitHubApiClient {
           url,
           error.responseBody
         );
-        throw new Error(
-          `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`
+        throw new GitHubApiClientError(
+          `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
+          error.statusCode,
+          error
         );
       }
       if (error instanceof HttpError) {
@@ -168,31 +179,75 @@ export class GitHubApiClient implements IGitHubApiClient {
           url,
           error.responseBody
         );
-        throw new Error(
-          `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`
+        throw new GitHubApiClientError(
+          `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
+          error.statusCode,
+          error
         );
       }
       if (error instanceof NetworkError) {
         log('request: Network error for %s: %s', url, error.message);
-        throw new Error(`Network error while requesting ${url}: ${error.message}`);
+        throw new GitHubApiClientError(
+          `Network error while requesting ${url}: ${error.message}`,
+          undefined,
+          error
+        );
       }
       // Fallback for unknown errors
       log('request: Unknown error for %s: %o', url, error);
       if (error instanceof Error) {
-        throw new Error(`Unknown error during GitHub API request to ${url}: ${error.message}`);
+        throw new GitHubApiClientError(
+          `Unknown error during GitHub API request to ${url}: ${error.message}`,
+          undefined,
+          error
+        );
       }
-      throw new Error(`Unknown error during GitHub API request to ${url}`);
+      throw new GitHubApiClientError(`Unknown error during GitHub API request to ${url}`);
     }
   }
 
-  async getLatestRelease(owner: string, repo: string): Promise<GitHubRelease> {
+  async getLatestRelease(owner: string, repo: string): Promise<GitHubRelease | null> {
     log('getLatestRelease: Fetching latest release for %s/%s', owner, repo);
-    return this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/latest`);
+    try {
+      return await this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/latest`);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('GitHub resource not found')) {
+        log('getLatestRelease: Resource not found for %s/%s. Returning null.', owner, repo);
+        return null;
+      }
+      log(
+        'getLatestRelease: Error fetching latest release for %s/%s: %s. Re-throwing.',
+        owner,
+        repo,
+        (error as Error).message
+      );
+      throw error;
+    }
   }
 
-  async getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease> {
+  async getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease | null> {
     log('getReleaseByTag: Fetching release by tag %s for %s/%s', tag, owner, repo);
-    return this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
+    try {
+      return await this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('GitHub resource not found')) {
+        log(
+          'getReleaseByTag: Resource not found for %s/%s, tag %s. Returning null.',
+          owner,
+          repo,
+          tag
+        );
+        return null;
+      }
+      log(
+        'getReleaseByTag: Error fetching release by tag %s for %s/%s: %s. Re-throwing.',
+        tag,
+        owner,
+        repo,
+        (error as Error).message
+      );
+      throw error;
+    }
   }
 
   async getAllReleases(
