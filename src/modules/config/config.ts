@@ -62,6 +62,8 @@ export interface ConfigEnvironment {
   DOWNLOAD_RETRY_DELAY?: string; // Raw string from env
   COMPLETIONS_DIR?: string;
   GITHUB_CLIENT_USER_AGENT?: string; // Raw string from env
+  GITHUB_API_CACHE_ENABLED?: string; // Raw string from env
+  GITHUB_API_CACHE_TTL?: string; // Raw string from env
 }
 
 // Zod schema for validating and transforming the raw environment variables
@@ -100,6 +102,18 @@ const EnvSchema = z.object({
     .transform((val) => (val ? parseInt(val, 10) : 1000)), // Default 1 second in milliseconds
   COMPLETIONS_DIR: z.string().optional(),
   GITHUB_CLIENT_USER_AGENT: z.string().optional(),
+  GITHUB_API_CACHE_ENABLED: z
+    .string()
+    .optional()
+    .transform((val) => (val === undefined ? true : val.toLowerCase() === 'true')), // Default true
+  GITHUB_API_CACHE_TTL: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (val === undefined) return 86400000; // Default 24 hours in ms
+      const num = parseInt(val, 10);
+      return isNaN(num) ? 86400000 : num;
+    }), // Default 24 hours in ms if invalid
 });
 
 type ValidatedEnv = z.infer<typeof EnvSchema>;
@@ -141,5 +155,7 @@ export function createAppConfig(
     downloadRetryCount: env.DOWNLOAD_RETRY_COUNT,
     downloadRetryDelay: env.DOWNLOAD_RETRY_DELAY,
     githubClientUserAgent: env.GITHUB_CLIENT_USER_AGENT, // Default will be handled by GitHubApiClient if undefined
+    githubApiCacheEnabled: env.GITHUB_API_CACHE_ENABLED,
+    githubApiCacheTtl: env.GITHUB_API_CACHE_TTL,
   };
 }

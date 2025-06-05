@@ -60,6 +60,8 @@ describe('createAppConfig', () => {
     expect(appConfig.zshInitDir).toBe(join(expectedGeneratedDir, 'zsh'));
     expect(appConfig.manifestPath).toBe(join(expectedGeneratedDir, 'manifest.json'));
     expect(appConfig.githubClientUserAgent).toBeUndefined(); // Default is undefined in config.ts, handled by consumer
+    expect(appConfig.githubApiCacheEnabled).toBe(true); // Default
+    expect(appConfig.githubApiCacheTtl).toBe(86400000); // Default
   });
 
   it('should load values from env argument', () => {
@@ -72,6 +74,8 @@ describe('createAppConfig', () => {
       CACHE_ENABLED: 'false',
       SUDO_PROMPT: 'Test sudo:',
       GITHUB_CLIENT_USER_AGENT: 'MyCustomAgent/1.0',
+      GITHUB_API_CACHE_ENABLED: 'false',
+      GITHUB_API_CACHE_TTL: '3600000', // 1 hour
     };
     const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
 
@@ -83,6 +87,8 @@ describe('createAppConfig', () => {
     expect(appConfig.cacheEnabled).toBe(false); // Zod transform handles 'false' string
     expect(appConfig.sudoPrompt).toBe('Test sudo:');
     expect(appConfig.githubClientUserAgent).toBe('MyCustomAgent/1.0');
+    expect(appConfig.githubApiCacheEnabled).toBe(false);
+    expect(appConfig.githubApiCacheTtl).toBe(3600000);
 
     // Test derived paths with custom base paths
     expect(appConfig.cacheDir).toBe(join('/test/dotfiles/.custom_generated', 'cache'));
@@ -147,5 +153,73 @@ describe('createAppConfig', () => {
     expect(appConfig.dotfilesDir).toBe(expectedDotfilesDir);
     expect(appConfig.generatedDir).toBe(expectedGeneratedDir);
     expect(appConfig.toolConfigDir).toBe(join(expectedDotfilesDir, 'generator', 'src', 'tools'));
+  });
+
+  describe('GITHUB_API_CACHE_ENABLED', () => {
+    it('should be true when GITHUB_API_CACHE_ENABLED is "true"', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_ENABLED: 'true' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheEnabled).toBe(true);
+    });
+
+    it('should be false when GITHUB_API_CACHE_ENABLED is "false"', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_ENABLED: 'false' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheEnabled).toBe(false);
+    });
+
+    it('should default to true if GITHUB_API_CACHE_ENABLED is not set', () => {
+      const mockEnv: ConfigEnvironment = {};
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheEnabled).toBe(true);
+    });
+
+    it('should default to true if GITHUB_API_CACHE_ENABLED is an empty string (treated as not "false")', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_ENABLED: '' };
+      // Current Zod transform: (val === undefined ? true : val.toLowerCase() === 'true')
+      // For '', val is defined, ''.toLowerCase() === 'true' is false. So it becomes false.
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheEnabled).toBe(false);
+    });
+
+    it('should default to true if GITHUB_API_CACHE_ENABLED is an invalid string (treated as not "false")', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_ENABLED: 'invalid-value' };
+      // Current Zod transform: (val === undefined ? true : val.toLowerCase() === 'true')
+      // For 'invalid-value', val is defined, 'invalid-value'.toLowerCase() === 'true' is false. So it becomes false.
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheEnabled).toBe(false);
+    });
+  });
+
+  describe('GITHUB_API_CACHE_TTL', () => {
+    it('should load GITHUB_API_CACHE_TTL from env if valid number', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_TTL: '12345' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheTtl).toBe(12345);
+    });
+
+    it('should default to 86400000 if GITHUB_API_CACHE_TTL is not set', () => {
+      const mockEnv: ConfigEnvironment = {};
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheTtl).toBe(86400000);
+    });
+
+    it('should default to 86400000 if GITHUB_API_CACHE_TTL is an empty string', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_TTL: '' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheTtl).toBe(86400000); // parseInt('') is NaN
+    });
+
+    it('should default to 86400000 if GITHUB_API_CACHE_TTL is not a number', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_TTL: 'not-a-number' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheTtl).toBe(86400000);
+    });
+
+    it('should handle GITHUB_API_CACHE_TTL "0"', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_TTL: '0' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubApiCacheTtl).toBe(0);
+    });
   });
 });
