@@ -17,16 +17,16 @@
  *     - [x] Handle case where manifest doesn't exist or is invalid (return a new/empty manifest structure).
  *   - [x] Call `shimGenerator.generate()`:
  *     - [x] Pass `toolConfigs` and `dryRun` option.
- *     - [x] Collect generated shim paths (assume `shimGenerator.generate` returns them or they can be inferred).
+ *     - [x] Capture `Promise<string[]>` and store in manifest.
  *   - [x] Call `shellInitGenerator.generate()`:
  *     - [x] Pass `toolConfigs` and `dryRun` option.
- *     - [x] Collect generated shell init file path.
+ *     - [x] Capture `Promise<string | null>` and store in manifest.
  *   - [x] Call `symlinkGenerator.generate()`:
  *     - [x] Pass `toolConfigs` and `dryRun` option.
- *     - [x] Collect generated symlink details (inferred from `toolConfigs` as `generate` returns `void`).
+ *     - [x] Capture `Promise<SymlinkOperationResult[]>` and store in manifest.
  *   - [x] Update the `GeneratedArtifactsManifest` data structure:
- *     - [x] Set `lastGenerationTimestamp`.
- *     - [x] Store collected shim paths, shell init path, and symlink details.
+ *     - [x] Use `lastGenerated` instead of `lastGenerationTimestamp`.
+ *     - [x] Store detailed artifact information.
  *     - [x] Include `generatorVersion` if provided in options.
  *   - [x] Write the new/updated manifest to the file system using `IFileSystem.writeFile()` (unless `dryRun`).
  *     - [x] Ensure parent directory for manifest exists.
@@ -47,7 +47,7 @@ import type { IShellInitGenerator, GenerateShellInitOptions } from '../generator
 import type {
   ISymlinkGenerator,
   GenerateSymlinksOptions,
-  // SymlinkResult is not exported by ISymlinkGenerator as its generate method returns void
+  SymlinkOperationResult,
 } from '../generator-symlink';
 import type { IGeneratorOrchestrator, GenerateAllOptions } from './IGeneratorOrchestrator';
 import { createLogger } from '../logger';
@@ -97,9 +97,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       // or simulate reading one if its content influenced dry run logic.
       // For now, assume a fresh manifest structure for dry run output.
       currentManifest = {
-        lastGenerationTimestamp: new Date().toISOString(),
-        generatedShims: [],
-        generatedSymlinks: [],
+        lastGenerated: new Date().toISOString(), // Use new field name
+        shims: [],
+        symlinks: [],
+        // shellInit will be populated below
         ...(generatorVersion && { generatorVersion }),
       };
     } else {
@@ -112,9 +113,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         } else {
           log(`generateAll: No existing manifest found at ${manifestPath}. Creating a new one.`);
           currentManifest = {
-            lastGenerationTimestamp: '', // Will be updated
-            generatedShims: [],
-            generatedSymlinks: [],
+            lastGenerated: '', // Will be updated
+            shims: [],
+            symlinks: [],
           };
         }
       } catch (error) {
@@ -122,9 +123,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           `generateAll: Error reading or parsing existing manifest at ${manifestPath}. Defaulting to a new manifest. Error: ${error instanceof Error ? error.message : String(error)}`
         );
         currentManifest = {
-          lastGenerationTimestamp: '', // Will be updated
-          generatedShims: [],
-          generatedSymlinks: [],
+          lastGenerated: '', // Will be updated
+          shims: [],
+          symlinks: [],
         };
       }
       if (generatorVersion) {
@@ -133,94 +134,40 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
 
     // 1. Generate Shims
-    const shimOptions: GenerateShimsOptions = { dryRun, overwrite: true }; // Assuming overwrite for orchestrator
+    const shimOptions: GenerateShimsOptions = { dryRun, overwrite: true };
     log('generateAll: Calling shimGenerator.generate...', shimOptions);
-    await this.shimGenerator.generate(toolConfigs, shimOptions); // Returns void
-
-    const generatedShimsPaths: string[] = [];
-    // In dryRun, list all intended shims. Otherwise, list shims for tools that likely got processed.
-    // This is an approximation as shimGenerator.generate returns void.
-    // A more robust approach would be for shimGenerator to return results.
-    for (const toolName of Object.keys(toolConfigs)) {
-      // ShimGenerator creates shims in appConfig.targetDir (e.g. /usr/local/bin or a dedicated shim dir)
-      // and names them after the toolName.
-      // The actual binary path is appConfig.binDir/toolBinaryName
-      generatedShimsPaths.push(path.join(this.appConfig.targetDir, toolName));
-    }
-    currentManifest.generatedShims = generatedShimsPaths;
+    const generatedShimsPaths = await this.shimGenerator.generate(toolConfigs, shimOptions);
+    currentManifest.shims = generatedShimsPaths;
     log(
-      `generateAll: Shim generation complete. ${currentManifest.generatedShims.length} shims recorded/intended.`
+      `generateAll: Shim generation complete. ${currentManifest.shims?.length ?? 0} shims recorded.`
     );
 
     // 2. Generate Shell Init
     const shellInitOptions: GenerateShellInitOptions = { dryRun };
-    // Default path, ShellInitGenerator will use appConfig.zshInitDir + 'init.zsh'
-    const defaultShellInitPath = path.join(this.appConfig.zshInitDir, 'init.zsh');
     log('generateAll: Calling shellInitGenerator.generate...', shellInitOptions);
-    await this.shellInitGenerator.generate(toolConfigs, shellInitOptions);
-    // ShellInitGenerator writes to a known path, so we record that.
-    // If it were to return the path, that would be more robust.
-    currentManifest.generatedShellInitFile = defaultShellInitPath;
+    const generatedShellInitPath = await this.shellInitGenerator.generate(
+      toolConfigs,
+      shellInitOptions
+    );
+    currentManifest.shellInit = { path: generatedShellInitPath };
     log(
-      `generateAll: Shell init generation complete. Recorded path: ${currentManifest.generatedShellInitFile}`
+      `generateAll: Shell init generation complete. Recorded path: ${currentManifest.shellInit?.path ?? 'null'}`
     );
 
     // 3. Generate Symlinks
-    const symlinkOptions: GenerateSymlinksOptions = { dryRun, overwrite: true, backup: true }; // Sensible defaults for orchestrator
+    const symlinkOptions: GenerateSymlinksOptions = { dryRun, overwrite: true, backup: true };
     log('generateAll: Calling symlinkGenerator.generate...', symlinkOptions);
-    await this.symlinkGenerator.generate(toolConfigs, symlinkOptions); // Returns void
-
-    const symlinkManifestEntries: GeneratedArtifactsManifest['generatedSymlinks'] = [];
-    for (const toolName of Object.keys(toolConfigs)) {
-      const config = toolConfigs[toolName];
-      if (config?.symlinks) {
-        for (const symlink of config.symlinks) {
-          // Resolve source path relative to dotfilesDir
-          const absoluteSourcePath = path.resolve(this.appConfig.dotfilesDir, symlink.source);
-
-          // Resolve target path (linkPath)
-          // SymlinkGenerator resolves '~' to appConfig.targetDir (which should be user's home)
-          // and relative paths from appConfig.targetDir.
-          let absoluteLinkPath = symlink.target;
-          if (symlink.target.startsWith('~/')) {
-            absoluteLinkPath = path.resolve(this.appConfig.targetDir, symlink.target.substring(2));
-          } else if (!path.isAbsolute(symlink.target)) {
-            absoluteLinkPath = path.resolve(this.appConfig.targetDir, symlink.target);
-          }
-
-          // In dryRun, list all intended symlinks.
-          // In non-dryRun, we assume symlinkGenerator handled source existence check.
-          // For the manifest, we'll record it if it was declared.
-          // A more robust solution would be for symlinkGenerator to return actual results.
-          if (dryRun) {
-            symlinkManifestEntries.push({
-              sourcePath: symlink.source, // Store relative source path as in config
-              linkPath: absoluteLinkPath, // Store resolved link path
-            });
-          } else {
-            // For non-dry run, we can be more confident it was created if source exists
-            // This is an approximation as symlinkGenerator returns void.
-            if (await this.fs.exists(absoluteSourcePath)) {
-              symlinkManifestEntries.push({
-                sourcePath: symlink.source,
-                linkPath: absoluteLinkPath,
-              });
-            } else {
-              log(
-                `generateAll: Symlink source ${absoluteSourcePath} for tool ${toolName} not found, not adding to manifest.`
-              );
-            }
-          }
-        }
-      }
-    }
-    currentManifest.generatedSymlinks = symlinkManifestEntries;
+    const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
+      toolConfigs,
+      symlinkOptions
+    );
+    currentManifest.symlinks = symlinkResults;
     log(
-      `generateAll: Symlink generation complete. ${currentManifest.generatedSymlinks.length} symlinks recorded/intended.`
+      `generateAll: Symlink generation complete. ${currentManifest.symlinks?.length ?? 0} symlink operations recorded.`
     );
 
     // Update timestamp
-    currentManifest.lastGenerationTimestamp = new Date().toISOString();
+    currentManifest.lastGenerated = new Date().toISOString(); // Use new field name
 
     if (dryRun) {
       log(

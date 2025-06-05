@@ -16,6 +16,7 @@
  *     - [x] Use `IFileSystem.chmod()` to make shim executable.
  *     - [x] Handle `dryRun` option.
  *     - [x] Handle `overwrite` option.
+ *   - [x] Update `generate` and `generateForTool` to return `Promise<string[]>`.
  * - [ ] Write tests for the module.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
@@ -44,26 +45,28 @@ export class ShimGenerator implements IShimGenerator {
   async generate(
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShimsOptions
-  ): Promise<void> {
+  ): Promise<string[]> {
     log('generate: toolConfigs=%o, options=%o', toolConfigs, options);
+    const generatedShimPaths: string[] = [];
     for (const toolName in toolConfigs) {
       if (Object.prototype.hasOwnProperty.call(toolConfigs, toolName)) {
         const toolConfig = toolConfigs[toolName];
         if (toolConfig) {
-          // Add this check
-          await this.generateForTool(toolName, toolConfig, options);
+          const shimPaths = await this.generateForTool(toolName, toolConfig, options);
+          generatedShimPaths.push(...shimPaths);
         } else {
           log('generate: toolConfig for %s is undefined. Skipping.', toolName);
         }
       }
     }
+    return generatedShimPaths;
   }
 
   async generateForTool(
     toolName: string,
     toolConfig: ToolConfig,
     options?: GenerateShimsOptions
-  ): Promise<void> {
+  ): Promise<string[]> {
     log('generateForTool: toolName=%s, toolConfig=%o, options=%o', toolName, toolConfig, options);
 
     const dryRun = options?.dryRun ?? false;
@@ -76,7 +79,7 @@ export class ShimGenerator implements IShimGenerator {
         toolName
       );
       // Potentially throw an error or return a status
-      return;
+      return [];
     }
 
     const shimFilePath = path.join(shimDir, toolName);
@@ -87,7 +90,7 @@ export class ShimGenerator implements IShimGenerator {
         'generateForTool: Shim already exists at %s and overwrite is false. Skipping.',
         shimFilePath
       );
-      return;
+      return [];
     }
 
     // Ensure toolConfig.binaries is defined and is an array
@@ -133,6 +136,8 @@ fi
     if (dryRun) {
       log('generateForTool: [DRY RUN] Would write shim content to %s', shimFilePath);
       log('generateForTool: [DRY RUN] Would make shim executable: chmod +x %s', shimFilePath);
+      // Even in dry run, if we would have created it, return its path
+      return [shimFilePath];
     } else {
       log('generateForTool: Writing shim file to %s', shimFilePath);
       await this.fs.ensureDir(path.dirname(shimFilePath));
@@ -140,6 +145,7 @@ fi
       log('generateForTool: Making shim executable: chmod +x %s', shimFilePath);
       await this.fs.chmod(shimFilePath, 0o755); // rwxr-xr-x
       log('generateForTool: Shim for %s generated successfully at %s.', toolName, shimFilePath);
+      return [shimFilePath];
     }
   }
 }

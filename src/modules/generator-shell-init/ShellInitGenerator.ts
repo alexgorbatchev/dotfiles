@@ -8,6 +8,7 @@
  * - [x] Implement `ShellInitGenerator` class adhering to `IShellInitGenerator`.
  * - [x] Constructor should accept `IFileSystem` and `AppConfig`.
  * - [x] Implement the `generate` method:
+ *   - [x] Update `generate` method to return `Promise<string | null>`.
  *   - [x] Determine the output path for the Zsh init file.
  *   - [x] Iterate through `toolConfigs` to gather information:
  *     - [x] Paths to add to `PATH`.
@@ -46,7 +47,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   async generate(
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
-  ): Promise<void> {
+  ): Promise<string | null> {
     log('generate: toolConfigs=%o, options=%o', toolConfigs, options);
     const dryRun = options?.dryRun ?? false;
     const outputPath = options?.outputPath ?? path.join(this.appConfig.zshInitDir, 'init.zsh');
@@ -141,11 +142,23 @@ export class ShellInitGenerator implements IShellInitGenerator {
       log('generate (dryRun): Would write to %s with content:\n%s', outputPath, content);
       console.log(`[DRY RUN] ShellInitGenerator: Would write Zsh init file to: ${outputPath}`);
       console.log('[DRY RUN] Content:\n' + content);
+      return outputPath; // In dry run, return the path that would have been used
     } else {
-      log('generate: Writing to %s', outputPath);
-      await this.fs.ensureDir(path.dirname(outputPath));
-      await this.fs.writeFile(outputPath, content);
-      log('generate: Successfully wrote Zsh init file to %s', outputPath);
+      try {
+        log('generate: Writing to %s', outputPath);
+        await this.fs.ensureDir(path.dirname(outputPath));
+        await this.fs.writeFile(outputPath, content);
+        log('generate: Successfully wrote Zsh init file to %s', outputPath);
+        return outputPath;
+      } catch (error: any) {
+        log(
+          // Changed log.error to log
+          'generate: ERROR: Failed to write Zsh init file to %s. Error: %s',
+          outputPath,
+          error.message
+        );
+        return null; // Return null if an error occurs during file writing
+      }
     }
   }
 

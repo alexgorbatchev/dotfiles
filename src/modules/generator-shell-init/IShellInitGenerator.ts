@@ -7,6 +7,7 @@
  * ### Tasks:
  * - [x] Define `GenerateShellInitOptions` interface.
  * - [x] Define `IShellInitGenerator` interface with the `generate` method.
+ *   - [x] Update `generate` method return type to `Promise<string | null>`.
  * - [x] Add JSDoc comments for all interfaces and methods.
  * - [x] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests)
  * - [x] Cleanup all linting errors and warnings.
@@ -43,13 +44,13 @@ export interface IShellInitGenerator {
    *
    * @param toolConfigs - A record of tool configurations, where keys are tool names.
    * @param options - Optional parameters for generation, like dry-run.
-   * @returns A promise that resolves when the generation is complete.
-   * @throws Error if generation fails (e.g., due to file system issues, unless in dryRun mode).
+   * @returns A promise that resolves with the path to the generated shell init file, or `null` if not generated (e.g., `dryRun` or error).
+   * @throws Error if generation fails (e.g., due to file system issues, unless in dryRun mode and an unrecoverable error occurs).
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
-  ): Promise<void>;
+  ): Promise<string | null>;
 }
 
 /**

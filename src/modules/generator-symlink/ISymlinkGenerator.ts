@@ -7,6 +7,8 @@
  * ### Tasks
  * - [x] Define `GenerateSymlinksOptions` interface.
  * - [x] Define `ISymlinkGenerator` interface.
+ *   - [x] Define `SymlinkOperationResult` type.
+ *   - [x] Update `generate` method return type to `Promise<SymlinkOperationResult[]>`.
  * - [x] Implement `SymlinkGenerator` class (in `SymlinkGenerator.ts`).
  * - [x] Write tests for `SymlinkGenerator` (in `__tests__/SymlinkGenerator.test.ts`).
  * - [x] Create `index.ts` to export the interface and class.
@@ -43,6 +45,22 @@ export interface GenerateSymlinksOptions {
 }
 
 /**
+ * Represents the result of a single symlink operation.
+ */
+export type SymlinkOperationResult = {
+  sourcePath: string;
+  targetPath: string;
+  status:
+    | 'created'
+    | 'updated_target'
+    | 'backed_up'
+    | 'skipped_exists'
+    | 'skipped_source_missing'
+    | 'failed';
+  error?: string;
+};
+
+/**
  * Interface for a service that generates symbolic links for dotfiles.
  */
 export interface ISymlinkGenerator {
@@ -50,10 +68,10 @@ export interface ISymlinkGenerator {
    * Generates symbolic links based on the provided tool configurations.
    * @param toolConfigs A record of tool configurations, where keys are tool names.
    * @param options Options for generating symlinks.
-   * @returns A promise that resolves when symlink generation is complete.
+   * @returns A promise that resolves with an array of results for each attempted symlink.
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateSymlinksOptions
-  ): Promise<void>;
+  ): Promise<SymlinkOperationResult[]>;
 }

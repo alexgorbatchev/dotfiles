@@ -13,7 +13,8 @@
  *   - [x] **`generateForTool` Method:**
  *     - [x] Test basic shim content generation.
  *     - [x] Test file writing and `chmod` calls.
- *     - [x] Test `dryRun` option (logs actions, no file ops).
+ *     - [x] Test `dryRun` option (logs actions, no file ops, returns path).
+ *     - [x] Test return value (array of shim paths).
  *     - [x] Test `overwrite: false` when shim exists (skips).
  *     - [x] Test `overwrite: true` when shim exists (overwrites).
  *     - [x] Test behavior when `shimDir` is not configured in `AppConfig`.
@@ -23,6 +24,7 @@
  *   - [x] **`generate` Method:**
  *     - [x] Test that `generateForTool` is called for each tool in `toolConfigs`.
  *     - [x] Test with empty `toolConfigs`.
+ *     - [x] Test return value (array of all generated shim paths).
  * - [ ] Ensure all tests pass.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Achieve 100% test coverage for `ShimGenerator.ts`.
@@ -115,9 +117,10 @@ describe('ShimGenerator', () => {
     const expectedShimPath = path.join(MOCK_TARGET_DIR, toolName); // Use MOCK_TARGET_DIR
     const expectedBinaryPath = path.join(MOCK_BIN_DIR, 'my-tool-binary');
 
-    it('should generate correct shim content and write file', async () => {
-      await shimGenerator.generateForTool(toolName, toolConfig);
+    it('should generate correct shim content, write file, and return shim path', async () => {
+      const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
+      expect(result).toEqual([expectedShimPath]);
       expect(mockEnsureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR); // Use MOCK_TARGET_DIR
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       expect(mockWriteFile.mock.calls[0]).toBeDefined(); // Ensure the call exists
@@ -131,11 +134,12 @@ describe('ShimGenerator', () => {
       expect(mockChmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
-    it('should use toolName as binary name if toolConfig.binaries is empty', async () => {
+    it('should use toolName as binary name if toolConfig.binaries is empty and return path', async () => {
       const configNoBinaries: ToolConfig = { name: toolName, version: '1.0.0', binaries: [] };
       const expectedBinaryPathFallback = path.join(MOCK_BIN_DIR, toolName);
-      await shimGenerator.generateForTool(toolName, configNoBinaries);
+      const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
 
+      expect(result).toEqual([expectedShimPath]);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       expect(mockWriteFile.mock.calls[0]).toBeDefined();
       const writtenContent = mockWriteFile.mock.calls[0]![1];
@@ -149,48 +153,53 @@ describe('ShimGenerator', () => {
         binaries: undefined as any,
       };
       const expectedBinaryPathFallback = path.join(MOCK_BIN_DIR, toolName);
-      await shimGenerator.generateForTool(toolName, configUndefinedBinaries);
+      const result = await shimGenerator.generateForTool(toolName, configUndefinedBinaries);
 
+      expect(result).toEqual([expectedShimPath]);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       expect(mockWriteFile.mock.calls[0]).toBeDefined();
       const writtenContent = mockWriteFile.mock.calls[0]![1];
       expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
     });
 
-    it('should perform a dry run if options.dryRun is true', async () => {
-      await shimGenerator.generateForTool(toolName, toolConfig, { dryRun: true });
+    it('should perform a dry run if options.dryRun is true and return path', async () => {
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, { dryRun: true });
 
-      expect(mockWriteFile).not.toHaveBeenCalled();
-      expect(mockChmod).not.toHaveBeenCalled();
-      // In dryRun mode, no file system operations should occur.
-      // Logging behavior is not asserted as per project rules.
-    });
-
-    it('should skip if shim exists and overwrite is false', async () => {
-      mockExists.mockResolvedValue(true);
-      await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: false });
-
+      expect(result).toEqual([expectedShimPath]);
       expect(mockWriteFile).not.toHaveBeenCalled();
       expect(mockChmod).not.toHaveBeenCalled();
     });
 
-    it('should overwrite if shim exists and overwrite is true', async () => {
+    it('should skip if shim exists and overwrite is false, returning empty array', async () => {
       mockExists.mockResolvedValue(true);
-      await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: true });
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, {
+        overwrite: false,
+      });
 
+      expect(result).toEqual([]);
+      expect(mockWriteFile).not.toHaveBeenCalled();
+      expect(mockChmod).not.toHaveBeenCalled();
+    });
+
+    it('should overwrite if shim exists and overwrite is true, returning path', async () => {
+      mockExists.mockResolvedValue(true);
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: true });
+
+      expect(result).toEqual([expectedShimPath]);
       expect(mockWriteFile).toHaveBeenCalledTimes(1);
       expect(mockChmod).toHaveBeenCalledTimes(1);
     });
 
-    it('should skip if targetDir is not configured', async () => {
+    it('should skip if targetDir is not configured, returning empty array', async () => {
       // Create a new AppConfig for this test case where targetDir is undefined
       const configNoTargetDir: AppConfig = {
         ...mockAppConfig, // Spread existing valid properties
         targetDir: undefined as any, // Set targetDir to undefined
       };
       const generator = new ShimGenerator(mockFileSystem, configNoTargetDir);
-      await generator.generateForTool(toolName, toolConfig);
+      const result = await generator.generateForTool(toolName, toolConfig);
 
+      expect(result).toEqual([]);
       expect(mockWriteFile).not.toHaveBeenCalled();
       expect(mockChmod).not.toHaveBeenCalled();
     });
@@ -201,16 +210,22 @@ describe('ShimGenerator', () => {
   });
 
   describe('generate', () => {
-    it('should call generateForTool for each tool config', async () => {
+    it('should call generateForTool for each tool config and return all paths', async () => {
       const configs: Record<string, ToolConfig> = {
         'tool-a': { name: 'tool-a', binaries: ['tool-a-bin'], version: '1.0' },
         'tool-b': { name: 'tool-b', binaries: ['tool-b-bin'], version: '2.0' },
       };
-      // Spy on generateForTool
-      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool'); // Corrected spyOn
+      const expectedPathA = path.join(MOCK_TARGET_DIR, 'tool-a');
+      const expectedPathB = path.join(MOCK_TARGET_DIR, 'tool-b');
 
-      await shimGenerator.generate(configs);
+      // Mock generateForTool to return specific paths
+      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool')
+        .mockResolvedValueOnce([expectedPathA])
+        .mockResolvedValueOnce([expectedPathB]);
 
+      const result = await shimGenerator.generate(configs);
+
+      expect(result).toEqual([expectedPathA, expectedPathB]);
       expect(generateForToolSpy).toHaveBeenCalledTimes(2);
       expect(generateForToolSpy).toHaveBeenCalledWith('tool-a', configs['tool-a'], undefined);
       expect(generateForToolSpy).toHaveBeenCalledWith('tool-b', configs['tool-b'], undefined);
@@ -218,22 +233,27 @@ describe('ShimGenerator', () => {
       generateForToolSpy.mockRestore();
     });
 
-    it('should handle empty toolConfigs object', async () => {
-      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool'); // Corrected spyOn
-      await shimGenerator.generate({});
+    it('should handle empty toolConfigs object and return empty array', async () => {
+      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool');
+      const result = await shimGenerator.generate({});
+      expect(result).toEqual([]);
       expect(generateForToolSpy).not.toHaveBeenCalled();
       generateForToolSpy.mockRestore();
     });
 
-    it('should pass options to generateForTool', async () => {
+    it('should pass options to generateForTool and return paths', async () => {
       const configs: Record<string, ToolConfig> = {
         'tool-a': { name: 'tool-a', binaries: ['tool-a-bin'], version: '1.0' },
       };
       const options = { dryRun: true, overwrite: true };
-      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool'); // Corrected spyOn
+      const expectedPathA = path.join(MOCK_TARGET_DIR, 'tool-a');
+      const generateForToolSpy = spyOn(shimGenerator, 'generateForTool').mockResolvedValueOnce([
+        expectedPathA,
+      ]);
 
-      await shimGenerator.generate(configs, options);
+      const result = await shimGenerator.generate(configs, options);
 
+      expect(result).toEqual([expectedPathA]);
       expect(generateForToolSpy).toHaveBeenCalledWith('tool-a', configs['tool-a'], options);
       generateForToolSpy.mockRestore();
     });

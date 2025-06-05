@@ -10,6 +10,8 @@
  * - [x] Implement `SymlinkGenerator` class.
  *   - [x] Constructor accepts `IFileSystem` and `AppConfig`.
  *   - [x] Implement `generate` method:
+ *     - [x] Update return type to `Promise<SymlinkOperationResult[]>`.
+ *     - [x] Collect and return `SymlinkOperationResult` for each operation.
  *     - [x] Get home directory and project root from `AppConfig`.
  *     - [x] Iterate through `toolConfigs` and their `symlinks`.
  *     - [x] Resolve absolute source and target paths.
@@ -31,7 +33,11 @@ import path from 'node:path';
 import type { AppConfig, ToolConfig } from '../../types';
 import type { IFileSystem } from '../file-system';
 import { createLogger } from '../logger';
-import type { GenerateSymlinksOptions, ISymlinkGenerator } from './ISymlinkGenerator';
+import type {
+  GenerateSymlinksOptions,
+  ISymlinkGenerator,
+  SymlinkOperationResult,
+} from './ISymlinkGenerator';
 
 const log = createLogger('SymlinkGenerator');
 
@@ -48,13 +54,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
   async generate(
     toolConfigs: Record<string, ToolConfig>,
     options: GenerateSymlinksOptions = {}
-  ): Promise<void> {
+  ): Promise<SymlinkOperationResult[]> {
     log('generate: Starting symlink generation. Options: %o', options);
+    const results: SymlinkOperationResult[] = [];
     const { dryRun = false, overwrite = false, backup = false } = options;
     const homeDir = this.appConfig.dotfilesDir.startsWith('/Users/') // A bit of a hack to get home for testing
       ? this.appConfig.dotfilesDir.split('/').slice(0, 3).join('/')
-      : this.appConfig.dotfilesDir; // Fallback, assuming dotfilesDir is effectively home or similar context in non-macOS test/CI.
-    // Real AppConfig should provide a reliable homeDir.
+      : this.appConfig.dotfilesDir;
     const projectRoot = this.appConfig.dotfilesDir;
 
     log('generate: Home directory determined as: %s', homeDir);
@@ -78,10 +84,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
         const sourceAbsPath = path.resolve(projectRoot, sourceRelPath);
         let targetAbsPath = targetRelPath.startsWith('~')
-          ? path.join(homeDir, targetRelPath.substring(1)) // Handles ~/foo
-          : path.join(homeDir, targetRelPath); // Handles .foo
+          ? path.join(homeDir, targetRelPath.substring(1))
+          : path.join(homeDir, targetRelPath);
 
-        // Ensure target path is absolute if it wasn't tilde-prefixed
         if (!path.isAbsolute(targetAbsPath)) {
           targetAbsPath = path.resolve(homeDir, targetRelPath);
         }
@@ -94,12 +99,21 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           targetAbsPath
         );
 
+        let currentStatus: SymlinkOperationResult['status'] = 'created'; // Optimistic default
+        let currentError: string | undefined;
+
         if (!(await this.fs.exists(sourceAbsPath))) {
+          currentStatus = 'skipped_source_missing';
           log(
             'generate: WARN: Source file "%s" for tool "%s" does not exist. Skipping symlink.',
             sourceAbsPath,
             toolName
           );
+          results.push({
+            sourcePath: sourceAbsPath,
+            targetPath: targetAbsPath,
+            status: currentStatus,
+          });
           continue;
         }
 
@@ -110,72 +124,141 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
         if (targetExists) {
           log('generate: Target path "%s" already exists.', targetAbsPath);
-          if (overwrite) {
-            if (backup) {
-              const backupPath = `${targetAbsPath}.bak`;
-              log(
-                'generate: Backup option enabled. Renaming "%s" to "%s".',
-                targetAbsPath,
-                backupPath
-              );
-              if (!dryRun) {
+          if (!overwrite) {
+            currentStatus = 'skipped_exists';
+            log(
+              'generate: Target "%s" exists and overwrite is false. Skipping symlink creation.',
+              targetAbsPath
+            );
+            results.push({
+              sourcePath: sourceAbsPath,
+              targetPath: targetAbsPath,
+              status: currentStatus,
+            });
+            continue;
+          }
+
+          // Overwrite is true
+          currentStatus = 'updated_target'; // Tentative status
+          if (backup) {
+            const backupPath = `${targetAbsPath}.bak`;
+            log(
+              'generate: Backup option enabled. Attempting to rename "%s" to "%s".',
+              targetAbsPath,
+              backupPath
+            );
+            if (!dryRun) {
+              try {
                 if (await this.fs.exists(backupPath)) {
                   log(
-                    'generate: WARN: Backup path "%s" already exists. Deleting it before creating new backup.',
+                    'generate: WARN: Backup path "%s" already exists. Deleting it before new backup.',
                     backupPath
                   );
                   await this.fs.rm(backupPath, { recursive: true, force: true });
                 }
                 await this.fs.rename(targetAbsPath, backupPath);
-              } else {
-                log('generate: [DRY RUN] Would rename "%s" to "%s".', targetAbsPath, backupPath);
-              }
-            }
-            log('generate: Overwrite option enabled. Deleting "%s".', targetAbsPath);
-            if (!dryRun) {
-              // Use rm for directories, unlink for files/symlinks
-              if (targetIsDir) {
-                await this.fs.rm(targetAbsPath, { recursive: true, force: true });
-              } else {
-                await this.fs.rm(targetAbsPath, { force: true }); // Use rm for files/symlinks
+                currentStatus = 'backed_up';
+                log('generate: Successfully backed up "%s" to "%s".', targetAbsPath, backupPath);
+              } catch (e: any) {
+                currentStatus = 'failed';
+                currentError = `Backup failed for "${targetAbsPath}": ${e.message}`;
+                log('generate: ERROR: %s', currentError);
               }
             } else {
-              log('generate: [DRY RUN] Would delete "%s".', targetAbsPath);
+              log(
+                'generate: [DRY RUN] Would rename "%s" to "%s" for backup.',
+                targetAbsPath,
+                backupPath
+              );
+              currentStatus = 'backed_up'; // Assume dry run backup succeeds
             }
-          } else {
-            log(
-              'generate: Target "%s" exists and overwrite is false. Skipping symlink creation.',
-              targetAbsPath
-            );
-            continue;
           }
+
+          if (currentStatus !== 'failed') {
+            log('generate: Overwrite enabled. Attempting to delete "%s".', targetAbsPath);
+            if (!dryRun) {
+              try {
+                if (targetIsDir) {
+                  await this.fs.rm(targetAbsPath, { recursive: true, force: true });
+                } else {
+                  await this.fs.rm(targetAbsPath, { force: true });
+                }
+                log('generate: Successfully deleted "%s" for overwrite.', targetAbsPath);
+                // Status remains 'updated_target' or 'backed_up'
+              } catch (e: any) {
+                currentStatus = 'failed';
+                currentError = `Delete for overwrite failed for "${targetAbsPath}": ${e.message}`;
+                log('generate: ERROR: %s', currentError);
+              }
+            } else {
+              log('generate: [DRY RUN] Would delete "%s" for overwrite.', targetAbsPath);
+              // Status remains 'updated_target' or 'backed_up'
+            }
+          }
+        } // End if (targetExists && overwrite)
+
+        if (currentStatus === 'failed') {
+          results.push({
+            sourcePath: sourceAbsPath,
+            targetPath: targetAbsPath,
+            status: currentStatus,
+            error: currentError,
+          });
+          continue;
         }
 
         const targetDir = path.dirname(targetAbsPath);
         log('generate: Ensuring target directory "%s" exists.', targetDir);
         if (!dryRun) {
-          await this.fs.ensureDir(targetDir);
+          try {
+            await this.fs.ensureDir(targetDir);
+          } catch (e: any) {
+            currentStatus = 'failed';
+            currentError = `Ensure dir failed for "${targetDir}": ${e.message}`;
+            log('generate: ERROR: %s', currentError);
+          }
         } else {
           log('generate: [DRY RUN] Would ensure directory "%s" exists.', targetDir);
         }
 
-        log('generate: Creating symlink from "%s" to "%s".', sourceAbsPath, targetAbsPath);
-        if (!dryRun) {
-          await this.fs.symlink(sourceAbsPath, targetAbsPath);
+        if (currentStatus !== 'failed') {
           log(
-            'generate: Successfully created symlink from "%s" to "%s".',
+            'generate: Attempting to create symlink from "%s" to "%s".',
             sourceAbsPath,
             targetAbsPath
           );
-        } else {
-          log(
-            'generate: [DRY RUN] Would create symlink from "%s" to "%s".',
-            sourceAbsPath,
-            targetAbsPath
-          );
+          if (!dryRun) {
+            try {
+              await this.fs.symlink(sourceAbsPath, targetAbsPath);
+              log(
+                'generate: Successfully created symlink from "%s" to "%s".',
+                sourceAbsPath,
+                targetAbsPath
+              );
+              // currentStatus is already 'created', 'updated_target', or 'backed_up'
+            } catch (e: any) {
+              currentStatus = 'failed';
+              currentError = `Symlink creation failed for "${targetAbsPath}" from "${sourceAbsPath}": ${e.message}`;
+              log('generate: ERROR: %s', currentError);
+            }
+          } else {
+            log(
+              'generate: [DRY RUN] Would create symlink from "%s" to "%s".',
+              sourceAbsPath,
+              targetAbsPath
+            );
+            // currentStatus is already 'created', 'updated_target', or 'backed_up'
+          }
         }
-      }
-    }
-    log('generate: Symlink generation process completed.');
+        results.push({
+          sourcePath: sourceAbsPath,
+          targetPath: targetAbsPath,
+          status: currentStatus,
+          error: currentError,
+        });
+      } // End for symlinkConfig
+    } // End for toolName
+    log('generate: Symlink generation process completed. Results: %o', results);
+    return results;
   }
 }

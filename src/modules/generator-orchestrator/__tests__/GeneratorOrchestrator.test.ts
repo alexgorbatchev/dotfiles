@@ -21,12 +21,12 @@
  *       - [x] Scenario: Existing valid manifest.
  *       - [x] Scenario: Existing invalid/corrupted manifest.
  *     - [x] Test manifest updating:
- *       - [x] Ensure `lastGenerationTimestamp` is updated.
+ *       - [x] Ensure `lastGenerated` is updated (formerly `lastGenerationTimestamp`).
  *       - [x] Ensure `generatorVersion` is added if provided.
- *       - [x] Ensure artifact paths/details are correctly collected and stored (shims, shell init, symlinks).
- *         - [x] Shims: Infer paths based on `appConfig.targetDir` and tool names.
- *         - [x] Shell Init: Use default path from `appConfig.zshInitDir`.
- *         - [x] Symlinks: Infer paths based on `toolConfigs` and `appConfig.dotfilesDir`/`appConfig.targetDir`.
+ *       - [x] Ensure artifact paths/details are correctly collected and stored using new return types:
+ *         - [x] Shims: Use `string[]` from `shimGenerator.generate()`.
+ *         - [x] Shell Init: Use `string | null` from `shellInitGenerator.generate()` for `shellInit.path`.
+ *         - [x] Symlinks: Use `SymlinkOperationResult[]` from `symlinkGenerator.generate()`.
  *     - [x] Test manifest writing:
  *       - [x] Ensure `ensureDir` and `writeFile` are called with correct path and content.
  *       - [x] Ensure manifest is pretty-printed (JSON.stringify with indent).
@@ -49,9 +49,8 @@ import type { IFileSystem } from '../../file-system';
 import { MemFileSystem } from '../../file-system/MemFileSystem';
 import type { IShimGenerator } from '../../generator-shim';
 import type { IShellInitGenerator } from '../../generator-shell-init';
-import type { ISymlinkGenerator } from '../../generator-symlink';
+import type { ISymlinkGenerator, SymlinkOperationResult } from '../../generator-symlink';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
-// import type { GenerateAllOptions } from '../IGeneratorOrchestrator'; // Unused import
 
 describe('GeneratorOrchestrator', () => {
   let mockShimGenerator: IShimGenerator;
@@ -76,11 +75,15 @@ describe('GeneratorOrchestrator', () => {
   const MOCK_HOME_DIR = '/test/home'; // For symlink targets, shell init path resolution
 
   beforeEach(async () => {
-    mockShimGenerate = mock(async () => Promise.resolve()); // Returns void
-    mockShellInitGenerate = mock(async () => Promise.resolve()); // Returns void
-    mockSymlinkGenerate = mock(async () => Promise.resolve()); // Returns void
+    // Update mock generators to return new types
+    mockShimGenerate = mock(async () => Promise.resolve([] as string[])); // Returns Promise<string[]>
+    mockShellInitGenerate = mock(async () => Promise.resolve(null as string | null)); // Returns Promise<string | null>
+    mockSymlinkGenerate = mock(async () => Promise.resolve([] as SymlinkOperationResult[])); // Returns Promise<SymlinkOperationResult[]>
 
-    mockShimGenerator = { generate: mockShimGenerate, generateForTool: mock(async () => {}) };
+    mockShimGenerator = {
+      generate: mockShimGenerate,
+      generateForTool: mock(async () => Promise.resolve([])),
+    };
     mockShellInitGenerator = { generate: mockShellInitGenerate };
     mockSymlinkGenerator = { generate: mockSymlinkGenerate };
 
@@ -179,10 +182,10 @@ describe('GeneratorOrchestrator', () => {
 
     it('should read an existing valid manifest', async () => {
       const existingManifest: GeneratedArtifactsManifest = {
-        lastGenerationTimestamp: new Date(Date.now() - 100000).toISOString(),
-        generatedShims: ['/prev/shim'],
-        generatedShellInitFile: '/prev/init.zsh',
-        generatedSymlinks: [{ sourcePath: 'old.conf', linkPath: '/prev/old.conf' }],
+        lastGenerated: new Date(Date.now() - 100000).toISOString(),
+        shims: ['/prev/shim'],
+        shellInit: { path: '/prev/init.zsh' },
+        symlinks: [{ sourcePath: 'old.conf', targetPath: '/prev/old.conf', status: 'created' }],
         generatorVersion: '0.1.0',
       };
       mockFsExists.mockResolvedValue(true);
@@ -191,8 +194,7 @@ describe('GeneratorOrchestrator', () => {
       const result = await orchestrator.generateAll(toolConfigs, { generatorVersion: '0.2.0' });
 
       expect(mockFsReadFile).toHaveBeenCalledWith(getExpectedManifestPath());
-      expect(result.generatorVersion).toBe('0.2.0'); // Version updated
-      // Other fields will be overwritten by new generation
+      expect(result.generatorVersion).toBe('0.2.0');
     });
 
     it('should handle no existing manifest', async () => {
@@ -201,7 +203,7 @@ describe('GeneratorOrchestrator', () => {
 
       expect(mockFsReadFile).not.toHaveBeenCalled();
       expect(result.generatorVersion).toBe('0.1.0');
-      expect(result.lastGenerationTimestamp).toBeDefined();
+      expect(result.lastGenerated).toBeDefined();
     });
 
     it('should handle corrupted/invalid manifest by creating a new one', async () => {
@@ -212,105 +214,73 @@ describe('GeneratorOrchestrator', () => {
 
       expect(mockFsReadFile).toHaveBeenCalledWith(getExpectedManifestPath());
       expect(result.generatorVersion).toBe('0.1.0');
-      expect(result.lastGenerationTimestamp).toBeDefined();
-      expect(result.generatedShims.length).toBeGreaterThan(0); // Should have new shims
+      expect(result.lastGenerated).toBeDefined();
+      expect(result.shims?.length).toBeGreaterThanOrEqual(0); // Now uses direct results
     });
 
-    it('should update manifest with generated artifact details', async () => {
+    it('should update manifest with generated artifact details from generator results', async () => {
       mockFsExists.mockResolvedValue(false); // No existing manifest
-      // Ensure source file for symlink exists for non-dryRun inference
-      const symlinkSourceDir = mockAppConfig.dotfilesDir;
-      const symlinkSourceFileName = 'a.conf';
-      const symlinkSourcePath = path.join(symlinkSourceDir, symlinkSourceFileName);
 
-      // Ensure parent directory and write the mock symlink source file
-      await mockFileSystem.ensureDir(symlinkSourceDir);
-      await mockFileSystem.writeFile(symlinkSourcePath, 'content for a.conf');
+      const mockShimPaths = [
+        path.join(MOCK_TARGET_DIR, 'toolA'),
+        path.join(MOCK_TARGET_DIR, 'toolB'),
+      ];
+      const mockShellInitPath = path.join(mockAppConfig.zshInitDir, 'init.zsh');
+      const mockSymlinkResults: SymlinkOperationResult[] = [
+        {
+          sourcePath: path.join(mockAppConfig.dotfilesDir, 'a.conf'),
+          targetPath: path.join(MOCK_HOME_DIR, '.a.conf'), // Use MOCK_HOME_DIR for symlink target
+          status: 'created',
+        },
+      ];
 
-      // This assertion is known to fail due to MemFileSystem's writeFile/exists interaction.
-      // expect(await mockFileSystem.exists(symlinkSourcePath)).toBe(true);
-
-      // WORKAROUND: Mock fs.exists to return true for this specific path
-      // to test the orchestrator's downstream logic.
-      // Save the original implementation of the spy if we need to call it
-      const originalExistsImpl = mockFsExists.getMockImplementation();
-
-      mockFsExists.mockImplementation(async (p: string) => {
-        const resolvedP = path.resolve(p);
-        const resolvedSymlinkSourcePath = path.resolve(symlinkSourcePath);
-        const resolvedManifestPath = path.resolve(mockAppConfig.generatedArtifactsManifestPath);
-
-        if (resolvedP === resolvedSymlinkSourcePath) {
-          return true; // Ensure symlink source is found
-        }
-        if (resolvedP === resolvedManifestPath) {
-          return false; // Ensure manifest is not found initially for this test
-        }
-        // For any other path, call the original spy implementation or a default
-        return originalExistsImpl ? originalExistsImpl(p) : false;
-      });
+      mockShimGenerate.mockResolvedValue(mockShimPaths);
+      mockShellInitGenerate.mockResolvedValue(mockShellInitPath);
+      mockSymlinkGenerate.mockResolvedValue(mockSymlinkResults);
 
       const result = await orchestrator.generateAll(toolConfigs, { generatorVersion: '1.0.0' });
 
-      mockFsExists.mockRestore(); // Restore original spy behavior
-
-      expect(result.lastGenerationTimestamp).toBeDefined();
-      expect(new Date(result.lastGenerationTimestamp).valueOf()).toBeGreaterThan(0);
+      expect(result.lastGenerated).toBeDefined();
+      expect(new Date(result.lastGenerated).valueOf()).toBeGreaterThan(0);
       expect(result.generatorVersion).toBe('1.0.0');
 
-      // Shims (inferred paths)
-      expect(result.generatedShims).toEqual([
-        path.join(MOCK_TARGET_DIR, 'toolA'),
-        path.join(MOCK_TARGET_DIR, 'toolB'),
-      ]);
-
-      // Shell Init (default path)
-      expect(result.generatedShellInitFile).toBe(path.join(mockAppConfig.zshInitDir, 'init.zsh'));
-
-      // Symlinks (inferred paths) - ~ resolves to appConfig.targetDir
-      expect(result.generatedSymlinks).toEqual([
-        { sourcePath: 'a.conf', linkPath: path.join(MOCK_TARGET_DIR, '.a.conf') },
-      ]);
+      expect(result.shims).toEqual(mockShimPaths);
+      expect(result.shellInit?.path).toBe(mockShellInitPath);
+      expect(result.symlinks).toEqual(mockSymlinkResults);
     });
 
     it('should write the updated manifest to the file system', async () => {
-      // This test also relies on fs.exists for symlink source, and for manifest read.
-      const symlinkSourcePathForWriteTest = path.join(mockAppConfig.dotfilesDir, 'a.conf');
-      // We need to ensure the mock symlink source file is "created" by the test setup.
-      // The previous test showed MemFS writeFile/exists is problematic.
-      // So, we'll mock fs.exists here too for this specific test.
+      mockFsExists.mockResolvedValue(false); // No existing manifest
 
-      const originalExistsImplWriteTest = mockFsExists.getMockImplementation();
-      mockFsExists.mockImplementation(async (p: string) => {
-        const resolvedP = path.resolve(p);
-        const resolvedSymlinkSource = path.resolve(symlinkSourcePathForWriteTest);
-        const resolvedManifest = path.resolve(mockAppConfig.generatedArtifactsManifestPath);
+      const mockShimPaths = [path.join(MOCK_TARGET_DIR, 'toolA-write')];
+      const mockShellInitPathWrite = path.join(mockAppConfig.zshInitDir, 'init-write.zsh');
+      const mockSymlinkResultsWrite: SymlinkOperationResult[] = [
+        {
+          sourcePath: path.join(mockAppConfig.dotfilesDir, 'b.conf'),
+          targetPath: path.join(MOCK_HOME_DIR, '.b.conf'),
+          status: 'updated_target',
+        },
+      ];
 
-        if (resolvedP === resolvedSymlinkSource) return true;
-        if (resolvedP === resolvedManifest) return false; // Manifest doesn't exist initially
-        return originalExistsImplWriteTest ? originalExistsImplWriteTest(p) : false;
+      mockShimGenerate.mockResolvedValue(mockShimPaths);
+      mockShellInitGenerate.mockResolvedValue(mockShellInitPathWrite);
+      mockSymlinkGenerate.mockResolvedValue(mockSymlinkResultsWrite);
+
+      await orchestrator.generateAll({
+        toolX: { name: 'toolX', binaries: ['tx'], version: '1' },
       });
-
-      await orchestrator.generateAll(toolConfigs);
-
-      mockFsExists.mockRestore();
 
       expect(mockFsEnsureDir).toHaveBeenCalledWith(path.dirname(getExpectedManifestPath()));
       expect(mockFsWriteFile).toHaveBeenCalledWith(
         getExpectedManifestPath(),
-        expect.stringContaining('"lastGenerationTimestamp":')
+        expect.stringContaining('"lastGenerated":') // Check for new field name
       );
-      // Verify content by reading back from MemFileSystem
+
       const writtenContent = await mockFileSystem.readFile(getExpectedManifestPath());
-      const parsedManifest = JSON.parse(writtenContent);
-      expect(parsedManifest.generatedShims.length).toBe(2);
-      // If a.conf source exists (created at L224), one symlink should be recorded
-      expect(parsedManifest.generatedSymlinks.length).toBe(1);
-      if (parsedManifest.generatedSymlinks.length > 0) {
-        expect(parsedManifest.generatedSymlinks[0].linkPath).toBe(
-          path.join(MOCK_TARGET_DIR, '.a.conf')
-        );
-      }
+      const parsedManifest = JSON.parse(writtenContent) as GeneratedArtifactsManifest;
+      expect(parsedManifest.shims).toEqual(mockShimPaths);
+      expect(parsedManifest.shellInit?.path).toEqual(mockShellInitPathWrite);
+      expect(parsedManifest.symlinks).toEqual(mockSymlinkResultsWrite);
     });
 
     describe('dryRun behavior', () => {
@@ -355,19 +325,11 @@ describe('GeneratorOrchestrator', () => {
           expect(loggedJsonString).toEqual(
             expect.stringContaining('"generatorVersion": "dry-run-v"')
           );
+          // Check for the structure based on default mock returns (empty arrays/null path)
+          expect(loggedJsonString).toEqual(expect.stringContaining('"shims": []'));
+          expect(loggedJsonString).toEqual(expect.stringContaining('"symlinks": []'));
           expect(loggedJsonString).toEqual(
-            expect.stringContaining(path.join(MOCK_TARGET_DIR, 'toolA'))
-          );
-          expect(loggedJsonString).toEqual(
-            expect.stringContaining(path.join(MOCK_TARGET_DIR, 'toolB'))
-          );
-          expect(loggedJsonString).toEqual(
-            expect.stringContaining(path.join(mockAppConfig.zshInitDir, 'init.zsh'))
-          );
-          // For this test, orchestrator uses mockAppConfig where targetDir is MOCK_TARGET_DIR
-          // So ~/.a.conf resolves to MOCK_TARGET_DIR/.a.conf
-          expect(loggedJsonString).toEqual(
-            expect.stringContaining(path.join(MOCK_TARGET_DIR, '.a.conf'))
+            expect.stringContaining('"shellInit": {\n    "path": null\n  }')
           );
         } else {
           // Fail test if loggedJsonString is not defined, to make it clear.
@@ -393,108 +355,58 @@ describe('GeneratorOrchestrator', () => {
         });
 
         expect(result.generatorVersion).toBe('sim-v');
-        expect(result.lastGenerationTimestamp).toBeDefined();
-        // Shims (inferred paths for dry run - shims go to the targetDir of localOrchestrator's appConfig)
-        expect(result.generatedShims).toEqual([
-          path.join(MOCK_HOME_DIR, 'toolA'), // localOrchestrator used testSpecificAppConfig with targetDir = MOCK_HOME_DIR
-          path.join(MOCK_HOME_DIR, 'toolB'),
-        ]);
-        // Shell Init (default path for dry run - uses zshInitDir from testSpecificAppConfig)
-        expect(result.generatedShellInitFile).toBe(
-          path.join(testSpecificAppConfig.zshInitDir, 'init.zsh')
-        );
-        // Symlinks (inferred paths for dry run - uses MOCK_HOME_DIR via testSpecificAppConfig.targetDir)
-        expect(result.generatedSymlinks).toEqual([
-          { sourcePath: 'a.conf', linkPath: path.join(MOCK_HOME_DIR, '.a.conf') },
-        ]);
+        expect(result.lastGenerated).toBeDefined(); // Use new field name
+
+        // Mocked generator results for dry run
+        const mockDryRunShimPaths = [
+          path.join(MOCK_TARGET_DIR, 'toolA-dry'),
+          path.join(MOCK_TARGET_DIR, 'toolB-dry'),
+        ];
+        const mockDryRunShellInitPath = path.join(mockAppConfig.zshInitDir, 'init-dry.zsh');
+        const mockDryRunSymlinkResults: SymlinkOperationResult[] = [
+          {
+            sourcePath: 'a.conf-dry',
+            targetPath: path.join(MOCK_HOME_DIR, '.a.conf-dry'),
+            status: 'created',
+          },
+        ];
+
+        mockShimGenerate.mockResolvedValue(mockDryRunShimPaths);
+        mockShellInitGenerate.mockResolvedValue(mockDryRunShellInitPath);
+        mockSymlinkGenerate.mockResolvedValue(mockDryRunSymlinkResults);
+
+        // Re-run with the orchestrator that has the correct appConfig for this test
+        const dryRunResult = await localOrchestrator.generateAll(toolConfigs, {
+          dryRun: true,
+          generatorVersion: 'sim-v',
+        });
+
+        expect(dryRunResult.shims).toEqual(mockDryRunShimPaths);
+        expect(dryRunResult.shellInit?.path).toBe(mockDryRunShellInitPath);
+        expect(dryRunResult.symlinks).toEqual(mockDryRunSymlinkResults);
       });
     });
 
     it('should handle empty toolConfigs gracefully', async () => {
       mockFsExists.mockResolvedValue(false);
+
+      const expectedShellPath = path.join(mockAppConfig.zshInitDir, 'init.zsh');
+      mockShimGenerate.mockResolvedValue([]);
+      mockShellInitGenerate.mockResolvedValue(expectedShellPath); // Shell init might still run
+      mockSymlinkGenerate.mockResolvedValue([]);
+
       const result = await orchestrator.generateAll({}, { generatorVersion: 'empty-test' });
 
-      expect(result.generatedShims).toEqual([]);
-      expect(result.generatedSymlinks).toEqual([]);
-      // shell init might still be generated with default PATH, depending on ShellInitGenerator's behavior
-      expect(result.generatedShellInitFile).toBe(path.join(mockAppConfig.zshInitDir, 'init.zsh'));
+      expect(result.shims).toEqual([]);
+      expect(result.symlinks).toEqual([]);
+      expect(result.shellInit?.path).toBe(expectedShellPath);
       expect(result.generatorVersion).toBe('empty-test');
 
       expect(mockFsWriteFile).toHaveBeenCalled(); // Manifest should still be written
     });
 
-    it('should correctly infer symlink paths even if targetDir is not home', async () => {
-      const customHome = '/custom/user/home';
-      const customDotfiles = path.join(customHome, '.my-dotfiles');
-      const appConfigWithCustomHome: AppConfig = {
-        ...mockAppConfig,
-        targetDir: customHome, // This is what SymlinkGenerator uses as 'home' for ~ and relative paths
-        dotfilesDir: customDotfiles,
-        generatedArtifactsManifestPath: path.join(
-          customDotfiles,
-          '.generated',
-          'generated-artifacts-manifest.json'
-        ),
-      };
-      const localOrchestrator = new GeneratorOrchestrator(
-        mockShimGenerator,
-        mockShellInitGenerator,
-        mockSymlinkGenerator,
-        mockFileSystem,
-        appConfigWithCustomHome
-      );
-
-      const specificToolConfigs: Record<string, ToolConfig> = {
-        myTool: {
-          name: 'myTool',
-          binaries: ['mt'],
-          version: '1.0',
-          symlinks: [
-            { source: 'config/mytool.conf', target: '~/.config/mytool/mytool.conf' },
-            { source: 'bin/myscript.sh', target: 'local/bin/myscript' }, // relative to targetDir
-          ],
-        },
-      };
-      // Ensure source files exist for non-dryRun inference
-      const source1Dir = path.join(customDotfiles, 'config');
-      const source1Path = path.join(source1Dir, 'mytool.conf');
-      await mockFileSystem.ensureDir(source1Dir);
-      await mockFileSystem.writeFile(source1Path, 'content for mytool.conf');
-      // This assertion is known to fail due to MemFileSystem's writeFile/exists interaction.
-      // expect(await mockFileSystem.exists(source1Path)).toBe(true);
-
-      const source2Dir = path.join(customDotfiles, 'bin');
-      const source2Path = path.join(source2Dir, 'myscript.sh');
-      await mockFileSystem.ensureDir(source2Dir);
-      await mockFileSystem.writeFile(source2Path, 'content for myscript.sh');
-      // This assertion is known to fail.
-      // expect(await mockFileSystem.exists(source2Path)).toBe(true);
-
-      // WORKAROUND: Mock fs.exists to return true for these specific paths
-      const originalExistsFnSymlinkTest = mockFileSystem.exists; // Save original function
-      const manifestPathForThisTest = appConfigWithCustomHome.generatedArtifactsManifestPath;
-
-      mockFsExists.mockImplementation(async (p: string) => {
-        if (p === source1Path || p === source2Path) {
-          return true; // Mock symlink sources as existing
-        }
-        if (p === manifestPathForThisTest) {
-          return false; // Mock manifest as not existing for initial read
-        }
-        return originalExistsFnSymlinkTest.call(mockFileSystem, p); // Delegate other calls
-      });
-
-      const result = await localOrchestrator.generateAll(specificToolConfigs);
-
-      mockFsExists.mockRestore(); // Restore original spy behavior
-
-      expect(result.generatedSymlinks).toEqual([
-        {
-          sourcePath: 'config/mytool.conf',
-          linkPath: path.join(customHome, '.config/mytool/mytool.conf'),
-        },
-        { sourcePath: 'bin/myscript.sh', linkPath: path.join(customHome, 'local/bin/myscript') },
-      ]);
-    });
+    // The test 'should correctly infer symlink paths even if targetDir is not home'
+    // is now covered by the direct use of SymlinkGenerator's results.
+    // The orchestrator no longer infers these paths itself.
   });
 });
