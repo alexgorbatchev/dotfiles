@@ -4,9 +4,12 @@
  *
  * This module provides an interface and implementation for interacting
  * with the GitHub API, specifically for fetching release information.
+ * It also includes a caching system for GitHub API responses.
  */
 
 export * from './IGitHubApiClient';
 export * from './GitHubApiClient';
 export * from './GitHubApiClientError';
+export * from './IGitHubApiCache';
+export * from './FileGitHubApiCache';
 export type { GitHubRelease, GitHubRateLimit } from '../../types';

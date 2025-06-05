@@ -64,6 +64,8 @@ import {
 import { createLogger } from '../logger';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
+import type { IGitHubApiCache } from './IGitHubApiCache';
+import crypto from 'crypto';
 
 const log = createLogger('GitHubApiClient');
 
@@ -72,21 +74,84 @@ export class GitHubApiClient implements IGitHubApiClient {
   private readonly githubToken?: string;
   private readonly downloader: IDownloader;
   private readonly userAgent: string;
+  private readonly cache?: IGitHubApiCache;
+  private readonly cacheEnabled: boolean;
+  private readonly cacheTtlMs: number;
 
-  constructor(config: AppConfig, downloader: IDownloader) {
+  constructor(config: AppConfig, downloader: IDownloader, cache?: IGitHubApiCache) {
     this.githubToken = config.githubToken;
     this.downloader = downloader;
     this.userAgent = config.githubClientUserAgent || 'dotfiles-generator/1.0.0';
+    this.cache = cache;
+    this.cacheEnabled = config.githubApiCacheEnabled ?? true;
+    this.cacheTtlMs = config.githubApiCacheTtl ?? 86400000; // Default: 24 hours
+
     log('constructor: GitHub API Client initialized. User-Agent: %s', this.userAgent);
     if (this.githubToken) {
       log('constructor: Using GitHub token for authentication.');
     } else {
       log('constructor: No GitHub token provided; requests will be unauthenticated.');
     }
+
+    if (this.cache && this.cacheEnabled) {
+      log('constructor: Cache enabled with TTL of %d ms', this.cacheTtlMs);
+    } else if (this.cache && !this.cacheEnabled) {
+      log('constructor: Cache available but disabled by configuration');
+    } else {
+      log('constructor: No cache provided; API responses will not be cached');
+    }
+  }
+
+  /**
+   * Generates a unique cache key for a GitHub API request.
+   * @param endpoint The API endpoint path
+   * @param method The HTTP method
+   * @returns A unique cache key
+   * @private
+   */
+  private generateCacheKey(endpoint: string, method: string): string {
+    // Create a base key from the method and endpoint
+    let key = `${method}:${endpoint}`;
+
+    // If a token is used, include a hash of it in the key
+    // This ensures cache invalidation when the token changes
+    if (this.githubToken) {
+      const tokenHash = crypto
+        .createHash('sha256')
+        .update(this.githubToken)
+        .digest('hex')
+        .substring(0, 8); // Use only first 8 chars of hash
+      key += `:${tokenHash}`;
+    }
+
+    log('generateCacheKey: Generated key for %s %s', method, endpoint);
+    return key;
   }
 
   private async request<T>(endpoint: string, method: 'GET' = 'GET'): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const cacheKey = this.generateCacheKey(endpoint, method);
+
+    // Check cache first if enabled and it's a GET request
+    if (this.cache && this.cacheEnabled && method === 'GET') {
+      try {
+        const cachedData = await this.cache.get<T>(cacheKey);
+        if (cachedData) {
+          log('request: Cache hit for %s request to %s', method, url);
+          return cachedData;
+        }
+        log('request: Cache miss for %s request to %s', method, url);
+      } catch (error) {
+        // Log cache error but continue with the request
+        log(
+          'request: Error checking cache for %s request to %s: %s',
+          method,
+          url,
+          (error as Error).message
+        );
+      }
+    }
+
     log('request: Making %s request to %s', method, url);
 
     const headers: Record<string, string> = {
@@ -108,7 +173,25 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new NetworkError('Empty response received from API', url);
       }
       const responseText = responseBuffer.toString('utf-8');
-      return JSON.parse(responseText) as T;
+      const data = JSON.parse(responseText) as T;
+
+      // Cache the response if enabled and it's a GET request
+      if (this.cache && this.cacheEnabled && method === 'GET') {
+        try {
+          await this.cache.set<T>(cacheKey, data, this.cacheTtlMs);
+          log('request: Cached response for %s request to %s', method, url);
+        } catch (error) {
+          // Log cache error but don't fail the request
+          log(
+            'request: Error caching response for %s request to %s: %s',
+            method,
+            url,
+            (error as Error).message
+          );
+        }
+      }
+
+      return data;
     } catch (error) {
       log(
         'request: Error during request to %s. Error type: %s, Message: %s',

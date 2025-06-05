@@ -47,23 +47,26 @@
  */
 
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import { GitHubApiClient } from '../GitHubApiClient';
-import { GitHubApiClientError } from '../GitHubApiClientError';
+import type { AppConfig, GitHubRateLimit, GitHubRelease } from '../../../types';
 import type { IDownloader } from '../../downloader/IDownloader';
 import {
-  NotFoundError,
-  RateLimitError,
   ClientError,
-  ServerError,
   HttpError,
   NetworkError,
+  NotFoundError,
+  RateLimitError,
+  ServerError,
 } from '../../downloader/errors';
-import type { AppConfig, GitHubRateLimit, GitHubRelease } from '../../../types';
+import { GitHubApiClient } from '../GitHubApiClient';
+import { GitHubApiClientError } from '../GitHubApiClientError';
+import type { IGitHubApiCache } from '../IGitHubApiCache';
+import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from './fixtures/cacheTestFixtures';
 
 describe('GitHubApiClient', () => {
   let mockDownloadFn: ReturnType<typeof mock<IDownloader['download']>>;
   let mockAppConfig: AppConfig;
   let apiClient: GitHubApiClient;
+  let mockCache: IGitHubApiCache;
 
   // Moved createMockRelease to be accessible by all describe blocks
   const createMockRelease = (id: number, tagName: string, prerelease = false): GitHubRelease => ({
@@ -86,6 +89,16 @@ describe('GitHubApiClient', () => {
       download: mockDownloadFn,
     };
 
+    // Create a mock cache
+    mockCache = {
+      get: async <T>(_key: string): Promise<T | null> => null,
+      set: async <T>(_key: string, _data: T, _ttlMs?: number): Promise<void> => {},
+      has: async (_key: string): Promise<boolean> => false,
+      delete: async (_key: string): Promise<void> => {},
+      clearExpired: async (): Promise<void> => {},
+      clear: async (): Promise<void> => {},
+    };
+
     mockAppConfig = {
       githubToken: undefined,
       // Fill in other required AppConfig properties with defaults
@@ -102,8 +115,11 @@ describe('GitHubApiClient', () => {
       manifestPath: '/test/dotfiles/.generated/manifest.json',
       completionsDir: '/test/dotfiles/.generated/completions',
       githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
+      githubApiCacheEnabled: true,
+      githubApiCacheTtl: 3600000, // 1 hour
     };
 
+    // By default, create the client without cache
     apiClient = new GitHubApiClient(mockAppConfig, mockDownloaderInstance);
 
     // Logger mocks fully removed.
@@ -126,6 +142,39 @@ describe('GitHubApiClient', () => {
       const configWithToken: AppConfig = { ...mockAppConfig, githubToken: 'test-token' };
       const client = new GitHubApiClient(configWithToken, { download: mockDownloadFn as any }); // Use mockDownloadFn
       expect(client).toBeInstanceOf(GitHubApiClient);
+    });
+
+    it('should initialize correctly with a cache', () => {
+      const client = new GitHubApiClient(
+        mockAppConfig,
+        { download: mockDownloadFn as any },
+        mockCache
+      );
+      expect(client).toBeInstanceOf(GitHubApiClient);
+    });
+
+    it('should respect cache configuration options', () => {
+      const configWithCacheDisabled: AppConfig = {
+        ...mockAppConfig,
+        githubApiCacheEnabled: false,
+      };
+      const client = new GitHubApiClient(
+        configWithCacheDisabled,
+        { download: mockDownloadFn as any },
+        mockCache
+      );
+      expect(client).toBeInstanceOf(GitHubApiClient);
+
+      const configWithCustomTtl: AppConfig = {
+        ...mockAppConfig,
+        githubApiCacheTtl: 7200000, // 2 hours
+      };
+      const clientWithCustomTtl = new GitHubApiClient(
+        configWithCustomTtl,
+        { download: mockDownloadFn as any },
+        mockCache
+      );
+      expect(clientWithCustomTtl).toBeInstanceOf(GitHubApiClient);
     });
   });
 
@@ -623,6 +672,246 @@ describe('GitHubApiClient', () => {
           throw new Error('Expected GitHubApiClientError but got a different error type');
         }
       }
+    });
+  });
+
+  describe('caching', () => {
+    let clientWithCache: GitHubApiClient;
+    let mockGetFn: ReturnType<typeof mock>;
+    let mockSetFn: ReturnType<typeof mock>;
+    let mockHasFn: ReturnType<typeof mock>;
+    let mockDeleteFn: ReturnType<typeof mock>;
+    let mockClearExpiredFn: ReturnType<typeof mock>;
+    let mockClearFn: ReturnType<typeof mock>;
+
+    beforeEach(() => {
+      // Create mock functions using Bun's mock
+      mockGetFn = mock(() => Promise.resolve(null));
+      mockSetFn = mock(() => Promise.resolve());
+      mockHasFn = mock(() => Promise.resolve(false));
+      mockDeleteFn = mock(() => Promise.resolve());
+      mockClearExpiredFn = mock(() => Promise.resolve());
+      mockClearFn = mock(() => Promise.resolve());
+
+      mockCache = {
+        get: async <T>(_key: string): Promise<T | null> => mockGetFn(_key) as T | null,
+        set: async <T>(_key: string, _data: T, _ttlMs?: number): Promise<void> =>
+          mockSetFn(_key, _data, _ttlMs),
+        has: async (_key: string): Promise<boolean> => mockHasFn(_key) as boolean,
+        delete: async (_key: string): Promise<void> => mockDeleteFn(_key),
+        clearExpired: async (): Promise<void> => mockClearExpiredFn(),
+        clear: async (): Promise<void> => mockClearFn(),
+      };
+
+      clientWithCache = new GitHubApiClient(mockAppConfig, { download: mockDownloadFn }, mockCache);
+    });
+
+    it('should return cached data when available', async () => {
+      // Setup cache to return data
+      mockGetFn.mockResolvedValue(FIXTURE_RELEASE);
+
+      const release = await clientWithCache.getLatestRelease('test-owner', 'test-repo');
+
+      expect(release).toEqual(FIXTURE_RELEASE);
+      expect(mockGetFn).toHaveBeenCalled();
+      expect(mockDownloadFn).not.toHaveBeenCalled(); // API request should not be made
+    });
+
+    it('should fetch and cache data when not in cache', async () => {
+      // Setup cache to miss
+      mockGetFn.mockResolvedValue(null);
+
+      // Setup downloader to return data
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+
+      const release = await clientWithCache.getLatestRelease('test-owner', 'test-repo');
+
+      expect(release).toEqual(FIXTURE_RELEASE);
+      expect(mockGetFn).toHaveBeenCalled();
+      expect(mockDownloadFn).toHaveBeenCalled();
+      expect(mockSetFn).toHaveBeenCalled();
+
+      // Verify the data being cached is correct
+      const setCallData = mockSetFn.mock.calls?.[0]?.[1];
+      expect(setCallData).toEqual(FIXTURE_RELEASE);
+    });
+
+    it('should not use cache when disabled in config', async () => {
+      const configWithCacheDisabled: AppConfig = {
+        ...mockAppConfig,
+        githubApiCacheEnabled: false,
+      };
+
+      const clientWithDisabledCache = new GitHubApiClient(
+        configWithCacheDisabled,
+        { download: mockDownloadFn },
+        mockCache
+      );
+
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+
+      const release = await clientWithDisabledCache.getLatestRelease('test-owner', 'test-repo');
+
+      expect(release).toEqual(FIXTURE_RELEASE);
+      expect(mockGetFn).not.toHaveBeenCalled(); // Cache should not be checked
+      expect(mockDownloadFn).toHaveBeenCalled();
+      expect(mockSetFn).not.toHaveBeenCalled(); // Result should not be cached
+    });
+
+    it('should handle cache errors gracefully', async () => {
+      // Setup cache to throw error
+      mockGetFn.mockRejectedValue(new Error('Cache error'));
+      mockSetFn.mockRejectedValue(new Error('Cache write error'));
+
+      // Setup downloader to return data
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+
+      // Should still work despite cache errors
+      const release = await clientWithCache.getLatestRelease('test-owner', 'test-repo');
+
+      expect(release).toEqual(FIXTURE_RELEASE);
+      expect(mockGetFn).toHaveBeenCalled();
+      expect(mockDownloadFn).toHaveBeenCalled();
+      expect(mockSetFn).toHaveBeenCalled();
+    });
+
+    it('should generate different cache keys for different endpoints', async () => {
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+
+      // Make two different requests
+      await clientWithCache.getLatestRelease('test-owner', 'test-repo');
+      await clientWithCache.getReleaseByTag('test-owner', 'test-repo', 'v1.0.0');
+
+      // Should have called set twice with different keys
+      expect(mockSetFn).toHaveBeenCalledTimes(2);
+      const firstCallKey = mockSetFn.mock.calls?.[0]?.[0];
+      const secondCallKey = mockSetFn.mock.calls?.[1]?.[0];
+
+      expect(firstCallKey).not.toEqual(secondCallKey);
+    });
+
+    it('should use custom TTL when provided', async () => {
+      // Setup cache to miss
+      mockGetFn.mockResolvedValue(null);
+
+      // Setup downloader to return data
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+
+      // Create client with custom TTL
+      const configWithCustomTtl: AppConfig = {
+        ...mockAppConfig,
+        githubApiCacheTtl: 7200000, // 2 hours
+      };
+      const clientWithCustomTtl = new GitHubApiClient(
+        configWithCustomTtl,
+        { download: mockDownloadFn },
+        mockCache
+      );
+
+      await clientWithCustomTtl.getLatestRelease('test-owner', 'test-repo');
+
+      // Verify the TTL is passed to the cache
+      expect(mockSetFn).toHaveBeenCalledTimes(1);
+      const ttlArg = mockSetFn.mock.calls?.[0]?.[2];
+      expect(ttlArg).toBe(7200000);
+    });
+
+    it('should cache getAllReleases responses', async () => {
+      // Setup cache to miss
+      mockGetFn.mockResolvedValue(null);
+
+      // Setup downloader to return data
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST)));
+
+      const releases = await clientWithCache.getAllReleases('test-owner', 'test-repo');
+
+      expect(releases).toEqual(FIXTURE_RELEASES_LIST);
+      expect(mockGetFn).toHaveBeenCalled();
+      expect(mockDownloadFn).toHaveBeenCalled();
+      expect(mockSetFn).toHaveBeenCalled();
+
+      // Verify the data being cached is correct
+      const setCallData = mockSetFn.mock.calls?.[0]?.[1];
+      expect(setCallData).toEqual(FIXTURE_RELEASES_LIST);
+    });
+
+    it('should cache getReleaseByConstraint responses', async () => {
+      // Setup cache to miss for both the constraint request and the getAllReleases fallback
+      mockGetFn.mockResolvedValue(null);
+
+      // Setup downloader to return data
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST)));
+
+      const release = await clientWithCache.getReleaseByConstraint(
+        'test-owner',
+        'test-repo',
+        '^1.0.0'
+      );
+
+      expect(release).toBeTruthy();
+      expect(mockGetFn).toHaveBeenCalled();
+      expect(mockDownloadFn).toHaveBeenCalled();
+      expect(mockSetFn).toHaveBeenCalled();
+    });
+
+    it('should cache getRateLimit responses', async () => {
+      // Setup cache to miss
+      mockGetFn.mockResolvedValue(null);
+
+      // Setup downloader to return data
+      const mockRateLimitData = {
+        resources: {
+          core: {
+            limit: 5000,
+            remaining: 4999,
+            reset: Math.floor(Date.now() / 1000) + 3600,
+          },
+          search: { limit: 30, remaining: 18, reset: Math.floor(Date.now() / 1000) + 60 },
+          graphql: { limit: 5000, remaining: 5000, reset: Math.floor(Date.now() / 1000) + 3600 },
+        },
+        rate: {
+          limit: 5000,
+          remaining: 4999,
+          reset: Math.floor(Date.now() / 1000) + 3600,
+        },
+      };
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(mockRateLimitData)));
+
+      await clientWithCache.getRateLimit();
+
+      expect(mockGetFn).toHaveBeenCalled();
+      expect(mockDownloadFn).toHaveBeenCalled();
+      expect(mockSetFn).toHaveBeenCalled();
+    });
+
+    it('should include token hash in cache key when token is provided', async () => {
+      // Create a spy on the private generateCacheKey method
+      const configWithToken: AppConfig = {
+        ...mockAppConfig,
+        githubToken: 'test-token',
+      };
+
+      const clientWithToken = new GitHubApiClient(
+        configWithToken,
+        { download: mockDownloadFn },
+        mockCache
+      );
+
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+
+      // Make a request
+      await clientWithToken.getLatestRelease('test-owner', 'test-repo');
+
+      // Make the same request with a client without token
+      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
+      await clientWithCache.getLatestRelease('test-owner', 'test-repo');
+
+      // Should have called set twice with different keys due to token difference
+      expect(mockSetFn).toHaveBeenCalledTimes(2);
+      const withTokenKey = mockSetFn.mock.calls?.[0]?.[0];
+      const withoutTokenKey = mockSetFn.mock.calls?.[1]?.[0];
+
+      expect(withTokenKey).not.toEqual(withoutTokenKey);
     });
   });
 });

@@ -508,6 +508,18 @@ export interface AppConfig {
   downloadRetryCount?: number; // NEW: Number of download retries
   downloadRetryDelay?: number; // NEW: Delay between retries in milliseconds
   githubClientUserAgent?: string; // NEW: Custom User-Agent for GitHub API client
+
+  /**
+   * Whether GitHub API caching is enabled
+   * @default true
+   */
+  githubApiCacheEnabled?: boolean;
+
+  /**
+   * Time to live for GitHub API cache entries in milliseconds
+   * @default 86400000 (24 hours)
+   */
+  githubApiCacheTtl?: number;
 }
 
 /**
