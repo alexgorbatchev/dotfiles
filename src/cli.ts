@@ -29,7 +29,7 @@
  * - [x] Write basic tests for the CLI (`generator/src/__tests__/cli.test.ts`).
  * - [x] Update `generator/package.json` with `bin` field and build script (Verified).
  * - [x] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -147,14 +147,10 @@ program
         'generate: Calling generatorOrchestrator.generateArtifacts with dryRun: %s',
         options.dryRun
       );
-      const manifest = await generatorOrchestrator.generateAll(
-        // No need to cast if IGeneratorOrchestrator has generateAll
-        toolConfigs,
-        {
-          dryRun: options.dryRun,
-          // generatorVersion can be added here if needed from package.json
-        }
-      );
+      const manifest = await generatorOrchestrator.generateAll(toolConfigs, {
+        dryRun: options.dryRun,
+        // generatorVersion can be added here if needed from package.json
+      });
       log('generate: Artifacts generated successfully. Manifest: %o', manifest);
       console.log('Artifact generation complete.');
       if (options.dryRun) {

@@ -1,11 +1,6 @@
 /**
  * @file generator/src/modules/file-system/MemFileSystem.ts
  * @description In-memory implementation of IFileSystem using memfs.
- */
-
-/**
- * @file generator/src/modules/file-system/MemFileSystem.ts
- * @description In-memory implementation of IFileSystem using memfs.
  *
  * ## Development Plan
  *
@@ -21,6 +16,7 @@
 import type { IFileSystem } from './IFileSystem';
 import { Volume, type DirectoryJSON } from 'memfs';
 import type { Stats } from 'node:fs'; // memfs Stats is compatible
+import nodePath from 'node:path';
 
 // Helper to convert Buffer to string if encoding is provided
 function bufferToString(buffer: Buffer, encoding?: BufferEncoding): string {
@@ -61,7 +57,6 @@ export class MemFileSystem implements IFileSystem {
         : Buffer.from(content.buffer, content.byteOffset, content.byteLength);
     try {
       // Ensure parent directory exists
-      const nodePath = require('node:path');
       const dirname = nodePath.dirname(path);
       if (!this.vol.existsSync(dirname)) {
         this.vol.mkdirSync(dirname, { recursive: true });
@@ -73,9 +68,7 @@ export class MemFileSystem implements IFileSystem {
         : Buffer.from(bufferOrString, encoding);
       this.vol.writeSync(fd, buffer, 0, buffer.length, undefined);
       this.vol.closeSync(fd);
-      // console.log(`MemFileSystem.writeFile: Successfully wrote to ${path} using open/write/close`); // Temporary debug
     } catch (e) {
-      // console.error(`MemFileSystem.writeFile: Failed to write to ${path}`, e); // Temporary debug
       throw e;
     }
   }

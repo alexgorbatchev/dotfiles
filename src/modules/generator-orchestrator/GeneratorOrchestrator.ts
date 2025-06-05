@@ -80,10 +80,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateAllOptions
   ): Promise<GeneratedArtifactsManifest> {
+    log('generateAll: Method entry. Options: %o', options);
     log(
-      'generateAll: Method entry. Options: %o, Initial this.appConfig: %o',
-      options,
-      this.appConfig
+      'generateAll: Initial appConfig.generatedArtifactsManifestPath: %s',
+      this.appConfig?.generatedArtifactsManifestPath
     );
 
     const dryRun = options?.dryRun ?? false;
@@ -104,10 +104,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     );
 
     if (!this.appConfig.generatedArtifactsManifestPath) {
-      log(
-        'generateAll: CRITICAL: generatedArtifactsManifestPath is undefined/null on appConfig. AppConfig: %o',
-        this.appConfig
-      );
+      log('generateAll: CRITICAL: generatedArtifactsManifestPath is undefined/null on appConfig.');
       throw new Error(
         'GeneratorOrchestrator: AppConfig.generatedArtifactsManifestPath is missing.'
       );
@@ -225,8 +222,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         log(
           `generateAll: Failed to write manifest to ${manifestPath}. Error: ${error instanceof Error ? error.message : String(error)}`
         );
-        // Decide if this should throw or just log. For now, logging.
-        // throw new Error(`Failed to write manifest: ${error}`);
       }
     }
 

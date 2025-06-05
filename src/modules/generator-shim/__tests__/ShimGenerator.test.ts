@@ -37,7 +37,6 @@ import path from 'node:path';
 import type { IFileSystem } from '../../file-system';
 import type { AppConfig, ToolConfig } from '../../../types';
 import { ShimGenerator } from '../ShimGenerator';
-// import { createLogger } from '../../logger'; // Removed unused import
 
 describe('ShimGenerator', () => {
   let mockFileSystem: IFileSystem;
@@ -51,7 +50,6 @@ describe('ShimGenerator', () => {
 
   const MOCK_TARGET_DIR = '/test/shims';
   const MOCK_BIN_DIR = '/test/bin';
-  // MOCK_CLI_TOOL_PATH is removed as cliToolPath is not directly used from AppConfig by ShimGenerator anymore
 
   beforeEach(() => {
     mockWriteFile = mock(() => Promise.resolve());

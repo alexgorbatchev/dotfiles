@@ -62,9 +62,7 @@ describe('GeneratorOrchestrator', () => {
 
   // Mock implementations for spies on IFileSystem
   let mockFsReadFile: ReturnType<typeof spyOn>;
-  // let mockFsWriteFile: ReturnType<typeof spyOn>; // No longer used
   let mockFsExists: ReturnType<typeof spyOn>;
-  // let mockFsEnsureDir: ReturnType<typeof spyOn>; // No longer used
   let consoleLogSpy: ReturnType<typeof spyOn>;
 
   const MOCK_GENERATED_DIR = '/test/home/.dotfiles/.generated';
@@ -89,9 +87,7 @@ describe('GeneratorOrchestrator', () => {
 
     mockFileSystem = new MemFileSystem();
     mockFsReadFile = spyOn(mockFileSystem, 'readFile');
-    // mockFsWriteFile = spyOn(mockFileSystem, 'writeFile'); // Temporarily remove to test spy interference
     mockFsExists = spyOn(mockFileSystem, 'exists');
-    // mockFsEnsureDir = spyOn(mockFileSystem, 'ensureDir'); // Temporarily remove to test spy interference
 
     consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
 
@@ -174,24 +170,8 @@ describe('GeneratorOrchestrator', () => {
       mockFsExists.mockReset(); // Reset spy
       mockFsExists.mockResolvedValue(false); // No existing manifest for this path
 
-      console.log(
-        "DEBUG_TEST: Before calling orchestrator.generateAll in 'should call sub-generators...' test. Orchestrator defined:",
-        !!orchestrator
-      );
-      try {
-        // Using dryRun: false to test the non-dryRun path for calls
-        await orchestrator.generateAll(toolConfigs, { dryRun: false });
-        console.log(
-          "DEBUG_TEST: After calling orchestrator.generateAll in 'should call sub-generators...' test."
-        );
-      } catch (e) {
-        console.error(
-          "DEBUG_TEST: Error during orchestrator.generateAll in 'should call sub-generators with correct options' test:",
-          e
-        );
-        throw e;
-      }
-
+      // Using dryRun: false to test the non-dryRun path for calls
+      await orchestrator.generateAll(toolConfigs, { dryRun: false });
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         dryRun: false,
         overwrite: true,

@@ -10,14 +10,12 @@
  * - [x] Test error handling for the `generate` command (Completed).
  * - [ ] Test other commands as they are implemented.
  * - [x] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { expect, test, describe, spyOn, mock, afterEach, beforeEach } from 'bun:test';
-// import * as cliModule from '../cli'; // No longer needed as cli is imported directly
-// import { GeneratorOrchestrator } from '../modules/generator-orchestrator/GeneratorOrchestrator'; // Not used
 import type {
   IGeneratorOrchestrator,
   GenerateAllOptions as OrchestratorGenerateAllOptions,
