@@ -16,7 +16,6 @@
 import type { IFileSystem } from './IFileSystem';
 import { Volume, type DirectoryJSON } from 'memfs';
 import type { Stats } from 'node:fs'; // memfs Stats is compatible
-import nodePath from 'node:path';
 
 // Helper to convert Buffer to string if encoding is provided
 function bufferToString(buffer: Buffer, encoding?: BufferEncoding): string {
@@ -56,19 +55,12 @@ export class MemFileSystem implements IFileSystem {
         ? content
         : Buffer.from(content.buffer, content.byteOffset, content.byteLength);
     try {
-      // Ensure parent directory exists
-      const dirname = nodePath.dirname(path);
-      if (!this.vol.existsSync(dirname)) {
-        this.vol.mkdirSync(dirname, { recursive: true });
-      }
-
-      const fd = this.vol.openSync(path, 'w');
-      const buffer = Buffer.isBuffer(bufferOrString)
-        ? bufferOrString
-        : Buffer.from(bufferOrString, encoding);
-      this.vol.writeSync(fd, buffer, 0, buffer.length, undefined);
-      this.vol.closeSync(fd);
+      // memfs writeFileSync can take encoding as an option for strings.
+      // If bufferOrString is already a Buffer, encoding option is ignored.
+      // If it's a string, encoding option is used.
+      this.vol.writeFileSync(path, bufferOrString, { encoding });
     } catch (e) {
+      // Ensure the error is re-thrown to be caught by the caller
       throw e;
     }
   }

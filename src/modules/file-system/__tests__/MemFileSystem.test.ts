@@ -50,6 +50,14 @@ describe('MemFileSystem', () => {
     expect(readContent).toBe(newContent);
   });
 
+  it('writeFile should throw if parent directory does not exist', async () => {
+    const newFilePath = '/nonexistent_dir/newFile.txt';
+    const newContent = 'content for non-existent dir';
+    // Expect an error (typically ENOENT) when trying to write to a file
+    // if its parent directory does not exist.
+    await expect(fileSystem.writeFile(newFilePath, newContent)).rejects.toThrow();
+  });
+
   it('should check existence correctly with exists', async () => {
     expect(await fileSystem.exists('/test.txt')).toBe(true);
     expect(await fileSystem.exists('/data/empty_dir')).toBe(true);
