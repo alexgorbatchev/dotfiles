@@ -21,6 +21,7 @@
  * - [x] Create `index.ts` to export the interface and class.
  * - [x] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Update appConfig with `generatedArtifactsManifestPath`.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -58,6 +59,10 @@ describe('SymlinkGenerator', () => {
       // Optional fields can be omitted if not directly used by SymlinkGenerator
       // For SymlinkGenerator, only dotfilesDir is critical for its internal logic.
       // The rest are provided to satisfy the AppConfig type.
+      generatedArtifactsManifestPath: path.join(
+        MOCK_PROJECT_ROOT,
+        '.generated/generated-manifest.json'
+      ),
     };
     symlinkGenerator = new SymlinkGenerator(fs, appConfig);
 

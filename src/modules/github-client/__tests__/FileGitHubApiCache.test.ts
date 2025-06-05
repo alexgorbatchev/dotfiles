@@ -53,6 +53,7 @@
  * - [x] Ensure all tests pass.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Achieve 100% test coverage for `FileGitHubApiCache.ts`.
+ * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
  * - [ ] Update the memory bank.
  */
 
@@ -122,6 +123,7 @@ describe('FileGitHubApiCache', () => {
       completionsDir: '/test/dotfiles/.generated/completions',
       githubApiCacheEnabled: true,
       githubApiCacheTtl: 3600000, // 1 hour
+      generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
     };
 
     // Create cache instance

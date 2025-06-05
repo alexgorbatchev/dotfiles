@@ -23,6 +23,7 @@
  * - [x] Adhere to logging rules (no mocking logger, no asserting log output).
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
 import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
@@ -80,6 +81,10 @@ describe('ShellInitGenerator', () => {
       manifestPath: path.join(DEFAULT_DOTFILES_DIR, '.generated/manifest.json'),
       githubApiCacheEnabled: false,
       githubApiCacheTtl: 0,
+      generatedArtifactsManifestPath: path.join(
+        DEFAULT_DOTFILES_DIR,
+        '.generated/generated-manifest.json'
+      ),
     };
     generator = new ShellInitGenerator(mockFileSystem, mockAppConfig);
   });

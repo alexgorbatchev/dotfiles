@@ -26,6 +26,7 @@ export const createMockAppConfig = (overrides: Partial<AppConfig> = {}): AppConf
   githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
   githubApiCacheEnabled: true, // Default to true for most tests
   githubApiCacheTtl: 3600000, // 1 hour
+  generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
   ...overrides,
 });
 

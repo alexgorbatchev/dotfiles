@@ -26,6 +26,7 @@
  * - [ ] Ensure all tests pass.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Achieve 100% test coverage for `ShimGenerator.ts`.
+ * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
  * - [ ] Update the memory bank.
  */
 
@@ -92,6 +93,7 @@ describe('ShimGenerator', () => {
       completionsDir: '/test/dotfiles/.generated/completions',
       githubApiCacheEnabled: true,
       githubApiCacheTtl: 3600000,
+      generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
     };
 
     shimGenerator = new ShimGenerator(mockFileSystem, mockAppConfig);

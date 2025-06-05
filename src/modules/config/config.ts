@@ -26,6 +26,7 @@
  *   - [x] Cleanup all linting errors and warnings.
  *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  *   - [x] Ensure 100% test coverage.
+ *   - [x] Add `generatedArtifactsManifestPath` to `AppConfig` creation.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -64,6 +65,7 @@ export interface ConfigEnvironment {
   GITHUB_CLIENT_USER_AGENT?: string; // Raw string from env
   GITHUB_API_CACHE_ENABLED?: string; // Raw string from env
   GITHUB_API_CACHE_TTL?: string; // Raw string from env
+  GENERATED_ARTIFACTS_MANIFEST_PATH?: string; // Raw string from env
 }
 
 // Zod schema for validating and transforming the raw environment variables
@@ -114,6 +116,7 @@ const EnvSchema = z.object({
       const num = parseInt(val, 10);
       return isNaN(num) ? 86400000 : num;
     }), // Default 24 hours in ms if invalid
+  GENERATED_ARTIFACTS_MANIFEST_PATH: z.string().optional(),
 });
 
 type ValidatedEnv = z.infer<typeof EnvSchema>;
@@ -146,6 +149,8 @@ export function createAppConfig(
     zshInitDir: join(GENERATED_DIR, 'zsh'),
     manifestPath: join(GENERATED_DIR, 'manifest.json'),
     completionsDir: env.COMPLETIONS_DIR || join(GENERATED_DIR, 'completions'),
+    generatedArtifactsManifestPath:
+      env.GENERATED_ARTIFACTS_MANIFEST_PATH || join(GENERATED_DIR, 'generated-manifest.json'),
 
     // New configuration options from Zinit analysis
     githubToken: env.GITHUB_TOKEN,
