@@ -82,6 +82,7 @@ describe('ShellInitGenerator', () => {
       manifestPath: path.join(DEFAULT_DOTFILES_DIR, '.generated/manifest.json'),
       githubApiCacheEnabled: false,
       githubApiCacheTtl: 0,
+      githubApiCacheDir: path.join(DEFAULT_DOTFILES_DIR, '.generated/cache/github-api'), // Added
       generatedArtifactsManifestPath: path.join(
         DEFAULT_DOTFILES_DIR,
         '.generated/generated-manifest.json'

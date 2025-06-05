@@ -551,6 +551,7 @@ export interface AppConfig {
    * @default 86400000 (24 hours)
    */
   githubApiCacheTtl?: number;
+  githubApiCacheDir: string; // Added this line
 }
 
 /**

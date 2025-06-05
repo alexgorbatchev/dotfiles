@@ -60,6 +60,7 @@ describe('SymlinkGenerator', () => {
       // Optional fields can be omitted if not directly used by SymlinkGenerator
       // For SymlinkGenerator, only dotfilesDir is critical for its internal logic.
       // The rest are provided to satisfy the AppConfig type.
+      githubApiCacheDir: path.join(MOCK_PROJECT_ROOT, '.generated', 'cache', 'github-api'), // Added
       generatedArtifactsManifestPath: path.join(
         MOCK_PROJECT_ROOT,
         '.generated/generated-manifest.json'

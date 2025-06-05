@@ -6,4 +6,4 @@
  * primarily the AppConfig interface and the config object.
  */
 
-export { createAppConfig, type SystemInfo, type ConfigEnvironment } from './config';
+export { createAppConfig, type SystemInfo, type ConfigEnvironment, type AppConfig } from './config';

@@ -3,6 +3,21 @@
  * @description In-memory implementation of IFileSystem using memfs.
  */
 
+/**
+ * @file generator/src/modules/file-system/MemFileSystem.ts
+ * @description In-memory implementation of IFileSystem using memfs.
+ *
+ * ## Development Plan
+ *
+ * ### Tasks
+ * - [x] Implement all `IFileSystem` methods using `memfs`.
+ * - [x] Ensure constructor initializes `Volume` correctly (empty or from JSON).
+ * - [ ] Write comprehensive unit tests for all methods, covering edge cases.
+ * - [x] Cleanup linting errors.
+ * - [x] Ensure 100% test coverage (currently achieved in full suite, but individual tests might be improved).
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
+ */
+
 import type { IFileSystem } from './IFileSystem';
 import { Volume, type DirectoryJSON } from 'memfs';
 import type { Stats } from 'node:fs'; // memfs Stats is compatible
@@ -16,7 +31,12 @@ export class MemFileSystem implements IFileSystem {
   private vol: Volume;
 
   constructor(json?: DirectoryJSON) {
-    this.vol = Volume.fromJSON(json || {});
+    // Always create a new, clean volume instance.
+    // If json is provided, then populate. Otherwise, it's an empty volume.
+    this.vol = new Volume();
+    if (json) {
+      this.vol.fromJSON(json);
+    }
   }
 
   public async readFile(path: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
@@ -39,7 +59,25 @@ export class MemFileSystem implements IFileSystem {
       typeof content === 'string'
         ? content
         : Buffer.from(content.buffer, content.byteOffset, content.byteLength);
-    this.vol.writeFileSync(path, bufferOrString, { encoding });
+    try {
+      // Ensure parent directory exists
+      const nodePath = require('node:path');
+      const dirname = nodePath.dirname(path);
+      if (!this.vol.existsSync(dirname)) {
+        this.vol.mkdirSync(dirname, { recursive: true });
+      }
+
+      const fd = this.vol.openSync(path, 'w');
+      const buffer = Buffer.isBuffer(bufferOrString)
+        ? bufferOrString
+        : Buffer.from(bufferOrString, encoding);
+      this.vol.writeSync(fd, buffer, 0, buffer.length, undefined);
+      this.vol.closeSync(fd);
+      // console.log(`MemFileSystem.writeFile: Successfully wrote to ${path} using open/write/close`); // Temporary debug
+    } catch (e) {
+      // console.error(`MemFileSystem.writeFile: Failed to write to ${path}`, e); // Temporary debug
+      throw e;
+    }
   }
 
   public async exists(path: string): Promise<boolean> {

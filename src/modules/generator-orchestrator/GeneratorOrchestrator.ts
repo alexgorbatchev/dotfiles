@@ -80,12 +80,38 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateAllOptions
   ): Promise<GeneratedArtifactsManifest> {
-    const dryRun = options?.dryRun ?? false;
-    const generatorVersion = options?.generatorVersion;
     log(
-      `generateAll: Starting generation. dryRun=${dryRun}, generatorVersion=${generatorVersion}, toolConfigsCount=${Object.keys(toolConfigs).length}`
+      'generateAll: Method entry. Options: %o, Initial this.appConfig: %o',
+      options,
+      this.appConfig
     );
 
+    const dryRun = options?.dryRun ?? false;
+    const generatorVersion = options?.generatorVersion;
+    const toolConfigsCount = toolConfigs ? Object.keys(toolConfigs).length : 0;
+
+    log(
+      `generateAll: Parsed options: dryRun=${dryRun}, generatorVersion=${generatorVersion}, toolConfigsCount=${toolConfigsCount}`
+    );
+
+    if (!this.appConfig) {
+      log('generateAll: CRITICAL - this.appConfig is null/undefined at method start.');
+      throw new Error('GeneratorOrchestrator: AppConfig is not available.');
+    }
+    log(
+      'generateAll: AppConfig available. generatedArtifactsManifestPath: %s',
+      this.appConfig.generatedArtifactsManifestPath
+    );
+
+    if (!this.appConfig.generatedArtifactsManifestPath) {
+      log(
+        'generateAll: CRITICAL: generatedArtifactsManifestPath is undefined/null on appConfig. AppConfig: %o',
+        this.appConfig
+      );
+      throw new Error(
+        'GeneratorOrchestrator: AppConfig.generatedArtifactsManifestPath is missing.'
+      );
+    }
     const manifestPath = this.appConfig.generatedArtifactsManifestPath;
     log(`generateAll: Manifest path determined as: ${manifestPath}`);
 
@@ -96,18 +122,27 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       // In a dry run, we'd typically start with a blank or placeholder manifest
       // or simulate reading one if its content influenced dry run logic.
       // For now, assume a fresh manifest structure for dry run output.
-      currentManifest = {
+      const initialDryRunManifest: GeneratedArtifactsManifest = {
         lastGenerated: new Date().toISOString(), // Use new field name
         shims: [],
         symlinks: [],
-        // shellInit will be populated below
-        ...(generatorVersion && { generatorVersion }),
+        // shellInit will be populated by the subsequent call to shellInitGenerator.generate
       };
+      if (generatorVersion) {
+        initialDryRunManifest.generatorVersion = generatorVersion;
+      }
+      currentManifest = initialDryRunManifest;
     } else {
+      // Not dryRun
+      log('generateAll: Not a dry run. Proceeding with manifest read/init.');
       try {
-        if (await this.fs.exists(manifestPath)) {
+        const manifestFileExists = await this.fs.exists(manifestPath);
+        log(`generateAll: fs.exists call completed. manifestFileExists = ${manifestFileExists}`);
+
+        if (manifestFileExists) {
           log(`generateAll: Existing manifest found at ${manifestPath}. Reading...`);
           const fileContent = await this.fs.readFile(manifestPath);
+          log('generateAll: readFile call completed.');
           currentManifest = JSON.parse(fileContent) as GeneratedArtifactsManifest;
           log('generateAll: Existing manifest read and parsed successfully.');
         } else {
@@ -116,6 +151,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
             lastGenerated: '', // Will be updated
             shims: [],
             symlinks: [],
+            // shellInit will be populated by sub-generator
           };
         }
       } catch (error) {
@@ -173,7 +209,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       log(
         `generateAll: [DRY RUN] Manifest update simulated. Content that would be written to ${manifestPath}:`
       );
-      console.log(JSON.stringify(currentManifest, null, 2)); // Using console.log for dry run output as per spec
+      log(
+        `DRY_RUN_MANIFEST_VERSION: ${currentManifest.generatorVersion}, SHIMS_COUNT: ${currentManifest.shims?.length ?? 0}, SHELL_INIT_PATH: ${currentManifest.shellInit?.path ?? 'null'}, SYMLINKS_COUNT: ${currentManifest.symlinks?.length ?? 0}`
+      );
     } else {
       try {
         log(`generateAll: Writing updated manifest to ${manifestPath}`);

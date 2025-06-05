@@ -123,6 +123,7 @@ describe('FileGitHubApiCache', () => {
       completionsDir: '/test/dotfiles/.generated/completions',
       githubApiCacheEnabled: true,
       githubApiCacheTtl: 3600000, // 1 hour
+      githubApiCacheDir: '/test/dotfiles/.generated/cache/github-api', // Added
       generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
     };
 

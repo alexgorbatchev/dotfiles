@@ -1,13 +1,17 @@
 {
   "name": "generator",
-  "module": "index.ts",
+  "module": "src/cli.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "mydotfiles": "./dist/cli.js"
+  },
   "scripts": {
     "test": "bun test --coverage",
     "lint-do-not-use": "tsc --noEmit && eslint . --ext .ts",
     "lint": "tsc --noEmit",
-    "fmt": "prettier --write ."
+    "fmt": "prettier --write .",
+    "build": "bun build ./src/cli.ts --outdir ./dist --target bun"
   },
   "devDependencies": {
     "@types/bun": "latest",

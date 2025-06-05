@@ -33,6 +33,7 @@
 import { resolve, join } from 'path';
 import { z } from 'zod';
 import type { AppConfig } from '../../types'; // Updated import path
+export type { AppConfig }; // Re-export AppConfig
 
 // Interface for system-specific values needed by createAppConfig
 export interface SystemInfo {
@@ -125,6 +126,7 @@ export function createAppConfig(
   systemInfo: SystemInfo,
   rawEnv: ConfigEnvironment // Expects an object matching ConfigEnvironment shape
 ): AppConfig {
+  // Use AppConfig here
   // 1. Validate and transform the raw environment variables using Zod
   const env: ValidatedEnv = EnvSchema.parse(rawEnv);
 
@@ -162,5 +164,6 @@ export function createAppConfig(
     githubClientUserAgent: env.GITHUB_CLIENT_USER_AGENT, // Default will be handled by GitHubApiClient if undefined
     githubApiCacheEnabled: env.GITHUB_API_CACHE_ENABLED,
     githubApiCacheTtl: env.GITHUB_API_CACHE_TTL,
+    githubApiCacheDir: join(GENERATED_DIR, 'cache', 'github-api'), // Added this line
   };
 }
