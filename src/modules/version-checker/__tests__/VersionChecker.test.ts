@@ -67,6 +67,8 @@ class MockGitHubApiClient implements IGitHubApiClient {
       limit: 5000,
       remaining: 5000,
       reset: Math.floor(Date.now() / 1000) + 3600,
+      used: 0, // Added to match updated GitHubRateLimit type
+      resource: 'core', // Added to match updated GitHubRateLimit type
     };
   });
 

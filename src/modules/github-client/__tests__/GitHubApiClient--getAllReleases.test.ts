@@ -3,17 +3,11 @@
  * @description Tests for the GitHubApiClient's getAllReleases method.
  */
 
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { AppConfig, GitHubRelease } from '../../../types';
-import type { IDownloader } from '../../downloader/IDownloader';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import type { GitHubRelease } from '../../../types';
 import { RateLimitError, ServerError } from '../../downloader/errors';
-import { GitHubApiClient } from '../GitHubApiClient';
 import { GitHubApiClientError } from '../GitHubApiClientError';
-
-// Common variables
-let mockDownloadFn: ReturnType<typeof mock<IDownloader['download']>>;
-let mockAppConfig: AppConfig;
-let apiClient: GitHubApiClient;
+import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function from original test file
 const createMockRelease = (id: number, tagName: string, prerelease = false): GitHubRelease => ({
@@ -30,33 +24,11 @@ const createMockRelease = (id: number, tagName: string, prerelease = false): Git
 });
 
 describe('GitHubApiClient', () => {
+  let mocks: MockSetup;
+
   beforeEach(() => {
-    mockDownloadFn = mock<IDownloader['download']>(async () => Buffer.from(''));
-
-    const mockDownloaderInstance: IDownloader = {
-      download: mockDownloadFn,
-    };
-
-    mockAppConfig = {
-      githubToken: undefined,
-      targetDir: '/usr/bin',
-      dotfilesDir: '/test/dotfiles',
-      generatedDir: '/test/dotfiles/.generated',
-      toolConfigDir: '/test/dotfiles/generator/src/tools',
-      debug: '',
-      cacheEnabled: true,
-      cacheDir: '/test/dotfiles/.generated/cache',
-      binariesDir: '/test/dotfiles/.generated/binaries',
-      binDir: '/test/dotfiles/.generated/bin',
-      zshInitDir: '/test/dotfiles/.generated/zsh',
-      manifestPath: '/test/dotfiles/.generated/manifest.json',
-      completionsDir: '/test/dotfiles/.generated/completions',
-      githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
-      githubApiCacheEnabled: false, // Explicitly disable for non-caching tests
-      githubApiCacheTtl: 3600000,
-    };
-
-    apiClient = new GitHubApiClient(mockAppConfig, mockDownloaderInstance, undefined);
+    // Explicitly disable API cache for these non-caching tests
+    mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
   });
 
   describe('getAllReleases', () => {
@@ -68,30 +40,38 @@ describe('GitHubApiClient', () => {
         createMockRelease(i + 31, `v0.${i}.0`)
       );
 
-      mockDownloadFn.mockReset(); // Ensure clean mock for multi-call test
-      mockDownloadFn
+      mocks.mockDownloader.download.mockReset(); // Ensure clean mock for multi-call test
+      mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // End of pagination
 
-      const releases = await apiClient.getAllReleases('test-owner', 'test-repo');
+      const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releases).toEqual([...page1Releases, ...page2Releases]);
-      expect(mockDownloadFn).toHaveBeenCalledTimes(3);
-      expect(mockDownloadFn.mock.calls?.[0]?.[0]).toContain('/releases?per_page=30&page=1');
-      expect(mockDownloadFn.mock.calls?.[1]?.[0]).toContain('/releases?per_page=30&page=2');
-      expect(mockDownloadFn.mock.calls?.[2]?.[0]).toContain('/releases?per_page=30&page=3');
+      expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(3);
+      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[0]).toContain(
+        '/releases?per_page=30&page=1'
+      );
+      expect(mocks.mockDownloader.download.mock.calls?.[1]?.[0]).toContain(
+        '/releases?per_page=30&page=2'
+      );
+      expect(mocks.mockDownloader.download.mock.calls?.[2]?.[0]).toContain(
+        '/releases?per_page=30&page=3'
+      );
     });
 
     it('should fetch releases with custom perPage option', async () => {
       const customPageReleases: GitHubRelease[] = [createMockRelease(1, 'v1.0.0')];
-      mockDownloadFn.mockReset();
-      mockDownloadFn
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(customPageReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const releases = await apiClient.getAllReleases('test-owner', 'test-repo', { perPage: 1 });
+      const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo', {
+        perPage: 1,
+      });
       expect(releases).toEqual(customPageReleases);
-      expect(mockDownloadFn.mock.calls?.[0]?.[0]).toContain('per_page=1&page=1');
+      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[0]).toContain('per_page=1&page=1');
     });
 
     it('should filter out prereleases if includePrerelease is false', async () => {
@@ -100,12 +80,12 @@ describe('GitHubApiClient', () => {
         createMockRelease(2, 'v0.9.0-beta', true),
         createMockRelease(3, 'v0.8.0', false),
       ];
-      mockDownloadFn.mockReset();
-      mockDownloadFn
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const releases = await apiClient.getAllReleases('test-owner', 'test-repo', {
+      const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo', {
         includePrerelease: false,
       });
       expect(releases).toEqual([mixedReleases[0]!, mixedReleases[2]!]);
@@ -116,53 +96,53 @@ describe('GitHubApiClient', () => {
         createMockRelease(1, 'v1.0.0', false),
         createMockRelease(2, 'v0.9.0-beta', true),
       ];
-      mockDownloadFn.mockReset();
-      mockDownloadFn
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
-      const releasesUndefined = await apiClient.getAllReleases('test-owner', 'test-repo');
+      const releasesUndefined = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releasesUndefined).toEqual(mixedReleases);
 
-      mockDownloadFn.mockReset();
-      mockDownloadFn
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const releasesTrue = await apiClient.getAllReleases('test-owner', 'test-repo', {
+      const releasesTrue = await mocks.apiClient.getAllReleases('test-owner', 'test-repo', {
         includePrerelease: true,
       });
       expect(releasesTrue).toEqual(mixedReleases);
     });
 
     it('should return an empty array if no releases are found', async () => {
-      mockDownloadFn.mockReset();
-      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify([])));
-      const releases = await apiClient.getAllReleases('test-owner', 'test-repo');
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify([])));
+      const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releases).toEqual([]);
     });
 
     it('should throw a GitHubApiClientError with rate limit details if a RateLimitError occurs', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
       const resetTimestamp = Date.now() + 600 * 1000;
-      mockDownloadFn.mockReset();
-      mockDownloadFn.mockRejectedValue(
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download.mockRejectedValue(
         new RateLimitError(
           'Rate limited on getAllReleases',
           url,
           403,
           'Forbidden',
-          {}, // responseBody - original test had {} here, RateLimitError expects string|object
+          {}, // responseBody
           {}, // headers
           resetTimestamp
         )
       );
 
-      await expect(apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
+      await expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError
       );
 
       try {
-        await apiClient.getAllReleases('test-owner', 'test-repo');
+        await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       } catch (error) {
         if (error instanceof GitHubApiClientError) {
           expect(error.message).toContain(`GitHub API rate limit exceeded for ${url}`);
@@ -176,15 +156,17 @@ describe('GitHubApiClient', () => {
 
     it('should throw a GitHubApiClientError for other failures (ServerError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
-      mockDownloadFn.mockReset();
-      mockDownloadFn.mockRejectedValue(new ServerError(url, 503, 'Service Unavailable'));
+      mocks.mockDownloader.download.mockReset();
+      mocks.mockDownloader.download.mockRejectedValue(
+        new ServerError(url, 503, 'Service Unavailable')
+      );
 
-      await expect(apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
+      await expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError
       );
 
       try {
-        await apiClient.getAllReleases('test-owner', 'test-repo');
+        await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       } catch (error) {
         if (error instanceof GitHubApiClientError) {
           expect(error.message).toContain(`GitHub API server error for ${url}`);

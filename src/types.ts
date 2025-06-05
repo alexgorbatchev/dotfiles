@@ -221,6 +221,8 @@ export interface GitHubRateLimit {
   limit: number;
   remaining: number;
   reset: number; // Unix timestamp
+  used: number;
+  resource: string;
 }
 
 /**

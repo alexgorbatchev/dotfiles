@@ -3,105 +3,67 @@
  * @description Tests for the GitHubApiClient class constructor and basic instantiation.
  */
 
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { AppConfig } from '../../../types';
-import type { IDownloader } from '../../downloader/IDownloader';
+import { describe, expect, it } from 'bun:test';
 import { GitHubApiClient } from '../GitHubApiClient';
-import type { IGitHubApiCache } from '../IGitHubApiCache';
-
-// Common variables
-let mockDownloadFn: ReturnType<typeof mock<IDownloader['download']>>;
-let mockAppConfig: AppConfig;
-let apiClient: GitHubApiClient; // For the 'should be defined' test
-let mockCacheForConstructorTest: IGitHubApiCache;
+import {
+  createMockAppConfig,
+  createMockDownloader,
+  createMockGitHubApiCache,
+  setupMockGitHubApiClient,
+} from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
-  beforeEach(() => {
-    mockDownloadFn = mock<IDownloader['download']>(async () => Buffer.from(''));
-
-    const mockDownloaderInstance: IDownloader = {
-      download: mockDownloadFn,
-    };
-
-    mockCacheForConstructorTest = {
-      get: async <T>(_key: string): Promise<T | null> => null,
-      set: async <T>(_key: string, _data: T, _ttlMs?: number): Promise<void> => {},
-      has: async (_key: string): Promise<boolean> => false,
-      delete: async (_key: string): Promise<void> => {},
-      clearExpired: async (): Promise<void> => {},
-      clear: async (): Promise<void> => {},
-    };
-
-    mockAppConfig = {
-      githubToken: undefined,
-      targetDir: '/usr/bin',
-      dotfilesDir: '/test/dotfiles',
-      generatedDir: '/test/dotfiles/.generated',
-      toolConfigDir: '/test/dotfiles/generator/src/tools',
-      debug: '',
-      cacheEnabled: true,
-      cacheDir: '/test/dotfiles/.generated/cache',
-      binariesDir: '/test/dotfiles/.generated/binaries',
-      binDir: '/test/dotfiles/.generated/bin',
-      zshInitDir: '/test/dotfiles/.generated/zsh',
-      manifestPath: '/test/dotfiles/.generated/manifest.json',
-      completionsDir: '/test/dotfiles/.generated/completions',
-      githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
-      githubApiCacheEnabled: true,
-      githubApiCacheTtl: 3600000, // 1 hour
-    };
-
-    apiClient = new GitHubApiClient(mockAppConfig, mockDownloaderInstance);
-  });
-
   it('should be defined', () => {
+    const { apiClient } = setupMockGitHubApiClient();
     expect(apiClient).toBeDefined();
   });
 
   // Constructor tests
   describe('constructor', () => {
     it('should initialize correctly without a token', () => {
-      const client = new GitHubApiClient(mockAppConfig, { download: mockDownloadFn as any });
+      const mockAppConfig = createMockAppConfig();
+      const mockDownloader = createMockDownloader();
+      const client = new GitHubApiClient(mockAppConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
     it('should initialize correctly with a token', () => {
-      const configWithToken: AppConfig = { ...mockAppConfig, githubToken: 'test-token' };
-      const client = new GitHubApiClient(configWithToken, { download: mockDownloadFn as any });
+      const mockAppConfig = createMockAppConfig({ githubToken: 'test-token' });
+      const mockDownloader = createMockDownloader();
+      const client = new GitHubApiClient(mockAppConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
     it('should initialize correctly with a cache', () => {
-      const client = new GitHubApiClient(
-        mockAppConfig,
-        { download: mockDownloadFn as any },
-        mockCacheForConstructorTest
-      );
+      const mockAppConfig = createMockAppConfig();
+      const mockDownloader = createMockDownloader();
+      const mockCache = createMockGitHubApiCache();
+      const client = new GitHubApiClient(mockAppConfig, mockDownloader, mockCache);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
     it('should respect cache configuration options', () => {
-      const configWithCacheDisabled: AppConfig = {
-        ...mockAppConfig,
-        githubApiCacheEnabled: false,
-      };
-      const clientNoCache = new GitHubApiClient(
-        configWithCacheDisabled,
-        { download: mockDownloadFn as any },
-        mockCacheForConstructorTest
-      );
-      expect(clientNoCache).toBeInstanceOf(GitHubApiClient);
+      const mockDownloader = createMockDownloader();
+      const mockCache = createMockGitHubApiCache();
 
-      const configWithCustomTtl: AppConfig = {
-        ...mockAppConfig,
+      const configWithCacheDisabled = createMockAppConfig({
+        githubApiCacheEnabled: false,
+      });
+      const clientNoCache = new GitHubApiClient(configWithCacheDisabled, mockDownloader, mockCache);
+      expect(clientNoCache).toBeInstanceOf(GitHubApiClient);
+      // Add specific assertions here if the client stores these values internally
+      // and they are accessible for testing, e.g. client.isCacheEnabled()
+
+      const configWithCustomTtl = createMockAppConfig({
         githubApiCacheTtl: 7200000, // 2 hours
-      };
+      });
       const clientWithCustomTtl = new GitHubApiClient(
         configWithCustomTtl,
-        { download: mockDownloadFn as any },
-        mockCacheForConstructorTest
+        mockDownloader,
+        mockCache
       );
       expect(clientWithCustomTtl).toBeInstanceOf(GitHubApiClient);
+      // Add specific assertions for TTL if accessible
     });
   });
 });

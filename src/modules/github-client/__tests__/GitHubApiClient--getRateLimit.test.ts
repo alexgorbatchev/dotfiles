@@ -3,57 +3,28 @@
  * @description Tests for the GitHubApiClient's getRateLimit method.
  */
 
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { AppConfig, GitHubRateLimit } from '../../../types';
-import type { IDownloader } from '../../downloader/IDownloader';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import type { GitHubRateLimit } from '../../../types';
 import { HttpError } from '../../downloader/errors';
-import { GitHubApiClient } from '../GitHubApiClient';
 import { GitHubApiClientError } from '../GitHubApiClientError';
-
-// Common variables
-let mockDownloadFn: ReturnType<typeof mock<IDownloader['download']>>;
-let mockAppConfig: AppConfig;
-let apiClient: GitHubApiClient;
+import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
+  let mocks: MockSetup;
+
   beforeEach(() => {
-    mockDownloadFn = mock<IDownloader['download']>(async () => Buffer.from(''));
-
-    const mockDownloaderInstance: IDownloader = {
-      download: mockDownloadFn,
-    };
-
-    mockAppConfig = {
-      githubToken: undefined,
-      targetDir: '/usr/bin',
-      dotfilesDir: '/test/dotfiles',
-      generatedDir: '/test/dotfiles/.generated',
-      toolConfigDir: '/test/dotfiles/generator/src/tools',
-      debug: '',
-      cacheEnabled: true,
-      cacheDir: '/test/dotfiles/.generated/cache',
-      binariesDir: '/test/dotfiles/.generated/binaries',
-      binDir: '/test/dotfiles/.generated/bin',
-      zshInitDir: '/test/dotfiles/.generated/zsh',
-      manifestPath: '/test/dotfiles/.generated/manifest.json',
-      completionsDir: '/test/dotfiles/.generated/completions',
-      githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
-      githubApiCacheEnabled: false, // Explicitly disable for non-caching tests
-      githubApiCacheTtl: 3600000,
-    };
-
-    apiClient = new GitHubApiClient(mockAppConfig, mockDownloaderInstance, undefined);
+    // Explicitly disable API cache for these non-caching tests
+    mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
   });
 
   describe('getRateLimit', () => {
     it('should fetch and return rate limit information', async () => {
       const mockCoreRateLimitData: GitHubRateLimit = {
-        // Renamed to avoid conflict
         limit: 5000,
         remaining: 4999,
         reset: Math.floor(Date.now() / 1000) + 3600,
-        used: 1, // Added based on type definition
-        resource: 'core', // Added based on type definition
+        used: 1,
+        resource: 'core',
       };
       const mockApiResponse = {
         resources: {
@@ -73,31 +44,33 @@ describe('GitHubApiClient', () => {
             resource: 'graphql',
           },
         },
-        rate: mockCoreRateLimitData, // The API returns the 'core' limit under 'rate' as well
+        rate: mockCoreRateLimitData,
       };
-      mockDownloadFn.mockResolvedValue(Buffer.from(JSON.stringify(mockApiResponse)));
+      mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(mockApiResponse)));
 
-      const rateLimit = await apiClient.getRateLimit();
-      // The method is expected to return the 'core' rate limit specifically
+      const rateLimit = await mocks.apiClient.getRateLimit();
       expect(rateLimit).toEqual(mockCoreRateLimitData);
-      expect(mockDownloadFn).toHaveBeenCalledWith(
+      expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
         'https://api.github.com/rate_limit',
         expect.objectContaining({
-          headers: expect.objectContaining({ Accept: 'application/vnd.github.v3+json' }),
+          headers: expect.objectContaining({
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': mocks.mockAppConfig.githubClientUserAgent,
+          }),
         })
       );
     });
 
     it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {
       const url = 'https://api.github.com/rate_limit';
-      mockDownloadFn.mockRejectedValue(
+      mocks.mockDownloader.download.mockRejectedValue(
         new HttpError('API unavailable', url, 500, 'Internal Server Error')
       );
 
-      await expect(apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);
+      await expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);
 
       try {
-        await apiClient.getRateLimit();
+        await mocks.apiClient.getRateLimit();
       } catch (error) {
         if (error instanceof GitHubApiClientError) {
           expect(error.message).toContain(`GitHub API HTTP error for ${url}`);
