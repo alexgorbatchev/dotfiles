@@ -40,6 +40,7 @@ import type {
   IGeneratorOrchestrator,
   GenerateAllOptions as OrchestratorGenerateAllOptions,
 } from '../modules/generator-orchestrator/IGeneratorOrchestrator';
+import type { IInstaller, InstallResult } from '../modules/installer/IInstaller';
 import type { ToolConfig, GeneratedArtifactsManifest } from '../types';
 import type { AppConfig } from '../modules/config';
 import * as configModuleActual from '../modules/config/config'; // For spying on createAppConfig
@@ -104,8 +105,26 @@ const mockGenerateAll = mock(
   }
 );
 
+const mockInstall = mock(
+  async (
+    _toolName: string,
+    _toolConfig: ToolConfig,
+    _options?: { force: boolean; verbose: boolean }
+  ): Promise<InstallResult> => {
+    return {
+      success: true,
+      binaryPath: '/mock/bin/tool',
+      version: '1.0.0',
+    };
+  }
+);
+
 const mockGeneratorOrchestrator: IGeneratorOrchestrator = {
   generateAll: mockGenerateAll,
+};
+
+const mockInstaller: IInstaller = {
+  install: mockInstall,
 };
 
 // Spies for the imported functions from cli.ts
@@ -184,6 +203,7 @@ describe('CLI', () => {
         shellInitGenerator: {} as IShellInitGenerator,
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
+        installer: mockInstaller,
       };
     });
     // This test also needs to mock loadToolConfigs as it's not the focus here.
@@ -287,6 +307,7 @@ describe('CLI', () => {
         shellInitGenerator: {} as IShellInitGenerator, // Mocked as needed
         symlinkGenerator: {} as ISymlinkGenerator, // Mocked as needed
         generatorOrchestrator: mockGeneratorOrchestrator, // CRUCIAL: return the spied orchestrator
+        installer: mockInstaller,
       };
     });
 
@@ -386,6 +407,7 @@ describe('CLI', () => {
         shellInitGenerator: {} as IShellInitGenerator,
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
+        installer: mockInstaller,
       };
     });
     // Mock loadToolConfigs for this error handling test
@@ -433,5 +455,193 @@ describe('CLI', () => {
     expect(processExitSpy).toHaveBeenCalledWith(1);
 
     process.argv = originalArgv; // Restore original argv
+  });
+
+  test('install command should call installer.install with correct parameters', async () => {
+    // Setup mock services
+    setupServicesSpy.mockImplementationOnce(async () => {
+      return {
+        appConfig: {
+          toolConfigsDir: '/fake/tools',
+        } as AppConfig,
+        fs: new NodeFileSystem(),
+        downloader: {} as IDownloader,
+        githubApiCache: {} as IGitHubApiCache,
+        githubApiClient: {} as IGitHubApiClient,
+        shimGenerator: {} as IShimGenerator,
+        shellInitGenerator: {} as IShellInitGenerator,
+        symlinkGenerator: {} as ISymlinkGenerator,
+        generatorOrchestrator: mockGeneratorOrchestrator,
+        installer: mockInstaller,
+      };
+    });
+
+    // Mock tool configs
+    const mockToolConfigs: Record<string, ToolConfig> = {
+      'test-tool': {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        installationMethod: 'github-release' as const,
+        installParams: {
+          repo: 'owner/repo',
+        },
+      },
+    };
+    actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
+
+    // Reset mock install function
+    mockInstall.mockClear();
+
+    // Find the install command
+    const installCommand = programUnderTest.commands.find((cmd) => cmd.name() === 'install');
+    expect(installCommand).toBeDefined();
+
+    // Execute the command
+    await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'test-tool']);
+
+    // Verify the installer was called correctly
+    expect(setupServicesSpy).toHaveBeenCalledTimes(1);
+    expect(actualLoadToolConfigsSpy).toHaveBeenCalledTimes(1);
+    expect(mockInstall).toHaveBeenCalledTimes(1);
+    expect(mockInstall).toHaveBeenCalledWith('test-tool', mockToolConfigs['test-tool'], {
+      force: false,
+      verbose: false,
+    });
+  });
+
+  test('install command should handle tool not found error', async () => {
+    // Setup mock services
+    setupServicesSpy.mockImplementationOnce(async () => {
+      return {
+        appConfig: {
+          toolConfigsDir: '/fake/tools',
+        } as AppConfig,
+        fs: new NodeFileSystem(),
+        downloader: {} as IDownloader,
+        githubApiCache: {} as IGitHubApiCache,
+        githubApiClient: {} as IGitHubApiClient,
+        shimGenerator: {} as IShimGenerator,
+        shellInitGenerator: {} as IShellInitGenerator,
+        symlinkGenerator: {} as ISymlinkGenerator,
+        generatorOrchestrator: mockGeneratorOrchestrator,
+        installer: mockInstaller,
+      };
+    });
+
+    // Mock empty tool configs
+    actualLoadToolConfigsSpy.mockResolvedValueOnce({});
+
+    // Execute the command with a non-existent tool
+    await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'non-existent-tool']);
+
+    // Verify error handling
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error: Tool configuration for "non-existent-tool" not found.'
+    );
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('install command should handle installation failure', async () => {
+    // Setup mock services
+    setupServicesSpy.mockImplementationOnce(async () => {
+      return {
+        appConfig: {
+          toolConfigsDir: '/fake/tools',
+        } as AppConfig,
+        fs: new NodeFileSystem(),
+        downloader: {} as IDownloader,
+        githubApiCache: {} as IGitHubApiCache,
+        githubApiClient: {} as IGitHubApiClient,
+        shimGenerator: {} as IShimGenerator,
+        shellInitGenerator: {} as IShellInitGenerator,
+        symlinkGenerator: {} as ISymlinkGenerator,
+        generatorOrchestrator: mockGeneratorOrchestrator,
+        installer: mockInstaller,
+      };
+    });
+
+    // Mock tool configs
+    const mockToolConfigs: Record<string, ToolConfig> = {
+      'test-tool': {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        installationMethod: 'github-release' as const,
+        installParams: {
+          repo: 'owner/repo',
+        },
+      },
+    };
+    actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
+
+    // Mock installation failure
+    mockInstall.mockResolvedValueOnce({
+      success: false,
+      error: 'Installation failed',
+    });
+
+    // Execute the command
+    await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'test-tool']);
+
+    // Verify error handling
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error installing "test-tool": Installation failed'
+    );
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+  });
+
+  test('install command should pass force and verbose options to installer', async () => {
+    // Setup mock services
+    setupServicesSpy.mockImplementationOnce(async () => {
+      return {
+        appConfig: {
+          toolConfigsDir: '/fake/tools',
+        } as AppConfig,
+        fs: new NodeFileSystem(),
+        downloader: {} as IDownloader,
+        githubApiCache: {} as IGitHubApiCache,
+        githubApiClient: {} as IGitHubApiClient,
+        shimGenerator: {} as IShimGenerator,
+        shellInitGenerator: {} as IShellInitGenerator,
+        symlinkGenerator: {} as ISymlinkGenerator,
+        generatorOrchestrator: mockGeneratorOrchestrator,
+        installer: mockInstaller,
+      };
+    });
+
+    // Mock tool configs
+    const mockToolConfigs: Record<string, ToolConfig> = {
+      'test-tool': {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        installationMethod: 'github-release' as const,
+        installParams: {
+          repo: 'owner/repo',
+        },
+      },
+    };
+    actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
+
+    // Reset mock install function
+    mockInstall.mockClear();
+
+    // Execute the command with options
+    await programUnderTest.parseAsync([
+      'bun',
+      'cli.ts',
+      'install',
+      'test-tool',
+      '--force',
+      '--verbose',
+    ]);
+
+    // Verify the installer was called with the correct options
+    expect(mockInstall).toHaveBeenCalledTimes(1);
+    expect(mockInstall).toHaveBeenCalledWith('test-tool', mockToolConfigs['test-tool'], {
+      force: true,
+      verbose: true,
+    });
   });
 });

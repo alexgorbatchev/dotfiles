@@ -59,6 +59,7 @@ import { ShimGenerator } from './modules/generator-shim/ShimGenerator';
 import { ShellInitGenerator } from './modules/generator-shell-init/ShellInitGenerator';
 import { SymlinkGenerator } from './modules/generator-symlink/SymlinkGenerator';
 import { GeneratorOrchestrator } from './modules/generator-orchestrator/GeneratorOrchestrator';
+import { Installer } from './modules/installer/Installer';
 // ToolConfig import removed as it's not directly used in this file,
 // realLoadToolConfigs handles it internally.
 import { createLogger } from './modules/logger';
@@ -70,6 +71,7 @@ import type { IShimGenerator } from './modules/generator-shim/IShimGenerator';
 import type { IShellInitGenerator } from './modules/generator-shell-init/IShellInitGenerator';
 import type { ISymlinkGenerator } from './modules/generator-symlink/ISymlinkGenerator';
 import type { IGeneratorOrchestrator } from './modules/generator-orchestrator/IGeneratorOrchestrator';
+import type { IInstaller } from './modules/installer/IInstaller';
 import { loadToolConfigs as realLoadToolConfigs } from './modules/config-loader/toolConfigLoader'; // Added import
 import os from 'os';
 import path from 'node:path'; // Added import for path.join
@@ -86,6 +88,7 @@ export interface Services {
   shellInitGenerator: IShellInitGenerator;
   symlinkGenerator: ISymlinkGenerator;
   generatorOrchestrator: IGeneratorOrchestrator;
+  installer: IInstaller;
 }
 
 export async function setupServices(dryRun = false): Promise<Services> {
@@ -164,6 +167,10 @@ export async function setupServices(dryRun = false): Promise<Services> {
   );
 
   log('setupServices: Services initialized.');
+  // Initialize the installer
+  const installer = new Installer(fs, downloader, githubApiClient, appConfig);
+
+  log('setupServices: Services initialized.');
   return {
     appConfig,
     fs,
@@ -174,6 +181,7 @@ export async function setupServices(dryRun = false): Promise<Services> {
     shellInitGenerator,
     symlinkGenerator,
     generatorOrchestrator,
+    installer,
   };
 }
 
@@ -213,6 +221,50 @@ program
     } catch (error) {
       log('generate: Error during artifact generation: %O', error);
       console.error('Error during artifact generation:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('install <toolName>')
+  .description('Install a tool based on its configuration')
+  .option('--force', 'Force installation even if the tool is already installed', false)
+  .option('--verbose', 'Show verbose output during installation', false)
+  .action(async (toolName: string, options: { force: boolean; verbose: boolean }) => {
+    log('install: Command called with toolName: %s, options: %o', toolName, options);
+    try {
+      const { installer, fs, appConfig } = await setupServices();
+      const toolConfigs = await realLoadToolConfigs(appConfig, fs);
+
+      const toolConfig = toolConfigs[toolName];
+      if (!toolConfig) {
+        console.error(`Error: Tool configuration for "${toolName}" not found.`);
+        process.exit(1);
+      }
+
+      log('install: Calling installer.install for tool: %s', toolName);
+      const result = await installer.install(toolName, toolConfig, {
+        force: options.force,
+        verbose: options.verbose,
+      });
+
+      if (result.success) {
+        log('install: Tool %s installed successfully at %s', toolName, result.binaryPath);
+        console.log(`Tool "${toolName}" installed successfully.`);
+        if (result.binaryPath) {
+          console.log(`Binary path: ${result.binaryPath}`);
+        }
+        if (result.version) {
+          console.log(`Version: ${result.version}`);
+        }
+      } else {
+        log('install: Failed to install tool %s: %s', toolName, result.error);
+        console.error(`Error installing "${toolName}": ${result.error}`);
+        process.exit(1);
+      }
+    } catch (error) {
+      log('install: Error during tool installation: %O', error);
+      console.error('Error during tool installation:', error);
       process.exit(1);
     }
   });
