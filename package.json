@@ -12,7 +12,7 @@
     "lint": "tsc --noEmit",
     "fmt": "prettier --write .",
     "build": "bun build ./src/cli.ts --outdir ./dist --target bun",
-    "cli": "bun run ./src/cli.ts"
+    "cli": "dotenv -- bun run ./src/cli.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -32,6 +32,7 @@
     "commander": "^14.0.0",
     "debug": "^4.4.1",
     "dotenv": "^16.5.0",
+    "dotenv-cli": "^8.0.0",
     "memfs": "^4.17.2",
     "node-fetch": "^3.3.2",
     "zod": "^3.25.29",
