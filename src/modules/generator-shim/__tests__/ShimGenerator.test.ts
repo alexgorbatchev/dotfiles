@@ -25,16 +25,17 @@
  *     - [x] Test that `generateForTool` is called for each tool in `toolConfigs`.
  *     - [x] Test with empty `toolConfigs`.
  *     - [x] Test return value (array of all generated shim paths).
- * - [ ] Ensure all tests pass.
+ * - [x] Ensure all tests pass.
  * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Achieve 100% test coverage for `ShimGenerator.ts`.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Achieve 100% test coverage for `ShimGenerator.ts`.
  * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
  * - [ ] Update the memory bank.
  */
 
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'; // Added spyOn
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { IFileSystem } from '../../file-system';
 import type { AppConfig, ToolConfig } from '../../../types';
 import { ShimGenerator } from '../ShimGenerator';
@@ -114,9 +115,21 @@ describe('ShimGenerator', () => {
       expect(writtenContent).toContain(`#!/usr/bin/env bash`);
       expect(writtenContent).toContain(`# Shim for ${toolName}`);
       expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPath}"`);
-      expect(writtenContent).toContain(
-        `INSTALL_COMMAND="mydotfiles install ${toolName}"` // ShimGenerator defaults to 'mydotfiles'
+
+      // Check for the absolute path to install-tool.sh
+      // Since we're now using import.meta.url, we need to calculate the expected path the same way
+      const currentModulePath = fileURLToPath(import.meta.url);
+      const currentModuleDir = path.dirname(currentModulePath);
+      const expectedInstallToolPath = path.join(
+        currentModuleDir, // generator/src/modules/generator-shim/__tests__
+        '..', // generator/src/modules/generator-shim
+        '..', // generator/src/modules
+        '..', // generator/src
+        'scripts',
+        'install-tool.sh'
       );
+      expect(writtenContent).toContain(`INSTALL_TOOL="${expectedInstallToolPath}"`);
+      expect(writtenContent).toContain(`"$INSTALL_TOOL" "${toolName}" "mydotfiles"`);
       expect(mockChmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 

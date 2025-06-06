@@ -184,10 +184,12 @@ describe('E2E: bun run cli generate', () => {
     const lazygitShimContent = fs.readFileSync(lazygitShimPath, 'utf-8');
     expect(fzfShimContent).toContain('#!/usr/bin/env bash');
     expect(fzfShimContent).toContain('exec "$TOOL_EXECUTABLE" "$@"');
-    expect(fzfShimContent).toContain('INSTALL_COMMAND="mydotfiles install fzf"'); // From fzf.tool.ts fixture
+    expect(fzfShimContent).toContain('INSTALL_TOOL='); // Check for INSTALL_TOOL variable
+    expect(fzfShimContent).toContain('"$INSTALL_TOOL" "fzf" "mydotfiles"'); // Check for install tool script usage
     expect(lazygitShimContent).toContain('#!/usr/bin/env bash');
     expect(lazygitShimContent).toContain('exec "$TOOL_EXECUTABLE" "$@"');
-    expect(lazygitShimContent).toContain('INSTALL_COMMAND="mydotfiles install lazygit"'); // From lazygit.tool.ts fixture
+    expect(lazygitShimContent).toContain('INSTALL_TOOL='); // Check for INSTALL_TOOL variable
+    expect(lazygitShimContent).toContain('"$INSTALL_TOOL" "lazygit" "mydotfiles"'); // Check for install tool script usage
   });
 
   it('should generate the correct shell initialization file content', () => {
