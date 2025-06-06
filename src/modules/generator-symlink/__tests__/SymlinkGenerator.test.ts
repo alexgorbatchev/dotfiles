@@ -22,18 +22,20 @@
  * - [x] Create `index.ts` to export the interface and class.
  * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
  * - [x] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update appConfig with `generatedArtifactsManifestPath`. (Now uses `createMockAppConfig`)
- * - [ ] Ensure 100% test coverage for executable code.
+ * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Refactor to use `createMockFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { AppConfig, ToolConfig } from '../../../types';
-import { MemFileSystem, type IFileSystem } from '../../file-system';
+import type { IFileSystem } from '../../file-system';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
@@ -45,7 +47,7 @@ describe('SymlinkGenerator', () => {
   const MOCK_PROJECT_ROOT = `${MOCK_HOME_DIR}/.dotfiles`;
 
   beforeEach(() => {
-    fs = new MemFileSystem();
+    fs = createMockFileSystem();
     appConfig = createMockAppConfig({
       dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
       // targetDir will default to homedir() from createMockAppConfig,

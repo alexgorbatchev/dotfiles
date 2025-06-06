@@ -1,14 +1,55 @@
 /**
  * @file generator/src/modules/file-system/__tests__/MemFileSystem.test.ts
  * @description Tests for the MemFileSystem implementation.
+ *
+ * ## Development Plan
+ *
+ * ### Overview
+ * This file contains unit tests for the `MemFileSystem` class, which implements the `IFileSystem` interface
+ * using an in-memory file system provided by the `memfs` library. The tests cover all public methods
+ * of `MemFileSystem`, ensuring they behave as expected according to the `IFileSystem` contract.
+ * It now uses the `createMockFileSystem` helper for instantiation.
+ *
+ * ### Technical Requirements
+ * - Test all 14 methods of the `IFileSystem` interface as implemented by `MemFileSystem`.
+ * - Ensure asynchronous operations are correctly tested (e.g., using `async/await`).
+ * - Verify correct handling of file content, paths, symbolic links, and directory structures.
+ * - Test error conditions where appropriate (e.g., file not found).
+ * - Use a consistent setup for the in-memory file system for each test or group of tests, leveraging `createMockFileSystem`.
+ * - Adhere to project testing conventions and `.roorules`.
+ *
+ * ### Tasks
+ * - [x] **Initial Setup:**
+ *   - [x] Import necessary modules (`IFileSystem`, `createMockFileSystem`, `DirectoryJSON`).
+ *   - [x] Define a base JSON structure for initializing the file system for tests.
+ *   - [x] Set up `beforeEach` to create a new `MemFileSystem` instance (via `createMockFileSystem`) with the base JSON and a symlink.
+ * - [x] **Test `readFile(path, encoding)`:** (Covered by existing tests)
+ * - [x] **Test `writeFile(path, data)`:** (Covered by existing tests)
+ * - [x] **Test `exists(path)`:** (Covered by existing tests)
+ * - [x] **Test `mkdir(path, options)`:** (Covered by existing tests)
+ * - [x] **Test `readdir(path)`:** (Covered by existing tests)
+ * - [x] **Test `rm(path, options)`:** (Covered by existing tests)
+ * - [x] **Test `rmdir(path, options)`:** (Covered by existing tests)
+ * - [x] **Test `stat(path)`:** (Covered by existing tests)
+ * - [x] **Test `symlink(target, path)` and `readlink(path)`:** (Covered by existing tests)
+ * - [x] **Test `chmod(path, mode)`:** (Covered by existing tests)
+ * - [x] **Test `copyFile(source, destination)`:** (Covered by existing tests)
+ * - [x] **Test `rename(oldPath, newPath)`:** (Covered by existing tests)
+ * - [x] **Test `ensureDir(path)`:** (Covered by existing tests)
+ * - [x] **Refactor to use `createMockFileSystem` helper.**
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for `MemFileSystem.ts`.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { MemFileSystem } from '../MemFileSystem';
 import type { DirectoryJSON } from 'memfs';
+import type { IFileSystem } from '../IFileSystem'; // Keep IFileSystem for type annotation
+import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 
 describe('MemFileSystem', () => {
-  let fileSystem: MemFileSystem; // Use MemFileSystem type for access to getVolume if needed
+  let fileSystem: IFileSystem; // Changed to IFileSystem
   const initialJsonBase: DirectoryJSON = {
     '/test.txt': 'hello world',
     '/data/file1.txt': 'data file 1',
@@ -16,10 +57,13 @@ describe('MemFileSystem', () => {
   };
 
   beforeEach(() => {
-    // Create a fresh volume from base JSON
-    fileSystem = new MemFileSystem(initialJsonBase);
+    // Create a fresh volume from base JSON using the helper
+    fileSystem = createMockFileSystem(initialJsonBase);
     // Programmatically create the symlink to ensure it's correctly set up by memfs
-    const vol = (fileSystem as any).getVolume();
+    // Accessing internal 'vol' for testing setup. This is a controlled exception.
+    const vol = (fileSystem as any).getVolume
+      ? (fileSystem as any).getVolume()
+      : (fileSystem as any).vol;
     vol.symlinkSync('/test.txt', '/link-to-text');
   });
 

@@ -1,13 +1,58 @@
 /**
  * @file generator/src/modules/extractor/__tests__/ArchiveExtractor.test.ts
  * @description Tests for the ArchiveExtractor class.
+ *
+ * ## Development Plan
+ *
+ * ### Overview
+ * This file contains unit tests for the `ArchiveExtractor` class, which is responsible for
+ * extracting various archive formats using system commands executed via `zx`.
+ *
+ * ### Technical Requirements
+ * - Test archive format detection (`detectFormat`) for various extensions and MIME types (via `file` command mock).
+ * - Test `isSupported` for known supported and unsupported formats.
+ * - Test the main `extract` method for:
+ *   - Correct command generation for supported archive types (e.g., .tar.gz, .zip).
+ *   - Handling of `targetDir` and `stripComponents` options.
+ *   - Creation and cleanup of temporary extraction directories.
+ *   - Error handling for `zx` command failures during extraction.
+ *   - Error handling for unsupported archive formats.
+ * - Ensure `IFileSystem` is correctly used for all file operations (e.g., creating temp dirs, checking existence).
+ * - Mock the `zx` (`$`) command effectively to simulate different outcomes of system commands.
+ * - Adhere to project testing conventions and `.roorules`.
+ *
+ * ### Tasks
+ * - [x] **Setup Mocks:**
+ *   - [x] Mock `zx` (`$`) command.
+ *   - [x] Use `MemFileSystem` (via `createMockFileSystem`) for `IFileSystem`.
+ * - [x] **Test `detectFormat`:**
+ *   - [x] Test detection by common extensions (.tar.gz, .tgz, .zip, .tar.bz2, .tbz2, .tbz, .tar.xz, .txz, .tar).
+ *   - [x] Test fallback to `file` command for MIME type detection (mock `zx` for `file` command).
+ *   - [x] Test throwing error for unsupported/undetectable formats.
+ * - [x] **Test `isSupported`:**
+ *   - [x] Test with supported formats.
+ *   - [x] Test with unsupported formats.
+ * - [x] **Test `extract` method:**
+ *   - [x] Test .tar.gz extraction (verify `tar` command).
+ *   - [x] Test .zip extraction (verify `unzip` command).
+ *   - [x] Test `stripComponents` option for tar.
+ *   - [x] Test cleanup of temporary directory on success.
+ *   - [x] Test cleanup of temporary directory on extraction failure.
+ *   - [ ] Test `detectAndSetExecutables` (currently placeholder, expand if logic grows).
+ *   - [ ] Test other archive formats once implemented.
+ * - [x] **Final Review:**
+ *   - [x] Ensure all tests pass.
+ *   - [x] Verify adherence to `.roorules`.
+ *   - [x] Refactor to use `createMockFileSystem` helper.
+ *   - [x] Update development plan checklist.
+ *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
-import { MemFileSystem } from '../../file-system/MemFileSystem';
 import type { IFileSystem } from '../../file-system/IFileSystem';
+import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 import type { ExtractOptions } from '../../../types';
 
 // Mock zx's $ command
@@ -29,7 +74,7 @@ describe('ArchiveExtractor', () => {
   let extractor: IArchiveExtractor;
 
   beforeEach(() => {
-    fileSystem = new MemFileSystem();
+    fileSystem = createMockFileSystem();
     extractor = new ArchiveExtractor(fileSystem);
     mockZx.mockClear();
     // Default zx mock for successful execution

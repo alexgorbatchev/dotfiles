@@ -41,6 +41,7 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage (passes in full suite).
+ * - [x] Refactor to use `createMockFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -49,7 +50,7 @@ import path from 'node:path';
 import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '../../../types';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import type { IFileSystem } from '../../file-system';
-import { MemFileSystem } from '../../file-system/MemFileSystem';
+import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 import type { IShimGenerator } from '../../generator-shim';
 import type { IShellInitGenerator } from '../../generator-shell-init';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '../../generator-symlink';
@@ -88,7 +89,7 @@ describe('GeneratorOrchestrator', () => {
     // We will assert directly on mockShimGenerator.generate, etc.
     // Top-level mock function variables (e.g., mockShimGenerate) are no longer declared at the top of the describe block.
 
-    mockFileSystem = new MemFileSystem();
+    mockFileSystem = createMockFileSystem();
     mockFsReadFile = spyOn(mockFileSystem, 'readFile');
     mockFsExists = spyOn(mockFileSystem, 'exists');
 

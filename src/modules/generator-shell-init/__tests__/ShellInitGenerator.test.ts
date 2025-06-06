@@ -26,6 +26,7 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
+ * - [x] Refactor to use `createMockFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
 import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
@@ -34,8 +35,8 @@ import path from 'node:path';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import type { IFileSystem } from '../../file-system';
+import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 import type { AppConfig, ToolConfig } from '../../../types';
-import { MemFileSystem } from '../../file-system/MemFileSystem'; // Using MemFileSystem for tests
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 
 describe('ShellInitGenerator', () => {
@@ -49,7 +50,7 @@ describe('ShellInitGenerator', () => {
   const DEFAULT_DOTFILES_DIR = '/test/home/.dotfiles';
 
   beforeEach(() => {
-    mockFileSystem = new MemFileSystem();
+    mockFileSystem = createMockFileSystem();
     // Spy on methods of the MemFileSystem instance
     let writtenFilePath: string | null = null;
     let writtenFileContent: string | null = null;
