@@ -36,6 +36,7 @@
  *   - [x] Define `GeneratedArtifactsManifest` interface and update `AppConfig` with `generatedArtifactsManifestPath`.
  *   - [x] Update `GeneratedArtifactsManifest` to store more detailed artifact information.
  *   - [x] Add `toolConfigsDir` to `AppConfig` for tool configurations directory.
+ *   - [ ] Add `homeDir` to `AppConfig`.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -517,6 +518,7 @@ export interface GeneratedArtifactsManifest {
 export interface AppConfig {
   targetDir: string;
   dotfilesDir: string;
+  homeDir: string; // User's home directory
   generatedDir: string;
   toolConfigDir: string; // Existing: path to tool configuration files
   toolConfigsDir: string; // New: path to tool configurations directory (plural, as per task)

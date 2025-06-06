@@ -20,6 +20,7 @@
  *   - [x] Assert `NodeFileSystem` methods are called correctly.
  *   - [x] Assert `loadToolConfigs` is called with `MemFileSystem`.
  *   - [x] Assert `generatorOrchestrator.generateAll` receives tool configs from the pre-populated `MemFileSystem`.
+ * - [x] Update mock AppConfig to include `homeDir`.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -222,6 +223,7 @@ describe('CLI', () => {
     const fullMockAppConfigForAssertion: AppConfig = {
       targetDir: mockGeneratedDirRoot,
       dotfilesDir: mockDotfilesDir,
+      homeDir: path.join(mockBaseDir, 'home', 'testuser'), // Added homeDir
       generatedDir: path.join(mockGeneratedDirRoot, 'generated'),
       toolConfigDir: path.join(mockDotfilesDir, 'configs'),
       toolConfigsDir: mockToolConfigsDir, // Crucial for the test

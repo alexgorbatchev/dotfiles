@@ -13,6 +13,7 @@
  *     - [x] Update return type to `Promise<SymlinkOperationResult[]>`.
  *     - [x] Collect and return `SymlinkOperationResult` for each operation.
  *     - [x] Get home directory and project root from `AppConfig`.
+ *     - [x] Fix homeDir resolution to use `appConfig.homeDir`.
  *     - [x] Iterate through `toolConfigs` and their `symlinks`.
  *     - [x] Resolve absolute source and target paths.
  *     - [x] Handle `~` expansion in target paths.
@@ -65,9 +66,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     const results: SymlinkOperationResult[] = [];
     // dryRun is removed; IFileSystem handles behavior
     const { overwrite = false, backup = false } = options;
-    const homeDir = this.appConfig.dotfilesDir.startsWith('/Users/') // A bit of a hack to get home for testing
-      ? this.appConfig.dotfilesDir.split('/').slice(0, 3).join('/')
-      : this.appConfig.dotfilesDir;
+    const homeDir = this.appConfig.homeDir;
     const projectRoot = this.appConfig.dotfilesDir;
 
     log('generate: Home directory determined as: %s', homeDir);

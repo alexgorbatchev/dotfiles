@@ -30,6 +30,7 @@
  *   - [x] Add `generatedArtifactsManifestPath` to `AppConfig` creation.
  *   - [x] Add `toolConfigsDir` to `AppConfig` creation, loading from `TOOL_CONFIGS_DIR` env var.
  *   - [x] Correct the default path for `toolConfigsDir` to `generator/configs/tools`.
+ *   - [x] Add `homeDir` to `AppConfig` creation, sourced from `systemInfo.homedir`.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -255,6 +256,7 @@ export function createAppConfig(
   return {
     targetDir: targetDirRaw || '/usr/bin',
     dotfilesDir: DOTFILES_DIR,
+    homeDir: systemInfo.homedir, // Added homeDir from systemInfo
     generatedDir: GENERATED_DIR,
     toolConfigDir: toolConfigDirRaw || join(DOTFILES_DIR, 'generator', 'src', 'tools'), // Existing, for individual tool files
     toolConfigsDir: toolConfigsDirRaw || join(DOTFILES_DIR, 'generator', 'configs', 'tools'), // New, for the directory of *.tool.ts files

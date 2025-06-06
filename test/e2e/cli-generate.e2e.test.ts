@@ -3,7 +3,7 @@
  *
  * ## Development Plan
  *
- * ### Overall Task: Create E2E test for `bun run cli generate`
+ * ### Overall Task: Create E2E test for `bun ./src/cli.ts generate`
  * - [ ] **Part 1: Create E2E Test File and Directory Structure (This file)**
  *   - [x] Create `generator/test/e2e/` directory.
  *   - [x] Create `generator/test/e2e/cli-generate.e2e.test.ts`.
@@ -20,7 +20,7 @@
  * - [x] **Part 3: Write the E2E Test Case**
  *   - [x] `it('should generate artifacts correctly for fzf and lazygit', async () => { ... })`
  *   - [x] **Execute CLI:**
- *     - [x] Use `Bun.spawnSync` for `bun run cli generate` with custom env (cwd: `generator/`).
+ *     - [x] Use `Bun.spawnSync` for `bun ./src/cli.ts generate` with custom env (cwd: `generator/`).
  *     - [x] Capture `stdout`, `stderr`, `exitCode`. Assert `exitCode` is 0.
  *   - [x] **Verify Generated Artifacts:**
  *     - [x] Shims: existence, executability, content (e.g., `tempDir/my-dotfiles-repo/.generated/bin/fzf`).
@@ -117,7 +117,7 @@ describe('E2E: bun run cli generate', () => {
       TOOL_CONFIGS_DIR: toolConfigsDir, // CLI will read *.tool.ts from here
       TARGET_DIR: binDirForVerification, // Shims will be written here by the CLI
       GENERATED_ARTIFACTS_MANIFEST_PATH: generatedArtifactsManifestPath, // Manifest will be written here
-      DEBUG: 'dot:*,generator:*', // Enable extensive logging for E2E debugging
+      // DEBUG: 'dot:*,generator:*', // Enable extensive logging for E2E debugging
       CACHE_ENABLED: 'false', // Disable caching for test isolation
       GITHUB_API_CACHE_ENABLED: 'false', // Disable GitHub API caching for isolation
       CHECK_UPDATES_ON_RUN: 'false', // Disable update checks during E2E tests
@@ -192,7 +192,7 @@ describe('E2E: bun run cli generate', () => {
 
     log('Executing "bun run cli generate" with env:', envVarsForCli);
     const proc = Bun.spawnSync({
-      cmd: ['bun', 'run', 'cli', 'generate'], // `bun run cli` will look for "cli" script in generator/package.json
+      cmd: ['bun', './src/cli.ts', 'generate'], // Execute cli.ts directly
       cwd: generatorPath, // Run from the 'generator' directory
       env: envVarsForCli,
       stdout: 'pipe',

@@ -13,6 +13,7 @@ export const createMockAppConfig = (overrides: Partial<AppConfig> = {}): AppConf
   githubToken: undefined,
   targetDir: '/usr/bin',
   dotfilesDir: '/test/dotfiles',
+  homeDir: '/test/home/user', // Added homeDir
   generatedDir: '/test/dotfiles/.generated',
   toolConfigDir: '/test/dotfiles/generator/src/tools', // Existing
   toolConfigsDir: '/test/dotfiles/configs/tools', // New default for tests

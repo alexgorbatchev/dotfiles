@@ -26,6 +26,7 @@
  * - [x] Update appConfig with `generatedArtifactsManifestPath`. (Now uses `createMockAppConfig`)
  * - [x] Ensure 100% test coverage for executable code.
  * - [x] Refactor to use `createMockFileSystem` helper.
+ * - [x] Update mock AppConfig to correctly set `homeDir` for tests.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -50,6 +51,7 @@ describe('SymlinkGenerator', () => {
     fs = createMockFileSystem();
     appConfig = createMockAppConfig({
       dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
+      homeDir: MOCK_HOME_DIR, // Ensure appConfig.homeDir is the mocked home directory
       // targetDir will default to homedir() from createMockAppConfig,
       // which is mocked to MOCK_HOME_DIR in these tests if os.homedir is spied on.
       // If not spied on before createMockAppConfig, it would use actual homedir.
