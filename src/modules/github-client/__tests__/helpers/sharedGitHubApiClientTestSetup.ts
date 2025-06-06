@@ -14,7 +14,8 @@ export const createMockAppConfig = (overrides: Partial<AppConfig> = {}): AppConf
   targetDir: '/usr/bin',
   dotfilesDir: '/test/dotfiles',
   generatedDir: '/test/dotfiles/.generated',
-  toolConfigDir: '/test/dotfiles/generator/src/tools',
+  toolConfigDir: '/test/dotfiles/generator/src/tools', // Existing
+  toolConfigsDir: '/test/dotfiles/configs/tools', // New default for tests
   debug: '',
   cacheEnabled: true,
   cacheDir: '/test/dotfiles/.generated/cache',

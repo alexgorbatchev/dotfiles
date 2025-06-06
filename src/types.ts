@@ -35,6 +35,7 @@
  *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  *   - [x] Define `GeneratedArtifactsManifest` interface and update `AppConfig` with `generatedArtifactsManifestPath`.
  *   - [x] Update `GeneratedArtifactsManifest` to store more detailed artifact information.
+ *   - [x] Add `toolConfigsDir` to `AppConfig` for tool configurations directory.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -517,7 +518,8 @@ export interface AppConfig {
   targetDir: string;
   dotfilesDir: string;
   generatedDir: string;
-  toolConfigDir: string;
+  toolConfigDir: string; // Existing: path to tool configuration files
+  toolConfigsDir: string; // New: path to tool configurations directory (plural, as per task)
   debug: string;
   cacheEnabled: boolean;
   sudoPrompt?: string;

@@ -23,6 +23,7 @@
  *   - [x] Cleanup all linting errors and warnings.
  *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  *   - [x] Ensure 100% test coverage.
+ *   - [x] Test `toolConfigsDir` default value and loading from env.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { describe, it, expect } from 'bun:test';
@@ -48,7 +49,8 @@ describe('createAppConfig', () => {
     expect(appConfig.targetDir).toBe('/usr/bin');
     expect(appConfig.dotfilesDir).toBe(expectedDotfilesDir);
     expect(appConfig.generatedDir).toBe(expectedGeneratedDir);
-    expect(appConfig.toolConfigDir).toBe(join(expectedDotfilesDir, 'generator', 'src', 'tools'));
+    expect(appConfig.toolConfigDir).toBe(join(expectedDotfilesDir, 'generator', 'src', 'tools')); // Existing
+    expect(appConfig.toolConfigsDir).toBe(join(expectedDotfilesDir, 'configs', 'tools')); // New default
     expect(appConfig.debug).toBe('');
     expect(appConfig.cacheEnabled).toBe(true);
     expect(appConfig.sudoPrompt).toBeUndefined();
@@ -69,7 +71,8 @@ describe('createAppConfig', () => {
       TARGET_DIR: '/test/target',
       DOTFILES_DIR: '/test/dotfiles',
       GENERATED_DIR: '/test/dotfiles/.custom_generated',
-      TOOL_CONFIG_DIR: '/test/tools',
+      TOOL_CONFIG_DIR: '/test/tools', // Existing
+      TOOL_CONFIGS_DIR: '/test/tool-configs-dir', // New
       DEBUG: 'test:*',
       CACHE_ENABLED: 'false',
       SUDO_PROMPT: 'Test sudo:',
@@ -82,7 +85,8 @@ describe('createAppConfig', () => {
     expect(appConfig.targetDir).toBe('/test/target');
     expect(appConfig.dotfilesDir).toBe('/test/dotfiles');
     expect(appConfig.generatedDir).toBe('/test/dotfiles/.custom_generated');
-    expect(appConfig.toolConfigDir).toBe('/test/tools');
+    expect(appConfig.toolConfigDir).toBe('/test/tools'); // Existing
+    expect(appConfig.toolConfigsDir).toBe('/test/tool-configs-dir'); // New
     expect(appConfig.debug).toBe('test:*');
     expect(appConfig.cacheEnabled).toBe(false); // Zod transform handles 'false' string
     expect(appConfig.sudoPrompt).toBe('Test sudo:');

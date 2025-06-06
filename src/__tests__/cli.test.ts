@@ -13,6 +13,7 @@
  * - [ ] Test other commands as they are implemented.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [ ] Update tests to mock/spy on the real `loadToolConfigs` and verify it's called correctly.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -57,15 +58,18 @@ const mockGeneratorOrchestrator: IGeneratorOrchestrator = {
 // Spies for the imported functions from cli.ts
 // Spies for the imported functions from cli.ts
 // We import the module as cli to allow spying on its exports.
-import * as cli from '../cli';
+import * as cliModule from '../cli'; // Renamed to cliModule to avoid conflict
+import * as configLoaderModule from '../modules/config-loader/toolConfigLoader'; // Import the actual module
 
-let setupServicesSpy: ReturnType<typeof spyOn<typeof cli, 'setupServices'>>;
-let loadToolConfigsSpy: ReturnType<typeof spyOn<typeof cli, 'loadToolConfigs'>>;
+let setupServicesSpy: ReturnType<typeof spyOn<typeof cliModule, 'setupServices'>>;
+let actualLoadToolConfigsSpy: ReturnType<
+  typeof spyOn<typeof configLoaderModule, 'loadToolConfigs'>
+>; // Spy on the real function
 
 describe('CLI', () => {
   let consoleErrorSpy: ReturnType<typeof spyOn>;
   let processExitSpy: ReturnType<typeof spyOn>;
-  let programUnderTest: typeof cli.program; // Declare here, to be assigned in beforeEach
+  let programUnderTest: typeof cliModule.program; // Declare here, to be assigned in beforeEach
 
   beforeEach(async () => {
     // Make beforeEach async
@@ -76,7 +80,7 @@ describe('CLI', () => {
 
     // Updated spy to reflect new signature and allow checking of fs type
     setupServicesSpy = spyOn(freshCliModule, 'setupServices').mockImplementation(
-      async (dryRun?: boolean): Promise<cli.Services> => {
+      async (dryRun?: boolean): Promise<cliModule.Services> => {
         const fsInstance = dryRun ? new MemFileSystem() : new NodeFileSystem();
         // Log constructor name for easier verification if needed, though direct instance check is better
         // console.log(`setupServicesSpy: dryRun=${dryRun}, fs constructor=${fsInstance.constructor.name}`);
@@ -84,6 +88,7 @@ describe('CLI', () => {
           appConfig: {
             // Provide a minimal AppConfig with necessary properties if cli.ts uses them before orchestrator call
             generatedArtifactsManifestPath: '/mock/manifest.json',
+            toolConfigsDir: '/fake/tools', // Add toolConfigsDir for the real loadToolConfigs
           } as AppConfig,
           fs: fsInstance, // Return an actual (mocked) FS type
           downloader: {} as IDownloader,
@@ -97,11 +102,8 @@ describe('CLI', () => {
       }
     );
 
-    loadToolConfigsSpy = spyOn(freshCliModule, 'loadToolConfigs').mockImplementation(
-      async (): Promise<Record<string, ToolConfig>> => {
-        return {};
-      }
-    );
+    // Spy on the actual imported loadToolConfigs function
+    actualLoadToolConfigsSpy = spyOn(configLoaderModule, 'loadToolConfigs').mockResolvedValue({});
 
     mockGenerateAll.mockClear();
 
@@ -111,7 +113,7 @@ describe('CLI', () => {
 
   afterEach(() => {
     setupServicesSpy.mockRestore();
-    loadToolConfigsSpy.mockRestore();
+    actualLoadToolConfigsSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();
   });
@@ -126,10 +128,15 @@ describe('CLI', () => {
 
     // Verify the type of IFileSystem that would have been created
     expect(setupServicesSpy.mock.results[0]).toBeDefined(); // Ensure the spy was called
-    const setupServicesResult = (await setupServicesSpy.mock.results[0]!.value) as cli.Services;
+    const setupServicesResult = (await setupServicesSpy.mock.results[0]!
+      .value) as cliModule.Services;
     expect(setupServicesResult.fs).toBeInstanceOf(NodeFileSystem);
 
-    expect(loadToolConfigsSpy).toHaveBeenCalledTimes(1);
+    expect(actualLoadToolConfigsSpy).toHaveBeenCalledTimes(1);
+    expect(actualLoadToolConfigsSpy).toHaveBeenCalledWith(
+      setupServicesResult.appConfig,
+      setupServicesResult.fs
+    );
     expect(mockGenerateAll).toHaveBeenCalledTimes(1);
     // generateAll is now called without the dryRun option in its options object
     expect(mockGenerateAll).toHaveBeenCalledWith({}, {}); // Empty options object
@@ -145,10 +152,15 @@ describe('CLI', () => {
 
     // Verify the type of IFileSystem that would have been created
     expect(setupServicesSpy.mock.results[0]).toBeDefined(); // Ensure the spy was called
-    const setupServicesResult = (await setupServicesSpy.mock.results[0]!.value) as cli.Services;
+    const setupServicesResult = (await setupServicesSpy.mock.results[0]!
+      .value) as cliModule.Services;
     expect(setupServicesResult.fs).toBeInstanceOf(MemFileSystem);
 
-    expect(loadToolConfigsSpy).toHaveBeenCalledTimes(1);
+    expect(actualLoadToolConfigsSpy).toHaveBeenCalledTimes(1);
+    expect(actualLoadToolConfigsSpy).toHaveBeenCalledWith(
+      setupServicesResult.appConfig,
+      setupServicesResult.fs
+    );
     expect(mockGenerateAll).toHaveBeenCalledTimes(1);
     // generateAll is now called without the dryRun option in its options object
     expect(mockGenerateAll).toHaveBeenCalledWith({}, {}); // Empty options object
@@ -163,7 +175,7 @@ describe('CLI', () => {
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'generate']);
 
     expect(setupServicesSpy).toHaveBeenCalledTimes(1);
-    expect(loadToolConfigsSpy).toHaveBeenCalledTimes(1);
+    expect(actualLoadToolConfigsSpy).toHaveBeenCalledTimes(1);
     expect(mockGenerateAll).toHaveBeenCalledTimes(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith('Error during artifact generation:', testError);
     expect(processExitSpy).toHaveBeenCalledWith(1);
@@ -181,7 +193,7 @@ describe('CLI', () => {
     const originalArgv = process.argv;
     process.argv = ['bun', 'cli.ts', 'generate']; // Simulate command line arguments
 
-    await cli.main();
+    await cliModule.main();
 
     // Commander's default behavior for an unhandled error in an action
     // is to output to console.error and call process.exit.

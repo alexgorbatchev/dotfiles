@@ -33,6 +33,7 @@
  * - [x] Refactor dry run mechanism to inject IFileSystem.
  *   - [x] Modify `cli.ts` to conditionally instantiate `IFileSystem` in `setupServices`.
  *   - [x] Modify `cli.ts` to remove `dryRun` option from `generateAll` call.
+ * - [x] Integrate real `loadToolConfigs` function.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -53,7 +54,8 @@ import { ShimGenerator } from './modules/generator-shim/ShimGenerator';
 import { ShellInitGenerator } from './modules/generator-shell-init/ShellInitGenerator';
 import { SymlinkGenerator } from './modules/generator-symlink/SymlinkGenerator';
 import { GeneratorOrchestrator } from './modules/generator-orchestrator/GeneratorOrchestrator';
-import type { ToolConfig } from './types';
+// ToolConfig import removed as it's not directly used in this file,
+// realLoadToolConfigs handles it internally.
 import { createLogger } from './modules/logger';
 import type { IFileSystem } from './modules/file-system/IFileSystem';
 import type { IDownloader } from './modules/downloader/IDownloader';
@@ -63,6 +65,7 @@ import type { IShimGenerator } from './modules/generator-shim/IShimGenerator';
 import type { IShellInitGenerator } from './modules/generator-shell-init/IShellInitGenerator';
 import type { ISymlinkGenerator } from './modules/generator-symlink/ISymlinkGenerator';
 import type { IGeneratorOrchestrator } from './modules/generator-orchestrator/IGeneratorOrchestrator';
+import { loadToolConfigs as realLoadToolConfigs } from './modules/config-loader/toolConfigLoader'; // Added import
 import os from 'os';
 
 const log = createLogger('cli');
@@ -124,12 +127,7 @@ export async function setupServices(dryRun = false): Promise<Services> {
   };
 }
 
-// Stub for loadToolConfigs
-export async function loadToolConfigs(): Promise<Record<string, ToolConfig>> {
-  log('loadToolConfigs: Stub called, returning empty configs.');
-  // In a real implementation, this would dynamically load *.tool.ts files
-  return {};
-}
+// Stub for loadToolConfigs removed, real one is imported as realLoadToolConfigs
 
 export const program = new Command();
 
@@ -145,8 +143,8 @@ program
   .action(async (options: { dryRun: boolean }) => {
     log('generate: Command called with options: %o', options);
     try {
-      const { generatorOrchestrator, fs } = await setupServices(options.dryRun);
-      const toolConfigs = await loadToolConfigs();
+      const { generatorOrchestrator, fs, appConfig } = await setupServices(options.dryRun); // Added appConfig
+      const toolConfigs = await realLoadToolConfigs(appConfig, fs); // Call real function
 
       log(
         'generate: Calling generatorOrchestrator.generateAll. Dry run is %s, FileSystem is %s',

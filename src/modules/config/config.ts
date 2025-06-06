@@ -27,6 +27,7 @@
  *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  *   - [x] Ensure 100% test coverage.
  *   - [x] Add `generatedArtifactsManifestPath` to `AppConfig` creation.
+ *   - [x] Add `toolConfigsDir` to `AppConfig` creation, loading from `TOOL_CONFIGS_DIR` env var.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -48,25 +49,118 @@ export interface SystemInfo {
 // Interface for the environment variables relevant to the config
 // This defines the raw shape expected from the environment.
 export interface ConfigEnvironment {
+  /**
+   * Specifies the root directory of the dotfiles repository.
+   * If not set, it defaults to `~/.dotfiles`.
+   * This path is used as the base for resolving other relative paths like `GENERATED_DIR` and `TOOL_CONFIG_DIR`.
+   */
   DOTFILES_DIR?: string;
+  /**
+   * Defines the directory where all generated files (shims, manifests, caches, etc.) will be stored.
+   * Defaults to `${DOTFILES_DIR}/.generated`.
+   * This directory is central to the generator's output.
+   */
   GENERATED_DIR?: string;
+  /**
+   * Sets the target directory where executable shims for tools will be placed.
+   * This directory should be in the system's PATH for the shims to be globally accessible.
+   * Defaults to `/usr/bin`. Requires appropriate permissions if set to a system directory.
+   */
   TARGET_DIR?: string;
+  /**
+   * Specifies the directory containing individual TypeScript tool configuration files (e.g., `mytool.config.ts`).
+   * This is the older way of defining tool configurations if still supported.
+   * Defaults to `${DOTFILES_DIR}/generator/src/tools`.
+   */
   TOOL_CONFIG_DIR?: string;
+  /**
+   * Specifies the directory containing `*.tool.ts` tool configuration files.
+   * This is the primary directory scanned by `loadToolConfigs` for defining tools.
+   * Defaults to `${DOTFILES_DIR}/configs/tools`.
+   */
+  TOOL_CONFIGS_DIR?: string;
+  /**
+   * Controls debug logging output. Uses the `debug` module's namespace conventions.
+   * Examples: `dot:*` (all logs), `dot:installTool` (specific component).
+   * Defaults to an empty string (no debug logs).
+   */
   DEBUG?: string;
-  CACHE_ENABLED?: string; // Raw string from env
+  /**
+   * Enables or disables caching for downloaded tool assets. Parsed as a boolean.
+   * Set to "true" or "false". If undefined, defaults to true.
+   * Affects whether the `Downloader` attempts to use or store files in `GENERATED_DIR/cache`.
+   */
+  CACHE_ENABLED?: string;
+  /**
+   * Custom prompt message to display when `sudo` is required for operations like writing to `TARGET_DIR`.
+   * If not set, the system's default sudo prompt is used.
+   */
   SUDO_PROMPT?: string;
-  // New environment variables from Zinit analysis
+  /**
+   * GitHub Personal Access Token (PAT) for accessing the GitHub API.
+   * Used by `GitHubApiClient` to increase rate limits and access private repositories if necessary.
+   * Optional.
+   */
   GITHUB_TOKEN?: string;
-  CHECK_UPDATES_ON_RUN?: string; // Raw string from env
-  UPDATE_CHECK_INTERVAL?: string; // Raw string from env
-  DOWNLOAD_TIMEOUT?: string; // Raw string from env
-  DOWNLOAD_RETRY_COUNT?: string; // Raw string from env
-  DOWNLOAD_RETRY_DELAY?: string; // Raw string from env
+  /**
+   * Determines if the tool should automatically check for updates on certain runs (e.g., `generate`). Parsed as a boolean.
+   * Set to "true" or "false". If undefined, defaults to true.
+   * Affects the behavior of the `VersionChecker` module.
+   */
+  CHECK_UPDATES_ON_RUN?: string;
+  /**
+   * Interval in seconds between automatic update checks for tools. Parsed as an integer.
+   * Defaults to 86400 (24 hours).
+   * Used by the `VersionChecker` module.
+   */
+  UPDATE_CHECK_INTERVAL?: string;
+  /**
+   * Timeout in milliseconds for download operations. Parsed as an integer.
+   * Defaults to 300000 (5 minutes).
+   * Used by the `Downloader` module.
+   */
+  DOWNLOAD_TIMEOUT?: string;
+  /**
+   * Number of retry attempts for failed downloads. Parsed as an integer.
+   * Defaults to 3.
+   * Used by the `Downloader` module.
+   */
+  DOWNLOAD_RETRY_COUNT?: string;
+  /**
+   * Delay in milliseconds between download retry attempts. Parsed as an integer.
+   * Defaults to 1000 (1 second).
+   * Used by the `Downloader` module.
+   */
+  DOWNLOAD_RETRY_DELAY?: string;
+  /**
+   * Specifies the base directory where shell completion files should be installed or linked.
+   * Defaults to `${GENERATED_DIR}/completions`.
+   * Used by the `CompletionInstaller` and `ShellInitGenerator`.
+   */
   COMPLETIONS_DIR?: string;
-  GITHUB_CLIENT_USER_AGENT?: string; // Raw string from env
-  GITHUB_API_CACHE_ENABLED?: string; // Raw string from env
-  GITHUB_API_CACHE_TTL?: string; // Raw string from env
-  GENERATED_ARTIFACTS_MANIFEST_PATH?: string; // Raw string from env
+  /**
+   * Custom User-Agent string for requests made by the `GitHubApiClient`.
+   * If not set, a default agent might be used by the client.
+   */
+  GITHUB_CLIENT_USER_AGENT?: string;
+  /**
+   * Enables or disables caching for GitHub API responses. Parsed as a boolean.
+   * Set to "true" or "false". If undefined, defaults to true.
+   * Affects whether `GitHubApiClient` uses the `IGitHubApiCache`.
+   */
+  GITHUB_API_CACHE_ENABLED?: string;
+  /**
+   * Time-to-live (TTL) in milliseconds for GitHub API cache entries. Parsed as an integer.
+   * Defaults to 86400000 (24 hours).
+   * Used by `FileGitHubApiCache`.
+   */
+  GITHUB_API_CACHE_TTL?: string;
+  /**
+   * Specifies the path to the manifest file that tracks all generated artifacts.
+   * Defaults to `${GENERATED_DIR}/generated-manifest.json`.
+   * Used by `GeneratorOrchestrator`.
+   */
+  GENERATED_ARTIFACTS_MANIFEST_PATH?: string;
 }
 
 // Zod schema for validating and transforming the raw environment variables
@@ -74,7 +168,8 @@ const EnvSchema = z.object({
   DOTFILES_DIR: z.string().optional(),
   GENERATED_DIR: z.string().optional(),
   TARGET_DIR: z.string().optional(),
-  TOOL_CONFIG_DIR: z.string().optional(),
+  TOOL_CONFIG_DIR: z.string().optional(), // For individual tool *.ts files
+  TOOL_CONFIGS_DIR: z.string().optional(), // For the directory containing *.tool.ts files
   DEBUG: z.string().optional(),
   CACHE_ENABLED: z
     .string()
@@ -139,7 +234,8 @@ export function createAppConfig(
     targetDir: env.TARGET_DIR || '/usr/bin',
     dotfilesDir: DOTFILES_DIR,
     generatedDir: GENERATED_DIR,
-    toolConfigDir: env.TOOL_CONFIG_DIR || join(DOTFILES_DIR, 'generator', 'src', 'tools'),
+    toolConfigDir: env.TOOL_CONFIG_DIR || join(DOTFILES_DIR, 'generator', 'src', 'tools'), // Existing, for individual tool files
+    toolConfigsDir: env.TOOL_CONFIGS_DIR || join(DOTFILES_DIR, 'configs', 'tools'), // New, for the directory of *.tool.ts files
     debug: env.DEBUG || '',
     cacheEnabled: env.CACHE_ENABLED, // This is now a boolean from Zod transform
     sudoPrompt: env.SUDO_PROMPT,
