@@ -166,7 +166,6 @@ export async function setupServices(dryRun = false): Promise<Services> {
     appConfig // AppConfig
   );
 
-  log('setupServices: Services initialized.');
   // Initialize the installer
   const installer = new Installer(fs, downloader, githubApiClient, appConfig);
 

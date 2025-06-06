@@ -25,17 +25,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import {
-  expect,
-  test,
-  describe,
-  spyOn,
-  mock,
-  afterEach,
-  beforeEach,
-  type Mock,
-  // jest, // jest is declared but its value is never read.
-} from 'bun:test';
+import { expect, test, describe, spyOn, mock, afterEach, beforeEach, type Mock } from 'bun:test';
 import type {
   IGeneratorOrchestrator,
   GenerateAllOptions as OrchestratorGenerateAllOptions,
@@ -186,8 +176,11 @@ describe('CLI', () => {
   });
 
   test('generate command should call setupServices with dryRun false and orchestrator without dryRun option', async () => {
+    // Reset the spy to ensure we're only counting calls from this test
+    setupServicesSpy.mockReset();
+
     // This test now needs to provide a mock implementation for setupServicesSpy
-    setupServicesSpy.mockImplementationOnce(async (dryRun?: boolean) => {
+    setupServicesSpy.mockImplementation(async (dryRun?: boolean) => {
       const fsInstance = dryRun ? new MemFileSystem() : new NodeFileSystem();
       return {
         appConfig: {
