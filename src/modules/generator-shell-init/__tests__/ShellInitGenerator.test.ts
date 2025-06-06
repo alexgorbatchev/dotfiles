@@ -5,7 +5,7 @@
  * ## Development Plan (for ShellInitGenerator.test.ts)
  *
  * ### Tasks:
- * - [x] Mock `IFileSystem` and `AppConfig` for dependency injection.
+ * - [x] Mock `IFileSystem` and `AppConfig` for dependency injection. (AppConfig now uses `createMockAppConfig`)
  * - [x] Test content generation for various scenarios:
  *   - [x] No tool configurations.
  *   - [x] Single tool with basic PATH modification.
@@ -36,6 +36,7 @@ import type { IShellInitGenerator } from '../IShellInitGenerator';
 import type { IFileSystem } from '../../file-system';
 import type { AppConfig, ToolConfig } from '../../../types';
 import { MemFileSystem } from '../../file-system/MemFileSystem'; // Using MemFileSystem for tests
+import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 
 describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;
@@ -67,28 +68,14 @@ describe('ShellInitGenerator', () => {
       }
       throw new Error(`ENOENT: no such file or directory, open '${filePath}'`);
     });
-    mockAppConfig = {
-      dotfilesDir: DEFAULT_DOTFILES_DIR,
+    mockAppConfig = createMockAppConfig({
+      dotfilesDir: DEFAULT_DOTFILES_DIR, // Keep specific for test consistency
       zshInitDir: DEFAULT_ZSH_INIT_DIR,
       completionsDir: DEFAULT_COMPLETIONS_DIR,
       binDir: DEFAULT_BIN_DIR,
-      // Fill in other required AppConfig properties with sensible defaults for testing
-      targetDir: '/usr/local/bin',
-      generatedDir: path.join(DEFAULT_DOTFILES_DIR, '.generated'),
-      toolConfigDir: path.join(DEFAULT_DOTFILES_DIR, 'generator/src/tools'),
-      debug: '',
-      cacheEnabled: false,
-      cacheDir: path.join(DEFAULT_DOTFILES_DIR, '.generated/cache'),
-      binariesDir: path.join(DEFAULT_DOTFILES_DIR, '.generated/binaries'),
-      manifestPath: path.join(DEFAULT_DOTFILES_DIR, '.generated/manifest.json'),
-      githubApiCacheEnabled: false,
-      githubApiCacheTtl: 0,
-      githubApiCacheDir: path.join(DEFAULT_DOTFILES_DIR, '.generated/cache/github-api'), // Added
-      generatedArtifactsManifestPath: path.join(
-        DEFAULT_DOTFILES_DIR,
-        '.generated/generated-manifest.json'
-      ),
-    };
+      generatedDir: path.join(DEFAULT_DOTFILES_DIR, '.generated'), // Ensure consistency
+      // Other properties will use defaults from createMockAppConfig
+    });
     generator = new ShellInitGenerator(mockFileSystem, mockAppConfig);
   });
 

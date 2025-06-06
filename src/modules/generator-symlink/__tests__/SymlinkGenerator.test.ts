@@ -23,7 +23,7 @@
  * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
  * - [x] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Update appConfig with `generatedArtifactsManifestPath`.
+ * - [x] Update appConfig with `generatedArtifactsManifestPath`. (Now uses `createMockAppConfig`)
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -33,6 +33,7 @@ import path from 'node:path';
 import type { AppConfig, ToolConfig } from '../../../types';
 import { MemFileSystem, type IFileSystem } from '../../file-system';
 import { SymlinkGenerator } from '../SymlinkGenerator';
+import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
@@ -45,28 +46,18 @@ describe('SymlinkGenerator', () => {
 
   beforeEach(() => {
     fs = new MemFileSystem();
-    appConfig = {
-      dotfilesDir: MOCK_PROJECT_ROOT,
-      targetDir: MOCK_HOME_DIR, // Typically user's home, used by other parts of AppConfig
-      generatedDir: path.join(MOCK_PROJECT_ROOT, '.generated'),
-      toolConfigDir: path.join(MOCK_PROJECT_ROOT, 'tool-configs'),
-      debug: 'false',
-      cacheEnabled: false,
-      cacheDir: path.join(MOCK_PROJECT_ROOT, '.cache'),
-      binariesDir: path.join(MOCK_PROJECT_ROOT, '.generated', 'binaries'),
-      binDir: path.join(MOCK_PROJECT_ROOT, '.generated', 'bin'),
-      zshInitDir: path.join(MOCK_PROJECT_ROOT, '.generated', 'zsh'),
-      manifestPath: path.join(MOCK_PROJECT_ROOT, '.generated', 'manifest.json'),
-      completionsDir: path.join(MOCK_PROJECT_ROOT, '.generated', 'completions'),
-      // Optional fields can be omitted if not directly used by SymlinkGenerator
-      // For SymlinkGenerator, only dotfilesDir is critical for its internal logic.
-      // The rest are provided to satisfy the AppConfig type.
-      githubApiCacheDir: path.join(MOCK_PROJECT_ROOT, '.generated', 'cache', 'github-api'), // Added
-      generatedArtifactsManifestPath: path.join(
-        MOCK_PROJECT_ROOT,
-        '.generated/generated-manifest.json'
-      ),
-    };
+    appConfig = createMockAppConfig({
+      dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
+      // targetDir will default to homedir() from createMockAppConfig,
+      // which is mocked to MOCK_HOME_DIR in these tests if os.homedir is spied on.
+      // If not spied on before createMockAppConfig, it would use actual homedir.
+      // For consistency in these tests, we might want to ensure MOCK_HOME_DIR is used.
+      // However, SymlinkGenerator primarily uses appConfig.dotfilesDir and resolves target against MOCK_HOME_DIR.
+    });
+    // For SymlinkGenerator, the key is that it resolves target paths relative to MOCK_HOME_DIR.
+    // The appConfig.targetDir itself isn't directly used by SymlinkGenerator's core logic for resolving symlink targets.
+    // It uses the provided MOCK_HOME_DIR for tilde expansion.
+
     symlinkGenerator = new SymlinkGenerator(fs, appConfig);
 
     // Setup mock home and project root in MemFileSystem

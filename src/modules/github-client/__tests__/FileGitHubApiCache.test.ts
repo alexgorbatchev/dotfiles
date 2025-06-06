@@ -6,7 +6,7 @@
  *
  * - [x] **Setup Mocks:**
  *   - [x] Mock `IFileSystem` interface using `bun:test`'s `mock`.
- *   - [x] Mock `AppConfig` with required properties.
+ *   - [x] Mock `AppConfig` with required properties. (Now uses `createMockAppConfig`)
  * - [x] **Test Suite for `FileGitHubApiCache`:**
  *   - [x] **Constructor:**
  *     - [x] Test initialization with default settings.
@@ -61,7 +61,8 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { FileGitHubApiCache } from '../FileGitHubApiCache';
 import type { IFileSystem } from '../../file-system/IFileSystem';
 import type { AppConfig } from '../../../types';
-import type { CacheEntry } from '../IGitHubApiCache';
+import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import type { CacheEntry } from '../IGitHubApiCache'; // Corrected import for CacheEntry
 import path from 'path';
 
 describe('FileGitHubApiCache', () => {
@@ -107,25 +108,17 @@ describe('FileGitHubApiCache', () => {
       rmdir: async () => {},
     };
 
-    // Create mock app config
-    mockAppConfig = {
-      targetDir: '/usr/bin',
-      dotfilesDir: '/test/dotfiles',
-      generatedDir: '/test/dotfiles/.generated',
-      toolConfigDir: '/test/dotfiles/generator/src/tools',
-      debug: '',
-      cacheEnabled: true,
-      cacheDir: '/test/dotfiles/.generated/cache',
-      binariesDir: '/test/dotfiles/.generated/binaries',
-      binDir: '/test/dotfiles/.generated/bin',
-      zshInitDir: '/test/dotfiles/.generated/zsh',
-      manifestPath: '/test/dotfiles/.generated/manifest.json',
-      completionsDir: '/test/dotfiles/.generated/completions',
+    // Create mock app config using the helper
+    mockAppConfig = createMockAppConfig({
+      // Specific overrides for these tests if needed, otherwise defaults are fine.
+      // For FileGitHubApiCache, the githubApiCache... properties are important.
       githubApiCacheEnabled: true,
-      githubApiCacheTtl: 3600000, // 1 hour
-      githubApiCacheDir: '/test/dotfiles/.generated/cache/github-api', // Added
-      generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
-    };
+      githubApiCacheTtl: 3600000, // 1 hour, can be default from helper too
+      githubApiCacheDir: '/test/dotfiles/.generated/cache/github-api', // Keep specific for tests
+      // Ensure other paths are consistent if tests rely on them, e.g. for cacheDir
+      dotfilesDir: '/test/dotfiles', // if other derived paths depend on this
+      generatedDir: '/test/dotfiles/.generated', // if other derived paths depend on this
+    });
 
     // Create cache instance
     cache = new FileGitHubApiCache(mockFileSystem, mockAppConfig);
@@ -169,9 +162,10 @@ describe('FileGitHubApiCache', () => {
     it('should return cached data when file exists and is not expired', async () => {
       const mockData = { foo: 'bar' };
       const mockEntry: CacheEntry<typeof mockData> = {
+        // Ensure CacheEntry is imported from types.ts
         data: mockData,
         timestamp: Date.now() - 1000, // 1 second ago
-        expiresAt: Date.now() + 3600000, // 1 hour from now
+        expiresAt: Date.now() + (mockAppConfig.githubApiCacheTtl ?? 3600000), // Use TTL or default
       };
 
       mockExists.mockResolvedValue(true);
@@ -186,9 +180,10 @@ describe('FileGitHubApiCache', () => {
     it('should return null and delete file when entry is expired', async () => {
       const mockData = { foo: 'bar' };
       const mockEntry: CacheEntry<typeof mockData> = {
+        // Ensure CacheEntry is imported
         data: mockData,
-        timestamp: Date.now() - 7200000, // 2 hours ago
-        expiresAt: Date.now() - 3600000, // 1 hour ago (expired)
+        timestamp: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000) * 2, // Expired
+        expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
       mockExists.mockResolvedValue(true);
@@ -245,8 +240,10 @@ describe('FileGitHubApiCache', () => {
       expect(parsedContent).toHaveProperty('timestamp');
       expect(parsedContent).toHaveProperty('expiresAt');
 
-      // Verify TTL is default (1 hour)
-      expect(parsedContent.expiresAt - parsedContent.timestamp).toBe(3600000);
+      // Verify TTL is from mockAppConfig
+      expect(parsedContent.expiresAt - parsedContent.timestamp).toBe(
+        mockAppConfig.githubApiCacheTtl ?? 3600000 // Provide default if undefined
+      );
     });
 
     it('should cache data with custom TTL', async () => {
@@ -307,7 +304,7 @@ describe('FileGitHubApiCache', () => {
       const mockEntry = {
         data: { foo: 'bar' },
         timestamp: Date.now() - 1000, // 1 second ago
-        expiresAt: Date.now() + 3600000, // 1 hour from now
+        expiresAt: Date.now() + (mockAppConfig.githubApiCacheTtl ?? 3600000), // Use TTL or default
       };
 
       mockExists.mockResolvedValue(true);
@@ -322,8 +319,8 @@ describe('FileGitHubApiCache', () => {
     it('should return false when file exists but is expired', async () => {
       const mockEntry = {
         data: { foo: 'bar' },
-        timestamp: Date.now() - 7200000, // 2 hours ago
-        expiresAt: Date.now() - 3600000, // 1 hour ago (expired)
+        timestamp: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000) * 2, // Expired
+        expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
       mockExists.mockResolvedValue(true);
@@ -407,14 +404,14 @@ describe('FileGitHubApiCache', () => {
       const validEntry = {
         data: { foo: 'bar' },
         timestamp: Date.now() - 1000, // 1 second ago
-        expiresAt: Date.now() + 3600000, // 1 hour from now
+        expiresAt: Date.now() + (mockAppConfig.githubApiCacheTtl ?? 3600000), // Use TTL or default
       };
 
       // Expired entry
       const expiredEntry = {
         data: { foo: 'baz' },
-        timestamp: Date.now() - 7200000, // 2 hours ago
-        expiresAt: Date.now() - 3600000, // 1 hour ago (expired)
+        timestamp: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000) * 2, // Expired
+        expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
       // Mock readFile to return different content based on the file
@@ -469,8 +466,8 @@ describe('FileGitHubApiCache', () => {
       // Expired entry
       const expiredEntry = {
         data: { foo: 'baz' },
-        timestamp: Date.now() - 7200000, // 2 hours ago
-        expiresAt: Date.now() - 3600000, // 1 hour ago (expired)
+        timestamp: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000) * 2, // Expired
+        expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
       mockReadFile.mockResolvedValue(JSON.stringify(expiredEntry));
@@ -549,8 +546,8 @@ describe('FileGitHubApiCache', () => {
       // Test via get method
       const expiredEntry = {
         data: { foo: 'bar' },
-        timestamp: Date.now() - 7200000, // 2 hours ago
-        expiresAt: Date.now() - 3600000, // 1 hour ago (expired)
+        timestamp: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000) * 2, // Expired
+        expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
       mockExists.mockResolvedValue(true);

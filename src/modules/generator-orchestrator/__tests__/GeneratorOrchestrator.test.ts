@@ -10,7 +10,7 @@
  *   - [x] Mock `IShellInitGenerator`.
  *   - [x] Mock `ISymlinkGenerator`.
  *   - [x] Mock `IFileSystem`.
- *   - [x] Mock `AppConfig`.
+ *   - [x] Mock `AppConfig`. (Now uses `createMockAppConfig`)
  * - [x] **Test Suite for `GeneratorOrchestrator`:**
  *   - [x] **Constructor:**
  *     - [x] Test correct initialization.
@@ -47,6 +47,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '../../../types';
+import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import type { IFileSystem } from '../../file-system';
 import { MemFileSystem } from '../../file-system/MemFileSystem';
 import type { IShimGenerator } from '../../generator-shim';
@@ -95,37 +96,25 @@ describe('GeneratorOrchestrator', () => {
 
     const dotfilesDir = path.join(MOCK_HOME_DIR, '.dotfiles'); // Define for clarity
 
-    mockAppConfig = {
+    mockAppConfig = createMockAppConfig({
       targetDir: MOCK_TARGET_DIR,
-      dotfilesDir: dotfilesDir,
-      generatedDir: MOCK_GENERATED_DIR,
-      toolConfigDir: path.join(MOCK_HOME_DIR, '.dotfiles', 'generator', 'src', 'tools'),
-      debug: '',
-      cacheEnabled: false,
-      sudoPrompt: undefined,
-      cacheDir: path.join(MOCK_GENERATED_DIR, 'cache'),
-      binariesDir: path.join(MOCK_GENERATED_DIR, 'binaries'),
-      binDir: path.join(MOCK_GENERATED_DIR, 'bin'), // Actual binaries linked by shims
-      zshInitDir: path.join(MOCK_GENERATED_DIR, 'zsh'),
-      manifestPath: path.join(MOCK_GENERATED_DIR, 'tool-manifest.json'), // This is the old one, orchestrator uses its own
-      completionsDir: path.join(MOCK_GENERATED_DIR, 'completions'),
-      githubToken: undefined,
-      checkUpdatesOnRun: false,
-      updateCheckInterval: 0,
-      downloadTimeout: 0,
-      downloadRetryCount: 0,
-      downloadRetryDelay: 0,
-      githubClientUserAgent: 'test-agent',
-      githubApiCacheEnabled: false,
-      githubApiCacheTtl: 0,
-      githubApiCacheDir: path.join(MOCK_GENERATED_DIR, 'cache', 'github-api'), // Added missing property
+      dotfilesDir: dotfilesDir, // Keep this specific if MOCK_HOME_DIR is used for derived paths
+      generatedDir: MOCK_GENERATED_DIR, // Keep this specific
+      toolConfigDir: path.join(dotfilesDir, 'generator', 'src', 'tools'), // Ensure consistency
+      // Other properties will use defaults from createMockAppConfig unless overridden
+      // For this test, generatedArtifactsManifestPath is key
       generatedArtifactsManifestPath: path.join(
         MOCK_GENERATED_DIR,
         'generated-artifacts-manifest.json'
       ),
-    };
+      // Ensure paths used by sub-generators are consistent
+      binDir: path.join(MOCK_GENERATED_DIR, 'bin'),
+      zshInitDir: path.join(MOCK_GENERATED_DIR, 'zsh'),
+      completionsDir: path.join(MOCK_GENERATED_DIR, 'completions'),
+    });
 
     // Ensure base directories used by appConfig and tests exist in MemFileSystem
+    // createMockAppConfig doesn't know about MOCK_HOME_DIR, so ensure dotfilesDir is correctly set for tests
     await mockFileSystem.ensureDir(mockAppConfig.dotfilesDir);
     await mockFileSystem.ensureDir(MOCK_HOME_DIR); // Ensure MOCK_HOME_DIR itself exists
     await mockFileSystem.ensureDir(mockAppConfig.targetDir); // For shims and symlink targets if relative to home

@@ -5,7 +5,7 @@
  *
  * - [x] **Setup Mocks:**
  *   - [x] Mock `IFileSystem` interface.
- *   - [x] Mock `AppConfig` with required properties.
+ *   - [x] Mock `AppConfig` with required properties. (Now uses `createMockAppConfig`)
  *   - [x] Mock `createLogger` to spy on log calls if necessary (or verify behavior without direct log spying).
  * - [x] **Test Suite for `ShimGenerator`:**
  *   - [x] **Constructor:**
@@ -38,6 +38,7 @@ import path from 'node:path';
 import type { IFileSystem } from '../../file-system';
 import type { AppConfig, ToolConfig } from '../../../types';
 import { ShimGenerator } from '../ShimGenerator';
+import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 
 describe('ShimGenerator', () => {
   let mockFileSystem: IFileSystem;
@@ -75,28 +76,13 @@ describe('ShimGenerator', () => {
       rmdir: mock(async () => {}),
     };
 
-    mockAppConfig = {
-      targetDir: MOCK_TARGET_DIR, // Corrected: Use MOCK_TARGET_DIR for the shims in tests
-      binDir: MOCK_BIN_DIR,
-      // cliToolPath is not part of AppConfig for ShimGenerator's direct use.
-      // ShimGenerator defaults to 'mydotfiles'.
-      // The original targetDir in AppConfig might be something like '/usr/bin' for actual deployment,
-      // but for tests, we use MOCK_TARGET_DIR to isolate shim generation.
+    mockAppConfig = createMockAppConfig({
+      targetDir: MOCK_TARGET_DIR, // This is crucial for shims
+      binDir: MOCK_BIN_DIR, // This is where actual binaries are expected
+      // Other paths will default, ensure they are consistent if tests depend on them
       dotfilesDir: '/test/dotfiles',
       generatedDir: '/test/dotfiles/.generated',
-      toolConfigDir: '/test/dotfiles/generator/src/tools',
-      debug: '',
-      cacheEnabled: true,
-      cacheDir: '/test/dotfiles/.generated/cache',
-      binariesDir: '/test/dotfiles/.generated/binaries',
-      zshInitDir: '/test/dotfiles/.generated/zsh',
-      manifestPath: '/test/dotfiles/.generated/manifest.json',
-      completionsDir: '/test/dotfiles/.generated/completions',
-      githubApiCacheEnabled: true,
-      githubApiCacheTtl: 3600000,
-      githubApiCacheDir: '/test/dotfiles/.generated/cache/github-api', // Added
-      generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
-    };
+    });
 
     shimGenerator = new ShimGenerator(mockFileSystem, mockAppConfig);
   });
@@ -197,10 +183,10 @@ describe('ShimGenerator', () => {
 
     it('should skip if targetDir is not configured, returning empty array', async () => {
       // Create a new AppConfig for this test case where targetDir is undefined
-      const configNoTargetDir: AppConfig = {
-        ...mockAppConfig, // Spread existing valid properties
-        targetDir: undefined as any, // Set targetDir to undefined
-      };
+      const configNoTargetDir = createMockAppConfig({
+        ...mockAppConfig, // Spread existing valid properties from the already created mock
+        targetDir: undefined as any,
+      });
       const generator = new ShimGenerator(mockFileSystem, configNoTargetDir);
       const result = await generator.generateForTool(toolName, toolConfig);
 
