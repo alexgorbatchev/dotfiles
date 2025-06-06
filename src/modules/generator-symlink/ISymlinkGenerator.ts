@@ -12,6 +12,7 @@
  * - [x] Implement `SymlinkGenerator` class (in `SymlinkGenerator.ts`).
  * - [x] Write tests for `SymlinkGenerator` (in `__tests__/SymlinkGenerator.test.ts`).
  * - [x] Create `index.ts` to export the interface and class.
+ * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateSymlinksOptions`.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Ensure 100% test coverage for executable code.
@@ -24,12 +25,6 @@ import type { ToolConfig } from '../../types';
  * Options for generating symlinks.
  */
 export interface GenerateSymlinksOptions {
-  /**
-   * If true, log actions instead of performing them.
-   * @default false
-   */
-  dryRun?: boolean;
-
   /**
    * If true, overwrite existing files/symlinks at the target location.
    * @default false

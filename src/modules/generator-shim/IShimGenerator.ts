@@ -9,6 +9,7 @@
  *   - [x] Add `generateForTool` method.
  *   - [x] Update `generate` and `generateForTool` return types to `Promise<string[]>`.
  * - [ ] Write tests for the module (covered in ShimGenerator.test.ts).
+ * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateShimsOptions`.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Ensure 100% test coverage for executable code.
@@ -21,12 +22,6 @@ import type { ToolConfig } from '../../types'; // Removed AppConfig as it's not 
  * Options for generating shims.
  */
 export interface GenerateShimsOptions {
-  /**
-   * If true, perform a dry run without writing files or making changes.
-   * @default false
-   */
-  dryRun?: boolean;
-
   /**
    * If true, overwrite existing shims.
    * @default false

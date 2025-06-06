@@ -16,12 +16,13 @@
  *   - [x] Deduplication of PATH, env vars, and completion setup lines.
  *   - [x] Correct ordering (PATH, Env Vars, Tool Inits, Completions).
  *   - [x] Verify that the correct file path is used for writing (default and custom).
- *   - [x] Test `dryRun` behavior (logs instead of writing, correct content logged, returns path).
+ *   - [x] Test behavior when using `MemFileSystem` (simulating dry run): attempts file operations, returns path.
  *   - [x] Ensure `ensureDir` is called before `writeFile`.
  *   - [x] Test that `typeset -U fpath` is added if completions are present and fpath not already set.
  *   - [x] Test return value (`string` for path on success/dryRun, `null` on failure).
  * - [x] Aim for 100% test coverage.
  * - [x] Adhere to logging rules (no mocking logger, no asserting log output).
+ * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
@@ -133,8 +134,9 @@ describe('ShellInitGenerator', () => {
     expect(mockFileSystem.ensureDir).toHaveBeenCalledWith('/custom/path/to');
   });
 
-  it('should handle dryRun option by logging instead of writing and return path', async () => {
-    const consoleSpy = spyOn(console, 'log').mockImplementation(() => {});
+  it('should attempt file operations and return path (simulating dry run with MemFS)', async () => {
+    // With the refactor, ShellInitGenerator always attempts to write.
+    // The "dry run" nature comes from the IFileSystem implementation (MemFileSystem here).
     const toolConfigs: Record<string, ToolConfig> = {
       testTool: {
         name: 'testTool',
@@ -144,18 +146,20 @@ describe('ShellInitGenerator', () => {
       },
     };
     const expectedPath = path.join(DEFAULT_ZSH_INIT_DIR, 'init.zsh');
-    const resultPath = await generator.generate(toolConfigs, { dryRun: true });
+    // No dryRun option passed to generate
+    const resultPath = await generator.generate(toolConfigs, {});
     expect(resultPath).toBe(expectedPath);
 
-    expect(mockFileSystem.writeFile).not.toHaveBeenCalled();
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[DRY RUN] ShellInitGenerator: Would write Zsh init file to:')
+    // It should now ATTEMPT to write, and MemFileSystem will capture it.
+    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(DEFAULT_ZSH_INIT_DIR);
+    expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
+      expectedPath,
+      expect.stringContaining('export TEST_TOOL_VAR="hello"')
     );
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[DRY RUN] Content:\n'));
-    // Check that the specific content was part of *some* call to console.log
-    const consoleOutput = consoleSpy.mock.calls.map((call) => call.join(' ')).join('\n');
-    expect(consoleOutput).toContain('export TEST_TOOL_VAR="hello"');
-    consoleSpy.mockRestore();
+
+    // Verify content in MemFileSystem
+    const content = await mockFileSystem.readFile(expectedPath);
+    expect(content).toContain('export TEST_TOOL_VAR="hello"');
   });
 
   it('should include PATH modifications from tool configs', async () => {

@@ -10,6 +10,7 @@
  * - [x] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests)
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateAllOptions`.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -19,14 +20,6 @@ import type { ToolConfig, GeneratedArtifactsManifest } from '../../types';
  * Options for the `generateAll` method of the `IGeneratorOrchestrator`.
  */
 export interface GenerateAllOptions {
-  /**
-   * If true, the orchestrator will log actions that would be taken
-   * but will not perform any actual file system modifications or execute
-   * sub-generators in a non-dryRun mode.
-   * @default false
-   */
-  dryRun?: boolean;
-
   /**
    * Optional: Specific version of the generator tool, to be recorded in the manifest.
    */

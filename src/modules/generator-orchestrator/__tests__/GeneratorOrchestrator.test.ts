@@ -28,14 +28,16 @@
  *         - [x] Shell Init: Use `string | null` from `shellInitGenerator.generate()` for `shellInit.path`.
  *         - [x] Symlinks: Use `SymlinkOperationResult[]` from `symlinkGenerator.generate()`.
  *     - [x] Test manifest writing:
- *       - [x] Ensure `ensureDir` and `writeFile` are called with correct path and content.
+ *       - [x] Ensure `ensureDir` and `writeFile` are called with correct path and content (using the injected `IFileSystem`).
  *       - [x] Ensure manifest is pretty-printed (JSON.stringify with indent).
- *     - [x] Test `dryRun` behavior:
- *       - [x] Sub-generators called with `dryRun: true`.
- *       - [x] No file system writes for manifest.
- *       - [x] Logs simulated actions (manifest content logged to console).
- *       - [x] Returns simulated manifest.
+ *     - [x] Test behavior with `MemFileSystem` (simulating previous dry run for inspection):
+ *       - [x] Sub-generators called *without* `dryRun` option.
+ *       - [x] Manifest is written to the `MemFileSystem`.
+ *       - [x] Returns the generated manifest.
  *     - [x] Test with empty `toolConfigs`.
+ * - [x] Refactor dry run mechanism:
+ *   - [x] Remove tests for `dryRun` option being passed to sub-generators.
+ *   - [x] Verify manifest is always written to the provided `IFileSystem`.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage (passes in full suite).
@@ -170,15 +172,19 @@ describe('GeneratorOrchestrator', () => {
       mockFsExists.mockReset(); // Reset spy
       mockFsExists.mockResolvedValue(false); // No existing manifest for this path
 
-      // Using dryRun: false to test the non-dryRun path for calls
-      await orchestrator.generateAll(toolConfigs, { dryRun: false });
+      // The dryRun option is no longer passed to orchestrator.generateAll
+      // and subsequently not to sub-generators by the orchestrator.
+      await orchestrator.generateAll(toolConfigs, {}); // Pass empty options or specific non-dryRun options like generatorVersion
+
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-        dryRun: false,
+        // dryRun: false, // Removed
         overwrite: true,
       });
-      expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, { dryRun: false });
+      expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
+        /* dryRun: false */
+      }); // Options might be empty if only dryRun was there
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-        dryRun: false,
+        // dryRun: false, // Removed
         overwrite: true,
         backup: true,
       });
@@ -306,129 +312,90 @@ describe('GeneratorOrchestrator', () => {
     });
 
     describe('dryRun behavior', () => {
-      it('should call sub-generators with dryRun: true', async () => {
+      it('should call sub-generators WITHOUT dryRun option', async () => {
         (mockShimGenerator.generate as ReturnType<typeof mock>).mockClear();
         (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockClear();
         (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockClear();
-        // No fs mocks needed for dry run path related to manifest writing
-        await orchestrator.generateAll(toolConfigs, { dryRun: true });
+
+        // Orchestrator is instantiated with MemFileSystem in beforeEach
+        // No dryRun option is passed to generateAll itself
+        await orchestrator.generateAll(toolConfigs, {}); // Empty options or other non-dryRun options
 
         expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-          dryRun: true,
+          // dryRun: true, // This is removed
           overwrite: true,
         });
-        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, { dryRun: true });
+        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
+          /* dryRun: true */
+          // This is removed
+        }); // Options might be empty if only dryRun was there
         expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-          dryRun: true,
+          // dryRun: true, // This is removed
           overwrite: true,
           backup: true,
         });
       });
 
-      it('should not write manifest to file system', async () => {
-        // mockFsEnsureDir.mockClear(); // Spy removed
-        // mockFsWriteFile.mockClear(); // Spy removed
-        await orchestrator.generateAll(toolConfigs, { dryRun: true });
-        // expect(mockFsWriteFile).not.toHaveBeenCalled(); // Spy removed
-        // expect(mockFsEnsureDir).not.toHaveBeenCalledWith(path.dirname(getExpectedManifestPath())); // Spy removed
+      it('should write manifest to MemFileSystem', async () => {
+        const writeFileSpy = spyOn(mockFileSystem, 'writeFile');
+        const ensureDirSpy = spyOn(mockFileSystem, 'ensureDir');
+
+        // Orchestrator uses MemFileSystem from beforeEach
+        await orchestrator.generateAll(toolConfigs, {});
+
+        expect(ensureDirSpy).toHaveBeenCalledWith(path.dirname(getExpectedManifestPath()));
+        expect(writeFileSpy).toHaveBeenCalledWith(
+          getExpectedManifestPath(),
+          expect.stringContaining('"lastGenerated":')
+        );
+
+        // Verify content in MemFileSystem
+        const writtenContent = await mockFileSystem.readFile(getExpectedManifestPath());
+        const parsedManifest = JSON.parse(writtenContent);
+        expect(parsedManifest).toHaveProperty('lastGenerated');
+
+        writeFileSpy.mockRestore();
+        ensureDirSpy.mockRestore();
       });
 
-      it('should log simulated manifest content to console', async () => {
-        const specificTestConsoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
-        await orchestrator.generateAll(toolConfigs, {
-          dryRun: true,
-          generatorVersion: 'dry-run-v',
-        });
-
-        // The orchestrator's `log` utility (debug) is used for the dry run output.
-        // We are not checking the debug log content here, only the returned manifest and
-        // that console.log (which is spied) was not used for detailed manifest logging.
-
-        // We need to spy on the `log` instance from the GeneratorOrchestrator's module.
-        // However, directly spying on it here is complex due to module boundaries.
-        // For now, we'll assume the test passes if the orchestrator.generateAll call completes
-        // and check the returned manifest, as the primary purpose of dryRun is to simulate
-        // and return the manifest without writing. The actual log content check is secondary.
-        // A more robust solution would involve injecting the logger or using a global spy setup.
-
-        // We will check the returned manifest from the dry run call.
+      it('should return the generated manifest (when using MemFileSystem)', async () => {
+        // Orchestrator uses MemFileSystem from beforeEach
+        const mockGenVersion = 'memfs-test-v';
         const result = await orchestrator.generateAll(toolConfigs, {
-          dryRun: true,
-          generatorVersion: 'dry-run-v',
+          generatorVersion: mockGenVersion,
         });
 
-        expect(result.generatorVersion).toBe('dry-run-v');
-        expect(result.shims).toEqual([]); // Based on default mockShimGenerator.generate
-        expect(result.shellInit?.path).toBeNull(); // Based on default mockShellInitGenerator.generate
-        expect(result.symlinks).toEqual([]); // Based on default mockSymlinkGenerator.generate
+        expect(result.generatorVersion).toBe(mockGenVersion);
+        expect(result.lastGenerated).toBeDefined();
 
-        // Verify that console.log (which was spied) was NOT called with the detailed manifest
-        // as the actual logging is done via the `debug` logger.
+        // Default mock results from sub-generators
+        expect(result.shims).toEqual([]);
+        expect(result.shellInit?.path).toBeNull();
+        expect(result.symlinks).toEqual([]);
 
-        const wasDetailedManifestLoggedToConsole = specificTestConsoleLogSpy.mock.calls.some(
-          (callArgs: any) => {
-            const arg = callArgs[0] as string;
-            return typeof arg === 'string' && arg.includes('"lastGenerated":');
-          }
-        );
-        expect(wasDetailedManifestLoggedToConsole).toBe(false);
-        specificTestConsoleLogSpy.mockRestore();
-      });
-
-      it('should return a simulated manifest', async () => {
-        // For this specific dryRun symlink inference test,
-        // ensure appConfig.targetDir aligns with where ~ is expected to resolve (MOCK_HOME_DIR)
-        // because the orchestrator's inference uses appConfig.targetDir for ~ resolution.
-        const testSpecificAppConfig = { ...mockAppConfig, targetDir: MOCK_HOME_DIR };
-        const localOrchestrator = new GeneratorOrchestrator(
-          mockShimGenerator,
-          mockShellInitGenerator,
-          mockSymlinkGenerator,
-          mockFileSystem,
-          testSpecificAppConfig
-        );
-        const result = await localOrchestrator.generateAll(toolConfigs, {
-          dryRun: true,
-          generatorVersion: 'sim-v',
-        });
-
-        expect(result.generatorVersion).toBe('sim-v');
-        expect(result.lastGenerated).toBeDefined(); // Use new field name
-
-        // Mocked generator results for dry run
-        const mockDryRunShimPaths = [
-          path.join(MOCK_TARGET_DIR, 'toolA-dry'),
-          path.join(MOCK_TARGET_DIR, 'toolB-dry'),
-        ];
-        const mockDryRunShellInitPath = path.join(mockAppConfig.zshInitDir, 'init-dry.zsh');
-        const mockDryRunSymlinkResults: SymlinkOperationResult[] = [
-          {
-            sourcePath: 'a.conf-dry',
-            targetPath: path.join(MOCK_HOME_DIR, '.a.conf-dry'),
-            status: 'created',
-          },
+        // Further check if specific mocked results are propagated
+        const mockTestShimPaths = ['/memfs/shim1'];
+        const mockTestShellInitPath = '/memfs/init.sh';
+        const mockTestSymlinkResults: SymlinkOperationResult[] = [
+          { sourcePath: 's', targetPath: 't', status: 'created' },
         ];
 
-        // Ensure these mocks are active for the localOrchestrator call
         (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-          mockDryRunShimPaths
+          mockTestShimPaths
         );
         (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-          mockDryRunShellInitPath
+          mockTestShellInitPath
         );
         (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-          mockDryRunSymlinkResults
+          mockTestSymlinkResults
         );
 
-        // Re-run with the orchestrator that has the correct appConfig for this test
-        const dryRunResult = await localOrchestrator.generateAll(toolConfigs, {
-          dryRun: true,
-          generatorVersion: 'sim-v',
+        const resultWithData = await orchestrator.generateAll(toolConfigs, {
+          generatorVersion: mockGenVersion,
         });
-
-        expect(dryRunResult.shims).toEqual(mockDryRunShimPaths);
-        expect(dryRunResult.shellInit?.path).toBe(mockDryRunShellInitPath);
-        expect(dryRunResult.symlinks).toEqual(mockDryRunSymlinkResults);
+        expect(resultWithData.shims).toEqual(mockTestShimPaths);
+        expect(resultWithData.shellInit?.path).toBe(mockTestShellInitPath);
+        expect(resultWithData.symlinks).toEqual(mockTestSymlinkResults);
       });
     });
 

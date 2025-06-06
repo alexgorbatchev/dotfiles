@@ -12,12 +12,14 @@
  *     - [x] Get expected tool binary path from `ToolConfig`.
  *     - [x] Get install command (path to main CLI tool from `AppConfig`).
  *     - [x] Create Bash shim content using template string.
- *     - [x] Use `IFileSystem.writeFile()` to write shim.
- *     - [x] Use `IFileSystem.chmod()` to make shim executable.
- *     - [x] Handle `dryRun` option.
+ *     - [x] Use `IFileSystem.writeFile()` to write shim (behavior determined by injected `IFileSystem` type).
+ *     - [x] Use `IFileSystem.chmod()` to make shim executable (behavior determined by injected `IFileSystem` type).
  *     - [x] Handle `overwrite` option.
  *   - [x] Update `generate` and `generateForTool` to return `Promise<string[]>`.
  * - [ ] Write tests for the module.
+ * - [x] Refactor dry run mechanism:
+ *   - [x] Remove internal `dryRun` logic.
+ *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Ensure 100% test coverage for executable code.
@@ -67,9 +69,15 @@ export class ShimGenerator implements IShimGenerator {
     toolConfig: ToolConfig,
     options?: GenerateShimsOptions
   ): Promise<string[]> {
-    log('generateForTool: toolName=%s, toolConfig=%o, options=%o', toolName, toolConfig, options);
+    log(
+      'generateForTool: toolName=%s, toolConfig=%o, options=%o, FileSystem: %s',
+      toolName,
+      toolConfig,
+      options,
+      this.fs.constructor.name
+    );
 
-    const dryRun = options?.dryRun ?? false;
+    // dryRun is removed; IFileSystem handles behavior
     const overwrite = options?.overwrite ?? false;
 
     const shimDir = this.appConfig.targetDir; // Changed from shimDir to targetDir
@@ -133,19 +141,26 @@ fi
 `;
     log('generateForTool: shimContent=\n%s', shimContent);
 
-    if (dryRun) {
-      log('generateForTool: [DRY RUN] Would write shim content to %s', shimFilePath);
-      log('generateForTool: [DRY RUN] Would make shim executable: chmod +x %s', shimFilePath);
-      // Even in dry run, if we would have created it, return its path
-      return [shimFilePath];
-    } else {
-      log('generateForTool: Writing shim file to %s', shimFilePath);
-      await this.fs.ensureDir(path.dirname(shimFilePath));
-      await this.fs.writeFile(shimFilePath, shimContent);
-      log('generateForTool: Making shim executable: chmod +x %s', shimFilePath);
-      await this.fs.chmod(shimFilePath, 0o755); // rwxr-xr-x
-      log('generateForTool: Shim for %s generated successfully at %s.', toolName, shimFilePath);
-      return [shimFilePath];
-    }
+    // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
+    log(
+      'generateForTool: Writing shim file to %s using %s',
+      shimFilePath,
+      this.fs.constructor.name
+    );
+    await this.fs.ensureDir(path.dirname(shimFilePath));
+    await this.fs.writeFile(shimFilePath, shimContent);
+    log(
+      'generateForTool: Making shim executable: chmod +x %s using %s',
+      shimFilePath,
+      this.fs.constructor.name
+    );
+    await this.fs.chmod(shimFilePath, 0o755); // rwxr-xr-x
+    log(
+      'generateForTool: Shim for %s generated successfully at %s (using %s).',
+      toolName,
+      shimFilePath,
+      this.fs.constructor.name
+    );
+    return [shimFilePath];
   }
 }

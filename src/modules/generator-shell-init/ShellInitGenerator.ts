@@ -16,10 +16,12 @@
  *     - [x] Shell code snippets to include (from `ToolConfig.zshInit`).
  *     - [x] Completion paths/scripts to set up (from `ToolConfig.completions`).
  *   - [x] Construct the content of the Zsh init file.
- *   - [x] Write the generated content to the output file using `IFileSystem.writeFile()`.
- *   - [x] Handle `dryRun` option.
+ *   - [x] Write the generated content to the output file using `IFileSystem.writeFile()` (behavior determined by injected `IFileSystem` type).
  * - [x] Add JSDoc comments.
  * - [x] Add structured logging using `createLogger`.
+ * - [x] Refactor dry run mechanism:
+ *   - [x] Remove internal `dryRun` logic.
+ *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
  * - [ ] Write unit tests (`__tests__/ShellInitGenerator.test.ts`).
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
@@ -48,10 +50,15 @@ export class ShellInitGenerator implements IShellInitGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
   ): Promise<string | null> {
-    log('generate: toolConfigs=%o, options=%o', toolConfigs, options);
-    const dryRun = options?.dryRun ?? false;
+    log(
+      'generate: toolConfigs=%o, options=%o, FileSystem: %s',
+      toolConfigs,
+      options,
+      this.fs.constructor.name
+    );
+    // dryRun is removed; IFileSystem handles behavior
     const outputPath = options?.outputPath ?? path.join(this.appConfig.zshInitDir, 'init.zsh');
-    log('generate: outputPath=%s, dryRun=%s', outputPath, dryRun);
+    log('generate: outputPath=%s', outputPath);
 
     const header = [
       '# ==========================================================================',
@@ -138,27 +145,30 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
     content += '\n# === End of Generated File ===\n';
 
-    if (dryRun) {
-      log('generate (dryRun): Would write to %s with content:\n%s', outputPath, content);
-      console.log(`[DRY RUN] ShellInitGenerator: Would write Zsh init file to: ${outputPath}`);
-      console.log('[DRY RUN] Content:\n' + content);
-      return outputPath; // In dry run, return the path that would have been used
-    } else {
-      try {
-        log('generate: Writing to %s', outputPath);
-        await this.fs.ensureDir(path.dirname(outputPath));
-        await this.fs.writeFile(outputPath, content);
-        log('generate: Successfully wrote Zsh init file to %s', outputPath);
-        return outputPath;
-      } catch (error: any) {
-        log(
-          // Changed log.error to log
-          'generate: ERROR: Failed to write Zsh init file to %s. Error: %s',
-          outputPath,
-          error.message
-        );
-        return null; // Return null if an error occurs during file writing
-      }
+    // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
+    try {
+      log(
+        'generate: Writing to %s using %s with content:\n%s',
+        outputPath,
+        this.fs.constructor.name,
+        content
+      );
+      await this.fs.ensureDir(path.dirname(outputPath));
+      await this.fs.writeFile(outputPath, content);
+      log(
+        'generate: Successfully wrote Zsh init file to %s using %s',
+        outputPath,
+        this.fs.constructor.name
+      );
+      return outputPath;
+    } catch (error: any) {
+      log(
+        'generate: ERROR: Failed to write Zsh init file to %s using %s. Error: %s',
+        outputPath,
+        this.fs.constructor.name,
+        error.message
+      );
+      return null; // Return null if an error occurs during file writing
     }
   }
 

@@ -8,31 +8,31 @@
  * - [x] Implement constructor to accept dependencies: `IShimGenerator`, `IShellInitGenerator`, `ISymlinkGenerator`, `IFileSystem`, `AppConfig`.
  * - [x] Implement `generateAll` method:
  *   - [x] Determine manifest file path from `AppConfig.generatedArtifactsManifestPath`.
- *   - [x] Handle `dryRun` option:
- *     - [x] Log actions instead of performing file system operations.
- *     - [x] Call sub-generators with `dryRun` if they support it (assume they do for now, or adapt).
- *     - [x] Simulate manifest reading/writing.
- *   - [x] Read existing manifest using `IFileSystem.readFile()`:
+ *   - [x] Read existing manifest using `IFileSystem.readFile()` (behavior determined by injected `IFileSystem` type):
  *     - [x] Parse JSON.
  *     - [x] Handle case where manifest doesn't exist or is invalid (return a new/empty manifest structure).
  *   - [x] Call `shimGenerator.generate()`:
- *     - [x] Pass `toolConfigs` and `dryRun` option.
+ *     - [x] Pass `toolConfigs`.
  *     - [x] Capture `Promise<string[]>` and store in manifest.
  *   - [x] Call `shellInitGenerator.generate()`:
- *     - [x] Pass `toolConfigs` and `dryRun` option.
+ *     - [x] Pass `toolConfigs`.
  *     - [x] Capture `Promise<string | null>` and store in manifest.
  *   - [x] Call `symlinkGenerator.generate()`:
- *     - [x] Pass `toolConfigs` and `dryRun` option.
+ *     - [x] Pass `toolConfigs`.
  *     - [x] Capture `Promise<SymlinkOperationResult[]>` and store in manifest.
  *   - [x] Update the `GeneratedArtifactsManifest` data structure:
  *     - [x] Use `lastGenerated` instead of `lastGenerationTimestamp`.
  *     - [x] Store detailed artifact information.
  *     - [x] Include `generatorVersion` if provided in options.
- *   - [x] Write the new/updated manifest to the file system using `IFileSystem.writeFile()` (unless `dryRun`).
+ *   - [x] Write the new/updated manifest to the file system using `IFileSystem.writeFile()` (behavior determined by injected `IFileSystem` type).
  *     - [x] Ensure parent directory for manifest exists.
  *     - [x] Serialize manifest to JSON string with indentation.
- *   - [x] Return the updated (or simulated if dryRun) `GeneratedArtifactsManifest`.
+ *   - [x] Return the updated `GeneratedArtifactsManifest`.
  * - [x] Write unit tests (`__tests__/GeneratorOrchestrator.test.ts`).
+ * - [x] Refactor dry run mechanism:
+ *   - [x] Remove internal `dryRun` logic.
+ *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
+ *   - [x] Remove `dryRun` option from sub-generator calls.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage.
@@ -80,18 +80,21 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateAllOptions
   ): Promise<GeneratedArtifactsManifest> {
-    log('generateAll: Method entry. Options: %o', options);
+    log(
+      'generateAll: Method entry. Options: %o, FileSystem: %s',
+      options,
+      this.fs.constructor.name
+    );
     log(
       'generateAll: Initial appConfig.generatedArtifactsManifestPath: %s',
       this.appConfig?.generatedArtifactsManifestPath
     );
 
-    const dryRun = options?.dryRun ?? false;
     const generatorVersion = options?.generatorVersion;
     const toolConfigsCount = toolConfigs ? Object.keys(toolConfigs).length : 0;
 
     log(
-      `generateAll: Parsed options: dryRun=${dryRun}, generatorVersion=${generatorVersion}, toolConfigsCount=${toolConfigsCount}`
+      `generateAll: Parsed options: generatorVersion=${generatorVersion}, toolConfigsCount=${toolConfigsCount}`
     );
 
     if (!this.appConfig) {
@@ -114,61 +117,44 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     let currentManifest: GeneratedArtifactsManifest;
 
-    if (dryRun) {
-      log('generateAll: [DRY RUN] Simulating reading existing manifest.');
-      // In a dry run, we'd typically start with a blank or placeholder manifest
-      // or simulate reading one if its content influenced dry run logic.
-      // For now, assume a fresh manifest structure for dry run output.
-      const initialDryRunManifest: GeneratedArtifactsManifest = {
-        lastGenerated: new Date().toISOString(), // Use new field name
-        shims: [],
-        symlinks: [],
-        // shellInit will be populated by the subsequent call to shellInitGenerator.generate
-      };
-      if (generatorVersion) {
-        initialDryRunManifest.generatorVersion = generatorVersion;
-      }
-      currentManifest = initialDryRunManifest;
-    } else {
-      // Not dryRun
-      log('generateAll: Not a dry run. Proceeding with manifest read/init.');
-      try {
-        const manifestFileExists = await this.fs.exists(manifestPath);
-        log(`generateAll: fs.exists call completed. manifestFileExists = ${manifestFileExists}`);
+    log('generateAll: Proceeding with manifest read/init using %s.', this.fs.constructor.name);
+    try {
+      const manifestFileExists = await this.fs.exists(manifestPath);
+      log(`generateAll: fs.exists call completed. manifestFileExists = ${manifestFileExists}`);
 
-        if (manifestFileExists) {
-          log(`generateAll: Existing manifest found at ${manifestPath}. Reading...`);
-          const fileContent = await this.fs.readFile(manifestPath);
-          log('generateAll: readFile call completed.');
-          currentManifest = JSON.parse(fileContent) as GeneratedArtifactsManifest;
-          log('generateAll: Existing manifest read and parsed successfully.');
-        } else {
-          log(`generateAll: No existing manifest found at ${manifestPath}. Creating a new one.`);
-          currentManifest = {
-            lastGenerated: '', // Will be updated
-            shims: [],
-            symlinks: [],
-            // shellInit will be populated by sub-generator
-          };
-        }
-      } catch (error) {
-        log(
-          `generateAll: Error reading or parsing existing manifest at ${manifestPath}. Defaulting to a new manifest. Error: ${error instanceof Error ? error.message : String(error)}`
-        );
+      if (manifestFileExists) {
+        log(`generateAll: Existing manifest found at ${manifestPath}. Reading...`);
+        const fileContent = await this.fs.readFile(manifestPath);
+        log('generateAll: readFile call completed.');
+        currentManifest = JSON.parse(fileContent) as GeneratedArtifactsManifest;
+        log('generateAll: Existing manifest read and parsed successfully.');
+      } else {
+        log(`generateAll: No existing manifest found at ${manifestPath}. Creating a new one.`);
         currentManifest = {
           lastGenerated: '', // Will be updated
           shims: [],
           symlinks: [],
+          // shellInit will be populated by sub-generator
         };
       }
-      if (generatorVersion) {
-        currentManifest.generatorVersion = generatorVersion;
-      }
+    } catch (error) {
+      log(
+        `generateAll: Error reading or parsing existing manifest at ${manifestPath}. Defaulting to a new manifest. Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      currentManifest = {
+        lastGenerated: '', // Will be updated
+        shims: [],
+        symlinks: [],
+      };
+    }
+    if (generatorVersion) {
+      currentManifest.generatorVersion = generatorVersion;
     }
 
     // 1. Generate Shims
-    const shimOptions: GenerateShimsOptions = { dryRun, overwrite: true };
-    log('generateAll: Calling shimGenerator.generate...', shimOptions);
+    // dryRun is removed; IFileSystem handles behavior
+    const shimOptions: GenerateShimsOptions = { overwrite: true };
+    log('generateAll: Calling shimGenerator.generate with options: %o', shimOptions);
     const generatedShimsPaths = await this.shimGenerator.generate(toolConfigs, shimOptions);
     currentManifest.shims = generatedShimsPaths;
     log(
@@ -176,8 +162,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     );
 
     // 2. Generate Shell Init
-    const shellInitOptions: GenerateShellInitOptions = { dryRun };
-    log('generateAll: Calling shellInitGenerator.generate...', shellInitOptions);
+    // dryRun is removed; IFileSystem handles behavior
+    const shellInitOptions: GenerateShellInitOptions = {}; // Add other options if any in future
+    log('generateAll: Calling shellInitGenerator.generate with options: %o', shellInitOptions);
     const generatedShellInitPath = await this.shellInitGenerator.generate(
       toolConfigs,
       shellInitOptions
@@ -188,8 +175,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     );
 
     // 3. Generate Symlinks
-    const symlinkOptions: GenerateSymlinksOptions = { dryRun, overwrite: true, backup: true };
-    log('generateAll: Calling symlinkGenerator.generate...', symlinkOptions);
+    // dryRun is removed; IFileSystem handles behavior
+    const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
+    log('generateAll: Calling symlinkGenerator.generate with options: %o', symlinkOptions);
     const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
       toolConfigs,
       symlinkOptions
@@ -202,30 +190,25 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     // Update timestamp
     currentManifest.lastGenerated = new Date().toISOString(); // Use new field name
 
-    if (dryRun) {
+    // Manifest writing behavior is now solely determined by the injected IFileSystem type
+    try {
       log(
-        `generateAll: [DRY RUN] Manifest update simulated. Content that would be written to ${manifestPath}:`
+        'generateAll: Writing updated manifest to %s using %s',
+        manifestPath,
+        this.fs.constructor.name
       );
+      const manifestDir = path.dirname(manifestPath);
+      await this.fs.ensureDir(manifestDir);
+      await this.fs.writeFile(manifestPath, JSON.stringify(currentManifest, null, 2));
+      log('generateAll: Manifest written successfully.');
+    } catch (error) {
       log(
-        `DRY_RUN_MANIFEST_VERSION: ${currentManifest.generatorVersion}, SHIMS_COUNT: ${currentManifest.shims?.length ?? 0}, SHELL_INIT_PATH: ${currentManifest.shellInit?.path ?? 'null'}, SYMLINKS_COUNT: ${currentManifest.symlinks?.length ?? 0}`
+        `generateAll: Failed to write manifest to ${manifestPath}. Error: ${error instanceof Error ? error.message : String(error)}`
       );
-    } else {
-      try {
-        log(`generateAll: Writing updated manifest to ${manifestPath}`);
-        const manifestDir = path.dirname(manifestPath);
-        // Only ensureDir and writeFile if not in dryRun (already handled by the main if/else)
-        // This block is only entered if not dryRun.
-        await this.fs.ensureDir(manifestDir);
-        await this.fs.writeFile(manifestPath, JSON.stringify(currentManifest, null, 2));
-        log('generateAll: Manifest written successfully.');
-      } catch (error) {
-        log(
-          `generateAll: Failed to write manifest to ${manifestPath}. Error: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
+      // Potentially re-throw or handle more gracefully depending on requirements
     }
 
-    log('generateAll: Orchestration complete.');
+    log('generateAll: Orchestration complete using %s.', this.fs.constructor.name);
     return currentManifest;
   }
 }

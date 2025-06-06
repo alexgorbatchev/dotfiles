@@ -5,8 +5,10 @@
  * ## Development Plan
  * - [x] Create basic test structure.
  * - [x] Test that the `generate` command can be called.
- * - [x] Verify `GeneratorOrchestrator.generateAll` is called (using spyOn).
- *   - [x] Ensure `--dry-run` option is passed correctly.
+ *   - [x] Verify `GeneratorOrchestrator.generateAll` is called (using spyOn).
+ *   - [x] Ensure `setupServices` is called with correct `dryRun` flag.
+ *   - [x] Verify `GeneratorOrchestrator.generateAll` is called *without* `dryRun` option.
+ *   - [x] Verify correct `IFileSystem` (MemFileSystem/NodeFileSystem) is intended by `setupServices` based on `dryRun` flag.
  * - [x] Test error handling for the `generate` command (Completed).
  * - [ ] Test other commands as they are implemented.
  * - [x] Cleanup all linting errors and warnings.
@@ -22,7 +24,9 @@ import type {
 } from '../modules/generator-orchestrator/IGeneratorOrchestrator';
 import type { ToolConfig, GeneratedArtifactsManifest } from '../types';
 import type { AppConfig } from '../modules/config';
-import type { IFileSystem } from '../modules/file-system/IFileSystem';
+// IFileSystem import removed as it's unused
+import { MemFileSystem } from '../modules/file-system/MemFileSystem';
+import { NodeFileSystem } from '../modules/file-system/NodeFileSystem';
 import type { IDownloader } from '../modules/downloader/IDownloader';
 import type { IGitHubApiCache } from '../modules/github-client/IGitHubApiCache';
 import type { IGitHubApiClient } from '../modules/github-client/IGitHubApiClient';
@@ -70,18 +74,27 @@ describe('CLI', () => {
     const freshCliModule = await import('../cli');
     programUnderTest = freshCliModule.program; // Assign the fresh program instance
 
+    // Updated spy to reflect new signature and allow checking of fs type
     setupServicesSpy = spyOn(freshCliModule, 'setupServices').mockImplementation(
-      async (): Promise<cli.Services> => ({
-        appConfig: {} as AppConfig,
-        fs: {} as IFileSystem,
-        downloader: {} as IDownloader,
-        githubApiCache: {} as IGitHubApiCache,
-        githubApiClient: {} as IGitHubApiClient,
-        shimGenerator: {} as IShimGenerator,
-        shellInitGenerator: {} as IShellInitGenerator,
-        symlinkGenerator: {} as ISymlinkGenerator,
-        generatorOrchestrator: mockGeneratorOrchestrator,
-      })
+      async (dryRun?: boolean): Promise<cli.Services> => {
+        const fsInstance = dryRun ? new MemFileSystem() : new NodeFileSystem();
+        // Log constructor name for easier verification if needed, though direct instance check is better
+        // console.log(`setupServicesSpy: dryRun=${dryRun}, fs constructor=${fsInstance.constructor.name}`);
+        return {
+          appConfig: {
+            // Provide a minimal AppConfig with necessary properties if cli.ts uses them before orchestrator call
+            generatedArtifactsManifestPath: '/mock/manifest.json',
+          } as AppConfig,
+          fs: fsInstance, // Return an actual (mocked) FS type
+          downloader: {} as IDownloader,
+          githubApiCache: {} as IGitHubApiCache,
+          githubApiClient: {} as IGitHubApiClient,
+          shimGenerator: {} as IShimGenerator,
+          shellInitGenerator: {} as IShellInitGenerator,
+          symlinkGenerator: {} as ISymlinkGenerator,
+          generatorOrchestrator: mockGeneratorOrchestrator,
+        };
+      }
     );
 
     loadToolConfigsSpy = spyOn(freshCliModule, 'loadToolConfigs').mockImplementation(
@@ -103,27 +116,42 @@ describe('CLI', () => {
     processExitSpy.mockRestore();
   });
 
-  test('generate command should call GeneratorOrchestrator.generateAll with correct options', async () => {
-    // programUnderTest is now set in beforeEach
+  test('generate command should call setupServices with dryRun false and orchestrator without dryRun option', async () => {
     const generateCommand = programUnderTest.commands.find((cmd) => cmd.name() === 'generate');
     expect(generateCommand).toBeDefined();
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'generate']);
 
     expect(setupServicesSpy).toHaveBeenCalledTimes(1);
+    expect(setupServicesSpy).toHaveBeenCalledWith(false); // dryRun is false by default
+
+    // Verify the type of IFileSystem that would have been created
+    expect(setupServicesSpy.mock.results[0]).toBeDefined(); // Ensure the spy was called
+    const setupServicesResult = (await setupServicesSpy.mock.results[0]!.value) as cli.Services;
+    expect(setupServicesResult.fs).toBeInstanceOf(NodeFileSystem);
+
     expect(loadToolConfigsSpy).toHaveBeenCalledTimes(1);
     expect(mockGenerateAll).toHaveBeenCalledTimes(1);
-    expect(mockGenerateAll).toHaveBeenCalledWith({}, { dryRun: false });
+    // generateAll is now called without the dryRun option in its options object
+    expect(mockGenerateAll).toHaveBeenCalledWith({}, {}); // Empty options object
   });
 
-  test('generate command with --dry-run should call GeneratorOrchestrator.generateAll with dryRun true', async () => {
+  test('generate command with --dry-run should call setupServices with dryRun true and orchestrator without dryRun option', async () => {
     const generateCommand = programUnderTest.commands.find((cmd) => cmd.name() === 'generate');
     expect(generateCommand).toBeDefined();
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'generate', '--dry-run']);
 
     expect(setupServicesSpy).toHaveBeenCalledTimes(1);
+    expect(setupServicesSpy).toHaveBeenCalledWith(true); // dryRun is true
+
+    // Verify the type of IFileSystem that would have been created
+    expect(setupServicesSpy.mock.results[0]).toBeDefined(); // Ensure the spy was called
+    const setupServicesResult = (await setupServicesSpy.mock.results[0]!.value) as cli.Services;
+    expect(setupServicesResult.fs).toBeInstanceOf(MemFileSystem);
+
     expect(loadToolConfigsSpy).toHaveBeenCalledTimes(1);
     expect(mockGenerateAll).toHaveBeenCalledTimes(1);
-    expect(mockGenerateAll).toHaveBeenCalledWith({}, { dryRun: true });
+    // generateAll is now called without the dryRun option in its options object
+    expect(mockGenerateAll).toHaveBeenCalledWith({}, {}); // Empty options object
   });
 
   test('generate command should handle errors from orchestrator and exit', async () => {

@@ -14,12 +14,13 @@
  *     - [x] Test target already exists (skip, overwrite, backup behaviors) and results.
  *     - [x] Test return value (`SymlinkOperationResult[]`).
  *   - [x] Test path expansion (~ to home directory).
- *   - [x] Test `dryRun` behavior.
+ *   - [x] Test behavior when using `MemFileSystem` (simulating dry run): attempts file operations, returns appropriate status.
  *   - [x] Test with empty toolConfigs.
  *   - [x] Test with toolConfig with no symlinks.
  *   - [x] Test backup file already exists.
  *   - [x] Test target is a directory (for overwrite).
  * - [x] Create `index.ts` to export the interface and class.
+ * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
  * - [x] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update appConfig with `generatedArtifactsManifestPath`.
@@ -216,7 +217,8 @@ describe('SymlinkGenerator', () => {
     ]);
   });
 
-  it('should handle dryRun correctly, logging actions without performing them, and return created status', async () => {
+  it('should attempt symlink creation and return created status (simulating dry run with MemFS)', async () => {
+    // SymlinkGenerator always attempts operations. MemFS simulates dry run by not hitting actual disk.
     const toolConfigs = {
       tool1: createToolConfig([{ source: 'src/file.txt', target: '.target.txt' }]),
     };
@@ -224,20 +226,22 @@ describe('SymlinkGenerator', () => {
     await fs.writeFile(path.join(MOCK_PROJECT_ROOT, 'src/file.txt'), 'source content');
     const targetPath = path.join(MOCK_HOME_DIR, '.target.txt');
 
-    const options: GenerateSymlinksOptions = { dryRun: true };
-    const results = await symlinkGenerator.generate(toolConfigs, options);
+    // No dryRun option passed
+    const results = await symlinkGenerator.generate(toolConfigs, {});
 
-    expect(await fs.exists(targetPath)).toBe(false); // Symlink should not be created
+    // MemFS will reflect the symlink creation
+    expect(await fs.exists(targetPath)).toBe(true);
+    expect(await fs.readlink(targetPath)).toBe(path.join(MOCK_PROJECT_ROOT, 'src/file.txt'));
     expect(results).toEqual([
       {
         sourcePath: path.join(MOCK_PROJECT_ROOT, 'src/file.txt'),
         targetPath,
-        status: 'created', // Dry run assumes success for what would be done
+        status: 'created',
       },
     ]);
   });
 
-  it('should handle dryRun with overwrite and backup correctly, returning backed_up status', async () => {
+  it('should attempt backup/overwrite and return backed_up status (simulating dry run with MemFS)', async () => {
     const toolConfigs = {
       tool1: createToolConfig([{ source: 'src/file.txt', target: '.target.txt' }]),
     };
@@ -247,16 +251,20 @@ describe('SymlinkGenerator', () => {
     await fs.writeFile(targetPath, 'existing target content');
     const backupPath = `${targetPath}.bak`;
 
-    const options: GenerateSymlinksOptions = { dryRun: true, overwrite: true, backup: true };
+    // No dryRun option passed
+    const options: GenerateSymlinksOptions = { overwrite: true, backup: true };
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
-    expect(await fs.exists(backupPath)).toBe(false); // Backup should not be created
-    expect(await fs.readFile(targetPath)).toBe('existing target content'); // Original target should remain
+    // MemFS will reflect backup and overwrite
+    expect(await fs.exists(backupPath)).toBe(true);
+    expect(await fs.readFile(backupPath)).toBe('existing target content');
+    expect(await fs.exists(targetPath)).toBe(true);
+    expect(await fs.readlink(targetPath)).toBe(path.join(MOCK_PROJECT_ROOT, 'src/file.txt'));
     expect(results).toEqual([
       {
         sourcePath: path.join(MOCK_PROJECT_ROOT, 'src/file.txt'),
         targetPath,
-        status: 'backed_up', // Dry run assumes success for what would be done
+        status: 'backed_up',
       },
     ]);
   });

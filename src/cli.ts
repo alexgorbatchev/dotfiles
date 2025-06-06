@@ -10,7 +10,7 @@
  * - [x] Import necessary modules (`commander`, services, types).
  * - [x] Implement a simplified DependencyInjection (DI) setup function.
  *   - [x] Instantiate `AppConfig`.
- *   - [x] Instantiate `IFileSystem` (using `NodeFileSystem`).
+ *   - [x] Instantiate `IFileSystem` (conditionally `NodeFileSystem` or `MemFileSystem`).
  *   - [x] Instantiate `IDownloader` (using `Downloader` with `NodeFetchStrategy`).
  *   - [x] Instantiate `IGitHubApiCache` (using `FileGitHubApiCache`).
  *   - [x] Instantiate `IGitHubApiClient`.
@@ -23,13 +23,16 @@
  *   - [x] Implement the action handler:
  *     - [x] Instantiate `GeneratorOrchestrator` via DI setup.
  *     - [x] Create a stub for `loadToolConfigs()`.
- *     - [x] Call `generatorOrchestrator.generateArtifacts()`.
+ *     - [x] Call `generatorOrchestrator.generateAll()` (without dryRun option).
  *     - [x] Add basic success/error logging.
  * - [x] Parse CLI arguments using `program.parse(process.argv)`.
  * - [x] Write basic tests for the CLI (`generator/src/__tests__/cli.test.ts`).
  * - [x] Update `generator/package.json` with `bin` field and build script (Verified).
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Refactor dry run mechanism to inject IFileSystem.
+ *   - [x] Modify `cli.ts` to conditionally instantiate `IFileSystem` in `setupServices`.
+ *   - [x] Modify `cli.ts` to remove `dryRun` option from `generateAll` call.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -41,6 +44,7 @@ import {
   type SystemInfo as ConfigModuleSystemInfo,
 } from './modules/config';
 import { NodeFileSystem } from './modules/file-system/NodeFileSystem';
+import { MemFileSystem } from './modules/file-system/MemFileSystem'; // Added import
 import { Downloader } from './modules/downloader/Downloader';
 import { NodeFetchStrategy } from './modules/downloader/NodeFetchStrategy';
 import { FileGitHubApiCache } from './modules/github-client/FileGitHubApiCache';
@@ -75,14 +79,15 @@ export interface Services {
   generatorOrchestrator: IGeneratorOrchestrator;
 }
 
-export async function setupServices(): Promise<Services> {
-  log('setupServices: Initializing services...');
+export async function setupServices(dryRun = false): Promise<Services> {
+  log('setupServices: Initializing services... dryRun: %s', dryRun);
   const systemInfoForConfig: ConfigModuleSystemInfo = {
     homedir: os.homedir(),
     cwd: process.cwd(),
   };
   const appConfig = await createAppConfig(systemInfoForConfig, process.env as any); // Cast process.env
-  const fs = new NodeFileSystem();
+  const fs: IFileSystem = dryRun ? new MemFileSystem() : new NodeFileSystem();
+  log('setupServices: Using IFileSystem implementation: %s', fs.constructor.name);
   const downloader = new Downloader(fs);
   downloader.registerStrategy(new NodeFetchStrategy(fs));
 
@@ -140,15 +145,16 @@ program
   .action(async (options: { dryRun: boolean }) => {
     log('generate: Command called with options: %o', options);
     try {
-      const { generatorOrchestrator } = await setupServices();
+      const { generatorOrchestrator, fs } = await setupServices(options.dryRun);
       const toolConfigs = await loadToolConfigs();
 
       log(
-        'generate: Calling generatorOrchestrator.generateArtifacts with dryRun: %s',
-        options.dryRun
+        'generate: Calling generatorOrchestrator.generateAll. Dry run is %s, FileSystem is %s',
+        options.dryRun,
+        fs.constructor.name
       );
+      // The dryRun option is removed from generateAll as IFileSystem now handles it.
       const manifest = await generatorOrchestrator.generateAll(toolConfigs, {
-        dryRun: options.dryRun,
         // generatorVersion can be added here if needed from package.json
       });
       log('generate: Artifacts generated successfully. Manifest: %o', manifest);

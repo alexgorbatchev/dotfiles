@@ -12,8 +12,8 @@
  *     - [x] Test correct initialization.
  *   - [x] **`generateForTool` Method:**
  *     - [x] Test basic shim content generation.
- *     - [x] Test file writing and `chmod` calls.
- *     - [x] Test `dryRun` option (logs actions, no file ops, returns path).
+ *     - [x] Test file writing and `chmod` calls (behavior determined by injected IFileSystem).
+ *     - [x] Test behavior when using a mock/MemFileSystem (simulating dry run): attempts file operations, returns path.
  *     - [x] Test return value (array of shim paths).
  *     - [x] Test `overwrite: false` when shim exists (skips).
  *     - [x] Test `overwrite: true` when shim exists (overwrites).
@@ -26,6 +26,7 @@
  *     - [x] Test with empty `toolConfigs`.
  *     - [x] Test return value (array of all generated shim paths).
  * - [ ] Ensure all tests pass.
+ * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Achieve 100% test coverage for `ShimGenerator.ts`.
  * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
@@ -161,12 +162,17 @@ describe('ShimGenerator', () => {
       expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
     });
 
-    it('should perform a dry run if options.dryRun is true and return path', async () => {
-      const result = await shimGenerator.generateForTool(toolName, toolConfig, { dryRun: true });
+    it('should attempt file operations and return path (simulating dry run with mock FS)', async () => {
+      // With the refactor, ShimGenerator always attempts to write.
+      // The "dry run" nature comes from the IFileSystem implementation (e.g., MemFileSystem or a mock).
+      // This test now verifies it *tries* to write, and the mock captures this.
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, {}); // No dryRun option
 
       expect(result).toEqual([expectedShimPath]);
-      expect(mockWriteFile).not.toHaveBeenCalled();
-      expect(mockChmod).not.toHaveBeenCalled();
+      // It should now ATTEMPT to write and chmod, as dryRun logic is removed from ShimGenerator
+      expect(mockEnsureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockChmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
     it('should skip if shim exists and overwrite is false, returning empty array', async () => {
@@ -240,11 +246,12 @@ describe('ShimGenerator', () => {
       generateForToolSpy.mockRestore();
     });
 
-    it('should pass options to generateForTool and return paths', async () => {
+    it('should pass options (like overwrite) to generateForTool and return paths', async () => {
       const configs: Record<string, ToolConfig> = {
         'tool-a': { name: 'tool-a', binaries: ['tool-a-bin'], version: '1.0' },
       };
-      const options = { dryRun: true, overwrite: true };
+      // dryRun is removed from options here
+      const options = { overwrite: true };
       const expectedPathA = path.join(MOCK_TARGET_DIR, 'tool-a');
       const generateForToolSpy = spyOn(shimGenerator, 'generateForTool').mockResolvedValueOnce([
         expectedPathA,

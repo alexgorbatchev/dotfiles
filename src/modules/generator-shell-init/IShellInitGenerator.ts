@@ -12,6 +12,7 @@
  * - [x] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests)
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateShellInitOptions`.
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
 
@@ -22,12 +23,6 @@ import type { IFileSystem } from '../file-system';
  * Options for generating the shell initialization file.
  */
 export interface GenerateShellInitOptions {
-  /**
-   * If true, logs actions and content instead of writing the file.
-   * @default false
-   */
-  dryRun?: boolean;
-
   /**
    * Optional path to write the generated init file.
    * If not provided, a default path will be derived from AppConfig.

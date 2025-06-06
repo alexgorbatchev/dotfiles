@@ -18,11 +18,13 @@
  *     - [x] Handle `~` expansion in target paths.
  *     - [x] Check source existence.
  *     - [x] Handle target existence (skip, overwrite, backup).
- *     - [x] Ensure target directory exists.
- *     - [x] Create symlink.
- *     - [x] Handle `dryRun` option.
+ *     - [x] Ensure target directory exists (behavior determined by injected `IFileSystem` type).
+ *     - [x] Create symlink (behavior determined by injected `IFileSystem` type).
  * - [x] Write tests for `SymlinkGenerator` (in `__tests__/SymlinkGenerator.test.ts`).
  * - [x] Create `index.ts` to export the interface and class.
+ * - [x] Refactor dry run mechanism:
+ *   - [x] Remove internal `dryRun` logic.
+ *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [ ] Ensure 100% test coverage for executable code.
@@ -55,9 +57,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options: GenerateSymlinksOptions = {}
   ): Promise<SymlinkOperationResult[]> {
-    log('generate: Starting symlink generation. Options: %o', options);
+    log(
+      'generate: Starting symlink generation. Options: %o, FileSystem: %s',
+      options,
+      this.fs.constructor.name
+    );
     const results: SymlinkOperationResult[] = [];
-    const { dryRun = false, overwrite = false, backup = false } = options;
+    // dryRun is removed; IFileSystem handles behavior
+    const { overwrite = false, backup = false } = options;
     const homeDir = this.appConfig.dotfilesDir.startsWith('/Users/') // A bit of a hack to get home for testing
       ? this.appConfig.dotfilesDir.split('/').slice(0, 3).join('/')
       : this.appConfig.dotfilesDir;
@@ -143,56 +150,59 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           if (backup) {
             const backupPath = `${targetAbsPath}.bak`;
             log(
-              'generate: Backup option enabled. Attempting to rename "%s" to "%s".',
+              'generate: Backup option enabled. Attempting to rename "%s" to "%s" using %s.',
               targetAbsPath,
-              backupPath
+              backupPath,
+              this.fs.constructor.name
             );
-            if (!dryRun) {
-              try {
-                if (await this.fs.exists(backupPath)) {
-                  log(
-                    'generate: WARN: Backup path "%s" already exists. Deleting it before new backup.',
-                    backupPath
-                  );
-                  await this.fs.rm(backupPath, { recursive: true, force: true });
-                }
-                await this.fs.rename(targetAbsPath, backupPath);
-                currentStatus = 'backed_up';
-                log('generate: Successfully backed up "%s" to "%s".', targetAbsPath, backupPath);
-              } catch (e: any) {
-                currentStatus = 'failed';
-                currentError = `Backup failed for "${targetAbsPath}": ${e.message}`;
-                log('generate: ERROR: %s', currentError);
+            // Backup behavior determined by IFileSystem
+            try {
+              if (await this.fs.exists(backupPath)) {
+                log(
+                  'generate: WARN: Backup path "%s" already exists. Deleting it before new backup using %s.',
+                  backupPath,
+                  this.fs.constructor.name
+                );
+                await this.fs.rm(backupPath, { recursive: true, force: true });
               }
-            } else {
+              await this.fs.rename(targetAbsPath, backupPath);
+              currentStatus = 'backed_up';
               log(
-                'generate: [DRY RUN] Would rename "%s" to "%s" for backup.',
+                'generate: Successfully backed up "%s" to "%s" using %s.',
                 targetAbsPath,
-                backupPath
+                backupPath,
+                this.fs.constructor.name
               );
-              currentStatus = 'backed_up'; // Assume dry run backup succeeds
+            } catch (e: any) {
+              currentStatus = 'failed';
+              currentError = `Backup failed for "${targetAbsPath}": ${e.message}`;
+              log('generate: ERROR: %s', currentError);
             }
           }
 
           if (currentStatus !== 'failed') {
-            log('generate: Overwrite enabled. Attempting to delete "%s".', targetAbsPath);
-            if (!dryRun) {
-              try {
-                if (targetIsDir) {
-                  await this.fs.rm(targetAbsPath, { recursive: true, force: true });
-                } else {
-                  await this.fs.rm(targetAbsPath, { force: true });
-                }
-                log('generate: Successfully deleted "%s" for overwrite.', targetAbsPath);
-                // Status remains 'updated_target' or 'backed_up'
-              } catch (e: any) {
-                currentStatus = 'failed';
-                currentError = `Delete for overwrite failed for "${targetAbsPath}": ${e.message}`;
-                log('generate: ERROR: %s', currentError);
+            log(
+              'generate: Overwrite enabled. Attempting to delete "%s" using %s.',
+              targetAbsPath,
+              this.fs.constructor.name
+            );
+            // Deletion behavior determined by IFileSystem
+            try {
+              if (targetIsDir) {
+                await this.fs.rm(targetAbsPath, { recursive: true, force: true });
+              } else {
+                await this.fs.rm(targetAbsPath, { force: true });
               }
-            } else {
-              log('generate: [DRY RUN] Would delete "%s" for overwrite.', targetAbsPath);
+              log(
+                'generate: Successfully deleted "%s" for overwrite using %s.',
+                targetAbsPath,
+                this.fs.constructor.name
+              );
               // Status remains 'updated_target' or 'backed_up'
+            } catch (e: any) {
+              currentStatus = 'failed';
+              currentError = `Delete for overwrite failed for "${targetAbsPath}": ${e.message}`;
+              log('generate: ERROR: %s', currentError);
             }
           }
         } // End if (targetExists && overwrite)
@@ -208,46 +218,41 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         }
 
         const targetDir = path.dirname(targetAbsPath);
-        log('generate: Ensuring target directory "%s" exists.', targetDir);
-        if (!dryRun) {
-          try {
-            await this.fs.ensureDir(targetDir);
-          } catch (e: any) {
-            currentStatus = 'failed';
-            currentError = `Ensure dir failed for "${targetDir}": ${e.message}`;
-            log('generate: ERROR: %s', currentError);
-          }
-        } else {
-          log('generate: [DRY RUN] Would ensure directory "%s" exists.', targetDir);
+        log(
+          'generate: Ensuring target directory "%s" exists using %s.',
+          targetDir,
+          this.fs.constructor.name
+        );
+        // ensureDir behavior determined by IFileSystem
+        try {
+          await this.fs.ensureDir(targetDir);
+        } catch (e: any) {
+          currentStatus = 'failed';
+          currentError = `Ensure dir failed for "${targetDir}": ${e.message}`;
+          log('generate: ERROR: %s', currentError);
         }
 
         if (currentStatus !== 'failed') {
           log(
-            'generate: Attempting to create symlink from "%s" to "%s".',
+            'generate: Attempting to create symlink from "%s" to "%s" using %s.',
             sourceAbsPath,
-            targetAbsPath
+            targetAbsPath,
+            this.fs.constructor.name
           );
-          if (!dryRun) {
-            try {
-              await this.fs.symlink(sourceAbsPath, targetAbsPath);
-              log(
-                'generate: Successfully created symlink from "%s" to "%s".',
-                sourceAbsPath,
-                targetAbsPath
-              );
-              // currentStatus is already 'created', 'updated_target', or 'backed_up'
-            } catch (e: any) {
-              currentStatus = 'failed';
-              currentError = `Symlink creation failed for "${targetAbsPath}" from "${sourceAbsPath}": ${e.message}`;
-              log('generate: ERROR: %s', currentError);
-            }
-          } else {
+          // Symlink creation behavior determined by IFileSystem
+          try {
+            await this.fs.symlink(sourceAbsPath, targetAbsPath);
             log(
-              'generate: [DRY RUN] Would create symlink from "%s" to "%s".',
+              'generate: Successfully created symlink from "%s" to "%s" using %s.',
               sourceAbsPath,
-              targetAbsPath
+              targetAbsPath,
+              this.fs.constructor.name
             );
             // currentStatus is already 'created', 'updated_target', or 'backed_up'
+          } catch (e: any) {
+            currentStatus = 'failed';
+            currentError = `Symlink creation failed for "${targetAbsPath}" from "${sourceAbsPath}": ${e.message}`;
+            log('generate: ERROR: %s', currentError);
           }
         }
         results.push({
