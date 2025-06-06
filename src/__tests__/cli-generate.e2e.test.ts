@@ -38,11 +38,13 @@
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan). (e.g. diagnostic logs, old log helper)
  * - [ ] Ensure 100% test coverage for executable code. (N/A for test file itself, but for the CLI it tests)
  * - [ ] Update the memory bank with the new information when all tasks are complete.
+ * - [x] `it('should execute fzf shim, run mock fzf, and output version')`
  */
 
 import { beforeAll, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
+import type { ConfigEnvironment } from '../modules/config';
 // import os from 'node:os'; // No longer needed
 // import type { AppConfig } from '../../../src/modules/config/config'; // May not be directly needed
 
@@ -54,7 +56,7 @@ describe('E2E: bun run cli generate', () => {
   let binDirForVerification: string;
   let zshInitDirForVerification: string;
   let lazygitSourceConfigPath: string; // Source for the lazygit config symlink
-  let envVarsForCli: Record<string, string | undefined>;
+  let envVarsForCli: ConfigEnvironment;
 
   // For CLI results and manifest, populated in beforeAll
   let cliExitCode: number | null;
@@ -80,8 +82,7 @@ describe('E2E: bun run cli generate', () => {
     generatedDir = path.join(dotfilesDir, '.generated');
     toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs'); // TOOL_CONFIGS_DIR points here
 
-    // Verification paths based on AppConfig logic (GENERATED_DIR based)
-    binDirForVerification = path.join(generatedDir, 'bin');
+    binDirForVerification = path.join(tempDir, '.local', 'bin');
     zshInitDirForVerification = path.join(generatedDir, 'zsh');
 
     const lazygitSourceConfigDirInDotfiles = path.join(dotfilesDir, '02-configs', 'lazygit');
@@ -105,6 +106,9 @@ describe('E2E: bun run cli generate', () => {
       CACHE_ENABLED: 'false',
       GITHUB_API_CACHE_ENABLED: 'false',
       CHECK_UPDATES_ON_RUN: 'false',
+    };
+
+    const additionalEnvVarsForCli = {
       PATH: process.env['PATH'], // Essential for finding 'bun'
       HOME: tempDir, // Controls where ~ resolves, e.g. for symlink targets
     };
@@ -115,6 +119,23 @@ describe('E2E: bun run cli generate', () => {
     const lazygitSourceToolPath = path.join(sourceTestFixturesDir, 'lazygit.tool.ts');
     fs.copyFileSync(fzfSourceToolPath, path.join(toolConfigsDir, 'fzf.tool.ts'));
     fs.copyFileSync(lazygitSourceToolPath, path.join(toolConfigsDir, 'lazygit.tool.ts'));
+
+    // Adjust import paths in copied fixtures for TSC in temp dir
+    const fzfDestPath = path.join(toolConfigsDir, 'fzf.tool.ts');
+    const lazygitDestPath = path.join(toolConfigsDir, 'lazygit.tool.ts');
+    [fzfDestPath, lazygitDestPath].forEach((filePath) => {
+      let content = fs.readFileSync(filePath, 'utf-8');
+      // Original path in fixture: ../../types
+      // New path from temp location: ../../../../../types
+      content = content.replace(
+        /from ('|")\.\.\/\.\.\/types('|")/g,
+        'from $1../../../../../types$2'
+      );
+
+      // No modifications to the tool config's TOOL_EXECUTABLE
+
+      fs.writeFileSync(filePath, content);
+    });
 
     // Create dummy lazygit config source file for symlink testing
     fs.writeFileSync(
@@ -136,7 +157,7 @@ describe('E2E: bun run cli generate', () => {
     const proc = Bun.spawnSync({
       cmd: ['bun', cliEntryPoint, 'generate'], // Execute cli.ts directly
       cwd: generatorProjectRootPath, // Run from the 'generator' project directory
-      env: envVarsForCli,
+      env: { ...envVarsForCli, ...additionalEnvVarsForCli },
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -224,5 +245,37 @@ describe('E2E: bun run cli generate', () => {
     expect(lazygitSymlinkManifestEntry.targetPath).toBe(actualLazygitSymlinkLocation);
     expect(lazygitSymlinkManifestEntry.status).toBe('created');
     expect(lazygitSymlinkManifestEntry.error).toBeUndefined();
+  });
+
+  it('should execute fzf shim, run mock fzf, and output version', () => {
+    // Setup mock fzf binary
+    const mockFzfDir = path.join(generatedDir, 'bin');
+    const mockFzfBinaryPath = path.join(mockFzfDir, 'fzf');
+    fs.mkdirSync(mockFzfDir, { recursive: true });
+    const mockFzfScriptContent = `#!/usr/bin/env bash
+      if [ "$1" = "--version" ]; then
+        echo "0.1.2-mock-e2e"
+        exit 0
+      fi
+      echo "Mock fzf called with: $@"
+    `;
+    fs.writeFileSync(mockFzfBinaryPath, mockFzfScriptContent);
+    fs.chmodSync(mockFzfBinaryPath, 0o755);
+
+    const shimProc = Bun.spawnSync({
+      cmd: [fzfShimPath, '--version'],
+      env: {
+        ...process.env,
+        HOME: tempDir,
+        DOTFILES_DIR: envVarsForCli['DOTFILES_DIR'],
+        GENERATED_DIR: envVarsForCli['GENERATED_DIR'],
+        TOOL_CONFIGS_DIR: envVarsForCli['TOOL_CONFIGS_DIR'],
+      },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+
+    expect(shimProc.exitCode).toBe(0);
+    expect(shimProc.stdout.toString().trim()).toBe('0.1.2-mock-e2e');
   });
 });
