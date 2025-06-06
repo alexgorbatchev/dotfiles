@@ -28,6 +28,7 @@
  *   - [x] Ensure 100% test coverage.
  *   - [x] Add `generatedArtifactsManifestPath` to `AppConfig` creation.
  *   - [x] Add `toolConfigsDir` to `AppConfig` creation, loading from `TOOL_CONFIGS_DIR` env var.
+ *   - [x] Correct the default path for `toolConfigsDir` to `generator/configs/tools`.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -76,7 +77,7 @@ export interface ConfigEnvironment {
   /**
    * Specifies the directory containing `*.tool.ts` tool configuration files.
    * This is the primary directory scanned by `loadToolConfigs` for defining tools.
-   * Defaults to `${DOTFILES_DIR}/configs/tools`.
+   * Defaults to `${DOTFILES_DIR}/generator/configs/tools`.
    */
   TOOL_CONFIGS_DIR?: string;
   /**
@@ -235,7 +236,7 @@ export function createAppConfig(
     dotfilesDir: DOTFILES_DIR,
     generatedDir: GENERATED_DIR,
     toolConfigDir: env.TOOL_CONFIG_DIR || join(DOTFILES_DIR, 'generator', 'src', 'tools'), // Existing, for individual tool files
-    toolConfigsDir: env.TOOL_CONFIGS_DIR || join(DOTFILES_DIR, 'configs', 'tools'), // New, for the directory of *.tool.ts files
+    toolConfigsDir: env.TOOL_CONFIGS_DIR || join(DOTFILES_DIR, 'generator', 'configs', 'tools'), // New, for the directory of *.tool.ts files
     debug: env.DEBUG || '',
     cacheEnabled: env.CACHE_ENABLED, // This is now a boolean from Zod transform
     sudoPrompt: env.SUDO_PROMPT,

@@ -15,10 +15,16 @@
  * - [x] Import necessary modules and types.
  * - [x] Mock `IFileSystem` and `AppConfig` using testing helpers.
  * - [x] Test scenario: No `*.tool.ts` files found.
- * - [x] Test scenario: Valid `*.tool.ts` files are correctly loaded and parsed.
+ * - [x] Test scenario: Valid `*.tool.ts` files (exporting objects) are correctly loaded and parsed.
  *   - [x] Ensure `ToolConfig.name` is used as the key.
+ * - [x] Test scenario: Valid `*.tool.ts` files (exporting `AsyncConfigureTool` functions) are correctly loaded, executed, and parsed.
+ *   - [x] Mock `AsyncConfigureTool` function.
+ *   - [x] Ensure `ToolConfigBuilder` is instantiated and passed.
+ *   - [x] Ensure `appConfig` is passed.
+ *   - [x] Ensure the resolved `ToolConfig` is validated and used.
+ * - [x] Test scenario: `AsyncConfigureTool` function throws an error during execution.
  * - [x] Test scenario: Files that are not `*.tool.ts` are ignored.
- * - [x] Test scenario: Files with invalid `ToolConfig` structure (failing Zod validation) are skipped with warnings.
+ * - [x] Test scenario: Files with invalid `ToolConfig` structure (failing Zod validation) are skipped with warnings (applies to both object and function exports).
  *   - [x] Mock `ToolConfigSchema.safeParse` to simulate validation failure.
  * - [x] Test scenario: Dynamic import errors are handled (e.g., file exists but import fails).
  *   - [x] Mock `import()` to throw an error.
@@ -39,6 +45,7 @@ import type { IFileSystem } from '../../file-system/IFileSystem';
 import { loadToolConfigs } from '../toolConfigLoader';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
+import { ToolConfigBuilder } from '../../tool-config-builder/toolConfigBuilder';
 import * as toolConfigSchema from '../../config/toolConfigSchema'; // To mock ToolConfigSchema
 // Logger will not be mocked, as per project rules.
 
@@ -189,5 +196,103 @@ describe('loadToolConfigs', () => {
     expect(result['dupetool']).toEqual(toolV2); // toolV2 from dupe2.tool.ts should overwrite toolV1 // Changed to index access
     expect(Object.keys(result).length).toBe(1);
     // Logging assertions removed
+  });
+
+  it('should correctly load and parse a .tool.ts file exporting an AsyncConfigureTool function', async () => {
+    const toolName = 'asyncTool';
+    const expectedConfig: ToolConfig = {
+      name: toolName,
+      binaries: ['atool'],
+      version: '1.0',
+      installationMethod: 'manual', // Added: Required if binaries are present
+      installParams: { binaryPath: 'dummy/path/atool' }, // Added: Corresponding params
+      zshInit: [],
+      symlinks: [],
+      // updateCheck and completions can be omitted if not explicitly set,
+      // as they are optional and might be added by schema defaults or later processing.
+      // For toEqual, it's safer to match what builder.build() produces minimally.
+      // The builder itself doesn't add updateCheck by default.
+    };
+
+    const mockAsyncConfigureTool = mock(
+      async (builder: ToolConfigBuilder, appConfig?: AppConfig) => {
+        expect(builder).toBeInstanceOf(ToolConfigBuilder);
+        expect(appConfig).toEqual(mockAppConfig); // Verify appConfig is passed
+        // Simulate builder usage:
+        builder.bin(expectedConfig.binaries);
+        builder.version(expectedConfig.version);
+        if (expectedConfig.installationMethod && expectedConfig.installParams) {
+          // Type assertion needed because 'install' is overloaded
+          builder.install(
+            expectedConfig.installationMethod as 'manual',
+            expectedConfig.installParams as any // Cast installParams to any to satisfy overload
+          );
+        }
+        // zshInit and symlinks are defaulted to [] by builder constructor,
+        // so no need to call builder.zsh([]) or builder.symlink() if expected is empty.
+        return Promise.resolve(); // Return Promise<void>
+      }
+    );
+
+    mockFs.readdir.mockResolvedValueOnce([`${toolName}.tool.ts`]);
+    mock.module(resolvePath(MOCK_TOOL_CONFIGS_DIR, `${toolName}.tool.ts`), () => ({
+      default: mockAsyncConfigureTool,
+    }));
+
+    toolConfigSchema.ToolConfigSchema.safeParse = mock((data) => ({ success: true, data })) as any;
+
+    const result = await loadToolConfigs(mockAppConfig, mockFs);
+
+    expect(mockAsyncConfigureTool).toHaveBeenCalledTimes(1);
+    expect(result[toolName]).toEqual(expectedConfig);
+    expect(Object.keys(result).length).toBe(1);
+  });
+
+  it('should handle errors when an AsyncConfigureTool function throws an error', async () => {
+    const toolName = 'errorAsyncTool';
+    const errorMessage = 'AsyncConfigureTool failed';
+
+    const mockAsyncConfigureTool = mock(
+      async (_builder: ToolConfigBuilder, _appConfig?: AppConfig) => {
+        throw new Error(errorMessage);
+      }
+    );
+
+    mockFs.readdir.mockResolvedValueOnce([`${toolName}.tool.ts`]);
+    mock.module(resolvePath(MOCK_TOOL_CONFIGS_DIR, `${toolName}.tool.ts`), () => ({
+      default: mockAsyncConfigureTool,
+    }));
+
+    const result = await loadToolConfigs(mockAppConfig, mockFs);
+
+    expect(mockAsyncConfigureTool).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({});
+    // Logging assertions removed (error should be logged by the loader)
+  });
+
+  it('should correctly pass appConfig to AsyncConfigureTool function', async () => {
+    const toolName = 'appConfigAwareTool';
+    const expectedConfig: ToolConfig = { name: toolName, binaries: ['actool'], version: '1.0' };
+    let passedAppConfig: AppConfig | undefined;
+
+    const mockAsyncConfigureTool = mock(
+      async (_builder: ToolConfigBuilder, appConfig?: AppConfig) => {
+        passedAppConfig = appConfig;
+        return Promise.resolve(expectedConfig);
+      }
+    );
+
+    mockFs.readdir.mockResolvedValueOnce([`${toolName}.tool.ts`]);
+    mock.module(resolvePath(MOCK_TOOL_CONFIGS_DIR, `${toolName}.tool.ts`), () => ({
+      default: mockAsyncConfigureTool,
+    }));
+
+    toolConfigSchema.ToolConfigSchema.safeParse = mock((data) => ({ success: true, data })) as any;
+
+    await loadToolConfigs(mockAppConfig, mockFs);
+
+    expect(mockAsyncConfigureTool).toHaveBeenCalledTimes(1);
+    expect(passedAppConfig).toBeDefined();
+    expect(passedAppConfig).toEqual(mockAppConfig);
   });
 });

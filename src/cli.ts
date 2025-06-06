@@ -34,6 +34,11 @@
  *   - [x] Modify `cli.ts` to conditionally instantiate `IFileSystem` in `setupServices`.
  *   - [x] Modify `cli.ts` to remove `dryRun` option from `generateAll` call.
  * - [x] Integrate real `loadToolConfigs` function.
+ * - [x] Pre-populate `MemFileSystem` with actual `*.tool.ts` files from `toolConfigsDir` during `--dry-run`.
+ *   - [x] In `setupServices`, when `dryRun` is true:
+ *     - [x] Use `AppConfig` to get `toolConfigsDir`.
+ *     - [x] Use a temporary `NodeFileSystem` to read `*.tool.ts` files from `toolConfigsDir`.
+ *     - [x] Initialize `MemFileSystem` with the content of these files.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -45,7 +50,7 @@ import {
   type SystemInfo as ConfigModuleSystemInfo,
 } from './modules/config';
 import { NodeFileSystem } from './modules/file-system/NodeFileSystem';
-import { MemFileSystem } from './modules/file-system/MemFileSystem'; // Added import
+import { MemFileSystem, type DirectoryJSON } from './modules/file-system/MemFileSystem'; // Added import and DirectoryJSON
 import { Downloader } from './modules/downloader/Downloader';
 import { NodeFetchStrategy } from './modules/downloader/NodeFetchStrategy';
 import { FileGitHubApiCache } from './modules/github-client/FileGitHubApiCache';
@@ -67,6 +72,7 @@ import type { ISymlinkGenerator } from './modules/generator-symlink/ISymlinkGene
 import type { IGeneratorOrchestrator } from './modules/generator-orchestrator/IGeneratorOrchestrator';
 import { loadToolConfigs as realLoadToolConfigs } from './modules/config-loader/toolConfigLoader'; // Added import
 import os from 'os';
+import path from 'node:path'; // Added import for path.join
 
 const log = createLogger('cli');
 
@@ -89,7 +95,50 @@ export async function setupServices(dryRun = false): Promise<Services> {
     cwd: process.cwd(),
   };
   const appConfig = await createAppConfig(systemInfoForConfig, process.env as any); // Cast process.env
-  const fs: IFileSystem = dryRun ? new MemFileSystem() : new NodeFileSystem();
+  let fs: IFileSystem;
+
+  if (dryRun) {
+    log('setupServices: Dry run enabled. Initializing MemFileSystem with tool configs.');
+    const realToolConfigsDir = appConfig.toolConfigsDir;
+    const tempNodeFs = new NodeFileSystem(); // Temporary real FS to read tool configs
+    const toolFilesJson: DirectoryJSON = {};
+
+    try {
+      if (await tempNodeFs.exists(realToolConfigsDir)) {
+        log('setupServices: Reading tool configs from actual directory: %s', realToolConfigsDir);
+        const filesInDir = await tempNodeFs.readdir(realToolConfigsDir);
+        for (const fileName of filesInDir) {
+          if (fileName.endsWith('.tool.ts')) {
+            const filePath = path.join(realToolConfigsDir, fileName);
+            try {
+              const content = await tempNodeFs.readFile(filePath, 'utf8');
+              toolFilesJson[filePath] = content;
+              log('setupServices: Added tool config %s to MemFileSystem.', filePath);
+            } catch (readError) {
+              log('setupServices: Error reading tool file %s for dry run: %O', filePath, readError);
+              // Optionally, decide whether to throw or continue. For now, logging and continuing.
+            }
+          }
+        }
+      } else {
+        log(
+          'setupServices: Tool configs directory %s does not exist on the real file system.',
+          realToolConfigsDir
+        );
+      }
+    } catch (dirError) {
+      log(
+        'setupServices: Error accessing tool configs directory %s for dry run: %O',
+        realToolConfigsDir,
+        dirError
+      );
+      // Optionally, decide whether to throw or continue.
+    }
+    fs = new MemFileSystem(toolFilesJson);
+  } else {
+    fs = new NodeFileSystem();
+  }
+
   log('setupServices: Using IFileSystem implementation: %s', fs.constructor.name);
   const downloader = new Downloader(fs);
   downloader.registerStrategy(new NodeFetchStrategy(fs));
@@ -113,6 +162,7 @@ export async function setupServices(dryRun = false): Promise<Services> {
     fs, // IFileSystem
     appConfig // AppConfig
   );
+
   log('setupServices: Services initialized.');
   return {
     appConfig,

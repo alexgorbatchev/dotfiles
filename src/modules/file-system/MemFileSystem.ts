@@ -40,6 +40,7 @@
 
 import type { IFileSystem } from './IFileSystem';
 import { Volume, type DirectoryJSON } from 'memfs';
+export type { DirectoryJSON }; // Re-export DirectoryJSON
 import type { Stats } from 'node:fs'; // memfs Stats is compatible
 
 // Helper to convert Buffer to string if encoding is provided // No longer needed after async refactor

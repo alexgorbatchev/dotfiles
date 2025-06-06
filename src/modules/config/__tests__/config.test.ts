@@ -24,6 +24,7 @@
  *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  *   - [x] Ensure 100% test coverage.
  *   - [x] Test `toolConfigsDir` default value and loading from env.
+ *   - [x] Update tests to reflect corrected `toolConfigsDir` default path.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { describe, it, expect } from 'bun:test';
@@ -50,7 +51,9 @@ describe('createAppConfig', () => {
     expect(appConfig.dotfilesDir).toBe(expectedDotfilesDir);
     expect(appConfig.generatedDir).toBe(expectedGeneratedDir);
     expect(appConfig.toolConfigDir).toBe(join(expectedDotfilesDir, 'generator', 'src', 'tools')); // Existing
-    expect(appConfig.toolConfigsDir).toBe(join(expectedDotfilesDir, 'configs', 'tools')); // New default
+    expect(appConfig.toolConfigsDir).toBe(
+      join(expectedDotfilesDir, 'generator', 'configs', 'tools')
+    ); // New default
     expect(appConfig.debug).toBe('');
     expect(appConfig.cacheEnabled).toBe(true);
     expect(appConfig.sudoPrompt).toBeUndefined();

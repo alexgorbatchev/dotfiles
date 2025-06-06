@@ -20,15 +20,22 @@
  *   - [x] For each matching file:
  *     - [x] Construct absolute file path.
  *     - [x] Dynamically `import()` the module.
- *     - [x] Assume default export is the `ToolConfig` object.
- *     - [x] Validate imported object against `ToolConfigSchema.safeParse()`.
+ *     - [x] Get the `default` export.
+ *     - [x] Check if the `defaultExport` is a function (assumed `AsyncConfigureTool`).
+ *       - [x] If it is a function:
+ *         - [x] Instantiate `ToolConfigBuilder`.
+ *         - [x] Call the exported function with the builder and `appConfig`.
+ *         - [x] `await` the result to get the `ToolConfig` object.
+ *       - [x] If the `defaultExport` is an object, use it directly.
+ *     - [x] Validate the resolved `ToolConfig` object against `ToolConfigSchema.safeParse()`.
  *     - [x] If valid, add to result using `ToolConfig.name` as key.
  *     - [x] Log errors for file reading, import, or validation issues and skip invalid configs.
  * - [x] Export `loadToolConfigs`.
  * - [x] Add `createLogger` for logging.
- * - [x] (Unit tests will be created in a separate step)
+ * - [ ] Write tests for the module.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -36,6 +43,7 @@ import { resolve as resolvePath } from 'path'; // Removed unused join, basename,
 import type { AppConfig, ToolConfig } from '../../types';
 import type { IFileSystem } from '../file-system/IFileSystem';
 import { ToolConfigSchema } from '../config/toolConfigSchema';
+import { ToolConfigBuilder } from '../tool-config-builder/toolConfigBuilder';
 import { createLogger } from '../logger';
 
 const log = createLogger('toolConfigLoader');
@@ -89,17 +97,46 @@ export async function loadToolConfigs(
       // Or, they can be absolute paths. Here, we construct an absolute path.
       const module = await import(filePath);
 
-      // Assume the default export is the ToolConfig object.
-      // As per task: "Assume the module's default export is the ToolConfig object"
-      const rawConfig = module.default;
+      // Get the default export.
+      const defaultExport = module.default;
 
-      if (!rawConfig) {
+      if (!defaultExport) {
         log('loadToolConfigs: File %s does not have a default export. Skipping.', filePath);
         continue;
       }
 
-      // Validate the imported object against the Zod schema.
-      const validationResult = ToolConfigSchema.safeParse(rawConfig);
+      let resolvedConfig: ToolConfig | undefined;
+
+      if (typeof defaultExport === 'function') {
+        log('loadToolConfigs: File %s exports a function. Assuming AsyncConfigureTool.', filePath);
+        try {
+          const toolName = fileName.replace(/\.tool\.ts$/, '');
+          const builder = new ToolConfigBuilder(toolName);
+          // The defaultExport is an AsyncConfigureTool, which is (builder: ToolConfigBuilder, appConfig?: AppConfig) => Promise<void>
+          // It configures the builder. We then call build() on the builder.
+          await defaultExport(builder, appConfig); // This populates the builder
+          resolvedConfig = builder.build(); // Now get the config from the builder
+          log('loadToolConfigs: Successfully executed AsyncConfigureTool from %s.', filePath);
+        } catch (funcError) {
+          log(
+            'loadToolConfigs: Error executing AsyncConfigureTool function from file %s: %O. Skipping.',
+            filePath,
+            funcError
+          );
+          continue;
+        }
+      } else {
+        log('loadToolConfigs: File %s exports an object. Using directly.', filePath);
+        resolvedConfig = defaultExport as ToolConfig; // Cast, will be validated next
+      }
+
+      if (!resolvedConfig) {
+        log('loadToolConfigs: Could not resolve a config from %s. Skipping.', filePath);
+        continue;
+      }
+
+      // Validate the resolved config object against the Zod schema.
+      const validationResult = ToolConfigSchema.safeParse(resolvedConfig);
 
       if (validationResult.success) {
         const validConfig = validationResult.data;
