@@ -20,12 +20,18 @@
  *   - [x] Test derived paths are correctly constructed.
  *   - [x] Test boolean parsing for `CACHE_ENABLED`.
  *   - [x] Test `GITHUB_CLIENT_USER_AGENT` loading and default.
- *   - [x] Cleanup all linting errors and warnings.
- *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- *   - [x] Ensure 100% test coverage.
- *   - [x] Test `toolConfigsDir` default value and loading from env.
- *   - [x] Update tests to reflect corrected `toolConfigsDir` default path.
- *   - [ ] Update the memory bank with the new information when all tasks are complete.
+ * - [x] Add tests for tilde (`~`) expansion in path configurations.
+ *   - [x] Verify `DOTFILES_DIR` with `~/...` is expanded.
+ *   - [x] Verify `GENERATED_DIR` with `~` is expanded.
+ *   - [x] Verify other path variables like `TOOL_CONFIGS_DIR` are expanded.
+ *   - [x] Verify paths without tilde are not affected.
+ *   - [x] Verify default paths are correctly resolved if tilde paths are not provided.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage.
+ * - [x] Test `toolConfigsDir` default value and loading from env.
+ * - [x] Update tests to reflect corrected `toolConfigsDir` default path.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { describe, it, expect } from 'bun:test';
 import { join, resolve } from 'path';
@@ -227,6 +233,133 @@ describe('createAppConfig', () => {
       const mockEnv: ConfigEnvironment = { GITHUB_API_CACHE_TTL: '0' };
       const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
       expect(appConfig.githubApiCacheTtl).toBe(0);
+    });
+  });
+
+  describe('Tilde Expansion for Paths', () => {
+    const mockUserHome = mockSystemInfoBase.homedir; // /mock/home
+
+    it('should expand DOTFILES_DIR starting with ~/', () => {
+      const mockEnv: ConfigEnvironment = { DOTFILES_DIR: '~/.my-dotfiles' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.dotfilesDir).toBe(join(mockUserHome, '.my-dotfiles'));
+    });
+
+    it('should expand DOTFILES_DIR being exactly ~', () => {
+      const mockEnv: ConfigEnvironment = { DOTFILES_DIR: '~' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.dotfilesDir).toBe(mockUserHome);
+    });
+
+    it('should expand GENERATED_DIR starting with ~/', () => {
+      const mockEnv: ConfigEnvironment = { GENERATED_DIR: '~/.my-generated' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      // Note: If DOTFILES_DIR is not set, GENERATED_DIR default is based on default DOTFILES_DIR
+      // If DOTFILES_DIR is set, GENERATED_DIR default is based on that.
+      // Here, we explicitly set GENERATED_DIR.
+      expect(appConfig.generatedDir).toBe(join(mockUserHome, '.my-generated'));
+    });
+
+    it('should expand TOOL_CONFIGS_DIR starting with ~/', () => {
+      const mockEnv: ConfigEnvironment = { TOOL_CONFIGS_DIR: '~/my-tool-configs' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.toolConfigsDir).toBe(join(mockUserHome, 'my-tool-configs'));
+    });
+
+    it('should expand TARGET_DIR starting with ~/', () => {
+      const mockEnv: ConfigEnvironment = { TARGET_DIR: '~/my-target' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.targetDir).toBe(join(mockUserHome, 'my-target'));
+    });
+
+    it('should expand COMPLETIONS_DIR starting with ~/', () => {
+      const mockEnv: ConfigEnvironment = { COMPLETIONS_DIR: '~/my-completions' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.completionsDir).toBe(join(mockUserHome, 'my-completions'));
+    });
+
+    it('should expand GENERATED_ARTIFACTS_MANIFEST_PATH starting with ~/', () => {
+      const mockEnv: ConfigEnvironment = {
+        GENERATED_ARTIFACTS_MANIFEST_PATH: '~/manifests/artifacts.json',
+      };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.generatedArtifactsManifestPath).toBe(
+        join(mockUserHome, 'manifests/artifacts.json')
+      );
+    });
+
+    it('should not modify paths not starting with ~', () => {
+      const mockEnv: ConfigEnvironment = { DOTFILES_DIR: '/absolute/path/dotfiles' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.dotfilesDir).toBe('/absolute/path/dotfiles');
+    });
+
+    it('should use default dotfilesDir if DOTFILES_DIR is undefined (tilde expansion not applicable to default itself here)', () => {
+      const mockEnv: ConfigEnvironment = {};
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.dotfilesDir).toBe(resolve(mockUserHome, '.dotfiles'));
+    });
+
+    it('should correctly derive GENERATED_DIR when DOTFILES_DIR uses tilde expansion', () => {
+      const mockEnv: ConfigEnvironment = { DOTFILES_DIR: '~/.custom-dots' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      const expectedDotfiles = join(mockUserHome, '.custom-dots');
+      expect(appConfig.dotfilesDir).toBe(expectedDotfiles);
+      expect(appConfig.generatedDir).toBe(join(expectedDotfiles, '.generated'));
+    });
+
+    it('should correctly derive toolConfigsDir when DOTFILES_DIR uses tilde expansion and toolConfigsDir is default', () => {
+      const mockEnv: ConfigEnvironment = { DOTFILES_DIR: '~/.another-dots' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      const expectedDotfiles = join(mockUserHome, '.another-dots');
+      expect(appConfig.dotfilesDir).toBe(expectedDotfiles);
+      expect(appConfig.toolConfigsDir).toBe(
+        join(expectedDotfiles, 'generator', 'configs', 'tools')
+      );
+    });
+
+    it('should handle mixed tilde and absolute paths', () => {
+      const mockEnv: ConfigEnvironment = {
+        DOTFILES_DIR: '~/.mixed-dots',
+        GENERATED_DIR: '/abs/generated',
+        TOOL_CONFIGS_DIR: '~/mixed-tool-configs',
+      };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.dotfilesDir).toBe(join(mockUserHome, '.mixed-dots'));
+      expect(appConfig.generatedDir).toBe('/abs/generated');
+      expect(appConfig.toolConfigsDir).toBe(join(mockUserHome, 'mixed-tool-configs'));
+    });
+
+    it('should handle tilde expansion for all relevant env vars', () => {
+      const mockEnv: ConfigEnvironment = {
+        DOTFILES_DIR: '~/.dotfiles-test',
+        GENERATED_DIR: '~/gen-test',
+        TARGET_DIR: '~/bin-test',
+        TOOL_CONFIG_DIR: '~/tool-conf-test',
+        TOOL_CONFIGS_DIR: '~/tool-confs-test',
+        COMPLETIONS_DIR: '~/comp-test',
+        GENERATED_ARTIFACTS_MANIFEST_PATH: '~/manifest-test.json',
+      };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+
+      expect(appConfig.dotfilesDir).toBe(join(mockUserHome, '.dotfiles-test'));
+      expect(appConfig.generatedDir).toBe(join(mockUserHome, 'gen-test'));
+      expect(appConfig.targetDir).toBe(join(mockUserHome, 'bin-test'));
+      expect(appConfig.toolConfigDir).toBe(join(mockUserHome, 'tool-conf-test'));
+      expect(appConfig.toolConfigsDir).toBe(join(mockUserHome, 'tool-confs-test'));
+      expect(appConfig.completionsDir).toBe(join(mockUserHome, 'comp-test'));
+      expect(appConfig.generatedArtifactsManifestPath).toBe(
+        join(mockUserHome, 'manifest-test.json')
+      );
+
+      // Derived paths should also be correct
+      const expectedGeneratedDir = join(mockUserHome, 'gen-test');
+      expect(appConfig.cacheDir).toBe(join(expectedGeneratedDir, 'cache'));
+      expect(appConfig.binariesDir).toBe(join(expectedGeneratedDir, 'binaries'));
+      expect(appConfig.binDir).toBe(join(expectedGeneratedDir, 'bin'));
+      expect(appConfig.zshInitDir).toBe(join(expectedGeneratedDir, 'zsh'));
+      expect(appConfig.manifestPath).toBe(join(expectedGeneratedDir, 'manifest.json'));
+      expect(appConfig.githubApiCacheDir).toBe(join(expectedGeneratedDir, 'cache', 'github-api'));
     });
   });
 });

@@ -22,6 +22,7 @@
  *   - [x] Add `GITHUB_CLIENT_USER_AGENT` to `ConfigEnvironment` and `EnvSchema`.
  *   - [x] (No top-level appConfig constant initialized at module load time)
  *   - [x] (Application entry point will be responsible for gathering inputs and calling createAppConfig)
+ *   - [x] Implement tilde expansion for all path configurations (e.g. `DOTFILES_DIR`, `GENERATED_DIR`).
  *   - [x] Update tests for `createAppConfig`.
  *   - [x] Cleanup all linting errors and warnings.
  *   - [x] Cleanup all comments that are no longer relevant (leaving development plan).
@@ -226,17 +227,37 @@ export function createAppConfig(
   // 1. Validate and transform the raw environment variables using Zod
   const env: ValidatedEnv = EnvSchema.parse(rawEnv);
 
+  // Helper function to expand tilde in paths
+  const expandTilde = (filePath: string | undefined): string | undefined => {
+    if (!filePath) {
+      return undefined;
+    }
+    if (filePath === '~' || filePath.startsWith('~/')) {
+      return join(systemInfo.homedir, filePath.substring(filePath.startsWith('~/') ? 2 : 1));
+    }
+    return filePath;
+  };
+
   // 2. Proceed with defaults and constructing AppConfig using the validated 'env'
+  // Expand tilde for all relevant paths
+  const dotfilesDirRaw = expandTilde(env.DOTFILES_DIR);
+  const generatedDirRaw = expandTilde(env.GENERATED_DIR);
+  const targetDirRaw = expandTilde(env.TARGET_DIR);
+  const toolConfigDirRaw = expandTilde(env.TOOL_CONFIG_DIR);
+  const toolConfigsDirRaw = expandTilde(env.TOOL_CONFIGS_DIR);
+  const completionsDirRaw = expandTilde(env.COMPLETIONS_DIR);
+  const generatedArtifactsManifestPathRaw = expandTilde(env.GENERATED_ARTIFACTS_MANIFEST_PATH);
+
   const defaultDotfilesDir = resolve(systemInfo.homedir, '.dotfiles');
-  const DOTFILES_DIR = env.DOTFILES_DIR || defaultDotfilesDir;
-  const GENERATED_DIR = env.GENERATED_DIR || join(DOTFILES_DIR, '.generated');
+  const DOTFILES_DIR = dotfilesDirRaw || defaultDotfilesDir;
+  const GENERATED_DIR = generatedDirRaw || join(DOTFILES_DIR, '.generated');
 
   return {
-    targetDir: env.TARGET_DIR || '/usr/bin',
+    targetDir: targetDirRaw || '/usr/bin',
     dotfilesDir: DOTFILES_DIR,
     generatedDir: GENERATED_DIR,
-    toolConfigDir: env.TOOL_CONFIG_DIR || join(DOTFILES_DIR, 'generator', 'src', 'tools'), // Existing, for individual tool files
-    toolConfigsDir: env.TOOL_CONFIGS_DIR || join(DOTFILES_DIR, 'generator', 'configs', 'tools'), // New, for the directory of *.tool.ts files
+    toolConfigDir: toolConfigDirRaw || join(DOTFILES_DIR, 'generator', 'src', 'tools'), // Existing, for individual tool files
+    toolConfigsDir: toolConfigsDirRaw || join(DOTFILES_DIR, 'generator', 'configs', 'tools'), // New, for the directory of *.tool.ts files
     debug: env.DEBUG || '',
     cacheEnabled: env.CACHE_ENABLED, // This is now a boolean from Zod transform
     sudoPrompt: env.SUDO_PROMPT,
@@ -247,9 +268,9 @@ export function createAppConfig(
     binDir: join(GENERATED_DIR, 'bin'),
     zshInitDir: join(GENERATED_DIR, 'zsh'),
     manifestPath: join(GENERATED_DIR, 'manifest.json'),
-    completionsDir: env.COMPLETIONS_DIR || join(GENERATED_DIR, 'completions'),
+    completionsDir: completionsDirRaw || join(GENERATED_DIR, 'completions'),
     generatedArtifactsManifestPath:
-      env.GENERATED_ARTIFACTS_MANIFEST_PATH || join(GENERATED_DIR, 'generated-manifest.json'),
+      generatedArtifactsManifestPathRaw || join(GENERATED_DIR, 'generated-manifest.json'),
 
     // New configuration options from Zinit analysis
     githubToken: env.GITHUB_TOKEN,
