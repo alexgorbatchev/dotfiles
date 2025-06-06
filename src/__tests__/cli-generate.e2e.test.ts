@@ -69,7 +69,7 @@ describe('E2E: bun run cli generate', () => {
 
   beforeAll(() => {
     // Setup temporary directory structure
-    const testsTmpBaseDir = path.resolve(__dirname, '__tests__', 'tmp');
+    const testsTmpBaseDir = path.resolve(__dirname, 'tmp');
     if (fs.existsSync(testsTmpBaseDir)) {
       fs.rmSync(testsTmpBaseDir, { recursive: true, force: true });
     }
@@ -110,7 +110,7 @@ describe('E2E: bun run cli generate', () => {
     };
 
     // Copy tool configuration files from E2E fixtures
-    const sourceTestFixturesDir = path.resolve(__dirname, '__tests__', 'fixtures');
+    const sourceTestFixturesDir = path.resolve(__dirname, 'fixtures');
     const fzfSourceToolPath = path.join(sourceTestFixturesDir, 'fzf.tool.ts');
     const lazygitSourceToolPath = path.join(sourceTestFixturesDir, 'lazygit.tool.ts');
     fs.copyFileSync(fzfSourceToolPath, path.join(toolConfigsDir, 'fzf.tool.ts'));
