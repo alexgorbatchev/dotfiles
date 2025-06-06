@@ -4,12 +4,37 @@
  *
  * ## Development Plan
  *
- * ### Tasks
- * - [x] Implement all `IFileSystem` methods using `memfs`.
+ * ### Phase 1: Initial Synchronous Implementation (Completed)
+ * - [x] Implement all `IFileSystem` methods using synchronous `memfs` calls.
  * - [x] Ensure constructor initializes `Volume` correctly (empty or from JSON).
- * - [ ] Write comprehensive unit tests for all methods, covering edge cases.
+ * - [x] Write initial unit tests for synchronous methods.
  * - [x] Cleanup linting errors.
- * - [x] Ensure 100% test coverage (currently achieved in full suite, but individual tests might be improved).
+ * - [x] Achieve initial 100% test coverage.
+ *
+ * ### Phase 2: Asynchronous Refactoring (In Progress)
+ * - [ ] Refactor methods to use asynchronous `this.vol.promises` where applicable:
+ *   - [x] `readFile`
+ *   - [x] `writeFile`
+ *   - [x] `exists`
+ *   - [x] `mkdir`
+ *   - [x] `readdir`
+ *   - [x] `rm`
+ *   - [x] `rmdir`
+ *   - [x] `stat`
+ *   - [x] `symlink`
+ *   - [x] `readlink`
+ *   - [x] `chmod`
+ *   - [x] `copyFile`
+ *   - [x] `rename`
+ *   - [x] `ensureDir`
+ * - [x] Update corresponding unit tests for asynchronous behavior. (Verified tests already async)
+ * - [x] Ensure all project tests pass after each method refactor.
+ * - [ ] Maintain 100% test coverage.
+ *
+ * ### Phase 3: Finalization
+ * - [ ] Write/enhance comprehensive unit tests for all methods, covering edge cases (after async refactor).
+ * - [ ] Final cleanup of linting errors.
+ * - [ ] Final verification of 100% test coverage.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -17,10 +42,10 @@ import type { IFileSystem } from './IFileSystem';
 import { Volume, type DirectoryJSON } from 'memfs';
 import type { Stats } from 'node:fs'; // memfs Stats is compatible
 
-// Helper to convert Buffer to string if encoding is provided
-function bufferToString(buffer: Buffer, encoding?: BufferEncoding): string {
-  return buffer.toString(encoding || 'utf8');
-}
+// Helper to convert Buffer to string if encoding is provided // No longer needed after async refactor
+// function bufferToString(buffer: Buffer, encoding?: BufferEncoding): string {
+//   return buffer.toString(encoding || 'utf8');
+// }
 
 export class MemFileSystem implements IFileSystem {
   private vol: Volume;
@@ -35,12 +60,10 @@ export class MemFileSystem implements IFileSystem {
   }
 
   public async readFile(path: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
-    const content = this.vol.readFileSync(path);
-    if (Buffer.isBuffer(content)) {
-      return bufferToString(content, encoding);
-    }
-    // Should not happen with readFileSync if not specifying encoding to it, but good practice
-    return String(content);
+    // memfs vol.promises.readFile returns a string if encoding is provided, otherwise a Buffer.
+    // Our IFileSystem interface expects a string.
+    const content = await this.vol.promises.readFile(path, { encoding });
+    return content as string; // Ensure it's treated as string, as per memfs behavior with encoding.
   }
 
   public async writeFile(
@@ -48,99 +71,105 @@ export class MemFileSystem implements IFileSystem {
     content: string | NodeJS.ArrayBufferView,
     encoding: BufferEncoding = 'utf8'
   ): Promise<void> {
-    // memfs.writeFileSync expects Buffer or string. If content is ArrayBufferView but not Buffer, convert.
-    // However, typical ArrayBufferViews like Uint8Array are accepted by Buffer.from().
-    const bufferOrString =
+    // memfs.promises.writeFile expects Buffer or string.
+    // If content is ArrayBufferView but not Buffer, convert.
+    const data =
       typeof content === 'string'
         ? content
-        : Buffer.from(content.buffer, content.byteOffset, content.byteLength);
-    try {
-      // memfs writeFileSync can take encoding as an option for strings.
-      // If bufferOrString is already a Buffer, encoding option is ignored.
-      // If it's a string, encoding option is used.
-      this.vol.writeFileSync(path, bufferOrString, { encoding });
-    } catch (e) {
-      // Ensure the error is re-thrown to be caught by the caller
-      throw e;
-    }
+        : Buffer.isBuffer(content)
+          ? content
+          : Buffer.from(content.buffer, content.byteOffset, content.byteLength);
+
+    // The 'encoding' option in memfs.promises.writeFile applies when 'data' is a string.
+    // If 'data' is a Buffer, the encoding option is ignored.
+    await this.vol.promises.writeFile(path, data, { encoding });
   }
 
   public async exists(path: string): Promise<boolean> {
-    return this.vol.existsSync(path);
+    try {
+      await this.vol.promises.access(path);
+      return true;
+    } catch (e) {
+      // memfs throws an error if path does not exist, similar to Node's fs.promises.access
+      return false;
+    }
   }
 
   public async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-    this.vol.mkdirSync(path, options);
+    await this.vol.promises.mkdir(path, options);
   }
 
   public async readdir(path: string): Promise<string[]> {
-    // memfs.readdirSync returns string[] | Buffer[] | Dirent[]
-    // We need to ensure it's string[] to match IFileSystem
-    const entries = this.vol.readdirSync(path);
+    // memfs.promises.readdir returns string[] | Buffer[] | Dirent[]
+    // IFileSystem expects string[], so we map and convert to string.
+    const entries = await this.vol.promises.readdir(path);
     return entries.map((entry) => entry.toString());
   }
 
   public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
-    // memfs rmSync is available from memfs v4.x
-    // For older versions, or to be safe, check type and use rmdirSync/unlinkSync
-    const stat = this.vol.statSync(path, { throwIfNoEntry: false });
-    if (!stat) {
-      if (options?.force) return; // If force and no entry, do nothing
-      throw new Error(`ENOENT: no such file or directory, unlink '${path}'`);
-    }
-
-    if (stat.isDirectory()) {
-      this.vol.rmdirSync(path, { recursive: options?.recursive });
-    } else {
-      this.vol.unlinkSync(path);
+    // memfs.promises.rm handles both files and directories.
+    // The `force` option in memfs.promises.rm will suppress ENOENT errors.
+    // The `recursive` option is needed for directories.
+    try {
+      await this.vol.promises.rm(path, options);
+    } catch (e: any) {
+      // If force is true and error is ENOENT, suppress it. Otherwise, rethrow.
+      if (options?.force && e?.code === 'ENOENT') {
+        return;
+      }
+      throw e;
     }
   }
 
   public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-    this.vol.rmdirSync(path, options);
+    await this.vol.promises.rmdir(path, options);
   }
 
   public async stat(path: string): Promise<Stats> {
-    // Keep Promise<Stats> for interface compliance
-    // memfs Stats object is compatible with node:fs Stats in terms of properties,
-    // but method behavior like isSymbolicLink() might depend on the actual instance.
-    // vol.statSync on a link path returns stats of the link (like lstat).
-    const stats = this.vol.statSync(path);
+    // memfs.promises.stat returns a Promise<Stats>.
+    // The Stats object from memfs is generally compatible with node:fs Stats.
+    // vol.promises.stat on a link path returns stats of the target (like Node's fs.stat).
+    // For link's own stats, lstat should be used.
+    const stats = await this.vol.promises.stat(path);
     return stats as Stats; // Cast to Node's Stats type for interface compatibility
   }
 
   public async symlink(
     target: string,
     path: string,
-    _type?: 'file' | 'dir' | 'junction' // Prefixed with underscore as it's not used by memfs.symlinkSync
+    type?: 'file' | 'dir' | 'junction' // memfs.promises.symlink also accepts type, behavior might vary.
   ): Promise<void> {
-    // memfs type argument is different from node:fs, it's usually inferred or not needed for basic symlinks.
-    // For simplicity, we'll assume 'file' or let memfs infer.
-    this.vol.symlinkSync(target, path);
+    // memfs.promises.symlink type argument might be handled differently than node:fs.
+    // We pass it along; memfs typically infers if not strictly 'file'/'dir'.
+    await this.vol.promises.symlink(target, path, type);
   }
 
   public async readlink(path: string): Promise<string> {
-    return this.vol.readlinkSync(path).toString();
+    // memfs.promises.readlink returns a Promise<string | Buffer>.
+    // IFileSystem expects Promise<string>.
+    const linkString = await this.vol.promises.readlink(path);
+    return linkString.toString();
   }
 
   public async chmod(path: string, mode: number | string): Promise<void> {
-    this.vol.chmodSync(path, typeof mode === 'string' ? parseInt(mode, 8) : mode);
+    await this.vol.promises.chmod(path, typeof mode === 'string' ? parseInt(mode, 8) : mode);
   }
 
-  public async copyFile(src: string, dest: string, _flags?: number): Promise<void> {
-    // Prefixed flags
-    // memfs doesn't have a direct copyFileSync like node:fs/promises.
-    // We need to read and write.
-    const content = this.vol.readFileSync(src);
-    this.vol.writeFileSync(dest, content);
+  public async copyFile(src: string, dest: string, flags?: number): Promise<void> {
+    // memfs.promises.copyFile is available and preferred.
+    // The `flags` argument is part of the Node.js fs.copyFile signature,
+    // memfs.promises.copyFile also accepts it.
+    await this.vol.promises.copyFile(src, dest, flags);
   }
 
   public async rename(oldPath: string, newPath: string): Promise<void> {
-    this.vol.renameSync(oldPath, newPath);
+    await this.vol.promises.rename(oldPath, newPath);
   }
 
   public async ensureDir(path: string): Promise<void> {
-    this.vol.mkdirSync(path, { recursive: true });
+    // ensureDir is equivalent to mkdir with recursive: true.
+    // memfs.promises.mkdir will not throw if the directory already exists when recursive is true.
+    await this.vol.promises.mkdir(path, { recursive: true });
   }
 
   // Utility to get the underlying volume for testing or direct manipulation if needed
