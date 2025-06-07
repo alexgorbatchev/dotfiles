@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, mock } from 'bun:test';
 // Removed unused import: path
 import { Installer } from '../Installer';
 import type { IFileSystem } from '../../file-system/IFileSystem';
+import { MemFileSystem } from '../../file-system/MemFileSystem'; // Added MemFileSystem
 import type { IDownloader } from '../../downloader/IDownloader';
 import type { IGitHubApiClient } from '../../github-client/IGitHubApiClient';
 import type { IArchiveExtractor } from '../../extractor/IArchiveExtractor'; // Added
@@ -31,41 +32,13 @@ describe('Installer with custom GitHub host', () => {
   let installer: Installer;
 
   // Mock function references
-  let mockEnsureDir: ReturnType<typeof mock>;
-  let mockChmod: ReturnType<typeof mock>;
-  let mockExists: ReturnType<typeof mock>;
-  let mockCopyFile: ReturnType<typeof mock>;
-  let mockSymlink: ReturnType<typeof mock>;
-  let mockRm: ReturnType<typeof mock>;
   let mockDownload: ReturnType<typeof mock>;
   let mockGetLatestRelease: ReturnType<typeof mock>;
   let mockExtract: ReturnType<typeof mock>; // Added
 
   beforeEach(() => {
-    // Setup mock file system
-    mockEnsureDir = mock(() => Promise.resolve());
-    mockChmod = mock(() => Promise.resolve());
-    mockExists = mock(() => Promise.resolve(false));
-    mockCopyFile = mock(() => Promise.resolve());
-    mockSymlink = mock(() => Promise.resolve());
-    mockRm = mock(() => Promise.resolve());
-
-    mockFileSystem = {
-      ensureDir: mockEnsureDir,
-      chmod: mockChmod,
-      exists: mockExists,
-      copyFile: mockCopyFile,
-      symlink: mockSymlink,
-      rm: mockRm,
-      readFile: mock(() => Promise.resolve('')),
-      writeFile: mock(() => Promise.resolve()),
-      mkdir: mock(() => Promise.resolve()),
-      readdir: mock(() => Promise.resolve([])),
-      stat: mock(async () => ({ isDirectory: () => true }) as any),
-      readlink: mock(async () => ''),
-      rename: mock(async () => {}),
-      rmdir: mock(async () => {}),
-    };
+    // Setup mock file system using MemFileSystem
+    mockFileSystem = new MemFileSystem();
 
     // Setup mock downloader
     mockDownload = mock(() => Promise.resolve());
