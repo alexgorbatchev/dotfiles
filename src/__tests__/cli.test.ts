@@ -10,7 +10,8 @@
  *   - [x] Verify `GeneratorOrchestrator.generateAll` is called *without* `dryRun` option.
  *   - [x] Verify correct `IFileSystem` (MemFileSystem/NodeFileSystem) is intended by `setupServices` based on `dryRun` flag.
  * - [x] Test error handling for the `generate` command (Completed).
- * - [ ] Test other commands as they are implemented.
+ * - [x] Test other commands as they are implemented.
+ *   - [x] Test `install` command, including error handling for tool not found.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update tests to mock/spy on the real `loadToolConfigs` and verify it's called correctly.
@@ -517,10 +518,11 @@ describe('CLI', () => {
 
   test('install command should handle tool not found error', async () => {
     // Setup mock services
+    const mockToolConfigsDir = '/test/tool/configs/dir';
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
         appConfig: {
-          toolConfigsDir: '/fake/tools',
+          toolConfigsDir: mockToolConfigsDir, // Use a specific value for assertion
         } as AppConfig,
         fs: new NodeFileSystem(),
         downloader: {} as IDownloader,
@@ -542,9 +544,8 @@ describe('CLI', () => {
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'non-existent-tool']);
 
     // Verify error handling
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error: Tool configuration for "non-existent-tool" not found.'
-    );
+    const expectedErrorMessage = `Error: Tool configuration for "non-existent-tool" not found.\nExpected tool configuration files in: ${mockToolConfigsDir}\nNo tools are currently available for installation.`;
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expectedErrorMessage);
     expect(processExitSpy).toHaveBeenCalledWith(1);
   });
 

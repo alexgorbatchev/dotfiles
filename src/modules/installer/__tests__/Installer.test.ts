@@ -14,11 +14,15 @@
  * - [x] Test manual installation method
  * - [x] Test error handling
  * - [x] Cleanup all linting errors and warnings.
+ * - [x] Test URL construction logic for absolute and relative URLs in GitHub release installation.
+ * - [x] Test enhanced error message for missing assets in GitHub release installation.
+ * - [ ] Ensure 100% test coverage for executable code.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { IFileSystem } from '../../file-system/IFileSystem';
 import type { IDownloader } from '../../downloader/IDownloader';
@@ -80,7 +84,49 @@ describe('Installer', () => {
     html_url: 'https://github.com/owner/repo/releases/tag/1.0.0',
   };
 
+  const mockGitHubReleaseWithMultipleAssets: GitHubRelease = {
+    ...mockGitHubRelease,
+    assets: [
+      {
+        name: 'test-tool-linux-amd64',
+        browser_download_url: 'https://example.com/test-tool-linux-amd64',
+        size: 1000,
+        content_type: 'application/octet-stream',
+        state: 'uploaded',
+        download_count: 100,
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+      },
+      {
+        name: 'test-tool-darwin-arm64.zip',
+        browser_download_url: 'https://example.com/test-tool-darwin-arm64.zip',
+        size: 1200,
+        content_type: 'application/zip',
+        state: 'uploaded',
+        download_count: 50,
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+      },
+      {
+        name: 'test-tool-windows-x64.exe',
+        browser_download_url: 'https://example.com/test-tool-windows-x64.exe',
+        size: 1500,
+        content_type: 'application/octet-stream',
+        state: 'uploaded',
+        download_count: 75,
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+      },
+    ],
+  };
+
   beforeEach(() => {
+    // Reset process.platform and process.arch before each test
+    // @ts-ignore
+    process.platform = 'linux';
+    // @ts-ignore
+    process.arch = 'x64';
+
     // Setup mock file system
     mockEnsureDir = mock(() => Promise.resolve());
     mockChmod = mock(() => Promise.resolve());
@@ -154,6 +200,21 @@ describe('Installer', () => {
       mockAppConfig
     );
   });
+
+  afterEach(() => {
+    // Restore original process.platform and process.arch if they were modified
+    // This is important if other tests rely on the actual values
+    // For simplicity, we're not storing and restoring original values here,
+    // but in a larger test suite, this would be good practice.
+    // @ts-ignore
+    process.platform = originalPlatform;
+    // @ts-ignore
+    process.arch = originalArch;
+  });
+
+  // Store original platform and arch
+  const originalPlatform = process.platform;
+  const originalArch = process.arch;
 
   describe('constructor', () => {
     it('should initialize correctly', () => {
@@ -335,7 +396,291 @@ describe('Installer', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('No matching asset found');
+      expect(result.error).toContain(
+        `No suitable asset found in release "${MOCK_VERSION}" for asset pattern: "non-existent-pattern".`
+      );
+      expect(result.error).toContain(`Available assets in release "${MOCK_VERSION}":`);
+      // Check for one of the assets from mockGitHubRelease (which is used by this test case for mockGetLatestRelease)
+      expect(result.error).toContain('- test-tool-linux-amd64');
+    });
+  });
+
+  describe('installFromGitHubRelease - URL Construction', () => {
+    it('should use absolute browser_download_url directly', async () => {
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          assetPattern: 'test-tool-linux-amd64',
+        },
+      };
+      mockGetLatestRelease.mockResolvedValue({
+        ...mockGitHubRelease,
+        assets: [
+          {
+            name: 'test-tool-linux-amd64',
+            browser_download_url: 'https://absolute.example.com/download/tool.zip',
+            size: 100,
+            content_type: 'application/zip',
+            state: 'uploaded',
+            download_count: 1,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      });
+
+      await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+      });
+
+      expect(mockDownload).toHaveBeenCalledWith(
+        'https://absolute.example.com/download/tool.zip',
+        expect.anything()
+      );
+    });
+
+    it('should construct URL with default github.com for relative browser_download_url', async () => {
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          assetPattern: 'test-tool-linux-amd64',
+        },
+      };
+      mockGetLatestRelease.mockResolvedValue({
+        ...mockGitHubRelease,
+        assets: [
+          {
+            name: 'test-tool-linux-amd64',
+            browser_download_url: '/owner/repo/releases/download/v1.0.0/tool.zip', // Relative URL
+            size: 100,
+            content_type: 'application/zip',
+            state: 'uploaded',
+            download_count: 1,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      });
+
+      // Ensure appConfig.githubHost is undefined or not api.github.com
+      const testAppConfig = { ...mockAppConfig, githubHost: undefined };
+      const tempInstaller = new Installer(
+        mockFileSystem,
+        mockDownloader,
+        mockGitHubApiClient,
+        mockArchiveExtractor,
+        testAppConfig
+      );
+
+      await (tempInstaller as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+      });
+
+      expect(mockDownload).toHaveBeenCalledWith(
+        'https://github.com/owner/repo/releases/download/v1.0.0/tool.zip',
+        expect.anything()
+      );
+    });
+
+    it('should construct URL with custom githubHost for relative browser_download_url', async () => {
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          assetPattern: 'test-tool-linux-amd64',
+        },
+      };
+      mockGetLatestRelease.mockResolvedValue({
+        ...mockGitHubRelease,
+        assets: [
+          {
+            name: 'test-tool-linux-amd64',
+            browser_download_url: '/owner/repo/releases/download/v1.0.0/tool.zip',
+            size: 100,
+            content_type: 'application/zip',
+            state: 'uploaded',
+            download_count: 1,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      });
+
+      const testAppConfig = { ...mockAppConfig, githubHost: 'github.my-company.com' };
+      const tempInstaller = new Installer(
+        mockFileSystem,
+        mockDownloader,
+        mockGitHubApiClient,
+        mockArchiveExtractor,
+        testAppConfig
+      );
+
+      await (tempInstaller as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+      });
+
+      expect(mockDownload).toHaveBeenCalledWith(
+        'https://github.my-company.com/owner/repo/releases/download/v1.0.0/tool.zip',
+        expect.anything()
+      );
+    });
+
+    it('should use default GitHub host if custom githubHost is api.github.com for relative URL', async () => {
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          assetPattern: 'test-tool-linux-amd64',
+        },
+      };
+      mockGetLatestRelease.mockResolvedValue({
+        ...mockGitHubRelease,
+        assets: [
+          {
+            name: 'test-tool-linux-amd64',
+            browser_download_url: '/owner/repo/releases/download/v1.0.0/tool.zip',
+            size: 100,
+            content_type: 'application/zip',
+            state: 'uploaded',
+            download_count: 1,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      });
+
+      const testAppConfig = { ...mockAppConfig, githubHost: 'api.github.com' }; // API host
+      const tempInstaller = new Installer(
+        mockFileSystem,
+        mockDownloader,
+        mockGitHubApiClient,
+        mockArchiveExtractor,
+        testAppConfig
+      );
+
+      await (tempInstaller as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+      });
+
+      // Should default to github.com for asset downloads, not api.github.com
+      expect(mockDownload).toHaveBeenCalledWith(
+        'https://github.com/owner/repo/releases/download/v1.0.0/tool.zip',
+        expect.anything()
+      );
+    });
+  });
+
+  describe('installFromGitHubRelease - Enhanced Error Message', () => {
+    it('should list available assets when no match found with assetPattern', async () => {
+      mockGetLatestRelease.mockResolvedValue(mockGitHubReleaseWithMultipleAssets);
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          assetPattern: 'non-existent-asset-pattern',
+        },
+      };
+
+      const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(
+        `No suitable asset found in release "${MOCK_VERSION}" for asset pattern: "non-existent-asset-pattern".`
+      );
+      expect(result.error).toContain(`Available assets in release "${MOCK_VERSION}":`);
+      expect(result.error).toContain('- test-tool-linux-amd64');
+      expect(result.error).toContain('- test-tool-darwin-arm64.zip');
+      expect(result.error).toContain('- test-tool-windows-x64.exe');
+    });
+
+    it('should list available assets when no match found with default platform/arch detection', async () => {
+      mockGetLatestRelease.mockResolvedValue(mockGitHubReleaseWithMultipleAssets);
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          // No assetPattern, no assetSelector, rely on platform/arch
+        },
+      };
+
+      // Simulate a platform/arch for which no asset exists
+      const systemInfo = { platform: 'sunos', arch: 'sparc', release: '5.11' };
+      // @ts-ignore
+      process.platform = systemInfo.platform;
+      // @ts-ignore
+      process.arch = systemInfo.arch;
+
+      const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(
+        `No suitable asset found in release "${MOCK_VERSION}" for platform "sunos" and architecture "sparc".`
+      );
+      expect(result.error).toContain(`Available assets in release "${MOCK_VERSION}":`);
+      expect(result.error).toContain('- test-tool-linux-amd64');
+    });
+
+    it('should list available assets when assetSelector returns undefined', async () => {
+      mockGetLatestRelease.mockResolvedValue(mockGitHubReleaseWithMultipleAssets);
+      const toolConfig: ToolConfig = {
+        name: MOCK_TOOL_NAME,
+        binaries: [MOCK_TOOL_NAME],
+        version: MOCK_VERSION,
+        installationMethod: 'github-release',
+        installParams: {
+          repo: MOCK_REPO,
+          assetSelector: () => undefined, // Selector that finds nothing
+        },
+      };
+
+      const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+        toolName: MOCK_TOOL_NAME,
+        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(
+        `No suitable asset found in release "${MOCK_VERSION}" using a custom assetSelector function.`
+      );
+      expect(result.error).toContain(`Available assets in release "${MOCK_VERSION}":`);
+      expect(result.error).toContain('- test-tool-darwin-arm64.zip');
     });
   });
 

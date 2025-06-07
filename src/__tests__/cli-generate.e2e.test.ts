@@ -46,8 +46,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { ConfigEnvironment } from '../modules/config';
 import { createTempDir } from './helpers';
-// import os from 'node:os'; // No longer needed
-// import type { AppConfig } from '../../../src/modules/config/config'; // May not be directly needed
 
 describe('E2E: bun run cli generate', () => {
   let tempDir: string;

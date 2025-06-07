@@ -22,10 +22,13 @@
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Implement archive extraction.
  * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Fix GitHub release URL construction to correctly handle absolute `browser_download_url` and custom `githubHost`.
+ * - [x] Enhance error message in `installFromGitHubRelease` to list available assets.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import path from 'node:path';
+import os from 'node:os';
 import { createLogger } from '../logger';
 import type { IFileSystem } from '../file-system/IFileSystem';
 import type { IDownloader } from '../downloader/IDownloader';
@@ -39,7 +42,6 @@ import type {
   ExtractResult,
 } from '../../types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
-import os from 'node:os';
 
 const log = createLogger('Installer');
 
@@ -245,66 +247,96 @@ export class Installer implements IInstaller {
       }
 
       if (!asset) {
+        const availableAssetNames = release.assets.map((a) => a.name);
+        let searchedForMessage = '';
+        if (params.assetSelector) {
+          searchedForMessage = 'using a custom assetSelector function.';
+        } else if (assetPattern) {
+          searchedForMessage = `for asset pattern: "${assetPattern}".`;
+        } else {
+          const platform = context.systemInfo.platform.toLowerCase();
+          const arch = context.systemInfo.arch.toLowerCase();
+          searchedForMessage = `for platform "${platform}" and architecture "${arch}".`;
+        }
+
+        const errorLines = [
+          `No suitable asset found in release "${release.tag_name}" ${searchedForMessage}`,
+          `Available assets in release "${release.tag_name}":`,
+          ...availableAssetNames.map((name) => `  - ${name}`),
+        ];
         return {
           success: false,
-          error: `No matching asset found in release ${release.tag_name}`,
+          error: errorLines.join('\n'),
         };
       }
 
       // Download the asset
-      // Handle the case where we're using a custom GitHub host for API but need to download from github.com
       let downloadUrl: string;
       const rawBrowserDownloadUrl = asset.browser_download_url;
-      // The logic below handles URL resolution:
-      // - If rawBrowserDownloadUrl is relative, it's resolved against appConfig.githubHost (if set) or 'https://github.com'.
-      // - If rawBrowserDownloadUrl is absolute:
-      //   - If it's a standard GitHub host and appConfig.githubHost is different, it's rewritten to use appConfig.githubHost.
-      //   - Otherwise (non-GitHub host, or appConfig.githubHost is same/not set), it's used as-is.
+      const customHost = this.appConfig.githubHost;
+
+      log(
+        'installFromGitHubRelease: Determining download URL. rawBrowserDownloadUrl="%s", customHost="%s"',
+        rawBrowserDownloadUrl,
+        customHost
+      );
 
       try {
-        let finalUrl: URL;
-        const customHost = this.appConfig.githubHost;
-        const standardGitHubHosts = [
-          'github.com',
-          'api.github.com',
-          'objects.githubusercontent.com',
-        ];
+        // Check if rawBrowserDownloadUrl is an absolute URL
+        let isAbsolute = false;
+        try {
+          // tslint:disable-next-line:no-unused-expression
+          new URL(rawBrowserDownloadUrl);
+          isAbsolute = true;
+        } catch (_) {
+          // Not an absolute URL, so it's relative or invalid
+          isAbsolute = false;
+        }
 
-        if (rawBrowserDownloadUrl.startsWith('/')) {
-          // Case 1: rawBrowserDownloadUrl is a relative path (e.g., "/owner/repo/releases/download/v1.0.0/asset.tar.gz")
-          // Resolve it against the customHost or the default GitHub host.
-          let base = customHost || 'https://github.com';
+        if (isAbsolute) {
+          // If it's an absolute URL, use it directly.
+          // GitHub asset URLs (browser_download_url) are typically direct download links
+          // and should not be rewritten with appConfig.githubHost if they are already absolute.
+          // The issue arises when appConfig.githubHost (e.g., api.github.com) is used to replace
+          // the host of a perfectly valid github.com download URL.
+          downloadUrl = rawBrowserDownloadUrl;
+          log(
+            'installFromGitHubRelease: Using absolute browser_download_url directly: "%s"',
+            downloadUrl
+          );
+        } else if (rawBrowserDownloadUrl.startsWith('/')) {
+          // Case: rawBrowserDownloadUrl is a relative path (e.g., "/owner/repo/releases/download/v1.0.0/asset.tar.gz")
+          // Resolve it against the customHost or the default GitHub host for assets.
+          // Assets are typically on "github.com", not "api.github.com".
+          let base =
+            customHost && !customHost.includes('api.github.com')
+              ? customHost
+              : 'https://github.com';
           if (!/^https?:\/\//.test(base)) {
             base = `https:${base.startsWith('//') ? '' : '//'}${base}`;
           }
-          finalUrl = new URL(rawBrowserDownloadUrl, base);
+          const finalUrl = new URL(rawBrowserDownloadUrl, base);
+          downloadUrl = finalUrl.toString();
+          log(
+            'installFromGitHubRelease: Resolved relative URL. Base: "%s", Relative Path: "%s", Result: "%s"',
+            base,
+            rawBrowserDownloadUrl,
+            downloadUrl
+          );
         } else {
-          // Case 2: rawBrowserDownloadUrl is an absolute URL (e.g., "https://github.com/owner/repo/...")
-          const rawUrlObject = new URL(rawBrowserDownloadUrl);
-          if (customHost) {
-            let customHostNormalized = customHost;
-            if (!/^https?:\/\//.test(customHostNormalized)) {
-              customHostNormalized = `https:${customHostNormalized.startsWith('//') ? '' : '//'}${customHostNormalized}`;
-            }
-            const customHostUrlObject = new URL(customHostNormalized);
-
-            // Only rewrite if the original URL is a standard GitHub host AND the custom host is different.
-            if (
-              standardGitHubHosts.includes(rawUrlObject.host) &&
-              customHostUrlObject.host !== rawUrlObject.host
-            ) {
-              rawUrlObject.protocol = customHostUrlObject.protocol;
-              rawUrlObject.host = customHostUrlObject.host;
-              rawUrlObject.port = customHostUrlObject.port; // Assign port from customHostUrlObject (could be empty string)
-            }
-            // If rawUrlObject.host is not a standard GitHub host, or if customHost is the same,
-            // we use rawUrlObject as is.
-          }
-          finalUrl = rawUrlObject;
+          // Invalid or unsupported URL format
+          log(
+            'installFromGitHubRelease: Invalid or unsupported browser_download_url format: "%s"',
+            rawBrowserDownloadUrl
+          );
+          return {
+            success: false,
+            error: `Invalid asset download URL format: ${rawBrowserDownloadUrl}`,
+          };
         }
-        downloadUrl = finalUrl.toString();
+
         log(
-          'installFromGitHubRelease: Resolved download URL. Raw: "%s", Configured Host: "%s", Result: "%s"',
+          'installFromGitHubRelease: Final download URL determined. Raw: "%s", Configured Host: "%s", Result: "%s"',
           rawBrowserDownloadUrl,
           customHost || '(public GitHub)',
           downloadUrl
@@ -313,12 +345,12 @@ export class Installer implements IInstaller {
         log(
           'installFromGitHubRelease: Error constructing download URL. Raw: "%s", Configured Host: "%s", Error: %s',
           rawBrowserDownloadUrl,
-          this.appConfig.githubHost || '(public GitHub)',
+          customHost || '(public GitHub)',
           (e as Error).message
         );
         return {
           success: false,
-          error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${this.appConfig.githubHost || '(public GitHub)'}`,
+          error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${customHost || '(public GitHub)'}, Error: ${(e as Error).message}`,
         };
       }
 

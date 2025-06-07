@@ -59,8 +59,7 @@ describe('Installer with custom GitHub host', () => {
         assets: [
           {
             name: 'test-tool-linux-amd64',
-            browser_download_url:
-              'https://api.github.com/repos/owner/repo/releases/assets/123/test-tool-linux-amd64',
+            browser_download_url: '/repos/owner/repo/releases/assets/123/test-tool-linux-amd64', // Relative path
             size: 1000,
             content_type: 'application/octet-stream',
             state: 'uploaded',

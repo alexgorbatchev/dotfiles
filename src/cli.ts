@@ -39,6 +39,7 @@
  *     - [x] Use `AppConfig` to get `toolConfigsDir`.
  *     - [x] Use a temporary `NodeFileSystem` to read `*.tool.ts` files from `toolConfigsDir`.
  *     - [x] Initialize `MemFileSystem` with the content of these files.
+ * - [ ] Enhance `install` command error message for "tool not found" to include `toolConfigsDir` and available tools.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -244,7 +245,15 @@ program
 
       const toolConfig = toolConfigs[toolName];
       if (!toolConfig) {
-        console.error(`Error: Tool configuration for "${toolName}" not found.`);
+        const availableTools = Object.keys(toolConfigs);
+        let errorMessage = `Error: Tool configuration for "${toolName}" not found.\n`;
+        errorMessage += `Expected tool configuration files in: ${appConfig.toolConfigsDir}\n`;
+        if (availableTools.length > 0) {
+          errorMessage += `Available tools: ${availableTools.join(', ')}`;
+        } else {
+          errorMessage += 'No tools are currently available for installation.';
+        }
+        console.error(errorMessage);
         process.exit(1);
       }
 
