@@ -3,7 +3,9 @@
  * @description Implementation of IArchiveExtractor using system commands via zx.
  */
 
-import { $ } from 'zx';
+import { exec as execCallback } from 'node:child_process';
+import { promisify } from 'node:util';
+// Fully remove zx imports now
 import { basename, extname, join } from 'node:path';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '../../types';
@@ -17,8 +19,36 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
   constructor(fileSystem: IFileSystem) {
     this.fs = fileSystem;
-    // Ensure zx is configured for quiet operation by default unless verbose is needed
-    $.quiet = true;
+  }
+
+  // Promisify exec for use with async/await
+  private promisedExec = promisify(execCallback);
+
+  /**
+   * Executes a shell command using child_process.exec.
+   * @param command The command string to execute.
+   * @returns A promise that resolves with an object containing stdout, stderr, and exitCode.
+   * @throws An error object augmented with stdout, stderr, and exitCode if the command fails.
+   */
+  private async executeShellCommand(
+    command: string
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    try {
+      log('Executing shell command: %s', command);
+      const { stdout, stderr } = await this.promisedExec(command);
+      return { stdout, stderr, exitCode: 0 };
+    } catch (error: any) {
+      // Augment the error object with stdio and exit code
+      const execError = new Error(
+        `Command failed with exit code ${error.code || 'unknown'}: ${command}\nStderr: ${error.stderr?.trim() || 'N/A'}\nStdout: ${error.stdout?.trim() || 'N/A'}\n${error.message}`
+      ) as any;
+      execError.stdout = error.stdout || '';
+      execError.stderr = error.stderr || '';
+      execError.exitCode = typeof error.code === 'number' ? error.code : 1;
+      execError.originalError = error; // Keep original error if needed
+      log('executeShellCommand error: %o', execError);
+      throw execError;
+    }
   }
 
   public async detectFormat(filePath: string): Promise<ArchiveFormat> {
@@ -36,10 +66,14 @@ export class ArchiveExtractor implements IArchiveExtractor {
     if (fileName.endsWith('.rpm')) return 'rpm';
     if (fileName.endsWith('.dmg')) return 'dmg';
 
-    // Fallback to 'file' command if available, for more complex detection
+    // Fallback to 'file' command
     try {
-      const output = (await $`file -b --mime-type ${filePath}`).stdout.trim();
-      if (output.includes('gzip')) return 'tar.gz'; // Common for .tar.gz if extension is missing
+      // Basic single quoting for shell safety.
+      const safeFilePath = `'${filePath.replace(/'/g, "'\\''")}'`;
+      const { stdout } = await this.executeShellCommand(`file -b --mime-type ${safeFilePath}`);
+      const output = stdout.trim();
+
+      if (output.includes('gzip')) return 'tar.gz';
       if (output.includes('zip')) return 'zip';
       if (output.includes('x-bzip2')) return 'tar.bz2';
       if (output.includes('x-xz')) return 'tar.xz';
@@ -50,10 +84,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       if (output.includes('x-rpm')) return 'rpm';
       if (output.includes('x-apple-diskimage')) return 'dmg';
     } catch (error) {
-      log(
-        'detectFormat: "file" command failed or not available, relying on extension. Error: %o',
-        error
-      );
+      log('detectFormat: "file" command failed during fallback. Error: %o', error);
     }
 
     throw new Error(`Unsupported or undetectable archive format for: ${filePath}`);
@@ -96,19 +127,42 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
     try {
       switch (format) {
-        case 'tar.gz': // Handles .tgz as detectFormat resolves it to 'tar.gz'
-          await $`tar -xzf ${archivePath} -C ${tempExtractDir} ${stripComponents > 0 ? `--strip-components=${stripComponents}` : ''}`;
+        case 'tar.gz': {
+          // Handles .tgz as detectFormat resolves it to 'tar.gz'
+          let command = `tar -xzf '${archivePath}' -C '${tempExtractDir}'`;
+          if (stripComponents > 0) {
+            command += ` --strip-components=${stripComponents}`;
+          }
+          await this.executeShellCommand(command);
           break;
-        case 'tar.bz2': // Handles .tbz2, .tbz as detectFormat resolves them
-          await $`tar -xjf ${archivePath} -C ${tempExtractDir} ${stripComponents > 0 ? `--strip-components=${stripComponents}` : ''}`;
+        }
+        case 'tar.bz2': {
+          // Handles .tbz2, .tbz as detectFormat resolves them
+          let command = `tar -xjf '${archivePath}' -C '${tempExtractDir}'`;
+          if (stripComponents > 0) {
+            command += ` --strip-components=${stripComponents}`;
+          }
+          await this.executeShellCommand(command);
           break;
-        case 'tar.xz': // Handles .txz as detectFormat resolves it
-          await $`tar -xJf ${archivePath} -C ${tempExtractDir} ${stripComponents > 0 ? `--strip-components=${stripComponents}` : ''}`;
+        }
+        case 'tar.xz': {
+          // Handles .txz as detectFormat resolves it
+          let command = `tar -xJf '${archivePath}' -C '${tempExtractDir}'`;
+          if (stripComponents > 0) {
+            command += ` --strip-components=${stripComponents}`;
+          }
+          await this.executeShellCommand(command);
           break;
-        case 'tar':
-          await $`tar -xf ${archivePath} -C ${tempExtractDir} ${stripComponents > 0 ? `--strip-components=${stripComponents}` : ''}`;
+        }
+        case 'tar': {
+          let command = `tar -xf '${archivePath}' -C '${tempExtractDir}'`;
+          if (stripComponents > 0) {
+            command += ` --strip-components=${stripComponents}`;
+          }
+          await this.executeShellCommand(command);
           break;
-        case 'zip':
+        }
+        case 'zip': {
           // unzip doesn't have a direct --strip-components.
           // If needed, would require extracting to a subdir and then moving.
           // For now, we ignore stripComponents for zip or require user to handle.
@@ -119,8 +173,10 @@ export class ArchiveExtractor implements IArchiveExtractor {
             // A more complex solution would be to extract to a temporary unique dir inside tempExtractDir,
             // then list contents, find the common base (if stripComponents=1 and it's a single dir), and move.
           }
-          await $`unzip -qo ${archivePath} -d ${tempExtractDir}`;
+          const command = `unzip -qo '${archivePath}' -d '${tempExtractDir}'`;
+          await this.executeShellCommand(command);
           break;
+        }
         // TODO: Implement other formats (rar, 7z, deb, rpm, dmg)
         // case '7z':
         //   await $`7z x ${archivePath} -o${tempExtractDir} -y`;
@@ -138,6 +194,9 @@ export class ArchiveExtractor implements IArchiveExtractor {
         await this.fs.rename(join(tempExtractDir, item), join(targetDir, item));
       }
 
+      // Clean up the (now empty) temporary extraction directory after successful move
+      await this.fs.rm(tempExtractDir, { recursive: true, force: true });
+
       const result: ExtractResult = {
         extractedFiles: await this.fs.readdir(targetDir), // Re-read targetDir for final list
         executables: [],
@@ -148,10 +207,23 @@ export class ArchiveExtractor implements IArchiveExtractor {
         result.executables = await this.detectAndSetExecutables(targetDir, result.extractedFiles);
       }
       return result;
-    } finally {
-      // Clean up temporary extraction directory
-      await this.fs.rm(tempExtractDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ensure tempExtractDir is cleaned up even if an error occurs during extraction or moving files.
+      // This was previously handled by the finally block, but since the Installer
+      // now needs tempExtractDir to exist *after* this method returns successfully,
+      // we only clean up here on error within this method's scope.
+      // The Installer is responsible for cleanup on successful return.
+      log(
+        'Error during extract process, cleaning up temp dir: %s. Error: %o',
+        tempExtractDir,
+        error
+      );
+      await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
+        log('Error during cleanup of temp dir after an error: %o', cleanupErr);
+      });
+      throw error; // Re-throw the original error
     }
+    // The finally block was removed. Cleanup on successful completion is handled by the caller.
   }
 
   private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {

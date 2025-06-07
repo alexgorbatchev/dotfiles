@@ -18,8 +18,10 @@
  * - [x] Add proper error handling and logging.
  * - [x] Write tests for the module.
  * - [x] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
+ * - [x] Update GitHub release installation to use configurable `githubHost` from AppConfig.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Implement archive extraction.
+ * - [x] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -28,7 +30,14 @@ import { createLogger } from '../logger';
 import type { IFileSystem } from '../file-system/IFileSystem';
 import type { IDownloader } from '../downloader/IDownloader';
 import type { IGitHubApiClient } from '../github-client/IGitHubApiClient';
-import type { AppConfig, ToolConfig, GitHubReleaseAsset, SystemInfo } from '../../types';
+import type { IArchiveExtractor } from '../extractor/IArchiveExtractor';
+import type {
+  AppConfig,
+  ToolConfig,
+  GitHubReleaseAsset,
+  SystemInfo,
+  ExtractResult,
+} from '../../types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import os from 'node:os';
 
@@ -41,24 +50,28 @@ export class Installer implements IInstaller {
   private readonly fs: IFileSystem;
   private readonly downloader: IDownloader;
   private readonly githubApiClient: IGitHubApiClient;
+  private readonly archiveExtractor: IArchiveExtractor;
   private readonly appConfig: AppConfig;
 
   constructor(
     fileSystem: IFileSystem,
     downloader: IDownloader,
     githubApiClient: IGitHubApiClient,
+    archiveExtractor: IArchiveExtractor,
     appConfig: AppConfig
   ) {
     log(
-      'constructor: fileSystem=%s, downloader=%s, githubApiClient=%s, appConfig=%o',
+      'constructor: fileSystem=%s, downloader=%s, githubApiClient=%s, archiveExtractor=%s, appConfig=%o',
       fileSystem.constructor.name,
       downloader.constructor.name,
       githubApiClient.constructor.name,
+      archiveExtractor.constructor.name,
       appConfig
     );
     this.fs = fileSystem;
     this.downloader = downloader;
     this.githubApiClient = githubApiClient;
+    this.archiveExtractor = archiveExtractor;
     this.appConfig = appConfig;
   }
 
@@ -239,9 +252,79 @@ export class Installer implements IInstaller {
       }
 
       // Download the asset
-      log('installFromGitHubRelease: Downloading asset: %s', asset.browser_download_url);
+      // Handle the case where we're using a custom GitHub host for API but need to download from github.com
+      let downloadUrl: string;
+      const rawBrowserDownloadUrl = asset.browser_download_url;
+      // The logic below handles URL resolution:
+      // - If rawBrowserDownloadUrl is relative, it's resolved against appConfig.githubHost (if set) or 'https://github.com'.
+      // - If rawBrowserDownloadUrl is absolute:
+      //   - If it's a standard GitHub host and appConfig.githubHost is different, it's rewritten to use appConfig.githubHost.
+      //   - Otherwise (non-GitHub host, or appConfig.githubHost is same/not set), it's used as-is.
+
+      try {
+        let finalUrl: URL;
+        const customHost = this.appConfig.githubHost;
+        const standardGitHubHosts = [
+          'github.com',
+          'api.github.com',
+          'objects.githubusercontent.com',
+        ];
+
+        if (rawBrowserDownloadUrl.startsWith('/')) {
+          // Case 1: rawBrowserDownloadUrl is a relative path (e.g., "/owner/repo/releases/download/v1.0.0/asset.tar.gz")
+          // Resolve it against the customHost or the default GitHub host.
+          let base = customHost || 'https://github.com';
+          if (!/^https?:\/\//.test(base)) {
+            base = `https:${base.startsWith('//') ? '' : '//'}${base}`;
+          }
+          finalUrl = new URL(rawBrowserDownloadUrl, base);
+        } else {
+          // Case 2: rawBrowserDownloadUrl is an absolute URL (e.g., "https://github.com/owner/repo/...")
+          const rawUrlObject = new URL(rawBrowserDownloadUrl);
+          if (customHost) {
+            let customHostNormalized = customHost;
+            if (!/^https?:\/\//.test(customHostNormalized)) {
+              customHostNormalized = `https:${customHostNormalized.startsWith('//') ? '' : '//'}${customHostNormalized}`;
+            }
+            const customHostUrlObject = new URL(customHostNormalized);
+
+            // Only rewrite if the original URL is a standard GitHub host AND the custom host is different.
+            if (
+              standardGitHubHosts.includes(rawUrlObject.host) &&
+              customHostUrlObject.host !== rawUrlObject.host
+            ) {
+              rawUrlObject.protocol = customHostUrlObject.protocol;
+              rawUrlObject.host = customHostUrlObject.host;
+              rawUrlObject.port = customHostUrlObject.port; // Assign port from customHostUrlObject (could be empty string)
+            }
+            // If rawUrlObject.host is not a standard GitHub host, or if customHost is the same,
+            // we use rawUrlObject as is.
+          }
+          finalUrl = rawUrlObject;
+        }
+        downloadUrl = finalUrl.toString();
+        log(
+          'installFromGitHubRelease: Resolved download URL. Raw: "%s", Configured Host: "%s", Result: "%s"',
+          rawBrowserDownloadUrl,
+          customHost || '(public GitHub)',
+          downloadUrl
+        );
+      } catch (e) {
+        log(
+          'installFromGitHubRelease: Error constructing download URL. Raw: "%s", Configured Host: "%s", Error: %s',
+          rawBrowserDownloadUrl,
+          this.appConfig.githubHost || '(public GitHub)',
+          (e as Error).message
+        );
+        return {
+          success: false,
+          error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${this.appConfig.githubHost || '(public GitHub)'}`,
+        };
+      }
+
+      log('installFromGitHubRelease: Downloading asset: %s', downloadUrl);
       const downloadPath = path.join(context.installDir, asset.name);
-      await this.downloader.download(asset.browser_download_url, {
+      await this.downloader.download(downloadUrl, {
         destinationPath: downloadPath,
       });
 
@@ -268,11 +351,15 @@ export class Installer implements IInstaller {
         const extractDir = path.join(context.installDir, 'extracted');
         await this.fs.ensureDir(extractDir);
 
-        // TODO: Implement archive extraction
-        // For now, we'll just assume the file is the binary itself
+        const extractResult: ExtractResult = await this.archiveExtractor.extract(downloadPath, {
+          targetDir: extractDir,
+          stripComponents: params.stripComponents, // from GithubReleaseInstallParams
+        });
+        log('installFromGitHubRelease: Archive extracted: %o', extractResult);
 
-        // Update context with extract directory
+        // Update context with extract directory and result
         context.extractDir = extractDir;
+        context.extractResult = extractResult;
 
         // Run afterExtract hook if defined
         if (toolConfig.installParams?.hooks?.afterExtract) {
@@ -282,27 +369,78 @@ export class Installer implements IInstaller {
 
         // Find the binary in the extracted directory
         if (binaryPath) {
+          // binaryPath from toolConfig.installParams
           finalBinaryPath = path.join(extractDir, binaryPath);
+        } else if (extractResult.executables && extractResult.executables.length > 0) {
+          // Prefer the first executable found if multiple, or one that matches toolName
+          const exeMatchingToolName = extractResult.executables?.find(
+            (exe) => path.basename(exe) === toolName
+          );
+          if (exeMatchingToolName) {
+            finalBinaryPath = path.join(extractDir, exeMatchingToolName);
+          } else if (extractResult.executables?.length) {
+            finalBinaryPath = path.join(extractDir, extractResult.executables[0] as string);
+          } else {
+            finalBinaryPath = path.join(extractDir, toolName);
+          }
+          log('installFromGitHubRelease: Found executable in archive: %s', finalBinaryPath);
+        } else if (extractResult.extractedFiles && extractResult.extractedFiles.length === 1) {
+          // If only one file was extracted, assume it's the binary
+          finalBinaryPath = path.join(extractDir, extractResult.extractedFiles[0] as string);
+          log(
+            'installFromGitHubRelease: Assuming single extracted file is binary: %s',
+            finalBinaryPath
+          );
         } else {
-          // Use the first binary found in the extracted directory
-          // This is a simplification; in a real implementation, we would need to
-          // search for executables in the extracted directory
-          finalBinaryPath = path.join(extractDir, toolName);
+          // Fallback: attempt to find a file named like the tool
+          const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
+          if (potentialBinary) {
+            finalBinaryPath = path.join(extractDir, potentialBinary);
+            log('installFromGitHubRelease: Fallback, found potential binary: %s', finalBinaryPath);
+          } else {
+            log(
+              'installFromGitHubRelease: Could not determine binary path in extracted archive. Defaulting to toolName in extractDir.'
+            );
+            finalBinaryPath = path.join(extractDir, toolName); // Default if no specific binary found
+          }
+        }
+
+        // If the determined finalBinaryPath doesn't exist, it's an error
+        if (!(await this.fs.exists(finalBinaryPath))) {
+          return {
+            success: false,
+            error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
+          };
         }
       }
 
-      // Make the binary executable
+      // Make the binary executable (still in extractDir at this point)
       log('installFromGitHubRelease: Making binary executable: %s', finalBinaryPath);
       await this.fs.chmod(finalBinaryPath, 0o755);
 
-      // Move the binary if needed
-      if (moveBinaryTo) {
-        const targetPath = path.join(context.installDir, moveBinaryTo);
-        log('installFromGitHubRelease: Moving binary from %s to %s', finalBinaryPath, targetPath);
-        await this.fs.ensureDir(path.dirname(targetPath));
-        await this.fs.copyFile(finalBinaryPath, targetPath);
-        await this.fs.chmod(targetPath, 0o755);
-        finalBinaryPath = targetPath;
+      // Determine the final destination path for the binary, directly in context.installDir
+      const finalFileName = moveBinaryTo || path.basename(finalBinaryPath);
+      const actualFinalBinaryDestPath = path.join(context.installDir, finalFileName);
+
+      log(
+        'installFromGitHubRelease: Moving binary from %s to %s',
+        finalBinaryPath,
+        actualFinalBinaryDestPath
+      );
+      await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
+
+      // Copy the file from extractDir to its final place in installDir
+      await this.fs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
+      // Ensure the copied file is executable
+      await this.fs.chmod(actualFinalBinaryDestPath, 0o755);
+
+      // Update finalBinaryPath to the new location
+      finalBinaryPath = actualFinalBinaryDestPath;
+
+      // Clean up the temporary extraction directory as we've moved the binary
+      if (context.extractDir && (await this.fs.exists(context.extractDir))) {
+        log('installFromGitHubRelease: Cleaning up extractDir: %s', context.extractDir);
+        await this.fs.rm(context.extractDir, { recursive: true, force: true });
       }
 
       // Create a symlink in the bin directory
@@ -510,7 +648,7 @@ export class Installer implements IInstaller {
     // Type assertion to access CurlTarInstallParams properties
     const params = toolConfig.installParams as any;
     const url = params.url;
-    const extractPath = params.extractPath;
+    // extractPath is now handled as extractPathInArchive below
     const moveBinaryTo = params.moveBinaryTo;
 
     try {
@@ -535,11 +673,15 @@ export class Installer implements IInstaller {
       const extractDir = path.join(context.installDir, 'extracted');
       await this.fs.ensureDir(extractDir);
 
-      // TODO: Implement tarball extraction
-      // For now, we'll just assume the file is extracted successfully
+      const extractResult: ExtractResult = await this.archiveExtractor.extract(tarballPath, {
+        targetDir: extractDir,
+        stripComponents: params.stripComponents, // from CurlTarInstallParams
+      });
+      log('installFromCurlTar: Tarball extracted: %o', extractResult);
 
-      // Update context with extract directory
+      // Update context with extract directory and result
       context.extractDir = extractDir;
+      context.extractResult = extractResult;
 
       // Run afterExtract hook if defined
       if (toolConfig.installParams?.hooks?.afterExtract) {
@@ -548,39 +690,97 @@ export class Installer implements IInstaller {
       }
 
       // Find the binary in the extracted directory
-      let binaryPath = extractPath
-        ? path.join(extractDir, extractPath)
-        : path.join(extractDir, toolName);
+      let finalBinaryPathCurl: string; // Renamed to avoid conflict
+      // extractPathInArchive is from toolConfig.installParams.extractPath (renamed for clarity)
+      const extractPathInArchive = params.extractPath as string | undefined; // Explicitly type
+      if (extractPathInArchive) {
+        finalBinaryPathCurl = path.join(extractDir, extractPathInArchive);
+      } else if (extractResult.executables && extractResult.executables.length > 0) {
+        const exeMatchingToolName = extractResult.executables.find(
+          (exe) => path.basename(exe) === toolName
+        );
 
-      // Make the binary executable
-      await this.fs.chmod(binaryPath, 0o755);
+        if (exeMatchingToolName) {
+          finalBinaryPathCurl = path.join(extractDir, exeMatchingToolName);
+        } else {
+          finalBinaryPathCurl = path.join(extractDir, extractResult.executables[0] as string);
+        }
+        log('installFromCurlTar: Found executable in archive: %s', finalBinaryPathCurl);
+      } else if (extractResult.extractedFiles && extractResult.extractedFiles.length === 1) {
+        finalBinaryPathCurl = path.join(extractDir, extractResult.extractedFiles[0] as string);
+        log(
+          'installFromCurlTar: Assuming single extracted file is binary: %s',
+          finalBinaryPathCurl
+        );
+      } else {
+        const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
+        if (potentialBinary) {
+          finalBinaryPathCurl = path.join(extractDir, potentialBinary);
+          log('installFromCurlTar: Fallback, found potential binary: %s', finalBinaryPathCurl);
+        } else {
+          log(
+            'installFromCurlTar: Could not determine binary path in extracted archive. Defaulting to toolName in extractDir.'
+          );
+          finalBinaryPathCurl = path.join(extractDir, toolName);
+        }
+      }
 
-      // Move the binary if needed
-      if (moveBinaryTo) {
-        const targetPath = path.join(context.installDir, moveBinaryTo);
-        log('installFromCurlTar: Moving binary from %s to %s', binaryPath, targetPath);
-        await this.fs.ensureDir(path.dirname(targetPath));
-        await this.fs.copyFile(binaryPath, targetPath);
-        await this.fs.chmod(targetPath, 0o755);
-        binaryPath = targetPath;
+      if (!(await this.fs.exists(finalBinaryPathCurl))) {
+        return {
+          success: false,
+          error: `Binary not found at expected path after extraction: ${finalBinaryPathCurl}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
+        };
+      }
+
+      // Make the binary executable (still in extractDir at this point)
+      log('installFromCurlTar: Making binary executable: %s', finalBinaryPathCurl);
+      await this.fs.chmod(finalBinaryPathCurl, 0o755);
+
+      // Determine the final destination path for the binary, directly in context.installDir
+      const finalFileNameCurl = moveBinaryTo || path.basename(finalBinaryPathCurl);
+      const actualFinalBinaryDestPathCurl = path.join(context.installDir, finalFileNameCurl);
+
+      log(
+        'installFromCurlTar: Moving binary from %s to %s',
+        finalBinaryPathCurl,
+        actualFinalBinaryDestPathCurl
+      );
+      await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPathCurl)); // Ensure parent dir of final destination exists
+
+      // Copy the file from extractDir to its final place in installDir
+      await this.fs.copyFile(finalBinaryPathCurl, actualFinalBinaryDestPathCurl);
+      // Ensure the copied file is executable
+      await this.fs.chmod(actualFinalBinaryDestPathCurl, 0o755);
+
+      // Update finalBinaryPathCurl to the new location
+      finalBinaryPathCurl = actualFinalBinaryDestPathCurl;
+
+      // Clean up the temporary extraction directory as we've moved the binary
+      if (context.extractDir && (await this.fs.exists(context.extractDir))) {
+        log('installFromCurlTar: Cleaning up extractDir: %s', context.extractDir);
+        await this.fs.rm(context.extractDir, { recursive: true, force: true });
       }
 
       // Create a symlink in the bin directory
-      const binDir = this.appConfig.binDir;
-      await this.fs.ensureDir(binDir);
-      const symlinkPath = path.join(binDir, toolName);
+      const binDirForCurl = this.appConfig.binDir; // Renamed to avoid conflict
+      await this.fs.ensureDir(binDirForCurl);
+      const symlinkPathForCurl = path.join(binDirForCurl, toolName); // Renamed
 
       // Remove existing symlink if it exists
-      if (await this.fs.exists(symlinkPath)) {
-        await this.fs.rm(symlinkPath);
+      if (await this.fs.exists(symlinkPathForCurl)) {
+        await this.fs.rm(symlinkPathForCurl);
       }
 
-      log('installFromCurlTar: Creating symlink from %s to %s', binaryPath, symlinkPath);
-      await this.fs.symlink(binaryPath, symlinkPath);
+      log(
+        'installFromCurlTar: Creating symlink from %s to %s',
+        finalBinaryPathCurl,
+        symlinkPathForCurl
+      );
+      await this.fs.symlink(finalBinaryPathCurl, symlinkPathForCurl);
 
       return {
         success: true,
-        binaryPath,
+        binaryPath: finalBinaryPathCurl,
         info: {
           tarballUrl: url,
         },

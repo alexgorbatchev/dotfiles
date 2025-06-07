@@ -41,6 +41,7 @@ import type { DirectoryJSON } from 'memfs'; // For type if needed
 import type { IDownloader } from '../modules/downloader/IDownloader';
 import type { IGitHubApiCache } from '../modules/github-client/IGitHubApiCache';
 import type { IGitHubApiClient } from '../modules/github-client/IGitHubApiClient';
+import type { IArchiveExtractor } from '../modules/extractor/IArchiveExtractor'; // Added
 import type { IShimGenerator } from '../modules/generator-shim/IShimGenerator';
 import type { IShellInitGenerator } from '../modules/generator-shell-init/IShellInitGenerator';
 import type { ISymlinkGenerator } from '../modules/generator-symlink/ISymlinkGenerator';
@@ -115,6 +116,13 @@ const mockGeneratorOrchestrator: IGeneratorOrchestrator = {
 
 const mockInstaller: IInstaller = {
   install: mockInstall,
+};
+
+const mockArchiveExtractor: IArchiveExtractor = {
+  // Added
+  extract: mock(async () => ({ extractedFiles: [], executables: [] })),
+  detectFormat: mock(async () => 'tar.gz' as const),
+  isSupported: mock(() => true),
 };
 
 // Spies for the imported functions from cli.ts
@@ -197,6 +205,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
     // This test also needs to mock loadToolConfigs as it's not the focus here.
@@ -301,6 +310,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator, // Mocked as needed
         generatorOrchestrator: mockGeneratorOrchestrator, // CRUCIAL: return the spied orchestrator
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
 
@@ -401,6 +411,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
     // Mock loadToolConfigs for this error handling test
@@ -466,6 +477,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
 
@@ -519,6 +531,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
 
@@ -551,6 +564,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
 
@@ -600,6 +614,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
+        archiveExtractor: mockArchiveExtractor, // Added
       };
     });
 

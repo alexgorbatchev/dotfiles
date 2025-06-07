@@ -11,6 +11,7 @@ import type { IGitHubApiCache } from '../../IGitHubApiCache';
 
 export const createMockAppConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   githubToken: undefined,
+  githubHost: 'https://api.github.com', // Default GitHub API URL
   targetDir: '/usr/bin',
   dotfilesDir: '/test/dotfiles',
   homeDir: '/test/home/user', // Added homeDir

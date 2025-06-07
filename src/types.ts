@@ -36,7 +36,8 @@
  *   - [x] Define `GeneratedArtifactsManifest` interface and update `AppConfig` with `generatedArtifactsManifestPath`.
  *   - [x] Update `GeneratedArtifactsManifest` to store more detailed artifact information.
  *   - [x] Add `toolConfigsDir` to `AppConfig` for tool configurations directory.
- *   - [ ] Add `homeDir` to `AppConfig`.
+ *   - [x] Add `homeDir` to `AppConfig`.
+ *   - [x] Add `githubHost` to `AppConfig` for configurable GitHub API host.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -327,6 +328,7 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
     assets: GitHubReleaseAsset[],
     systemInfo: SystemInfo
   ) => GitHubReleaseAsset | undefined; // NEW: Custom asset selection function
+  stripComponents?: number; // NEW: Number of leading components to strip from paths during extraction
   // atclone is replaced by hooks.afterDownload or hooks.afterExtract
 }
 
@@ -345,6 +347,7 @@ export interface CurlTarInstallParams extends BaseInstallParams {
   url: string; // URL of the tarball
   extractPath?: string; // Path within the tarball to extract (e.g., 'bin/tool')
   moveBinaryTo?: string; // Path/name to move the extracted file to
+  stripComponents?: number; // NEW: Number of leading components to strip from paths during extraction
 }
 
 export interface PipInstallParams extends BaseInstallParams {
@@ -537,6 +540,7 @@ export interface AppConfig {
 
   // New configuration options
   githubToken?: string; // NEW: Optional GitHub token
+  githubHost?: string; // NEW: GitHub API host URL, defaults to "https://api.github.com"
   checkUpdatesOnRun?: boolean; // NEW: Check for updates automatically
   updateCheckInterval?: number; // NEW: Seconds between update checks
   downloadTimeout?: number; // NEW: Download timeout in milliseconds

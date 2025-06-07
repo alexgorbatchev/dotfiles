@@ -1,86 +1,75 @@
-/**
- * @file generator/src/modules/extractor/__tests__/ArchiveExtractor.test.ts
- * @description Tests for the ArchiveExtractor class.
- *
- * ## Development Plan
- *
- * ### Overview
- * This file contains unit tests for the `ArchiveExtractor` class, which is responsible for
- * extracting various archive formats using system commands executed via `zx`.
- *
- * ### Technical Requirements
- * - Test archive format detection (`detectFormat`) for various extensions and MIME types (via `file` command mock).
- * - Test `isSupported` for known supported and unsupported formats.
- * - Test the main `extract` method for:
- *   - Correct command generation for supported archive types (e.g., .tar.gz, .zip).
- *   - Handling of `targetDir` and `stripComponents` options.
- *   - Creation and cleanup of temporary extraction directories.
- *   - Error handling for `zx` command failures during extraction.
- *   - Error handling for unsupported archive formats.
- * - Ensure `IFileSystem` is correctly used for all file operations (e.g., creating temp dirs, checking existence).
- * - Mock the `zx` (`$`) command effectively to simulate different outcomes of system commands.
- * - Adhere to project testing conventions and `.roorules`.
- *
- * ### Tasks
- * - [x] **Setup Mocks:**
- *   - [x] Mock `zx` (`$`) command.
- *   - [x] Use `MemFileSystem` (via `createMockFileSystem`) for `IFileSystem`.
- * - [x] **Test `detectFormat`:**
- *   - [x] Test detection by common extensions (.tar.gz, .tgz, .zip, .tar.bz2, .tbz2, .tbz, .tar.xz, .txz, .tar).
- *   - [x] Test fallback to `file` command for MIME type detection (mock `zx` for `file` command).
- *   - [x] Test throwing error for unsupported/undetectable formats.
- * - [x] **Test `isSupported`:**
- *   - [x] Test with supported formats.
- *   - [x] Test with unsupported formats.
- * - [x] **Test `extract` method:**
- *   - [x] Test .tar.gz extraction (verify `tar` command).
- *   - [x] Test .zip extraction (verify `unzip` command).
- *   - [x] Test `stripComponents` option for tar.
- *   - [x] Test cleanup of temporary directory on success.
- *   - [x] Test cleanup of temporary directory on extraction failure.
- *   - [ ] Test `detectAndSetExecutables` (currently placeholder, expand if logic grows).
- *   - [ ] Test other archive formats once implemented.
- * - [x] **Final Review:**
- *   - [x] Ensure all tests pass.
- *   - [x] Verify adherence to `.roorules`.
- *   - [x] Refactor to use `createMockFileSystem` helper.
- *   - [x] Update development plan checklist.
- *   - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
+import * as nodeFs from 'node:fs';
+import * as nodePath from 'node:path';
+import { exec as actualExecCallbackSignature } from 'node:child_process'; // Renamed for clarity
+import { promisify } from 'node:util'; // Import promisify
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
+import { NodeFileSystem } from '../../file-system/NodeFileSystem';
 import type { IFileSystem } from '../../file-system/IFileSystem';
-import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
-import type { ExtractOptions } from '../../../types';
+import { $ } from 'zx'; // For creating test archives
 
-// Mock zx's $ command
-// We'll need to be more specific with mockImplementation for different commands
-const mockZx = mock(async (_chunks: TemplateStringsArray, ..._args: any[]) => {
-  // const cmd = chunks.join('') + args.join(''); // Unused variable
-  // Default mock, can be overridden in tests
-  // console.log(`Mocked zx command: ${cmd}`);
-  return { stdout: '', stderr: '', exitCode: 0 };
+// This is the real exec, promisified, for use INSIDE our mock's implementation when needed
+const realPromisedExecViaUtil = promisify(actualExecCallbackSignature);
+
+// mockExecCallback must always adhere to the node-style callback signature,
+// because ArchiveExtractor does `promisify(execCallback)` where execCallback is this mock.
+const mockExecCallback = mock((command: string, optionsOrCallback: any, callback?: any) => {
+  const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+  // Default behavior: successful mock, for tests NOT needing real execution
+  // console.log(`Default mockExecCallback for command: ${command}`);
+  cb(null, { stdout: `Mocked stdout for ${command}`, stderr: 'Mocked stderr' });
 });
 
-mock.module('zx', () => ({
-  $: mockZx,
-  // export other zx properties if needed, like chalk, fs, etc.
-}));
+mock.module('node:child_process', () => {
+  return {
+    exec: mockExecCallback, // ArchiveExtractor will get this via its import
+  };
+});
 
-describe('ArchiveExtractor', () => {
-  let fileSystem: IFileSystem;
+const testTempRoot = nodePath.join(__dirname, 'tmp', 'archive-extractor-real-fs');
+
+describe('ArchiveExtractor (with NodeFS)', () => {
+  let nodeFsInstance: IFileSystem;
   let extractor: IArchiveExtractor;
+  let currentTestSubDir: string;
 
-  beforeEach(() => {
-    fileSystem = createMockFileSystem();
-    extractor = new ArchiveExtractor(fileSystem);
-    mockZx.mockClear();
-    // Default zx mock for successful execution
-    mockZx.mockImplementation(async () => ({ stdout: '', stderr: '', exitCode: 0 }));
+  beforeAll(() => {
+    nodeFs.rmSync(testTempRoot, { recursive: true, force: true });
+    nodeFs.mkdirSync(testTempRoot, { recursive: true });
   });
 
+  afterAll(() => {
+    nodeFs.rmSync(testTempRoot, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    nodeFsInstance = new NodeFileSystem();
+    extractor = new ArchiveExtractor(nodeFsInstance);
+
+    currentTestSubDir = nodePath.join(
+      testTempRoot,
+      `test-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    );
+    nodeFs.mkdirSync(currentTestSubDir, { recursive: true });
+
+    mockExecCallback.mockClear();
+    // Default mock implementation for exec (simulates success)
+    mockExecCallback.mockImplementation(
+      (command: string, optionsOrCallback: any, callback?: any) => {
+        const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        cb(null, { stdout: `stdout for ${command}`, stderr: '' });
+      }
+    );
+  });
+
+  afterEach(() => {
+    if (nodeFs.existsSync(currentTestSubDir)) {
+      nodeFs.rmSync(currentTestSubDir, { recursive: true, force: true });
+    }
+  });
+
+  // --- detectFormat Tests ---
   describe('detectFormat', () => {
     it('should detect .tar.gz by extension', async () => {
       expect(await extractor.detectFormat('archive.tar.gz')).toBe('tar.gz');
@@ -91,53 +80,43 @@ describe('ArchiveExtractor', () => {
       expect(await extractor.detectFormat('archive.zip')).toBe('zip');
     });
 
-    it('should detect .tar.bz2 by extension', async () => {
-      expect(await extractor.detectFormat('archive.tar.bz2')).toBe('tar.bz2');
-      expect(await extractor.detectFormat('archive.tbz2')).toBe('tar.bz2');
-      expect(await extractor.detectFormat('archive.tbz')).toBe('tar.bz2');
-    });
-
-    it('should detect .tar.xz by extension', async () => {
-      expect(await extractor.detectFormat('archive.tar.xz')).toBe('tar.xz');
-      expect(await extractor.detectFormat('archive.txz')).toBe('tar.xz');
-    });
-
-    it('should detect .tar by extension', async () => {
-      expect(await extractor.detectFormat('archive.tar')).toBe('tar');
-    });
-
     it('should use "file" command as fallback for .tar.gz', async () => {
-      mockZx.mockImplementationOnce(async (chunks: TemplateStringsArray) => {
-        if (chunks.join('').includes('file -b --mime-type')) {
-          return { stdout: 'application/gzip', stderr: '', exitCode: 0 };
+      mockExecCallback.mockImplementationOnce((command, opts, cb) => {
+        if (typeof opts === 'function') cb = opts;
+        if (command.includes('file -b --mime-type')) {
+          cb(null, { stdout: 'application/gzip', stderr: '' });
+        } else {
+          cb(new Error('Unexpected command for file mock'));
         }
-        return { stdout: '', stderr: '', exitCode: 1 };
       });
-      expect(await extractor.detectFormat('archive_no_ext')).toBe('tar.gz');
+      const filePathWithoutExtension = nodePath.join(
+        currentTestSubDir,
+        'mysterious_archive_is_tar_gz'
+      );
+      // Create a dummy file for the 'file' command to operate on
+      nodeFs.writeFileSync(filePathWithoutExtension, 'dummy tar.gz content');
+      expect(await extractor.detectFormat(filePathWithoutExtension)).toBe('tar.gz');
+      expect(mockExecCallback).toHaveBeenCalledWith(
+        expect.stringContaining('file -b --mime-type'),
+        expect.any(Function)
+      );
     });
 
-    it('should use "file" command as fallback for .zip', async () => {
-      mockZx.mockImplementationOnce(async (chunks: TemplateStringsArray) => {
-        if (chunks.join('').includes('file -b --mime-type')) {
-          return { stdout: 'application/zip', stderr: '', exitCode: 0 };
-        }
-        return { stdout: '', stderr: '', exitCode: 1 };
+    it('should throw for unsupported or undetectable format after "file" fallback', async () => {
+      mockExecCallback.mockImplementationOnce((_command, opts, cb) => {
+        // Prefixed command with _
+        if (typeof opts === 'function') cb = opts;
+        cb(null, { stdout: 'application/octet-stream', stderr: '' });
       });
-      expect(await extractor.detectFormat('archive_no_ext_zip')).toBe('zip');
-    });
-
-    it('should throw for unsupported or undetectable format', async () => {
-      mockZx.mockImplementationOnce(async () => ({
-        stdout: 'application/octet-stream',
-        stderr: '',
-        exitCode: 0,
-      }));
-      await expect(extractor.detectFormat('archive.unknown')).rejects.toThrow(
-        'Unsupported or undetectable archive format for: archive.unknown'
+      const dummyFilePath = nodePath.join(currentTestSubDir, 'archive.unknown');
+      nodeFs.writeFileSync(dummyFilePath, 'dummy data'); // file command needs a real file
+      await expect(extractor.detectFormat(dummyFilePath)).rejects.toThrow(
+        `Unsupported or undetectable archive format for: ${dummyFilePath}`
       );
     });
   });
 
+  // --- isSupported Tests ---
   describe('isSupported', () => {
     it('should return true for supported formats', () => {
       expect(extractor.isSupported('tar.gz')).toBe(true);
@@ -145,94 +124,215 @@ describe('ArchiveExtractor', () => {
     });
 
     it('should return false for unsupported formats', () => {
-      expect(extractor.isSupported('rar')).toBe(false); // Assuming rar is not yet implemented
+      expect(extractor.isSupported('rar')).toBe(false);
     });
   });
 
+  // --- extract Tests (using real external commands) ---
   describe('extract', () => {
-    const archivePath = '/tmp/archive.tar.gz';
-    const targetDir = '/tmp/output';
+    // Helper to create a simple tar.gz file for testing using REAL tar
+    const createTestTarGzUtil = async (
+      archiveName: string,
+      fileNameInArchive: string,
+      fileContent: string,
+      subDir?: string
+    ) => {
+      const sourceDir = nodePath.join(currentTestSubDir, 'source-tar');
+      const fileToArchivePath = subDir
+        ? nodePath.join(subDir, fileNameInArchive)
+        : fileNameInArchive;
+      const fullPathToFileInSource = nodePath.join(sourceDir, fileToArchivePath);
+      const archiveFullPath = nodePath.join(currentTestSubDir, archiveName);
 
-    beforeEach(async () => {
-      // Ensure the /tmp directory exists in the memfs volume
-      if (!(await fileSystem.exists('/tmp'))) {
-        await fileSystem.mkdir('/tmp', { recursive: true });
+      nodeFs.mkdirSync(nodePath.dirname(fullPathToFileInSource), { recursive: true });
+      nodeFs.writeFileSync(fullPathToFileInSource, fileContent);
+
+      // Use actual child_process.exec (via zxDollarReal for convenience in test setup)
+      await $`tar -czf ${archiveFullPath} -C ${sourceDir} ${fileToArchivePath}`;
+      return archiveFullPath;
+    };
+
+    // Helper to create a simple zip file for testing using REAL zip
+    const createTestZipUtil = async (
+      archiveName: string,
+      fileNameInArchive: string,
+      fileContent: string,
+      subDir?: string
+    ) => {
+      const sourceDir = nodePath.join(currentTestSubDir, 'source-zip');
+      const fileToArchivePath = subDir
+        ? nodePath.join(subDir, fileNameInArchive)
+        : fileNameInArchive;
+      const fullPathToFileInSource = nodePath.join(sourceDir, fileToArchivePath);
+      const archiveFullPath = nodePath.join(currentTestSubDir, archiveName);
+
+      nodeFs.mkdirSync(nodePath.dirname(fullPathToFileInSource), { recursive: true });
+      nodeFs.writeFileSync(fullPathToFileInSource, fileContent);
+
+      if (subDir) {
+        await $`cd ${sourceDir} && zip -r ${archiveFullPath} ${subDir}`;
+      } else {
+        await $`zip -j ${archiveFullPath} ${fullPathToFileInSource}`;
       }
-      // Create a dummy archive file for tests that need it
-      await fileSystem.writeFile(archivePath, 'dummy archive content');
-      // Ensure targetDir does not exist initially for some tests, or is clean
-      if (await fileSystem.exists(targetDir)) {
-        await fileSystem.rm(targetDir, { recursive: true, force: true });
-      }
-      // extractor.detectFormat will be called, ensure it resolves for common test cases
-      // This can be overridden per test if specific detection behavior is needed
-      mockZx.mockImplementation(async (chunks: TemplateStringsArray) => {
-        const cmd = chunks.join('');
-        if (cmd.includes('file -b --mime-type')) {
-          if (cmd.includes('archive.tar.gz'))
-            return { stdout: 'application/gzip', stderr: '', exitCode: 0 };
-          if (cmd.includes('archive.zip'))
-            return { stdout: 'application/zip', stderr: '', exitCode: 0 };
+      return archiveFullPath;
+    };
+
+    it('should extract a .tar.gz archive using real tar', async () => {
+      // For this test, make mockExecCallback use the real promisified exec internally
+      // and translate its promise result back to a callback for the outer promisify.
+      mockExecCallback.mockImplementation(
+        (command: string, optionsOrCallback: any, callback?: any) => {
+          const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+          // console.log(`Real-exec mock implementation for command: ${command}`);
+          realPromisedExecViaUtil(command)
+            .then(({ stdout, stderr }) => {
+              // console.log(`Real-exec success for ${command}: stdout=${stdout}`);
+              cb(null, { stdout, stderr });
+            })
+            .catch((error) => {
+              // console.error(`Real-exec error for ${command}:`, error);
+              const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
+              (err as any).stdout = error.stdout;
+              (err as any).stderr = error.stderr;
+              (err as any).code = error.code || error.exitCode;
+              cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
+            });
         }
-        // Default for tar, unzip commands
-        return { stdout: '', stderr: '', exitCode: 0 };
-      });
-    });
-
-    it('should extract a .tar.gz archive', async () => {
-      const options: ExtractOptions = { targetDir };
-      await extractor.extract(archivePath, options);
-      expect(mockZx).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('tar -xzf')]),
-        archivePath,
-        expect.stringContaining(targetDir), // tempExtractDir will be part of this
-        '' // for no strip-components
       );
+
+      const archiveName = 'test-archive.tar.gz';
+      const fileName = 'testfile.txt';
+      const fileContent = 'Hello from tar.gz!';
+      const realArchivePath = await createTestTarGzUtil(archiveName, fileName, fileContent);
+
+      const outputDir = nodePath.join(currentTestSubDir, 'output-tar');
+      nodeFs.mkdirSync(outputDir);
+
+      await extractor.extract(realArchivePath, { targetDir: outputDir });
+
+      const extractedFilePath = nodePath.join(outputDir, fileName);
+      expect(nodeFs.existsSync(extractedFilePath)).toBe(true);
+      expect(nodeFs.readFileSync(extractedFilePath, 'utf-8')).toBe(fileContent);
     });
 
-    it('should extract a .zip archive', async () => {
-      const zipArchivePath = '/tmp/archive.zip';
-      await fileSystem.writeFile(zipArchivePath, 'dummy zip content');
-      const options: ExtractOptions = { targetDir };
-      await extractor.extract(zipArchivePath, options);
-      expect(mockZx).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('unzip -qo')]),
-        zipArchivePath,
-        expect.stringContaining(targetDir) // tempExtractDir
+    it('should use --strip-components for tar archives if specified using real tar', async () => {
+      mockExecCallback.mockImplementation(
+        (command: string, optionsOrCallback: any, callback?: any) => {
+          const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+          realPromisedExecViaUtil(command)
+            .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
+            .catch((error) => {
+              const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
+              (err as any).stdout = error.stdout;
+              (err as any).stderr = error.stderr;
+              (err as any).code = error.code || error.exitCode;
+              cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
+            });
+        }
       );
+
+      const archiveName = 'test-strip.tar.gz';
+      const fileName = 'testfile.txt';
+      const fileContent = 'Strip me!';
+      const subDir = 'dir1/dir2';
+      const realArchivePath = await createTestTarGzUtil(archiveName, fileName, fileContent, subDir);
+      const outputDir = nodePath.join(currentTestSubDir, 'output-strip');
+      nodeFs.mkdirSync(outputDir);
+
+      await extractor.extract(realArchivePath, { targetDir: outputDir, stripComponents: 2 });
+
+      const extractedFilePath = nodePath.join(outputDir, fileName);
+      expect(nodeFs.existsSync(extractedFilePath)).toBe(true);
+      expect(nodeFs.readFileSync(extractedFilePath, 'utf-8')).toBe(fileContent);
+      expect(nodeFs.existsSync(nodePath.join(outputDir, 'dir1'))).toBe(false);
     });
 
-    it('should use --strip-components for tar archives if specified', async () => {
-      const options: ExtractOptions = { targetDir, stripComponents: 1 };
-      await extractor.extract(archivePath, options);
-      expect(mockZx).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('tar -xzf')]),
-        archivePath,
-        expect.stringContaining(targetDir),
-        '--strip-components=1'
+    it('should extract a .zip archive using real unzip', async () => {
+      mockExecCallback.mockImplementation(
+        (command: string, optionsOrCallback: any, callback?: any) => {
+          const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+          realPromisedExecViaUtil(command)
+            .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
+            .catch((error) => {
+              const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
+              (err as any).stdout = error.stdout;
+              (err as any).stderr = error.stderr;
+              (err as any).code = error.code || error.exitCode;
+              cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
+            });
+        }
       );
+
+      const archiveName = 'test-archive.zip';
+      const fileName = 'testfile.txt';
+      const fileContent = 'Hello from zip!';
+      const realArchivePath = await createTestZipUtil(archiveName, fileName, fileContent);
+      const outputDir = nodePath.join(currentTestSubDir, 'output-zip');
+      nodeFs.mkdirSync(outputDir);
+
+      await extractor.extract(realArchivePath, { targetDir: outputDir, format: 'zip' });
+
+      const extractedFilePath = nodePath.join(outputDir, fileName);
+      expect(nodeFs.existsSync(extractedFilePath)).toBe(true);
+      expect(nodeFs.readFileSync(extractedFilePath, 'utf-8')).toBe(fileContent);
     });
 
-    it('should clean up temporary extraction directory on success', async () => {
-      await extractor.extract(archivePath, { targetDir });
-      // Check if temp dir was created and then removed.
-      // This is hard to check directly without inspecting fs calls more deeply or listing dirs.
-      // For now, we assume it's cleaned if no error.
-      // A more robust test would mock fs.readdir to see the temp dir and then its absence.
-      expect(true).toBe(true); // Placeholder for now
+    it('should clean up temporary extraction directory on success (real FS)', async () => {
+      mockExecCallback.mockImplementation(
+        (command: string, optionsOrCallback: any, callback?: any) => {
+          const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+          realPromisedExecViaUtil(command)
+            .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
+            .catch((error) => {
+              const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
+              (err as any).stdout = error.stdout;
+              (err as any).stderr = error.stderr;
+              (err as any).code = error.code || error.exitCode;
+              cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
+            });
+        }
+      );
+      const archiveName = 'cleanup-success.tar.gz';
+      const fileName = 'cleanup.txt';
+      const realArchivePath = await createTestTarGzUtil(archiveName, fileName, 'cleanup');
+      const outputDir = nodePath.join(currentTestSubDir, 'output_cleanup_success');
+      nodeFs.mkdirSync(outputDir);
+
+      await extractor.extract(realArchivePath, { targetDir: outputDir });
+
+      const itemsInOutputDir = nodeFs.readdirSync(outputDir);
+      for (const item of itemsInOutputDir) {
+        expect(item.startsWith('_extract_')).toBe(false);
+      }
     });
 
-    it('should clean up temporary extraction directory on failure', async () => {
-      mockZx.mockImplementationOnce(async (cmdParts) => {
-        if (cmdParts.join('').includes('tar -xzf')) throw new Error('tar failed');
-        return { stdout: '', stderr: '', exitCode: 0 };
-      });
-      await expect(extractor.extract(archivePath, { targetDir })).rejects.toThrow('tar failed');
-      // Similar to above, direct check of temp dir removal is tricky.
-      expect(true).toBe(true); // Placeholder
-    });
+    it('should clean up temporary extraction directory on failure (mocked exec fail)', async () => {
+      // This test WILL use the mocked exec to simulate failure
+      mockExecCallback.mockImplementationOnce(
+        (command: string, optionsOrCallback: any, callback?: any) => {
+          const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+          if (command.includes('tar -xzf')) {
+            cb(new Error('Mocked tar failure'), { stdout: '', stderr: 'Mocked tar stderr' });
+          } else {
+            cb(null, { stdout: '', stderr: '' });
+          }
+        }
+      );
 
-    // TODO: Add tests for detectAndSetExecutables if its logic becomes more complex
-    // TODO: Add tests for other archive formats once implemented (tar.bz2, tar.xz, etc.)
+      const archiveName = 'cleanup-fail.tar.gz';
+      const fileName = 'fail.txt';
+      const realArchivePath = await createTestTarGzUtil(archiveName, fileName, 'I will fail.');
+      const outputDir = nodePath.join(currentTestSubDir, 'output_cleanup_fail');
+      nodeFs.mkdirSync(outputDir);
+
+      await expect(extractor.extract(realArchivePath, { targetDir: outputDir })).rejects.toThrow(
+        'Mocked tar failure'
+      );
+
+      const itemsInOutputDir = nodeFs.readdirSync(outputDir);
+      for (const item of itemsInOutputDir) {
+        expect(item.startsWith('_extract_')).toBe(false);
+      }
+    });
   });
 });

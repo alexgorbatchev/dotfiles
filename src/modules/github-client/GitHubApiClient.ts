@@ -8,7 +8,7 @@
  *   - [x] Constructor:
  *     - [x] Accept `AppConfig` (for `githubToken`, `downloadTimeout`).
  *     - [x] Accept `IDownloader` instance for making HTTP requests.
- *     - [x] Initialize base URL (`https://api.github.com`).
+ *     - [x] Initialize base URL from config (`githubHost` or default to `https://api.github.com`).
  *     - [x] Initialize `User-Agent` header.
  *   - [x] Implement `getLatestRelease(owner, repo)`:
  *     - [x] Construct URL: `/repos/{owner}/{repo}/releases/latest`.
@@ -45,6 +45,8 @@
  * - [x] Cleaned up internal TODO comments related to downloader interaction.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Ensure 100% test coverage.
+ * - [x] Update to use configurable `githubHost` from AppConfig.
+ * - [x] Add tests for custom GitHub host functionality.
  * - [ ] Update the memory bank.
  */
 
@@ -70,7 +72,7 @@ import crypto from 'crypto';
 const log = createLogger('GitHubApiClient');
 
 export class GitHubApiClient implements IGitHubApiClient {
-  private readonly baseUrl = 'https://api.github.com';
+  private readonly baseUrl: string;
   private readonly githubToken?: string;
   private readonly downloader: IDownloader;
   private readonly userAgent: string;
@@ -79,6 +81,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   private readonly cacheTtlMs: number;
 
   constructor(config: AppConfig, downloader: IDownloader, cache?: IGitHubApiCache) {
+    this.baseUrl = config.githubHost || 'https://api.github.com';
     this.githubToken = config.githubToken;
     this.downloader = downloader;
     this.userAgent = config.githubClientUserAgent || 'dotfiles-generator/1.0.0';
@@ -86,7 +89,11 @@ export class GitHubApiClient implements IGitHubApiClient {
     this.cacheEnabled = config.githubApiCacheEnabled ?? true;
     this.cacheTtlMs = config.githubApiCacheTtl ?? 86400000; // Default: 24 hours
 
-    log('constructor: GitHub API Client initialized. User-Agent: %s', this.userAgent);
+    log(
+      'constructor: GitHub API Client initialized. Base URL: %s, User-Agent: %s',
+      this.baseUrl,
+      this.userAgent
+    );
     if (this.githubToken) {
       log('constructor: Using GitHub token for authentication.');
     } else {

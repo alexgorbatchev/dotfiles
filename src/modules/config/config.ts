@@ -31,6 +31,7 @@
  *   - [x] Add `toolConfigsDir` to `AppConfig` creation, loading from `TOOL_CONFIGS_DIR` env var.
  *   - [x] Correct the default path for `toolConfigsDir` to `generator/configs/tools`.
  *   - [x] Add `homeDir` to `AppConfig` creation, sourced from `systemInfo.homedir`.
+ *   - [x] Add `githubHost` to `AppConfig` creation, loading from `GITHUB_HOST` env var.
  *   - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -147,6 +148,12 @@ export interface ConfigEnvironment {
    */
   GITHUB_CLIENT_USER_AGENT?: string;
   /**
+   * Custom GitHub API host URL. Used for all GitHub API requests and binary downloads.
+   * Defaults to "https://api.github.com" if not set.
+   * Useful for testing with a mock server or using GitHub Enterprise.
+   */
+  GITHUB_HOST?: string;
+  /**
    * Enables or disables caching for GitHub API responses. Parsed as a boolean.
    * Set to "true" or "false". If undefined, defaults to true.
    * Affects whether `GitHubApiClient` uses the `IGitHubApiCache`.
@@ -203,6 +210,7 @@ const EnvSchema = z.object({
     .transform((val) => (val ? parseInt(val, 10) : 1000)), // Default 1 second in milliseconds
   COMPLETIONS_DIR: z.string().optional(),
   GITHUB_CLIENT_USER_AGENT: z.string().optional(),
+  GITHUB_HOST: z.string().optional(),
   GITHUB_API_CACHE_ENABLED: z
     .string()
     .optional()
@@ -276,6 +284,7 @@ export function createAppConfig(
 
     // New configuration options from Zinit analysis
     githubToken: env.GITHUB_TOKEN,
+    githubHost: env.GITHUB_HOST || 'https://api.github.com', // Default to standard GitHub API URL
     checkUpdatesOnRun: env.CHECK_UPDATES_ON_RUN,
     updateCheckInterval: env.UPDATE_CHECK_INTERVAL,
     downloadTimeout: env.DOWNLOAD_TIMEOUT,

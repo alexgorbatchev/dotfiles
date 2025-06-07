@@ -23,7 +23,8 @@ import path from 'node:path';
 import type { IFileSystem } from '../../file-system/IFileSystem';
 import type { IDownloader } from '../../downloader/IDownloader';
 import type { IGitHubApiClient } from '../../github-client/IGitHubApiClient';
-import type { AppConfig, ToolConfig, GitHubRelease } from '../../../types';
+import type { IArchiveExtractor } from '../../extractor/IArchiveExtractor'; // Added
+import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '../../../types'; // Added ExtractResult
 import { Installer } from '../Installer';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 
@@ -31,6 +32,7 @@ describe('Installer', () => {
   let mockFileSystem: IFileSystem;
   let mockDownloader: IDownloader;
   let mockGitHubApiClient: IGitHubApiClient;
+  let mockArchiveExtractor: IArchiveExtractor; // Added
   let mockAppConfig: AppConfig;
   let installer: Installer;
 
@@ -44,6 +46,7 @@ describe('Installer', () => {
   let mockDownload: ReturnType<typeof mock>;
   let mockGetLatestRelease: ReturnType<typeof mock>;
   let mockGetReleaseByTag: ReturnType<typeof mock>;
+  let mockExtract: ReturnType<typeof mock>; // Added
 
   // Mock data
   const MOCK_BINARIES_DIR = '/test/binaries';
@@ -122,6 +125,20 @@ describe('Installer', () => {
       ),
     };
 
+    // Setup mock ArchiveExtractor
+    mockExtract = mock(
+      (): Promise<ExtractResult> =>
+        Promise.resolve({
+          extractedFiles: ['test-tool-linux-amd64'],
+          executables: ['test-tool-linux-amd64'],
+        })
+    );
+    mockArchiveExtractor = {
+      extract: mockExtract,
+      detectFormat: mock(async () => 'tar.gz' as const),
+      isSupported: mock(() => true),
+    };
+
     // Setup mock app config
     mockAppConfig = createMockAppConfig({
       binariesDir: MOCK_BINARIES_DIR,
@@ -129,7 +146,13 @@ describe('Installer', () => {
     });
 
     // Create installer instance
-    installer = new Installer(mockFileSystem, mockDownloader, mockGitHubApiClient, mockAppConfig);
+    installer = new Installer(
+      mockFileSystem,
+      mockDownloader,
+      mockGitHubApiClient,
+      mockArchiveExtractor,
+      mockAppConfig
+    );
   });
 
   describe('constructor', () => {
@@ -390,6 +413,15 @@ describe('Installer', () => {
           moveBinaryTo: 'bin/tool-renamed',
         } as any,
       };
+
+      // Setup mockExists for the path of the binary within the extracted directory
+      const expectedExtractedBinaryPath = path.join(
+        MOCK_BINARIES_DIR,
+        MOCK_TOOL_NAME,
+        'extracted',
+        'bin/tool' // This comes from toolConfig.installParams.extractPath
+      );
+      mockExists.mockImplementation(async (p) => p === expectedExtractedBinaryPath);
 
       const result = await (installer as any).installFromCurlTar(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,

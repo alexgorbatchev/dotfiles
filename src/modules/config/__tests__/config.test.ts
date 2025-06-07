@@ -31,6 +31,7 @@
  * - [x] Ensure 100% test coverage.
  * - [x] Test `toolConfigsDir` default value and loading from env.
  * - [x] Update tests to reflect corrected `toolConfigsDir` default path.
+ * - [x] Add tests for `githubHost` property and `GITHUB_HOST` environment variable.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { describe, it, expect } from 'bun:test';
@@ -166,6 +167,26 @@ describe('createAppConfig', () => {
     expect(appConfig.dotfilesDir).toBe(expectedDotfilesDir);
     expect(appConfig.generatedDir).toBe(expectedGeneratedDir);
     expect(appConfig.toolConfigDir).toBe(join(expectedDotfilesDir, 'generator', 'src', 'tools'));
+  });
+
+  describe('GITHUB_HOST', () => {
+    it('should use the value from env when GITHUB_HOST is set', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_HOST: 'https://github.example.com' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubHost).toBe('https://github.example.com');
+    });
+
+    it('should default to "https://api.github.com" when GITHUB_HOST is not set', () => {
+      const mockEnv: ConfigEnvironment = {};
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubHost).toBe('https://api.github.com');
+    });
+
+    it('should handle empty string for GITHUB_HOST by using default', () => {
+      const mockEnv: ConfigEnvironment = { GITHUB_HOST: '' };
+      const appConfig = createAppConfig(mockSystemInfoBase, mockEnv);
+      expect(appConfig.githubHost).toBe('https://api.github.com');
+    });
   });
 
   describe('GITHUB_API_CACHE_ENABLED', () => {

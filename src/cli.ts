@@ -60,6 +60,7 @@ import { ShellInitGenerator } from './modules/generator-shell-init/ShellInitGene
 import { SymlinkGenerator } from './modules/generator-symlink/SymlinkGenerator';
 import { GeneratorOrchestrator } from './modules/generator-orchestrator/GeneratorOrchestrator';
 import { Installer } from './modules/installer/Installer';
+import { ArchiveExtractor } from './modules/extractor/ArchiveExtractor'; // Added import
 // ToolConfig import removed as it's not directly used in this file,
 // realLoadToolConfigs handles it internally.
 import { createLogger } from './modules/logger';
@@ -72,6 +73,7 @@ import type { IShellInitGenerator } from './modules/generator-shell-init/IShellI
 import type { ISymlinkGenerator } from './modules/generator-symlink/ISymlinkGenerator';
 import type { IGeneratorOrchestrator } from './modules/generator-orchestrator/IGeneratorOrchestrator';
 import type { IInstaller } from './modules/installer/IInstaller';
+import type { IArchiveExtractor } from './modules/extractor/IArchiveExtractor'; // Added import
 import { loadToolConfigs as realLoadToolConfigs } from './modules/config-loader/toolConfigLoader'; // Added import
 import os from 'os';
 import path from 'node:path'; // Added import for path.join
@@ -89,6 +91,7 @@ export interface Services {
   symlinkGenerator: ISymlinkGenerator;
   generatorOrchestrator: IGeneratorOrchestrator;
   installer: IInstaller;
+  archiveExtractor: IArchiveExtractor; // Added
 }
 
 export async function setupServices(dryRun = false): Promise<Services> {
@@ -166,8 +169,11 @@ export async function setupServices(dryRun = false): Promise<Services> {
     appConfig // AppConfig
   );
 
+  // Initialize the archive extractor
+  const archiveExtractor = new ArchiveExtractor(fs); // Added
+
   // Initialize the installer
-  const installer = new Installer(fs, downloader, githubApiClient, appConfig);
+  const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig); // Added archiveExtractor
 
   log('setupServices: Services initialized.');
   return {
@@ -181,6 +187,7 @@ export async function setupServices(dryRun = false): Promise<Services> {
     symlinkGenerator,
     generatorOrchestrator,
     installer,
+    archiveExtractor, // Added
   };
 }
 
