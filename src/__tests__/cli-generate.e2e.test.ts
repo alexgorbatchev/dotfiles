@@ -45,6 +45,7 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ConfigEnvironment } from '../modules/config';
+import { createTempDir } from './helpers';
 // import os from 'node:os'; // No longer needed
 // import type { AppConfig } from '../../../src/modules/config/config'; // May not be directly needed
 
@@ -70,13 +71,7 @@ describe('E2E: bun run cli generate', () => {
   let manifestPathFromEnv: string; // Path to the manifest file as defined in env
 
   beforeAll(() => {
-    // Setup temporary directory structure
-    const testsTmpBaseDir = path.resolve(__dirname, 'tmp');
-    if (fs.existsSync(testsTmpBaseDir)) {
-      fs.rmSync(testsTmpBaseDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(testsTmpBaseDir, { recursive: true });
-    tempDir = fs.mkdtempSync(path.join(testsTmpBaseDir, 'dotfiles-e2e-cli-generate-'));
+    tempDir = createTempDir('dotfiles-e2e-cli-generate');
 
     dotfilesDir = path.join(tempDir, 'my-dotfiles-repo');
     generatedDir = path.join(dotfilesDir, '.generated');
