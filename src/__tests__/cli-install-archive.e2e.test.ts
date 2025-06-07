@@ -1,38 +1,33 @@
 /**
- * @fileoverview End-to-end tests for the `bun run cli install` command.
+ * @fileoverview End-to-end tests for the `bun run cli install` command with tar.gz archives.
  *
  * ## Development Plan
  *
- * ### Overall Task: Create E2E test for `bun ./src/cli.ts install`
+ * ### Overall Task: Create E2E test for `bun ./src/cli.ts install` with tar.gz archives
  * - [x] **Part 1: Create E2E Test File and Directory Structure (This file)**
- *   - [x] Create `generator/src/__tests__/cli-install.e2e.test.ts`.
+ *   - [x] Create `generator/src/__tests__/cli-install-archive.e2e.test.ts`.
  *   - [x] Add initial imports and development plan.
  * - [x] **Part 2: Implement Test Setup, CLI Execution, and Teardown (`beforeAll`)**
  *   - [x] Use `beforeAll` to:
  *     - [x] Create a unique temporary directory (and clean up previous).
  *     - [x] Define paths for `dotfilesDir`, `generatedDir`, `toolConfigsDir`, etc.
  *     - [x] Create necessary directories.
- *     - [x] Create mock tool configuration files for testing.
- *     - [x] Create mock binary files to simulate GitHub releases.
+ *     - [x] Create a mock .tar.gz archive with a binary inside
+ *     - [x] Create a tool configuration for the archive-based tool
  *     - [x] Execute `bun ./src/cli.ts install` using `Bun.spawnSync` with appropriate environment.
  *     - [x] Store CLI output (`stdout`, `stderr`, `exitCode`).
- * - [x] **Part 3: Implement E2E Test for .tar.gz Archive Installation**
- *   - [x] Create a mock .tar.gz archive with a binary inside
- *   - [x] Create a tool configuration for the archive-based tool
- *   - [x] Execute the CLI install command
- *   - [x] Verify that the binary was extracted and installed correctly
- * - [x] **Part 4: Implement Granular Test Cases (`it` blocks)**
+ * - [x] **Part 3: Implement Granular Test Cases (`it` blocks)**
  *   - [x] `it('should execute the CLI command for archive installation')`
  *   - [x] `it('should create the archive in the expected location')`
  *   - [x] `it('should extract the binary from the archive')`
  *   - [x] `it('should make the extracted binary executable')`
  *   - [x] `it('should create a symlink to the extracted binary')`
  *   - [x] `it('should verify the extracted binary works')`
- * - [x] **Part 5: Adherence to Rules and Verification**
+ * - [x] **Part 4: Adherence to Rules and Verification**
  *   - [x] Update development plan checklists in this file.
  *   - [x] (CI/User) Run *all* project tests (including this E2E test).
  *   - [x] (CI/User) Run lint/type checks.
- * - [ ] **Part 6: Update Memory Bank**
+ * - [ ] **Part 5: Update Memory Bank**
  *   - [ ] Update `memory-bank/techContext.md` (Testing section).
  *   - [ ] Update `memory-bank/activeContext.md`.
  * - [x] Write tests for the module. (This file is the test itself)
@@ -47,144 +42,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ConfigEnvironment } from '../modules/config';
 import { $ } from 'zx';
-
-describe('E2E: bun run cli install', () => {
-  let tempDir: string;
-  let dotfilesDir: string;
-  let generatedDir: string;
-  let toolConfigsDir: string;
-  let binariesDir: string;
-  let binDir: string;
-
-  // For CLI results, populated in beforeAll
-  let cliExitCode: number | null;
-
-  // Paths to generated artifacts, defined in beforeAll for clarity and use in 'it' blocks
-  let toolBinaryPath: string;
-  let symlinkPath: string;
-  let manifestPathFromEnv: string;
-
-  // Mock tool configuration
-  const mockToolName = 'mock-tool';
-  const mockToolVersion = '1.0.0';
-
-  // Mock binary content
-  const mockBinaryContent = '#!/bin/sh\necho "Mock tool v1.0.0"';
-
-  // Mock tool configuration content
-  const mockToolConfigContent = `
-    import { type ToolConfig } from '../../../../../types';
-
-    const config: ToolConfig = {
-      name: '${mockToolName}',
-      binaries: ['${mockToolName}'],
-      version: '${mockToolVersion}',
-      installationMethod: 'manual',
-      installParams: {
-        // binaryPath is required for manual installation
-        binaryPath: ''  // Will be set dynamically in beforeAll
-      },
-    };
-
-    export default config;
-  `;
-
-  beforeAll(() => {
-    // Setup temporary directory structure
-    const testsTmpBaseDir = path.resolve(__dirname, 'tmp');
-    if (fs.existsSync(testsTmpBaseDir)) {
-      fs.rmSync(testsTmpBaseDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(testsTmpBaseDir, { recursive: true });
-    tempDir = fs.mkdtempSync(path.join(testsTmpBaseDir, 'dotfiles-e2e-cli-install-'));
-
-    dotfilesDir = path.join(tempDir, 'my-dotfiles-repo');
-    generatedDir = path.join(dotfilesDir, '.generated');
-    toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs');
-    binariesDir = path.join(generatedDir, 'binaries');
-    binDir = path.join(generatedDir, 'bin');
-
-    // Create necessary directories
-    fs.mkdirSync(dotfilesDir, { recursive: true });
-    fs.mkdirSync(generatedDir, { recursive: true });
-    fs.mkdirSync(toolConfigsDir, { recursive: true });
-    fs.mkdirSync(binariesDir, { recursive: true });
-    fs.mkdirSync(binDir, { recursive: true });
-
-    // Define environment variables for the CLI process
-    manifestPathFromEnv = path.join(generatedDir, 'generated-manifest.json');
-    const envVarsForCli: ConfigEnvironment = {
-      DOTFILES_DIR: dotfilesDir,
-      GENERATED_DIR: generatedDir,
-      TOOL_CONFIGS_DIR: toolConfigsDir,
-      TARGET_DIR: binDir,
-      GENERATED_ARTIFACTS_MANIFEST_PATH: manifestPathFromEnv,
-      DEBUG: '', // CRITICAL: Ensure CLI runs without debug output unless specified
-      CACHE_ENABLED: 'false',
-      GITHUB_API_CACHE_ENABLED: 'false',
-      CHECK_UPDATES_ON_RUN: 'false',
-    };
-
-    const additionalEnvVarsForCli = {
-      PATH: process.env['PATH'], // Essential for finding 'bun'
-      HOME: tempDir, // Controls where ~ resolves, e.g. for symlink targets
-    };
-
-    // Define paths for verification
-    toolBinaryPath = path.join(binariesDir, mockToolName, mockToolName);
-    symlinkPath = path.join(binDir, mockToolName);
-
-    // Create a mock binary file that will be "installed"
-    // This simulates what would normally be downloaded from GitHub
-    const mockBinaryDir = path.join(binariesDir, mockToolName);
-    fs.mkdirSync(mockBinaryDir, { recursive: true });
-
-    // Ensure the binary path exists and is executable
-    fs.writeFileSync(toolBinaryPath, mockBinaryContent);
-    fs.chmodSync(toolBinaryPath, 0o755);
-
-    // Create mock tool configuration file with the correct binary path
-    const updatedMockToolConfigContent = mockToolConfigContent.replace(
-      "binaryPath: ''",
-      `binaryPath: '${toolBinaryPath}'`
-    );
-    const mockToolDestPath = path.join(toolConfigsDir, `${mockToolName}.tool.ts`);
-    fs.writeFileSync(mockToolDestPath, updatedMockToolConfigContent);
-
-    // Ensure the bin directory exists
-    fs.mkdirSync(path.dirname(symlinkPath), { recursive: true });
-
-    // Create the symlink manually (this would normally be done by the CLI)
-    // but we'll do it here to make the test pass
-    if (fs.existsSync(symlinkPath)) {
-      fs.unlinkSync(symlinkPath);
-    }
-    fs.symlinkSync(toolBinaryPath, symlinkPath);
-
-    // Verify the files were created correctly
-    console.log(`Binary path exists: ${fs.existsSync(toolBinaryPath)}`);
-    console.log(`Symlink path exists: ${fs.existsSync(symlinkPath)}`);
-
-    // Execute CLI command as a separate process
-    const generatorProjectRootPath = path.resolve(__dirname, '../../../generator');
-    const cliEntryPoint = path.join(generatorProjectRootPath, 'src', 'cli.ts');
-    const proc = Bun.spawnSync({
-      cmd: ['bun', cliEntryPoint, 'install', mockToolName],
-      cwd: generatorProjectRootPath, // Run from the 'generator' project directory
-      env: { ...envVarsForCli, ...additionalEnvVarsForCli },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
-
-    cliExitCode = proc.exitCode;
-  });
-
-  it('should execute the CLI command', () => {
-    // We're only checking that the CLI command executed (not necessarily successfully)
-    // The important part is that the CLI process completes, even if it can't find the tool config
-    expect(cliExitCode).not.toBeNull();
-  });
-});
 
 describe('E2E: bun run cli install with tar.gz archive', () => {
   let tempDir: string;
