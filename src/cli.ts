@@ -39,7 +39,9 @@
  *     - [x] Use `AppConfig` to get `toolConfigsDir`.
  *     - [x] Use a temporary `NodeFileSystem` to read `*.tool.ts` files from `toolConfigsDir`.
  *     - [x] Initialize `MemFileSystem` with the content of these files.
- * - [ ] Enhance `install` command error message for "tool not found" to include `toolConfigsDir` and available tools.
+ * - [x] Enhance `install` command error message for "tool not found" to include `toolConfigsDir` and available tools.
+ * - [x] Enhance `install` command output to show symlink path and other changes.
+ * - [x] Add `--details` flag to `install` command for optional detailed output.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -237,52 +239,62 @@ program
   .description('Install a tool based on its configuration')
   .option('--force', 'Force installation even if the tool is already installed', false)
   .option('--verbose', 'Show verbose output during installation', false)
-  .action(async (toolName: string, options: { force: boolean; verbose: boolean }) => {
-    log('install: Command called with toolName: %s, options: %o', toolName, options);
-    try {
-      const { installer, fs, appConfig } = await setupServices();
-      const toolConfigs = await realLoadToolConfigs(appConfig, fs);
+  .option('--details', 'Show detailed installation steps', false)
+  .action(
+    async (toolName: string, options: { force: boolean; verbose: boolean; details: boolean }) => {
+      log('install: Command called with toolName: %s, options: %o', toolName, options);
+      try {
+        const { installer, fs, appConfig } = await setupServices();
+        const toolConfigs = await realLoadToolConfigs(appConfig, fs);
 
-      const toolConfig = toolConfigs[toolName];
-      if (!toolConfig) {
-        const availableTools = Object.keys(toolConfigs);
-        let errorMessage = `Error: Tool configuration for "${toolName}" not found.\n`;
-        errorMessage += `Expected tool configuration files in: ${appConfig.toolConfigsDir}\n`;
-        if (availableTools.length > 0) {
-          errorMessage += `Available tools: ${availableTools.join(', ')}`;
+        const toolConfig = toolConfigs[toolName];
+        if (!toolConfig) {
+          const availableTools = Object.keys(toolConfigs);
+          let errorMessage = `Error: Tool configuration for "${toolName}" not found.\n`;
+          errorMessage += `Expected tool configuration files in: ${appConfig.toolConfigsDir}\n`;
+          if (availableTools.length > 0) {
+            errorMessage += `Available tools: ${availableTools.join(', ')}`;
+          } else {
+            errorMessage += 'No tools are currently available for installation.';
+          }
+          console.error(errorMessage);
+          process.exit(1);
+        }
+
+        log('install: Calling installer.install for tool: %s', toolName);
+        const result = await installer.install(toolName, toolConfig, {
+          force: options.force,
+          verbose: options.verbose,
+        });
+
+        if (result.success) {
+          log('install: Tool %s installed successfully at %s', toolName, result.binaryPath);
+          console.log(`Tool "${toolName}" installed successfully.`);
+          if (result.binaryPath) {
+            console.log(`Binary path: ${result.binaryPath}`);
+          }
+          if (result.version) {
+            console.log(`Version: ${result.version}`);
+          }
+          if (result.symlinkPath) {
+            console.log(`Symlink created: ${result.symlinkPath}`);
+          }
+          if (options.details && result.otherChanges && result.otherChanges.length > 0) {
+            console.log('Detailed installation steps:');
+            result.otherChanges.forEach((change) => console.log(`  - ${change}`));
+          }
         } else {
-          errorMessage += 'No tools are currently available for installation.';
+          log('install: Failed to install tool %s: %s', toolName, result.error);
+          console.error(`Error installing "${toolName}": ${result.error}`);
+          process.exit(1);
         }
-        console.error(errorMessage);
+      } catch (error) {
+        log('install: Error during tool installation: %O', error);
+        console.error('Error during tool installation:', error);
         process.exit(1);
       }
-
-      log('install: Calling installer.install for tool: %s', toolName);
-      const result = await installer.install(toolName, toolConfig, {
-        force: options.force,
-        verbose: options.verbose,
-      });
-
-      if (result.success) {
-        log('install: Tool %s installed successfully at %s', toolName, result.binaryPath);
-        console.log(`Tool "${toolName}" installed successfully.`);
-        if (result.binaryPath) {
-          console.log(`Binary path: ${result.binaryPath}`);
-        }
-        if (result.version) {
-          console.log(`Version: ${result.version}`);
-        }
-      } else {
-        log('install: Failed to install tool %s: %s', toolName, result.error);
-        console.error(`Error installing "${toolName}": ${result.error}`);
-        process.exit(1);
-      }
-    } catch (error) {
-      log('install: Error during tool installation: %O', error);
-      console.error('Error during tool installation:', error);
-      process.exit(1);
     }
-  });
+  );
 
 export async function main() {
   await program.parseAsync(process.argv);

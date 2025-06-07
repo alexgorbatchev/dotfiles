@@ -22,6 +22,7 @@
  *   - [x] Assert `loadToolConfigs` is called with `MemFileSystem`.
  *   - [x] Assert `generatorOrchestrator.generateAll` receives tool configs from the pre-populated `MemFileSystem`.
  * - [x] Update mock AppConfig to include `homeDir`.
+ * - [x] Test `install` command with `--details` flag.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -101,12 +102,13 @@ const mockInstall = mock(
   async (
     _toolName: string,
     _toolConfig: ToolConfig,
-    _options?: { force: boolean; verbose: boolean }
+    _options?: { force: boolean; verbose: boolean; details?: boolean } // Added details
   ): Promise<InstallResult> => {
     return {
       success: true,
       binaryPath: '/mock/bin/tool',
       version: '1.0.0',
+      otherChanges: ['Mock change 1', 'Mock change 2'], // Added for testing details
     };
   }
 );
@@ -141,6 +143,7 @@ let createAppConfigSpy: Mock<typeof configModuleActual.createAppConfig>;
 
 describe('CLI', () => {
   let consoleErrorSpy: ReturnType<typeof spyOn>;
+  let consoleLogSpy: ReturnType<typeof spyOn>; // Added for testing output
   let processExitSpy: ReturnType<typeof spyOn>;
   let programUnderTest: typeof cliModule.program; // Declare here, to be assigned in beforeEach
 
@@ -169,14 +172,15 @@ describe('CLI', () => {
     mockGenerateAll.mockClear();
 
     consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {}); // Added
     processExitSpy = spyOn(process, 'exit').mockImplementation((() => {}) as any); // Type assertion
   });
-
   afterEach(() => {
     // Restore all spies
     setupServicesSpy.mockRestore(); // Restores the original function
     actualLoadToolConfigsSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore(); // Added
     processExitSpy.mockRestore();
     createAppConfigSpy.mockRestore();
     nodeFsExistsSpy.mockRestore();
@@ -513,6 +517,7 @@ describe('CLI', () => {
     expect(mockInstall).toHaveBeenCalledWith('test-tool', mockToolConfigs['test-tool'], {
       force: false,
       verbose: false,
+      details: false, // Added
     });
   });
 
@@ -599,7 +604,7 @@ describe('CLI', () => {
     expect(processExitSpy).toHaveBeenCalledWith(1);
   });
 
-  test('install command should pass force and verbose options to installer', async () => {
+  test('install command should pass force, verbose, and details options to installer', async () => {
     // Setup mock services
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
@@ -644,6 +649,7 @@ describe('CLI', () => {
       'test-tool',
       '--force',
       '--verbose',
+      '--details',
     ]);
 
     // Verify the installer was called with the correct options
@@ -651,6 +657,134 @@ describe('CLI', () => {
     expect(mockInstall).toHaveBeenCalledWith('test-tool', mockToolConfigs['test-tool'], {
       force: true,
       verbose: true,
+      details: true,
     });
+  });
+
+  test('install command with --details should show otherChanges', async () => {
+    setupServicesSpy.mockImplementationOnce(async () => ({
+      appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
+      fs: new NodeFileSystem(),
+      downloader: {} as IDownloader,
+      githubApiCache: {} as IGitHubApiCache,
+      githubApiClient: {} as IGitHubApiClient,
+      shimGenerator: {} as IShimGenerator,
+      shellInitGenerator: {} as IShellInitGenerator,
+      symlinkGenerator: {} as ISymlinkGenerator,
+      generatorOrchestrator: mockGeneratorOrchestrator,
+      installer: mockInstaller,
+      archiveExtractor: mockArchiveExtractor,
+    }));
+    const mockToolConfigs: Record<string, ToolConfig> = {
+      'detail-tool': { name: 'detail-tool', binaries: ['detail-tool'], version: '1.0' },
+    };
+    actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
+    mockInstall.mockResolvedValueOnce({
+      success: true,
+      binaryPath: '/mock/bin/detail-tool',
+      version: '1.0',
+      otherChanges: ['Detailed step 1', 'Detailed step 2'],
+    });
+
+    await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'detail-tool', '--details']);
+
+    expect(consoleLogSpy).toHaveBeenCalledWith('Detailed installation steps:');
+    expect(consoleLogSpy).toHaveBeenCalledWith('  - Detailed step 1');
+    expect(consoleLogSpy).toHaveBeenCalledWith('  - Detailed step 2');
+  });
+
+  test('install command without --details should not show otherChanges', async () => {
+    setupServicesSpy.mockImplementationOnce(async () => ({
+      appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
+      fs: new NodeFileSystem(),
+      downloader: {} as IDownloader,
+      githubApiCache: {} as IGitHubApiCache,
+      githubApiClient: {} as IGitHubApiClient,
+      shimGenerator: {} as IShimGenerator,
+      shellInitGenerator: {} as IShellInitGenerator,
+      symlinkGenerator: {} as ISymlinkGenerator,
+      generatorOrchestrator: mockGeneratorOrchestrator,
+      installer: mockInstaller,
+      archiveExtractor: mockArchiveExtractor,
+    }));
+    const mockToolConfigs: Record<string, ToolConfig> = {
+      'no-detail-tool': { name: 'no-detail-tool', binaries: ['no-detail-tool'], version: '1.0' },
+    };
+    actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
+    mockInstall.mockResolvedValueOnce({
+      success: true,
+      binaryPath: '/mock/bin/no-detail-tool',
+      version: '1.0',
+      otherChanges: ['Detailed step 1', 'Detailed step 2'], // Still provide changes
+    });
+
+    // Clear spy before this specific test action
+    consoleLogSpy.mockClear();
+
+    await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'no-detail-tool']);
+
+    // Verify that 'Detailed installation steps:' and the specific changes were NOT logged
+    // Check all calls to console.log
+    const logCalls = consoleLogSpy.mock.calls;
+    const detailedOutputPresent = logCalls.some(
+      (
+        call: any[] // Explicitly type 'call'
+      ) =>
+        call[0] === 'Detailed installation steps:' ||
+        (typeof call[0] === 'string' && call[0].startsWith('  - Detailed step'))
+    );
+    expect(detailedOutputPresent).toBe(false);
+
+    // Ensure other expected logs are still present
+    expect(consoleLogSpy).toHaveBeenCalledWith('Tool "no-detail-tool" installed successfully.');
+    expect(consoleLogSpy).toHaveBeenCalledWith('Binary path: /mock/bin/no-detail-tool');
+    expect(consoleLogSpy).toHaveBeenCalledWith('Version: 1.0');
+  });
+
+  test('install command with --details should not show header if otherChanges is empty', async () => {
+    setupServicesSpy.mockImplementationOnce(async () => ({
+      appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
+      fs: new NodeFileSystem(),
+      downloader: {} as IDownloader,
+      githubApiCache: {} as IGitHubApiCache,
+      githubApiClient: {} as IGitHubApiClient,
+      shimGenerator: {} as IShimGenerator,
+      shellInitGenerator: {} as IShellInitGenerator,
+      symlinkGenerator: {} as ISymlinkGenerator,
+      generatorOrchestrator: mockGeneratorOrchestrator,
+      installer: mockInstaller,
+      archiveExtractor: mockArchiveExtractor,
+    }));
+    const mockToolConfigs: Record<string, ToolConfig> = {
+      'empty-detail-tool': {
+        name: 'empty-detail-tool',
+        binaries: ['empty-detail-tool'],
+        version: '1.0',
+      },
+    };
+    actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
+    mockInstall.mockResolvedValueOnce({
+      success: true,
+      binaryPath: '/mock/bin/empty-detail-tool',
+      version: '1.0',
+      otherChanges: [], // Empty changes
+    });
+
+    consoleLogSpy.mockClear();
+    await programUnderTest.parseAsync([
+      'bun',
+      'cli.ts',
+      'install',
+      'empty-detail-tool',
+      '--details',
+    ]);
+
+    const logCalls = consoleLogSpy.mock.calls;
+    const detailedHeaderPresent = logCalls.some(
+      (call: any[]) => call[0] === 'Detailed installation steps:' // Explicitly type 'call'
+    );
+    expect(detailedHeaderPresent).toBe(false);
+
+    expect(consoleLogSpy).toHaveBeenCalledWith('Tool "empty-detail-tool" installed successfully.');
   });
 });

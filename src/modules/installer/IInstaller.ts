@@ -11,6 +11,8 @@
  * ### Tasks:
  * - [x] Define `InstallOptions` interface.
  * - [x] Define `InstallResult` interface.
+ *   - [x] Add `symlinkPath` to `InstallResult`.
+ *   - [x] Add `otherChanges` to `InstallResult`.
  * - [x] Define `IInstaller` interface with `install` method.
  * - [ ] Write tests for the module.
  * - [ ] Cleanup all linting errors and warnings.
@@ -64,6 +66,16 @@ export interface InstallResult {
    * Additional information about the installation
    */
   info?: Record<string, any>;
+
+  /**
+   * Path to the symlink created in the bin directory (e.g., appConfig.binDir)
+   */
+  symlinkPath?: string;
+
+  /**
+   * Array of strings describing other user-facing changes made.
+   */
+  otherChanges?: string[];
 }
 
 /**

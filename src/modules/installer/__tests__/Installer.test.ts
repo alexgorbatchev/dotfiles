@@ -16,8 +16,7 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Test URL construction logic for absolute and relative URLs in GitHub release installation.
  * - [x] Test enhanced error message for missing assets in GitHub release installation.
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
+ * - [x] Test population of `otherChanges` in `InstallResult`.
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -289,6 +288,9 @@ describe('Installer', () => {
       expect(result).toEqual({
         success: false,
         error: 'Test error',
+        otherChanges: expect.arrayContaining([
+          `Ensured installation directory exists: ${path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME)}`,
+        ]),
       });
 
       installFromGitHubReleaseSpy.mockRestore();
@@ -315,19 +317,29 @@ describe('Installer', () => {
       const installFromGitHubReleaseSpy = spyOn(
         installer as any,
         'installFromGitHubRelease'
-      ).mockResolvedValue({ success: true, binaryPath: MOCK_BINARY_PATH });
+      ).mockResolvedValue({ success: true, binaryPath: MOCK_BINARY_PATH, otherChanges: [] }); // Ensure spy returns otherChanges
 
-      await installer.install(MOCK_TOOL_NAME, toolConfig);
+      const result = await installer.install(MOCK_TOOL_NAME, toolConfig); // Capture the result here
 
       expect(beforeInstallHook).toHaveBeenCalledTimes(1);
       expect(afterInstallHook).toHaveBeenCalledTimes(1);
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          `Ensured installation directory exists: ${path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME)}`,
+          `Executing beforeInstall hook for ${MOCK_TOOL_NAME}.`,
+          `Finished executing beforeInstall hook for ${MOCK_TOOL_NAME}.`,
+          // otherChanges from installFromGitHubRelease will be [] due to mockResolvedValue
+          `Executing afterInstall hook for ${MOCK_TOOL_NAME}.`,
+          `Finished executing afterInstall hook for ${MOCK_TOOL_NAME}.`,
+        ])
+      );
 
       installFromGitHubReleaseSpy.mockRestore();
     });
   });
 
   describe('installFromGitHubRelease', () => {
-    it('should download and install from GitHub release', async () => {
+    it('should download and install from GitHub release, populating otherChanges', async () => {
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
@@ -339,11 +351,19 @@ describe('Installer', () => {
           assetPattern: 'test-tool-linux-amd64', // Explicitly match the mock asset
         },
       };
-
-      const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+      const initialOtherChanges = ['Initial change'];
+      const context = {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
-      });
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: initialOtherChanges,
+      };
+
+      const result = await (installer as any).installFromGitHubRelease(
+        MOCK_TOOL_NAME,
+        toolConfig,
+        context
+      );
 
       expect(mockGetLatestRelease).toHaveBeenCalledWith('owner', 'repo');
       expect(mockDownload).toHaveBeenCalledWith(
@@ -352,10 +372,33 @@ describe('Installer', () => {
           destinationPath: expect.stringContaining('test-tool-linux-amd64'),
         })
       );
-      expect(mockChmod).toHaveBeenCalled();
+      // If not extracting and not moving, chmod is called once on the downloaded file.
+      // If extracting or moving, it's called on the source and then on the destination.
+      // The current mock setup for this specific test implies no extraction and no move.
+      expect(mockChmod).toHaveBeenCalledTimes(1);
       expect(mockSymlink).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.version).toBe(MOCK_VERSION);
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          ...initialOtherChanges,
+          `Fetched release information for ${MOCK_REPO} (version: ${MOCK_VERSION}).`,
+          `Selected asset "test-tool-linux-amd64" matching pattern "test-tool-linux-amd64".`,
+          'Identified asset for download: test-tool-linux-amd64',
+          `Downloaded asset from https://example.com/test-tool-linux-amd64 to ${path.join(
+            context.installDir,
+            'test-tool-linux-amd64'
+          )}.`,
+          `Set executable permission (0755) on: ${path.join(
+            context.installDir,
+            'test-tool-linux-amd64'
+          )}`, // Assuming moveBinaryTo is not set, so final path is same as download
+          `Created symlink: ${path.join(MOCK_BIN_DIR, MOCK_TOOL_NAME)} -> ${path.join(
+            context.installDir,
+            'test-tool-linux-amd64'
+          )}`,
+        ])
+      );
     });
 
     it('should handle invalid repository format', async () => {
@@ -376,9 +419,10 @@ describe('Installer', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid GitHub repository format');
+      expect(result.otherChanges).toBeDefined();
     });
 
-    it('should handle missing asset', async () => {
+    it('should handle missing asset, populating otherChanges', async () => {
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
@@ -389,19 +433,32 @@ describe('Installer', () => {
           assetPattern: 'non-existent-pattern',
         },
       };
-
-      const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+      const initialOtherChanges = ['Initial change for missing asset test'];
+      const context = {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
-      });
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: initialOtherChanges,
+      };
+
+      const result = await (installer as any).installFromGitHubRelease(
+        MOCK_TOOL_NAME,
+        toolConfig,
+        context
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toContain(
         `No suitable asset found in release "${MOCK_VERSION}" for asset pattern: "non-existent-pattern".`
       );
       expect(result.error).toContain(`Available assets in release "${MOCK_VERSION}":`);
-      // Check for one of the assets from mockGitHubRelease (which is used by this test case for mockGetLatestRelease)
       expect(result.error).toContain('- test-tool-linux-amd64');
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          ...initialOtherChanges,
+          `Fetched release information for ${MOCK_REPO} (version: ${MOCK_VERSION}).`,
+        ])
+      );
     });
   });
 
@@ -709,11 +766,21 @@ describe('Installer', () => {
         isCask: true,
         tap: 'test-tap',
       });
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          "Using 'brew' command for installation.",
+          'Tapping Homebrew repository: test-tap',
+          'Preparing to install Homebrew formula/cask: test-formula',
+          'Executing Homebrew command: brew tap test-tap && brew install --cask test-formula',
+          'Simulated successful execution of Homebrew command.',
+          `Assuming binary path after Homebrew install: /usr/local/bin/${MOCK_TOOL_NAME}`,
+        ])
+      );
     });
   });
 
   describe('installFromCurlScript', () => {
-    it('should download and execute script', async () => {
+    it('should download and execute script, populating otherChanges', async () => {
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
@@ -742,11 +809,32 @@ describe('Installer', () => {
         scriptUrl: 'https://example.com/install.sh',
         shell: 'bash',
       });
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          `Downloaded installation script from https://example.com/install.sh to ${path.join(
+            MOCK_BINARIES_DIR,
+            MOCK_TOOL_NAME,
+            `${MOCK_TOOL_NAME}-install.sh`
+          )}.`,
+          `Set executable permission (0755) on script: ${path.join(
+            MOCK_BINARIES_DIR,
+            MOCK_TOOL_NAME,
+            `${MOCK_TOOL_NAME}-install.sh`
+          )}`,
+          `Executing installation script ${path.join(
+            MOCK_BINARIES_DIR,
+            MOCK_TOOL_NAME,
+            `${MOCK_TOOL_NAME}-install.sh`
+          )} using bash.`,
+          'Simulated successful execution of installation script.',
+          `Assuming binary path after script execution: /usr/local/bin/${MOCK_TOOL_NAME}`,
+        ])
+      );
     });
   });
 
   describe('installFromCurlTar', () => {
-    it('should download and extract tarball', async () => {
+    it('should download and extract tarball, populating otherChanges', async () => {
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
@@ -766,12 +854,24 @@ describe('Installer', () => {
         'extracted',
         'bin/tool' // This comes from toolConfig.installParams.extractPath
       );
-      mockExists.mockImplementation(async (p) => p === expectedExtractedBinaryPath);
-
-      const result = await (installer as any).installFromCurlTar(MOCK_TOOL_NAME, toolConfig, {
-        toolName: MOCK_TOOL_NAME,
-        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
+      const installDir = path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME);
+      const extractDir = path.join(installDir, 'extracted');
+      mockExists.mockImplementation(async (p) => {
+        return p === expectedExtractedBinaryPath || p === extractDir;
       });
+      const initialOtherChanges = ['Initial curl tar change']; // Defined here
+      const context = {
+        // context is defined here
+        toolName: MOCK_TOOL_NAME,
+        installDir,
+        otherChanges: initialOtherChanges,
+      };
+
+      const result = await (installer as any).installFromCurlTar(
+        MOCK_TOOL_NAME,
+        toolConfig,
+        context // Pass the defined context
+      );
 
       expect(mockDownload).toHaveBeenCalledWith(
         'https://example.com/archive.tar.gz',
@@ -787,11 +887,31 @@ describe('Installer', () => {
       expect(result.info).toEqual({
         tarballUrl: 'https://example.com/archive.tar.gz',
       });
+      const tarballPath = path.join(installDir, `${MOCK_TOOL_NAME}.tar.gz`);
+      const extractedBinaryPath = path.join(extractDir, 'bin/tool');
+      const finalBinaryDestPath = path.join(installDir, 'bin/tool-renamed');
+      const symlinkPath = path.join(MOCK_BIN_DIR, MOCK_TOOL_NAME);
+
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          ...initialOtherChanges,
+          `Downloaded tarball from https://example.com/archive.tar.gz to ${tarballPath}.`,
+          `Starting extraction of tarball: ${tarballPath}`,
+          `Ensured extraction directory exists: ${extractDir}`,
+          `Extracted tarball ${tarballPath} to ${extractDir}. Files: test-tool-linux-amd64.`, // Mocked extract result
+          `Determined binary path after extraction: ${extractedBinaryPath}`,
+          `Set executable permission (0755) on: ${extractedBinaryPath}`,
+          `Copied binary from ${extractedBinaryPath} to ${finalBinaryDestPath}.`,
+          `Set executable permission (0755) on: ${finalBinaryDestPath}`,
+          `Cleaned up temporary extraction directory: ${extractDir}`, // This should be present
+          `Created symlink: ${symlinkPath} -> ${finalBinaryDestPath}`,
+        ])
+      );
     });
   });
 
   describe('installFromPip', () => {
-    it('should simulate pip installation', async () => {
+    it('should simulate pip installation, populating otherChanges', async () => {
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
@@ -811,53 +931,79 @@ describe('Installer', () => {
       expect(result.info).toEqual({
         packageName: 'test-package',
       });
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          "Using 'pip3' command for installation.",
+          'Preparing to install pip package: test-package',
+          'Executing pip command: pip3 install test-package',
+          'Simulated successful execution of pip command.',
+          `Assuming binary path after pip install: /usr/local/bin/${MOCK_TOOL_NAME}`,
+        ])
+      );
     });
   });
 
   describe('installManually', () => {
-    it('should check if binary exists', async () => {
+    it('should check if binary exists, populating otherChanges', async () => {
       mockExists.mockResolvedValue(true);
-
+      const manualBinaryPath = '/usr/local/bin/test-tool';
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
         version: MOCK_VERSION,
         installationMethod: 'manual',
         installParams: {
-          binaryPath: '/usr/local/bin/test-tool',
+          binaryPath: manualBinaryPath,
         } as any,
       };
-
-      const result = await (installer as any).installManually(MOCK_TOOL_NAME, toolConfig, {
+      const context = {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
-      });
+        otherChanges: ['Initial manual change'],
+      };
 
-      expect(mockExists).toHaveBeenCalledWith('/usr/local/bin/test-tool');
+      const result = await (installer as any).installManually(MOCK_TOOL_NAME, toolConfig, context);
+
+      expect(mockExists).toHaveBeenCalledWith(manualBinaryPath);
       expect(result.success).toBe(true);
-      expect(result.binaryPath).toBe('/usr/local/bin/test-tool');
+      expect(result.binaryPath).toBe(manualBinaryPath);
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          'Initial manual change',
+          `Manual installation: expecting binary at ${manualBinaryPath}.`,
+          `Binary found at specified path: ${manualBinaryPath}.`,
+        ])
+      );
     });
 
-    it('should return error if binary does not exist', async () => {
+    it('should return error if binary does not exist, populating otherChanges', async () => {
       mockExists.mockResolvedValue(false);
-
+      const manualBinaryPath = '/usr/local/bin/non-existent-tool';
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
         binaries: [MOCK_TOOL_NAME],
         version: MOCK_VERSION,
         installationMethod: 'manual',
         installParams: {
-          binaryPath: '/usr/local/bin/test-tool',
+          binaryPath: manualBinaryPath,
         } as any,
       };
-
-      const result = await (installer as any).installManually(MOCK_TOOL_NAME, toolConfig, {
+      const context = {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
-      });
+        otherChanges: ['Initial manual error change'],
+      };
+      const result = await (installer as any).installManually(MOCK_TOOL_NAME, toolConfig, context);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Binary not found');
+      expect(result.otherChanges).toEqual(
+        expect.arrayContaining([
+          'Initial manual error change',
+          `Manual installation: expecting binary at ${manualBinaryPath}.`,
+          `Binary not found at specified path: ${manualBinaryPath}.`,
+        ])
+      );
     });
   });
 });
