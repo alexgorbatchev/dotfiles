@@ -122,10 +122,17 @@ export interface BaseInstallParams {
  * Parameters for installing a tool from a GitHub Release.
  * This method involves fetching release information from GitHub, downloading a release asset,
  * extracting it (if it's an archive), and then locating/moving the binary.
+ * This is analogous to Zinit's `from"gh-r"` ice.
+ * @example Zinit equivalent for fetching a release:
+ * ```zsh
+ * zinit ice from"gh-r"
+ * zinit light "junegunn/fzf"
+ * ```
  */
 export interface GithubReleaseInstallParams extends BaseInstallParams {
   /**
    * The GitHub repository in "owner/repo" format (e.g., `junegunn/fzf`).
+   * Corresponds to the main argument for Zinit's `from"gh-r"`.
    */
   repo: string;
   /**
@@ -133,6 +140,12 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    * This helps select the correct file if a release has multiple assets (e.g., for different OS/architectures).
    * Example: `*linux_amd64.tar.gz` or `/fzf-.*-linux_amd64\.tar\.gz/`.
    * If `assetSelector` is provided, this pattern might be used by it or ignored.
+   * Similar to Zinit's `bpick'{pattern}'` ice.
+   * @example Zinit `bpick`:
+   * ```zsh
+   * zinit ice from"gh-r" bpick"*linux_amd64.tar.gz"
+   * zinit light "sharkdp/bat"
+   * ```
    */
   assetPattern?: string;
   /**
@@ -140,6 +153,12 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    * For example, if an archive extracts to `fzf-0.30.0/` and the binary is `fzf-0.30.0/bin/fzf`,
    * this would be `bin/fzf` (relative to the archive's root after stripping components).
    * If not provided, the system may try to auto-detect the binary.
+   * Similar to Zinit's `pick'{file}'` ice.
+   * @example Zinit `pick`:
+   * ```zsh
+   * zinit ice from"gh-r" pick"mytool-*\/bin/mytool"
+   * zinit light "user/mytool"
+   * ```
    */
   binaryPath?: string;
   /**
@@ -147,12 +166,24 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    * This path is relative to the `installDir` (see {@link InstallHookContext.installDir}).
    * If it's just a name (e.g., `mytool`), the binary will be placed in `installDir/mytool`.
    * If it's a relative path (e.g., `libexec/mytool`), it will be `installDir/libexec/mytool`.
+   * Similar to Zinit's `mv` ice or how `pick` implies the final binary name within the tool's directory.
+   * @example Zinit conceptual `mv` ice:
+   * ```zsh
+   * zinit ice mv"oldname newname" pick"oldname"
+   * zinit light "user/tool"
+   * ```
    */
   moveBinaryTo?: string;
   /**
    * A specific version string (e.g., `v1.2.3`, `0.48.0`) or a SemVer constraint
    * (e.g., `^1.0.0`, `~2.3.x`) for the release to target.
    * If omitted, the latest stable release is typically targeted.
+   * Similar to Zinit's `ver'{version_tag}'` ice.
+   * @example Zinit `ver`:
+   * ```zsh
+   * zinit ice ver"v1.2.3" from"gh-r"
+   * zinit light "user/mycli"
+   * ```
    */
   version?: string;
   /**
@@ -183,6 +214,12 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    * The number of leading directory components to strip from file paths during archive extraction.
    * For example, if an archive contains `tool-v1.0/bin/tool` and `stripComponents` is 1,
    * the extracted path will be `bin/tool`.
+   * This is similar to `tar --strip-components=N` and Zinit's `extract` ice capabilities (though Zinit's `extract` is more complex).
+   * @example Zinit conceptual `extract` with stripping:
+   * ```zsh
+   * zinit ice extract"strip_components=1" # Conceptual, Zinit's actual mechanism is part of `ziextract`
+   * zinit light "user/archived-tool"
+   * ```
    * @default 0
    */
   stripComponents?: number;
@@ -216,6 +253,12 @@ export interface BrewInstallParams extends BaseInstallParams {
  * Parameters for installing a tool by downloading and executing a shell script using `curl`.
  * This method involves fetching a script from a URL and piping it to a shell.
  * Example: `curl -fsSL <url> | sh`.
+ * This is analogous to Zinit's `dl` ice combined with `atclone` for script execution.
+ * @example Zinit equivalent:
+ * ```zsh
+ * zinit ice dl"https://install.sh/myscript" atclone"sh myscript"
+ * zinit snippet "https://install.sh/myscript"
+ * ```
  */
 export interface CurlScriptInstallParams extends BaseInstallParams {
   /** The URL of the installation script to download. */
@@ -227,6 +270,12 @@ export interface CurlScriptInstallParams extends BaseInstallParams {
 /**
  * Parameters for installing a tool by downloading a tarball (`.tar`, `.tar.gz`, etc.) using `curl`,
  * then extracting it and potentially moving a binary from within.
+ * This is analogous to Zinit's `dl` ice for archives, combined with `extract` and `pick`.
+ * @example Zinit equivalent:
+ * ```zsh
+ * zinit ice dl"https://example.com/tool.tar.gz" extract pick"bin/tool" # Conceptual
+ * zinit light "user/tool-from-tarball"
+ * ```
  */
 export interface CurlTarInstallParams extends BaseInstallParams {
   /** The URL of the tarball to download. */
@@ -300,9 +349,16 @@ export interface ToolConfigBuilder {
    * (e.g., `~/.generated/bin/`). This shim will then point to the actual installed tool binary.
    * @param names - A single binary name (e.g., `'fzf'`) or an array of binary names (e.g., `['git', 'git-lfs']`).
    * @returns The `ToolConfigBuilder` instance for chaining.
-   * @example
+   * @example Generator:
+   * ```typescript
    * c.bin('mytool')
    * c.bin(['main-tool', 'helper-tool'])
+   * ```
+   * @example Zinit `as'program'` or `id-as` define the tool's identity, and `pick` points to the binary:
+   * ```zsh
+   * zinit ice id-as"mytool" as"program" pick"actual_binary_name"
+   * zinit light "user/repo"
+   * ```
    */
   bin(names: string | string[]): this;
 
@@ -310,13 +366,21 @@ export interface ToolConfigBuilder {
    * Specifies the desired version of the tool to be installed.
    * This can be a specific version string (e.g., `'1.2.3'`), a SemVer constraint (e.g., `'^1.0.0'`),
    * or the keyword `'latest'` to always attempt to install the most recent version.
+   * This is analogous to Zinit's `ver` ice.
    * @param version - The version string or constraint.
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @default 'latest'
-   * @example
+   * @example Generator:
+   * ```typescript
    * c.version('2.5.1')
    * c.version('^3.0.0')
    * c.version('latest')
+   * ```
+   * @example Zinit:
+   * ```zsh
+   * zinit ice ver"v1.2.3"
+   * zinit light "user/mycli"
+   * ```
    */
   version(version: string): this;
 
@@ -328,7 +392,13 @@ export interface ToolConfigBuilder {
    * Installs the tool from a GitHub release asset. Requires `repo` (owner/repo).
    * Can specify `assetPattern` or `assetSelector` to find the correct download,
    * `binaryPath` for the executable within an archive, and `version`.
+   * Analogous to Zinit's `from"gh-r"` ice.
    * See {@link GithubReleaseInstallParams}.
+   * @example Zinit `from"gh-r"`:
+   * ```zsh
+   * zinit ice from"gh-r"
+   * zinit light "junegunn/fzf"
+   * ```
    *
    * **Homebrew Method (`'brew'`)**:
    * Installs the tool using Homebrew. Requires `formula` name. Can specify `cask: true` or `tap`.
@@ -336,12 +406,24 @@ export interface ToolConfigBuilder {
    *
    * **Curl Script Method (`'curl-script'`)**:
    * Downloads and executes an installation script via `curl`. Requires `url` of the script and `shell` to use.
+   * Similar to Zinit's `dl` and `atclone` for scripts.
    * See {@link CurlScriptInstallParams}.
+   * @example Zinit `dl` and `atclone` for script:
+   * ```zsh
+   * zinit ice dl"https://install.sh/myscript" atclone"sh myscript"
+   * zinit snippet "https://install.sh/myscript"
+   * ```
    *
    * **Curl Tarball Method (`'curl-tar'`)**:
    * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball
    * and `moveBinaryTo` for the final binary location.
+   * Similar to Zinit's `dl` for archives, combined with `extract` and `pick`.
    * See {@link CurlTarInstallParams}.
+   * @example Zinit `dl` for tarball (conceptual):
+   * ```zsh
+   * zinit ice dl"https://example.com/tool.tar.gz" extract pick"bin/tool" # Conceptual
+   * zinit light "user/tool-from-tarball"
+   * ```
    *
    * **Pip Method (`'pip'`)**:
    * Installs a Python package using `pip`. Requires `packageName`.
@@ -369,19 +451,26 @@ export interface ToolConfigBuilder {
    * archive manipulation after extraction, or final validation steps.
    * @param hooks - An object containing one or more optional hook functions:
    *   `beforeInstall`: Runs before any installation steps.
-   *   `afterDownload`: Runs after the tool's artifact is downloaded.
-   *   `afterExtract`: Runs after an archive is extracted (if applicable).
-   *   `afterInstall`: Runs after the main installation process completes.
+   *   `afterDownload`: Runs after the tool's artifact is downloaded. Similar to Zinit's `atclone` when used after a `dl` operation.
+   *   `afterExtract`: Runs after an archive is extracted (if applicable). Can be used for `make`, `configure` steps.
+   *   `afterInstall`: Runs after the main installation process completes. Similar to Zinit's `atpull` (for updates) or post-`make`/`configure` steps.
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @see AsyncInstallHook
    * @see InstallHookContext
-   * @example
+   * @example Zinit `make` equivalent:
+   * ```zsh
+   * zinit ice make"PREFIX=$ZPFX install"
+   * ```
+   * @example Generator `hooks` for make:
+   * ```typescript
    * c.hooks({
-   *   afterExtract: async (ctx) => {
-   *     // Custom logic using ctx.extractDir, ctx.toolName, etc.
-   *     console.log(`Extracted ${ctx.toolName} to ${ctx.extractDir}`);
+   *   afterInstall: async (ctx) => { // Or afterExtract depending on when make should run
+   *     if (ctx.extractDir) {
+   *       await $`cd ${ctx.extractDir} && make PREFIX=${ctx.installDir} install`;
+   *     }
    *   }
    * })
+   * ```
    */
   hooks(hooks: {
     beforeInstall?: AsyncInstallHook;
