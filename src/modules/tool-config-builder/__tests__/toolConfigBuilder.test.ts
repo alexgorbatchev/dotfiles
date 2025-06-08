@@ -27,47 +27,48 @@ import type { AsyncInstallHook, GithubReleaseInstallParams } from '../../../type
 describe('ToolConfigBuilder', () => {
   test('constructor initializes with default values', () => {
     const builder = new ToolConfigBuilder('test-tool');
-    // Access internal config for this specific test, as build() would throw
-    const internalConfig = (builder as any).config;
-
-    expect(internalConfig.name).toBe('test-tool');
-    expect(internalConfig.version).toBe('latest');
-    expect(internalConfig.binaries).toEqual([]);
-    expect(internalConfig.zshInit).toEqual([]);
-    expect(internalConfig.symlinks).toEqual([]);
-    expect(internalConfig.installationMethod).toBeUndefined();
-    expect(internalConfig.installParams).toBeUndefined();
-    expect(internalConfig.completions).toBeUndefined();
+    expect((builder as any).toolName).toBe('test-tool');
+    expect((builder as any).versionNum).toBe('latest');
+    expect((builder as any).binaries).toEqual([]);
+    expect((builder as any).zshScripts).toEqual([]);
+    expect((builder as any).symlinkPairs).toEqual([]);
+    expect((builder as any).currentInstallationMethod).toBeUndefined();
+    expect((builder as any).currentInstallParams).toBeUndefined();
+    expect((builder as any).completionSettings).toBeUndefined();
   });
 
   test('bin method sets binaries correctly', () => {
     const builder = new ToolConfigBuilder('test-tool');
     builder.bin('test-bin');
-    expect((builder as any).config.binaries).toEqual(['test-bin']);
+    expect((builder as any).binaries).toEqual(['test-bin']);
 
     const builder2 = new ToolConfigBuilder('test-tool');
     builder2.bin(['bin1', 'bin2']);
-    expect((builder2 as any).config.binaries).toEqual(['bin1', 'bin2']);
+    expect((builder2 as any).binaries).toEqual(['bin1', 'bin2']);
   });
 
   test('version method sets version correctly', () => {
     const builder = new ToolConfigBuilder('test-tool');
     builder.version('1.2.3');
-    expect((builder as any).config.version).toBe('1.2.3');
+    expect((builder as any).versionNum).toBe('1.2.3');
   });
 
   test('install method sets installation method and params correctly', () => {
     const builder = new ToolConfigBuilder('test-tool');
+    builder.bin(['test-bin']); // Add bin to make build valid
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     builder.install('github-release', installParams);
-    const config = builder.build(); // build() is valid here
+    const config = builder.build();
 
     expect(config.installationMethod).toBe('github-release');
-    expect(config.installParams).toEqual(installParams);
+    if (config.installationMethod === 'github-release') {
+      expect(config.installParams).toEqual(installParams);
+    }
   });
 
   test('hooks method sets hooks correctly on installParams', () => {
     const builder = new ToolConfigBuilder('test-tool');
+    builder.bin(['test-bin']); // Add bin to make build valid
     const mockHook: AsyncInstallHook = async () => {};
     const hooks = { beforeInstall: mockHook };
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
@@ -75,18 +76,19 @@ describe('ToolConfigBuilder', () => {
     builder.install('github-release', installParams);
     builder.hooks(hooks);
 
-    const config = builder.build(); // build() is valid here
-    expect(config.installParams?.hooks).toEqual(hooks);
+    const config = builder.build();
+    if (config.installationMethod === 'github-release') {
+      expect(config.installParams?.hooks).toEqual(hooks);
+    }
   });
 
   test('hooks method does not set hooks if install was not called first', () => {
     const builder = new ToolConfigBuilder('test-tool');
     const mockHook: AsyncInstallHook = async () => {};
     const hooks = { beforeInstall: mockHook };
-    builder.hooks(hooks);
-    // Access internal config as build() would throw
-    const internalConfig = (builder as any).config;
-    expect(internalConfig.installParams?.hooks).toBeUndefined();
+    builder.hooks(hooks); // Call hooks without install
+    // Check internal state directly
+    expect((builder as any).currentInstallParams?.hooks).toBeUndefined();
   });
 
   test('zsh method adds zsh code correctly to zshInit', () => {
@@ -108,27 +110,36 @@ describe('ToolConfigBuilder', () => {
     ]);
   });
 
-  test('arch method stores architecture overrides correctly', () => {
+  test('arch method stores architecture overrides correctly and reflects in build', () => {
     const builder = new ToolConfigBuilder('test-tool');
     const overrideFn = (c: IToolConfigBuilder) => {
       c.version('2.0.0');
     };
     builder.arch('darwin-aarch64', overrideFn);
-    // Test that the override is stored
-    expect((builder as any).osArchOverrides['darwin-aarch64']).toBe(overrideFn);
-    // Also check that the main config version is not yet changed
-    expect((builder as any).config.version).toBe('latest');
+    // Test that the override function is stored internally
+    expect((builder as any).archOverrideConfigs['darwin-aarch64']).toBe(overrideFn);
+    // Also check that the main config version is not yet changed by merely defining an override
+    expect((builder as any).versionNum).toBe('latest');
+
+    // Build the config (it needs at least one defining property like binaries, zsh, or symlinks)
+    builder.bin(['test-bin']); // Add a binary to make it a valid NoInstallToolConfig
+    const configWithArch = builder.build();
+    expect(configWithArch.archOverrides).toEqual({}); // Should be an empty object placeholder
+
+    const builderNoArch = new ToolConfigBuilder('test-tool-no-arch');
+    builderNoArch.bin(['test-bin']);
+    const configNoArch = builderNoArch.build();
+    expect(configNoArch.archOverrides).toBeUndefined();
   });
 
   test('completions method sets completion configuration correctly', () => {
     const builder = new ToolConfigBuilder('test-tool');
     const completionConfig = { zsh: { source: 'completion.zsh' } };
     builder.completions(completionConfig);
-    // Access internal config as build() might throw if no other valid config is set
-    expect((builder as any).config.completions).toEqual(completionConfig);
+    expect((builder as any).completionSettings).toEqual(completionConfig);
   });
 
-  test('build method returns correct ToolConfig object', () => {
+  test('build method returns correct ToolConfig object for github-release', () => {
     const builder = new ToolConfigBuilder('test-tool');
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     const mockHook: AsyncInstallHook = async () => {};
@@ -150,7 +161,9 @@ describe('ToolConfigBuilder', () => {
     expect(config.binaries).toEqual(['tool-bin']);
     expect(config.version).toBe('1.0.0');
     expect(config.installationMethod).toBe('github-release');
-    expect(config.installParams).toEqual({ ...installParams, hooks });
+    if (config.installationMethod === 'github-release') {
+      expect(config.installParams).toEqual({ ...installParams, hooks });
+    }
     expect(config.zshInit).toEqual(['alias tt="test-tool"']);
     expect(config.symlinks).toEqual([
       { source: 'config.yml', target: '~/.config/tool/config.yml' },
@@ -158,39 +171,55 @@ describe('ToolConfigBuilder', () => {
     expect(config.completions).toEqual(completionConfig);
   });
 
-  test('build method throws error if binaries are specified but no installation method', () => {
+  test('build method returns NoInstallToolConfig if binaries are specified but no installation method', () => {
     const builder = new ToolConfigBuilder('test-tool');
-    builder.bin('test-bin');
-    expect(() => builder.build()).toThrow(
-      'Installation method is required if binaries are specified.'
-    );
+    builder.bin(['test-bin']);
+    const config = builder.build();
+    expect(config.name).toBe('test-tool');
+    expect(config.binaries).toEqual(['test-bin']);
+    expect(config.installationMethod).toBe('none');
+    expect(config.installParams).toBeUndefined();
+    // Ensure other optional fields are undefined if not set
+    expect(config.zshInit).toBeUndefined();
+    expect(config.symlinks).toBeUndefined();
+    expect(config.completions).toBeUndefined();
+    expect(config.updateCheck).toBeUndefined();
+    expect(config.archOverrides).toBeUndefined();
   });
 
-  test('build method does not throw error if no binaries and no installation method but zshInit is present', () => {
+  test('build method returns NoInstallToolConfig if only zshInit is present', () => {
     const builder = new ToolConfigBuilder('test-tool');
     builder.zsh('alias tt="test-tool"');
-    expect(() => builder.build()).not.toThrow();
     const config = builder.build();
-    expect(config.installationMethod).toBeUndefined();
+    expect(config.installationMethod).toBe('none'); // Should be 'none'
+    expect(config.installParams).toBeUndefined();
     expect(config.binaries).toEqual([]);
     expect(config.zshInit).toEqual(['alias tt="test-tool"']);
   });
 
-  test('build method does not throw error if no binaries and no installation method but symlinks are present', () => {
+  test('build method returns NoInstallToolConfig if only symlinks are present', () => {
     const builder = new ToolConfigBuilder('test-tool');
     builder.symlink('a', 'b');
-    expect(() => builder.build()).not.toThrow();
     const config = builder.build();
-    expect(config.installationMethod).toBeUndefined();
+    expect(config.installationMethod).toBe('none'); // Should be 'none'
+    expect(config.installParams).toBeUndefined();
     expect(config.binaries).toEqual([]);
     expect(config.symlinks).toEqual([{ source: 'a', target: 'b' }]);
   });
 
-  test('build method throws error if no binaries, no install method, no zsh, and no symlinks', () => {
+  test('build method throws error if nothing is configured', () => {
     const builder = new ToolConfigBuilder('test-tool');
-    // No configuration calls
     expect(() => builder.build()).toThrow(
-      'Installation method is required if no zshInit, symlinks, or binaries are defined.'
+      'Tool "test-tool" must define at least binaries, zshInit, or symlinks.'
     );
+  });
+
+  test('build method returns NoInstallToolConfig with binaries if set, but no install method', () => {
+    const builder = new ToolConfigBuilder('test-tool');
+    builder.bin(['my-binary']);
+    const config = builder.build();
+    expect(config.installationMethod).toBe('none'); // Should be 'none'
+    expect(config.installParams).toBeUndefined();
+    expect(config.binaries).toEqual(['my-binary']);
   });
 });

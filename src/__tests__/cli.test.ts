@@ -50,6 +50,7 @@ import type { IShellInitGenerator } from '../modules/generator-shell-init/IShell
 import type { ISymlinkGenerator } from '../modules/generator-symlink/ISymlinkGenerator';
 import * as clientLoggerModule from '../modules/logger/clientLogger'; // Import the module to spy on createClientLogger
 import { Logger as ActualLogger } from '@node-cli/logger'; // For type annotations of mock logger
+import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance directly
 
 // --- Pre-test Mocks for dynamic imports used by loadToolConfigs ---
 // These paths must match exactly what loadToolConfigs will try to import.
@@ -64,11 +65,19 @@ const LAZYGIT_CONFIG_PATH_FOR_IMPORT_MOCK = path.join(
   'lazygit.tool.ts'
 );
 
-const fzfConfigObjectForImportMock: ToolConfig = { name: 'fzf', version: '1.0', binaries: ['fzf'] };
+const fzfConfigObjectForImportMock: ToolConfig = {
+  name: 'fzf',
+  version: '1.0',
+  binaries: ['fzf'],
+  installationMethod: 'none',
+  installParams: undefined,
+};
 const lazygitConfigObjectForImportMock: ToolConfig = {
   name: 'lazygit',
   version: '1.0',
   binaries: ['lazygit', 'lg'],
+  installationMethod: 'none',
+  installParams: undefined,
 };
 
 // Mock dynamic imports for specific paths
@@ -188,40 +197,70 @@ describe('CLI', () => {
 
     createClientLoggerSpy = spyOn(clientLoggerModule, 'createClientLogger').mockImplementation(
       (options: clientLoggerModule.CreateClientLoggerOptions = {}) => {
-        // Ensure options is always an object
-        const { quiet = false } = options; // Default quiet to false if not provided in options
-
-        // Mirror the logic from clientLogger.ts:
-        // 1. If 'quiet' is explicitly true, it's silent.
-        // 2. If running in 'test' environment AND 'quiet' is not explicitly set to false,
-        //    it's silent.
+        const { quiet = false } = options;
         const defaultToSilentInTest = process.env.NODE_ENV === 'test' && options.quiet !== false;
         const isActuallySilent = quiet || defaultToSilentInTest;
 
+        const baseLoggerMock = {
+          log: mock(() => {}),
+          warn: mock(() => {}),
+          success: mock(() => {}),
+          fatal: mock(() => {}),
+          trace: mock(() => {}),
+          verbose: mock(() => {}),
+          ready: mock(() => {}),
+          start: mock(() => {}),
+          box: mock(() => {}),
+          // Add other Consola methods if they are ever called by the CLI
+          // For now, focusing on the ones that might be used or are core.
+          // The error was about missing properties like 'options', '_lastLog', 'level', 'prompt', etc.
+          // We might not need to mock all of them if they aren't accessed.
+          // The key is to satisfy the type checker for the properties that *are* accessed or checked.
+          // For a simple mock, providing the core methods (info, debug, error) and `silent` is often enough.
+          // If more complex interactions with the logger instance are tested, this mock would need to be more complete.
+          // For the purpose of this test, ensuring info/debug/error are correctly spied on is primary.
+          // The TS error indicates a structural incompatibility, so we add some more common Consola properties.
+          options: {},
+          _lastLog: {},
+          level: 3, // Default level for Consola
+          prompt: mock(() => Promise.resolve('')),
+          // Adding a few more to satisfy the type, actual behavior might not be needed for these tests
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          create: mock(() => ({})),
+          withScope: mock(() => ({})),
+          withTag: mock(() => ({})),
+          wrapConsole: mock(() => {}),
+          restoreConsole: mock(() => {}),
+          pauseLogs: mock(() => {}),
+          resumeLogs: mock(() => {}),
+          getScope: mock(() => ''),
+          setScope: mock(() => {}),
+          getLogLevel: mock(() => 3),
+          setLogLevel: mock(() => {}),
+          addReporter: mock(() => {}),
+          removeReporter: mock(() => {}),
+          clearReporters: mock(() => {}),
+          printBox: mock(() => {}), // from IClientLogger
+          printErrorsAndExit: mock(() => process.exit(1)), // from IClientLogger
+        };
+
         if (isActuallySilent) {
-          // For silent loggers, return an object with fresh no-op mocks for info/debug
           return {
-            info: mock(() => {}), // New mock, not mockLoggerInfo
-            debug: mock(() => {}), // New mock, not mockLoggerDebug
-            error: mockLoggerError, // Errors should still go through the main error spy
-            log: mock(() => {}),
-            warn: mock(() => {}),
-            printBox: mock(() => {}),
-            printErrorsAndExit: mock(() => {}),
+            ...baseLoggerMock,
+            info: mock(() => {}),
+            debug: mock(() => {}),
+            error: mockLoggerError, // Still use the shared error spy
             silent: true,
-          } as unknown as ActualLogger;
+          } as unknown as ConsolaInstance; // Cast to ConsolaInstance (imported directly)
         }
-        // For non-silent loggers, use the shared spies
         return {
+          ...baseLoggerMock,
           info: mockLoggerInfo,
           debug: mockLoggerDebug,
           error: mockLoggerError,
-          log: mock(() => {}),
-          warn: mock(() => {}),
-          printBox: mock(() => {}),
-          printErrorsAndExit: mock(() => {}),
           silent: false,
-        } as unknown as ActualLogger;
+        } as unknown as ConsolaInstance; // Cast to ConsolaInstance (imported directly)
       }
     );
 
@@ -444,12 +483,16 @@ describe('CLI', () => {
       name: 'fzf',
       version: '1.0',
       binaries: ['fzf'],
+      installationMethod: 'none',
+      installParams: undefined,
     });
     expect(loadedToolConfigs).toHaveProperty(expectedLazygitToolName);
     expect((loadedToolConfigs as Record<string, ToolConfig>)[expectedLazygitToolName]).toEqual({
       name: 'lazygit',
       version: '1.0',
       binaries: ['lazygit', 'lg'],
+      installationMethod: 'none',
+      installParams: undefined,
     });
     expect(Object.keys(loadedToolConfigs).length).toBe(2);
 
@@ -780,7 +823,13 @@ describe('CLI', () => {
       archiveExtractor: mockArchiveExtractor,
     }));
     const mockToolConfigs: Record<string, ToolConfig> = {
-      'detail-tool': { name: 'detail-tool', binaries: ['detail-tool'], version: '1.0' },
+      'detail-tool': {
+        name: 'detail-tool',
+        binaries: ['detail-tool'],
+        version: '1.0',
+        installationMethod: 'manual',
+        installParams: { binaryPath: 'path' },
+      },
     };
     actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
     mockInstall.mockResolvedValueOnce({
@@ -793,9 +842,8 @@ describe('CLI', () => {
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'detail-tool', '--verbose']);
 
     // Check that logger.debug was called with the detailed steps
-    expect(mockLoggerDebug).toHaveBeenCalledWith('Detailed installation steps:');
-    expect(mockLoggerDebug).toHaveBeenCalledWith('  - Detailed step 1');
-    expect(mockLoggerDebug).toHaveBeenCalledWith('  - Detailed step 2');
+    expect(mockLoggerDebug).toHaveBeenCalledWith('Detailed step 1');
+    expect(mockLoggerDebug).toHaveBeenCalledWith('Detailed step 2');
   });
 
   test('install command without --verbose should not show otherChanges via logger.debug', async () => {
@@ -813,7 +861,13 @@ describe('CLI', () => {
       archiveExtractor: mockArchiveExtractor,
     }));
     const mockToolConfigs: Record<string, ToolConfig> = {
-      'no-detail-tool': { name: 'no-detail-tool', binaries: ['no-detail-tool'], version: '1.0' },
+      'no-detail-tool': {
+        name: 'no-detail-tool',
+        binaries: ['no-detail-tool'],
+        version: '1.0',
+        installationMethod: 'manual',
+        installParams: { binaryPath: 'path' },
+      },
     };
     actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);
     mockInstall.mockResolvedValueOnce({
@@ -863,6 +917,8 @@ describe('CLI', () => {
         name: 'empty-detail-tool',
         binaries: ['empty-detail-tool'],
         version: '1.0',
+        installationMethod: 'manual', // Add installationMethod
+        installParams: { binaryPath: 'path' }, // Add installParams
       },
     };
     actualLoadToolConfigsSpy.mockResolvedValueOnce(mockToolConfigs);

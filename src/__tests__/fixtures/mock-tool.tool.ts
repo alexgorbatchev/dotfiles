@@ -6,7 +6,7 @@ const config: ToolConfig = {
   version: '1.0.0',
   installationMethod: 'manual',
   installParams: {
-    // No params needed for manual installation
+    binaryPath: '/usr/local/bin/mock-tool', // Provide a mock binary path
   },
 };
 

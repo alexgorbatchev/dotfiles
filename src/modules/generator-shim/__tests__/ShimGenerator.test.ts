@@ -100,6 +100,8 @@ describe('ShimGenerator', () => {
       name: toolName,
       binaries: ['my-tool-binary'],
       version: '1.0.0',
+      installationMethod: 'none',
+      installParams: undefined,
     };
     const expectedShimPath = path.join(MOCK_TARGET_DIR, toolName); // Use MOCK_TARGET_DIR
     const expectedBinaryPath = path.join(MOCK_BIN_DIR, 'my-tool-binary');
@@ -134,7 +136,13 @@ describe('ShimGenerator', () => {
     });
 
     it('should use toolName as binary name if toolConfig.binaries is empty and return path', async () => {
-      const configNoBinaries: ToolConfig = { name: toolName, version: '1.0.0', binaries: [] };
+      const configNoBinaries: ToolConfig = {
+        name: toolName,
+        version: '1.0.0',
+        binaries: [],
+        installationMethod: 'none',
+        installParams: undefined,
+      };
       const expectedBinaryPathFallback = path.join(MOCK_BIN_DIR, toolName);
       const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
 
@@ -150,6 +158,8 @@ describe('ShimGenerator', () => {
         name: toolName,
         version: '1.0.0',
         binaries: undefined as any,
+        installationMethod: 'none',
+        installParams: undefined,
       };
       const expectedBinaryPathFallback = path.join(MOCK_BIN_DIR, toolName);
       const result = await shimGenerator.generateForTool(toolName, configUndefinedBinaries);
@@ -216,8 +226,20 @@ describe('ShimGenerator', () => {
   describe('generate', () => {
     it('should call generateForTool for each tool config and return all paths', async () => {
       const configs: Record<string, ToolConfig> = {
-        'tool-a': { name: 'tool-a', binaries: ['tool-a-bin'], version: '1.0' },
-        'tool-b': { name: 'tool-b', binaries: ['tool-b-bin'], version: '2.0' },
+        'tool-a': {
+          name: 'tool-a',
+          binaries: ['tool-a-bin'],
+          version: '1.0',
+          installationMethod: 'none',
+          installParams: undefined,
+        },
+        'tool-b': {
+          name: 'tool-b',
+          binaries: ['tool-b-bin'],
+          version: '2.0',
+          installationMethod: 'none',
+          installParams: undefined,
+        },
       };
       const expectedPathA = path.join(MOCK_TARGET_DIR, 'tool-a');
       const expectedPathB = path.join(MOCK_TARGET_DIR, 'tool-b');
@@ -247,7 +269,13 @@ describe('ShimGenerator', () => {
 
     it('should pass options (like overwrite) to generateForTool and return paths', async () => {
       const configs: Record<string, ToolConfig> = {
-        'tool-a': { name: 'tool-a', binaries: ['tool-a-bin'], version: '1.0' },
+        'tool-a': {
+          name: 'tool-a',
+          binaries: ['tool-a-bin'],
+          version: '1.0',
+          installationMethod: 'none',
+          installParams: undefined,
+        },
       };
       // dryRun is removed from options here
       const options = { overwrite: true };

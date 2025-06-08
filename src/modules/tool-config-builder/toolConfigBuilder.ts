@@ -102,36 +102,42 @@ export interface IToolConfigBuilder {
 }
 
 export class ToolConfigBuilder implements IToolConfigBuilder {
-  private config: Partial<ToolConfig> = {};
-  private osArchOverrides: { [key: string]: (c: IToolConfigBuilder) => void } = {};
+  // Store parts of the config as they are built
+  private toolName: string;
+  private binaries: string[] = [];
+  private versionNum: string = 'latest';
+  private currentInstallationMethod?: ToolConfig['installationMethod'];
+  private currentInstallParams?: ToolConfig['installParams'];
+  private zshScripts: string[] = [];
+  private symlinkPairs: { source: string; target: string }[] = [];
+  private archOverrideConfigs: { [key: string]: (c: IToolConfigBuilder) => void } = {};
+  private completionSettings?: CompletionConfig;
+  private updateCheckConfig?: ToolConfig['updateCheck'];
 
   constructor(toolName: string) {
-    this.config.name = toolName;
-    this.config.version = 'latest'; // Default version
-    this.config.binaries = [];
-    this.config.zshInit = []; // Use zshInit to match ToolConfig
-    this.config.symlinks = [];
+    this.toolName = toolName;
   }
 
   bin(names: string | string[]): this {
-    this.config.binaries = Array.isArray(names) ? names : [names];
+    this.binaries = Array.isArray(names) ? names : [names];
     return this;
   }
 
   version(version: string): this {
-    this.config.version = version;
+    this.versionNum = version;
     return this;
   }
 
+  // Overloaded install method
   install(method: 'github-release', params: GithubReleaseInstallParams): this;
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
   install(method: 'pip', params: PipInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
-  install(method: any, params: any): this {
-    this.config.installationMethod = method;
-    this.config.installParams = params;
+  install(method: ToolConfig['installationMethod'], params: ToolConfig['installParams']): this {
+    this.currentInstallationMethod = method;
+    this.currentInstallParams = params;
     return this;
   }
 
@@ -141,87 +147,95 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
     afterExtract?: AsyncInstallHook;
     afterInstall?: AsyncInstallHook;
   }): this {
-    // Hooks are part of installParams, so merge them there
-    if (this.config.installParams) {
-      this.config.installParams.hooks = hooks;
+    if (this.currentInstallParams) {
+      this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
     } else {
-      // If installParams is not set yet, we might need to initialize it
-      // or decide how to handle hooks without an installation method.
-      // For now, let's assume install() is called before hooks() if hooks are method-specific.
-      // Or, hooks can be top-level if they are general.
-      // Based on current ToolConfig, hooks are part of BaseInstallParams.
-      // This implies install() must be called first.
-      // Let's throw an error or handle this more gracefully if installParams is undefined.
-      // For now, we'll assume installParams is set.
-      // A more robust solution might involve a temporary storage for hooks
-      // until install() is called.
+      // This case should ideally be prevented by ensuring install() is called first,
+      // or by initializing installParams with a base structure if hooks can be standalone.
+      // For now, if installParams is not set, we can't set hooks.
+      // Consider throwing an error or logging a warning.
+      console.warn(
+        `[ToolConfigBuilder] hooks() called for tool "${this.toolName}" before install(). Hooks will not be set.`
+      );
     }
-    // The line `this.config.hooks = hooks;` was removed as hooks are now part of installParams
     return this;
   }
 
   zsh(code: string): this {
-    if (!this.config.zshInit) {
-      // Use zshInit
-      this.config.zshInit = [];
-    }
-    this.config.zshInit.push(code); // Use zshInit
+    this.zshScripts.push(code);
     return this;
   }
 
   symlink(source: string, target: string): this {
-    if (!this.config.symlinks) {
-      this.config.symlinks = [];
-    }
-    this.config.symlinks.push({ source, target });
+    this.symlinkPairs.push({ source, target });
     return this;
   }
 
   arch(osArch: string, configureOverrides: (c: IToolConfigBuilder) => void): this {
-    this.osArchOverrides[osArch] = configureOverrides;
+    this.archOverrideConfigs[osArch] = configureOverrides;
     return this;
   }
 
   completions(config: CompletionConfig): this {
-    this.config.completions = config;
+    this.completionSettings = config;
+    return this;
+  }
+
+  // Method to set updateCheck configuration
+  updateCheck(config: ToolConfig['updateCheck']): this {
+    this.updateCheckConfig = config;
     return this;
   }
 
   build(): ToolConfig {
-    // Apply architecture overrides if any
-    // This logic will be handled by the config loader, not the builder itself.
-    // The builder just stores the overrides.
+    const baseProperties = {
+      name: this.toolName,
+      binaries: this.binaries,
+      version: this.versionNum,
+      zshInit: this.zshScripts.length > 0 ? this.zshScripts : undefined,
+      symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
+      completions: this.completionSettings,
+      updateCheck: this.updateCheckConfig,
+      // Arch overrides are handled by the loader, but we store the functions here.
+      // The final ToolConfig structure will have the resolved overrides.
+      // For the builder, we just ensure it's part of the base if needed.
+      archOverrides: Object.keys(this.archOverrideConfigs).length > 0 ? {} : undefined,
+    };
 
-    // Basic validation (more comprehensive validation will be done by Zod later)
-    if (!this.config.name) {
-      throw new Error('Tool name is required.');
-    }
-    // Validation logic:
-    // 1. If binaries are defined, an installationMethod is always required.
-    if (
-      this.config.binaries &&
-      this.config.binaries.length > 0 &&
-      !this.config.installationMethod
-    ) {
-      throw new Error('Installation method is required if binaries are specified.');
-    }
+    // Populate archOverrides by creating new builder instances and calling the override functions
+    // This is a simplified representation; the actual resolution happens in the loader.
+    // Here, we just ensure the property exists if overrides were defined.
+    // The loop `for (const key in this.archOverrideConfigs)` was removed as it was unused.
+    // The archOverrides property on baseProperties is set to an empty object if archOverrideConfigs has keys,
+    // or undefined otherwise. This is sufficient for the builder's responsibility.
 
-    // 2. If no binaries are defined, an installationMethod is only required if
-    //    there are also no zshInit entries AND no symlinks.
-    //    This means if a tool *only* defines zshInit or *only* symlinks (or both),
-    //    it doesn't need an installationMethod.
-    //    But if it defines nothing (no binaries, no zsh, no symlinks), it's an issue.
-    if (
-      (!this.config.binaries || this.config.binaries.length === 0) &&
-      !this.config.installationMethod &&
-      (!this.config.zshInit || this.config.zshInit.length === 0) &&
-      (!this.config.symlinks || this.config.symlinks.length === 0)
-    ) {
-      throw new Error(
-        'Installation method is required if no zshInit, symlinks, or binaries are defined.'
-      );
-    }
+    if (this.currentInstallationMethod && this.currentInstallParams) {
+      // Type assertion is needed here because TypeScript can't automatically infer
+      // the correct variant of ToolConfig based on currentInstallationMethod and currentInstallParams.
+      // The Zod schema will perform the runtime validation.
+      return {
+        ...baseProperties,
+        installationMethod: this.currentInstallationMethod,
+        installParams: this.currentInstallParams,
+      } as ToolConfig;
+    } else {
+      // No installation method defined, return NoInstallToolConfig
+      // Ensure binaries are optional for NoInstallToolConfig if they are empty
+      const finalBinaries =
+        baseProperties.binaries.length > 0 ? baseProperties.binaries : undefined;
 
-    return this.config as ToolConfig;
+      if (!finalBinaries && !baseProperties.zshInit && !baseProperties.symlinks) {
+        throw new Error(
+          `Tool "${this.toolName}" must define at least binaries, zshInit, or symlinks.`
+        );
+      }
+
+      return {
+        ...baseProperties,
+        binaries: finalBinaries || [], // Ensure binaries is an array, even if empty for NoInstallToolConfig
+        installationMethod: 'none', // Set to 'none' for NoInstallToolConfig
+        installParams: undefined,
+      } as ToolConfig; // Cast to ToolConfig, Zod will validate
+    }
   }
 }

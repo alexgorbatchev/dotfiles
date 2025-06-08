@@ -71,15 +71,15 @@ describe('E2E: bun run cli install', () => {
     const mockBinaryContent = `#!/bin/sh\necho "Mock Direct Binary Tool v${mockToolVersion}"`;
 
     const mockToolConfigContent = `
-      import { type ToolConfig } from '../../../../../types';
-      const config: ToolConfig = {
+      import { type GithubReleaseToolConfig } from '../../../../../types'; // Use specific type
+      const config: GithubReleaseToolConfig = { // Use specific type
         name: '${mockToolName}',
         binaries: ['${mockToolName}'],
         version: '${mockToolVersion}',
         installationMethod: 'github-release',
         installParams: {
           repo: 'mock-owner/direct-binary-repo',
-          assetPattern: '${mockAssetFileName}', 
+          assetPattern: '${mockAssetFileName}',
         },
       };
       export default config;
@@ -208,8 +208,8 @@ describe('E2E: bun run cli install', () => {
     const mockBinaryContentInArchive = `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`;
 
     const mockArchiveToolConfigContent = `
-      import { type ToolConfig } from '../../../../../types';
-      const config: ToolConfig = {
+      import { type GithubReleaseToolConfig } from '../../../../../types'; // Use specific type
+      const config: GithubReleaseToolConfig = { // Use specific type
         name: '${mockArchiveToolName}',
         binaries: ['${mockArchiveToolName}'],
         version: '${mockArchiveToolVersion}',
@@ -217,7 +217,7 @@ describe('E2E: bun run cli install', () => {
         installParams: {
           repo: 'mock-owner/archive-repo',
           assetPattern: '${mockArchiveFileName}',
-          binaryPath: '${mockArchiveToolName}',
+          binaryPath: '${mockArchiveToolName}', // This is a valid property for GithubReleaseInstallParams
         },
       };
       export default config;

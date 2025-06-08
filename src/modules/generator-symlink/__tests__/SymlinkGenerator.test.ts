@@ -80,6 +80,8 @@ describe('SymlinkGenerator', () => {
     binaries: ['test-tool'],
     version: '1.0.0',
     symlinks,
+    installationMethod: 'none',
+    installParams: undefined,
   });
 
   it('should create a symlink successfully', async () => {
@@ -275,9 +277,16 @@ describe('SymlinkGenerator', () => {
   it('should return empty array if a toolConfig has no symlinks array', async () => {
     const fsSpySymlink = spyOn(fs, 'symlink');
     const toolConfigs = {
-      tool1: { name: 'test', binaries: [], version: '1.0.0', symlinks: undefined },
+      tool1: {
+        name: 'test',
+        binaries: [],
+        version: '1.0.0',
+        symlinks: undefined,
+        installationMethod: 'none',
+        installParams: undefined,
+      },
     };
-    const results = await symlinkGenerator.generate(toolConfigs);
+    const results = await symlinkGenerator.generate(toolConfigs as Record<string, ToolConfig>);
     expect(results).toEqual([]);
     expect(fsSpySymlink).not.toHaveBeenCalled();
     fsSpySymlink.mockRestore();

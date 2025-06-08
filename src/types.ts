@@ -439,27 +439,82 @@ export interface ToolConfigBuilder {
  */
 export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
 
+// Common properties for all ToolConfig variants
+interface BaseToolConfigProperties {
+  name: string;
+  binaries?: string[]; // Make binaries optional at the base level
+  version: string;
+  zshInit?: string[];
+  symlinks?: { source: string; target: string }[];
+  // Arch overrides can change the installation method, so the type needs to allow any valid ToolConfig structure,
+  // minus the 'name' (which is fixed) and 'archOverrides' (to prevent nesting).
+  // Note: ToolConfig will be a union type, this Omit should work across the union.
+  archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> };
+  completions?: CompletionConfig;
+  updateCheck?: {
+    enabled?: boolean;
+    constraint?: string;
+  };
+}
+
+// Specific ToolConfig types based on installationMethod
+export type GithubReleaseToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'github-release';
+  installParams: GithubReleaseInstallParams;
+  binaries: string[]; // Non-optional for this type
+};
+
+export type BrewToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'brew';
+  installParams: BrewInstallParams;
+  binaries: string[]; // Non-optional for this type
+};
+
+export type CurlScriptToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'curl-script';
+  installParams: CurlScriptInstallParams;
+  binaries: string[]; // Non-optional for this type
+};
+
+export type CurlTarToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'curl-tar';
+  installParams: CurlTarInstallParams;
+  binaries: string[]; // Non-optional for this type
+};
+
+export type PipToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'pip';
+  installParams: PipInstallParams;
+  binaries: string[]; // Non-optional for this type
+};
+
+export type ManualToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'manual';
+  installParams: ManualInstallParams;
+  binaries: string[]; // Non-optional for this type
+};
+
+// For tools that might not have an installation method (e.g., only zshInit or symlinks)
+// or if installation is optional and handled by archOverrides.
+// Binaries are optional here, inherited from BaseToolConfigProperties.
+export type NoInstallToolConfig = BaseToolConfigProperties & {
+  installationMethod: 'none'; // Use 'none' as an explicit discriminant value
+  installParams?: undefined; // Explicitly undefined or absent
+};
+
 /**
  * Represents a tool's complete configuration.
+ * This is a discriminated union based on `installationMethod`.
  * This will be built by the ToolConfigBuilder.
  */
-export interface ToolConfig {
-  name: string; // Name of the tool, derived from its config file name
-  binaries: string[];
-  version: string;
-  installationMethod?: 'github-release' | 'brew' | 'curl-script' | 'curl-tar' | 'pip' | 'manual';
-  installParams?: InstallParams; // Holds the specific params for the chosen method
-  zshInit?: string[]; // Corrected type to string[]
-  symlinks?: { source: string; target: string }[];
-  archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> }; // Simplified, direct overrides
-  completions?: CompletionConfig; // NEW: Completion configuration
-  updateCheck?: {
-    // NEW: Update checking configuration
-    enabled?: boolean;
-    constraint?: string; // e.g., ">=1.0.0", "~1.2.0"
-  };
-  // Hooks are part of InstallParams
-}
+export type ToolConfig =
+  | GithubReleaseToolConfig
+  | BrewToolConfig
+  | CurlScriptToolConfig
+  | CurlTarToolConfig
+  | PipToolConfig
+  | ManualToolConfig
+  | NoInstallToolConfig;
 
 /**
  * Represents an entry in the manifest file.

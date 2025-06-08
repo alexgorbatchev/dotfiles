@@ -149,8 +149,17 @@ describe('GeneratorOrchestrator', () => {
         binaries: ['ta'],
         version: '1.0',
         symlinks: [{ source: 'a.conf', target: '~/.a.conf' }],
+        installationMethod: 'none',
+        installParams: undefined,
       },
-      toolB: { name: 'toolB', binaries: ['tb'], version: '2.0', zshInit: ['export TB=1'] },
+      toolB: {
+        name: 'toolB',
+        binaries: ['tb'],
+        version: '2.0',
+        zshInit: ['export TB=1'],
+        installationMethod: 'none',
+        installParams: undefined,
+      },
     };
 
     it('should call sub-generators with correct options', async () => {
@@ -285,7 +294,13 @@ describe('GeneratorOrchestrator', () => {
       );
 
       await orchestrator.generateAll({
-        toolX: { name: 'toolX', binaries: ['tx'], version: '1' },
+        toolX: {
+          name: 'toolX',
+          binaries: ['tx'],
+          version: '1',
+          installationMethod: 'none',
+          installParams: undefined,
+        },
       });
 
       // expect(mockFsEnsureDir).toHaveBeenCalledWith(path.dirname(getExpectedManifestPath())); // Spy removed

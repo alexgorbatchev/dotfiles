@@ -231,7 +231,7 @@ describe('Installer', () => {
         installParams: {
           repo: MOCK_REPO,
         },
-      };
+      } as ToolConfig; // Cast to ToolConfig as it's a valid variant
 
       await installer.install(MOCK_TOOL_NAME, toolConfig);
 
@@ -247,7 +247,7 @@ describe('Installer', () => {
         installParams: {
           repo: MOCK_REPO,
         },
-      };
+      } as ToolConfig;
 
       const installFromGitHubReleaseSpy = spyOn(
         installer as any,
@@ -275,7 +275,7 @@ describe('Installer', () => {
         installParams: {
           repo: MOCK_REPO,
         },
-      };
+      } as ToolConfig;
 
       const error = new Error('Test error');
       const installFromGitHubReleaseSpy = spyOn(
@@ -312,7 +312,7 @@ describe('Installer', () => {
             afterInstall: afterInstallHook,
           },
         },
-      };
+      } as ToolConfig;
 
       const installFromGitHubReleaseSpy = spyOn(
         installer as any,
@@ -350,7 +350,7 @@ describe('Installer', () => {
           version: 'latest', // Explicitly set to use latest version
           assetPattern: 'test-tool-linux-amd64', // Explicitly match the mock asset
         },
-      };
+      } as ToolConfig;
       const initialOtherChanges = ['Initial change'];
       const context = {
         toolName: MOCK_TOOL_NAME,
@@ -410,7 +410,7 @@ describe('Installer', () => {
         installParams: {
           repo: 'invalid-repo',
         },
-      };
+      } as ToolConfig;
 
       const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
@@ -432,7 +432,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetPattern: 'non-existent-pattern',
         },
-      };
+      } as ToolConfig;
       const initialOtherChanges = ['Initial change for missing asset test'];
       const context = {
         toolName: MOCK_TOOL_NAME,
@@ -473,7 +473,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetPattern: 'test-tool-linux-amd64',
         },
-      };
+      } as ToolConfig;
       mockGetLatestRelease.mockResolvedValue({
         ...mockGitHubRelease,
         assets: [
@@ -512,7 +512,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetPattern: 'test-tool-linux-amd64',
         },
-      };
+      } as ToolConfig;
       mockGetLatestRelease.mockResolvedValue({
         ...mockGitHubRelease,
         assets: [
@@ -561,7 +561,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetPattern: 'test-tool-linux-amd64',
         },
-      };
+      } as ToolConfig;
       mockGetLatestRelease.mockResolvedValue({
         ...mockGitHubRelease,
         assets: [
@@ -609,7 +609,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetPattern: 'test-tool-linux-amd64',
         },
-      };
+      } as ToolConfig;
       mockGetLatestRelease.mockResolvedValue({
         ...mockGitHubRelease,
         assets: [
@@ -661,7 +661,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetPattern: 'non-existent-asset-pattern',
         },
-      };
+      } as ToolConfig;
 
       const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
@@ -690,7 +690,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           // No assetPattern, no assetSelector, rely on platform/arch
         },
-      };
+      } as ToolConfig;
 
       // Simulate a platform/arch for which no asset exists
       const systemInfo = { platform: 'sunos', arch: 'sparc', release: '5.11' };
@@ -724,7 +724,7 @@ describe('Installer', () => {
           repo: MOCK_REPO,
           assetSelector: () => undefined, // Selector that finds nothing
         },
-      };
+      } as ToolConfig;
 
       const result = await (installer as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
@@ -752,8 +752,8 @@ describe('Installer', () => {
           formula: 'test-formula',
           cask: true,
           tap: 'test-tap',
-        } as any,
-      };
+        },
+      } as ToolConfig;
 
       const result = await (installer as any).installFromBrew(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
@@ -789,8 +789,8 @@ describe('Installer', () => {
         installParams: {
           url: 'https://example.com/install.sh',
           shell: 'bash',
-        } as any,
-      };
+        },
+      } as ToolConfig;
 
       const result = await (installer as any).installFromCurlScript(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
@@ -844,8 +844,8 @@ describe('Installer', () => {
           url: 'https://example.com/archive.tar.gz',
           extractPath: 'bin/tool',
           moveBinaryTo: 'bin/tool-renamed',
-        } as any,
-      };
+        },
+      } as ToolConfig;
 
       // Setup mockExists for the path of the binary within the extracted directory
       const expectedExtractedBinaryPath = path.join(
@@ -919,8 +919,8 @@ describe('Installer', () => {
         installationMethod: 'pip',
         installParams: {
           packageName: 'test-package',
-        } as any,
-      };
+        },
+      } as ToolConfig;
 
       const result = await (installer as any).installFromPip(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
@@ -954,8 +954,8 @@ describe('Installer', () => {
         installationMethod: 'manual',
         installParams: {
           binaryPath: manualBinaryPath,
-        } as any,
-      };
+        },
+      } as ToolConfig;
       const context = {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
@@ -986,8 +986,8 @@ describe('Installer', () => {
         installationMethod: 'manual',
         installParams: {
           binaryPath: manualBinaryPath,
-        } as any,
-      };
+        },
+      } as ToolConfig;
       const context = {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),

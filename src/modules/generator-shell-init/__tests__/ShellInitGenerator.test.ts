@@ -131,6 +131,8 @@ describe('ShellInitGenerator', () => {
         binaries: ['tt'],
         version: '1.0.0',
         zshInit: ['export TEST_TOOL_VAR="hello"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const expectedPath = path.join(DEFAULT_ZSH_INIT_DIR, 'init.zsh');
@@ -157,12 +159,16 @@ describe('ShellInitGenerator', () => {
         binaries: ['ta'],
         version: '1.0',
         zshInit: ['export PATH="/opt/toolA/bin:$PATH"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
       toolB: {
         name: 'toolB',
         binaries: ['tb'],
         version: '1.0',
         zshInit: ['path+=("/opt/toolB/bin")'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -182,12 +188,16 @@ describe('ShellInitGenerator', () => {
         binaries: ['ta'],
         version: '1.0',
         zshInit: ['export TOOL_A_ENABLED=true'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
       toolB: {
         name: 'toolB',
         binaries: ['tb'],
         version: '1.0',
         zshInit: ['export TOOL_B_MODE="debug"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -206,12 +216,16 @@ describe('ShellInitGenerator', () => {
         binaries: ['ta'],
         version: '1.0',
         zshInit: ['alias ta="toolA --extended"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
       toolB: {
         name: 'toolB',
         binaries: ['tb'],
         version: '1.0',
         zshInit: ['source /opt/toolB/init.sh'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -234,6 +248,8 @@ describe('ShellInitGenerator', () => {
         completions: {
           zsh: { source: 'completion/toolA.zsh', name: '_toolA_custom' },
         },
+        installationMethod: 'none',
+        installParams: undefined,
       },
       toolB: {
         name: 'toolB',
@@ -242,6 +258,8 @@ describe('ShellInitGenerator', () => {
         completions: {
           zsh: { source: 'completions/_toolB' }, // Default name _toolB
         },
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -263,6 +281,8 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         zshInit: ['typeset -U fpath', 'fpath=("/my/custom/fpath" $fpath)'],
         completions: { zsh: { source: '_toolA' } },
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -287,12 +307,16 @@ describe('ShellInitGenerator', () => {
         version: '1.0',
         zshInit: ['export ALPHA_MODE=on', 'export PATH="/opt/alpha/bin:$PATH"'],
         completions: { zsh: { source: '_alpha' } },
+        installationMethod: 'none',
+        installParams: undefined,
       },
       beta: {
         name: 'beta',
         binaries: ['b'],
         version: '2.1',
         zshInit: ['alias b="beta -v"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
       gamma: {
         name: 'gamma',
@@ -302,6 +326,8 @@ describe('ShellInitGenerator', () => {
           zsh: { source: 'gamma_completion.sh', targetDir: '/usr/local/share/zsh/site-functions' },
         },
         zshInit: ['export GAMMA_LEVEL=5'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -344,6 +370,8 @@ describe('ShellInitGenerator', () => {
           'alias mt="myTool --doit"',
         ],
         completions: { zsh: { source: '_myTool' } },
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -372,12 +400,16 @@ describe('ShellInitGenerator', () => {
         binaries: ['ta'],
         version: '1.0',
         zshInit: ['export DUP_VAR="val"', 'export PATH="/dup/path:$PATH"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
       toolB: {
         name: 'toolB',
         binaries: ['tb'],
         version: '1.0',
         zshInit: ['export DUP_VAR="val"', 'export PATH="/dup/path:$PATH"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs);
@@ -396,6 +428,8 @@ describe('ShellInitGenerator', () => {
         binaries: ['ta'],
         version: '1.0',
         zshInit: ['export TOOL_A_VAR="set"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
       toolB: undefined, // This tool's config is undefined
       toolC: {
@@ -403,6 +437,8 @@ describe('ShellInitGenerator', () => {
         binaries: ['tc'],
         version: '1.0',
         zshInit: ['export TOOL_C_VAR="active"'],
+        installationMethod: 'none',
+        installParams: undefined,
       },
     };
     const resultPath = await generator.generate(toolConfigs as Record<string, ToolConfig>);

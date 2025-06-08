@@ -6,7 +6,6 @@
  *
  * ### Mandatory Pre-read:
  * - `generator/src/types.ts` (for ToolConfig and related interface definitions)
- * - `.clinerules` (for file structure, naming, and content guidelines)
  *
  * ### Tasks:
  * - [x] Define `SystemInfoSchema`.
@@ -42,7 +41,7 @@ import type {
   CurlTarInstallParams,
   PipInstallParams,
   ManualInstallParams,
-  InstallParams,
+  // InstallParams, // This type is no longer directly used by the Zod schema itself
   ShellCompletionConfig,
   CompletionConfig,
   ToolConfig,
@@ -152,16 +151,6 @@ const ManualInstallParamsSchema: z.ZodType<ManualInstallParams> = BaseInstallPar
   binaryPath: z.string(),
 });
 
-// Union schema for all InstallParams types
-const InstallParamsUnionSchema: z.ZodType<InstallParams> = z.union([
-  GithubReleaseInstallParamsSchema,
-  BrewInstallParamsSchema,
-  CurlScriptInstallParamsSchema,
-  CurlTarInstallParamsSchema,
-  PipInstallParamsSchema,
-  ManualInstallParamsSchema,
-]);
-
 // Schema for ShellCompletionConfig
 const ShellCompletionConfigSchema: z.ZodType<ShellCompletionConfig> = z.object({
   source: z.string(),
@@ -176,24 +165,13 @@ const CompletionConfigSchema: z.ZodType<CompletionConfig> = z.object({
   fish: ShellCompletionConfigSchema.optional(),
 });
 
-// Forward declaration for the recursive part of ToolConfig
-type ToolConfigRecursive = Omit<ToolConfig, 'name' | 'archOverrides'>;
-const PartialToolConfigOmitNameArchSchema: z.ZodType<Partial<ToolConfigRecursive>> = z.lazy(() =>
-  InternalToolConfigSchema.omit({ name: true, archOverrides: true }).partial()
-);
-
-// Base ToolConfig schema without superRefine, for recursion
-const InternalToolConfigSchema = z.object({
+// Base properties schema for all ToolConfig variants
+const BaseToolConfigPropertiesSchema = z.object({
   name: z.string(),
-  binaries: z.array(z.string()).min(1),
+  binaries: z.array(z.string()).optional(), // Make binaries optional at the base level
   version: z.string(),
-  installationMethod: z
-    .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'pip', 'manual'])
-    .optional(),
-  installParams: InstallParamsUnionSchema.optional(),
   zshInit: z.array(z.string()).optional(),
   symlinks: z.array(z.object({ source: z.string(), target: z.string() })).optional(),
-  archOverrides: z.record(z.string(), PartialToolConfigOmitNameArchSchema).optional(),
   completions: CompletionConfigSchema.optional(),
   updateCheck: z
     .object({
@@ -203,64 +181,113 @@ const InternalToolConfigSchema = z.object({
     .optional(),
 });
 
-// Final ToolConfig schema with superRefine for conditional validation
-export const ToolConfigSchema: z.ZodType<ToolConfig> = InternalToolConfigSchema.superRefine(
-  (data, ctx) => {
-    if (data.installationMethod && data.installParams === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'installParams is required when installationMethod is set.',
-        path: ['installParams'],
-      });
-    }
-    if (data.installParams !== undefined && !data.installationMethod) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'installationMethod is required when installParams are provided.',
-        path: ['installationMethod'],
-      });
-    }
+// Need to define archOverrides with z.lazy due to recursion with ToolConfig itself
+const ArchOverridesSchema: z.ZodType<
+  Record<string, Partial<Omit<ToolConfig, 'name' | 'archOverrides'>>>
+> = z.lazy(() =>
+  z.record(
+    z.string(),
+    // Use a base object schema that can be .omit().partial()
+    // BaseToolConfigPropertiesWithArchSchema itself is an object schema.
+    BaseToolConfigPropertiesWithArchSchema.omit({
+      name: true, // Name is fixed for the main tool, override shouldn't change it.
+      archOverrides: true, // Prevent nested archOverrides.
+    }).partial()
+  )
+);
 
-    if (data.installationMethod && data.installParams) {
-      let parseResult: { success: boolean; error?: z.ZodError } = { success: false };
-      switch (data.installationMethod) {
-        case 'github-release':
-          parseResult = GithubReleaseInstallParamsSchema.safeParse(data.installParams);
-          break;
-        case 'brew':
-          parseResult = BrewInstallParamsSchema.safeParse(data.installParams);
-          break;
-        case 'curl-script':
-          parseResult = CurlScriptInstallParamsSchema.safeParse(data.installParams);
-          break;
-        case 'curl-tar':
-          parseResult = CurlTarInstallParamsSchema.safeParse(data.installParams);
-          break;
-        case 'pip':
-          parseResult = PipInstallParamsSchema.safeParse(data.installParams);
-          break;
-        case 'manual':
-          parseResult = ManualInstallParamsSchema.safeParse(data.installParams);
-          break;
-        default:
-          // Should not happen due to enum validation on installationMethod
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Unknown installationMethod: ${data.installationMethod}`,
-            path: ['installationMethod'],
-          });
-          return;
-      }
+const BaseToolConfigPropertiesWithArchSchema = BaseToolConfigPropertiesSchema.extend({
+  archOverrides: ArchOverridesSchema.optional(),
+});
+// Schemas for each specific ToolConfig type based on installationMethod
+// These schemas will enforce that 'binaries' is present and non-empty.
+const GithubReleaseToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('github-release'),
+  installParams: GithubReleaseInstallParamsSchema,
+  binaries: z.array(z.string()).min(1),
+});
 
-      if (!parseResult.success) {
+const BrewToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('brew'),
+  installParams: BrewInstallParamsSchema,
+  binaries: z.array(z.string()).min(1),
+});
+
+const CurlScriptToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('curl-script'),
+  installParams: CurlScriptInstallParamsSchema,
+  binaries: z.array(z.string()).min(1),
+});
+
+const CurlTarToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('curl-tar'),
+  installParams: CurlTarInstallParamsSchema,
+  binaries: z.array(z.string()).min(1),
+});
+
+const PipToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('pip'),
+  installParams: PipInstallParamsSchema,
+  binaries: z.array(z.string()).min(1),
+});
+
+const ManualToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('manual'),
+  installParams: ManualInstallParamsSchema,
+  binaries: z.array(z.string()).min(1),
+});
+
+// Schema for tools that might not have an installation method
+const NoInstallToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
+  installationMethod: z.literal('none'), // Use 'none' as an explicit discriminant value
+  installParams: z.undefined().optional(), // Can be absent
+  // binaries are already optional in BaseToolConfigPropertiesSchema
+});
+
+// Final ToolConfig schema using discriminated union
+export const ToolConfigSchema: z.ZodType<ToolConfig> = z
+  .discriminatedUnion(
+    // Discriminator field
+    'installationMethod',
+    // Array of schemas for each variant
+    [
+      GithubReleaseToolConfigSchema,
+      BrewToolConfigSchema,
+      CurlScriptToolConfigSchema,
+      CurlTarToolConfigSchema,
+      PipToolConfigSchema,
+      ManualToolConfigSchema,
+      NoInstallToolConfigSchema, // This should be last or handled carefully if installationMethod can be truly absent
+    ]
+  )
+  .superRefine((data, ctx) => {
+    // Validation: If binaries are defined and non-empty, an installationMethod is usually expected,
+    // unless it's a NoInstallToolConfig where binaries might be empty or absent.
+    // The discriminated union handles the matching of installParams to installationMethod.
+    // We need to ensure that if `binaries` is present and non-empty, `installationMethod` is also present,
+    // OR it's a NoInstallToolConfig where `binaries` might be empty/absent.
+
+    // `data` here is the full discriminated union.
+    // We need to check the discriminant `installationMethod` to narrow down the type of `data`.
+    if (data.installationMethod === 'none') {
+      // data is NoInstallToolConfig
+      if (
+        (!data.binaries || data.binaries.length === 0) &&
+        (!data.zshInit || data.zshInit.length === 0) &&
+        (!data.symlinks || data.symlinks.length === 0)
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `installParams do not match the schema for installationMethod "${data.installationMethod}". Issues: ${parseResult.error?.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
-          path: ['installParams'],
+          message:
+            'A tool configuration with no installation method must define at least binaries, zshInit, or symlinks.',
+          path: ['name'],
         });
       }
     }
-  }
-);
+    // The individual schemas for specific installation methods (GithubReleaseToolConfigSchema, etc.)
+    // already enforce that `binaries` is a non-empty array.
+    // The discriminatedUnion ensures that if `installationMethod` is not 'none',
+    // `data` must conform to one of those schemas.
+  });
 
 // Removed unused planMarker, planEndMarker, tasks, originalContent, finalContent constants

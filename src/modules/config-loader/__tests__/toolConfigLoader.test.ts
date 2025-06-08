@@ -104,7 +104,14 @@ describe('loadToolConfigs', () => {
     mockFs.readdir.mockResolvedValueOnce(['mytool.tool.ts', 'ignoreme.ts', 'data.json']);
 
     // Mock dynamic import for mytool.tool.ts
-    const mockToolConfig: ToolConfig = { name: 'mytool', binaries: ['mytool'], version: '1.0.0' };
+    // This needs to be a valid ToolConfig variant, e.g., NoInstallToolConfig if no install method
+    const mockToolConfig: ToolConfig = {
+      name: 'mytool',
+      binaries: ['mytool'],
+      version: '1.0.0',
+      installationMethod: 'none',
+      installParams: undefined,
+    };
     mock.module(resolvePath(MOCK_TOOL_CONFIGS_DIR, 'mytool.tool.ts'), () => ({
       default: mockToolConfig,
     }));
@@ -112,13 +119,25 @@ describe('loadToolConfigs', () => {
     toolConfigSchema.ToolConfigSchema.safeParse = mock((data) => ({ success: true, data })) as any;
 
     const result = await loadToolConfigs(mockAppConfig, mockFs);
-    expect(result['mytool']).toEqual(mockToolConfig); // Changed to index access
+    expect(result['mytool']).toEqual(mockToolConfig);
     expect(Object.keys(result).length).toBe(1);
   });
 
   it('should correctly load and parse valid .tool.ts files', async () => {
-    const validTool1: ToolConfig = { name: 'tool1', binaries: ['t1'], version: '1.0' };
-    const validTool2: ToolConfig = { name: 'tool2', binaries: ['t2', 't2alias'], version: '2.1' };
+    const validTool1: ToolConfig = {
+      name: 'tool1',
+      binaries: ['t1'],
+      version: '1.0',
+      installationMethod: 'manual', // Make it a valid ManualToolConfig
+      installParams: { binaryPath: '/path/to/t1' },
+    };
+    const validTool2: ToolConfig = {
+      name: 'tool2',
+      binaries: ['t2', 't2alias'],
+      version: '2.1',
+      installationMethod: 'github-release', // Make it a valid GithubReleaseToolConfig
+      installParams: { repo: 'owner/tool2' },
+    };
 
     mockFs.readdir.mockResolvedValueOnce(['tool1.tool.ts', 'tool2.tool.ts', 'helper.js']);
 
@@ -133,8 +152,8 @@ describe('loadToolConfigs', () => {
 
     const result = await loadToolConfigs(mockAppConfig, mockFs);
 
-    expect(result['tool1']).toEqual(validTool1); // Changed to index access
-    expect(result['tool2']).toEqual(validTool2); // Changed to index access
+    expect(result['tool1']).toEqual(validTool1);
+    expect(result['tool2']).toEqual(validTool2);
     expect(Object.keys(result).length).toBe(2);
     // Logging assertions removed
   });
@@ -182,8 +201,20 @@ describe('loadToolConfigs', () => {
   });
 
   it('should handle duplicate tool names, last one wins and logs a warning', async () => {
-    const toolV1: ToolConfig = { name: 'dupetool', binaries: ['dt'], version: '1.0' };
-    const toolV2: ToolConfig = { name: 'dupetool', binaries: ['dt_new'], version: '2.0' };
+    const toolV1: ToolConfig = {
+      name: 'dupetool',
+      binaries: ['dt'],
+      version: '1.0',
+      installationMethod: 'manual',
+      installParams: { binaryPath: '/path/dt' },
+    };
+    const toolV2: ToolConfig = {
+      name: 'dupetool',
+      binaries: ['dt_new'],
+      version: '2.0',
+      installationMethod: 'manual',
+      installParams: { binaryPath: '/path/dt_new' },
+    };
 
     mockFs.readdir.mockResolvedValueOnce(['dupe1.tool.ts', 'dupe2.tool.ts']);
 
@@ -193,7 +224,7 @@ describe('loadToolConfigs', () => {
     toolConfigSchema.ToolConfigSchema.safeParse = mock((data) => ({ success: true, data })) as any;
 
     const result = await loadToolConfigs(mockAppConfig, mockFs);
-    expect(result['dupetool']).toEqual(toolV2); // toolV2 from dupe2.tool.ts should overwrite toolV1 // Changed to index access
+    expect(result['dupetool']).toEqual(toolV2);
     expect(Object.keys(result).length).toBe(1);
     // Logging assertions removed
   });
@@ -204,14 +235,13 @@ describe('loadToolConfigs', () => {
       name: toolName,
       binaries: ['atool'],
       version: '1.0',
-      installationMethod: 'manual', // Added: Required if binaries are present
-      installParams: { binaryPath: 'dummy/path/atool' }, // Added: Corresponding params
-      zshInit: [],
-      symlinks: [],
-      // updateCheck and completions can be omitted if not explicitly set,
-      // as they are optional and might be added by schema defaults or later processing.
-      // For toEqual, it's safer to match what builder.build() produces minimally.
-      // The builder itself doesn't add updateCheck by default.
+      installationMethod: 'manual',
+      installParams: { binaryPath: 'dummy/path/atool' },
+      zshInit: undefined,
+      symlinks: undefined,
+      archOverrides: undefined,
+      completions: undefined,
+      updateCheck: undefined,
     };
 
     const mockAsyncConfigureTool = mock(
@@ -272,13 +302,28 @@ describe('loadToolConfigs', () => {
 
   it('should correctly pass appConfig to AsyncConfigureTool function', async () => {
     const toolName = 'appConfigAwareTool';
-    const expectedConfig: ToolConfig = { name: toolName, binaries: ['actool'], version: '1.0' };
+    // This expectedConfig needs to be a valid ToolConfig variant
+    const expectedConfigFromBuilder: ToolConfig = {
+      name: toolName,
+      binaries: ['actool'],
+      version: '1.0',
+      installationMethod: 'manual', // Assuming manual for simplicity
+      installParams: { binaryPath: '/path/to/actool' },
+      zshInit: [],
+      symlinks: [],
+    };
     let passedAppConfig: AppConfig | undefined;
 
     const mockAsyncConfigureTool = mock(
-      async (_builder: ToolConfigBuilder, appConfig?: AppConfig) => {
+      async (builder: ToolConfigBuilder, appConfig?: AppConfig) => {
         passedAppConfig = appConfig;
-        return Promise.resolve(expectedConfig);
+        builder.bin(expectedConfigFromBuilder.binaries);
+        builder.version(expectedConfigFromBuilder.version);
+        if (expectedConfigFromBuilder.installationMethod === 'manual') {
+          builder.install('manual', expectedConfigFromBuilder.installParams);
+        }
+        // The builder will construct the ToolConfig object.
+        // We don't return it from here.
       }
     );
 
