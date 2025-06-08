@@ -16,11 +16,8 @@
  * ### Tasks:
  * [x] Define the `createClientLogger` function signature and options type.
  * [x] Implement the logic to configure the logger based on options and `NODE_ENV`.
- * [ ] Write tests for the module.
  * [x] Cleanup all linting errors and warnings.
  * [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * [ ] Ensure 100% test coverage for executable code.
- * [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { createConsola, LogLevels, type LogLevel } from 'consola';
 

@@ -10,8 +10,8 @@
  * - Store the configuration details internally within the class instance.
  * - Add JSDoc comments for each method.
  * - Write tests for the ToolConfigBuilder.
- * - Cleanup linting errors and warnings.
- * - Ensure 100% test coverage.
+ * - [x] Cleanup linting errors and warnings.
+ * - [x] Ensure 100% test coverage.
  * - Update the memory bank.
  */
 
@@ -28,6 +28,7 @@ import type {
   CompletionConfig,
   // SystemInfo, // SystemInfo is not directly used by ToolConfigBuilder but might be relevant for arch overrides context
 } from '../../types'; // Updated import path
+import { createClientLogger } from '../logger/clientLogger'; // CreateClientLoggerOptions removed
 
 // Define the ToolConfigBuilder interface with camelCase methods
 export interface IToolConfigBuilder {
@@ -103,6 +104,7 @@ export interface IToolConfigBuilder {
 
 export class ToolConfigBuilder implements IToolConfigBuilder {
   // Store parts of the config as they are built
+  private clientLogger = createClientLogger({}); // Default logger
   private toolName: string;
   private binaries: string[] = [];
   private versionNum: string = 'latest';
@@ -154,7 +156,7 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
       // or by initializing installParams with a base structure if hooks can be standalone.
       // For now, if installParams is not set, we can't set hooks.
       // Consider throwing an error or logging a warning.
-      console.warn(
+      this.clientLogger.warn(
         `[ToolConfigBuilder] hooks() called for tool "${this.toolName}" before install(). Hooks will not be set.`
       );
     }

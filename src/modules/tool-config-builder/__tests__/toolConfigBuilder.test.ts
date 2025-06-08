@@ -8,21 +8,22 @@
  * - Test the 'bin' method correctly sets the binaries.
  * - Test the 'version' method correctly sets the version.
  * - Test the 'install' method correctly sets the installation method and parameters.
- * - Test the 'hooks' method correctly sets the hooks on installParams.
+ * - [x] Test the 'hooks' method correctly sets the hooks on installParams.
  * - Test the 'zsh' method correctly adds Zsh code to zshInit.
  * - Test the 'symlink' method correctly adds symlinks.
  * - Test the 'arch' method correctly stores architecture overrides.
  * - Test the 'completions' method correctly sets completion configuration.
  * - Test the 'build' method returns the correct ToolConfig object.
  * - Test the 'build' method throws errors for missing required fields (name, installationMethod if binaries are present).
- * - Cleanup linting errors and warnings.
- * - Ensure 100% test coverage.
+ * - [x] Cleanup linting errors and warnings.
+ * - [x] Ensure 100% test coverage.
  * - Update the memory bank.
  */
 
-import { expect, test, describe } from 'bun:test';
+import { expect, test, describe, spyOn, mock } from 'bun:test';
 import { ToolConfigBuilder, type IToolConfigBuilder } from '../index'; // Updated import path
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '../../../types'; // Updated import path
+import * as clientLoggerModule from '../../logger/clientLogger';
 
 describe('ToolConfigBuilder', () => {
   test('constructor initializes with default values', () => {
@@ -82,13 +83,32 @@ describe('ToolConfigBuilder', () => {
     }
   });
 
-  test('hooks method does not set hooks if install was not called first', () => {
+  test('hooks method does not set hooks and warns if install was not called first', () => {
+    const mockWarn = mock(() => {});
+    const mockCreateClientLogger = spyOn(clientLoggerModule, 'createClientLogger').mockReturnValue({
+      info: mock(() => {}),
+      warn: mockWarn,
+      error: mock(() => {}),
+      debug: mock(() => {}),
+      success: mock(() => {}),
+    } as any);
+
     const builder = new ToolConfigBuilder('test-tool');
     const mockHook: AsyncInstallHook = async () => {};
-    const hooks = { beforeInstall: mockHook };
-    builder.hooks(hooks); // Call hooks without install
+    const hooksData = { beforeInstall: mockHook };
+    builder.hooks(hooksData); // Call hooks without install
+
     // Check internal state directly
     expect((builder as any).currentInstallParams?.hooks).toBeUndefined();
+    // Check that warn was called
+    expect(mockCreateClientLogger).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      `[ToolConfigBuilder] hooks() called for tool "test-tool" before install(). Hooks will not be set.`
+    );
+
+    // Restore mocks
+    mockCreateClientLogger.mockRestore();
   });
 
   test('zsh method adds zsh code correctly to zshInit', () => {
