@@ -375,6 +375,7 @@ describe('CLI', () => {
       githubApiCacheEnabled: false,
       githubApiCacheTtl: 0,
       githubApiCacheDir: path.join(mockBaseDir, '.cache', 'generator-test', 'github-api'),
+      generatorCliShimName: 'dotfiles-shim-generator', // Added
     };
 
     // For this specific test, we need to mock setupServices to control its internal FS creation

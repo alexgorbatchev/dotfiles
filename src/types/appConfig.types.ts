@@ -196,4 +196,11 @@ export interface AppConfig {
    * @example /home/user/.dotfiles/.generated/cache/github-api
    */
   githubApiCacheDir: string;
+  /**
+   * The simple name of the shim created for the main dotfiles generator CLI itself.
+   * This shim resides in `appConfig.binDir` and can be used by other scripts
+   * to call the main CLI in a way that's consistent with how other tools are called.
+   * @example "dotfiles-shim-generator"
+   */
+  generatorCliShimName: string;
 }

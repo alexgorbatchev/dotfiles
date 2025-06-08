@@ -171,6 +171,7 @@ export interface ConfigEnvironment {
    * Used by `GeneratorOrchestrator`.
    */
   GENERATED_ARTIFACTS_MANIFEST_PATH?: string;
+  // GENERATOR_CLI_SHIM_NAME is not an env var, it's a constant in createAppConfig
 }
 
 // Zod schema for validating and transforming the raw environment variables
@@ -224,6 +225,7 @@ const EnvSchema = z.object({
       return isNaN(num) ? 86400000 : num;
     }), // Default 24 hours in ms if invalid
   GENERATED_ARTIFACTS_MANIFEST_PATH: z.string().optional(),
+  // GENERATOR_CLI_SHIM_NAME removed from schema
 });
 
 type ValidatedEnv = z.infer<typeof EnvSchema>;
@@ -260,6 +262,7 @@ export function createAppConfig(
   const defaultDotfilesDir = resolve(systemInfo.homedir, '.dotfiles');
   const DOTFILES_DIR = dotfilesDirRaw || defaultDotfilesDir;
   const GENERATED_DIR = generatedDirRaw || join(DOTFILES_DIR, '.generated');
+  const GENERATOR_CLI_SHIM_NAME = 'dotfiles-shim-generator'; // Define the shim name
 
   return {
     targetDir: targetDirRaw || '/usr/bin',
@@ -293,6 +296,7 @@ export function createAppConfig(
     githubClientUserAgent: env.GITHUB_CLIENT_USER_AGENT, // Default will be handled by GitHubApiClient if undefined
     githubApiCacheEnabled: env.GITHUB_API_CACHE_ENABLED,
     githubApiCacheTtl: env.GITHUB_API_CACHE_TTL,
-    githubApiCacheDir: join(GENERATED_DIR, 'cache', 'github-api'), // Added this line
+    githubApiCacheDir: join(GENERATED_DIR, 'cache', 'github-api'),
+    generatorCliShimName: GENERATOR_CLI_SHIM_NAME,
   };
 }

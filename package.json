@@ -11,7 +11,7 @@
     "lint-do-not-use": "tsc --noEmit && eslint . --ext .ts",
     "lint": "tsc --noEmit",
     "fmt": "prettier --write .",
-    "build": "bun build ./src/cli.ts --outdir ./dist --target bun",
+    "build": "bun build ./src/cli.ts --compile --outfile ./dist/cli",
     "cli": "dotenv -- bun run ./src/cli.ts"
   },
   "devDependencies": {
