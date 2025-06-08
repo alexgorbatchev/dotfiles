@@ -19,6 +19,7 @@
  *   - [x] Update `generate` and `generateForTool` to return `Promise<string[]>`.
  *   - [x] Update to use absolute path for `INSTALL_TOOL` script in generated shims.
  *   - [x] Remove `INSTALL_TOOL` script fallback and use `generatorCliShimName install` directly.
+ *   - [x] Update `GENERATOR_CLI_SHIM_NAME` in tool shims to use the full absolute path (`appConfig.binDir`/`appConfig.generatorCliShimName`).
  * - [x] Write tests for the module.
  * - [x] Refactor dry run mechanism:
  *   - [x] Remove internal `dryRun` logic.
@@ -133,16 +134,14 @@ export class ShimGenerator implements IShimGenerator {
 
 TOOL_NAME="${toolName}"
 TOOL_EXECUTABLE="${expectedToolBinaryPath}"
-GENERATOR_CLI_SHIM_NAME="${cliToolPath}"
+GENERATOR_CLI_SHIM_NAME="${this.appConfig.targetDir}/${this.appConfig.generatorCliShimName}"
 
 if [ -x "$TOOL_EXECUTABLE" ]; then
   exec "$TOOL_EXECUTABLE" "$@"
 else
-  echo "'${toolName}' is not installed or not found at '$TOOL_EXECUTABLE'. Attempting to install via \${GENERATOR_CLI_SHIM_NAME}..."
-  "\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --verbose
+  "\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet
   # Re-check after installation attempt
   if [ -x "$TOOL_EXECUTABLE" ]; then
-    echo "Installation successful. Executing '${toolName}'..."
     exec "$TOOL_EXECUTABLE" "$@"
   else
     echo "Failed to install '${toolName}' via \${GENERATOR_CLI_SHIM_NAME} or it's still not found at '$TOOL_EXECUTABLE'. Please check the installation."
