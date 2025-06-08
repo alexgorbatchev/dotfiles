@@ -6,7 +6,7 @@
  *
  * ### Tasks
  * - [x] Define types for tool configuration.
- * - [ ] Add JSDoc comments to all types and properties.
+ * - [x] Add JSDoc comments to all types and properties.
  * - [ ] Ensure all necessary imports are present.
  * - [ ] Ensure all types are exported.
  * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .roorules)
@@ -24,80 +24,260 @@ import type { GitHubReleaseAsset } from './githubApi.types';
 // Tool Configuration Types
 // ============================================
 
-// Define context passed to TypeScript hooks
+/**
+ * Defines the context object passed to asynchronous TypeScript installation hooks.
+ * This context provides information about the current tool, installation paths,
+ * system details, and results from previous steps (like download or extraction).
+ * Hooks can use this information to perform custom setup or modification tasks.
+ *
+ * It is recommended to use a library like `zx` (google/zx) within hooks for
+ * easily running shell commands and performing file system operations.
+ */
 export interface InstallHookContext {
+  /** The name of the tool currently being installed. */
   toolName: string;
-  installDir: string; // The directory where the tool's binary will be installed
-  downloadPath?: string; // Path to the downloaded file/archive (available after download hook)
-  extractDir?: string; // Path to the extracted contents (available after extract hook)
-  extractResult?: ExtractResult; // NEW: Result of extraction with executables list
-  systemInfo?: SystemInfo; // NEW: System information for hooks
-  // Use google/zx for running commands and file system operations within hooks
+  /** The target directory where the tool's primary binary/executable should be (or has been) installed. */
+  installDir: string;
+  /**
+   * The path to the downloaded file or archive.
+   * This is available in `afterDownload`, `afterExtract`, and `afterInstall` hooks.
+   */
+  downloadPath?: string;
+  /**
+   * The path to the directory where an archive's contents were extracted.
+   * This is available in `afterExtract` and `afterInstall` hooks if archive extraction occurred.
+   */
+  extractDir?: string;
+  /**
+   * The result of the archive extraction process, including lists of extracted files and executables.
+   * This is available in `afterExtract` and `afterInstall` hooks if archive extraction occurred.
+   * @see ExtractResult
+   */
+  extractResult?: ExtractResult;
+  /**
+   * Information about the system on which the installation is occurring (platform, architecture).
+   * This is available in all hooks.
+   * @see SystemInfo
+   */
+  systemInfo?: SystemInfo;
 }
 
-// Define the type for asynchronous TypeScript hook functions
+/**
+ * Defines the signature for an asynchronous TypeScript installation hook function.
+ * These hooks allow for custom logic to be executed at various stages of the tool installation process.
+ * @param context - The {@link InstallHookContext} providing details about the current installation.
+ * @returns A Promise that resolves when the hook's operations are complete.
+ * @example
+ * ```typescript
+ * // An example afterExtract hook to move a specific binary and set permissions
+ * import { $ } from 'zx';
+ * import path from 'path';
+ *
+ * const myHook: AsyncInstallHook = async (context) => {
+ *   if (context.extractDir && context.extractResult?.executables.includes('my-binary')) {
+ *     const sourcePath = path.join(context.extractDir, 'my-binary');
+ *     const targetPath = path.join(context.installDir, context.toolName);
+ *     await $`mv ${sourcePath} ${targetPath}`;
+ *     await $`chmod +x ${targetPath}`;
+ *     console.log(`Moved and made ${targetPath} executable.`);
+ *   }
+ * };
+ * ```
+ */
 export type AsyncInstallHook = (context: InstallHookContext) => Promise<void>;
 
-// Base interface for installation parameters, includes common hook properties
+/**
+ * Base interface for parameters common to all installation methods.
+ * This includes environment variables to set during installation and a set of lifecycle hooks.
+ */
 export interface BaseInstallParams {
   /**
-   * Environment variables to set specifically for the installation process.
-   * These are set by the generator's install-tool command before running
-   * the installation command and hooks.
+   * A record of environment variables to be set specifically for the duration of this tool's installation process.
+   * These variables are applied before any installation commands or hooks are executed.
+   * @example
+   * env: {
+   *   CUSTOM_FLAG: 'true',
+   *   API_KEY: 'secret'
+   * }
    */
   env?: { [key: string]: string };
 
+  /**
+   * A collection of optional asynchronous hook functions that can be executed at different stages
+   * of the installation lifecycle.
+   */
   hooks?: {
-    beforeInstall?: AsyncInstallHook; // Runs before any installation steps
-    afterDownload?: AsyncInstallHook; // Runs after the tool's archive/script is downloaded
-    afterExtract?: AsyncInstallHook; // Runs after the archive is extracted (for archive-based methods)
-    afterInstall?: AsyncInstallHook; // Runs after the main installation command completes
+    /** Runs before any other installation steps (download, extract, main install command) begin. */
+    beforeInstall?: AsyncInstallHook;
+    /** Runs after the tool's primary artifact (e.g., archive, script) has been downloaded but before extraction or execution. */
+    afterDownload?: AsyncInstallHook;
+    /** Runs after an archive has been extracted (if applicable to the installation method) but before the main binary is finalized. */
+    afterExtract?: AsyncInstallHook;
+    /** Runs after the main installation command or process for the tool has completed and the binary is expected to be in place. */
+    afterInstall?: AsyncInstallHook;
   };
 }
 
-// Specific interfaces for installParams for each method, extending BaseInstallParams
+/**
+ * Parameters for installing a tool from a GitHub Release.
+ * This method involves fetching release information from GitHub, downloading a release asset,
+ * extracting it (if it's an archive), and then locating/moving the binary.
+ */
 export interface GithubReleaseInstallParams extends BaseInstallParams {
-  repo: string; // GitHub repository in "owner/repo" format
-  assetPattern?: string; // Pattern to match the release asset filename (corresponds to Zinit's bpick)
-  binaryPath?: string; // Path to the executable within the extracted archive (corresponds to Zinit's pick)
-  moveBinaryTo?: string; // Path/name to move the extracted binary to (corresponds to Zinit's mv)
-  version?: string; // NEW: Specific version or constraint
-  includePrerelease?: boolean; // NEW: Whether to include pre-releases
+  /**
+   * The GitHub repository in "owner/repo" format (e.g., `junegunn/fzf`).
+   */
+  repo: string;
+  /**
+   * A glob pattern or regular expression string used to match the desired asset filename within a GitHub Release.
+   * This helps select the correct file if a release has multiple assets (e.g., for different OS/architectures).
+   * Example: `*linux_amd64.tar.gz` or `/fzf-.*-linux_amd64\.tar\.gz/`.
+   * If `assetSelector` is provided, this pattern might be used by it or ignored.
+   */
+  assetPattern?: string;
+  /**
+   * The path to the executable binary within the extracted archive.
+   * For example, if an archive extracts to `fzf-0.30.0/` and the binary is `fzf-0.30.0/bin/fzf`,
+   * this would be `bin/fzf` (relative to the archive's root after stripping components).
+   * If not provided, the system may try to auto-detect the binary.
+   */
+  binaryPath?: string;
+  /**
+   * An optional path or new name to which the extracted binary should be moved or renamed.
+   * This path is relative to the `installDir` (see {@link InstallHookContext.installDir}).
+   * If it's just a name (e.g., `mytool`), the binary will be placed in `installDir/mytool`.
+   * If it's a relative path (e.g., `libexec/mytool`), it will be `installDir/libexec/mytool`.
+   */
+  moveBinaryTo?: string;
+  /**
+   * A specific version string (e.g., `v1.2.3`, `0.48.0`) or a SemVer constraint
+   * (e.g., `^1.0.0`, `~2.3.x`) for the release to target.
+   * If omitted, the latest stable release is typically targeted.
+   */
+  version?: string;
+  /**
+   * If `true`, pre-releases will be considered when searching for the specified `version` or the latest release.
+   * @default false
+   */
+  includePrerelease?: boolean;
+  /**
+   * An optional custom function to select the desired asset from a list of available assets for a release.
+   * This provides more fine-grained control than `assetPattern` for complex selection logic.
+   * @param assets - An array of {@link GitHubReleaseAsset} objects available for the selected release.
+   * @param systemInfo - The {@link SystemInfo} of the current system.
+   * @returns The selected {@link GitHubReleaseAsset} or `undefined` if no suitable asset is found.
+   * @example
+   * assetSelector: (assets, sysInfo) => {
+   *   const platformKey = sysInfo.platform === 'darwin' ? 'macos' : sysInfo.platform;
+   *   const archKey = sysInfo.arch === 'arm64' ? 'aarch64' : sysInfo.arch;
+   *   return assets.find(asset =>
+   *     asset.name.includes(platformKey) && asset.name.includes(archKey)
+   *   );
+   * }
+   */
   assetSelector?: (
     assets: GitHubReleaseAsset[],
     systemInfo: SystemInfo
-  ) => GitHubReleaseAsset | undefined; // NEW: Custom asset selection function
-  stripComponents?: number; // NEW: Number of leading components to strip from paths during extraction
-  // atclone is replaced by hooks.afterDownload or hooks.afterExtract
+  ) => GitHubReleaseAsset | undefined;
+  /**
+   * The number of leading directory components to strip from file paths during archive extraction.
+   * For example, if an archive contains `tool-v1.0/bin/tool` and `stripComponents` is 1,
+   * the extracted path will be `bin/tool`.
+   * @default 0
+   */
+  stripComponents?: number;
 }
 
+/**
+ * Parameters for installing a tool using Homebrew (`brew`).
+ * This method is typically used on macOS and Linux (via Linuxbrew).
+ * It involves running `brew install` commands.
+ */
 export interface BrewInstallParams extends BaseInstallParams {
-  formula?: string; // Homebrew formula name
-  cask?: boolean; // True if it's a cask
-  tap?: string | string[]; // Homebrew tap(s) required
+  /**
+   * The name of the Homebrew formula to install (e.g., `ripgrep`).
+   * Either `formula` or `cask` (by setting `cask: true` and using `formula` for the cask name) should be specified.
+   */
+  formula?: string;
+  /**
+   * If `true`, the `formula` property is treated as a Homebrew Cask name (e.g., `visual-studio-code`).
+   * @default false
+   */
+  cask?: boolean;
+  /**
+   * An optional Homebrew tap or an array of taps that need to be added (`brew tap <tap_name>`)
+   * before the formula can be installed.
+   * Example: `homebrew/core` or `['user/custom-tap', 'another/tap']`.
+   */
+  tap?: string | string[];
 }
 
+/**
+ * Parameters for installing a tool by downloading and executing a shell script using `curl`.
+ * This method involves fetching a script from a URL and piping it to a shell.
+ * Example: `curl -fsSL <url> | sh`.
+ */
 export interface CurlScriptInstallParams extends BaseInstallParams {
-  url: string; // URL of the installation script
-  shell: 'bash' | 'sh'; // Shell to execute the script with
+  /** The URL of the installation script to download. */
+  url: string;
+  /** The shell to use for executing the downloaded script (e.g., `bash`, `sh`). */
+  shell: 'bash' | 'sh';
 }
 
+/**
+ * Parameters for installing a tool by downloading a tarball (`.tar`, `.tar.gz`, etc.) using `curl`,
+ * then extracting it and potentially moving a binary from within.
+ */
 export interface CurlTarInstallParams extends BaseInstallParams {
-  url: string; // URL of the tarball
-  extractPath?: string; // Path within the tarball to extract (e.g., 'bin/tool')
-  moveBinaryTo?: string; // Path/name to move the extracted file to
-  stripComponents?: number; // NEW: Number of leading components to strip from paths during extraction
+  /** The URL of the tarball to download. */
+  url: string;
+  /**
+   * An optional path within the extracted tarball that points to the specific file or directory
+   * to be considered the primary artifact (e.g., `bin/mytool` if the tarball extracts to a root folder
+   * and the binary is inside `bin/`). If not provided, the entire extracted content might be used,
+   * or auto-detection might occur.
+   */
+  extractPath?: string;
+  /**
+   * An optional path or new name to which the extracted file/binary (identified by `extractPath` or auto-detection)
+   * should be moved or renamed, relative to the `installDir`.
+   */
+  moveBinaryTo?: string;
+  /**
+   * The number of leading directory components to strip from file paths during tarball extraction.
+   * @default 0
+   */
+  stripComponents?: number;
 }
 
+/**
+ * Parameters for installing a Python tool using `pip`.
+ * This method assumes Python and `pip` are available on the system.
+ */
 export interface PipInstallParams extends BaseInstallParams {
-  packageName: string; // Name of the package to install via pip
+  /** The name of the Python package to install via `pip` (e.g., `requests`, `ansible`). */
+  packageName: string;
 }
 
+/**
+ * Parameters for a "manual" installation method.
+ * This method is used when the tool is expected to be installed by some other means
+ * (e.g., system package manager not covered, user installs it manually, or it's part of the OS).
+ * The generator will primarily check for the existence of the binary at the specified path.
+ * Hooks can be used to provide custom validation or setup steps.
+ */
 export interface ManualInstallParams extends BaseInstallParams {
-  binaryPath: string; // Expected path to the binary if not installed by the tool
+  /**
+   * The expected absolute path to the tool's binary if it's installed manually or by other means.
+   * The generator will check this path to verify installation.
+   */
+  binaryPath: string;
 }
 
-// Union type for all possible installation parameters
+/**
+ * A union type representing all possible sets of installation parameters for the different installation methods.
+ * This is used by the `install` method of the {@link ToolConfigBuilder}.
+ */
 export type InstallParams =
   | GithubReleaseInstallParams
   | BrewInstallParams
@@ -106,24 +286,75 @@ export type InstallParams =
   | PipInstallParams
   | ManualInstallParams;
 
-// Define the ToolConfigBuilder interface with camelCase methods
+/**
+ * Defines the fluent interface for configuring a tool.
+ * An instance of this builder is passed to the `AsyncConfigureTool` function
+ * in each tool's configuration file (e.g., `fzf.tool.ts`).
+ * Methods are chainable, allowing for a declarative way to define how a tool
+ * should be named, versioned, installed, and integrated into the system.
+ */
 export interface ToolConfigBuilder {
   /**
-   * Specifies the names of the binaries that should have shims generated.
-   * @param names A single binary name or an array of names.
+   * Specifies the name(s) of the binary or binaries that this tool provides.
+   * For each name provided, a shim (an executable script) will be generated in the `binDir`
+   * (e.g., `~/.generated/bin/`). This shim will then point to the actual installed tool binary.
+   * @param names - A single binary name (e.g., `'fzf'`) or an array of binary names (e.g., `['git', 'git-lfs']`).
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.bin('mytool')
+   * c.bin(['main-tool', 'helper-tool'])
    */
   bin(names: string | string[]): this;
 
   /**
-   * Specifies the desired version of the tool. Defaults to 'latest'.
-   * @param version The version string (e.g., '1.0.0') or 'latest'.
+   * Specifies the desired version of the tool to be installed.
+   * This can be a specific version string (e.g., `'1.2.3'`), a SemVer constraint (e.g., `'^1.0.0'`),
+   * or the keyword `'latest'` to always attempt to install the most recent version.
+   * @param version - The version string or constraint.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @default 'latest'
+   * @example
+   * c.version('2.5.1')
+   * c.version('^3.0.0')
+   * c.version('latest')
    */
   version(version: string): this;
 
   /**
-   * Configures how the tool is installed.
-   * @param method The installation method.
-   * @param params Parameters specific to the installation method, including optional hooks.
+   * Configures the installation method and its specific parameters for the tool.
+   * This is a polymorphic method; the `params` argument's type depends on the `method` specified.
+   *
+   * **GitHub Release Method (`'github-release'`)**:
+   * Installs the tool from a GitHub release asset. Requires `repo` (owner/repo).
+   * Can specify `assetPattern` or `assetSelector` to find the correct download,
+   * `binaryPath` for the executable within an archive, and `version`.
+   * See {@link GithubReleaseInstallParams}.
+   *
+   * **Homebrew Method (`'brew'`)**:
+   * Installs the tool using Homebrew. Requires `formula` name. Can specify `cask: true` or `tap`.
+   * See {@link BrewInstallParams}.
+   *
+   * **Curl Script Method (`'curl-script'`)**:
+   * Downloads and executes an installation script via `curl`. Requires `url` of the script and `shell` to use.
+   * See {@link CurlScriptInstallParams}.
+   *
+   * **Curl Tarball Method (`'curl-tar'`)**:
+   * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball
+   * and `moveBinaryTo` for the final binary location.
+   * See {@link CurlTarInstallParams}.
+   *
+   * **Pip Method (`'pip'`)**:
+   * Installs a Python package using `pip`. Requires `packageName`.
+   * See {@link PipInstallParams}.
+   *
+   * **Manual Method (`'manual'`)**:
+   * For tools installed outside this system. Requires `binaryPath` to check for existence.
+   * Hooks can be used for custom validation.
+   * See {@link ManualInstallParams}.
+   *
+   * @param method - The installation method to use.
+   * @param params - Parameters specific to the chosen installation method.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   install(method: 'github-release', params: GithubReleaseInstallParams): this;
   install(method: 'brew', params: BrewInstallParams): this;
@@ -133,8 +364,24 @@ export interface ToolConfigBuilder {
   install(method: 'manual', params: ManualInstallParams): this;
 
   /**
-   * Defines asynchronous TypeScript hook functions to run during the installation lifecycle.
-   * @param hooks An object containing optional hook functions for different stages.
+   * Defines asynchronous TypeScript hook functions to be executed at various stages of the installation lifecycle.
+   * These hooks allow for custom logic, such as pre-installation setup, post-download processing,
+   * archive manipulation after extraction, or final validation steps.
+   * @param hooks - An object containing one or more optional hook functions:
+   *   `beforeInstall`: Runs before any installation steps.
+   *   `afterDownload`: Runs after the tool's artifact is downloaded.
+   *   `afterExtract`: Runs after an archive is extracted (if applicable).
+   *   `afterInstall`: Runs after the main installation process completes.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @see AsyncInstallHook
+   * @see InstallHookContext
+   * @example
+   * c.hooks({
+   *   afterExtract: async (ctx) => {
+   *     // Custom logic using ctx.extractDir, ctx.toolName, etc.
+   *     console.log(`Extracted ${ctx.toolName} to ${ctx.extractDir}`);
+   *   }
+   * })
    */
   hooks(hooks: {
     beforeInstall?: AsyncInstallHook;
@@ -144,107 +391,205 @@ export interface ToolConfigBuilder {
   }): this;
 
   /**
-   * Adds raw Zsh code to the generated 02-config-generated/init.zsh file.
-   * Use this for aliases, functions, env vars, path additions, sourcing, etc.
-   * @param code A string containing valid Zsh script.
+   * Adds raw Zsh shell code to be included in the generated Zsh initialization file
+   * (typically `~/.generated/zsh/init.zsh`, which is then sourced by the user's `.zshrc`).
+   * This is useful for setting environment variables, defining aliases or functions,
+   * adding directories to the `PATH`, or sourcing other scripts related to the tool.
+   * Multiple calls to `zsh()` will append the code.
+   * @param code - A string containing valid Zsh script code.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.zsh('export MYTOOL_CONFIG_DIR="$HOME/.mytool"')
+   * c.zsh('alias m="mytool"')
    */
   zsh(code: string): this;
 
   /**
-   * Configures a symbolic link from a source path in the dotfiles repo to a target path in the home directory.
-   * @param source The path relative to the dotfiles repository.
-   * @param target The target path relative to the user's home directory.
+   * Configures a symbolic link to be created from a source file or directory within the dotfiles
+   * repository to a target path, typically in the user's home directory.
+   * This is used for managing configuration files (dotfiles) that the tool might expect at specific locations.
+   * Multiple calls to `symlink()` will configure multiple links.
+   * @param source - The path to the source file/directory, relative to the dotfiles project root.
+   * @param target - The path where the symlink should be created, relative to the user's home directory.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.symlink('mytool/config.yaml', '.config/mytool/config.yaml')
    */
   symlink(source: string, target: string): this;
 
   /**
-   * Defines configuration overrides for specific operating system and architecture combinations.
-   * @param osArch The OS-architecture string (e.g., 'darwin-aarch64', 'linux-x86_64'). Use $(uname -s)-$(uname -m) format.
-   * @param configureOverrides A callback function that receives a new ToolConfigBuilder to define the overrides.
+   * Defines configuration overrides that apply only to a specific operating system and CPU architecture combination.
+   * This allows for tailoring installation methods or parameters for different platforms.
+   * The `osArch` string should typically match the output of `uname -s` and `uname -m` (lowercased),
+   * joined by a hyphen (e.g., `'darwin-arm64'`, `'linux-x86_64'`).
+   * @param osArch - The OS-architecture string identifier.
+   * @param configureOverrides - A callback function that receives a new, scoped `ToolConfigBuilder` instance.
+   *                           This builder is used to define the overrides specific to this `osArch`.
+   *                           The overrides can include different installation methods, versions, binaries, etc.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.arch('linux-arm64', (linuxArm) => {
+   *   linuxArm.install('github-release', { repo: 'owner/repo', assetPattern: '*linux_arm64.tar.gz' });
+   * });
+   * c.arch('darwin-x86_64', (macIntel) => {
+   *   macIntel.install('brew', { formula: 'tool-for-intel-macs' });
+   * });
    */
   arch(osArch: string, configureOverrides: (c: ToolConfigBuilder) => void): this;
 
   /**
-   * Configures shell completions for the tool.
-   * @param config An object containing completion configuration for different shells.
+   * Configures shell command-line completions for the tool.
+   * This involves specifying where the completion scripts are located within the tool's downloaded/extracted files
+   * for different shells like Zsh, Bash, or Fish.
+   * @param config - A {@link CompletionConfig} object that maps shell types to their specific
+   *                 {@link ShellCompletionConfig} (source path, name, target directory).
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.completions({
+   *   zsh: { source: 'completions/_mytool.zsh' },
+   *   bash: { source: 'completions/mytool.bash' }
+   * })
    */
   completions(config: CompletionConfig): this;
 }
 
 /**
- * The main function exported by each tool configuration file.
- * It receives a ToolConfigBuilder and defines the tool's configuration.
- * @param c The ToolConfigBuilder instance.
+ * Defines the type for the main configuration function exported by each tool's `.tool.ts` file.
+ * This asynchronous function receives an instance of {@link ToolConfigBuilder} and uses its methods
+ * to declaratively define all aspects of the tool's setup and integration.
+ * @param c - The {@link ToolConfigBuilder} instance used to configure the tool.
+ * @returns A Promise that resolves when the configuration is complete.
+ * @example
+ * ```typescript
+ * // In generator/configs/tools/my-cli-tool.tool.ts
+ * import type { AsyncConfigureTool } from '../../types';
+ *
+ * export const configure: AsyncConfigureTool = async (c) => {
+ *   c.name('my-cli-tool');
+ *   c.version('1.5.0');
+ *   c.bin('my-cli');
+ *   c.install('github-release', {
+ *     repo: 'user/my-cli-tool',
+ *     assetPattern: '*linux_amd64.tar.gz',
+ *     binaryPath: 'bin/my-cli',
+ *   });
+ *   c.zsh('export MY_CLI_ENABLE_FEATURE_X=true');
+ * };
+ * ```
  */
 export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
 
-// Common properties for all ToolConfig variants
+/**
+ * Base properties common to all variants of a fully resolved {@link ToolConfig}.
+ * This represents the internal data structure after the `ToolConfigBuilder` has been processed.
+ */
 interface BaseToolConfigProperties {
+  /** The unique name of the tool, as defined by `c.name()`. */
   name: string;
-  binaries?: string[]; // Make binaries optional at the base level
+  /**
+   * An array of binary names that should have shims generated for this tool.
+491    * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
+   */
+  binaries?: string[];
+  /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
   version: string;
+  /** An array of Zsh initialization script snippets, added via `c.zsh()`. */
   zshInit?: string[];
+  /** An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths. */
   symlinks?: { source: string; target: string }[];
-  // Arch overrides can change the installation method, so the type needs to allow any valid ToolConfig structure,
-  // minus the 'name' (which is fixed) and 'archOverrides' (to prevent nesting).
-  // Note: ToolConfig will be a union type, this Omit should work across the union.
+  /**
+   * A map of architecture-specific overrides. The keys are `osArch` strings (e.g., 'darwin-arm64'),
+   * and the values are partial `ToolConfig` objects containing the overrides for that architecture.
+   * Defined by `c.arch()`.
+   */
   archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> };
+  /** Shell completion configurations, defined by `c.completions()`. */
   completions?: CompletionConfig;
+  /**
+   * Configuration for automatic update checking for this tool.
+   */
   updateCheck?: {
+    /**
+     * Whether update checking is enabled for this tool.
+     * Can be overridden globally by `AppConfig.checkUpdatesOnRun`.
+     * @default true
+     */
     enabled?: boolean;
+    /**
+     * An optional SemVer constraint for updates. If specified, only updates satisfying
+     * this constraint relative to the currently installed version will be considered.
+     * E.g., if `1.2.3` is installed and constraint is `~1.2.x`, then `1.2.4` is an update, but `1.3.0` is not.
+     * If `^1.2.3` is installed, then `1.3.0` is an update, but `2.0.0` is not.
+     */
     constraint?: string;
   };
 }
 
-// Specific ToolConfig types based on installationMethod
+/** Resolved tool configuration for the 'github-release' installation method. */
 export type GithubReleaseToolConfig = BaseToolConfigProperties & {
   installationMethod: 'github-release';
   installParams: GithubReleaseInstallParams;
-  binaries: string[]; // Non-optional for this type
+  /** Binaries are typically required for this installation method. */
+  binaries: string[];
 };
 
+/** Resolved tool configuration for the 'brew' installation method. */
 export type BrewToolConfig = BaseToolConfigProperties & {
   installationMethod: 'brew';
   installParams: BrewInstallParams;
-  binaries: string[]; // Non-optional for this type
+  /** Binaries are typically required for this installation method. */
+  binaries: string[];
 };
 
+/** Resolved tool configuration for the 'curl-script' installation method. */
 export type CurlScriptToolConfig = BaseToolConfigProperties & {
   installationMethod: 'curl-script';
   installParams: CurlScriptInstallParams;
-  binaries: string[]; // Non-optional for this type
+  /** Binaries are typically required for this installation method. */
+  binaries: string[];
 };
 
+/** Resolved tool configuration for the 'curl-tar' installation method. */
 export type CurlTarToolConfig = BaseToolConfigProperties & {
   installationMethod: 'curl-tar';
   installParams: CurlTarInstallParams;
-  binaries: string[]; // Non-optional for this type
+  /** Binaries are typically required for this installation method. */
+  binaries: string[];
 };
 
+/** Resolved tool configuration for the 'pip' installation method. */
 export type PipToolConfig = BaseToolConfigProperties & {
   installationMethod: 'pip';
   installParams: PipInstallParams;
-  binaries: string[]; // Non-optional for this type
+  /** Binaries are typically required for this installation method. */
+  binaries: string[];
 };
 
+/** Resolved tool configuration for the 'manual' installation method. */
 export type ManualToolConfig = BaseToolConfigProperties & {
   installationMethod: 'manual';
   installParams: ManualInstallParams;
-  binaries: string[]; // Non-optional for this type
-};
-
-// For tools that might not have an installation method (e.g., only zshInit or symlinks)
-// or if installation is optional and handled by archOverrides.
-// Binaries are optional here, inherited from BaseToolConfigProperties.
-export type NoInstallToolConfig = BaseToolConfigProperties & {
-  installationMethod: 'none'; // Use 'none' as an explicit discriminant value
-  installParams?: undefined; // Explicitly undefined or absent
+  /** Binaries are typically required for this installation method. */
+  binaries: string[];
 };
 
 /**
- * Represents a tool's complete configuration.
- * This is a discriminated union based on `installationMethod`.
- * This will be built by the ToolConfigBuilder.
+ * Resolved tool configuration for tools that do not have a primary installation method defined
+ * at the top level (e.g., they might only consist of Zsh initializations, symlinks, or rely entirely
+ * on architecture-specific overrides for installation).
+ * The `binaries` property is optional here, inherited from {@link BaseToolConfigProperties}.
+ */
+export type NoInstallToolConfig = BaseToolConfigProperties & {
+  /** Indicates that no top-level installation method is specified. */
+  installationMethod: 'none';
+  /** Installation parameters are explicitly undefined or absent for this type. */
+  installParams?: undefined;
+};
+
+/**
+ * Represents a tool's complete, resolved configuration after being processed by the `ToolConfigBuilder`.
+ * This is a discriminated union based on the `installationMethod` property, allowing TypeScript
+ * to correctly infer the type of `installParams` and other method-specific properties.
  */
 export type ToolConfig =
   | GithubReleaseToolConfig
