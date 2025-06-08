@@ -22,7 +22,7 @@
  * [ ] Ensure 100% test coverage for executable code.
  * [ ] Update the memory bank with the new information when all tasks are complete.
  */
-import { Logger } from '@node-cli/logger';
+import { createConsola, LogLevels, type LogLevel } from 'consola';
 
 export interface CreateClientLoggerOptions {
   quiet?: boolean;
@@ -38,7 +38,7 @@ export interface CreateClientLoggerOptions {
  * @param options - Configuration options for the logger.
  * @returns A configured logger instance.
  */
-export function createClientLogger(options: CreateClientLoggerOptions = {}): Logger {
+export function createClientLogger(options: CreateClientLoggerOptions = {}) {
   const { quiet = false } = options; // Default quiet to false if not provided
   // The 'verbose' option from CreateClientLoggerOptions is not directly used to set a level
   // on the Logger instance itself. Instead, the CLI will use the 'verbose' flag
@@ -48,14 +48,20 @@ export function createClientLogger(options: CreateClientLoggerOptions = {}): Log
   // 1. If 'quiet' is explicitly true, it's silent.
   // 2. If running in 'test' environment AND 'quiet' is not explicitly set to false,
   //    it's silent (i.e., tests are silent by default but can be made non-silent).
-  const defaultToSilentInTest = process.env.NODE_ENV === 'test' && options.quiet !== false;
-  const isSilent = quiet || defaultToSilentInTest;
+  let level: LogLevel = LogLevels.info;
 
-  const logger = new Logger({
-    silent: isSilent,
-    // According to the docs, other options like 'boring', 'prefix', 'timestamp' could be set here.
-    // For now, only 'silent' is configured based on requirements.
+  if (options.verbose) {
+    level = LogLevels.debug;
+  }
+
+  if (process.env.NODE_ENV === 'test' || quiet) {
+    level = LogLevels.silent;
+  }
+
+  return createConsola({
+    formatOptions: {
+      date: false,
+    },
+    level,
   });
-
-  return logger;
 }

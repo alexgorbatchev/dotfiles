@@ -272,8 +272,6 @@ program
       const logger = createClientLogger(options);
       internalLog('install: Command called with toolName: %s, options: %o', toolName, options);
 
-      logger.debug('HI');
-
       try {
         const { installer, fs, appConfig } = await setupServices();
         const toolConfigs = await realLoadToolConfigs(appConfig, fs);
@@ -302,6 +300,9 @@ program
 
         if (result.success) {
           internalLog('install: Tool %s installed successfully at %s', toolName, result.binaryPath);
+          if (options.verbose && result.otherChanges && result.otherChanges.length > 0) {
+            result.otherChanges.forEach((change) => logger.debug(change));
+          }
           logger.info(`Tool "${toolName}" installed successfully.`);
           if (result.binaryPath) {
             logger.info(`Binary path: ${result.binaryPath}`);
@@ -311,10 +312,6 @@ program
           }
           if (result.symlinkPath) {
             logger.info(`Symlink created: ${result.symlinkPath}`);
-          }
-          if (options.verbose && result.otherChanges && result.otherChanges.length > 0) {
-            logger.debug('Detailed installation steps:');
-            result.otherChanges.forEach((change) => logger.debug(`  - ${change}`));
           }
         } else {
           internalLog('install: Failed to install tool %s: %s', toolName, result.error);
