@@ -45,7 +45,8 @@
  * - [x] Integrate clientLogger for improved logging.
  * - [x] Rename `--details` to `--verbose` and add `--quiet` to `install` command.
  * - [x] Add `--verbose` and `--quiet` to `generate` command.
- * [x] Ensure 100% test coverage for executable code.
+ * - [x] Refine `generate` command's `--verbose` logging for shims, shell init, and symlinks to provide detailed output.
+ * - [x] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -248,8 +249,63 @@ program
         // generatorVersion can be added here if needed from package.json
       });
       internalLog('generate: Artifacts generated successfully. Manifest: %o', manifest);
-      logger.debug('Generated manifest: %o', manifest);
+      // Log raw manifest for deep debugging if verbose
+      logger.debug('Raw generated manifest: %o', manifest);
+
+      // Concise summary output (if not --quiet)
       logger.info('Artifact generation complete.');
+
+      // Shims
+      const numShims = manifest.shims?.length ?? 0;
+      logger.info(`Generated ${numShims} shims in ${appConfig.binDir}`);
+      // Log tool-to-binary mapping by default
+      if (numShims > 0) {
+        logger.info('Generated shims by tool:');
+        Object.values(toolConfigs).forEach((toolConfig) => {
+          if (toolConfig.binaries && toolConfig.binaries.length > 0) {
+            if (toolConfig.binaries.length === 1 && toolConfig.binaries[0] === toolConfig.name) {
+              logger.info(`  - ${toolConfig.name}`);
+            } else {
+              logger.info(`  - ${toolConfig.name} -> ${toolConfig.binaries.join(', ')}`);
+            }
+          }
+        });
+      }
+
+      // Verbose: individual shim paths
+      if (options.verbose && manifest.shims && numShims > 0) {
+        logger.debug('Individual shim paths:');
+        manifest.shims.forEach((shimPath) => logger.debug(`    - ${shimPath}`));
+      }
+
+      // Shell Init
+      if (manifest.shellInit?.path) {
+        logger.info(`Shell init file generated at: ${manifest.shellInit.path}`);
+        if (options.verbose) {
+          logger.debug(`Shell init file confirmed at: ${manifest.shellInit.path}`);
+        }
+      } else {
+        logger.info('No shell init file generated.');
+      }
+
+      // Symlinks
+      const numSymlinks = manifest.symlinks?.length ?? 0;
+      logger.info(`Processed ${numSymlinks} symlink operations.`);
+      if (options.verbose && manifest.symlinks && numSymlinks > 0) {
+        logger.debug('Details of symlink operations:');
+        manifest.symlinks.forEach((op) => {
+          let symlinkMessage = `  - Target: ${op.targetPath} <- Source: ${op.sourcePath} (Status: ${op.status})`;
+          if (op.status === 'failed' && op.error) {
+            symlinkMessage += ` | Error: ${op.error}`;
+          } else if (op.status === 'skipped_exists') {
+            symlinkMessage += ` (target already exists)`;
+          } else if (op.status === 'skipped_source_missing') {
+            symlinkMessage += ` (source file missing)`;
+          }
+          logger.debug(symlinkMessage);
+        });
+      }
+
       if (options.dryRun) {
         logger.info('Dry run complete. No changes were made.');
       }

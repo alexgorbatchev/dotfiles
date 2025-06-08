@@ -1,15 +1,4 @@
 # generator
 
-To install dependencies:
+* https://github.com/mjbvz/vscode-comment-tagged-templates
 
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.11. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
