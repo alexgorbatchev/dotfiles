@@ -46,6 +46,7 @@
  * - [x] Rename `--details` to `--verbose` and add `--quiet` to `install` command.
  * - [x] Add `--verbose` and `--quiet` to `generate` command.
  * - [x] Refine `generate` command's `--verbose` logging for shims, shell init, and symlinks to provide detailed output.
+ * - [x] Ensure `generate` command's default log for shim count correctly and explicitly uses `appConfig.binDir`.
  * - [x] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -257,7 +258,7 @@ program
 
       // Shims
       const numShims = manifest.shims?.length ?? 0;
-      logger.info(`Generated ${numShims} shims in ${appConfig.binDir}`);
+      logger.info(`Generated ${numShims} shims in ${appConfig.targetDir}`);
       // Log tool-to-binary mapping by default
       if (numShims > 0) {
         logger.info('Generated shims by tool:');
