@@ -45,17 +45,20 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ConfigEnvironment } from '../modules/config';
+import { createAppConfig } from '../modules/config/config'; // For AppConfig structure
 import { createTempDir } from './helpers';
 
 describe('E2E: bun run cli generate', () => {
   let tempDir: string;
   let dotfilesDir: string;
-  let generatedDir: string;
+  let generatedDir: string; // AppConfig.generatedDir
   let toolConfigsDir: string;
-  let binDirForVerification: string;
+  let targetDirForShims: string; // AppConfig.targetDir (where shims are placed)
+  let binariesDirForVerification: string; // AppConfig.binariesDir (where actual binaries are expected by shims)
   let zshInitDirForVerification: string;
   let lazygitSourceConfigPath: string; // Source for the lazygit config symlink
   let envVarsForCli: ConfigEnvironment;
+  let appConfigForTestSetup: ReturnType<typeof createAppConfig>; // To get consistent paths
 
   // For CLI results and manifest, populated in beforeAll
   let cliExitCode: number | null;
@@ -63,6 +66,7 @@ describe('E2E: bun run cli generate', () => {
   // Paths to generated artifacts, defined in beforeAll for clarity and use in 'it' blocks
   let fzfShimPath: string;
   let lazygitShimPath: string;
+  let generatorCliShimPath: string; // Path to the generator's own shim
   let zshInitFilePath: string;
   let actualLazygitSymlinkLocation: string; // Where the lazygit symlink is created
   let expectedLazygitSymlinkTargetFile: string; // What the lazygit symlink should point to
@@ -71,19 +75,35 @@ describe('E2E: bun run cli generate', () => {
   beforeAll(() => {
     tempDir = createTempDir('dotfiles-e2e-cli-generate');
 
+    // Define base directories for the test environment
     dotfilesDir = path.join(tempDir, 'my-dotfiles-repo');
-    generatedDir = path.join(dotfilesDir, '.generated');
-    toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs'); // TOOL_CONFIGS_DIR points here
+    // GENERATED_DIR will be derived by createAppConfig based on DOTFILES_DIR
+    // TARGET_DIR for shims will also be derived or set explicitly
 
-    binDirForVerification = path.join(tempDir, '.local', 'bin');
-    zshInitDirForVerification = path.join(generatedDir, 'zsh');
+    // Create a minimal AppConfig to get consistent paths for test setup
+    // This ensures paths used in tests match what ShimGenerator would use.
+    const systemInfoForTestConfig = { homedir: tempDir, cwd: tempDir };
+    const envForTestConfig: ConfigEnvironment = {
+      DOTFILES_DIR: dotfilesDir,
+      // Let generatedDir, targetDir, etc., be derived if not explicitly set for the CLI run
+    };
+    appConfigForTestSetup = createAppConfig(systemInfoForTestConfig, envForTestConfig);
+
+    generatedDir = appConfigForTestSetup.generatedDir; // Use derived generatedDir
+    targetDirForShims = path.join(tempDir, '.local', 'bin'); // Explicitly set for CLI env
+    binariesDirForVerification = appConfigForTestSetup.binariesDir; // Where shims expect binaries
+
+    toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs'); // TOOL_CONFIGS_DIR points here
+    zshInitDirForVerification = path.join(generatedDir, 'zsh'); // Based on derived generatedDir
 
     const lazygitSourceConfigDirInDotfiles = path.join(dotfilesDir, '02-configs', 'lazygit');
     lazygitSourceConfigPath = path.join(lazygitSourceConfigDirInDotfiles, 'config.yml');
 
     // Create necessary directories
     fs.mkdirSync(dotfilesDir, { recursive: true });
-    fs.mkdirSync(generatedDir, { recursive: true }); // CLI creates subdirs like bin, zsh
+    fs.mkdirSync(generatedDir, { recursive: true });
+    fs.mkdirSync(targetDirForShims, { recursive: true }); // Ensure targetDirForShims exists
+    fs.mkdirSync(binariesDirForVerification, { recursive: true }); // Ensure binariesDirForVerification exists
     fs.mkdirSync(toolConfigsDir, { recursive: true });
     fs.mkdirSync(lazygitSourceConfigDirInDotfiles, { recursive: true });
 
@@ -91,56 +111,51 @@ describe('E2E: bun run cli generate', () => {
     manifestPathFromEnv = path.join(generatedDir, 'generated-manifest.json');
     envVarsForCli = {
       DOTFILES_DIR: dotfilesDir,
-      GENERATED_DIR: generatedDir,
+      GENERATED_DIR: generatedDir, // Pass the derived generatedDir
       TOOL_CONFIGS_DIR: toolConfigsDir,
-      TARGET_DIR: binDirForVerification, // AppConfig uses this for shims if defined, else GENERATED_DIR/bin
+      TARGET_DIR: targetDirForShims, // Explicitly set where shims should go
       GENERATED_ARTIFACTS_MANIFEST_PATH: manifestPathFromEnv,
-      DEBUG: '', // CRITICAL: Ensure CLI runs without debug output unless specified
+      DEBUG: '',
       CACHE_ENABLED: 'false',
       GITHUB_API_CACHE_ENABLED: 'false',
       CHECK_UPDATES_ON_RUN: 'false',
     };
 
     const additionalEnvVarsForCli = {
-      PATH: process.env['PATH'], // Essential for finding 'bun'
-      HOME: tempDir, // Controls where ~ resolves, e.g. for symlink targets
+      PATH: `${targetDirForShims}:${process.env['PATH']}`, // Add targetDirForShims to PATH
+      HOME: tempDir,
     };
 
-    // Copy tool configuration files from E2E fixtures
+    // Copy tool configuration files
     const sourceTestFixturesDir = path.resolve(__dirname, 'fixtures');
     const fzfSourceToolPath = path.join(sourceTestFixturesDir, 'fzf.tool.ts');
     const lazygitSourceToolPath = path.join(sourceTestFixturesDir, 'lazygit.tool.ts');
     fs.copyFileSync(fzfSourceToolPath, path.join(toolConfigsDir, 'fzf.tool.ts'));
     fs.copyFileSync(lazygitSourceToolPath, path.join(toolConfigsDir, 'lazygit.tool.ts'));
 
-    // Adjust import paths in copied fixtures for TSC in temp dir
-    const fzfDestPath = path.join(toolConfigsDir, 'fzf.tool.ts');
-    const lazygitDestPath = path.join(toolConfigsDir, 'lazygit.tool.ts');
-    [fzfDestPath, lazygitDestPath].forEach((filePath) => {
+    // Adjust import paths in copied fixtures
+    [
+      path.join(toolConfigsDir, 'fzf.tool.ts'),
+      path.join(toolConfigsDir, 'lazygit.tool.ts'),
+    ].forEach((filePath) => {
       let content = fs.readFileSync(filePath, 'utf-8');
-      // Original path in fixture: ../../types
-      // New path from temp location: ../../../../../types
       content = content.replace(
         /from ('|")\.\.\/\.\.\/types('|")/g,
         'from $1../../../../../types$2'
       );
-
-      // No modifications to the tool config's TOOL_EXECUTABLE
-
       fs.writeFileSync(filePath, content);
     });
 
-    // Create dummy lazygit config source file for symlink testing
     fs.writeFileSync(
       lazygitSourceConfigPath,
       '# Sample lazygit config for E2E test\nkeybinding:\n universal:\n quit: "q"'
     );
 
-    // Define artifact paths for use in 'it' blocks
-    fzfShimPath = path.join(binDirForVerification, 'fzf');
-    lazygitShimPath = path.join(binDirForVerification, 'lazygit');
+    // Define artifact paths
+    fzfShimPath = path.join(targetDirForShims, 'fzf');
+    lazygitShimPath = path.join(targetDirForShims, 'lazygit');
+    generatorCliShimPath = path.join(targetDirForShims, appConfigForTestSetup.generatorCliShimName);
     zshInitFilePath = path.join(zshInitDirForVerification, 'init.zsh');
-    // Symlink target is relative to HOME (tempDir), source is in dotfilesDir
     actualLazygitSymlinkLocation = path.join(tempDir, '.config', 'lazygit', 'config.yml');
     expectedLazygitSymlinkTargetFile = lazygitSourceConfigPath;
 
@@ -148,53 +163,77 @@ describe('E2E: bun run cli generate', () => {
     const generatorProjectRootPath = path.resolve(__dirname, '../../../generator');
     const cliEntryPoint = path.join(generatorProjectRootPath, 'src', 'cli.ts');
     const proc = Bun.spawnSync({
-      cmd: ['bun', cliEntryPoint, 'generate'], // Execute cli.ts directly
-      cwd: generatorProjectRootPath, // Run from the 'generator' project directory
+      cmd: ['bun', cliEntryPoint, 'generate'],
+      cwd: generatorProjectRootPath,
       env: { ...envVarsForCli, ...additionalEnvVarsForCli },
       stdout: 'pipe',
       stderr: 'pipe',
     });
 
     cliExitCode = proc.exitCode;
+    // console.log('CLI STDOUT:', proc.stdout.toString());
+    // console.log('CLI STDERR:', proc.stderr.toString());
   });
 
   it('should execute the CLI successfully', () => {
     expect(cliExitCode).toBe(0);
   });
 
-  it('creates manifest file', () => {});
+  it('creates manifest file', () => {
+    expect(fs.existsSync(manifestPathFromEnv)).toBe(true);
+  });
 
   it('should generate the correct shim files for fzf and lazygit', () => {
     expect(fs.existsSync(fzfShimPath)).toBe(true);
     expect(fs.existsSync(lazygitShimPath)).toBe(true);
+    expect(fs.existsSync(generatorCliShimPath)).toBe(true); // Check for generator's own shim
 
-    const fzfStat = fs.statSync(fzfShimPath);
-    const lazygitStat = fs.statSync(lazygitShimPath);
-    expect(fzfStat.mode & 0o100).toBeGreaterThan(0);
-    expect(lazygitStat.mode & 0o100).toBeGreaterThan(0);
+    [fzfShimPath, lazygitShimPath, generatorCliShimPath].forEach((shimP) => {
+      const stat = fs.statSync(shimP);
+      expect(stat.mode & 0o100).toBeGreaterThan(0); // Check executable
+    });
 
     const fzfShimContent = fs.readFileSync(fzfShimPath, 'utf-8');
     const lazygitShimContent = fs.readFileSync(lazygitShimPath, 'utf-8');
+    const expectedGeneratorCliShimPathInToolShim = path.join(
+      targetDirForShims, // This is appConfig.targetDir for the CLI run
+      appConfigForTestSetup.generatorCliShimName
+    );
+
+    // For fzf shim
     expect(fzfShimContent).toContain('#!/usr/bin/env bash');
-    expect(fzfShimContent).toContain('exec "$TOOL_EXECUTABLE" "$@"');
-    expect(fzfShimContent).toContain('INSTALL_TOOL='); // Check for INSTALL_TOOL variable
-    expect(fzfShimContent).toContain('"$INSTALL_TOOL" "fzf" "mydotfiles"'); // Check for install tool script usage
+    expect(fzfShimContent).toContain('TOOL_NAME="fzf"');
+    // TOOL_EXECUTABLE will be in appConfig.binariesDir/fzf/fzf (derived from generatedDir)
+    const expectedFzfBinaryPath = path.join(binariesDirForVerification, 'fzf', 'fzf');
+    expect(fzfShimContent).toContain(`TOOL_EXECUTABLE="${expectedFzfBinaryPath}"`);
+    expect(fzfShimContent).toContain(
+      `GENERATOR_CLI_SHIM_NAME="${expectedGeneratorCliShimPathInToolShim}"`
+    );
+    expect(fzfShimContent).toContain(
+      `"\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet`
+    );
+
+    // For lazygit shim
     expect(lazygitShimContent).toContain('#!/usr/bin/env bash');
-    expect(lazygitShimContent).toContain('exec "$TOOL_EXECUTABLE" "$@"');
-    expect(lazygitShimContent).toContain('INSTALL_TOOL='); // Check for INSTALL_TOOL variable
-    expect(lazygitShimContent).toContain('"$INSTALL_TOOL" "lazygit" "mydotfiles"'); // Check for install tool script usage
+    expect(lazygitShimContent).toContain('TOOL_NAME="lazygit"');
+    const expectedLazygitBinaryPath = path.join(binariesDirForVerification, 'lazygit', 'lazygit');
+    expect(lazygitShimContent).toContain(`TOOL_EXECUTABLE="${expectedLazygitBinaryPath}"`);
+    expect(lazygitShimContent).toContain(
+      `GENERATOR_CLI_SHIM_NAME="${expectedGeneratorCliShimPathInToolShim}"`
+    );
+    expect(lazygitShimContent).toContain(
+      `"\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet`
+    );
   });
 
   it('should generate the correct shell initialization file content', () => {
     expect(fs.existsSync(zshInitFilePath)).toBe(true);
     const zshInitContent = fs.readFileSync(zshInitFilePath, 'utf-8');
-    // Check for content from fzf.tool.ts fixture
     expect(zshInitContent).toContain('# --- fzf ---');
     expect(zshInitContent).toContain(
       'export FZF_DEFAULT_OPTS="--color=fg+:cyan,bg+:black,hl+:yellow,pointer:blue"'
     );
     expect(zshInitContent).toContain('function fzf-jump-to-dir()');
-    // Check for content from lazygit.tool.ts fixture
     expect(zshInitContent).toContain('# --- lazygit ---');
     expect(zshInitContent).toContain('alias g="lazygit"');
   });
@@ -205,35 +244,32 @@ describe('E2E: bun run cli generate', () => {
     expect(symlinkStats.isSymbolicLink()).toBe(true);
 
     const symlinkPointsTo = fs.readlinkSync(actualLazygitSymlinkLocation);
-    // Resolve the link target relative to the symlink's directory to get an absolute path for comparison
     const resolvedSymlinkPointsTo = path.resolve(
       path.dirname(actualLazygitSymlinkLocation),
       symlinkPointsTo
     );
     expect(resolvedSymlinkPointsTo).toBe(expectedLazygitSymlinkTargetFile);
-
-    // Verify source file content (implicitly checks existence of the target file)
     const symlinkTargetContent = fs.readFileSync(resolvedSymlinkPointsTo, 'utf-8');
     expect(symlinkTargetContent).toContain('# Sample lazygit config for E2E test');
   });
 
   it('should generate a manifest file with correct entries', () => {
     const parsedManifest = JSON.parse(fs.readFileSync(manifestPathFromEnv, 'utf-8'));
-
     expect(parsedManifest).not.toBeNull();
-    if (!parsedManifest) return; // Guard for type safety, though expect handles it
+    if (!parsedManifest) return;
 
     expect(parsedManifest.lastGenerated).toBeDefined();
-
     expect(parsedManifest.shims).toBeInstanceOf(Array);
+    // Order might vary, so check for presence
     expect(parsedManifest.shims).toContain(fzfShimPath);
     expect(parsedManifest.shims).toContain(lazygitShimPath);
+    expect(parsedManifest.shims).toContain(generatorCliShimPath); // Generator's own shim
 
     expect(parsedManifest.shellInit).toBeDefined();
     expect(parsedManifest.shellInit.path).toBe(zshInitFilePath);
 
     expect(parsedManifest.symlinks).toBeInstanceOf(Array);
-    expect(parsedManifest.symlinks.length).toBe(1); // Based on lazygit.tool.ts fixture
+    expect(parsedManifest.symlinks.length).toBe(1);
 
     const lazygitSymlinkManifestEntry = parsedManifest.symlinks[0];
     expect(lazygitSymlinkManifestEntry.sourcePath).toBe(expectedLazygitSymlinkTargetFile);
@@ -243,33 +279,45 @@ describe('E2E: bun run cli generate', () => {
   });
 
   it('should execute fzf shim, run mock fzf, and output version', () => {
-    // Setup mock fzf binary
-    const mockFzfDir = path.join(generatedDir, 'bin');
-    const mockFzfBinaryPath = path.join(mockFzfDir, 'fzf');
-    fs.mkdirSync(mockFzfDir, { recursive: true });
+    // Mock fzf binary needs to be in the location the fzf SHIM expects:
+    // appConfig.binariesDir / toolName / binaryName
+    // binariesDirForVerification is appConfigForTestSetup.binariesDir
+    const mockFzfToolDir = path.join(binariesDirForVerification, 'fzf');
+    const mockFzfBinaryPath = path.join(mockFzfToolDir, 'fzf'); // Matches toolConfig.binaries[0] for fzf
+    fs.mkdirSync(mockFzfToolDir, { recursive: true });
+
     const mockFzfScriptContent = `#!/usr/bin/env bash
       if [ "$1" = "--version" ]; then
         echo "0.1.2-mock-e2e"
         exit 0
       fi
+      # If install was attempted, this mock won't be called first.
+      # For this test, we assume the binary "exists" for the shim to exec directly.
       echo "Mock fzf called with: $@"
+      exit 0 # Ensure mock exits cleanly
     `;
     fs.writeFileSync(mockFzfBinaryPath, mockFzfScriptContent);
     fs.chmodSync(mockFzfBinaryPath, 0o755);
 
     const shimProc = Bun.spawnSync({
-      cmd: [fzfShimPath, '--version'],
+      cmd: [fzfShimPath, '--version'], // fzfShimPath is in targetDirForShims
       env: {
-        ...process.env,
-        HOME: tempDir,
+        ...process.env, // Inherit existing env
+        HOME: tempDir, // Consistent HOME
+        // PATH should include targetDirForShims (where generator-cli-shim is)
+        // and binariesDirForVerification (where mock fzf is)
+        // PATH was already set for the main CLI spawn, ensure it's correct here too.
+        PATH: `${targetDirForShims}:${binariesDirForVerification}:${process.env['PATH']}`,
+        // Pass necessary env vars for the shim to find the generator CLI shim if needed
         DOTFILES_DIR: envVarsForCli['DOTFILES_DIR'],
         GENERATED_DIR: envVarsForCli['GENERATED_DIR'],
-        TOOL_CONFIGS_DIR: envVarsForCli['TOOL_CONFIGS_DIR'],
+        TARGET_DIR: envVarsForCli['TARGET_DIR'], // So GENERATOR_CLI_SHIM_NAME resolves correctly
       },
       stdout: 'pipe',
       stderr: 'pipe',
     });
-
+    // console.log('FZF Shim STDOUT:', shimProc.stdout.toString());
+    // console.log('FZF Shim STDERR:', shimProc.stderr.toString());
     expect(shimProc.exitCode).toBe(0);
     expect(shimProc.stdout.toString().trim()).toBe('0.1.2-mock-e2e');
   });

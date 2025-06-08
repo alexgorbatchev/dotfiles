@@ -125,8 +125,8 @@ export class ShimGenerator implements IShimGenerator {
     );
     log('generateForTool: expectedToolBinaryPath=%s', expectedToolBinaryPath);
 
-    const cliToolPath = this.appConfig.generatorCliShimName;
-    log('generateForTool: cliToolPath=%s', cliToolPath);
+    // const cliToolPath = this.appConfig.generatorCliShimName; // Not directly used in template this way
+    // log('generateForTool: cliToolPath=%s', cliToolPath);
 
     const shimContent = `#!/usr/bin/env bash
 # Shim for ${toolName}
