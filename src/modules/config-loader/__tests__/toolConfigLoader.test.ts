@@ -43,7 +43,7 @@ import { resolve as resolvePath } from 'path'; // Removed unused 'join'
 import type { AppConfig, ToolConfig } from '@types';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import { loadToolConfigs } from '../toolConfigLoader';
-import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
 import { createMockFileSystem } from '../../../testing-helpers'; // Corrected import path
 import { ToolConfigBuilder } from '../../tool-config-builder/toolConfigBuilder';
 import * as toolConfigSchema from '../../config/toolConfigSchema'; // To mock ToolConfigSchema

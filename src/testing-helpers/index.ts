@@ -16,5 +16,6 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 export * from './FetchMockHelper';
-export * from './fileSystemMock';
-export * from './appConfigTestHelpers';
+export * from './createMockFileSystem';
+export * from './createMockAppConfig';
+export * from './createMemFileSystem';

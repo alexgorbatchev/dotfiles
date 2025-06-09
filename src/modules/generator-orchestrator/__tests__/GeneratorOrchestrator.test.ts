@@ -48,9 +48,9 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
-import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
 import type { IFileSystem } from '@modules/file-system';
-import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
+import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
 import type { IShimGenerator } from '../../generator-shim';
 import type { IShellInitGenerator } from '../../generator-shell-init';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '../../generator-symlink';
@@ -89,7 +89,7 @@ describe('GeneratorOrchestrator', () => {
     // We will assert directly on mockShimGenerator.generate, etc.
     // Top-level mock function variables (e.g., mockShimGenerate) are no longer declared at the top of the describe block.
 
-    mockFileSystem = createMockFileSystem();
+    mockFileSystem = createMemFileSystem();
     mockFsReadFile = spyOn(mockFileSystem, 'readFile');
     mockFsExists = spyOn(mockFileSystem, 'exists');
 

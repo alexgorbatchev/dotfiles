@@ -27,12 +27,8 @@
  * - [x] Ensure 100% test coverage for executable code. (N/A)
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
+import { MemFileSystem, type IFileSystem } from '@modules/file-system';
 import type { DirectoryJSON } from 'memfs';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { MemFileSystem } from '@modules/file-system/MemFileSystem';
-import { createLogger } from '@modules/logger';
-
-const log = createLogger('fileSystemTestHelpers');
 
 /**
  * Creates a mock `IFileSystem` instance using `MemFileSystem`.
@@ -41,8 +37,7 @@ const log = createLogger('fileSystemTestHelpers');
  *                            Keys are file paths, values are file content (string, Buffer) or null for directories.
  * @returns A new `MemFileSystem` instance.
  */
-export function createMockFileSystem(initialVolumeJson?: DirectoryJSON): IFileSystem {
-  log('createMockFileSystem: initialVolumeJson=%o', initialVolumeJson);
+export function createMemFileSystem(initialVolumeJson?: DirectoryJSON): IFileSystem {
   if (initialVolumeJson) {
     // MemFileSystem constructor can take DirectoryJSON directly
     return new MemFileSystem(initialVolumeJson);

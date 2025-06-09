@@ -46,7 +46,7 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import type { DirectoryJSON } from 'memfs';
 import type { IFileSystem } from '../IFileSystem'; // Keep IFileSystem for type annotation
-import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
+import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
 
 describe('MemFileSystem', () => {
   let fileSystem: IFileSystem; // Changed to IFileSystem
@@ -58,7 +58,7 @@ describe('MemFileSystem', () => {
 
   beforeEach(() => {
     // Create a fresh volume from base JSON using the helper
-    fileSystem = createMockFileSystem(initialJsonBase);
+    fileSystem = createMemFileSystem(initialJsonBase);
     // Programmatically create the symlink to ensure it's correctly set up by memfs
     // Accessing internal 'vol' for testing setup. This is a controlled exception.
     const vol = (fileSystem as any).getVolume

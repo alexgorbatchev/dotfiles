@@ -35,8 +35,8 @@ import path from 'node:path';
 import type { AppConfig, ToolConfig } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import { SymlinkGenerator } from '../SymlinkGenerator';
-import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
-import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
+import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
+import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
@@ -48,7 +48,7 @@ describe('SymlinkGenerator', () => {
   const MOCK_PROJECT_ROOT = `${MOCK_HOME_DIR}/.dotfiles`;
 
   beforeEach(() => {
-    fs = createMockFileSystem();
+    fs = createMemFileSystem();
     appConfig = createMockAppConfig({
       dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
       homeDir: MOCK_HOME_DIR, // Ensure appConfig.homeDir is the mocked home directory

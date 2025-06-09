@@ -35,9 +35,9 @@ import path from 'node:path';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import type { IFileSystem } from '@modules/file-system';
-import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
+import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
 import type { AppConfig, ToolConfig } from '@types';
-import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
 
 describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;
@@ -50,7 +50,7 @@ describe('ShellInitGenerator', () => {
   const DEFAULT_DOTFILES_DIR = '/test/home/.dotfiles';
 
   beforeEach(() => {
-    mockFileSystem = createMockFileSystem();
+    mockFileSystem = createMemFileSystem();
     // Spy on methods of the MemFileSystem instance
     let writtenFilePath: string | null = null;
     let writtenFileContent: string | null = null;
