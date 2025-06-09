@@ -300,15 +300,6 @@ export interface CurlTarInstallParams extends BaseInstallParams {
 }
 
 /**
- * Parameters for installing a Python tool using `pip`.
- * This method assumes Python and `pip` are available on the system.
- */
-export interface PipInstallParams extends BaseInstallParams {
-  /** The name of the Python package to install via `pip` (e.g., `requests`, `ansible`). */
-  packageName: string;
-}
-
-/**
  * Parameters for a "manual" installation method.
  * This method is used when the tool is expected to be installed by some other means
  * (e.g., system package manager not covered, user installs it manually, or it's part of the OS).
@@ -332,7 +323,6 @@ export type InstallParams =
   | BrewInstallParams
   | CurlScriptInstallParams
   | CurlTarInstallParams
-  | PipInstallParams
   | ManualInstallParams;
 
 /**
@@ -442,7 +432,6 @@ export interface ToolConfigBuilder {
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
-  install(method: 'pip', params: PipInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
 
   /**
@@ -646,14 +635,6 @@ export type CurlTarToolConfig = BaseToolConfigProperties & {
   binaries: string[];
 };
 
-/** Resolved tool configuration for the 'pip' installation method. */
-export type PipToolConfig = BaseToolConfigProperties & {
-  installationMethod: 'pip';
-  installParams: PipInstallParams;
-  /** Binaries are typically required for this installation method. */
-  binaries: string[];
-};
-
 /** Resolved tool configuration for the 'manual' installation method. */
 export type ManualToolConfig = BaseToolConfigProperties & {
   installationMethod: 'manual';
@@ -685,6 +666,5 @@ export type ToolConfig =
   | BrewToolConfig
   | CurlScriptToolConfig
   | CurlTarToolConfig
-  | PipToolConfig
   | ManualToolConfig
   | NoInstallToolConfig;

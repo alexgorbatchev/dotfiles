@@ -123,9 +123,6 @@ export class Installer implements IInstaller {
         case 'curl-tar':
           result = await this.installFromCurlTar(toolName, toolConfig, context, options);
           break;
-        case 'pip':
-          result = await this.installFromPip(toolName, toolConfig, context, options);
-          break;
         case 'manual':
           result = await this.installManually(toolName, toolConfig, context, options);
           break;
@@ -956,78 +953,6 @@ export class Installer implements IInstaller {
       };
     } catch (error) {
       log('installFromCurlTar: Error: %O', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        otherChanges,
-      };
-    }
-  }
-
-  /**
-   * Install a tool using pip
-   */
-  private async installFromPip(
-    toolName: string,
-    toolConfig: ToolConfig,
-    context: any, // context now includes otherChanges
-    options?: InstallOptions
-  ): Promise<InstallResult> {
-    log('installFromPip: toolName=%s', toolName);
-    const otherChanges: string[] = context.otherChanges || [];
-
-    if (!toolConfig.installParams || !('packageName' in toolConfig.installParams)) {
-      return {
-        success: false,
-        error: 'Package name not specified in installParams',
-        otherChanges,
-      };
-    }
-
-    const params = toolConfig.installParams;
-    const packageName = params.packageName;
-
-    try {
-      // Check if pip is installed
-      // This is a simplified check; in a real implementation, we would use
-      // the IFileSystem to execute commands
-      const pipCommand = 'pip3'; // Or pip, depending on system setup
-      otherChanges.push(`Using '${pipCommand}' command for installation.`);
-
-      // Build the pip command
-      let command = `${pipCommand} install `;
-
-      // Add force flag if specified
-      if (options?.force) {
-        command += '--force-reinstall ';
-        otherChanges.push(`Using --force-reinstall flag for pip installation.`);
-      }
-
-      command += packageName;
-      otherChanges.push(`Preparing to install pip package: ${packageName}`);
-
-      log('installFromPip: Executing command: %s', command);
-      otherChanges.push(`Executing pip command: ${command}`);
-
-      // In a real implementation, we would execute the command here
-      // For now, we'll just simulate success
-      otherChanges.push(`Simulated successful execution of pip command.`);
-
-      // Find the installed binary
-      // In a real implementation, we would use `pip show packageName` to find the binary
-      const binaryPath = `/usr/local/bin/${toolName}`; // Placeholder
-      otherChanges.push(`Assuming binary path after pip install: ${binaryPath}`);
-
-      return {
-        success: true,
-        binaryPath,
-        info: {
-          packageName,
-        },
-        otherChanges,
-      };
-    } catch (error) {
-      log('installFromPip: Error: %O', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

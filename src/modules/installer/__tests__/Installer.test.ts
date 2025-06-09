@@ -10,7 +10,6 @@
  * - [x] Test Homebrew installation method
  * - [x] Test curl script installation method
  * - [x] Test curl tar installation method
- * - [x] Test pip installation method
  * - [x] Test manual installation method
  * - [x] Test error handling
  * - [x] Cleanup all linting errors and warnings.
@@ -882,39 +881,6 @@ describe('Installer', () => {
           `Set executable permission (0755) on: ${finalBinaryDestPath}`,
           `Cleaned up temporary extraction directory: ${extractDir}`, // This should be present
           `Created symlink: ${symlinkPath} -> ${finalBinaryDestPath}`,
-        ])
-      );
-    });
-  });
-
-  describe('installFromPip', () => {
-    it('should simulate pip installation, populating otherChanges', async () => {
-      const toolConfig: ToolConfig = {
-        name: MOCK_TOOL_NAME,
-        binaries: [MOCK_TOOL_NAME],
-        version: MOCK_VERSION,
-        installationMethod: 'pip',
-        installParams: {
-          packageName: 'test-package',
-        },
-      } as ToolConfig;
-
-      const result = await (installer as any).installFromPip(MOCK_TOOL_NAME, toolConfig, {
-        toolName: MOCK_TOOL_NAME,
-        installDir: path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME),
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.info).toEqual({
-        packageName: 'test-package',
-      });
-      expect(result.otherChanges).toEqual(
-        expect.arrayContaining([
-          "Using 'pip3' command for installation.",
-          'Preparing to install pip package: test-package',
-          'Executing pip command: pip3 install test-package',
-          'Simulated successful execution of pip command.',
-          `Assuming binary path after pip install: /usr/local/bin/${MOCK_TOOL_NAME}`,
         ])
       );
     });

@@ -39,7 +39,6 @@ import type {
   BrewInstallParams,
   CurlScriptInstallParams,
   CurlTarInstallParams,
-  PipInstallParams,
   ManualInstallParams,
   // InstallParams, // This type is no longer directly used by the Zod schema itself
   ShellCompletionConfig,
@@ -141,11 +140,6 @@ const CurlTarInstallParamsSchema: z.ZodType<CurlTarInstallParams> = BaseInstallP
   moveBinaryTo: z.string().optional(),
 });
 
-// Schema for PipInstallParams
-const PipInstallParamsSchema: z.ZodType<PipInstallParams> = BaseInstallParamsSchema.extend({
-  packageName: z.string(),
-});
-
 // Schema for ManualInstallParams
 const ManualInstallParamsSchema: z.ZodType<ManualInstallParams> = BaseInstallParamsSchema.extend({
   binaryPath: z.string(),
@@ -225,12 +219,6 @@ const CurlTarToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
   binaries: z.array(z.string()).min(1),
 });
 
-const PipToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
-  installationMethod: z.literal('pip'),
-  installParams: PipInstallParamsSchema,
-  binaries: z.array(z.string()).min(1),
-});
-
 const ManualToolConfigSchema = BaseToolConfigPropertiesWithArchSchema.extend({
   installationMethod: z.literal('manual'),
   installParams: ManualInstallParamsSchema,
@@ -255,7 +243,6 @@ export const ToolConfigSchema: z.ZodType<ToolConfig> = z
       BrewToolConfigSchema,
       CurlScriptToolConfigSchema,
       CurlTarToolConfigSchema,
-      PipToolConfigSchema,
       ManualToolConfigSchema,
       NoInstallToolConfigSchema, // This should be last or handled carefully if installationMethod can be truly absent
     ]

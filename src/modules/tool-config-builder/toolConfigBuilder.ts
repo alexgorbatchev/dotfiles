@@ -22,7 +22,6 @@ import type {
   BrewInstallParams,
   CurlScriptInstallParams,
   CurlTarInstallParams,
-  PipInstallParams,
   ManualInstallParams,
   AsyncInstallHook,
   CompletionConfig,
@@ -54,7 +53,6 @@ export interface IToolConfigBuilder {
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
-  install(method: 'pip', params: PipInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
   // Add overloads for other methods if needed
 
@@ -135,7 +133,6 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
-  install(method: 'pip', params: PipInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
   install(method: ToolConfig['installationMethod'], params: ToolConfig['installParams']): this {
     this.currentInstallationMethod = method;
