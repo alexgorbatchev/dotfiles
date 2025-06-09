@@ -30,14 +30,13 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
+import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
+import type { AppConfig, ToolConfig } from '@types';
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { AppConfig, ToolConfig } from '@types';
-import type { IFileSystem } from '@modules/file-system';
-import { SymlinkGenerator } from '../SymlinkGenerator';
-import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
-import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
+import { SymlinkGenerator } from '../SymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
   let fs: IFileSystem;

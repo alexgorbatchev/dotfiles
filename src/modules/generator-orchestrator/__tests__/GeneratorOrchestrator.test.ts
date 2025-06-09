@@ -48,12 +48,12 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
-import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
+import { createMockAppConfig } from '@testing-helpers';
 import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
-import type { IShimGenerator } from '../../generator-shim';
-import type { IShellInitGenerator } from '../../generator-shell-init';
-import type { ISymlinkGenerator, SymlinkOperationResult } from '../../generator-symlink';
+import { createMemFileSystem } from '@testing-helpers';
+import type { IShimGenerator } from '@modules/generator-shim';
+import type { IShellInitGenerator } from '@modules/generator-shell-init';
+import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator', () => {

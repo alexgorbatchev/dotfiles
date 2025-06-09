@@ -42,13 +42,13 @@
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
-import type { IShimGenerator, GenerateShimsOptions } from '../generator-shim';
-import type { IShellInitGenerator, GenerateShellInitOptions } from '../generator-shell-init';
+import type { IShimGenerator, GenerateShimsOptions } from '@modules/generator-shim';
+import type { IShellInitGenerator, GenerateShellInitOptions } from '@modules/generator-shell-init';
 import type {
   ISymlinkGenerator,
   GenerateSymlinksOptions,
   SymlinkOperationResult,
-} from '../generator-symlink';
+} from '@modules/generator-symlink';
 import type { IGeneratorOrchestrator, GenerateAllOptions } from './IGeneratorOrchestrator';
 import { createLogger } from '@modules/logger';
 

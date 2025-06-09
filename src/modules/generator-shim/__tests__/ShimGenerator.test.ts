@@ -38,7 +38,7 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { AppConfig, ToolConfig } from '@types';
 import { ShimGenerator } from '../ShimGenerator';
-import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
+import { createMockAppConfig } from '@testing-helpers';
 
 describe('ShimGenerator', () => {
   let mockFileSystem: IFileSystem;

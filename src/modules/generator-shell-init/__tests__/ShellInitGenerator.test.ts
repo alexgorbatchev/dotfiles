@@ -29,15 +29,14 @@
  * - [x] Refactor to use `createMockFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
-import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
-import path from 'node:path';
-import { ShellInitGenerator } from '../ShellInitGenerator';
-import type { IShellInitGenerator } from '../IShellInitGenerator';
 import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem } from '../../../testing-helpers/createMemFileSystem';
+import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
 import type { AppConfig, ToolConfig } from '@types';
-import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
+import path from 'node:path';
+import type { IShellInitGenerator } from '../IShellInitGenerator';
+import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;
