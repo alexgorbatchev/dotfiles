@@ -57,56 +57,26 @@
  * - [ ] Update the memory bank.
  */
 
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { FileGitHubApiCache } from '../FileGitHubApiCache';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { AppConfig } from '@types';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import { createMockFileSystem } from '../../../testing-helpers'; // Corrected path
 import type { CacheEntry } from '../IGitHubApiCache'; // Corrected import for CacheEntry
 import path from 'path';
 
 describe('FileGitHubApiCache', () => {
   let mockFileSystem: IFileSystem;
+  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
   let mockAppConfig: AppConfig;
   let cache: FileGitHubApiCache;
 
-  // Mock functions for IFileSystem
-  let mockReadFile: ReturnType<typeof mock>;
-  let mockWriteFile: ReturnType<typeof mock>;
-  let mockExists: ReturnType<typeof mock>;
-  let mockMkdir: ReturnType<typeof mock>;
-  let mockReaddir: ReturnType<typeof mock>;
-  let mockRm: ReturnType<typeof mock>;
-  let mockEnsureDir: ReturnType<typeof mock>;
-
   beforeEach(() => {
-    // Create mock functions
-    mockReadFile = mock(() => Promise.resolve(''));
-    mockWriteFile = mock(() => Promise.resolve());
-    mockExists = mock(() => Promise.resolve(false));
-    mockMkdir = mock(() => Promise.resolve());
-    mockReaddir = mock(() => Promise.resolve([]));
-    mockRm = mock(() => Promise.resolve());
-    mockEnsureDir = mock(() => Promise.resolve());
-
-    // Create mock file system
-    mockFileSystem = {
-      readFile: mockReadFile as any,
-      writeFile: mockWriteFile as any,
-      exists: mockExists as any,
-      mkdir: mockMkdir as any,
-      readdir: mockReaddir as any,
-      rm: mockRm as any,
-      ensureDir: mockEnsureDir as any,
-      // Add other required methods with empty implementations
-      stat: async () => ({ isDirectory: () => true }) as any,
-      symlink: async () => {},
-      readlink: async () => '',
-      chmod: async () => {},
-      copyFile: async () => {},
-      rename: async () => {},
-      rmdir: async () => {},
-    };
+    // Setup mock file system
+    const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
+    mockFileSystem = fsInstance;
+    fileSystemMocks = fsMocks;
 
     // Create mock app config using the helper
     mockAppConfig = createMockAppConfig({
@@ -148,15 +118,15 @@ describe('FileGitHubApiCache', () => {
       const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
       const result = await disabledCache.get('test-key');
       expect(result).toBeNull();
-      expect(mockExists).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).not.toHaveBeenCalled();
     });
 
     it('should return null when file does not exist', async () => {
-      mockExists.mockResolvedValue(false);
+      fileSystemMocks.exists.mockResolvedValue(false);
       const result = await cache.get('test-key');
       expect(result).toBeNull();
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).not.toHaveBeenCalled();
     });
 
     it('should return cached data when file exists and is not expired', async () => {
@@ -168,13 +138,13 @@ describe('FileGitHubApiCache', () => {
         expiresAt: Date.now() + (mockAppConfig.githubApiCacheTtl ?? 3600000), // Use TTL or default
       };
 
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(mockEntry));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue(JSON.stringify(mockEntry));
 
       const result = await cache.get<typeof mockData>('test-key');
       expect(result).toEqual(mockData);
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
 
     it('should return null and delete file when entry is expired', async () => {
@@ -186,34 +156,34 @@ describe('FileGitHubApiCache', () => {
         expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(mockEntry));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue(JSON.stringify(mockEntry));
 
       const result = await cache.get<typeof mockData>('test-key');
       expect(result).toBeNull();
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
-      expect(mockRm).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
 
     it('should handle file read errors gracefully', async () => {
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockRejectedValue(new Error('Read error'));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockRejectedValue(new Error('Read error'));
 
       const result = await cache.get('test-key');
       expect(result).toBeNull();
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
 
     it('should handle invalid JSON gracefully', async () => {
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue('invalid json');
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue('invalid json');
 
       const result = await cache.get('test-key');
       expect(result).toBeNull();
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
   });
 
@@ -222,19 +192,24 @@ describe('FileGitHubApiCache', () => {
       const disabledConfig = { ...mockAppConfig, githubApiCacheEnabled: false };
       const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
       await disabledCache.set('test-key', { foo: 'bar' });
-      expect(mockEnsureDir).not.toHaveBeenCalled();
-      expect(mockWriteFile).not.toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).not.toHaveBeenCalled();
+      expect(fileSystemMocks.writeFile).not.toHaveBeenCalled();
     });
 
     it('should cache data with default TTL', async () => {
       const data = { foo: 'bar' };
       await cache.set('test-key', data);
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.writeFile).toHaveBeenCalled();
 
       // Verify the written data contains the expected fields
-      const writeCall = mockWriteFile.mock.calls?.[0];
+      const writeCall = fileSystemMocks.writeFile.mock.calls?.[0];
       const writtenContent = writeCall?.[1];
+      expect(writtenContent).toBeDefined(); // Ensure content was written
+      // Type guard for writtenContent
+      if (typeof writtenContent !== 'string') {
+        throw new Error('writtenContent is not a string');
+      }
       const parsedContent = JSON.parse(writtenContent);
       expect(parsedContent).toHaveProperty('data', data);
       expect(parsedContent).toHaveProperty('timestamp');
@@ -250,12 +225,17 @@ describe('FileGitHubApiCache', () => {
       const data = { foo: 'bar' };
       const customTtl = 7200000; // 2 hours
       await cache.set('test-key', data, customTtl);
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.writeFile).toHaveBeenCalled();
 
       // Verify the written data contains the expected fields
-      const writeCall = mockWriteFile.mock.calls?.[0];
+      const writeCall = fileSystemMocks.writeFile.mock.calls?.[0];
       const writtenContent = writeCall?.[1];
+      expect(writtenContent).toBeDefined(); // Ensure content was written
+      // Type guard for writtenContent
+      if (typeof writtenContent !== 'string') {
+        throw new Error('writtenContent is not a string');
+      }
       const parsedContent = JSON.parse(writtenContent);
       expect(parsedContent).toHaveProperty('data', data);
       expect(parsedContent).toHaveProperty('timestamp');
@@ -266,20 +246,20 @@ describe('FileGitHubApiCache', () => {
     });
 
     it('should handle file write errors', async () => {
-      mockEnsureDir.mockResolvedValue(undefined);
-      mockWriteFile.mockRejectedValue(new Error('Write error'));
+      fileSystemMocks.ensureDir.mockResolvedValue(undefined);
+      fileSystemMocks.writeFile.mockRejectedValue(new Error('Write error'));
 
       await expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.writeFile).toHaveBeenCalled();
     });
 
     it('should handle directory creation errors', async () => {
-      mockEnsureDir.mockRejectedValue(new Error('Directory creation error'));
+      fileSystemMocks.ensureDir.mockRejectedValue(new Error('Directory creation error'));
 
       await expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockWriteFile).not.toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.writeFile).not.toHaveBeenCalled();
     });
   });
 
@@ -289,15 +269,15 @@ describe('FileGitHubApiCache', () => {
       const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
       const result = await disabledCache.has('test-key');
       expect(result).toBe(false);
-      expect(mockExists).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).not.toHaveBeenCalled();
     });
 
     it('should return false when file does not exist', async () => {
-      mockExists.mockResolvedValue(false);
+      fileSystemMocks.exists.mockResolvedValue(false);
       const result = await cache.has('test-key');
       expect(result).toBe(false);
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).not.toHaveBeenCalled();
     });
 
     it('should return true when file exists and is not expired', async () => {
@@ -307,13 +287,13 @@ describe('FileGitHubApiCache', () => {
         expiresAt: Date.now() + (mockAppConfig.githubApiCacheTtl ?? 3600000), // Use TTL or default
       };
 
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(mockEntry));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue(JSON.stringify(mockEntry));
 
       const result = await cache.has('test-key');
       expect(result).toBe(true);
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
 
     it('should return false when file exists but is expired', async () => {
@@ -323,33 +303,33 @@ describe('FileGitHubApiCache', () => {
         expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(mockEntry));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue(JSON.stringify(mockEntry));
 
       const result = await cache.has('test-key');
       expect(result).toBe(false);
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
 
     it('should handle file read errors gracefully', async () => {
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockRejectedValue(new Error('Read error'));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockRejectedValue(new Error('Read error'));
 
       const result = await cache.has('test-key');
       expect(result).toBe(false);
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
 
     it('should handle invalid JSON gracefully', async () => {
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue('invalid json');
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue('invalid json');
 
       const result = await cache.has('test-key');
       expect(result).toBe(false);
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
     });
   });
 
@@ -358,31 +338,31 @@ describe('FileGitHubApiCache', () => {
       const disabledConfig = { ...mockAppConfig, githubApiCacheEnabled: false };
       const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
       await disabledCache.delete('test-key');
-      expect(mockExists).not.toHaveBeenCalled();
-      expect(mockRm).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).not.toHaveBeenCalled();
+      expect(fileSystemMocks.rm).not.toHaveBeenCalled();
     });
 
     it('should delete file when it exists', async () => {
-      mockExists.mockResolvedValue(true);
+      fileSystemMocks.exists.mockResolvedValue(true);
       await cache.delete('test-key');
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockRm).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
 
     it('should do nothing when file does not exist', async () => {
-      mockExists.mockResolvedValue(false);
+      fileSystemMocks.exists.mockResolvedValue(false);
       await cache.delete('test-key');
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockRm).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).not.toHaveBeenCalled();
     });
 
     it('should handle file delete errors', async () => {
-      mockExists.mockResolvedValue(true);
-      mockRm.mockRejectedValue(new Error('Delete error'));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
       await expect(cache.delete('test-key')).rejects.toThrow('Failed to delete cache entry');
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockRm).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
   });
 
@@ -391,14 +371,14 @@ describe('FileGitHubApiCache', () => {
       const disabledConfig = { ...mockAppConfig, githubApiCacheEnabled: false };
       const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
       await disabledCache.clearExpired();
-      expect(mockEnsureDir).not.toHaveBeenCalled();
-      expect(mockReaddir).not.toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).not.toHaveBeenCalled();
+      expect(fileSystemMocks.readdir).not.toHaveBeenCalled();
     });
 
     it('should remove expired entries', async () => {
       // Setup mock files
-      mockEnsureDir.mockResolvedValue(undefined);
-      mockReaddir.mockResolvedValue(['valid.json', 'expired.json', 'corrupted.json']);
+      fileSystemMocks.ensureDir.mockResolvedValue(undefined);
+      fileSystemMocks.readdir.mockResolvedValue(['valid.json', 'expired.json', 'corrupted.json']);
 
       // Valid entry
       const validEntry = {
@@ -415,7 +395,7 @@ describe('FileGitHubApiCache', () => {
       };
 
       // Mock readFile to return different content based on the file
-      mockReadFile.mockImplementation((filePath: string) => {
+      fileSystemMocks.readFile.mockImplementation((filePath: string) => {
         const fileName = path.basename(filePath);
         if (fileName === 'valid.json') {
           return Promise.resolve(JSON.stringify(validEntry));
@@ -428,40 +408,40 @@ describe('FileGitHubApiCache', () => {
       });
 
       await cache.clearExpired();
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockReaddir).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalledTimes(3);
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.readdir).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalledTimes(3);
 
       // Should have removed expired.json and corrupted.json
-      expect(mockRm).toHaveBeenCalledTimes(2);
+      expect(fileSystemMocks.rm).toHaveBeenCalledTimes(2);
     });
 
     it('should handle directory read errors', async () => {
-      mockEnsureDir.mockResolvedValue(undefined);
-      mockReaddir.mockRejectedValue(new Error('Directory read error'));
+      fileSystemMocks.ensureDir.mockResolvedValue(undefined);
+      fileSystemMocks.readdir.mockRejectedValue(new Error('Directory read error'));
 
       await expect(cache.clearExpired()).rejects.toThrow('Failed to clear expired cache entries');
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockReaddir).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.readdir).toHaveBeenCalled();
     });
 
     it('should handle file read errors gracefully', async () => {
-      mockEnsureDir.mockResolvedValue(undefined);
-      mockReaddir.mockResolvedValue(['file1.json', 'file2.json']);
-      mockReadFile.mockRejectedValue(new Error('Read error'));
+      fileSystemMocks.ensureDir.mockResolvedValue(undefined);
+      fileSystemMocks.readdir.mockResolvedValue(['file1.json', 'file2.json']);
+      fileSystemMocks.readFile.mockRejectedValue(new Error('Read error'));
 
       // Should not throw, but should try to remove problematic files
       await cache.clearExpired();
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockReaddir).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalledTimes(2);
-      expect(mockRm).toHaveBeenCalledTimes(2);
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.readdir).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalledTimes(2);
+      expect(fileSystemMocks.rm).toHaveBeenCalledTimes(2);
     });
 
     it('should handle file delete errors gracefully', async () => {
       // Setup mock files
-      mockEnsureDir.mockResolvedValue(undefined);
-      mockReaddir.mockResolvedValue(['expired.json']);
+      fileSystemMocks.ensureDir.mockResolvedValue(undefined);
+      fileSystemMocks.readdir.mockResolvedValue(['expired.json']);
 
       // Expired entry
       const expiredEntry = {
@@ -470,15 +450,15 @@ describe('FileGitHubApiCache', () => {
         expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
-      mockReadFile.mockResolvedValue(JSON.stringify(expiredEntry));
-      mockRm.mockRejectedValue(new Error('Delete error'));
+      fileSystemMocks.readFile.mockResolvedValue(JSON.stringify(expiredEntry));
+      fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
       // Should not throw even if rm fails
       await cache.clearExpired();
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockReaddir).toHaveBeenCalled();
-      expect(mockReadFile).toHaveBeenCalled();
-      expect(mockRm).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.readdir).toHaveBeenCalled();
+      expect(fileSystemMocks.readFile).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
   });
 
@@ -487,59 +467,72 @@ describe('FileGitHubApiCache', () => {
       const disabledConfig = { ...mockAppConfig, githubApiCacheEnabled: false };
       const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
       await disabledCache.clear();
-      expect(mockExists).not.toHaveBeenCalled();
-      expect(mockRm).not.toHaveBeenCalled();
+      expect(fileSystemMocks.exists).not.toHaveBeenCalled();
+      expect(fileSystemMocks.rm).not.toHaveBeenCalled();
     });
 
     it('should remove the entire cache directory and recreate it', async () => {
-      mockExists.mockResolvedValue(true);
+      fileSystemMocks.exists.mockResolvedValue(true);
       await cache.clear();
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockRm).toHaveBeenCalledWith(expect.stringContaining('github-api'), {
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).toHaveBeenCalledWith(expect.stringContaining('github-api'), {
         recursive: true,
         force: true,
       });
-      expect(mockEnsureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
     });
 
     it('should do nothing when cache directory does not exist', async () => {
-      mockExists.mockResolvedValue(false);
+      fileSystemMocks.exists.mockResolvedValue(false);
       await cache.clear();
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockRm).not.toHaveBeenCalled();
-      expect(mockEnsureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).not.toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
     });
 
     it('should handle directory delete errors', async () => {
-      mockExists.mockResolvedValue(true);
-      mockRm.mockRejectedValue(new Error('Delete error'));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
       await expect(cache.clear()).rejects.toThrow('Failed to clear cache');
-      expect(mockExists).toHaveBeenCalled();
-      expect(mockRm).toHaveBeenCalled();
+      expect(fileSystemMocks.exists).toHaveBeenCalled();
+      expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
   });
 
   describe('private methods (indirect testing)', () => {
     it('should generate consistent cache file paths', async () => {
       // Test that the same key always generates the same file path
-      mockExists.mockResolvedValue(false);
+      fileSystemMocks.exists.mockResolvedValue(false);
 
       await cache.has('test-key');
-      const firstCall = mockExists.mock.calls?.[0]?.[0];
+      const firstCallArgs = fileSystemMocks.exists.mock.calls?.[0];
+      expect(firstCallArgs).toBeDefined();
+      const firstCall = firstCallArgs?.[0];
+      expect(firstCall).toBeDefined();
 
-      mockExists.mockReset();
-      mockExists.mockResolvedValue(false);
+      fileSystemMocks.exists.mockReset();
+      fileSystemMocks.exists.mockResolvedValue(false);
 
       await cache.has('test-key');
-      const secondCall = mockExists.mock.calls?.[0]?.[0];
+      const secondCallArgs = fileSystemMocks.exists.mock.calls?.[0];
+      expect(secondCallArgs).toBeDefined();
+      const secondCall = secondCallArgs?.[0];
+      expect(secondCall).toBeDefined();
 
-      expect(firstCall).toBe(secondCall);
+      // Ensure both are strings before comparing
+      if (typeof firstCall === 'string' && typeof secondCall === 'string') {
+        expect(firstCall).toBe(secondCall);
+      } else {
+        // Fail the test if they are not both strings, as something is wrong with the mock setup
+        expect(typeof firstCall).toBe('string');
+        expect(typeof secondCall).toBe('string');
+      }
     });
 
     it('should create cache directory when needed', async () => {
       await cache.set('test-key', { foo: 'bar' });
-      expect(mockEnsureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
     });
 
     it('should correctly identify expired entries', async () => {
@@ -550,8 +543,8 @@ describe('FileGitHubApiCache', () => {
         expiresAt: Date.now() - (mockAppConfig.githubApiCacheTtl ?? 3600000), // Expired
       };
 
-      mockExists.mockResolvedValue(true);
-      mockReadFile.mockResolvedValue(JSON.stringify(expiredEntry));
+      fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.readFile.mockResolvedValue(JSON.stringify(expiredEntry));
 
       const result = await cache.get('test-key');
       expect(result).toBeNull(); // Should be null because entry is expired

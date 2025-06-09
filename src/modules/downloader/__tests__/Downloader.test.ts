@@ -9,7 +9,7 @@ import type { DownloadOptions } from '../IDownloader';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
+import { createMockFileSystem } from '../../../testing-helpers';
 
 // Mock DownloadStrategy
 // Define types for our mock strategies to be reassigned in beforeEach
@@ -23,7 +23,8 @@ let fileSystem: IFileSystem;
 
 describe('Downloader', () => {
   beforeEach(() => {
-    fileSystem = createMockFileSystem();
+    const { mockFileSystem: fsInstance } = createMockFileSystem();
+    fileSystem = fsInstance;
     // Re-initialize mocks before each test to reset their state (e.g., call counts)
     mockStrategy1 = {
       name: 'mockStrategy1',

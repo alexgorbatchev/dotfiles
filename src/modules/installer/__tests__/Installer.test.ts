@@ -29,7 +29,7 @@ import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor'; // Added
 import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '@types'; // Added ExtractResult
 import { Installer } from '../Installer';
-import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+import { createMockFileSystem, createMockAppConfig } from '@testing-helpers';
 
 describe('Installer', () => {
   let mockFileSystem: IFileSystem;
@@ -38,14 +38,9 @@ describe('Installer', () => {
   let mockArchiveExtractor: IArchiveExtractor; // Added
   let mockAppConfig: AppConfig;
   let installer: Installer;
+  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
 
-  // Mock functions
-  let mockEnsureDir: ReturnType<typeof mock>;
-  let mockChmod: ReturnType<typeof mock>;
-  let mockExists: ReturnType<typeof mock>;
-  let mockCopyFile: ReturnType<typeof mock>;
-  let mockSymlink: ReturnType<typeof mock>;
-  let mockRm: ReturnType<typeof mock>;
+  // Mock functions for non-filesystem dependencies
   let mockDownload: ReturnType<typeof mock>;
   let mockGetLatestRelease: ReturnType<typeof mock>;
   let mockGetReleaseByTag: ReturnType<typeof mock>;
@@ -127,29 +122,9 @@ describe('Installer', () => {
     process.arch = 'x64';
 
     // Setup mock file system
-    mockEnsureDir = mock(() => Promise.resolve());
-    mockChmod = mock(() => Promise.resolve());
-    mockExists = mock(() => Promise.resolve(false));
-    mockCopyFile = mock(() => Promise.resolve());
-    mockSymlink = mock(() => Promise.resolve());
-    mockRm = mock(() => Promise.resolve());
-
-    mockFileSystem = {
-      ensureDir: mockEnsureDir,
-      chmod: mockChmod,
-      exists: mockExists,
-      copyFile: mockCopyFile,
-      symlink: mockSymlink,
-      rm: mockRm,
-      readFile: mock(() => Promise.resolve('')),
-      writeFile: mock(() => Promise.resolve()),
-      mkdir: mock(() => Promise.resolve()),
-      readdir: mock(() => Promise.resolve([])),
-      stat: mock(async () => ({ isDirectory: () => true }) as any),
-      readlink: mock(async () => ''),
-      rename: mock(async () => {}),
-      rmdir: mock(async () => {}),
-    };
+    const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
+    mockFileSystem = fsInstance;
+    fileSystemMocks = fsMocks; // Store for direct use in tests
 
     // Setup mock downloader
     mockDownload = mock(() => Promise.resolve());
@@ -235,7 +210,9 @@ describe('Installer', () => {
 
       await installer.install(MOCK_TOOL_NAME, toolConfig);
 
-      expect(mockEnsureDir).toHaveBeenCalledWith(path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME));
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalledWith(
+        path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME)
+      );
     });
 
     it('should call the appropriate installation method based on installationMethod', async () => {
@@ -375,8 +352,8 @@ describe('Installer', () => {
       // If not extracting and not moving, chmod is called once on the downloaded file.
       // If extracting or moving, it's called on the source and then on the destination.
       // The current mock setup for this specific test implies no extraction and no move.
-      expect(mockChmod).toHaveBeenCalledTimes(1);
-      expect(mockSymlink).toHaveBeenCalled();
+      expect(fileSystemMocks.chmod).toHaveBeenCalledTimes(1);
+      expect(fileSystemMocks.symlink).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.version).toBe(MOCK_VERSION);
       expect(result.otherChanges).toEqual(
@@ -803,7 +780,7 @@ describe('Installer', () => {
           destinationPath: expect.stringContaining('test-tool-install.sh'),
         })
       );
-      expect(mockChmod).toHaveBeenCalled();
+      expect(fileSystemMocks.chmod).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.info).toEqual({
         scriptUrl: 'https://example.com/install.sh',
@@ -856,7 +833,7 @@ describe('Installer', () => {
       );
       const installDir = path.join(MOCK_BINARIES_DIR, MOCK_TOOL_NAME);
       const extractDir = path.join(installDir, 'extracted');
-      mockExists.mockImplementation(async (p) => {
+      (fileSystemMocks.exists as ReturnType<typeof mock>).mockImplementation(async (p) => {
         return p === expectedExtractedBinaryPath || p === extractDir;
       });
       const initialOtherChanges = ['Initial curl tar change']; // Defined here
@@ -879,10 +856,10 @@ describe('Installer', () => {
           destinationPath: expect.stringContaining('test-tool.tar.gz'),
         })
       );
-      expect(mockEnsureDir).toHaveBeenCalled();
-      expect(mockChmod).toHaveBeenCalled();
-      expect(mockCopyFile).toHaveBeenCalled();
-      expect(mockSymlink).toHaveBeenCalled();
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.chmod).toHaveBeenCalled();
+      expect(fileSystemMocks.copyFile).toHaveBeenCalled();
+      expect(fileSystemMocks.symlink).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.info).toEqual({
         tarballUrl: 'https://example.com/archive.tar.gz',
@@ -945,7 +922,7 @@ describe('Installer', () => {
 
   describe('installManually', () => {
     it('should check if binary exists, populating otherChanges', async () => {
-      mockExists.mockResolvedValue(true);
+      (fileSystemMocks.exists as ReturnType<typeof mock>).mockResolvedValue(true);
       const manualBinaryPath = '/usr/local/bin/test-tool';
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,
@@ -964,7 +941,7 @@ describe('Installer', () => {
 
       const result = await (installer as any).installManually(MOCK_TOOL_NAME, toolConfig, context);
 
-      expect(mockExists).toHaveBeenCalledWith(manualBinaryPath);
+      expect(fileSystemMocks.exists).toHaveBeenCalledWith(manualBinaryPath);
       expect(result.success).toBe(true);
       expect(result.binaryPath).toBe(manualBinaryPath);
       expect(result.otherChanges).toEqual(
@@ -977,7 +954,7 @@ describe('Installer', () => {
     });
 
     it('should return error if binary does not exist, populating otherChanges', async () => {
-      mockExists.mockResolvedValue(false);
+      (fileSystemMocks.exists as ReturnType<typeof mock>).mockResolvedValue(false);
       const manualBinaryPath = '/usr/local/bin/non-existent-tool';
       const toolConfig: ToolConfig = {
         name: MOCK_TOOL_NAME,

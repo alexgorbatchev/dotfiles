@@ -36,11 +36,13 @@ import {
 } from '../errors';
 import { createLogger } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import { createMockFileSystem } from '../../../testing-helpers';
 
 createLogger('NodeFetchStrategy.test');
 
 describe('NodeFetchStrategy', () => {
   let mockFileSystem: IFileSystem;
+  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
   let strategy: NodeFetchStrategy;
   const fetchMockHelper = new FetchMockHelper();
 
@@ -53,26 +55,14 @@ describe('NodeFetchStrategy', () => {
   });
 
   beforeEach(() => {
-    mockFileSystem = {
-      writeFile: mock(async () => {}),
-      readFile: mock(async () => 'mock file content'),
-      exists: mock(async () => true),
-      mkdir: mock(async () => {}),
-      readdir: mock(async () => ['file1.txt']),
-      rm: mock(async () => {}),
-      rmdir: mock(async () => {}),
-      stat: mock(async () => ({ isFile: () => true, isDirectory: () => false, size: 100 }) as any),
-      symlink: mock(async () => {}),
-      readlink: mock(async () => 'mock-link-target'),
-      chmod: mock(async () => {}),
-      copyFile: mock(async () => {}),
-      rename: mock(async () => {}),
-      ensureDir: mock(async () => {}),
-    };
+    const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
+    mockFileSystem = fsInstance;
+    fileSystemMocks = fsMocks;
+
     strategy = new NodeFetchStrategy(mockFileSystem);
     fetchMockHelper.reset();
-    if ((mockFileSystem.writeFile as any).mockClear) {
-      (mockFileSystem.writeFile as any).mockClear();
+    if (fileSystemMocks.writeFile.mockClear) {
+      fileSystemMocks.writeFile.mockClear();
     }
   });
 
@@ -140,7 +130,7 @@ describe('NodeFetchStrategy', () => {
       } else {
         expect(spy.mock.calls.length).toBeGreaterThan(0);
       }
-      expect(mockFileSystem.writeFile).toHaveBeenCalledWith(destinationPath, mockFileBuffer);
+      expect(fileSystemMocks.writeFile).toHaveBeenCalledWith(destinationPath, mockFileBuffer);
     });
   });
 

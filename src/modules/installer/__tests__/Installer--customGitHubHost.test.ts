@@ -7,12 +7,12 @@ import { describe, it, expect, beforeEach, mock } from 'bun:test';
 // Removed unused import: path
 import { Installer } from '../Installer';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { MemFileSystem } from '@modules/file-system/MemFileSystem'; // Added MemFileSystem
-import type { IDownloader } from '../../downloader/IDownloader';
-import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor'; // Added
+import { createMockFileSystem, createMockAppConfig } from '../../../testing-helpers';
+import type { IDownloader } from '@modules/downloader';
+import type { IGitHubApiClient } from '@modules/github-client';
+import type { IArchiveExtractor } from '@modules/extractor'; // Added
 import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '@types';
-import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
+// createMockAppConfig is now imported from '../../../testing-helpers' via the line above
 
 describe('Installer with custom GitHub host', () => {
   // Mock data
@@ -29,6 +29,7 @@ describe('Installer with custom GitHub host', () => {
   let mockGitHubApiClient: IGitHubApiClient;
   let mockArchiveExtractor: IArchiveExtractor; // Added
   let mockAppConfig: AppConfig;
+  // let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks']; // Removed as it's unused in this file
   let installer: Installer;
 
   // Mock function references
@@ -37,8 +38,10 @@ describe('Installer with custom GitHub host', () => {
   let mockExtract: ReturnType<typeof mock>; // Added
 
   beforeEach(() => {
-    // Setup mock file system using MemFileSystem
-    mockFileSystem = new MemFileSystem();
+    // Setup mock file system
+    const { mockFileSystem: fsInstance } = createMockFileSystem(); // Only destructure mockFileSystem
+    mockFileSystem = fsInstance;
+    // fileSystemMocks = fsMocks; // Removed as it's unused
 
     // Setup mock downloader
     mockDownload = mock(() => Promise.resolve());
