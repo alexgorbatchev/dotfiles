@@ -35,8 +35,8 @@
 
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'; // Added spyOn
 import path from 'node:path';
-import type { IFileSystem } from '../../file-system';
-import type { AppConfig, ToolConfig } from '../../../types';
+import type { IFileSystem } from '@modules/file-system';
+import type { AppConfig, ToolConfig } from '@types';
 import { ShimGenerator } from '../ShimGenerator';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 

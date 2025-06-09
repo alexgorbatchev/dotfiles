@@ -4,7 +4,7 @@
  */
 
 import { mock } from 'bun:test';
-import type { AppConfig } from '../../../../types';
+import type { AppConfig } from '@types';
 import type { IDownloader } from '../../../downloader/IDownloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
 import type { IGitHubApiCache } from '../../IGitHubApiCache';

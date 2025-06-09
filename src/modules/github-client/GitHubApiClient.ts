@@ -51,7 +51,7 @@
  */
 
 import type { IGitHubApiClient } from './IGitHubApiClient';
-import type { AppConfig, GitHubRateLimit, GitHubRelease } from '../../types';
+import type { AppConfig, GitHubRateLimit, GitHubRelease } from '@types';
 // Attempting direct import to resolve module issue
 import type { IDownloader } from '../downloader/IDownloader';
 import {
@@ -63,7 +63,7 @@ import {
   HttpError,
   NetworkError,
 } from '../downloader/errors';
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiCache } from './IGitHubApiCache';

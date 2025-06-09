@@ -4,7 +4,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GitHubRateLimit } from '../../../types';
+import type { GitHubRateLimit } from '@types';
 import { HttpError } from '../../downloader/errors';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';

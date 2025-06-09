@@ -29,10 +29,10 @@
  */
 
 import path from 'node:path';
-import type { AppConfig, ToolConfig, CompletionConfig, ShellType } from '../../types';
-import type { IFileSystem } from '../file-system';
+import type { AppConfig, ToolConfig, CompletionConfig, ShellType } from '@types';
+import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator, GenerateShellInitOptions } from './IShellInitGenerator';
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('ShellInitGenerator');
 

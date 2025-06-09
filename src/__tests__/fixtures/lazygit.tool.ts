@@ -26,7 +26,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { AsyncConfigureTool, ToolConfigBuilder } from '../../types'; // Adjusted import path
+import type { AsyncConfigureTool, ToolConfigBuilder } from '@types'; // Adjusted import path
 
 const configureLazygit: AsyncConfigureTool = async (c: ToolConfigBuilder): Promise<void> => {
   // Name is implicitly 'lazygit' (derived from the filename by the config loader)

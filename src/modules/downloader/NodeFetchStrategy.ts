@@ -32,7 +32,7 @@
 
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions } from './IDownloader';
-import type { IFileSystem } from '../file-system/IFileSystem'; // Corrected import
+import type { IFileSystem } from '@modules/file-system/IFileSystem'; // Corrected import
 // Removed: import { createWriteStream } from 'memfs';
 // Removed: import { pipeline } from 'node:stream/promises';
 // Removed: import { Readable } from 'node:stream';
@@ -45,7 +45,7 @@ import {
   ClientError,
   ServerError,
 } from './errors';
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('NodeFetchStrategy');
 

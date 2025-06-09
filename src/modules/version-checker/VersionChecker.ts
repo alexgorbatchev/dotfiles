@@ -29,7 +29,7 @@
  */
 
 import { valid, gt, eq } from 'semver';
-import type { IGitHubApiClient } from '../github-client/IGitHubApiClient.ts';
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient.ts';
 import { createLogger } from '../logger/createLogger.ts';
 import type { IVersionChecker } from './IVersionChecker.ts';
 import { VersionComparisonStatus } from './IVersionChecker.ts';

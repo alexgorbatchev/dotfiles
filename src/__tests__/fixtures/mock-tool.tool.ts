@@ -1,4 +1,4 @@
-import { type ToolConfig } from '../../types';
+import { type ToolConfig } from '@types';
 
 const config: ToolConfig = {
   name: 'mock-tool',

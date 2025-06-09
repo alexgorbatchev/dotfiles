@@ -27,7 +27,7 @@ import type {
   AsyncInstallHook,
   CompletionConfig,
   // SystemInfo, // SystemInfo is not directly used by ToolConfigBuilder but might be relevant for arch overrides context
-} from '../../types'; // Updated import path
+} from '@types'; // Updated import path
 import { createClientLogger } from '../logger/clientLogger'; // CreateClientLoggerOptions removed
 
 // Define the ToolConfigBuilder interface with camelCase methods

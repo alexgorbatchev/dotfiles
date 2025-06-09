@@ -551,7 +551,7 @@ export interface ToolConfigBuilder {
  * @example
  * ```typescript
  * // In generator/configs/tools/my-cli-tool.tool.ts
- * import type { AsyncConfigureTool } from '../../types';
+ * import type { AsyncConfigureTool } from '@types';
  *
  * export const configure: AsyncConfigureTool = async (c) => {
  *   c.name('my-cli-tool');

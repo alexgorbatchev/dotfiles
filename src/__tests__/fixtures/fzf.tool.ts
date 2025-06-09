@@ -26,7 +26,7 @@
  * - [ ] Ensure 100% test coverage for executable code. (N/A for `.tool.ts` files per `techContext.md`)
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
-import type { ToolConfig } from '../../types'; // Path relative to original fixture location
+import type { ToolConfig } from '@types'; // Path relative to original fixture location
 
 const fzfToolConfig: ToolConfig = {
   name: 'fzf',

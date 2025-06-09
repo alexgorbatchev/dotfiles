@@ -37,7 +37,7 @@
 
 import { resolve, join } from 'path';
 import { z } from 'zod';
-import type { AppConfig } from '../../types'; // Updated import path
+import type { AppConfig } from '@types'; // Updated import path
 export type { AppConfig }; // Re-export AppConfig
 
 // Interface for system-specific values needed by createAppConfig

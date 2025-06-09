@@ -19,8 +19,8 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { AppConfig } from '../types';
-import { createAppConfig, type ConfigEnvironment, type SystemInfo } from '../modules/config/config';
+import type { AppConfig } from '@types';
+import { createAppConfig, type ConfigEnvironment, type SystemInfo } from '@modules/config/config';
 import { homedir } from 'os'; // For realistic defaults
 import { cwd as processCwd } from 'process'; // For realistic defaults
 

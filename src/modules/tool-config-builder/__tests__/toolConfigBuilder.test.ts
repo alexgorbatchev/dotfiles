@@ -22,7 +22,7 @@
 
 import { expect, test, describe, spyOn, mock } from 'bun:test';
 import { ToolConfigBuilder, type IToolConfigBuilder } from '../index'; // Updated import path
-import type { AsyncInstallHook, GithubReleaseInstallParams } from '../../../types'; // Updated import path
+import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types'; // Updated import path
 import * as clientLoggerModule from '../../logger/clientLogger';
 
 describe('ToolConfigBuilder', () => {

@@ -4,7 +4,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GitHubRelease } from '../../../types';
+import type { GitHubRelease } from '@types';
 import { NotFoundError } from '../../downloader/errors';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 

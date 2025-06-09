@@ -33,9 +33,9 @@
  */
 
 import path from 'node:path';
-import type { AppConfig, ToolConfig } from '../../types';
-import type { IFileSystem } from '../file-system';
-import { createLogger } from '../logger';
+import type { AppConfig, ToolConfig } from '@types';
+import type { IFileSystem } from '@modules/file-system';
+import { createLogger } from '@modules/logger';
 import type {
   GenerateSymlinksOptions,
   ISymlinkGenerator,

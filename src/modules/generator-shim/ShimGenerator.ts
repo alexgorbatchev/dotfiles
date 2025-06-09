@@ -31,9 +31,9 @@
  */
 
 import path from 'node:path';
-import { createLogger } from '../logger';
-import type { IFileSystem } from '../file-system';
-import type { AppConfig, ToolConfig } from '../../types';
+import { createLogger } from '@modules/logger';
+import type { IFileSystem } from '@modules/file-system';
+import type { AppConfig, ToolConfig } from '@types';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 
 const log = createLogger('ShimGenerator');

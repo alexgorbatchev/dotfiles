@@ -3,7 +3,7 @@
  * @description Test fixtures for GitHub API cache tests
  */
 
-import type { GitHubRelease, GitHubReleaseAsset } from '../../../../types';
+import type { GitHubRelease, GitHubReleaseAsset } from '@types';
 
 /**
  * Mock GitHub release asset

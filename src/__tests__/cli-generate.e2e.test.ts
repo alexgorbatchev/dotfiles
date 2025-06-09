@@ -44,8 +44,8 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { ConfigEnvironment } from '../modules/config';
-import { createAppConfig } from '../modules/config/config'; // For AppConfig structure
+import type { ConfigEnvironment } from '@modules/config';
+import { createAppConfig } from '@modules/config/config'; // For AppConfig structure
 import { createTempDir } from './helpers';
 
 describe('E2E: bun run cli generate', () => {

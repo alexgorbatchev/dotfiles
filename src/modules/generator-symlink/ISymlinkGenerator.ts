@@ -19,7 +19,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { ToolConfig } from '../../types';
+import type { ToolConfig } from '@types';
 
 /**
  * Options for generating symlinks.

@@ -7,3 +7,4 @@
  */
 
 export { createLogger } from './createLogger';
+export { createClientLogger } from './clientLogger';

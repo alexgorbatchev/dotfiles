@@ -8,9 +8,9 @@ import { promisify } from 'node:util';
 // Fully remove zx imports now
 import { basename, extname, join } from 'node:path';
 import type { IArchiveExtractor } from './IArchiveExtractor';
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '../../types';
-import type { IFileSystem } from '../file-system';
-import { createLogger } from '../logger';
+import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
+import type { IFileSystem } from '@modules/file-system';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('ArchiveExtractor');
 

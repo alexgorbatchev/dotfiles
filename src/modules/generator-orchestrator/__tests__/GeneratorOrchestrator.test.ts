@@ -47,9 +47,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '../../../types';
+import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
-import type { IFileSystem } from '../../file-system';
+import type { IFileSystem } from '@modules/file-system';
 import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 import type { IShimGenerator } from '../../generator-shim';
 import type { IShellInitGenerator } from '../../generator-shell-init';

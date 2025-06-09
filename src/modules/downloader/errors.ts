@@ -18,7 +18,7 @@
  * [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('downloader/errors');
 

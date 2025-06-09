@@ -16,7 +16,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { ToolConfig } from '../../types'; // Removed AppConfig as it's not used here
+import type { ToolConfig } from '@types'; // Removed AppConfig as it's not used here
 
 /**
  * Options for generating shims.

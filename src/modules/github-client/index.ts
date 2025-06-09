@@ -12,4 +12,4 @@ export * from './GitHubApiClient';
 export * from './GitHubApiClientError';
 export * from './IGitHubApiCache';
 export * from './FileGitHubApiCache';
-export type { GitHubRelease, GitHubRateLimit } from '../../types';
+export type { GitHubRelease, GitHubRateLimit } from '@types';

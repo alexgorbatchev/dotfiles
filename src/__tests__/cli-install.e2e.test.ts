@@ -48,7 +48,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ConfigEnvironment } from '../modules/config';
+import type { ConfigEnvironment } from '@modules/config';
 import { $ } from 'zx';
 import { createTempDir, setupMockGitHubServer, type MockGitHubServerResult } from './helpers';
 
@@ -71,7 +71,7 @@ describe('E2E: bun run cli install', () => {
     const mockBinaryContent = `#!/bin/sh\necho "Mock Direct Binary Tool v${mockToolVersion}"`;
 
     const mockToolConfigContent = `
-      import { type GithubReleaseToolConfig } from '../../../../../types'; // Use specific type
+      import { type GithubReleaseToolConfig } from '@types'; // Use specific type
       const config: GithubReleaseToolConfig = { // Use specific type
         name: '${mockToolName}',
         binaries: ['${mockToolName}'],
@@ -208,7 +208,7 @@ describe('E2E: bun run cli install', () => {
     const mockBinaryContentInArchive = `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`;
 
     const mockArchiveToolConfigContent = `
-      import { type GithubReleaseToolConfig } from '../../../../../types'; // Use specific type
+      import { type GithubReleaseToolConfig } from '@types'; // Use specific type
       const config: GithubReleaseToolConfig = { // Use specific type
         name: '${mockArchiveToolName}',
         binaries: ['${mockArchiveToolName}'],

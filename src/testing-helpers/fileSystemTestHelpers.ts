@@ -28,9 +28,9 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import type { DirectoryJSON } from 'memfs';
-import type { IFileSystem } from '../modules/file-system/IFileSystem';
-import { MemFileSystem } from '../modules/file-system/MemFileSystem';
-import { createLogger } from '../modules/logger';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import { MemFileSystem } from '@modules/file-system/MemFileSystem';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('fileSystemTestHelpers');
 

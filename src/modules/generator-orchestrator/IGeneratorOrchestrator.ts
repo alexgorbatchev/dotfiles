@@ -14,7 +14,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { ToolConfig, GeneratedArtifactsManifest } from '../../types';
+import type { ToolConfig, GeneratedArtifactsManifest } from '@types';
 
 /**
  * Options for the `generateAll` method of the `IGeneratorOrchestrator`.

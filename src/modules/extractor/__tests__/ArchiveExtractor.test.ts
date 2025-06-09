@@ -5,8 +5,8 @@ import { exec as actualExecCallbackSignature } from 'node:child_process'; // Ren
 import { promisify } from 'node:util'; // Import promisify
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
-import { NodeFileSystem } from '../../file-system/NodeFileSystem';
-import type { IFileSystem } from '../../file-system/IFileSystem';
+import { NodeFileSystem } from '@modules/file-system/NodeFileSystem';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import { $ } from 'zx'; // For creating test archives
 
 // This is the real exec, promisified, for use INSIDE our mock's implementation when needed

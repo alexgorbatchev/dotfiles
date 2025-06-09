@@ -15,7 +15,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { SymlinkOperationResult } from '../modules/generator-symlink/ISymlinkGenerator';
+import type { SymlinkOperationResult } from '@modules/generator-symlink/ISymlinkGenerator';
 import type { ShellType } from './completion.types';
 
 // ============================================

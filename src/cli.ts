@@ -51,42 +51,35 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { Command } from 'commander';
 import {
   createAppConfig,
   type AppConfig,
   type SystemInfo as ConfigModuleSystemInfo,
-} from './modules/config';
-import { NodeFileSystem } from './modules/file-system/NodeFileSystem';
-import { MemFileSystem, type DirectoryJSON } from './modules/file-system/MemFileSystem'; // Added import and DirectoryJSON
-import { Downloader } from './modules/downloader/Downloader';
-import { NodeFetchStrategy } from './modules/downloader/NodeFetchStrategy';
-import { FileGitHubApiCache } from './modules/github-client/FileGitHubApiCache';
-import { GitHubApiClient } from './modules/github-client/GitHubApiClient';
-import { ShimGenerator } from './modules/generator-shim/ShimGenerator';
-import { ShellInitGenerator } from './modules/generator-shell-init/ShellInitGenerator';
-import { SymlinkGenerator } from './modules/generator-symlink/SymlinkGenerator';
-import { GeneratorOrchestrator } from './modules/generator-orchestrator/GeneratorOrchestrator';
-import { Installer } from './modules/installer/Installer';
-import { ArchiveExtractor } from './modules/extractor/ArchiveExtractor'; // Added import
-// ToolConfig import removed as it's not directly used in this file,
-// realLoadToolConfigs handles it internally.
-import { createLogger as createDebugLoggerInternal } from './modules/logger';
-import { createClientLogger } from './modules/logger/clientLogger'; // CreateClientLoggerOptions removed
-// import type { Logger as ClientLoggerType } from '@node-cli/logger'; // Unused import
-import type { IFileSystem } from './modules/file-system/IFileSystem';
-import type { IDownloader } from './modules/downloader/IDownloader';
-import type { IGitHubApiCache } from './modules/github-client/IGitHubApiCache';
-import type { IGitHubApiClient } from './modules/github-client/IGitHubApiClient';
-import type { IShimGenerator } from './modules/generator-shim/IShimGenerator';
-import type { IShellInitGenerator } from './modules/generator-shell-init/IShellInitGenerator';
-import type { ISymlinkGenerator } from './modules/generator-symlink/ISymlinkGenerator';
-import type { IGeneratorOrchestrator } from './modules/generator-orchestrator/IGeneratorOrchestrator';
-import type { IInstaller } from './modules/installer/IInstaller';
-import type { IArchiveExtractor } from './modules/extractor/IArchiveExtractor'; // Added import
-import { loadToolConfigs as realLoadToolConfigs } from './modules/config-loader/toolConfigLoader'; // Added import
-import os from 'os';
+} from '@modules/config';
+import { loadToolConfigs as realLoadToolConfigs } from '@modules/config-loader/toolConfigLoader'; // Added import
+import { NodeFetchStrategy, type IDownloader } from '@modules/downloader';
+import { Downloader } from '@modules/downloader/Downloader';
+import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; // Added import
+import { MemFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system';
+import { NodeFileSystem } from '@modules/file-system/NodeFileSystem';
+import {
+  GeneratorOrchestrator,
+  type IGeneratorOrchestrator,
+} from '@modules/generator-orchestrator';
+import { type IShellInitGenerator } from '@modules/generator-shell-init';
+import { ShellInitGenerator } from '@modules/generator-shell-init/ShellInitGenerator';
+import { type IShimGenerator } from '@modules/generator-shim';
+import { ShimGenerator } from '@modules/generator-shim/ShimGenerator';
+import { type ISymlinkGenerator } from '@modules/generator-symlink';
+import { SymlinkGenerator } from '@modules/generator-symlink/SymlinkGenerator';
+import { type IGitHubApiClient, type IGitHubApiCache } from '@modules/github-client';
+import { FileGitHubApiCache } from '@modules/github-client/FileGitHubApiCache';
+import { GitHubApiClient } from '@modules/github-client/GitHubApiClient';
+import { Installer, type IInstaller } from '@modules/installer';
+import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
+import { Command } from 'commander';
 import path from 'node:path'; // Added import for path.join
+import os from 'os';
 
 const internalLog = createDebugLoggerInternal('cli'); // Renamed to avoid conflict
 

@@ -16,8 +16,8 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
 
-import type { AppConfig, ToolConfig } from '../../types';
-import type { IFileSystem } from '../file-system';
+import type { AppConfig, ToolConfig } from '@types';
+import type { IFileSystem } from '@modules/file-system';
 
 /**
  * Options for generating the shell initialization file.

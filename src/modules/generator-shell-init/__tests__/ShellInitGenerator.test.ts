@@ -34,9 +34,9 @@ import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
 import path from 'node:path';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
-import type { IFileSystem } from '../../file-system';
+import type { IFileSystem } from '@modules/file-system';
 import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
-import type { AppConfig, ToolConfig } from '../../../types';
+import type { AppConfig, ToolConfig } from '@types';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 
 describe('ShellInitGenerator', () => {

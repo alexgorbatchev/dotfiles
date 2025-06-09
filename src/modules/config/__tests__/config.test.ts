@@ -38,7 +38,7 @@ import { describe, it, expect } from 'bun:test';
 import { join, resolve } from 'path';
 // homedir will be mocked or passed via SystemInfo
 // import { homedir } from 'os'; // No longer needed directly here for default homedir
-// import type { AppConfig } from '../types'; // AppConfig type is implicitly used by createAppConfig return
+// import type { AppConfig } from '@types'; // AppConfig type is implicitly used by createAppConfig return
 import { createAppConfig, type SystemInfo, type ConfigEnvironment } from '../index'; // Updated import path
 
 describe('createAppConfig', () => {

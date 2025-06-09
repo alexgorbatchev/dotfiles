@@ -45,7 +45,7 @@ import type {
   ShellCompletionConfig,
   CompletionConfig,
   ToolConfig,
-} from '../../types';
+} from '@types';
 
 // Schema for SystemInfo
 const SystemInfoSchema: z.ZodType<SystemInfo> = z.object({

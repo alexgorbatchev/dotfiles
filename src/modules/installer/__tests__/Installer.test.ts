@@ -23,11 +23,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { IFileSystem } from '../../file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IDownloader } from '../../downloader/IDownloader';
-import type { IGitHubApiClient } from '../../github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '../../extractor/IArchiveExtractor'; // Added
-import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '../../../types'; // Added ExtractResult
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor'; // Added
+import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '@types'; // Added ExtractResult
 import { Installer } from '../Installer';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 

@@ -3,7 +3,7 @@
  * @description Defines the interface for an archive extraction service.
  */
 
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '../../types';
+import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
 
 /**
  * Interface for a service that extracts various archive formats.

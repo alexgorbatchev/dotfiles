@@ -24,8 +24,8 @@
  * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '../../types';
-import { createLogger } from '../logger';
+import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '@types';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('getArchitectureRegex');
 

@@ -34,8 +34,8 @@ import {
   ClientError,
   ServerError,
 } from '../errors';
-import { createLogger } from '../../logger';
-import type { IFileSystem } from '../../file-system/IFileSystem';
+import { createLogger } from '@modules/logger';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 
 createLogger('NodeFetchStrategy.test');
 

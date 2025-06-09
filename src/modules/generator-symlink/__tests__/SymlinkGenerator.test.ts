@@ -32,8 +32,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { AppConfig, ToolConfig } from '../../../types';
-import type { IFileSystem } from '../../file-system';
+import type { AppConfig, ToolConfig } from '@types';
+import type { IFileSystem } from '@modules/file-system';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';

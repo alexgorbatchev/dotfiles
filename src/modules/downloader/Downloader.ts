@@ -24,7 +24,7 @@
 import type { IDownloader, DownloadOptions } from './IDownloader';
 import type { DownloadStrategy } from './DownloadStrategy';
 import { NodeFetchStrategy } from './NodeFetchStrategy';
-import type { IFileSystem } from '../file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];

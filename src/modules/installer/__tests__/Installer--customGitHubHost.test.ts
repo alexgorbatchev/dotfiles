@@ -6,12 +6,12 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 // Removed unused import: path
 import { Installer } from '../Installer';
-import type { IFileSystem } from '../../file-system/IFileSystem';
-import { MemFileSystem } from '../../file-system/MemFileSystem'; // Added MemFileSystem
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import { MemFileSystem } from '@modules/file-system/MemFileSystem'; // Added MemFileSystem
 import type { IDownloader } from '../../downloader/IDownloader';
-import type { IGitHubApiClient } from '../../github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '../../extractor/IArchiveExtractor'; // Added
-import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '../../../types';
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor'; // Added
+import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '@types';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 
 describe('Installer with custom GitHub host', () => {

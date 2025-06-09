@@ -40,8 +40,8 @@
 
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { resolve as resolvePath } from 'path'; // Removed unused 'join'
-import type { AppConfig, ToolConfig } from '../../../types';
-import type { IFileSystem } from '../../file-system/IFileSystem';
+import type { AppConfig, ToolConfig } from '@types';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import { loadToolConfigs } from '../toolConfigLoader';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';

@@ -40,11 +40,11 @@
  */
 
 import { resolve as resolvePath } from 'path'; // Removed unused join, basename, extname
-import type { AppConfig, ToolConfig } from '../../types';
-import type { IFileSystem } from '../file-system/IFileSystem';
+import type { AppConfig, ToolConfig } from '@types';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import { ToolConfigSchema } from '../config/toolConfigSchema';
 import { ToolConfigBuilder } from '../tool-config-builder/toolConfigBuilder';
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('toolConfigLoader');
 

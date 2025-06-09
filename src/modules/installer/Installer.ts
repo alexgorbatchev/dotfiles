@@ -31,18 +31,13 @@
 
 import path from 'node:path';
 import os from 'node:os';
-import { createLogger } from '../logger';
-import type { IFileSystem } from '../file-system/IFileSystem';
-import type { IDownloader } from '../downloader/IDownloader';
-import type { IGitHubApiClient } from '../github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '../extractor/IArchiveExtractor';
-import type {
-  AppConfig,
-  ToolConfig,
-  GitHubReleaseAsset,
-  SystemInfo,
-  ExtractResult,
-} from '../../types';
+import { createLogger } from '@modules/logger';
+// import { createLogger } from '@modules/logger';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IDownloader } from '@modules/downloader/IDownloader';
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
+import type { AppConfig, ToolConfig, GitHubReleaseAsset, SystemInfo, ExtractResult } from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 
 const log = createLogger('Installer');

@@ -40,8 +40,8 @@
  */
 
 import path from 'node:path';
-import type { IFileSystem } from '../file-system';
-import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '../../types';
+import type { IFileSystem } from '@modules/file-system';
+import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
 import type { IShimGenerator, GenerateShimsOptions } from '../generator-shim';
 import type { IShellInitGenerator, GenerateShellInitOptions } from '../generator-shell-init';
 import type {
@@ -50,7 +50,7 @@ import type {
   SymlinkOperationResult,
 } from '../generator-symlink';
 import type { IGeneratorOrchestrator, GenerateAllOptions } from './IGeneratorOrchestrator';
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('GeneratorOrchestrator');
 

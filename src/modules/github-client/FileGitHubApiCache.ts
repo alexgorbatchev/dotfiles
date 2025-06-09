@@ -23,10 +23,10 @@
 
 import path from 'path';
 import crypto from 'crypto';
-import type { AppConfig } from '../../types';
-import type { IFileSystem } from '../file-system/IFileSystem';
+import type { AppConfig } from '@types';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { CacheEntry, IGitHubApiCache } from './IGitHubApiCache';
-import { createLogger } from '../logger';
+import { createLogger } from '@modules/logger';
 
 const log = createLogger('FileGitHubApiCache');
 

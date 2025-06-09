@@ -32,24 +32,23 @@ import { expect, test, describe, spyOn, mock, afterEach, beforeEach, type Mock }
 import type {
   IGeneratorOrchestrator,
   GenerateAllOptions as OrchestratorGenerateAllOptions,
-} from '../modules/generator-orchestrator/IGeneratorOrchestrator';
-import type { IInstaller, InstallResult } from '../modules/installer/IInstaller';
-import type { ToolConfig, GeneratedArtifactsManifest } from '../types';
-import type { AppConfig } from '../modules/config';
-import * as configModuleActual from '../modules/config/config'; // For spying on createAppConfig
-import { MemFileSystem } from '../modules/file-system/MemFileSystem';
-import { NodeFileSystem } from '../modules/file-system/NodeFileSystem'; // To spy on its prototype
+} from '@modules/generator-orchestrator/IGeneratorOrchestrator';
+import type { IInstaller, InstallResult } from '@modules/installer/IInstaller';
+import type { ToolConfig, GeneratedArtifactsManifest } from '@types';
+import type { AppConfig } from '@modules/config';
+import * as configModuleActual from '@modules/config/config'; // For spying on createAppConfig
+import { MemFileSystem } from '@modules/file-system/MemFileSystem';
+import { NodeFileSystem } from '@modules/file-system/NodeFileSystem'; // To spy on its prototype
 import * as path from 'node:path'; // For constructing paths in mocks
 import type { DirectoryJSON } from 'memfs'; // For type if needed
-import type { IDownloader } from '../modules/downloader/IDownloader';
-import type { IGitHubApiCache } from '../modules/github-client/IGitHubApiCache';
-import type { IGitHubApiClient } from '../modules/github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '../modules/extractor/IArchiveExtractor'; // Added
-import type { IShimGenerator } from '../modules/generator-shim/IShimGenerator';
-import type { IShellInitGenerator } from '../modules/generator-shell-init/IShellInitGenerator';
-import type { ISymlinkGenerator } from '../modules/generator-symlink/ISymlinkGenerator';
-import * as clientLoggerModule from '../modules/logger/clientLogger'; // Import the module to spy on createClientLogger
-import { Logger as ActualLogger } from '@node-cli/logger'; // For type annotations of mock logger
+import type { IDownloader } from '@modules/downloader/IDownloader';
+import type { IGitHubApiCache } from '@modules/github-client/IGitHubApiCache';
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor'; // Added
+import type { IShimGenerator } from '@modules/generator-shim/IShimGenerator';
+import type { IShellInitGenerator } from '@modules/generator-shell-init/IShellInitGenerator';
+import type { ISymlinkGenerator } from '@modules/generator-symlink/ISymlinkGenerator';
+import * as clientLoggerModule from '@modules/logger/clientLogger'; // Import the module to spy on createClientLogger
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance directly
 
 // --- Pre-test Mocks for dynamic imports used by loadToolConfigs ---
@@ -147,7 +146,7 @@ const mockArchiveExtractor: IArchiveExtractor = {
 // Spies for the imported functions from cli.ts
 // We import the module as cli to allow spying on its exports.
 import * as cliModule from '../cli'; // Renamed to cliModule to avoid conflict
-import * as configLoaderModule from '../modules/config-loader/toolConfigLoader'; // Import the actual module
+import * as configLoaderModule from '@modules/config-loader/toolConfigLoader'; // Import the actual module
 
 let setupServicesSpy: Mock<typeof cliModule.setupServices>;
 let actualLoadToolConfigsSpy: Mock<typeof configLoaderModule.loadToolConfigs>;
@@ -157,9 +156,9 @@ let nodeFsReadFileSpy: Mock<typeof NodeFileSystem.prototype.readFile>;
 let createAppConfigSpy: Mock<typeof configModuleActual.createAppConfig>;
 
 // Mock logger methods
-let mockLoggerInfo: Mock<ActualLogger['info']>;
-let mockLoggerDebug: Mock<ActualLogger['debug']>;
-let mockLoggerError: Mock<ActualLogger['error']>;
+let mockLoggerInfo: Mock<any>;
+let mockLoggerDebug: Mock<any>;
+let mockLoggerError: Mock<any>;
 let createClientLoggerSpy: Mock<typeof clientLoggerModule.createClientLogger>;
 
 describe('CLI', () => {

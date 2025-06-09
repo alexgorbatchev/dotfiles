@@ -4,11 +4,11 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { Downloader } from '../Downloader';
+import { Downloader } from '@modules/downloader';
 import type { DownloadOptions } from '../IDownloader';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
-import type { IFileSystem } from '../../file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import { createMockFileSystem } from '../../../testing-helpers/fileSystemTestHelpers';
 
 // Mock DownloadStrategy

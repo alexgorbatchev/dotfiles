@@ -59,8 +59,8 @@
 
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { FileGitHubApiCache } from '../FileGitHubApiCache';
-import type { IFileSystem } from '../../file-system/IFileSystem';
-import type { AppConfig } from '../../../types';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { AppConfig } from '@types';
 import { createMockAppConfig } from '../../../testing-helpers/appConfigTestHelpers';
 import type { CacheEntry } from '../IGitHubApiCache'; // Corrected import for CacheEntry
 import path from 'path';
