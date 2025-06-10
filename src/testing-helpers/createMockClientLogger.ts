@@ -92,6 +92,9 @@ export type LoggerMocks = {
   [K in keyof MockClientLoggerOptions]-?: NonNullable<MockClientLoggerOptions[K]>;
 };
 
+/** Type alias for the collection of individual mock logger functions. */
+export type MockClientLogger = LoggerMocks;
+
 export interface CreateMockClientLoggerResult {
   mockClientLogger: ConsolaInstance;
   loggerMocks: LoggerMocks;

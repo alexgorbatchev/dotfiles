@@ -41,9 +41,10 @@ import { registerInstallCommand } from '@modules/cli/installCommand';
 import { registerCleanupCommand } from '@modules/cli/cleanupCommand';
 import { registerCheckUpdatesCommand } from '@modules/cli/checkUpdatesCommand';
 import { registerUpdateCommand } from '@modules/cli/updateCommand';
+import { registerDetectConflictsCommand } from '@modules/cli/detectConflictsCommand'; // Added
 import { Command } from 'commander';
-import path from 'node:path'; // Added import for path.join
-import os from 'os';
+import path from 'path'; // Removed 'node:' prefix
+import os from 'os'; // Assuming 'os' resolves correctly, if not, will adjust
 import { exitCli } from '@exitCli'; // Corrected import to use the alias
 
 const internalLog = createLogger('cli'); // createDebugLoggerInternal is defined from @modules/logger
@@ -194,6 +195,9 @@ export async function registerAllCommands(programInstance: Command) {
 
   // Register Update Command
   registerUpdateCommand(programInstance);
+
+  // Register Detect Conflicts Command
+  registerDetectConflictsCommand(programInstance); // Added
 }
 
 export async function main() {

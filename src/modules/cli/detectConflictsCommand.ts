@@ -1,188 +1,130 @@
-import type { AppConfig } from '@modules/config';
-import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
-import type { IFileSystem } from '@modules/file-system';
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
-import type { ConsolaInstance } from 'consola';
 import type { Command } from 'commander';
-import path from 'node:path';
+import path from 'path'; // Removed 'node:' prefix
+import type { AppConfig } from '@modules/config';
+import type { IFileSystem, Stats } from '@modules/file-system'; // Corrected IFileSystem import and added Stats
+import { createClientLogger } from '@modules/logger'; // Import createClientLogger
+import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance
+import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import type { ToolConfig } from '@types';
-import { exitCli } from '@exitCli';
-import { setupServices } from '../../cli'; // Assuming Services is exported from cli.ts, removed CoreServices alias
+import { exitCli } from '../../exitCli';
+import { setupServices as globalSetupServices } from '../../cli'; // Import global setupServices
 
-const commandInternalLog = createDebugLoggerInternal('detectConflictsCommand');
-
-export interface DetectConflictsCommandServices {
+interface DetectConflictsCommandServices {
   appConfig: AppConfig;
   fileSystem: IFileSystem;
-  clientLogger: ConsolaInstance;
+  clientLogger: ConsolaInstance; // Changed ClientLogger to ConsolaInstance
   loadToolConfigsFromDirectory: typeof loadToolConfigsFromDirectory;
 }
 
-export interface DetectConflictsCommandOptions {
-  // Add any specific options for this command if needed
-  verbose: boolean;
-  quiet: boolean;
-}
-
-export interface ConflictEntry {
-  type: 'shim' | 'symlink';
-  path: string;
-  toolName?: string; // For shims
-  symlinkSource?: string; // For symlinks, the expected source
-  reason: string;
-}
+// Local setupServices removed, will use globalSetupServices from ../../cli
 
 export async function detectConflictsActionLogic(
-  options: DetectConflictsCommandOptions,
-  services: DetectConflictsCommandServices
+  _options: {}, // No specific options for this command yet
+  services: DetectConflictsCommandServices,
 ): Promise<void> {
-  const { appConfig, fileSystem, clientLogger: logger, loadToolConfigsFromDirectory: loadTools } = services;
-  commandInternalLog('detectConflictsActionLogic: Called with options: %o', options);
-  logger.debug('Detect conflicts command logic started with options: %o', options);
+  const { appConfig, fileSystem, clientLogger, loadToolConfigsFromDirectory: loadConfigs } = services;
+  const conflictMessages: string[] = [];
 
-  const conflicts: ConflictEntry[] = [];
-
+  let toolConfigsArray: ToolConfig[] = [];
   try {
-    commandInternalLog(
-      'detectConflictsActionLogic: Loading tool configs from directory: %s using FS: %s',
-      appConfig.toolConfigsDir,
-      fileSystem.constructor.name
-    );
-    const toolConfigs = await loadTools(appConfig.toolConfigsDir, fileSystem);
-    commandInternalLog('detectConflictsActionLogic: Loaded %d tool configs.', Object.keys(toolConfigs).length);
-    logger.debug('Loaded tool configs: %o', Object.keys(toolConfigs));
+    const toolConfigsRecord = await loadConfigs(appConfig.toolConfigsDir, fileSystem);
+    toolConfigsArray = Object.values(toolConfigsRecord);
+  } catch (error: any) {
+    clientLogger.error(`Error loading tool configurations: ${error.message}`);
+    return exitCli(1);
+  }
 
-    for (const toolName in toolConfigs) {
-      const toolConfig = toolConfigs[toolName] as ToolConfig;
-      logger.debug(`Checking tool: ${toolConfig.name}`);
+  if (toolConfigsArray.length === 0) {
+    clientLogger.info('No tool configurations found. Nothing to check for conflicts.');
+    return exitCli(0);
+  }
 
-      // Check for shim conflicts
-      if (toolConfig.binaries && toolConfig.binaries.length > 0) {
-        for (const binaryName of toolConfig.binaries) {
-          const shimPath = path.join(appConfig.targetDir, binaryName);
-          logger.debug(`Checking potential shim path: ${shimPath} for tool ${toolConfig.name}`);
-          if (await fileSystem.exists(shimPath)) {
-            // For now, any existence is a potential conflict.
-            // Future: check if it's OUR shim.
-            const conflictMessage = `Potential conflict: Shim path [${shimPath}] for tool [${toolConfig.name}] already exists.`;
-            logger.warn(conflictMessage);
-            conflicts.push({
-              type: 'shim',
-              path: shimPath,
-              toolName: toolConfig.name,
-              reason: 'File exists at shim path.',
-            });
+  for (const toolConfig of toolConfigsArray) {
+    // Check for shim conflicts
+    if (toolConfig.binaries) { // Changed from toolConfig.bin to toolConfig.binaries
+      for (const binaryName of toolConfig.binaries) { // Iterate directly over binaries array
+        const shimPath = path.join(appConfig.targetDir, binaryName);
+        if (await fileSystem.exists(shimPath)) {
+          conflictMessages.push(
+            `[${toolConfig.name}]: ${shimPath}`
+          );
+        }
+      }
+    }
+
+    // Check for symlink conflicts
+    if (toolConfig.symlinks) {
+      for (const symlink of toolConfig.symlinks) {
+        const targetPath = path.join(appConfig.homeDir, symlink.target);
+        const expectedSourcePath = path.join(appConfig.dotfilesDir, symlink.source);
+
+        try {
+          const stats: Stats | null = await fileSystem.stat(targetPath); // Changed from lstat to stat
+          if (stats) {
+            if (stats.isSymbolicLink()) {
+              const linkTarget = await fileSystem.readlink(targetPath); // Changed from readLink to readlink
+              if (linkTarget !== expectedSourcePath) {
+                conflictMessages.push(
+                  `[${toolConfig.name}]: ${targetPath} (points to '${linkTarget}', expected '${expectedSourcePath}')`
+                );
+              }
+            } else {
+              conflictMessages.push(
+                `[${toolConfig.name}]: ${targetPath} (exists but is not a symlink)`
+              );
+            }
+          }
+        } catch (err: any) {
+          // stat throws if path does not exist, which is not a conflict.
+          if (err.code !== 'ENOENT') {
+            clientLogger.warn(`Could not check symlink target '${targetPath}': ${err.message}`);
           }
         }
       }
-
-      // Check for symlink conflicts
-      if (toolConfig.symlinks && toolConfig.symlinks.length > 0) {
-        for (const symlink of toolConfig.symlinks) {
-          const targetPath = path.join(appConfig.homeDir, symlink.target);
-          const expectedSourcePath = path.join(appConfig.dotfilesDir, symlink.source);
-          logger.debug(`Checking potential symlink target: ${targetPath} for tool ${toolConfig.name}, expecting source ${expectedSourcePath}`);
-
-          try {
-            const stats = await fileSystem.stat(targetPath); // Use stat()
-            // If stat succeeds, the path exists. Now check if it's a symlink.
-            if (stats.isSymbolicLink()) {
-              const actualLinkTarget = await fileSystem.readlink(targetPath);
-              // Resolve paths to ensure consistent comparison
-              // The actualLinkTarget read from a symlink might be relative to the symlink's directory
-              const resolvedActualLinkTarget = path.resolve(path.dirname(targetPath), actualLinkTarget);
-              const resolvedExpectedSourcePath = path.resolve(expectedSourcePath);
-
-              if (resolvedActualLinkTarget !== resolvedExpectedSourcePath) {
-                const conflictMessage = `Potential conflict: Symlink [${targetPath}] for tool [${toolConfig.name}] exists but points to [${actualLinkTarget}] (resolved: [${resolvedActualLinkTarget}]) instead of expected [${expectedSourcePath}] (resolved: [${resolvedExpectedSourcePath}]).`;
-                logger.warn(conflictMessage);
-                conflicts.push({
-                  type: 'symlink',
-                  path: targetPath,
-                  toolName: toolConfig.name,
-                  symlinkSource: expectedSourcePath,
-                  reason: `Symlink exists but points to wrong target: ${actualLinkTarget} (resolved: ${resolvedActualLinkTarget}). Expected: ${expectedSourcePath} (resolved: ${resolvedExpectedSourcePath})`,
-                });
-              }
-            } else { // It's a file or directory, not a symlink
-              const conflictMessage = `Potential conflict: Path [${targetPath}] for tool [${toolConfig.name}]'s symlink target exists and is not a symlink.`;
-              logger.warn(conflictMessage);
-              conflicts.push({
-                type: 'symlink',
-                path: targetPath,
-                toolName: toolConfig.name,
-                symlinkSource: expectedSourcePath,
-                reason: 'Path exists and is not a symlink.',
-              });
-            }
-          } catch (error: any) {
-            if (error.code === 'ENOENT') {
-              // File does not exist, no conflict here.
-              logger.debug(`No conflict for symlink target ${targetPath}, path does not exist.`);
-            } else {
-              // Log other errors but continue checking other symlinks/tools
-              logger.error(`Error checking symlink target ${targetPath} for tool ${toolConfig.name}: ${error.message}`);
-              // Optionally, add to a list of errors if needed, but not strictly a "conflict"
-            }
-          }
-        } // End of for...of symlink loop
-      } // End of if (toolConfig.symlinks)
-    } // End of for...in toolConfigs loop
-
-    if (conflicts.length > 0) {
-      logger.error('Conflict detection finished. Found potential conflicts:');
-      conflicts.forEach(conflict => {
-        if (conflict.type === 'shim') {
-          logger.error(`  - Shim: ${conflict.path} (for tool ${conflict.toolName}). Reason: ${conflict.reason}`);
-        } else if (conflict.type === 'symlink') {
-          logger.error(`  - Symlink Target: ${conflict.path} (for tool ${conflict.toolName}, expected source ${conflict.symlinkSource}). Reason: ${conflict.reason}`);
-        }
-      });
-      // Consider exiting with a specific code if conflicts are found,
-      // but for now, just logging is fine as per requirements.
-      // exitCli(1); // Or a different exit code for conflicts
-    } else {
-      logger.info('Conflict detection finished. No potential conflicts found.');
     }
+  }
 
-  } catch (error) {
-    commandInternalLog('detectConflictsActionLogic: Unhandled error: %O', error);
-    logger.error('Critical error during conflict detection: %s', (error as Error).message);
-    logger.debug('Error details: %O', error);
-    exitCli(1); // Exit with a general error code
+  if (conflictMessages.length > 0) {
+    const header = 'Conflicts detected with files not owned by the generator:';
+    const formattedConflicts = conflictMessages.map(msg => `  - ${msg}`).join('\n');
+    clientLogger.warn(`${header}\n${formattedConflicts}`);
+    // The "Please review..." message might be redundant if the header is clear enough,
+    // but keeping it for now as per original structure.
+    clientLogger.info('Please review the warnings above.');
+    return exitCli(1); // Exit with error code if conflicts are found
+  } else {
+    clientLogger.info('No conflicts detected.');
+    return exitCli(0);
   }
 }
 
 export function registerDetectConflictsCommand(program: Command): void {
   program
     .command('detect-conflicts')
-    .description('Detects conflicts between generated artifacts and existing system files.')
-    .option('--verbose', 'Show verbose output', false)
-    .option('--quiet', 'Suppress all output', false)
-    .action(async (options: DetectConflictsCommandOptions) => {
-      const finalClientLogger = createClientLogger({
-        quiet: options.quiet,
-        verbose: options.verbose,
-      });
+    .description('Detects conflicts between potential generated artifacts and existing system files.')
+    // Add options for verbose/quiet if desired, similar to other commands
+    .option('--verbose', 'Enable detailed debug messages.', false)
+    .option('--quiet', 'Suppress all informational and debug output. Errors are still displayed.', false)
+    .action(async (cliOptions: { verbose?: boolean; quiet?: boolean }) => {
+      // Create client logger based on CLI options
+      // Assuming createClientLogger can take an object with verbose/quiet flags
+      const clientLogger = createClientLogger(cliOptions);
 
       try {
-        // Setup services within the action handler
-        // For detect-conflicts, we don't want dryRun to affect fs for reading existing files.
-        // It should always use the real file system to detect actual conflicts.
-        const coreServices = await setupServices({ dryRun: false }); // dryRun is false
+        // Call the global setupServices from cli.ts
+        // It might take options like dryRun, but detect-conflicts doesn't seem to need it.
+        const coreServices = await globalSetupServices();
 
         const servicesForLogic: DetectConflictsCommandServices = {
           appConfig: coreServices.appConfig,
           fileSystem: coreServices.fs,
-          clientLogger: finalClientLogger,
-          loadToolConfigsFromDirectory, // Pass the actual function
+          clientLogger,
+          loadToolConfigsFromDirectory, // This is the direct import
         };
-
-        await detectConflictsActionLogic(options, servicesForLogic);
+        await detectConflictsActionLogic({}, servicesForLogic); // Pass empty options for now
       } catch (error) {
-        commandInternalLog('detect-conflicts command: Unhandled error in action handler: %O', error);
-        finalClientLogger.error('Critical error in detect-conflicts command: %s', (error as Error).message);
-        finalClientLogger.debug('Error details: %O', error);
+        clientLogger.error('Critical error in detect-conflicts command: %s', (error as Error).message);
+        clientLogger.debug('Error details: %O', error);
         exitCli(1);
       }
     });

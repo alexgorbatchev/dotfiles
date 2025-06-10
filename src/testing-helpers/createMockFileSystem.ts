@@ -83,6 +83,9 @@ export interface MockFileSystemOptions {
   rmdir?: MockFn<(path: string, options?: { recursive?: boolean }) => Promise<void>>;
 }
 
+/** Type alias for the collection of individual mock functions. */
+export type MockFileSystem = Required<MockFileSystemOptions>;
+
 /**
  * Defines the structure of the object returned by `createMockFileSystem`.
  */
@@ -90,7 +93,7 @@ export interface MockFileSystemReturn {
   /** The fully assembled mock IFileSystem instance. */
   mockFileSystem: IFileSystem;
   /** An object containing the individual mock functions used to build the mockFileSystem. */
-  fileSystemMocks: Required<MockFileSystemOptions>; // Using Required to ensure all mocks are present
+  fileSystemMocks: MockFileSystem; // Using the new type alias
 }
 
 /**

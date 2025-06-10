@@ -1,8 +1,9 @@
 /* IMPORTANT: you must ask for permission to change this file */
 {
   "compilerOptions": {
+    "baseUrl": "./", // Added baseUrl
     // "DOM" for fetch API types like HeadersInit, Response
-    "lib": ["ESNext", "DOM"], 
+    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
@@ -21,7 +22,7 @@
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "types": ["bun", "node"], 
+    "types": ["bun-types", "node"],
 
     "noUnusedLocals": true,
     "noUnusedParameters": true,

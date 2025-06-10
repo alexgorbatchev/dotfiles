@@ -7,8 +7,9 @@
  * All methods should be asynchronous and return Promises.
  */
 
-import type { Stats } from 'fs'; // Changed from 'node:fs'
+import type { Stats as NodeStats } from 'fs'; // Changed from 'node:fs', aliased to avoid conflict if re-exporting
 
+export type { NodeStats as Stats }; // Re-exporting Stats for consumers
 export interface IFileSystem {
   /**
    * Reads the content of a file.
@@ -74,7 +75,7 @@ export interface IFileSystem {
    * @param path The path to the file or directory.
    * @returns A promise that resolves with the Stats object.
    */
-  stat(path: string): Promise<Stats>;
+  stat(path: string): Promise<NodeStats>; // Use aliased Stats
 
   /**
    * Creates a symbolic link.
