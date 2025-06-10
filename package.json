@@ -7,7 +7,7 @@
     "mydotfiles": "./dist/cli.js"
   },
   "scripts": {
-    "test": "bun test --coverage",
+    "test": "bun run src/testing-helpers/bun-test-runner.ts",
     "lint-do-not-use": "tsc --noEmit && eslint . --ext .ts",
     "lint": "tsc --noEmit",
     "fmt": "prettier --write .",
@@ -25,7 +25,8 @@
     "bun-bagel": "^1.2.0",
     "eslint": "^9.28.0",
     "prettier": "^3.5.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "strip-ansi": "^7.1.0"
   },
   "peerDependencies": {
     "typescript": "^5"
