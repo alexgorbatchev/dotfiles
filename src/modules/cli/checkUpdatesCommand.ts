@@ -14,6 +14,7 @@ import { loadToolConfigsFromDirectory, loadSingleToolConfig } from '@modules/con
 import type { GithubReleaseToolConfig, ToolConfig } from '@types';
 import { createClientLogger } from '@modules/logger';
 import { setupServices } from '../../cli'; // Import setupServices
+import { exitCli } from '../../exitCli'; // Added
 
 export interface CheckUpdatesCommandOptions {
   verbose?: boolean;
@@ -60,12 +61,12 @@ export async function checkUpdatesActionLogic( // Export the function
   } catch (error) {
     clientLogger.error('Error loading tool configurations: %s', (error as Error).message);
     clientLogger.debug('Configuration loading error details: %O', error);
-    process.exitCode = 1;
+    exitCli(1);
     return;
   }
 
   if (specificToolNotFound) {
-    process.exitCode = 1;
+    exitCli(1);
     return;
   }
 
@@ -152,7 +153,7 @@ export function registerCheckUpdatesCommand(program: Command) {
       } catch (error) {
         clientLogger.error('Failed to setup services or execute command: %s', (error as Error).message);
         clientLogger.debug('Error details: %O', error);
-        process.exitCode = 1; // Ensure exit code is set on setup failure
+        exitCli(1); // Ensure exit code is set on setup failure
       }
     });
 }

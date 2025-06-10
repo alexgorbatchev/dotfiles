@@ -3,52 +3,6 @@
 /**
  * @file cli.ts
  * @description Main CLI entry point for the dotfiles management application.
- *
- * ## Development Plan
- *
- * - [x] Add shebang and basic file structure.
- * - [x] Import necessary modules (`commander`, services, types).
- * - [x] Implement a simplified DependencyInjection (DI) setup function.
- *   - [x] Instantiate `AppConfig`.
- *   - [x] Instantiate `IFileSystem` (conditionally `NodeFileSystem` or `MemFileSystem`).
- *   - [x] Instantiate `IDownloader` (using `Downloader` with `NodeFetchStrategy`).
- *   - [x] Instantiate `IGitHubApiCache` (using `FileGitHubApiCache`).
- *   - [x] Instantiate `IGitHubApiClient`.
- *   - [x] Instantiate `IShimGenerator`.
- *   - [x] Instantiate `IShellInitGenerator`.
- *   - [x] Instantiate `ISymlinkGenerator`.
- *   - [x] Instantiate `IGeneratorOrchestrator`.
- * - [x] Define the `generate` command using `commander`.
- *   - [x] Add `--dry-run` option.
- *   - [x] Implement the action handler:
- *     - [x] Instantiate `GeneratorOrchestrator` via DI setup.
- *     - [x] Create a stub for `loadToolConfigs()`.
- *     - [x] Call `generatorOrchestrator.generateAll()` (without dryRun option).
- *     - [x] Add basic success/error logging.
- * - [x] Parse CLI arguments using `program.parse(process.argv)`.
- * - [x] Write basic tests for the CLI (`generator/src/__tests__/cli.test.ts`).
- * - [x] Update `generator/package.json` with `bin` field and build script (Verified).
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Refactor dry run mechanism to inject IFileSystem.
- *   - [x] Modify `cli.ts` to conditionally instantiate `IFileSystem` in `setupServices`.
- *   - [x] Modify `cli.ts` to remove `dryRun` option from `generateAll` call.
- * - [x] Integrate real `loadToolConfigs` function.
- * - [x] Pre-populate `MemFileSystem` with actual `*.tool.ts` files from `toolConfigsDir` during `--dry-run`.
- *   - [x] In `setupServices`, when `dryRun` is true:
- *     - [x] Use `AppConfig` to get `toolConfigsDir`.
- *     - [x] Use a temporary `NodeFileSystem` to read `*.tool.ts` files from `toolConfigsDir`.
- *     - [x] Initialize `MemFileSystem` with the content of these files.
- * - [x] Enhance `install` command error message for "tool not found" to include `toolConfigsDir` and available tools.
- * - [x] Enhance `install` command output to show symlink path and other changes.
- * - [x] Add `--details` flag to `install` command for optional detailed output. (Replaced by --verbose)
- * - [x] Integrate clientLogger for improved logging.
- * - [x] Rename `--details` to `--verbose` and add `--quiet` to `install` command.
- * - [x] Add `--verbose` and `--quiet` to `generate` command.
- * - [x] Refine `generate` command's `--verbose` logging for shims, shell init, and symlinks to provide detailed output.
- * - [x] Ensure `generate` command's default log for shim count correctly and explicitly uses `appConfig.binDir`.
- * - [x] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import {
@@ -56,11 +10,13 @@ import {
   type AppConfig,
   type SystemInfo as ConfigModuleSystemInfo,
 } from '@modules/config';
-// import { loadToolConfigs as realLoadToolConfigs } from '@modules/config-loader/toolConfigLoader'; // Removed as unused
+// createClientLogger was removed from here as it's unused in this file.
+// It's imported and used within individual command modules' action handlers.
+import { createLogger } from '@modules/logger'; // Added import for createDebugLoggerInternal
 import { NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { Downloader } from '@modules/downloader/Downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; // Added import
-import { MemFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system';
+import { MemFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system'; // Added MemFileSystem and types
 import { NodeFileSystem } from '@modules/file-system/NodeFileSystem';
 import {
   GeneratorOrchestrator,
@@ -76,26 +32,25 @@ import { type IGitHubApiClient, type IGitHubApiCache } from '@modules/github-cli
 import { FileGitHubApiCache } from '@modules/github-client/FileGitHubApiCache';
 import { GitHubApiClient } from '@modules/github-client/GitHubApiClient';
 import { Installer, type IInstaller } from '@modules/installer';
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
+// The duplicate createLogger import that was here is confirmed removed.
 import { VersionChecker, type IVersionChecker } from '@modules/version-checker'; // Added
 import {
   registerGenerateCommand,
-  type GenerateCommandServices,
 } from '@modules/cli/generateCommand';
-import { registerInstallCommand } from '@modules/cli/installCommand'; // Updated import
-import { registerCleanupCommand, type CleanupCommandServices } from '@modules/cli/cleanupCommand'; // Updated
-import { registerCheckUpdatesCommand } from '@modules/cli/checkUpdatesCommand'; // Added
-import { registerUpdateCommand } from '@modules/cli/updateCommand'; // Added
+import { registerInstallCommand } from '@modules/cli/installCommand';
+import { registerCleanupCommand } from '@modules/cli/cleanupCommand';
+import { registerCheckUpdatesCommand } from '@modules/cli/checkUpdatesCommand';
+import { registerUpdateCommand } from '@modules/cli/updateCommand';
 import { Command } from 'commander';
 import path from 'node:path'; // Added import for path.join
 import os from 'os';
 import { exitCli } from '@exitCli'; // Corrected import to use the alias
 
-const internalLog = createDebugLoggerInternal('cli'); // Renamed to avoid conflict
+const internalLog = createLogger('cli'); // createDebugLoggerInternal is defined from @modules/logger
 
 export interface Services {
   appConfig: AppConfig;
-  fs: IFileSystem;
+  fs: IFileSystem; // IFileSystem is now imported
   downloader: IDownloader;
   githubApiCache: IGitHubApiCache;
   githubApiClient: IGitHubApiClient;
@@ -116,13 +71,13 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
     cwd: process.cwd(),
   };
   const appConfig = createAppConfig(systemInfoForConfig, process.env as any); // Cast process.env
-  let fs: IFileSystem;
+  let fs: IFileSystem; // IFileSystem is now imported
 
   if (dryRun) {
     internalLog('setupServices: Dry run enabled. Initializing MemFileSystem with tool configs.');
     const realToolConfigsDir = appConfig.toolConfigsDir;
-    const nodeFs = new NodeFileSystem(); 
-    const toolFilesJson: DirectoryJSON = {};
+    const nodeFs = new NodeFileSystem();
+    const toolFilesJson: DirectoryJSON = {}; // DirectoryJSON is now imported
 
     try {
       if (await nodeFs.exists(realToolConfigsDir)) {
@@ -162,7 +117,7 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
       );
       // Optionally, decide whether to throw or continue.
     }
-    fs = new MemFileSystem(toolFilesJson);
+    fs = new MemFileSystem(toolFilesJson); // MemFileSystem is now imported
   } else {
     fs = new NodeFileSystem();
   }
@@ -220,7 +175,7 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
 export const program = new Command();
 
 program
-  .name('mydotfiles')
+  .name('generator')
   .description('CLI tool for managing dotfiles and tool configurations')
   .version('0.1.0');
 
@@ -229,26 +184,10 @@ export async function registerAllCommands(programInstance: Command) {
   registerInstallCommand(programInstance);
 
   // Register Generate Command
-  // Setup initial services for generate command registration (some parts might be refined in action)
-  const initialGenerateServices = await setupServices({ dryRun: false }); 
-  const generateCommandServices: GenerateCommandServices = {
-    appConfig: initialGenerateServices.appConfig,
-    fileSystem: initialGenerateServices.fs, 
-    generatorOrchestrator: initialGenerateServices.generatorOrchestrator,
-    clientLogger: createClientLogger({}), // Base logger, action will refine
-  };
-  registerGenerateCommand(programInstance, generateCommandServices);
+  registerGenerateCommand(programInstance);
 
   // Register Cleanup Command
-  // Setup services for Cleanup Command registration
-  const cleanupCoreServices = await setupServices(); 
-  const baseClientLoggerForCleanup = createClientLogger({});
-  const cleanupServices: CleanupCommandServices = {
-    appConfig: cleanupCoreServices.appConfig,
-    fileSystem: cleanupCoreServices.fs,
-    clientLogger: baseClientLoggerForCleanup,
-  };
-  registerCleanupCommand(programInstance, cleanupServices);
+  registerCleanupCommand(programInstance);
 
   // Register CheckUpdates Command
   registerCheckUpdatesCommand(programInstance);

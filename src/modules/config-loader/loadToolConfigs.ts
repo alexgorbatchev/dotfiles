@@ -1,10 +1,10 @@
 import type { IFileSystem } from '@modules/file-system';
 import type { ToolConfig, AsyncConfigureTool } from '@types';
-import { ToolConfigBuilder } from '@modules/tool-config-builder/toolConfigBuilder'; // Added
+import { ToolConfigBuilder } from '@modules/tool-config-builder';
 import path from 'node:path';
-import { createLogger as createDebugLoggerInternal } from '@modules/logger';
+import { createLogger } from '@modules/logger';
 
-const internalLog = createDebugLoggerInternal('loadToolConfigs');
+const internalLog = createLogger('loadToolConfigs');
 
 /**
  * Loads all tool configurations from *.tool.ts files in a given directory.

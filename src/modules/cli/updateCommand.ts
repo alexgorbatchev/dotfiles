@@ -60,7 +60,6 @@ async function updateActionLogic(
   if (!toolConfig) {
     logger.error(`Tool configuration for "${toolName}" not found in ${appConfig.toolConfigsDir}.`);
     exitCli(1); // Changed from return exitCli(1)
-    return; // Ensure function exits
   }
 
   logger.info(`Checking for updates for "${toolName}"...`);

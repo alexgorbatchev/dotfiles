@@ -9,7 +9,7 @@ import type { ConsolaInstance } from 'consola';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand'; // Removed CheckUpdatesCommandServices
 import { loadSingleToolConfig, loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
-import { setupServices as actualSetupServices } from '../../../cli'; // Import actual setupServices
+import { setupServices as actualSetupServices } from '@cli'; // Import actual setupServices
 import type { GithubReleaseToolConfig, ToolConfig, GitHubRelease } from '@types';
 
 // Mock dependencies
@@ -27,7 +27,7 @@ mock.module('@modules/logger', () => ({
 
 // Mock ../../cli
 const mockSetupServices = mock(actualSetupServices);
-mock.module('../../../cli', () => ({
+mock.module('@cli', () => ({
   setupServices: mockSetupServices,
   // Mock other exports from cli.ts if they were to be used by checkUpdatesCommand.ts
   // For now, only setupServices is directly imported.
@@ -221,12 +221,9 @@ describe('checkUpdatesCommand', () => {
   
   test('should handle tool config not found for specific tool', async () => {
     (loadSingleToolConfig as any).mockResolvedValue(undefined);
-    await program.parseAsync(['check-updates', 'nonexistenttool'], { from: 'user' });
-
+    expect(program.parseAsync(['check-updates', 'nonexistenttool'], { from: 'user' })).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
     expect(mockClientLogger.error).toHaveBeenCalledWith('Tool configuration for "nonexistenttool" not found in /fake/tools.');
-    // process.exitCode should be set
-    expect(process.exitCode).toBe(1); // This needs to be asserted carefully, ensure it's set by the command logic
-    process.exitCode = 0; // Reset for next tests, if process.exitCode is indeed modified by the command
+    // exitCli(1) is called, which throws in test env. No need to check process.exitCode here.
   });
 
   test('should handle no tool configurations found when checking all', async () => {
@@ -264,19 +261,17 @@ describe('checkUpdatesCommand', () => {
   test('should handle error during loadToolConfigsFromDirectory', async () => {
     const errorMessage = 'FS read error';
     (loadToolConfigsFromDirectory as any).mockRejectedValue(new Error(errorMessage));
-    await program.parseAsync(['check-updates'], { from: 'user' });
+    expect(program.parseAsync(['check-updates'], { from: 'user' })).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
     expect(mockClientLogger.error).toHaveBeenCalledWith('Error loading tool configurations: %s', errorMessage);
-    expect(process.exitCode).toBe(1);
-    process.exitCode = 0; // Reset for subsequent tests
+    // exitCli(1) is called, which throws in test env.
   });
 
   test('should handle error during loadSingleToolConfig', async () => {
     const errorMessage = 'FS read error single';
     (loadSingleToolConfig as any).mockRejectedValue(new Error(errorMessage));
-    await program.parseAsync(['check-updates', 'sometool'], { from: 'user' });
+    expect(program.parseAsync(['check-updates', 'sometool'], { from: 'user' })).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
     expect(mockClientLogger.error).toHaveBeenCalledWith('Error loading tool configurations: %s', errorMessage);
-    expect(process.exitCode).toBe(1);
-    process.exitCode = 0; // Reset for subsequent tests
+    // exitCli(1) is called, which throws in test env.
   });
 
 });

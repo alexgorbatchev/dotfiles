@@ -50,7 +50,6 @@ async function _installActionLogic(
       errorMessage += 'No specific tool configuration was found for the requested tool.';
       logger.error(errorMessage);
       exitCli(1);
-      return;
     }
 
     commandInternalLog('_installActionLogic: Calling installerService.install for tool: %s', toolName);
@@ -86,15 +85,13 @@ async function _installActionLogic(
         result.error
       );
       logger.error(`Error installing "${toolName}": ${result.error}`);
-      exitCli(1)
-      return;
+      exitCli(1);
     }
   } catch (error) {
     commandInternalLog('_installActionLogic: Error during tool installation: %O', error);
     logger.error('Error during tool installation: %s', (error as Error).message);
     logger.debug('Error details: %O', error);
-      exitCli(1)
-    return;
+    exitCli(1);
   }
 }
 

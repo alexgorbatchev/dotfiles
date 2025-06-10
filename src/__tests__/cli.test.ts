@@ -365,11 +365,13 @@ describe('CLI', () => {
     const mockNodeFs = new NodeFileSystem();
     const mockOrchestrator = { generateAll: mockGenerateAll } as IGeneratorOrchestrator;
 
+    // This specific mockImplementation for setupServicesSpy within the test case
+    // will be used by the generate command's action handler when it calls setupServices.
     setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean }) => {
-      expect(options?.dryRun).toBe(false); 
+      expect(options?.dryRun).toBe(false);
       return {
-        appConfig: mockAppConfig,
-        fs: mockNodeFs, 
+        appConfig: mockAppConfig, // Ensure this specific appConfig is returned
+        fs: mockNodeFs,
         generatorOrchestrator: mockOrchestrator,
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
@@ -384,18 +386,21 @@ describe('CLI', () => {
     });
 
     loadToolConfigsFromDirectorySpy.mockResolvedValueOnce({ testTool: { name: 'testTool' } as ToolConfig });
-    mockGenerateAll.mockResolvedValueOnce({} as GeneratedArtifactsManifest); 
+    mockGenerateAll.mockResolvedValueOnce({} as GeneratedArtifactsManifest);
 
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'generate']);
 
-    expect(setupServicesSpy).toHaveBeenCalledTimes(0);
+    expect(setupServicesSpy).toHaveBeenCalledTimes(1);
 
     expect(generateActionLogicSpy).toHaveBeenCalledTimes(1);
     const [optionsArg, servicesArg] = generateActionLogicSpy.mock.calls[0]!;
 
-    expect(optionsArg).toEqual({ dryRun: false, verbose: false, quiet: false }); 
-    expect(servicesArg.appConfig).toEqual(defaultMockAppConfig); 
-    expect(servicesArg.fileSystem).toBeInstanceOf(NodeFileSystem); 
+    expect(optionsArg).toEqual({ dryRun: false, verbose: false, quiet: false });
+    // Now, servicesArg.appConfig should be the mockAppConfig defined in this test case,
+    // because the action handler for 'generate' calls setupServices, which uses the
+    // most recent mockImplementation for setupServicesSpy.
+    expect(servicesArg.appConfig).toEqual(mockAppConfig);
+    expect(servicesArg.fileSystem).toBeInstanceOf(NodeFileSystem);
     expect(servicesArg.clientLogger).toBeDefined();
     expect((servicesArg.clientLogger as any).silent).toBe(false);
 
@@ -424,14 +429,22 @@ describe('CLI', () => {
 
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'generate', '--dry-run']);
 
-    expect(setupServicesSpy).toHaveBeenCalledTimes(0);
+    expect(setupServicesSpy).toHaveBeenCalledTimes(1);
 
     expect(generateActionLogicSpy).toHaveBeenCalledTimes(1);
     const [optionsArg, servicesArg] = generateActionLogicSpy.mock.calls[0]!;
 
     expect(optionsArg).toEqual({ dryRun: true, verbose: false, quiet: false });
-    expect(servicesArg.appConfig).toEqual(defaultMockAppConfig); 
-    expect(servicesArg.fileSystem).toBeInstanceOf(MemFileSystem); 
+    // For dry run, the appConfig passed to generateActionLogic will also be the one
+    // from the setupServices call made by the action handler.
+    // If this test needs a specific appConfig for dryRun, the setupServicesSpy
+    // would need to be configured accordingly before programUnderTest.parseAsync.
+    // For now, assuming defaultMockAppConfig is acceptable if no specific mock is set for this call path.
+    // However, to be consistent with the non-dry run case, if a specific appConfig is intended
+    // for the dry-run path's setupServices call, that mock needs to be active.
+    // Let's assume for this test, the defaultMockAppConfig from beforeEach is fine for the dry-run path.
+    expect(servicesArg.appConfig).toEqual(defaultMockAppConfig);
+    expect(servicesArg.fileSystem).toBeInstanceOf(MemFileSystem);
     expect(servicesArg.clientLogger).toBeDefined();
 
     expect(loadToolConfigsFromDirectorySpy).toHaveBeenCalledWith(
@@ -458,7 +471,8 @@ describe('CLI', () => {
     expect(mockLoggerError).toHaveBeenCalledTimes(1); // Verify it was called
     const callArgs = mockLoggerError.mock.calls[0] as [string, string];
     const [loggedFormatString, loggedMessage] = callArgs;
-    expect(loggedFormatString).toBe('Error during artifact generation: %s');
+    // Error is now caught and logged by the action handler in registerGenerateCommand
+    expect(loggedFormatString).toBe('Critical error in generate command: %s');
     expect(loggedMessage).toBe((testError as Error).message);
 
     expect(exitCliSpy).toHaveBeenCalledWith(1);
@@ -489,11 +503,12 @@ describe('CLI', () => {
     expect(cliModuleActual.main()).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
 
     // Check that console.error was called by main's catch block
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error during main CLI execution:', testError);
+    // The error caught by main() is the one thrown by exitCliSpy from the action handler's catch block.
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error during main CLI execution:', new Error('TEST_EXIT_CLI_CALLED_WITH_1'));
     expect(exitCliSpy).toHaveBeenCalledWith(1);
-    // mockLoggerError should NOT have been called because the error is caught by main's try/catch,
-    // not the install command's action logic's catch block.
-    expect(mockLoggerError).not.toHaveBeenCalled();
+    // mockLoggerError IS called by the install command's action handler's catch block
+    expect(mockLoggerError).toHaveBeenCalledTimes(1);
+    expect(mockLoggerError).toHaveBeenCalledWith('Critical error in install command: %s', testError.message);
 
 
     process.argv = originalArgv;
