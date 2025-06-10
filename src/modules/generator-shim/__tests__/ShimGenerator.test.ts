@@ -49,6 +49,7 @@ describe('ShimGenerator', () => {
   let mockChmod: ReturnType<typeof mock>;
   let mockExists: ReturnType<typeof mock>;
   let mockEnsureDir: ReturnType<typeof mock>;
+  let mockLstat: ReturnType<typeof mock>; // Added for lstat
 
   const MOCK_TARGET_DIR = '/test/shims';
 
@@ -57,6 +58,7 @@ describe('ShimGenerator', () => {
     mockChmod = mock(() => Promise.resolve());
     mockExists = mock(() => Promise.resolve(false));
     mockEnsureDir = mock(() => Promise.resolve());
+    mockLstat = mock(async () => ({ isDirectory: () => false, isFile: () => true, isSymbolicLink: () => false }) as any); // Basic lstat mock
 
     mockFileSystem = {
       writeFile: mockWriteFile,
@@ -67,7 +69,8 @@ describe('ShimGenerator', () => {
       mkdir: mock(() => Promise.resolve()),
       readdir: mock(() => Promise.resolve([])),
       rm: mock(() => Promise.resolve()),
-      stat: mock(async () => ({ isDirectory: () => true }) as any),
+      stat: mock(async () => ({ isDirectory: () => true, isFile: () => false, isSymbolicLink: () => false }) as any), // Adjusted default stat
+      lstat: mockLstat, // Added lstat
       symlink: mock(async () => {}),
       readlink: mock(async () => ''),
       copyFile: mock(async () => {}),

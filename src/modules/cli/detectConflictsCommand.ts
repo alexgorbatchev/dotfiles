@@ -70,13 +70,15 @@ export async function detectConflictsActionLogic(
         const expectedSourcePath = path.join(appConfig.dotfilesDir, symlink.source);
 
         try {
-          const stats: Stats | null = await fileSystem.stat(targetPath); // Changed from lstat to stat
+          const stats: Stats | null = await fileSystem.lstat(targetPath); // Use lstat here
           if (stats) {
             if (stats.isSymbolicLink()) {
-              const linkTarget = await fileSystem.readlink(targetPath); // Changed from readLink to readlink
-              if (linkTarget !== expectedSourcePath) {
+              const linkString = await fileSystem.readlink(targetPath); // Changed from readLink to readlink
+              // Resolve linkString relative to the symlink's directory to get an absolute path
+              const resolvedLinkTarget = path.resolve(path.dirname(targetPath), linkString);
+              if (resolvedLinkTarget !== expectedSourcePath) {
                 conflictMessages.push(
-                  `[${toolConfig.name}]: ${targetPath} (points to '${linkTarget}', expected '${expectedSourcePath}')`
+                  `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${expectedSourcePath}')`
                 );
               }
             } else {

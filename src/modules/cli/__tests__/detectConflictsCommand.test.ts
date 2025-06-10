@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'; // Import mock
+import path from 'node:path'; // Import path
 import { Command } from 'commander';
 import { registerDetectConflictsCommand, detectConflictsActionLogic } from '../detectConflictsCommand';
 import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
@@ -142,7 +143,7 @@ describe('detectConflictsCommand', () => {
         if (p === shimPath) return "some other content";
         throw new Error("File not found in mock");
       });
-      fileSystemMocks.stat.mockImplementation(async (_path: string) => {
+      fileSystemMocks.lstat.mockImplementation(async (_path: string) => { // Use lstat
         throw { code: 'ENOENT' };
       });
 
@@ -162,7 +163,7 @@ describe('detectConflictsCommand', () => {
         throw new Error("File not found in mock");
       });
       // Ensure no other conflicts (e.g., symlinks)
-      fileSystemMocks.stat.mockImplementation(async (_path: string) => {
+      fileSystemMocks.lstat.mockImplementation(async (_path: string) => { // Use lstat
         throw { code: 'ENOENT' };
       });
 
@@ -181,7 +182,7 @@ describe('detectConflictsCommand', () => {
         if (p === shimPath) throw readError;
         throw new Error("File not found in mock for other paths");
       });
-      fileSystemMocks.stat.mockImplementation(async (_path: string) => {
+      fileSystemMocks.lstat.mockImplementation(async (_path: string) => { // Use lstat
         throw { code: 'ENOENT' };
       });
 
@@ -199,7 +200,7 @@ describe('detectConflictsCommand', () => {
       mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
       const symlinkTargetPath = `${mockAppConfig.homeDir}/.config/toolA`;
       fileSystemMocks.exists.mockResolvedValue(false); // No shim conflict
-      fileSystemMocks.stat.mockImplementation(async (p: string) => { // Add type for p
+      fileSystemMocks.lstat.mockImplementation(async (p: string) => { // Use lstat
         if (p === symlinkTargetPath) {
           return { isSymbolicLink: () => false, isFile: () => true, isDirectory: () => false } as any;
         }
@@ -217,43 +218,70 @@ describe('detectConflictsCommand', () => {
       mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
       const symlinkTargetPath = `${mockAppConfig.homeDir}/.config/toolA`;
       const expectedSourcePath = `${mockAppConfig.dotfilesDir}/toolA/.config`;
-      const actualLinkTarget = '/some/other/path';
+      const pointsToWrongAbsolutePath = '/some/other/absolute/path';
+      const pointsToWrongRelativePath = '../wrong-relative-path'; // Relative from dirname(symlinkTargetPath)
 
-      fileSystemMocks.exists.mockResolvedValue(false); // No shim conflict
-      fileSystemMocks.stat.mockImplementation(async (p: string) => { // Add type for p
-        if (p === symlinkTargetPath) {
-          return { isSymbolicLink: () => true } as any;
-        }
+      fileSystemMocks.exists.mockResolvedValue(false);
+      fileSystemMocks.lstat.mockImplementation(async (p: string) => { // Use lstat
+        if (p === symlinkTargetPath) return { isSymbolicLink: () => true } as any;
         throw { code: 'ENOENT' };
       });
-      fileSystemMocks.readlink.mockResolvedValue(actualLinkTarget);
 
-
+      // Test with absolute wrong path
+      fileSystemMocks.readlink.mockResolvedValue(pointsToWrongAbsolutePath);
       await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      let expectedMessage = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
+      expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessage);
 
-      const expectedMessageSymlinkWrongTarget = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${symlinkTargetPath} (points to '${actualLinkTarget}', expected '${expectedSourcePath}')`;
-      expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessageSymlinkWrongTarget);
+      // Test with relative wrong path
+      loggerMocks.warn.mockClear(); // Clear previous call
+      // Ensure exitCli mock is reset or we check for multiple calls if that's the desired behavior.
+      // For simplicity, let's assume exitCli is called once per logical failure scenario.
+      // If exitCli is only checked at the end, this mockClear for loggerMocks.warn is fine.
+      (exitCli as any).mockClear(); // Reset exitCli mock for the next assertion in this test
+
+      fileSystemMocks.readlink.mockResolvedValue(pointsToWrongRelativePath);
+      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expectedMessage = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongRelativePath}', expected '${expectedSourcePath}')`;
+      expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessage);
+
       expect(exitCli).toHaveBeenCalledWith(1);
     });
 
-     test('Symlink target exists as a symlink to the correct source - should NOT log warning for this symlink', async () => {
+     test('Symlink target exists as a symlink to the correct source (absolute link) - should NOT log warning', async () => {
       mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
       const symlinkTargetPath = `${mockAppConfig.homeDir}/.config/toolA`;
       const expectedSourcePath = `${mockAppConfig.dotfilesDir}/toolA/.config`;
 
-      fileSystemMocks.exists.mockResolvedValue(false); // No shim conflict
-      fileSystemMocks.stat.mockImplementation(async (p: string) => { // Add type for p
-        if (p === symlinkTargetPath) {
-          return { isSymbolicLink: () => true } as any;
-        }
+      fileSystemMocks.exists.mockResolvedValue(false);
+      fileSystemMocks.lstat.mockImplementation(async (p: string) => { // Use lstat
+        if (p === symlinkTargetPath) return { isSymbolicLink: () => true } as any;
         throw { code: 'ENOENT' };
       });
-      fileSystemMocks.readlink.mockResolvedValue(expectedSourcePath); // Points to correct source
-
+      fileSystemMocks.readlink.mockResolvedValue(expectedSourcePath); // Points to correct absolute source
 
       await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
       expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
-      expect(loggerMocks.warn).not.toHaveBeenCalledWith(expect.stringContaining(symlinkTargetPath));
+      expect(loggerMocks.warn).not.toHaveBeenCalled();
+      expect(exitCli).toHaveBeenCalledWith(0);
+    });
+
+    test('Symlink target exists as a symlink to the correct source (relative link) - should NOT log warning', async () => {
+      mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
+      const symlinkTargetPath = `${mockAppConfig.homeDir}/.config/toolA`;
+      const expectedSourcePath = `${mockAppConfig.dotfilesDir}/toolA/.config`;
+      const correctRelativeLink = path.relative(path.dirname(symlinkTargetPath), expectedSourcePath);
+
+      fileSystemMocks.exists.mockResolvedValue(false);
+      fileSystemMocks.lstat.mockImplementation(async (p: string) => { // Use lstat
+        if (p === symlinkTargetPath) return { isSymbolicLink: () => true } as any;
+        throw { code: 'ENOENT' };
+      });
+      fileSystemMocks.readlink.mockResolvedValue(correctRelativeLink);
+
+      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+      expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
+      expect(loggerMocks.warn).not.toHaveBeenCalled();
       expect(exitCli).toHaveBeenCalledWith(0);
     });
 
@@ -265,7 +293,7 @@ describe('detectConflictsCommand', () => {
       // const expectedSourcePathB = `${mockAppConfig.dotfilesDir}/toolB/.settings`; // Not needed for this specific assertion
 
       fileSystemMocks.exists.mockImplementation(async (p: string) => p === shimPathA); // Add type for p
-      fileSystemMocks.stat.mockImplementation(async (p: string) => { // Add type for p
+      fileSystemMocks.lstat.mockImplementation(async (p: string) => { // Use lstat
         if (p === symlinkPathB) { // toolB symlink target exists as a file
           return { isSymbolicLink: () => false } as any;
         }
@@ -293,7 +321,7 @@ describe('detectConflictsCommand', () => {
         (statError as any).code = 'EACCES';
 
         fileSystemMocks.exists.mockResolvedValue(false); // No shim conflict
-        fileSystemMocks.stat.mockImplementation(async (p: string) => { // Add type for p
+        fileSystemMocks.lstat.mockImplementation(async (p: string) => { // Use lstat
             if (p === symlinkTargetPath) {
                 throw statError;
             }

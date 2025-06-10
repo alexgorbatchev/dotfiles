@@ -77,7 +77,8 @@ export interface MockFileSystemOptions {
   mkdir?: MockFn<(path: string, options?: { recursive?: boolean }) => Promise<void>>;
   readdir?: MockFn<(path: string) => Promise<string[]>>;
   stat?: MockFn<(path: string) => Promise<Stats>>;
-  statOverrides?: StatOverrides; // New property for stat overrides
+  lstat?: MockFn<(path: string) => Promise<Stats>>; // Added lstat mock
+  statOverrides?: StatOverrides; // New property for stat overrides (applies to default stat/lstat mocks)
   readlink?: MockFn<(path: string) => Promise<string>>;
   rename?: MockFn<(oldPath: string, newPath: string) => Promise<void>>;
   rmdir?: MockFn<(path: string, options?: { recursive?: boolean }) => Promise<void>>;
@@ -205,6 +206,7 @@ export function createMockFileSystem(options: MockFileSystemOptions = {}): MockF
   const mkdirMock = options.mkdir ?? mock(async () => {});
   const readdirMock = options.readdir ?? mock(async () => []);
   const statMock = options.stat ?? defaultStatMock;
+  const lstatMock = options.lstat ?? defaultStatMock; // Use defaultStatMock for lstat too by default
   const readlinkMock = options.readlink ?? mock(async () => '');
   const renameMock = options.rename ?? mock(async () => {});
   const rmdirMock = options.rmdir ?? mock(async () => {});
@@ -221,6 +223,7 @@ export function createMockFileSystem(options: MockFileSystemOptions = {}): MockF
     mkdir: mkdirMock,
     readdir: readdirMock,
     stat: statMock,
+    lstat: lstatMock, // Added lstat
     statOverrides: options.statOverrides ?? {}, // Include statOverrides if provided, or default
     readlink: readlinkMock,
     rename: renameMock,
@@ -239,6 +242,7 @@ export function createMockFileSystem(options: MockFileSystemOptions = {}): MockF
     mkdir: mkdirMock,
     readdir: readdirMock,
     stat: statMock,
+    lstat: lstatMock, // Added lstat
     readlink: readlinkMock,
     rename: renameMock,
     rmdir: rmdirMock,

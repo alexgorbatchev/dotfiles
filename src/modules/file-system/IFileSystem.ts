@@ -78,6 +78,13 @@ export interface IFileSystem {
   stat(path: string): Promise<NodeStats>; // Use aliased Stats
 
   /**
+   * Gets file or directory stats without following symbolic links.
+   * @param path The path to the file or directory.
+   * @returns A promise that resolves with the Stats object for the link itself.
+   */
+  lstat(path: string): Promise<NodeStats>; // Added lstat
+
+  /**
    * Creates a symbolic link.
    * @param target The path the symbolic link will point to.
    * @param path The path where the symbolic link will be created.

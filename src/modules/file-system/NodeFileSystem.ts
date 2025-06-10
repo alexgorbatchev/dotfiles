@@ -49,6 +49,10 @@ export class NodeFileSystem implements IFileSystem {
     return fsPromises.stat(path);
   }
 
+  public async lstat(path: string): Promise<Stats> {
+    return fsPromises.lstat(path);
+  }
+
   public async symlink(
     target: string,
     path: string,

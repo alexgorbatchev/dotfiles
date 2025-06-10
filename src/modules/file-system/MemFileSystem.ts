@@ -135,6 +135,12 @@ export class MemFileSystem implements IFileSystem {
     return stats as Stats; // Cast to Node's Stats type for interface compatibility
   }
 
+  public async lstat(path: string): Promise<Stats> {
+    // memfs.promises.lstat returns a Promise<Stats> for the link itself.
+    const stats = await this.vol.promises.lstat(path);
+    return stats as Stats; // Cast to Node's Stats type
+  }
+
   public async symlink(
     target: string,
     path: string,
