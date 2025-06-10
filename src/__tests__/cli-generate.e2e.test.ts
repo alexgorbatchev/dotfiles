@@ -171,8 +171,6 @@ describe('E2E: bun run cli generate', () => {
     });
 
     cliExitCode = proc.exitCode;
-    // console.log('CLI STDOUT:', proc.stdout.toString());
-    // console.log('CLI STDERR:', proc.stderr.toString());
   });
 
   it('should execute the CLI successfully', () => {

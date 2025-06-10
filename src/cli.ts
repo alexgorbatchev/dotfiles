@@ -56,7 +56,7 @@ import {
   type AppConfig,
   type SystemInfo as ConfigModuleSystemInfo,
 } from '@modules/config';
-import { loadToolConfigs as realLoadToolConfigs } from '@modules/config-loader/toolConfigLoader'; // Added import
+// import { loadToolConfigs as realLoadToolConfigs } from '@modules/config-loader/toolConfigLoader'; // Removed as unused
 import { NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { Downloader } from '@modules/downloader/Downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; // Added import
@@ -77,9 +77,19 @@ import { FileGitHubApiCache } from '@modules/github-client/FileGitHubApiCache';
 import { GitHubApiClient } from '@modules/github-client/GitHubApiClient';
 import { Installer, type IInstaller } from '@modules/installer';
 import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
+import { VersionChecker, type IVersionChecker } from '@modules/version-checker'; // Added
+import {
+  registerGenerateCommand,
+  type GenerateCommandServices,
+} from '@modules/cli/generateCommand';
+import { registerInstallCommand } from '@modules/cli/installCommand'; // Updated import
+import { registerCleanupCommand, type CleanupCommandServices } from '@modules/cli/cleanupCommand'; // Updated
+import { registerCheckUpdatesCommand } from '@modules/cli/checkUpdatesCommand'; // Added
+import { registerUpdateCommand } from '@modules/cli/updateCommand'; // Added
 import { Command } from 'commander';
 import path from 'node:path'; // Added import for path.join
 import os from 'os';
+import { exitCli } from '@exitCli'; // Corrected import to use the alias
 
 const internalLog = createDebugLoggerInternal('cli'); // Renamed to avoid conflict
 
@@ -95,6 +105,7 @@ export interface Services {
   generatorOrchestrator: IGeneratorOrchestrator;
   installer: IInstaller;
   archiveExtractor: IArchiveExtractor; // Added
+  versionChecker: IVersionChecker; // Added
 }
 
 export async function setupServices(options: { dryRun?: boolean } = {}): Promise<Services> {
@@ -104,27 +115,27 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
     homedir: os.homedir(),
     cwd: process.cwd(),
   };
-  const appConfig = await createAppConfig(systemInfoForConfig, process.env as any); // Cast process.env
+  const appConfig = createAppConfig(systemInfoForConfig, process.env as any); // Cast process.env
   let fs: IFileSystem;
 
   if (dryRun) {
     internalLog('setupServices: Dry run enabled. Initializing MemFileSystem with tool configs.');
     const realToolConfigsDir = appConfig.toolConfigsDir;
-    const tempNodeFs = new NodeFileSystem(); // Temporary real FS to read tool configs
+    const nodeFs = new NodeFileSystem(); 
     const toolFilesJson: DirectoryJSON = {};
 
     try {
-      if (await tempNodeFs.exists(realToolConfigsDir)) {
+      if (await nodeFs.exists(realToolConfigsDir)) {
         internalLog(
           'setupServices: Reading tool configs from actual directory: %s',
           realToolConfigsDir
         );
-        const filesInDir = await tempNodeFs.readdir(realToolConfigsDir);
+        const filesInDir = await nodeFs.readdir(realToolConfigsDir);
         for (const fileName of filesInDir) {
           if (fileName.endsWith('.tool.ts')) {
             const filePath = path.join(realToolConfigsDir, fileName);
             try {
-              const content = await tempNodeFs.readFile(filePath, 'utf8');
+              const content = await nodeFs.readFile(filePath, 'utf8');
               toolFilesJson[filePath] = content;
               internalLog('setupServices: Added tool config %s to MemFileSystem.', filePath);
             } catch (readError) {
@@ -186,6 +197,9 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
   // Initialize the installer
   const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig); // Added archiveExtractor
 
+  // Initialize VersionChecker
+  const versionChecker = new VersionChecker(githubApiClient);
+
   internalLog('setupServices: Services initialized.');
   return {
     appConfig,
@@ -199,10 +213,9 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
     generatorOrchestrator,
     installer,
     archiveExtractor, // Added
+    versionChecker, // Added
   };
 }
-
-// Stub for loadToolConfigs removed, real one is imported as realLoadToolConfigs
 
 export const program = new Command();
 
@@ -211,182 +224,76 @@ program
   .description('CLI tool for managing dotfiles and tool configurations')
   .version('0.1.0');
 
-program
-  .command('generate')
-  .description('Generate all artifacts (shims, shell init, symlinks)')
-  .option('--dry-run', 'Perform a dry run without making changes', false)
-  .option('--verbose', 'Show verbose output', false)
-  .option('--quiet', 'Suppress all output', false)
-  .action(async (options: { dryRun: boolean; verbose: boolean; quiet: boolean }) => {
-    const logger = createClientLogger(options);
-    internalLog('generate: Command called with options: %o', options);
-    logger.debug('Generate command started with options: %o', options);
+export async function registerAllCommands(programInstance: Command) {
+  // Register Install Command
+  registerInstallCommand(programInstance);
 
-    try {
-      const { generatorOrchestrator, fs, appConfig } = await setupServices({
-        dryRun: options.dryRun,
-      });
-      const toolConfigs = await realLoadToolConfigs(appConfig, fs);
+  // Register Generate Command
+  // Setup initial services for generate command registration (some parts might be refined in action)
+  const initialGenerateServices = await setupServices({ dryRun: false }); 
+  const generateCommandServices: GenerateCommandServices = {
+    appConfig: initialGenerateServices.appConfig,
+    fileSystem: initialGenerateServices.fs, 
+    generatorOrchestrator: initialGenerateServices.generatorOrchestrator,
+    clientLogger: createClientLogger({}), // Base logger, action will refine
+  };
+  registerGenerateCommand(programInstance, generateCommandServices);
 
-      internalLog(
-        'generate: Calling generatorOrchestrator.generateAll. Dry run is %s, FileSystem is %s',
-        options.dryRun,
-        fs.constructor.name
-      );
-      logger.debug(
-        'Calling generatorOrchestrator.generateAll. Dry run: %s, FS: %s',
-        options.dryRun,
-        fs.constructor.name
-      );
+  // Register Cleanup Command
+  // Setup services for Cleanup Command registration
+  const cleanupCoreServices = await setupServices(); 
+  const baseClientLoggerForCleanup = createClientLogger({});
+  const cleanupServices: CleanupCommandServices = {
+    appConfig: cleanupCoreServices.appConfig,
+    fileSystem: cleanupCoreServices.fs,
+    clientLogger: baseClientLoggerForCleanup,
+  };
+  registerCleanupCommand(programInstance, cleanupServices);
 
-      const manifest = await generatorOrchestrator.generateAll(toolConfigs, {
-        // generatorVersion can be added here if needed from package.json
-      });
-      internalLog('generate: Artifacts generated successfully. Manifest: %o', manifest);
-      // Log raw manifest for deep debugging if verbose
-      logger.debug('Raw generated manifest: %o', manifest);
+  // Register CheckUpdates Command
+  registerCheckUpdatesCommand(programInstance);
 
-      // Concise summary output (if not --quiet)
-      logger.info('Artifact generation complete.');
-
-      // Shims
-      const numShims = manifest.shims?.length ?? 0;
-      logger.info(`Generated ${numShims} shims in ${appConfig.targetDir}`);
-      // Log tool-to-binary mapping by default
-      if (numShims > 0) {
-        logger.info('Generated shims by tool:');
-        Object.values(toolConfigs).forEach((toolConfig) => {
-          if (toolConfig.binaries && toolConfig.binaries.length > 0) {
-            if (toolConfig.binaries.length === 1 && toolConfig.binaries[0] === toolConfig.name) {
-              logger.info(`  - ${toolConfig.name}`);
-            } else {
-              logger.info(`  - ${toolConfig.name} -> ${toolConfig.binaries.join(', ')}`);
-            }
-          }
-        });
-      }
-
-      // Verbose: individual shim paths
-      if (options.verbose && manifest.shims && numShims > 0) {
-        logger.debug('Individual shim paths:');
-        manifest.shims.forEach((shimPath) => logger.debug(`    - ${shimPath}`));
-      }
-
-      // Shell Init
-      if (manifest.shellInit?.path) {
-        logger.info(`Shell init file generated at: ${manifest.shellInit.path}`);
-        if (options.verbose) {
-          logger.debug(`Shell init file confirmed at: ${manifest.shellInit.path}`);
-        }
-      } else {
-        logger.info('No shell init file generated.');
-      }
-
-      // Symlinks
-      const numSymlinks = manifest.symlinks?.length ?? 0;
-      logger.info(`Processed ${numSymlinks} symlink operations.`);
-      if (options.verbose && manifest.symlinks && numSymlinks > 0) {
-        logger.debug('Details of symlink operations:');
-        manifest.symlinks.forEach((op) => {
-          let symlinkMessage = `  - Target: ${op.targetPath} <- Source: ${op.sourcePath} (Status: ${op.status})`;
-          if (op.status === 'failed' && op.error) {
-            symlinkMessage += ` | Error: ${op.error}`;
-          } else if (op.status === 'skipped_exists') {
-            symlinkMessage += ` (target already exists)`;
-          } else if (op.status === 'skipped_source_missing') {
-            symlinkMessage += ` (source file missing)`;
-          }
-          logger.debug(symlinkMessage);
-        });
-      }
-
-      if (options.dryRun) {
-        logger.info('Dry run complete. No changes were made.');
-      }
-    } catch (error) {
-      internalLog('generate: Error during artifact generation: %O', error);
-      logger.error('Error during artifact generation: %s', (error as Error).message);
-      logger.debug('Error details: %O', error);
-      process.exit(1);
-    }
-  });
-
-program
-  .command('install <toolName>')
-  .description('Install a tool based on its configuration')
-  .option('--force', 'Force installation even if the tool is already installed', false)
-  .option('--verbose', 'Show verbose output including detailed installation steps', false)
-  .option('--quiet', 'Suppress all output', false)
-  .action(
-    async (toolName: string, options: { force: boolean; verbose: boolean; quiet: boolean }) => {
-      const logger = createClientLogger(options);
-      internalLog('install: Command called with toolName: %s, options: %o', toolName, options);
-
-      try {
-        const { installer, fs, appConfig } = await setupServices();
-        const toolConfigs = await realLoadToolConfigs(appConfig, fs);
-
-        const toolConfig = toolConfigs[toolName];
-        if (!toolConfig) {
-          const availableTools = Object.keys(toolConfigs);
-          let errorMessage = `Error: Tool configuration for "${toolName}" not found.\n`;
-          errorMessage += `Expected tool configuration files in: ${appConfig.toolConfigsDir}\n`;
-          if (availableTools.length > 0) {
-            errorMessage += `Available tools: ${availableTools.join(', ')}`;
-          } else {
-            errorMessage += 'No tools are currently available for installation.';
-          }
-          logger.error(errorMessage);
-          process.exit(1);
-        }
-
-        internalLog('install: Calling installer.install for tool: %s', toolName);
-        logger.debug('Calling installer.install for tool: %s', toolName);
-        const result = await installer.install(toolName, toolConfig, {
-          force: options.force,
-          // Pass verbose to the installer, it might have its own detailed logging
-          verbose: options.verbose,
-        });
-
-        if (result.success) {
-          internalLog('install: Tool %s installed successfully at %s', toolName, result.binaryPath);
-          if (options.verbose && result.otherChanges && result.otherChanges.length > 0) {
-            result.otherChanges.forEach((change) => logger.debug(change));
-          }
-          logger.info(`Tool "${toolName}" installed successfully.`);
-          if (result.binaryPath) {
-            logger.info(`Binary path: ${result.binaryPath}`);
-          }
-          if (result.version) {
-            logger.info(`Version: ${result.version}`);
-          }
-          if (result.symlinkPath) {
-            logger.info(`Symlink created: ${result.symlinkPath}`);
-          }
-        } else {
-          internalLog('install: Failed to install tool %s: %s', toolName, result.error);
-          logger.error(`Error installing "${toolName}": ${result.error}`);
-          process.exit(1);
-        }
-      } catch (error) {
-        internalLog('install: Error during tool installation: %O', error);
-        logger.error('Error during tool installation: %s', (error as Error).message);
-        logger.debug('Error details: %O', error);
-        process.exit(1);
-      }
-    }
-  );
+  // Register Update Command
+  registerUpdateCommand(programInstance);
+}
 
 export async function main() {
-  await program.parseAsync(process.argv);
+  try {
+    await registerAllCommands(program);
+    await program.parseAsync(process.argv);
+  } catch (error) {
+    // This catch block handles errors from registerAllCommands or program.parseAsync
+    // when main() is called directly (e.g., in tests).
+    console.error('Error during main CLI execution:', error);
+    exitCli(1); // Use the imported exitCli directly
+  }
 }
 
 // Only run main if the script is executed directly
 if (import.meta.main) {
   main().catch((error) => {
-    // Use internalLog here as client logger might not be initialized or configured
-    internalLog('main: Unhandled error in CLI: %O', error);
-    console.error('Unhandled error in CLI:', error); // Keep console.error for bootstrap errors
-    process.exit(1);
+    // This .catch() is for when main() itself might throw an unhandled error
+    // (e.g., if exitCli wasn't called or if main had a bug not caught by its own try/catch).
+    // However, with the try/catch now inside main(), this outer catch might only
+    // catch errors if exitCli itself fails to throw properly in a non-test env,
+    // or if there's an issue outside the main try/catch (e.g. top-level await problem if any).
+    // For robustness, we keep a simplified handler.
+    internalLog('main: Top-level unhandled error: %O', error);
+    // Avoid calling console.error again if it was already called by main's internal catch.
+    // If error came from exitCli, it's already handled by throwing.
+    // If it's a different error, log it.
+    if (!(error instanceof Error && error.message.startsWith('TEST_EXIT_CLI_CALLED_WITH_')) && !(error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_'))) {
+        console.error('Top-level unhandled error in CLI execution:', error);
+    }
+    // Ensure process exits if not already handled by exitCli (which throws in test)
+    if (process.env.NODE_ENV !== 'test') {
+        process.exit(1); // Fallback exit for non-test env if exitCli didn't terminate
+    } else {
+        // In test, if we reached here and exitCli didn't throw, rethrow or throw new.
+        // This path should ideally not be hit if exitCli works as expected.
+        if (!(error instanceof Error && (error.message.startsWith('TEST_EXIT_CLI_CALLED_WITH_') || error.message.startsWith('MOCK_EXIT_CLI_CALLED_')))) {
+          throw error; // Rethrow original error if it wasn't an exit-related throw
+        }
+    }
   });
 }
