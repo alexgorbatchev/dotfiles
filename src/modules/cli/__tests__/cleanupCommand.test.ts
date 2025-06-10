@@ -1,11 +1,11 @@
-import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test';
 import type { AppConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import type { ConsolaInstance } from 'consola';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { createMockAppConfig, createMockClientLogger, createMockFileSystem, type LoggerMocks } from '@testing-helpers';
 import type { GeneratedArtifactsManifest } from '@types';
-import { createMockAppConfig, createMockFileSystem } from '@testing-helpers';
+import type { ConsolaInstance } from 'consola';
 import {
-  cleanupActionLogic, // Import the action logic directly
+  cleanupActionLogic,
   type CleanupCommandOptions,
   type CleanupCommandServices,
 } from '../cleanupCommand';
@@ -13,23 +13,16 @@ import {
 // Mocks
 let mockFileSystem: IFileSystem;
 let mockAppConfig: AppConfig;
-let mockClientLogger: ConsolaInstance;
-// The cleanupAction will now be `cleanupActionLogic` directly
+let mockClientLogger: ConsolaInstance; // This will be the ConsolaInstance
+let loggerMocks: LoggerMocks; // This will hold the individual mock functions
 
-const mockLog = mock(() => {});
-const mockInfo = mock(() => {});
-const mockWarn = mock(() => {});
-const mockError = mock(() => {});
-const mockDebug = mock(() => {});
-
-// Mock functions for file system operations
+// Mock functions for file system operations (keep these as they are specific to this test suite's needs)
 let mockFsExists: import('bun:test').Mock<(...args: any[]) => Promise<boolean>>;
 let mockFsReadFile: import('bun:test').Mock<(...args: any[]) => Promise<string>>;
 let mockFsRm: import('bun:test').Mock<(...args: any[]) => Promise<void>>;
 
 describe('CLI > commands > cleanup', () => {
   beforeEach(() => {
-    // Initialize mock functions for file system
     mockFsExists = mock(async (_path: string) => false);
     mockFsReadFile = mock(async (_path: string, _encoding?: BufferEncoding) => '');
     mockFsRm = mock(async (_path: string, _options?: { recursive?: boolean; force?: boolean }) => {});
@@ -38,49 +31,28 @@ describe('CLI > commands > cleanup', () => {
       exists: mockFsExists,
       readFile: mockFsReadFile,
       rm: mockFsRm,
-      // Other IFileSystem methods will use default mocks from createMockFileSystem
     });
     mockFileSystem = mfs;
 
     mockAppConfig = createMockAppConfig({
-      manifestPath: '.generated/tool-manifest.json', // Used by cleanup command for the main manifest
+      manifestPath: '.generated/tool-manifest.json',
       generatedDir: '.generated/',
-      // Other AppConfig properties will use defaults from createMockAppConfig
     });
 
-    mockClientLogger = {
-      log: mockLog,
-      info: mockInfo,
-      warn: mockWarn,
-      error: mockError,
-      debug: mockDebug,
-      // Add other Consola methods if used, with mock implementations
-    } as any; // Cast to any to simplify mock type
-
-    // For most tests, we'll call cleanupActionLogic directly.
+    const { mockClientLogger: mcl, loggerMocks: lm } = createMockClientLogger();
+    mockClientLogger = mcl;
+    loggerMocks = lm;
   });
 
   afterEach(() => {
-    mockLog.mockClear();
-    mockInfo.mockClear();
-    mockWarn.mockClear();
-    mockError.mockClear();
-    mockDebug.mockClear();
     mockFsExists.mockClear();
     mockFsReadFile.mockClear();
     mockFsRm.mockClear();
   });
 
-  const defaultServices: CleanupCommandServices = {
-    appConfig: {} as AppConfig, // Will be set in tests
-    fileSystem: {} as IFileSystem, // Will be set in tests
-    clientLogger: {} as ConsolaInstance, // Will be set in tests
-  };
-
   test('manifest not found and --all-generated is false', async () => {
-    mockFsExists.mockResolvedValue(false); // Manifest does not exist
-    const services = {
-      ...defaultServices,
+    mockFsExists.mockResolvedValue(false); 
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -90,7 +62,7 @@ describe('CLI > commands > cleanup', () => {
     await cleanupActionLogic(options, services);
 
     expect(mockFileSystem.exists).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    expect(mockInfo).toHaveBeenCalledWith(
+    expect(loggerMocks.info).toHaveBeenCalledWith(
       'Manifest not found and --all-generated flag not used. Nothing to clean based on manifest.'
     );
     expect(mockFileSystem.rm).not.toHaveBeenCalled();
@@ -115,8 +87,7 @@ describe('CLI > commands > cleanup', () => {
     });
     mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -126,38 +97,32 @@ describe('CLI > commands > cleanup', () => {
     await cleanupActionLogic(options, services);
 
     expect(mockFileSystem.readFile).toHaveBeenCalledWith(mockAppConfig.manifestPath, 'utf8');
-    // Shims
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/shim1');
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/shim2');
-    // Shell init
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/shell/init.sh');
-    // Symlinks
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/dest/sym1');
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/dest/sym2');
-    // Manifest itself
     expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    // Generated dir should NOT be removed
     expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.generatedDir, {
       recursive: true,
     });
 
-    expect(mockLog).toHaveBeenCalledWith('Deleted shim: /path/to/shim1');
-    expect(mockLog).toHaveBeenCalledWith('Deleted shell init file: /path/to/shell/init.sh');
-    expect(mockLog).toHaveBeenCalledWith('Deleted symlink: /dest/sym1');
-    expect(mockLog).toHaveBeenCalledWith(
+    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted shim: /path/to/shim1');
+    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted shell init file: /path/to/shell/init.sh');
+    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted symlink: /dest/sym1');
+    expect(loggerMocks.log).toHaveBeenCalledWith(
       `Successfully deleted manifest file: ${mockAppConfig.manifestPath}`
     );
   });
 
   test('--all-generated is true, manifest not found', async () => {
     mockFsExists.mockImplementation(async (path: string) => {
-      if (path === mockAppConfig.manifestPath) return false; // Manifest does not exist
-      if (path === mockAppConfig.generatedDir) return true; // Generated dir exists
+      if (path === mockAppConfig.manifestPath) return false; 
+      if (path === mockAppConfig.generatedDir) return true; 
       return false;
     });
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -167,13 +132,12 @@ describe('CLI > commands > cleanup', () => {
     await cleanupActionLogic(options, services);
 
     expect(mockFileSystem.exists).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    expect(mockFileSystem.readFile).not.toHaveBeenCalled(); // Manifest not read
+    expect(mockFileSystem.readFile).not.toHaveBeenCalled();
     expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.generatedDir, { recursive: true });
-    expect(mockLog).toHaveBeenCalledWith(
+    expect(loggerMocks.log).toHaveBeenCalledWith(
       `Successfully removed generated directory: ${mockAppConfig.generatedDir}`
     );
-    // Manifest specific items should not be processed or logged for deletion
-    expect(mockLog).not.toHaveBeenCalledWith(expect.stringContaining('Deleted shim:'));
+    expect(loggerMocks.log).not.toHaveBeenCalledWith(expect.stringContaining('Deleted shim:'));
   });
 
   test('--all-generated is true, manifest found and processed', async () => {
@@ -193,8 +157,7 @@ describe('CLI > commands > cleanup', () => {
     });
     mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -203,16 +166,14 @@ describe('CLI > commands > cleanup', () => {
 
     await cleanupActionLogic(options, services);
 
-    // Manifest items
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/unique/shim');
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/unique/shell/init.sh');
     expect(mockFileSystem.rm).toHaveBeenCalledWith('/dest/unique');
     expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    // Generated dir
     expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.generatedDir, { recursive: true });
 
-    expect(mockLog).toHaveBeenCalledWith('Deleted shim: /path/to/unique/shim');
-    expect(mockLog).toHaveBeenCalledWith(
+    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted shim: /path/to/unique/shim');
+    expect(loggerMocks.log).toHaveBeenCalledWith(
       `Successfully removed generated directory: ${mockAppConfig.generatedDir}`
     );
   });
@@ -225,8 +186,7 @@ describe('CLI > commands > cleanup', () => {
     mockFsExists.mockImplementation(async (path: string) => path === mockAppConfig.manifestPath);
     mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -235,17 +195,16 @@ describe('CLI > commands > cleanup', () => {
 
     await cleanupActionLogic(options, services);
 
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(null); // Ensure it doesn't try to delete null
-    expect(mockDebug).toHaveBeenCalledWith('No shell init file path in manifest or path is null.');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath); // Manifest itself still deleted
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(null);
+    expect(loggerMocks.debug).toHaveBeenCalledWith('No shell init file path in manifest or path is null.');
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
   });
 
   test('manifest read error, --all-generated is false', async () => {
-    mockFsExists.mockResolvedValue(true); // Manifest exists
+    mockFsExists.mockResolvedValue(true); 
     mockFsReadFile.mockRejectedValue(new Error('Read failed'));
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -254,10 +213,10 @@ describe('CLI > commands > cleanup', () => {
 
     await cleanupActionLogic(options, services);
 
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggerMocks.warn).toHaveBeenCalledWith(
       `Could not read or parse manifest at ${mockAppConfig.manifestPath}: Read failed`
     );
-    expect(mockInfo).toHaveBeenCalledWith(
+    expect(loggerMocks.info).toHaveBeenCalledWith(
       'Manifest not found and --all-generated flag not used. Nothing to clean based on manifest.'
     );
     expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.manifestPath);
@@ -268,14 +227,13 @@ describe('CLI > commands > cleanup', () => {
 
   test('manifest read error, --all-generated is true', async () => {
     mockFsExists.mockImplementation(async (path: string) => {
-      if (path === mockAppConfig.manifestPath) return true; // Manifest exists
-      if (path === mockAppConfig.generatedDir) return true; // Generated dir exists
+      if (path === mockAppConfig.manifestPath) return true; 
+      if (path === mockAppConfig.generatedDir) return true; 
       return false;
     });
     mockFsReadFile.mockRejectedValue(new Error('Read failed'));
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -284,14 +242,14 @@ describe('CLI > commands > cleanup', () => {
 
     await cleanupActionLogic(options, services);
 
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggerMocks.warn).toHaveBeenCalledWith(
       `Could not read or parse manifest at ${mockAppConfig.manifestPath}: Read failed`
     );
     expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.generatedDir, { recursive: true });
-    expect(mockLog).toHaveBeenCalledWith(
+    expect(loggerMocks.log).toHaveBeenCalledWith(
       `Successfully removed generated directory: ${mockAppConfig.generatedDir}`
     );
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.manifestPath); // Manifest not deleted due to read error
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.manifestPath);
   });
 
   test('shim/symlink/shellInit file does not exist on filesystem during cleanup', async () => {
@@ -303,12 +261,10 @@ describe('CLI > commands > cleanup', () => {
         { sourcePath: '/src/non', targetPath: '/dest/non_existent_symlink', status: 'created' },
       ],
     };
-    // Manifest itself exists, but its listed files do not
     mockFsExists.mockImplementation(async (path: string) => path === mockAppConfig.manifestPath);
     mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
 
-    const services = {
-      ...defaultServices,
+    const services: CleanupCommandServices = {
       appConfig: mockAppConfig,
       fileSystem: mockFileSystem,
       clientLogger: mockClientLogger,
@@ -318,19 +274,18 @@ describe('CLI > commands > cleanup', () => {
     await cleanupActionLogic(options, services);
 
     expect(mockFileSystem.rm).not.toHaveBeenCalledWith('/non/existent/shim');
-    expect(mockDebug).toHaveBeenCalledWith('Shim not found, skipping: /non/existent/shim');
+    expect(loggerMocks.debug).toHaveBeenCalledWith('Shim not found, skipping: /non/existent/shim');
 
     expect(mockFileSystem.rm).not.toHaveBeenCalledWith('/non/existent/init.sh');
-    expect(mockDebug).toHaveBeenCalledWith(
+    expect(loggerMocks.debug).toHaveBeenCalledWith(
       'Shell init file not found, skipping: /non/existent/init.sh'
     );
 
     expect(mockFileSystem.rm).not.toHaveBeenCalledWith('/dest/non_existent_symlink');
-    expect(mockDebug).toHaveBeenCalledWith(
+    expect(loggerMocks.debug).toHaveBeenCalledWith(
       'Symlink not found, skipping: /dest/non_existent_symlink'
     );
 
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath); // Manifest itself still deleted
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
   });
 });
-

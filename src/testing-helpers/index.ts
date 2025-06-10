@@ -19,3 +19,5 @@ export * from './FetchMockHelper';
 export * from './createMockFileSystem';
 export * from './createMockAppConfig';
 export * from './createMemFileSystem';
+export * from './createMockClientLogger';
+

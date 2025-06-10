@@ -47,12 +47,18 @@ import type { IGitHubApiCache } from '@modules/github-client/IGitHubApiCache';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { IInstaller, InstallResult } from '@modules/installer/IInstaller';
 import * as clientLoggerModule from '@modules/logger/clientLogger'; // Import the module to spy on createClientLogger
+import { createMockAppConfig } from '@testing-helpers/createMockAppConfig'; // Added
+import { createMockClientLogger } from '@testing-helpers/createMockClientLogger'; // Added
+import { createMockFileSystem } from '@testing-helpers/createMockFileSystem'; // Added
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test, type Mock } from 'bun:test';
 import { Command } from 'commander'; // Import Command directly
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance directly
 import * as path from 'node:path'; // For constructing paths in mocks
-// import * as clientLogger from '@modules/logger/clientLogger'; // Removed unused import
+import * as ExitCli from '@exitCli';
+import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs';
+import * as cliModuleActual from '../cli'; // Import the actual module
+
 
 // --- Pre-test Mocks for dynamic imports used by loadToolConfigs ---
 // These paths must match exactly what loadToolConfigs will try to import.
@@ -145,14 +151,6 @@ const mockArchiveExtractor: IArchiveExtractor = {
   isSupported: mock(() => true),
 };
 
-// Spies for the imported functions from cli.ts
-// Spies for the imported functions from cli.ts
-// We import the module as cli to allow spying on its exports.
-import * as cliModuleActual from '../cli'; // Import the actual module
-import * as ExitCli from '@exitCli';
-// Import the new config loader module
-import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs';
-
 // Spy on the actual module's export, globally for the test file
 let setupServicesSpy = spyOn(cliModuleActual, 'setupServices');
 let exitCliSpy: Mock<typeof ExitCli.exitCli>; // Updated spy
@@ -164,11 +162,15 @@ let nodeFsExistsSpy: Mock<typeof NodeFileSystem.prototype.exists>;
 let nodeFsReaddirSpy: Mock<typeof NodeFileSystem.prototype.readdir>;
 let nodeFsReadFileSpy: Mock<typeof NodeFileSystem.prototype.readFile>;
 let createAppConfigSpy: Mock<typeof configModuleActual.createAppConfig>;
+// let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks']; // Removed unused variable
+let mockFileSystem: ReturnType<typeof createMockFileSystem>['mockFileSystem']; // Global mockFileSystem instance
 
 // Mock logger methods
-let mockLoggerInfo: Mock<any>;
-let mockLoggerDebug: Mock<any>;
-let mockLoggerError: Mock<any>;
+// let mockLoggerInfo: Mock<any>; // Replaced by loggerMocks
+// let mockLoggerDebug: Mock<any>; // Replaced by loggerMocks
+// let mockLoggerError: Mock<any>; // Replaced by loggerMocks
+let loggerMocks: ReturnType<typeof createMockClientLogger>['loggerMocks'];
+let mockClientLogger: ConsolaInstance;
 let createClientLoggerSpy: Mock<typeof clientLoggerModule.createClientLogger>;
 
 describe('CLI', () => {
@@ -189,42 +191,34 @@ describe('CLI', () => {
     // Provide a default mock implementation for setupServicesSpy
     // This will be used by registerAllCommands. Tests can override it if needed.
     // Assign to the describe-scoped variable
-    defaultMockAppConfig = {
+    // Create default mock AppConfig using the helper
+    defaultMockAppConfig = createMockAppConfig({
       toolConfigsDir: '/default/mock/tools',
       targetDir: '/default/mock/target',
       generatedArtifactsManifestPath: '/default/mock/manifest.json',
-      // Add other essential AppConfig fields if registerAllCommands or subsequent setups depend on them
       dotfilesDir: '/default/dotfiles',
       homeDir: '/default/home',
-      generatedDir: '/default/generated',
-      binDir: '/default/generated/bin',
-      binariesDir: '/default/generated/binaries',
-      zshInitDir: '/default/generated/zsh-init',
-      manifestPath: '/default/generated/manifest.json',
-      completionsDir: '/default/generated/completions',
-      cacheEnabled: false,
-      githubToken: undefined,
-      checkUpdatesOnRun: false,
-      updateCheckInterval: 3600,
-      downloadTimeout: 30000,
-      downloadRetryCount: 3,
-      downloadRetryDelay: 1000,
-      githubClientUserAgent: 'test-generator-cli/1.0',
-      githubApiCacheEnabled: false,
-      githubApiCacheTtl: 0,
-      githubApiCacheDir: '/default/cache/github-api',
-      generatorCliShimName: 'dotfiles-shim-generator-default',
-      debug: '',
-      sudoPrompt: undefined,
-      cacheDir: '/default/cache',
-      toolConfigDir: '/default/dotfiles/configs', // Added for completeness
-    };
+      // other specific overrides for the default test setup if needed
+    });
+
+    // Create default mock FileSystem using the helper
+    const { mockFileSystem: mfs /*, fileSystemMocks: fsm */ } = createMockFileSystem(); // fsm was unused
+    mockFileSystem = mfs;
+    // fileSystemMocks = fsm; // Removed as it's unused globally
+
+    // Spies for NodeFileSystem prototype methods - these spy on the actual NodeFileSystem class
+    nodeFsExistsSpy = spyOn(NodeFileSystem.prototype, 'exists');
+    nodeFsReaddirSpy = spyOn(NodeFileSystem.prototype, 'readdir');
+    nodeFsReadFileSpy = spyOn(NodeFileSystem.prototype, 'readFile');
+
 
     setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean }) => {
-      const fsInstance = options?.dryRun ? new MemFileSystem() : new NodeFileSystem();
+      // Use MemFileSystem for dryRun, otherwise use the global mockFileSystem instance
+      const fsInstance = options?.dryRun ? new MemFileSystem() : mockFileSystem;
       return {
         appConfig: defaultMockAppConfig,
         fs: fsInstance,
+        clientLogger: mockClientLogger,
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
         githubApiClient: {} as IGitHubApiClient,
@@ -262,72 +256,29 @@ describe('CLI', () => {
     // Spies for NodeFileSystem prototype methods and createAppConfig
     // These are spied on NodeFileSystem.prototype so that when cli.ts does `new NodeFileSystem()`,
     // method calls on that instance are spied upon.
-    nodeFsExistsSpy = spyOn(NodeFileSystem.prototype, 'exists');
-    nodeFsReaddirSpy = spyOn(NodeFileSystem.prototype, 'readdir');
-    nodeFsReadFileSpy = spyOn(NodeFileSystem.prototype, 'readFile');
+    // createAppConfigSpy spies on the actual createAppConfig function from the config module.
     createAppConfigSpy = spyOn(configModuleActual, 'createAppConfig');
 
-    // Setup logger spies
-    mockLoggerInfo = mock(() => {});
-    mockLoggerDebug = mock(() => {});
-    mockLoggerError = mock(() => {});
+    // Setup logger spies using createMockClientLogger
+    // Default logger instance for most tests (not quiet)
+    const { mockClientLogger: defaultMcl, loggerMocks: defaultLm } = createMockClientLogger();
+    mockClientLogger = defaultMcl; // This is the one most tests will assert against
+    loggerMocks = defaultLm;    // These are the mocks for the default (non-quiet) logger
 
     createClientLoggerSpy = spyOn(clientLoggerModule, 'createClientLogger').mockImplementation(
-      (options: clientLoggerModule.CreateClientLoggerOptions = {}) => {
-        const { quiet = false } = options;
-        const defaultToSilentInTest = process.env.NODE_ENV === 'test' && options.quiet !== false;
-        const isActuallySilent = quiet || defaultToSilentInTest;
-
-        const baseLoggerMock = {
-          log: mock(() => {}),
-          warn: mock(() => {}),
-          success: mock(() => {}),
-          fatal: mock(() => {}),
-          trace: mock(() => {}),
-          verbose: mock(() => {}),
-          ready: mock(() => {}),
-          start: mock(() => {}),
-          box: mock(() => {}),
-          options: {},
-          _lastLog: {},
-          level: 3, 
-          prompt: mock(() => Promise.resolve('')),
-          add: mock(() => {}),
-          remove: mock(() => {}),
-          create: mock(() => ({})),
-          withScope: mock(() => ({})),
-          withTag: mock(() => ({})),
-          wrapConsole: mock(() => {}),
-          restoreConsole: mock(() => {}),
-          pauseLogs: mock(() => {}),
-          resumeLogs: mock(() => {}),
-          getScope: mock(() => ''),
-          setScope: mock(() => {}),
-          getLogLevel: mock(() => 3),
-          setLogLevel: mock(() => {}),
-          addReporter: mock(() => {}),
-          removeReporter: mock(() => {}),
-          clearReporters: mock(() => {}),
-          printBox: mock(() => {}), 
-          printErrorsAndExit: mock(() => ExitCli.exitCli(1)), 
-        };
-
-        if (isActuallySilent) {
-          return {
-            ...baseLoggerMock,
-            info: mock(() => {}),
-            debug: mock(() => {}),
-            error: mockLoggerError, 
-            silent: true,
-          } as unknown as ConsolaInstance; 
+      (options?: clientLoggerModule.CreateClientLoggerOptions) => {
+        if (options?.quiet) {
+          // For quiet mode, return a new, distinct mock logger where info/debug are not expected to be called
+          const { mockClientLogger: quietLogger } = createMockClientLogger({
+            // Ensure its info/debug mocks are fresh and distinct
+            info: mock((..._args: any[]) => {}) as any,
+            debug: mock((..._args: any[]) => {}) as any,
+            // other methods can use default mocks from createMockClientLogger if not asserted
+          });
+          return quietLogger;
         }
-        return {
-          ...baseLoggerMock,
-          info: mockLoggerInfo,
-          debug: mockLoggerDebug,
-          error: mockLoggerError,
-          silent: false,
-        } as unknown as ConsolaInstance; 
+        // For non-quiet mode, return the default shared mockClientLogger
+        return mockClientLogger;
       }
     );
 
@@ -347,21 +298,17 @@ describe('CLI', () => {
     generateActionLogicSpy.mockRestore();
     loadToolConfigsFromDirectorySpy.mockRestore();
     loadSingleToolConfigSpy.mockRestore();
-    exitCliSpy.mockRestore(); // Restore the new spy
-    consoleErrorSpy.mockRestore(); // Re-instate restore
+    exitCliSpy.mockRestore(); 
+    consoleErrorSpy.mockRestore(); 
     createAppConfigSpy.mockRestore();
     nodeFsExistsSpy.mockRestore();
     nodeFsReaddirSpy.mockRestore();
     nodeFsReadFileSpy.mockRestore();
     createClientLoggerSpy.mockRestore();
-    mockLoggerInfo.mockClear();
-    mockLoggerDebug.mockClear();
-    mockLoggerError.mockClear();
-    // consoleLogSpy was removed, remove its mockRestore/mockClear if they exist
   });
 
   test('generate command should call generateActionLogic with correct services (non-dry run)', async () => {
-    const mockAppConfig = { toolConfigsDir: '/fake/tools', targetDir: '/fake/target' } as AppConfig;
+    const mockAppConfig = createMockAppConfig({ toolConfigsDir: '/fake/tools', targetDir: '/fake/target' });
     const mockNodeFs = new NodeFileSystem();
     const mockOrchestrator = { generateAll: mockGenerateAll } as IGeneratorOrchestrator;
 
@@ -381,6 +328,7 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         installer: mockInstaller,
         archiveExtractor: mockArchiveExtractor,
+        clientLogger: mockClientLogger, // Ensure clientLogger is passed
         versionChecker: {} as any,
       };
     });
@@ -402,7 +350,12 @@ describe('CLI', () => {
     expect(servicesArg.appConfig).toEqual(mockAppConfig);
     expect(servicesArg.fileSystem).toBeInstanceOf(NodeFileSystem);
     expect(servicesArg.clientLogger).toBeDefined();
-    expect((servicesArg.clientLogger as any).silent).toBe(false);
+    // Check that createClientLogger was called with quiet: false (or undefined)
+    // The first call to createClientLogger happens during setupServices
+    expect(createClientLoggerSpy).toHaveBeenCalled();
+    // Safely access the first call's arguments using optional chaining
+    const firstCallOptions = createClientLoggerSpy.mock.calls[0]?.[0] as clientLoggerModule.CreateClientLoggerOptions | undefined;
+    expect(firstCallOptions?.quiet ?? false).toBe(false); // Default to false if options or quiet is undefined
 
     expect(loadToolConfigsFromDirectorySpy).toHaveBeenCalledWith(servicesArg.appConfig.toolConfigsDir, expect.any(NodeFileSystem));
     expect(mockGenerateAll).toHaveBeenCalledWith({ testTool: { name: 'testTool' } }, {});
@@ -468,8 +421,8 @@ describe('CLI', () => {
     expect(programUnderTest.parseAsync(['bun', 'cli.ts', 'generate'])).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
 
     // Ensure the logger was called correctly
-    expect(mockLoggerError).toHaveBeenCalledTimes(1); // Verify it was called
-    const callArgs = mockLoggerError.mock.calls[0] as [string, string];
+    expect(loggerMocks.error).toHaveBeenCalledTimes(1); // Verify it was called
+    const callArgs = loggerMocks.error.mock.calls[0] as [string, string];
     const [loggedFormatString, loggedMessage] = callArgs;
     // Error is now caught and logged by the action handler in registerGenerateCommand
     expect(loggedFormatString).toBe('Critical error in generate command: %s');
@@ -506,9 +459,9 @@ describe('CLI', () => {
     // The error caught by main() is the one thrown by exitCliSpy from the action handler's catch block.
     expect(consoleErrorSpy).toHaveBeenCalledWith('Error during main CLI execution:', new Error('TEST_EXIT_CLI_CALLED_WITH_1'));
     expect(exitCliSpy).toHaveBeenCalledWith(1);
-    // mockLoggerError IS called by the install command's action handler's catch block
-    expect(mockLoggerError).toHaveBeenCalledTimes(1);
-    expect(mockLoggerError).toHaveBeenCalledWith('Critical error in install command: %s', testError.message);
+    // loggerMocks.error IS called by the install command's action handler's catch block
+    expect(loggerMocks.error).toHaveBeenCalledTimes(1);
+    expect(loggerMocks.error).toHaveBeenCalledWith('Critical error in install command: %s', testError.message);
 
 
     process.argv = originalArgv;
@@ -517,10 +470,11 @@ describe('CLI', () => {
   test('install command should call installer.install with correct parameters', async () => {
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
-        appConfig: {
+        appConfig: createMockAppConfig({
           toolConfigsDir: '/fake/tools',
-        } as AppConfig,
+        }),
         fs: new NodeFileSystem(),
+        clientLogger: mockClientLogger, // Ensure clientLogger is passed
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
         githubApiClient: {} as IGitHubApiClient,
@@ -529,8 +483,9 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor, 
-        versionChecker: {} as any, 
+        archiveExtractor: mockArchiveExtractor,
+        // clientLogger: mockClientLogger, // Duplicate removed
+        versionChecker: {} as any,
       };
     });
 
@@ -570,10 +525,11 @@ describe('CLI', () => {
     const mockToolConfigsDir = '/test/tool/configs/dir';
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
-        appConfig: {
-          toolConfigsDir: mockToolConfigsDir, 
-        } as AppConfig,
+        appConfig: createMockAppConfig({
+          toolConfigsDir: mockToolConfigsDir,
+        }),
         fs: new NodeFileSystem(),
+        clientLogger: mockClientLogger, // Ensure clientLogger is passed
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
         githubApiClient: {} as IGitHubApiClient,
@@ -582,8 +538,9 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor, 
-        versionChecker: {} as any, 
+        archiveExtractor: mockArchiveExtractor,
+        // clientLogger: mockClientLogger, // Duplicate removed
+        versionChecker: {} as any,
       };
     });
 
@@ -594,17 +551,18 @@ describe('CLI', () => {
     expect(programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'non-existent-tool'])).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
 
     const expectedErrorMessage = `Error: Tool configuration for "non-existent-tool" not found.\nExpected tool configuration file: ${mockToolConfigsDir}/non-existent-tool.tool.ts\nNo specific tool configuration was found for the requested tool.`;
-    expect(mockLoggerError).toHaveBeenCalledWith(expectedErrorMessage);
-    expect(exitCliSpy).toHaveBeenCalledWith(1); 
+    expect(loggerMocks.error).toHaveBeenCalledWith(expectedErrorMessage);
+    expect(exitCliSpy).toHaveBeenCalledWith(1);
   });
 
   test('install command should handle installation failure', async () => {
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
-        appConfig: {
+        appConfig: createMockAppConfig({
           toolConfigsDir: '/fake/tools',
-        } as AppConfig,
+        }),
         fs: new NodeFileSystem(),
+        clientLogger: mockClientLogger, // Ensure clientLogger is passed
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
         githubApiClient: {} as IGitHubApiClient,
@@ -613,8 +571,9 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor, 
-        versionChecker: {} as any, 
+        archiveExtractor: mockArchiveExtractor,
+        // clientLogger: mockClientLogger, // Duplicate removed
+        versionChecker: {} as any,
       };
     });
 
@@ -635,19 +594,20 @@ describe('CLI', () => {
     });
 
     expect(programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'test-tool'])).rejects.toThrow('TEST_EXIT_CLI_CALLED_WITH_1');
-    expect(mockLoggerError).toHaveBeenCalledWith(
+    expect(loggerMocks.error).toHaveBeenCalledWith(
       'Error installing "test-tool": Installation failed'
     );
-    expect(exitCliSpy).toHaveBeenCalledWith(1); 
+    expect(exitCliSpy).toHaveBeenCalledWith(1);
   });
 
   test('install command should pass force and verbose options to installer, and handle quiet', async () => {
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
-        appConfig: {
+        appConfig: createMockAppConfig({
           toolConfigsDir: '/fake/tools',
-        } as AppConfig,
+        }),
         fs: new NodeFileSystem(),
+        clientLogger: mockClientLogger, // Ensure clientLogger is passed
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
         githubApiClient: {} as IGitHubApiClient,
@@ -656,8 +616,9 @@ describe('CLI', () => {
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
         installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor, 
-        versionChecker: {} as any, 
+        archiveExtractor: mockArchiveExtractor,
+        // clientLogger: mockClientLogger, // Duplicate removed
+        versionChecker: {} as any,
       };
     });
 
@@ -690,14 +651,15 @@ describe('CLI', () => {
     });
 
     mockInstall.mockClear();
-    mockLoggerInfo.mockClear();
-    mockLoggerDebug.mockClear();
-    mockLoggerError.mockClear(); 
+    loggerMocks.info.mockClear();
+    loggerMocks.debug.mockClear();
+    loggerMocks.error.mockClear();
 
     setupServicesSpy.mockImplementationOnce(async () => {
       return {
-        appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
-        fs: new NodeFileSystem(), 
+        appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
+        fs: new NodeFileSystem(),
+        clientLogger: mockClientLogger, // Ensure clientLogger is passed
         downloader: {} as IDownloader,
         githubApiCache: {} as IGitHubApiCache,
         githubApiClient: {} as IGitHubApiClient,
@@ -705,8 +667,9 @@ describe('CLI', () => {
         shellInitGenerator: {} as IShellInitGenerator,
         symlinkGenerator: {} as ISymlinkGenerator,
         generatorOrchestrator: mockGeneratorOrchestrator,
-        installer: mockInstaller, 
+        installer: mockInstaller,
         archiveExtractor: mockArchiveExtractor,
+        // clientLogger: mockClientLogger, // Duplicate removed
         versionChecker: {} as any,
       };
     });
@@ -716,16 +679,17 @@ describe('CLI', () => {
     expect(mockInstall).toHaveBeenCalledTimes(1);
     expect(mockInstall).toHaveBeenCalledWith('test-tool', mockToolConfig, {
       force: false, 
-      verbose: false, 
+      verbose: false,
     });
-    expect(mockLoggerInfo).not.toHaveBeenCalled();
-    expect(mockLoggerDebug).not.toHaveBeenCalled();
+    expect(loggerMocks.info).not.toHaveBeenCalled();
+    expect(loggerMocks.debug).not.toHaveBeenCalled();
   });
 
   test('install command with --verbose should show otherChanges via logger.debug', async () => {
     setupServicesSpy.mockImplementationOnce(async () => ({
-      appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
+      appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
       fs: new NodeFileSystem(),
+      clientLogger: mockClientLogger, // Ensure clientLogger is passed
       downloader: {} as IDownloader,
       githubApiCache: {} as IGitHubApiCache,
       githubApiClient: {} as IGitHubApiClient,
@@ -735,6 +699,7 @@ describe('CLI', () => {
       generatorOrchestrator: mockGeneratorOrchestrator,
       installer: mockInstaller,
       archiveExtractor: mockArchiveExtractor,
+      // clientLogger: mockClientLogger, // Duplicate removed
       versionChecker: {} as any,
     }));
     const mockToolConfigDetail: ToolConfig = {
@@ -754,14 +719,15 @@ describe('CLI', () => {
 
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'detail-tool', '--verbose']);
 
-    expect(mockLoggerDebug).toHaveBeenCalledWith('Detailed step 1');
-    expect(mockLoggerDebug).toHaveBeenCalledWith('Detailed step 2');
+    expect(loggerMocks.debug).toHaveBeenCalledWith('Detailed step 1');
+    expect(loggerMocks.debug).toHaveBeenCalledWith('Detailed step 2');
   });
 
   test('install command without --verbose should not show otherChanges via logger.debug', async () => {
     setupServicesSpy.mockImplementationOnce(async () => ({
-      appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
+      appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
       fs: new NodeFileSystem(),
+      clientLogger: mockClientLogger, // Ensure clientLogger is passed
       downloader: {} as IDownloader,
       githubApiCache: {} as IGitHubApiCache,
       githubApiClient: {} as IGitHubApiClient,
@@ -771,6 +737,7 @@ describe('CLI', () => {
       generatorOrchestrator: mockGeneratorOrchestrator,
       installer: mockInstaller,
       archiveExtractor: mockArchiveExtractor,
+      // clientLogger: mockClientLogger, // Duplicate removed
       versionChecker: {} as any,
     }));
     const mockToolConfigNoDetail: ToolConfig = {
@@ -792,7 +759,7 @@ describe('CLI', () => {
 
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'no-detail-tool']);
 
-    const debugCalls = mockLoggerDebug.mock.calls;
+    const debugCalls = loggerMocks.debug.mock.calls;
     const detailedOutputPresentInDebug = debugCalls.some(
       (callArgs: unknown[]) =>
         typeof callArgs[0] === 'string' &&
@@ -801,15 +768,16 @@ describe('CLI', () => {
     );
     expect(detailedOutputPresentInDebug).toBe(false);
 
-    expect(mockLoggerInfo).toHaveBeenCalledWith('Tool "no-detail-tool" installed successfully.');
-    expect(mockLoggerInfo).toHaveBeenCalledWith('Binary path: /mock/bin/no-detail-tool');
-    expect(mockLoggerInfo).toHaveBeenCalledWith('Version: 1.0');
+    expect(loggerMocks.info).toHaveBeenCalledWith('Tool "no-detail-tool" installed successfully.');
+    expect(loggerMocks.info).toHaveBeenCalledWith('Binary path: /mock/bin/no-detail-tool');
+    expect(loggerMocks.info).toHaveBeenCalledWith('Version: 1.0');
   });
 
   test('install command with --verbose should not show "Detailed installation steps:" header if otherChanges is empty', async () => {
     setupServicesSpy.mockImplementationOnce(async () => ({
-      appConfig: { toolConfigsDir: '/fake/tools' } as AppConfig,
+      appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
       fs: new NodeFileSystem(),
+      clientLogger: mockClientLogger, // Ensure clientLogger is passed
       downloader: {} as IDownloader,
       githubApiCache: {} as IGitHubApiCache,
       githubApiClient: {} as IGitHubApiClient,
@@ -819,6 +787,7 @@ describe('CLI', () => {
       generatorOrchestrator: mockGeneratorOrchestrator,
       installer: mockInstaller,
       archiveExtractor: mockArchiveExtractor,
+      // clientLogger: mockClientLogger, // Duplicate removed
       versionChecker: {} as any,
     }));
     const mockToolConfigEmptyDetail: ToolConfig = {
@@ -842,10 +811,10 @@ describe('CLI', () => {
       'cli.ts',
       'install',
       'empty-detail-tool',
-      '--verbose', 
+      '--verbose',
     ]);
 
-    const debugCalls = mockLoggerDebug.mock.calls;
+    const debugCalls = loggerMocks.debug.mock.calls;
     const detailedHeaderPresentInDebug = debugCalls.some(
       (callArgs: unknown[]) =>
         typeof callArgs[0] === 'string' &&
@@ -853,6 +822,6 @@ describe('CLI', () => {
     );
     expect(detailedHeaderPresentInDebug).toBe(false);
 
-    expect(mockLoggerInfo).toHaveBeenCalledWith('Tool "empty-detail-tool" installed successfully.');
+    expect(loggerMocks.info).toHaveBeenCalledWith('Tool "empty-detail-tool" installed successfully.');
   });
 });
