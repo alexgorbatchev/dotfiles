@@ -22,6 +22,7 @@ const NL = '\n';
 
 const isPassingTest = (line: string) => line.startsWith('(pass) ');
 const isFailingTest = (line: string) => line.startsWith('(fail) ');
+const isUnhandledError = (line: string) => line.startsWith('# Unhandled error between tests');
 const isSummary = (line: string) => /^\d+ tests failed:$/.test(line);
 
 let exitCode = 0;
@@ -33,6 +34,7 @@ function createProxyWriteStream(): Transform {
   const writtenFileStatus = new Set<string>();
   let timeoutId = 0;
   let lastCharWasNewline = false;
+  let unhandledError = false;
 
   const write = (val: string) => {
     if (timeoutId !== 0) {
@@ -80,6 +82,25 @@ function createProxyWriteStream(): Transform {
     const cleanLine = stripAnsi(line).trim();
     const filePath = isFilePath(cleanLine);
 
+    if (isUnhandledError(cleanLine) && !unhandledError) {
+      hasError = true;
+      unhandledError = true;
+      write('  ' + cleanLine + NL);
+      write(buffer + NL);
+
+      exitCode = 1;
+      buffer = '';
+      return;
+    }
+
+    if (unhandledError) {
+      if (filePath !== undefined) {
+        unhandledError = false;
+        write(buffer + NL);
+        buffer = '';
+      }
+    }
+
     if (isSummary(cleanLine)) {
       process.stdout.write(NL);
       currentFile = undefined;
@@ -115,6 +136,7 @@ function createProxyWriteStream(): Transform {
         buffer = '';
         return;
       }
+    } else {
     }
 
     buffer += line + NL;
