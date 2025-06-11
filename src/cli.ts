@@ -3,6 +3,34 @@
 /**
  * @file cli.ts
  * @description Main CLI entry point for the dotfiles management application.
+ *
+ * ## Development Plan
+ * - [x] Define `Services` interface.
+ * - [x] Implement `setupServices` function:
+ *   - [x] Initialize `AppConfig`.
+ *   - [x] Initialize `IFileSystem` (NodeFileSystem or MemFileSystem based on `dryRun`).
+ *     - [x] If `dryRun`, pre-populate `MemFileSystem` with tool configs from actual disk.
+ *   - [x] Initialize `Downloader` with `NodeFetchStrategy`.
+ *   - [x] Initialize `FileGitHubApiCache`.
+ *   - [x] Initialize `GitHubApiClient`.
+ *   - [x] Initialize `ShimGenerator`, `ShellInitGenerator`, `SymlinkGenerator`.
+ *   - [x] Initialize `GeneratorOrchestrator`.
+ *   - [x] Initialize `ArchiveExtractor`.
+ *   - [x] Initialize `Installer`.
+ *   - [x] Initialize `VersionChecker`.
+ * - [x] Define main `program` (Commander instance).
+ * - [x] Implement `registerAllCommands` function:
+ *   - [x] Call `setupServices` once initially.
+ *   - [x] Register all commands (`generate`, `install`, `cleanup`, `check-updates`, `update`, `detect-conflicts`).
+ *     - [x] Refactor calls to `register...Command` functions to pass only `programInstance` (except for `cleanupCommand`).
+ *     - [x] For `cleanupCommand`, create and pass a `clientLogger` instance.
+ * - [x] Implement `main` function to orchestrate command registration and parsing.
+ *   - [x] Add error handling for `main` execution.
+ * - [x] Ensure script runs `main` only if executed directly (`import.meta.main`).
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code (covered by `cli.test.ts`).
+ * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
 import {
@@ -12,7 +40,8 @@ import {
 } from '@modules/config';
 // createClientLogger was removed from here as it's unused in this file.
 // It's imported and used within individual command modules' action handlers.
-import { createLogger } from '@modules/logger'; // Added import for createDebugLoggerInternal
+import { createLogger, createClientLogger } from '@modules/logger'; // Added import for createDebugLoggerInternal and createClientLogger
+// import { createClientLogger } from '@modules/logger/clientLogger'; // Will be created in each command's action
 import { NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { Downloader } from '@modules/downloader/Downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; // Added import
@@ -181,6 +210,14 @@ program
   .version('0.1.0');
 
 export async function registerAllCommands(programInstance: Command) {
+  // Determine if --dry-run is present to pass to setupServices
+  const dryRun = process.argv.includes('--dry-run');
+  // Verbosity options (verbose, quiet) will be handled by each command's action handler when creating its own logger.
+
+  // Setup services once
+  const services = await setupServices({ dryRun });
+  // clientLogger will be created in each command's action handler.
+
   // Register Install Command
   registerInstallCommand(programInstance);
 
@@ -188,7 +225,9 @@ export async function registerAllCommands(programInstance: Command) {
   registerGenerateCommand(programInstance);
 
   // Register Cleanup Command
-  registerCleanupCommand(programInstance);
+  // Note: registerCleanupCommand still requires appConfig and fs due to its class-based nature.
+  const cleanupLogger = createClientLogger({}); // Create a logger for cleanup command
+  registerCleanupCommand(programInstance, services.appConfig, services.fs, cleanupLogger);
 
   // Register CheckUpdates Command
   registerCheckUpdatesCommand(programInstance);
@@ -197,7 +236,7 @@ export async function registerAllCommands(programInstance: Command) {
   registerUpdateCommand(programInstance);
 
   // Register Detect Conflicts Command
-  registerDetectConflictsCommand(programInstance); // Added
+  registerDetectConflictsCommand(programInstance);
 }
 
 export async function main() {

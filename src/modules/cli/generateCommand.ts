@@ -1,9 +1,33 @@
+/**
+ * @file generateCommand.ts
+ * @description CLI command for generating shims, shell init files, and symlinks.
+ *
+ * ## Development Plan
+ * - [x] Define `generateActionLogic` to encapsulate core generation logic.
+ * - [x] Define `registerGenerateCommand` to set up the command with Commander.
+ * - [x] Implement `--dry-run` option:
+ *   - [x] Pass `dryRun` to `setupServices`.
+ *   - [x] Ensure `MemFileSystem` is used by `setupServices` during dry run.
+ *   - [x] Ensure `generateActionLogic` uses the correct file system instance.
+ * - [x] Implement `--verbose` and `--quiet` options:
+ *   - [x] `registerGenerateCommand` action handler creates `clientLogger` with these options.
+ *   - [x] Pass `clientLogger` to `generateActionLogic`.
+ * - [x] Ensure `generateActionLogic` calls `loadToolConfigsFromDirectory`.
+ * - [x] Ensure `generateActionLogic` calls `generatorOrchestrator.generateAll`.
+ * - [x] Ensure action handler calls `setupServices` to get its dependencies.
+ * - [x] Refactor `registerGenerateCommand` to no longer accept services as direct parameters.
+ * - [x] Write/Update tests in `generateCommand.test.ts` to cover all functionality including options and error handling.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Update the memory bank with the new information when all tasks are complete.
+ */
 import type { AppConfig } from '@modules/config';
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 // Removed unused class import: GeneratorOrchestrator
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
+import { createLogger as createDebugLoggerInternal, createClientLogger } from '@modules/logger'; // Ensure createClientLogger is imported
 import type { ConsolaInstance } from 'consola';
 import type { Command } from 'commander';
 // Removed unused type import: DirectoryJSON
@@ -14,7 +38,7 @@ import type { Command } from 'commander';
 // Removed unused module import: path
 import type { ToolConfig } from '@types';
 import { exitCli } from '@exitCli';
-import { setupServices } from '../../cli';
+import { setupServices } from '../../cli'; // Import setupServices
 
 const commandInternalLog = createDebugLoggerInternal('generateCommand');
 
@@ -22,7 +46,7 @@ export interface GenerateCommandServices {
   appConfig: AppConfig;
   fileSystem: IFileSystem;
   generatorOrchestrator: IGeneratorOrchestrator;
-  clientLogger: ConsolaInstance;
+  clientLogger: ConsolaInstance; // This will be created within the action
 }
 
 export interface GenerateCommandOptions {
@@ -122,7 +146,9 @@ export async function generateActionLogic(
   }
 }
 
-export function registerGenerateCommand(program: Command): void {
+export function registerGenerateCommand(
+  program: Command,
+): void {
   program
     .command('generate')
     .description('Generates shims, shell init files, and symlinks based on tool configurations.')
@@ -134,27 +160,26 @@ export function registerGenerateCommand(program: Command): void {
     .option('--verbose', 'Show verbose output', false)
     .option('--quiet', 'Suppress all output', false)
     .action(async (options: GenerateCommandOptions) => {
-      const finalClientLogger = createClientLogger({
+      const clientLogger = createClientLogger({ // Create logger inside action
         quiet: options.quiet,
         verbose: options.verbose,
       });
-
+      commandInternalLog('generate command: Action called with options: %o', options);
       try {
-        // Setup services within the action handler
-        const coreServices = await setupServices({ dryRun: options.dryRun });
+        // Action handler calls setupServices to get its own instance of services
+        const services = await setupServices({ dryRun: options.dryRun });
 
         const servicesForLogic: GenerateCommandServices = {
-          appConfig: coreServices.appConfig,
-          fileSystem: coreServices.fs, // Use fs from coreServices
-          generatorOrchestrator: coreServices.generatorOrchestrator,
-          clientLogger: finalClientLogger,
+          appConfig: services.appConfig,
+          fileSystem: services.fs, // Use fs from the new services object
+          generatorOrchestrator: services.generatorOrchestrator,
+          clientLogger, // Use the newly created clientLogger
         };
-
         await generateActionLogic(options, servicesForLogic);
       } catch (error) {
         commandInternalLog('generate command: Unhandled error in action handler: %O', error);
-        finalClientLogger.error('Critical error in generate command: %s', (error as Error).message);
-        finalClientLogger.debug('Error details: %O', error);
+        clientLogger.error('Critical error in generate command: %s', (error as Error).message);
+        clientLogger.debug('Error details: %O', error);
         exitCli(1);
       }
     });

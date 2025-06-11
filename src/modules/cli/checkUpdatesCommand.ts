@@ -1,4 +1,31 @@
 /**
+ * @file checkUpdatesCommand.ts
+ * @description CLI command for checking available updates for configured tools.
+ *
+ * ## Development Plan
+ * - [x] Define `checkUpdatesActionLogic` for core update checking.
+ * - [x] Define `registerCheckUpdatesCommand` for Commander setup.
+ * - [x] Handle optional `toolName` argument to check a specific tool or all tools.
+ * - [x] Implement `--verbose` and `--quiet` options:
+ *   - [x] Action handler creates `clientLogger` with these options.
+ *   - [x] Pass `clientLogger` to `checkUpdatesActionLogic`.
+ * - [x] `checkUpdatesActionLogic` loads tool configs (`loadSingleToolConfig` or `loadToolConfigsFromDirectory`).
+ * - [x] For 'github-release' tools:
+ *   - [x] Call `githubApiClient.getLatestRelease`.
+ *   - [x] Call `versionChecker.checkVersionStatus`.
+ *   - [x] Log update status appropriately.
+ * - [x] Handle tools with 'latest' version configuration.
+ * - [x] Handle unsupported installation methods.
+ * - [x] Handle errors (config not found, API errors).
+ * - [x] Ensure action handler calls `setupServices` to get its dependencies.
+ * - [x] Refactor `registerCheckUpdatesCommand` to no longer accept services as direct parameters.
+ * - [x] Write/Update tests in `checkUpdatesCommand.test.ts`.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Update the memory bank with the new information when all tasks are complete.
+ */
+/**
  * @file generator/src/modules/cli/checkUpdatesCommand.ts
  * @description CLI command for checking available updates for configured tools.
  */
@@ -12,9 +39,11 @@ import type { IGitHubApiClient } from '@modules/github-client';
 import type { ConsolaInstance } from 'consola';
 import { loadToolConfigsFromDirectory, loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
 import type { GithubReleaseToolConfig, ToolConfig } from '@types';
-import { createClientLogger } from '@modules/logger';
+import { createLogger as createDebugLoggerInternal, createClientLogger } from '@modules/logger'; // Added createClientLogger
 import { setupServices } from '../../cli'; // Import setupServices
 import { exitCli } from '../../exitCli'; // Added
+
+const commandInternalLog = createDebugLoggerInternal('checkUpdatesCommand');
 
 export interface CheckUpdatesCommandOptions {
   verbose?: boolean;
@@ -129,31 +158,38 @@ export async function checkUpdatesActionLogic( // Export the function
 }
 
 // This function will be imported and called in cli.ts
-export function registerCheckUpdatesCommand(program: Command) {
+export function registerCheckUpdatesCommand(
+  program: Command,
+): void {
   program
     .command('check-updates [toolName]')
     .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')
     .option('--verbose', 'Enable detailed debug messages.', false)
     .option('--quiet', 'Suppress all informational and debug output. Errors are still displayed.', false)
     .action(async (toolName: string | undefined, options: CheckUpdatesCommandOptions) => {
-      const clientLogger = createClientLogger(options);
+      const clientLogger = createClientLogger(options); // Create logger inside action
+      commandInternalLog('check-updates command: Action called for tool "%s" with options: %o', toolName || 'all', options);
+      // Removed diagnostic typeof clientLogger logs
       try {
-        // Setup services inside the action handler
-        const coreServices = await setupServices(); // setupServices doesn't take dryRun for check-updates
-        
+        // Action handler calls setupServices.
+        // check-updates doesn't have a --dry-run option itself.
+        // Assume it operates in non-dry-run mode for service setup.
+        const services = await setupServices({ dryRun: false });
+
         const servicesForAction: CheckUpdatesCommandServices = {
-          appConfig: coreServices.appConfig,
-          fileSystem: coreServices.fs, // map fs to fileSystem
-          versionChecker: coreServices.versionChecker,
-          githubApiClient: coreServices.githubApiClient,
-          clientLogger,
+          appConfig: services.appConfig,
+          fileSystem: services.fs,
+          versionChecker: services.versionChecker,
+          githubApiClient: services.githubApiClient,
+          clientLogger, // Use the newly created clientLogger
         };
-        // Directly call the exported action logic function
         await checkUpdatesActionLogic(toolName, options, servicesForAction);
       } catch (error) {
-        clientLogger.error('Failed to setup services or execute command: %s', (error as Error).message);
+        commandInternalLog('check-updates command: Unhandled error in action handler: %O', error);
+        // Removed diagnostic typeof clientLogger logs
+        clientLogger.error('Failed to execute command: %s', (error as Error).message);
         clientLogger.debug('Error details: %O', error);
-        exitCli(1); // Ensure exit code is set on setup failure
+        exitCli(1);
       }
     });
 }

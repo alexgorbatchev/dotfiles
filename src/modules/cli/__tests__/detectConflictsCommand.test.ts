@@ -10,7 +10,8 @@ import type { AppConfig } from '@modules/config';
 import type { ManualToolConfig, GithubReleaseToolConfig } from '@types'; // Removed ToolConfig
 import { exitCli } from '../../../exitCli';
 import type { IFileSystem } from '@modules/file-system';
-
+import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; // Added
+import type { GeneratedArtifactsManifest } from '@types'; // Added
 
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance
 
@@ -38,7 +39,9 @@ describe('detectConflictsCommand', () => {
     fileSystem: IFileSystem;
     clientLogger: ConsolaInstance; // Expecting ConsolaInstance for the service
     loadToolConfigsFromDirectory: typeof configLoader.loadToolConfigsFromDirectory;
+    generatorOrchestrator: IGeneratorOrchestrator; // Added
   };
+  let mockGeneratorOrchestrator: IGeneratorOrchestrator; // Added
 
   const toolAConfig: ManualToolConfig = {
     name: 'toolA',
@@ -84,13 +87,26 @@ describe('detectConflictsCommand', () => {
     fileSystemMocks = fsHelperReturn.fileSystemMocks;
     loggerMocks = loggerHelperReturn.loggerMocks;
 
-    registerDetectConflictsCommand(program);
+    mockGeneratorOrchestrator = { // Added
+      generateAll: mock(async (): Promise<GeneratedArtifactsManifest> => ({
+        lastGenerated: '',
+        shims: [],
+        shellInit: { path: null },
+        symlinks: [],
+        generatorVersion: 'mocked',
+      })),
+    };
+
+    registerDetectConflictsCommand(
+      program
+    );
 
     services = {
       appConfig: mockAppConfig,
-      fileSystem: fsHelperReturn.mockFileSystem, // This is the IFileSystem compatible mock
-      clientLogger: loggerHelperReturn.mockClientLogger, // This is the ConsolaInstance compatible mock
+      fileSystem: fsHelperReturn.mockFileSystem,
+      clientLogger: loggerHelperReturn.mockClientLogger,
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      generatorOrchestrator: mockGeneratorOrchestrator, // Added
     };
   });
 

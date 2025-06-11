@@ -129,7 +129,9 @@ describe('updateCommand', () => {
       archiveExtractor: {} as any,
     });
     
-    registerUpdateCommand(program);
+    registerUpdateCommand(
+      program
+    );
   });
 
   afterEach(() => {

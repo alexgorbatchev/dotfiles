@@ -1,291 +1,306 @@
+/**
+ * @file cleanupCommand.test.ts
+ * @description Tests for the CleanupCommand.
+ *
+ * ## Development Plan
+ *
+ * - [x] Test suite setup: import necessary modules, mock dependencies.
+ * - [x] Test case: successful cleanup with existing manifest and artifacts.
+ *   - [x] Mock `AppConfig` with paths.
+ *   - [x] Mock `IFileSystem` to simulate existing manifest, shims, shell init, symlinks, and generated directory.
+ *   - [x] Mock `ClientLogger` methods.
+ *   - [x] Instantiate `CleanupCommand` and call `execute()`.
+ *   - [x] Verify `fs.rm` was called for all expected artifacts and the generated directory.
+ *   - [x] Verify `logger.info` and `logger.warn` calls.
+ * - [x] Test case: cleanup when manifest file does not exist.
+ *   - [x] `fs.exists` for manifest returns `false`.
+ *   - [x] Verify `fs.rm` is still called for `generatedDir`.
+ *   - [x] Verify appropriate `logger.warn` call for missing manifest.
+ * - [x] Test case: cleanup when manifest file is unparseable.
+ *   - [x] `fs.readFile` for manifest throws an error or returns invalid JSON.
+ *   - [x] Verify `fs.rm` is still called for `generatedDir`.
+ *   - [x] Verify appropriate `logger.error` and `logger.warn` calls.
+ * - [x] Test case: cleanup when some artifacts listed in manifest do not exist on disk.
+ *   - [x] `fs.exists` or `fs.lstat` returns `false` for some shims/symlinks.
+ *   - [x] Verify `fs.rm` is not called for non-existent items.
+ *   - [x] Verify appropriate `logger.warn` calls for missing items.
+ * - [x] Test case: cleanup when `generatedDir` does not exist.
+ *   - [x] `fs.exists` for `generatedDir` returns `false`.
+ *   - [x] Verify `fs.rm` is not called for `generatedDir`.
+ *   - [x] Verify appropriate `logger.info` call.
+ * - [x] Test case: error during deletion of an artifact.
+ *   - [x] `fs.rm` for a specific shim throws an error.
+ *   - [x] Verify `logger.error` is called for that specific error.
+ *   - [x] Verify cleanup continues for other artifacts and `generatedDir`.
+ * - [x] Test case: error during deletion of `generatedDir`.
+ *   - [x] `fs.rm` for `generatedDir` throws an error.
+ *   - [x] Verify `logger.error` is called for that error.
+ * - [ ] Cleanup all linting errors and warnings.
+ * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [ ] Ensure 100% test coverage for executable code.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
+ */
+
+import { describe, it, expect, mock, beforeEach, type Mock as BunMock } from 'bun:test';
+import { CleanupCommand } from '../cleanupCommand';
 import type { AppConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { createMockAppConfig, createMockClientLogger, createMockFileSystem, type LoggerMocks } from '@testing-helpers';
+import { createClientLogger } from '@modules/logger/clientLogger';
 import type { GeneratedArtifactsManifest } from '@types';
-import type { ConsolaInstance } from 'consola';
-import {
-  cleanupActionLogic,
-  type CleanupCommandOptions,
-  type CleanupCommandServices,
-} from '../cleanupCommand';
+import path from 'node:path';
+import type { Stats } from 'node:fs';
+import { createMockAppConfig } from '@testing-helpers';
 
-// Mocks
-let mockFileSystem: IFileSystem;
-let mockAppConfig: AppConfig;
-let mockClientLogger: ConsolaInstance; // This will be the ConsolaInstance
-let loggerMocks: LoggerMocks; // This will hold the individual mock functions
+describe('CleanupCommand', () => {
+  let mockAppConfig: AppConfig;
+  let mockFileSystem: IFileSystem;
+  let mockLogger: ReturnType<typeof createClientLogger>;
 
-// Mock functions for file system operations (keep these as they are specific to this test suite's needs)
-let mockFsExists: import('bun:test').Mock<(...args: any[]) => Promise<boolean>>;
-let mockFsReadFile: import('bun:test').Mock<(...args: any[]) => Promise<string>>;
-let mockFsRm: import('bun:test').Mock<(...args: any[]) => Promise<void>>;
+  const MOCK_GENERATED_DIR = '/test/.generated';
+  const MOCK_MANIFEST_PATH = path.join(MOCK_GENERATED_DIR, 'manifest.json');
+  const MOCK_SHIM_1 = '/usr/bin/shim1';
+  const MOCK_SHIM_2 = path.join(MOCK_GENERATED_DIR, 'bin', 'shim2'); // Test a shim inside generated
+  const MOCK_SHELL_INIT = path.join(MOCK_GENERATED_DIR, 'zsh', 'init.zsh');
+  const MOCK_SYMLINK_TARGET_1 = '/home/user/.config/tool/config.yml';
+  const MOCK_SYMLINK_SOURCE_1 = '/test/dotfiles/tool/config.yml';
 
-describe('CLI > commands > cleanup', () => {
+  const mockManifest: GeneratedArtifactsManifest = {
+    shims: [MOCK_SHIM_1, MOCK_SHIM_2],
+    shellInit: { path: MOCK_SHELL_INIT },
+    symlinks: [
+      {
+        sourcePath: MOCK_SYMLINK_SOURCE_1,
+        targetPath: MOCK_SYMLINK_TARGET_1,
+        status: 'created',
+        // backupPath: null, // Removed as it's not in SymlinkOperationResult
+      },
+    ],
+    lastGenerated: new Date().toISOString(),
+  };
+
   beforeEach(() => {
-    mockFsExists = mock(async (_path: string) => false);
-    mockFsReadFile = mock(async (_path: string, _encoding?: BufferEncoding) => '');
-    mockFsRm = mock(async (_path: string, _options?: { recursive?: boolean; force?: boolean }) => {});
-
-    const { mockFileSystem: mfs } = createMockFileSystem({
-      exists: mockFsExists,
-      readFile: mockFsReadFile,
-      rm: mockFsRm,
-    });
-    mockFileSystem = mfs;
-
     mockAppConfig = createMockAppConfig({
-      manifestPath: '.generated/tool-manifest.json',
-      generatedDir: '.generated/',
+      dotfilesDir: '/test/dotfiles',
+      generatedDir: MOCK_GENERATED_DIR,
+      manifestPath: MOCK_MANIFEST_PATH,
+      targetDir: '/usr/bin',
+      toolConfigsDir: '/test/dotfiles/generator/configs/tools',
+      zshInitDir: path.join(MOCK_GENERATED_DIR, 'zsh'),
+      homeDir: '/home/user',
+      cacheDir: path.join(MOCK_GENERATED_DIR, 'cache'),
+      binariesDir: path.join(MOCK_GENERATED_DIR, 'binaries'),
+      binDir: path.join(MOCK_GENERATED_DIR, 'bin'),
+      completionsDir: path.join(MOCK_GENERATED_DIR, 'completions'),
+      githubApiCacheEnabled: true,
+      githubApiCacheTtl: 3600000,
+      githubClientUserAgent: 'test-agent',
+      githubHost: 'api.github.com',
+      // Ensure all required fields from AppConfig are present or provide defaults in createMockAppConfig
+      toolConfigDir: '/test/dotfiles/generator/src/tools', // Deprecated but in type
+      debug: '',
+      cacheEnabled: true,
+      generatedArtifactsManifestPath: path.join(MOCK_GENERATED_DIR, 'artifacts-manifest.json'),
+      githubApiCacheDir: path.join(MOCK_GENERATED_DIR, 'cache', 'github-api'),
+      generatorCliShimName: 'dotfiles-generator-shim',
     });
 
-    const { mockClientLogger: mcl, loggerMocks: lm } = createMockClientLogger();
-    mockClientLogger = mcl;
-    loggerMocks = lm;
+    mockFileSystem = {
+      exists: mock(async () => true),
+      readFile: mock(async () => JSON.stringify(mockManifest)),
+      writeFile: mock(async () => {}),
+      rm: mock(async (_path: string, _opts?: { recursive?: boolean; force?: boolean }) => {}),
+      ensureDir: mock(async () => {}),
+      mkdir: mock(async () => {}), // Added
+      rmdir: mock(async () => {}), // Added
+      stat: mock(async (_filePath: string): Promise<Stats> => ({ // Added stat mock, prefixed filePath
+        isSymbolicLink: () => false, // Regular stat doesn't usually report on symlink itself
+        isFile: () => true,
+        isDirectory: () => false,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+        dev: 0,
+        ino: 0,
+        mode: 0o755,
+        nlink: 1,
+        uid: 0,
+        gid: 0,
+        rdev: 0,
+        size: 100,
+        blksize: 4096,
+        blocks: 1,
+        atimeMs: Date.now(),
+        mtimeMs: Date.now(),
+        ctimeMs: Date.now(),
+        birthtimeMs: Date.now(),
+        atime: new Date(),
+        mtime: new Date(),
+        ctime: new Date(),
+        birthtime: new Date(),
+      } as Stats)),
+      lstat: mock(async (filePath: string): Promise<Stats> => ({
+        isSymbolicLink: () => filePath === MOCK_SYMLINK_TARGET_1,
+        isFile: () => true,
+        isDirectory: () => false,
+        isBlockDevice: () => false,
+        isCharacterDevice: () => false,
+        isFIFO: () => false,
+        isSocket: () => false,
+        dev: 0,
+        ino: 0,
+        mode: 0o755,
+        nlink: 1,
+        uid: 0,
+        gid: 0,
+        rdev: 0,
+        size: 100,
+        blksize: 4096,
+        blocks: 1,
+        atimeMs: Date.now(),
+        mtimeMs: Date.now(),
+        ctimeMs: Date.now(),
+        birthtimeMs: Date.now(),
+        atime: new Date(),
+        mtime: new Date(),
+        ctime: new Date(),
+        birthtime: new Date(),
+      } as Stats)),
+      readlink: mock(async () => MOCK_SYMLINK_SOURCE_1),
+      symlink: mock(async () => {}),
+      chmod: mock(async () => {}),
+      readdir: mock(async () => []),
+      copyFile: mock(async () => {}),
+      rename: mock(async () => {}),
+      // mkdirTemp: mock(async () => '/tmp/test-XXXXXX'), // Removed as it's not in IFileSystem
+    };
+
+    mockLogger = {
+      info: mock(() => {}),
+      warn: mock(() => {}),
+      error: mock(() => {}),
+      debug: mock(() => {}),
+      success: mock(() => {}),
+      log: mock(() => {}),
+      fatal: mock(() => {}),
+      trace: mock(() => {}),
+      verbose: mock(() => {}),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any; // Cast to any to satisfy ConsolaInstance type if methods are missing
   });
 
-  afterEach(() => {
-    mockFsExists.mockClear();
-    mockFsReadFile.mockClear();
-    mockFsRm.mockClear();
+  it('should successfully cleanup with existing manifest and artifacts', async () => {
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
+
+    expect(mockFileSystem.readFile).toHaveBeenCalledWith(MOCK_MANIFEST_PATH, 'utf-8');
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SHIM_1, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SHIM_2, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SHELL_INIT, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SYMLINK_TARGET_1, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_GENERATED_DIR, { recursive: true, force: true });
+
+    expect(mockLogger.info).toHaveBeenCalledWith('Starting cleanup...');
+    expect(mockLogger.info).toHaveBeenCalledWith('Deleting shims...');
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Deleted shim: ${MOCK_SHIM_1}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Deleted shim: ${MOCK_SHIM_2}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Deleting shell init file...');
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Deleted shell init: ${MOCK_SHELL_INIT}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Deleting symlinks...');
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Deleted symlink: ${MOCK_SYMLINK_TARGET_1}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(`Successfully deleted generated directory: ${MOCK_GENERATED_DIR}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Cleanup complete.');
   });
 
-  test('manifest not found and --all-generated is false', async () => {
-    mockFsExists.mockResolvedValue(false); 
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: false };
+  it('should cleanup generated directory if manifest file does not exist', async () => {
+    (mockFileSystem.exists as BunMock<typeof mockFileSystem.exists>).mockImplementation(async (p: string) => p !== MOCK_MANIFEST_PATH);
 
-    await cleanupActionLogic(options, services);
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
 
-    expect(mockFileSystem.exists).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    expect(loggerMocks.info).toHaveBeenCalledWith(
-      'Manifest not found and --all-generated flag not used. Nothing to clean based on manifest.'
-    );
-    expect(mockFileSystem.rm).not.toHaveBeenCalled();
-  });
-
-  test('manifest found with various artifacts, no --all-generated', async () => {
-    const manifest: GeneratedArtifactsManifest = {
-      lastGenerated: new Date().toISOString(),
-      shims: ['/path/to/shim1', '/path/to/shim2'],
-      shellInit: { path: '/path/to/shell/init.sh' },
-      symlinks: [
-        { sourcePath: '/src/sym1', targetPath: '/dest/sym1', status: 'created' },
-        { sourcePath: '/src/sym2', targetPath: '/dest/sym2', status: 'created' },
-      ],
-    };
-    mockFsExists.mockImplementation(async (path: string) => {
-      if (path === mockAppConfig.manifestPath) return true;
-      if (manifest.shims?.includes(path)) return true;
-      if (path === manifest.shellInit?.path) return true;
-      if (manifest.symlinks?.find((s) => s.targetPath === path)) return true;
-      return false;
-    });
-    mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
-
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: false };
-
-    await cleanupActionLogic(options, services);
-
-    expect(mockFileSystem.readFile).toHaveBeenCalledWith(mockAppConfig.manifestPath, 'utf8');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/shim1');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/shim2');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/shell/init.sh');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/dest/sym1');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/dest/sym2');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.generatedDir, {
-      recursive: true,
-    });
-
-    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted shim: /path/to/shim1');
-    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted shell init file: /path/to/shell/init.sh');
-    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted symlink: /dest/sym1');
-    expect(loggerMocks.log).toHaveBeenCalledWith(
-      `Successfully deleted manifest file: ${mockAppConfig.manifestPath}`
-    );
-  });
-
-  test('--all-generated is true, manifest not found', async () => {
-    mockFsExists.mockImplementation(async (path: string) => {
-      if (path === mockAppConfig.manifestPath) return false; 
-      if (path === mockAppConfig.generatedDir) return true; 
-      return false;
-    });
-
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: true };
-
-    await cleanupActionLogic(options, services);
-
-    expect(mockFileSystem.exists).toHaveBeenCalledWith(mockAppConfig.manifestPath);
     expect(mockFileSystem.readFile).not.toHaveBeenCalled();
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.generatedDir, { recursive: true });
-    expect(loggerMocks.log).toHaveBeenCalledWith(
-      `Successfully removed generated directory: ${mockAppConfig.generatedDir}`
-    );
-    expect(loggerMocks.log).not.toHaveBeenCalledWith(expect.stringContaining('Deleted shim:'));
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(MOCK_SHIM_1, { force: true }); // Artifacts not deleted
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_GENERATED_DIR, { recursive: true, force: true });
+    expect(mockLogger.warn).toHaveBeenCalledWith(`Manifest file not found at ${MOCK_MANIFEST_PATH}.`);
+    expect(mockLogger.info).toHaveBeenCalledWith(`Successfully deleted generated directory: ${MOCK_GENERATED_DIR}`);
   });
 
-  test('--all-generated is true, manifest found and processed', async () => {
-    const manifest: GeneratedArtifactsManifest = {
-      lastGenerated: new Date().toISOString(),
-      shims: ['/path/to/unique/shim'],
-      shellInit: { path: '/path/to/unique/shell/init.sh' },
-      symlinks: [{ sourcePath: '/src/unique', targetPath: '/dest/unique', status: 'created' }],
-    };
-    mockFsExists.mockImplementation(async (path: string) => {
-      if (path === mockAppConfig.manifestPath) return true;
-      if (manifest.shims?.includes(path)) return true;
-      if (path === manifest.shellInit?.path) return true;
-      if (manifest.symlinks?.find((s) => s.targetPath === path)) return true;
-      if (path === mockAppConfig.generatedDir) return true;
-      return false;
+  it('should cleanup generated directory if manifest file is unparseable', async () => {
+    (mockFileSystem.readFile as BunMock<typeof mockFileSystem.readFile>).mockResolvedValue('invalid json');
+
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
+
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(MOCK_SHIM_1, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_GENERATED_DIR, { recursive: true, force: true });
+    expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Error reading manifest file:'));
+    expect(mockLogger.warn).toHaveBeenCalledWith('Proceeding to delete generated directory despite manifest error.');
+  });
+
+  it('should warn and skip non-existent artifacts listed in manifest', async () => {
+    (mockFileSystem.exists as BunMock<typeof mockFileSystem.exists>).mockImplementation(async (p: string) => {
+      if (p === MOCK_SHIM_1) return false; // Shim 1 does not exist
+      return true;
     });
-    mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
-
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: true };
-
-    await cleanupActionLogic(options, services);
-
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/unique/shim');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/path/to/unique/shell/init.sh');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith('/dest/unique');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.generatedDir, { recursive: true });
-
-    expect(loggerMocks.log).toHaveBeenCalledWith('Deleted shim: /path/to/unique/shim');
-    expect(loggerMocks.log).toHaveBeenCalledWith(
-      `Successfully removed generated directory: ${mockAppConfig.generatedDir}`
-    );
-  });
-
-  test('shell init path in manifest is null', async () => {
-    const manifest: GeneratedArtifactsManifest = {
-      lastGenerated: new Date().toISOString(),
-      shellInit: { path: null },
-    };
-    mockFsExists.mockImplementation(async (path: string) => path === mockAppConfig.manifestPath);
-    mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
-
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: false };
-
-    await cleanupActionLogic(options, services);
-
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(null);
-    expect(loggerMocks.debug).toHaveBeenCalledWith('No shell init file path in manifest or path is null.');
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
-  });
-
-  test('manifest read error, --all-generated is false', async () => {
-    mockFsExists.mockResolvedValue(true); 
-    mockFsReadFile.mockRejectedValue(new Error('Read failed'));
-
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: false };
-
-    await cleanupActionLogic(options, services);
-
-    expect(loggerMocks.warn).toHaveBeenCalledWith(
-      `Could not read or parse manifest at ${mockAppConfig.manifestPath}: Read failed`
-    );
-    expect(loggerMocks.info).toHaveBeenCalledWith(
-      'Manifest not found and --all-generated flag not used. Nothing to clean based on manifest.'
-    );
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.manifestPath);
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.generatedDir, {
-      recursive: true,
+    (mockFileSystem.lstat as BunMock<typeof mockFileSystem.lstat>).mockImplementation(async (p: string) => {
+      if (p === MOCK_SYMLINK_TARGET_1) throw new Error('not found'); // Symlink target does not exist
+      return { isSymbolicLink: () => false, isFile: () => true, isDirectory: () => false, size: 1, mtime: new Date(), birthtime: new Date(), mode: 0o755 } as Stats;
     });
+
+
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
+
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(MOCK_SHIM_1, { force: true });
+    expect(mockLogger.warn).toHaveBeenCalledWith(`  Shim not found, skipping: ${MOCK_SHIM_1}`);
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SHIM_2, { force: true }); // Shim 2 should still be deleted
+
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(MOCK_SYMLINK_TARGET_1, { force: true });
+    expect(mockLogger.warn).toHaveBeenCalledWith(`  Symlink target not found, skipping: ${MOCK_SYMLINK_TARGET_1}`);
+
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_GENERATED_DIR, { recursive: true, force: true });
   });
 
-  test('manifest read error, --all-generated is true', async () => {
-    mockFsExists.mockImplementation(async (path: string) => {
-      if (path === mockAppConfig.manifestPath) return true; 
-      if (path === mockAppConfig.generatedDir) return true; 
-      return false;
+  it('should inform if generated directory does not exist', async () => {
+    (mockFileSystem.exists as BunMock<typeof mockFileSystem.exists>).mockImplementation(async (p: string) => {
+      if (p === MOCK_GENERATED_DIR) return false;
+      if (p === MOCK_MANIFEST_PATH) return false; // Assume manifest also doesn't exist in this case
+      return true;
     });
-    mockFsReadFile.mockRejectedValue(new Error('Read failed'));
 
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: true };
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
 
-    await cleanupActionLogic(options, services);
-
-    expect(loggerMocks.warn).toHaveBeenCalledWith(
-      `Could not read or parse manifest at ${mockAppConfig.manifestPath}: Read failed`
-    );
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.generatedDir, { recursive: true });
-    expect(loggerMocks.log).toHaveBeenCalledWith(
-      `Successfully removed generated directory: ${mockAppConfig.generatedDir}`
-    );
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(mockAppConfig.manifestPath);
+    expect(mockFileSystem.rm).not.toHaveBeenCalledWith(MOCK_GENERATED_DIR, { recursive: true, force: true });
+    expect(mockLogger.info).toHaveBeenCalledWith(`Generated directory not found, skipping: ${MOCK_GENERATED_DIR}`);
   });
 
-  test('shim/symlink/shellInit file does not exist on filesystem during cleanup', async () => {
-    const manifest: GeneratedArtifactsManifest = {
-      lastGenerated: new Date().toISOString(),
-      shims: ['/non/existent/shim'],
-      shellInit: { path: '/non/existent/init.sh' },
-      symlinks: [
-        { sourcePath: '/src/non', targetPath: '/dest/non_existent_symlink', status: 'created' },
-      ],
-    };
-    mockFsExists.mockImplementation(async (path: string) => path === mockAppConfig.manifestPath);
-    mockFsReadFile.mockResolvedValue(JSON.stringify(manifest));
+  it('should log error and continue if deleting a specific artifact fails', async () => {
+    const deleteError = new Error('Permission denied');
+    (mockFileSystem.rm as BunMock<typeof mockFileSystem.rm>).mockImplementation(async (p: string) => {
+      if (p === MOCK_SHIM_1) throw deleteError;
+    });
 
-    const services: CleanupCommandServices = {
-      appConfig: mockAppConfig,
-      fileSystem: mockFileSystem,
-      clientLogger: mockClientLogger,
-    };
-    const options: CleanupCommandOptions = { allGenerated: false };
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
 
-    await cleanupActionLogic(options, services);
+    expect(mockLogger.error).toHaveBeenCalledWith(`  Error deleting shim ${MOCK_SHIM_1}: ${String(deleteError)}`);
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SHIM_2, { force: true }); // Should still try to delete other artifacts
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SHELL_INIT, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_SYMLINK_TARGET_1, { force: true });
+    expect(mockFileSystem.rm).toHaveBeenCalledWith(MOCK_GENERATED_DIR, { recursive: true, force: true }); // And generated dir
+  });
 
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith('/non/existent/shim');
-    expect(loggerMocks.debug).toHaveBeenCalledWith('Shim not found, skipping: /non/existent/shim');
+  it('should log error if deleting generated directory fails', async () => {
+    const deleteError = new Error('Directory not empty');
+    (mockFileSystem.rm as BunMock<typeof mockFileSystem.rm>).mockImplementation(async (p: string, opts?: { recursive?: boolean; force?: boolean }) => {
+      if (p === MOCK_GENERATED_DIR && opts?.recursive) throw deleteError;
+    });
 
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith('/non/existent/init.sh');
-    expect(loggerMocks.debug).toHaveBeenCalledWith(
-      'Shell init file not found, skipping: /non/existent/init.sh'
-    );
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger);
+    await command.execute();
 
-    expect(mockFileSystem.rm).not.toHaveBeenCalledWith('/dest/non_existent_symlink');
-    expect(loggerMocks.debug).toHaveBeenCalledWith(
-      'Symlink not found, skipping: /dest/non_existent_symlink'
-    );
-
-    expect(mockFileSystem.rm).toHaveBeenCalledWith(mockAppConfig.manifestPath);
+    expect(mockLogger.error).toHaveBeenCalledWith(`Error deleting generated directory ${MOCK_GENERATED_DIR}: ${String(deleteError)}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Cleanup complete.'); // Should still report completion
   });
 });

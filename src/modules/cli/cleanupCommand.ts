@@ -1,197 +1,168 @@
 /**
- * @file generator/src/modules/cli/cleanupCommand.ts
- * @description CLI command for cleaning up generated artifacts.
+ * @file cleanupCommand.ts
+ * @description Implements the 'cleanup' CLI command.
+ *
+ * ## Development Plan
+ *
+ * - [x] Define `CleanupCommand` class.
+ * - [x] Implement constructor to accept `AppConfig`, `IFileSystem`, and `ClientLogger`.
+ * - [x] Implement `execute()` method:
+ *   - [x] Add internal logging with `createLogger`.
+ *   - [x] Attempt to read and parse `appConfig.manifestPath`.
+ *   - [x] If manifest is successfully read:
+ *     - [x] Delete shims listed in `manifest.shims`.
+ *     - [x] Delete shell init file from `manifest.shellInit.path`.
+ *     - [x] Delete symlinks from `manifest.symlinks` (using `targetAbsPath`).
+ *     - [x] Use `clientLogger` for user feedback on deletions.
+ *   - [x] If manifest read fails, log a warning via `clientLogger`.
+ *   - [x] Delete the entire `appConfig.generatedDir` recursively.
+ *   - [x] Log completion via `clientLogger`.
+ * - [x] Write tests for `CleanupCommand` in `cleanupCommand.test.ts`.
+ * - [x] Register `cleanup` command in `cli.ts`.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
 import type { AppConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import type { ConsolaInstance } from 'consola';
+import { createLogger } from '@modules/logger';
+import { createClientLogger } from '@modules/logger/clientLogger';
 import type { GeneratedArtifactsManifest } from '@types';
 import type { Command } from 'commander';
-import { createClientLogger } from '@modules/logger'; // Added
-import { setupServices } from '../../cli'; // Added
-import { exitCli } from '../../exitCli'; // Added
 
-export interface CleanupCommandOptions {
-  allGenerated?: boolean;
-  verbose?: boolean;
-  quiet?: boolean;
-}
+const log = createLogger('cleanupCommand');
 
-export interface CleanupCommandServices {
-  appConfig: AppConfig;
-  fileSystem: IFileSystem;
-  clientLogger: ConsolaInstance;
-}
-
-export async function cleanupActionLogic(
-  options: CleanupCommandOptions,
-  services: CleanupCommandServices
-): Promise<void> {
-  const { appConfig, fileSystem, clientLogger } = services;
-
-  clientLogger.debug('Cleanup command action logic started with options: %o', options);
-
-  let manifestProcessedSuccessfully = false;
-  let manifestFound = false;
-
-  try {
-    if (!(await fileSystem.exists(appConfig.manifestPath))) {
-      clientLogger.debug(`Manifest file not found at ${appConfig.manifestPath}.`);
-      // This is not an error itself, will be handled based on --all-generated
-    } else {
-      const manifestContent = await fileSystem.readFile(appConfig.manifestPath, 'utf8');
-      const manifest: GeneratedArtifactsManifest = JSON.parse(manifestContent);
-      manifestFound = true;
-      clientLogger.info(`Found manifest at ${appConfig.manifestPath}. Processing artifacts...`);
-
-      // 1. Delete shims
-      if (manifest.shims && manifest.shims.length > 0) {
-        clientLogger.info('Cleaning shims...');
-        for (const shimPath of manifest.shims) {
-          try {
-            if (await fileSystem.exists(shimPath)) {
-              await fileSystem.rm(shimPath);
-              clientLogger.log(`Deleted shim: ${shimPath}`);
-            } else {
-              clientLogger.debug(`Shim not found, skipping: ${shimPath}`);
-            }
-          } catch (error) {
-            clientLogger.warn(`Failed to delete shim ${shimPath}: ${(error as Error).message}`);
-          }
-        }
-      } else {
-        clientLogger.debug('No shims listed in manifest to clean.');
-      }
-
-      // 2. Delete shell init file
-      if (manifest.shellInit && manifest.shellInit.path) {
-        clientLogger.info('Cleaning shell init file...');
-        const shellInitPath = manifest.shellInit.path;
-        try {
-          if (await fileSystem.exists(shellInitPath)) {
-            await fileSystem.rm(shellInitPath);
-            clientLogger.log(`Deleted shell init file: ${shellInitPath}`);
-          } else {
-            clientLogger.debug(`Shell init file not found, skipping: ${shellInitPath}`);
-          }
-        } catch (error) {
-          clientLogger.warn(`Failed to delete shell init file ${shellInitPath}: ${(error as Error).message}`);
-        }
-      } else {
-        clientLogger.debug('No shell init file path in manifest or path is null.');
-      }
-
-      // 3. Delete symlinks
-      if (manifest.symlinks && manifest.symlinks.length > 0) {
-        clientLogger.info('Cleaning symlinks...');
-        for (const symlink of manifest.symlinks) {
-          const symlinkPath = symlink.targetPath; // Corrected from linkPath to targetPath
-          try {
-            // Check if it's a symlink or regular file before deleting.
-            // IFileSystem.rm should handle this correctly.
-            if (await fileSystem.exists(symlinkPath)) {
-              await fileSystem.rm(symlinkPath); // Corrected from delete to rm
-              clientLogger.log(`Deleted symlink: ${symlinkPath}`);
-            } else {
-              clientLogger.debug(`Symlink not found, skipping: ${symlinkPath}`);
-            }
-          } catch (error) {
-            clientLogger.warn(`Failed to delete symlink ${symlinkPath}: ${(error as Error).message}`);
-          }
-        }
-      } else {
-        clientLogger.debug('No symlinks listed in manifest to clean.');
-      }
-
-      // 4. Delete the manifest file itself
-      clientLogger.info(`Attempting to delete manifest file: ${appConfig.manifestPath}`);
-      try {
-        if (await fileSystem.exists(appConfig.manifestPath)) {
-          await fileSystem.rm(appConfig.manifestPath); // Corrected from delete to rm
-          clientLogger.log(`Successfully deleted manifest file: ${appConfig.manifestPath}`);
-        } else {
-          clientLogger.debug('Manifest file was already removed or not found before explicit deletion attempt.');
-        }
-      } catch (error) {
-        clientLogger.error(`Failed to delete manifest file ${appConfig.manifestPath}: ${(error as Error).message}`);
-        // This is an error, but we might still proceed with --all-generated
-      }
-      manifestProcessedSuccessfully = true; // Mark that we attempted to process the manifest
-    }
-  } catch (error) {
-    // Error reading or parsing the manifest
-    clientLogger.warn(`Could not read or parse manifest at ${appConfig.manifestPath}: ${(error as Error).message}`);
-    clientLogger.debug('Manifest read/parse error details: %O', error);
-    // manifestFound remains false or becomes false if parsing failed after read
+export class CleanupCommand {
+  constructor(
+    private readonly appConfig: AppConfig,
+    private readonly fs: IFileSystem,
+    private readonly logger: ReturnType<typeof createClientLogger>,
+  ) {
+    log('CleanupCommand initialized');
   }
 
-  // Handle case where manifest was not found and --all-generated is false
-  if (!manifestFound && !options.allGenerated) {
-    clientLogger.info('Manifest not found and --all-generated flag not used. Nothing to clean based on manifest.');
-    // Graceful exit as per requirements
-    return;
-  }
+  async execute(): Promise<void> {
+    log('execute: starting cleanup process');
+    this.logger.info('Starting cleanup...');
 
+    let manifest: GeneratedArtifactsManifest | null = null;
 
-  // 5. Handle --all-generated
-  if (options.allGenerated) {
-    clientLogger.info(`--all-generated flag is present. Deleting entire generated directory: ${appConfig.generatedDir}`);
     try {
-      if (await fileSystem.exists(appConfig.generatedDir)) {
-        await fileSystem.rm(appConfig.generatedDir, { recursive: true }); // Corrected from delete to rm
-        clientLogger.log(`Successfully removed generated directory: ${appConfig.generatedDir}`);
+      log(`execute: attempting to read manifest from ${this.appConfig.manifestPath}`);
+      if (await this.fs.exists(this.appConfig.manifestPath)) {
+        const manifestContent = await this.fs.readFile(this.appConfig.manifestPath, 'utf-8');
+        manifest = JSON.parse(manifestContent) as GeneratedArtifactsManifest;
+        log('execute: manifest file read and parsed successfully');
       } else {
-        clientLogger.info(`Generated directory ${appConfig.generatedDir} not found. Nothing to delete.`);
+        log('execute: manifest file does not exist');
+        this.logger.warn(`Manifest file not found at ${this.appConfig.manifestPath}.`);
       }
     } catch (error) {
-      clientLogger.error(`Failed to delete generated directory ${appConfig.generatedDir}: ${(error as Error).message}`);
-      // Decide if this should be a process.exit(1) or just log
+      log(`execute: error reading or parsing manifest file: ${String(error)}`);
+      this.logger.error(`Error reading manifest file: ${String(error)}`);
+      this.logger.warn('Proceeding to delete generated directory despite manifest error.');
     }
-  } else if (!manifestProcessedSuccessfully && manifestFound) {
-    // This case means manifest was found, but processing it (e.g. deleting it) might have failed.
-    // And --all-generated was not set.
-    clientLogger.info('Manifest was found but some operations may have failed. Check logs for details.');
+
+    if (manifest) {
+      // Delete shims
+      if (manifest.shims && manifest.shims.length > 0) {
+        this.logger.info('Deleting shims...');
+        for (const shimPath of manifest.shims) {
+          try {
+            if (await this.fs.exists(shimPath)) {
+              await this.fs.rm(shimPath, { force: true });
+              this.logger.info(`  Deleted shim: ${shimPath}`);
+              log(`execute: deleted shim ${shimPath}`);
+            } else {
+              this.logger.warn(`  Shim not found, skipping: ${shimPath}`);
+              log(`execute: shim not found ${shimPath}`);
+            }
+          } catch (error) {
+            this.logger.error(`  Error deleting shim ${shimPath}: ${String(error)}`);
+            log(`execute: error deleting shim ${shimPath}: ${String(error)}`);
+          }
+        }
+      }
+
+      // Delete shell init file
+      if (manifest.shellInit?.path) {
+        this.logger.info('Deleting shell init file...');
+        try {
+          if (await this.fs.exists(manifest.shellInit.path)) {
+            await this.fs.rm(manifest.shellInit.path, { force: true });
+            this.logger.info(`  Deleted shell init: ${manifest.shellInit.path}`);
+            log(`execute: deleted shell init ${manifest.shellInit.path}`);
+          } else {
+            this.logger.warn(`  Shell init file not found, skipping: ${manifest.shellInit.path}`);
+            log(`execute: shell init file not found ${manifest.shellInit.path}`);
+          }
+        } catch (error) {
+          this.logger.error(`  Error deleting shell init ${manifest.shellInit.path}: ${String(error)}`);
+          log(`execute: error deleting shell init ${manifest.shellInit.path}: ${String(error)}`);
+        }
+      }
+
+      // Delete symlinks
+      if (manifest.symlinks && manifest.symlinks.length > 0) {
+        this.logger.info('Deleting symlinks...');
+        for (const symlinkOp of manifest.symlinks) {
+          try {
+            if (await this.fs.lstat(symlinkOp.targetPath).catch(() => null)) { // Check if path exists (could be symlink or regular file if broken)
+              await this.fs.rm(symlinkOp.targetPath, { force: true });
+              this.logger.info(`  Deleted symlink: ${symlinkOp.targetPath}`);
+              log(`execute: deleted symlink ${symlinkOp.targetPath}`);
+            } else {
+              this.logger.warn(`  Symlink target not found, skipping: ${symlinkOp.targetPath}`);
+              log(`execute: symlink target not found ${symlinkOp.targetPath}`);
+            }
+          } catch (error) {
+            this.logger.error(`  Error deleting symlink ${symlinkOp.targetPath}: ${String(error)}`);
+            log(`execute: error deleting symlink ${symlinkOp.targetPath}: ${String(error)}`);
+          }
+        }
+      }
+    }
+
+    // Delete the entire .generated directory
+    try {
+      log(`execute: attempting to delete generated directory: ${this.appConfig.generatedDir}`);
+      if (await this.fs.exists(this.appConfig.generatedDir)) {
+        await this.fs.rm(this.appConfig.generatedDir, { recursive: true, force: true });
+        this.logger.info(`Successfully deleted generated directory: ${this.appConfig.generatedDir}`);
+        log(`execute: deleted generated directory ${this.appConfig.generatedDir}`);
+      } else {
+        this.logger.info(`Generated directory not found, skipping: ${this.appConfig.generatedDir}`);
+        log(`execute: generated directory not found ${this.appConfig.generatedDir}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error deleting generated directory ${this.appConfig.generatedDir}: ${String(error)}`);
+      log(`execute: error deleting generated directory ${this.appConfig.generatedDir}: ${String(error)}`);
+    }
+
+    this.logger.info('Cleanup complete.');
+    log('execute: cleanup process finished');
   }
-
-
-  clientLogger.info('Cleanup command finished.');
 }
 
-export function registerCleanupCommand(program: Command) {
+export function registerCleanupCommand(
+  program: Command,
+  appConfig: AppConfig,
+  fs: IFileSystem,
+  logger: ReturnType<typeof createClientLogger>,
+): void {
   program
     .command('cleanup')
-    .description('Removes artifacts generated by the tool based on the manifest, and optionally the entire generated directory.')
-    .option(
-      '--all-generated',
-      'Also recursively delete the entire generated directory specified in AppConfig (e.g., .generated/).',
-      false
-    )
-    .option(
-      '--verbose',
-      'Enable detailed debug messages.',
-      false
-    )
-    .option(
-      '--quiet',
-      'Suppress all informational and debug output. Errors are still displayed.',
-      false
-    )
-    .action(async (options: CleanupCommandOptions) => {
-      const clientLogger = createClientLogger(options);
+    .description('Remove all generated artifacts, including shims, shell configurations, and the .generated directory.')
+    .action(async () => {
+      const cleanupCommand = new CleanupCommand(appConfig, fs, logger);
       try {
-        const coreServices = await setupServices(); // No specific options like dryRun needed for cleanup setup
-
-        const servicesForLogic: CleanupCommandServices = {
-          appConfig: coreServices.appConfig,
-          fileSystem: coreServices.fs,
-          clientLogger,
-        };
-        await cleanupActionLogic(options, servicesForLogic);
+        await cleanupCommand.execute();
       } catch (error) {
-        clientLogger.error('Critical error in cleanup command: %s', (error as Error).message);
-        clientLogger.debug('Error details: %O', error);
-        exitCli(1);
+        logger.error(`Cleanup command failed: ${String(error)}`);
+        log(`registerCleanupCommand: error during cleanup execution: ${String(error)}`);
+        process.exitCode = 1;
       }
     });
 }

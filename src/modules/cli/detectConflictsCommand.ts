@@ -1,19 +1,54 @@
+/**
+ * @file detectConflictsCommand.ts
+ * @description CLI command for detecting conflicts between potential generated artifacts and existing system files.
+ *
+ * ## Development Plan
+ * - [x] Define `detectConflictsActionLogic` for core conflict detection.
+ * - [x] Define `registerDetectConflictsCommand` for Commander setup.
+ * - [x] Implement `--verbose` and `--quiet` options (though not strictly used by core logic yet, good for consistency).
+ *   - [x] Action handler creates `clientLogger` with these options.
+ *   - [x] Pass `clientLogger` to `detectConflictsActionLogic`.
+ * - [x] `detectConflictsActionLogic` loads tool configs using `loadToolConfigsFromDirectory`.
+ * - [x] Iterate through tool configs:
+ *   - [x] Check for shim conflicts:
+ *     - [x] If shim path exists, read its content.
+ *     - [x] If content doesn't indicate it's a generator shim, log conflict.
+ *     - [x] Handle errors reading shim file.
+ *   - [x] Check for symlink conflicts:
+ *     - [x] If symlink target path exists:
+ *       - [x] If it's a symlink, check if it points to the expected source. Log conflict if not.
+ *       - [x] If it's not a symlink, log conflict.
+ *     - [x] Handle errors checking symlink target.
+ * - [x] Report all detected conflicts or "No conflicts detected."
+ * - [x] Exit with appropriate status code (1 for conflicts, 0 for none).
+ * - [x] Ensure action handler calls `setupServices` to get its dependencies.
+ * - [x] Refactor `registerDetectConflictsCommand` to no longer accept services as direct parameters.
+ * - [x] Write/Update tests in `detectConflictsCommand.test.ts`.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code.
+ * - [x] Update the memory bank with the new information when all tasks are complete.
+ */
 import type { Command } from 'commander';
 import path from 'path'; // Removed 'node:' prefix
 import type { AppConfig } from '@modules/config';
 import type { IFileSystem, Stats } from '@modules/file-system'; // Corrected IFileSystem import and added Stats
-import { createClientLogger } from '@modules/logger'; // Import createClientLogger
+import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger'; // Import createClientLogger & createDebugLoggerInternal
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import type { ToolConfig } from '@types';
 import { exitCli } from '../../exitCli';
-import { setupServices as globalSetupServices } from '../../cli'; // Import global setupServices
+import { setupServices } from '../../cli'; // Import setupServices
+import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; // Added for services
+
+const commandInternalLog = createDebugLoggerInternal('detectConflictsCommand');
 
 interface DetectConflictsCommandServices {
   appConfig: AppConfig;
   fileSystem: IFileSystem;
   clientLogger: ConsolaInstance; // Changed ClientLogger to ConsolaInstance
   loadToolConfigsFromDirectory: typeof loadToolConfigsFromDirectory;
+  generatorOrchestrator: IGeneratorOrchestrator; // Added
 }
 
 // Local setupServices removed, will use globalSetupServices from ../../cli
@@ -111,7 +146,9 @@ export async function detectConflictsActionLogic(
   }
 }
 
-export function registerDetectConflictsCommand(program: Command): void {
+export function registerDetectConflictsCommand(
+  program: Command,
+): void {
   program
     .command('detect-conflicts')
     .description('Detects conflicts between potential generated artifacts and existing system files.')
@@ -119,23 +156,24 @@ export function registerDetectConflictsCommand(program: Command): void {
     .option('--verbose', 'Enable detailed debug messages.', false)
     .option('--quiet', 'Suppress all informational and debug output. Errors are still displayed.', false)
     .action(async (cliOptions: { verbose?: boolean; quiet?: boolean }) => {
-      // Create client logger based on CLI options
-      // Assuming createClientLogger can take an object with verbose/quiet flags
-      const clientLogger = createClientLogger(cliOptions);
-
+      const clientLogger = createClientLogger(cliOptions); // Create logger inside action
+      commandInternalLog('detect-conflicts command: Action called with options: %o', cliOptions);
       try {
-        // Call the global setupServices from cli.ts
-        // It might take options like dryRun, but detect-conflicts doesn't seem to need it.
-        const coreServices = await globalSetupServices();
+        // Action handler calls setupServices.
+        // detect-conflicts doesn't have a --dry-run option itself.
+        // Assume it operates in non-dry-run mode for service setup.
+        const services = await setupServices({ dryRun: false });
 
         const servicesForLogic: DetectConflictsCommandServices = {
-          appConfig: coreServices.appConfig,
-          fileSystem: coreServices.fs,
-          clientLogger,
-          loadToolConfigsFromDirectory, // This is the direct import
+          appConfig: services.appConfig,
+          fileSystem: services.fs,
+          clientLogger, // Use the newly created clientLogger
+          loadToolConfigsFromDirectory, // This is a function, not a service instance from setupServices
+          generatorOrchestrator: services.generatorOrchestrator,
         };
-        await detectConflictsActionLogic({}, servicesForLogic); // Pass empty options for now
+        await detectConflictsActionLogic({}, servicesForLogic);
       } catch (error) {
+        commandInternalLog('detect-conflicts command: Unhandled error in action handler: %O', error);
         clientLogger.error('Critical error in detect-conflicts command: %s', (error as Error).message);
         clientLogger.debug('Error details: %O', error);
         exitCli(1);
