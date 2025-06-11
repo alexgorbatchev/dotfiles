@@ -53,7 +53,7 @@ import { createClientLogger } from '@modules/logger/clientLogger';
 import type { GeneratedArtifactsManifest } from '@types';
 import path from 'node:path';
 import type { Stats } from 'node:fs';
-import { createMockAppConfig } from '@testing-helpers';
+import { createMockAppConfig, createMockFileSystem, createMockClientLogger } from '@testing-helpers';
 
 describe('CleanupCommand', () => {
   let mockAppConfig: AppConfig;
@@ -83,114 +83,32 @@ describe('CleanupCommand', () => {
   };
 
   beforeEach(() => {
+    // Only provide the essential config values needed for the tests
     mockAppConfig = createMockAppConfig({
       dotfilesDir: '/test/dotfiles',
       generatedDir: MOCK_GENERATED_DIR,
       manifestPath: MOCK_MANIFEST_PATH,
-      targetDir: '/usr/bin',
-      toolConfigsDir: '/test/dotfiles/generator/configs/tools',
-      zshInitDir: path.join(MOCK_GENERATED_DIR, 'zsh'),
       homeDir: '/home/user',
-      cacheDir: path.join(MOCK_GENERATED_DIR, 'cache'),
-      binariesDir: path.join(MOCK_GENERATED_DIR, 'binaries'),
-      binDir: path.join(MOCK_GENERATED_DIR, 'bin'),
-      completionsDir: path.join(MOCK_GENERATED_DIR, 'completions'),
-      githubApiCacheEnabled: true,
-      githubApiCacheTtl: 3600000,
-      githubClientUserAgent: 'test-agent',
-      githubHost: 'api.github.com',
-      // Ensure all required fields from AppConfig are present or provide defaults in createMockAppConfig
-      toolConfigDir: '/test/dotfiles/generator/src/tools', // Deprecated but in type
-      debug: '',
-      cacheEnabled: true,
-      generatedArtifactsManifestPath: path.join(MOCK_GENERATED_DIR, 'artifacts-manifest.json'),
-      githubApiCacheDir: path.join(MOCK_GENERATED_DIR, 'cache', 'github-api'),
-      generatorCliShimName: 'dotfiles-generator-shim',
     });
 
-    mockFileSystem = {
-      exists: mock(async () => true),
+    // Create mock file system with custom behavior for this test suite
+    const { mockFileSystem: fs } = createMockFileSystem({
+      exists: mock(async (_: string) => true),
       readFile: mock(async () => JSON.stringify(mockManifest)),
-      writeFile: mock(async () => {}),
-      rm: mock(async (_path: string, _opts?: { recursive?: boolean; force?: boolean }) => {}),
-      ensureDir: mock(async () => {}),
-      mkdir: mock(async () => {}), // Added
-      rmdir: mock(async () => {}), // Added
-      stat: mock(async (_filePath: string): Promise<Stats> => ({ // Added stat mock, prefixed filePath
-        isSymbolicLink: () => false, // Regular stat doesn't usually report on symlink itself
-        isFile: () => true,
-        isDirectory: () => false,
-        isBlockDevice: () => false,
-        isCharacterDevice: () => false,
-        isFIFO: () => false,
-        isSocket: () => false,
-        dev: 0,
-        ino: 0,
-        mode: 0o755,
-        nlink: 1,
-        uid: 0,
-        gid: 0,
-        rdev: 0,
-        size: 100,
-        blksize: 4096,
-        blocks: 1,
-        atimeMs: Date.now(),
-        mtimeMs: Date.now(),
-        ctimeMs: Date.now(),
-        birthtimeMs: Date.now(),
-        atime: new Date(),
-        mtime: new Date(),
-        ctime: new Date(),
-        birthtime: new Date(),
-      } as Stats)),
-      lstat: mock(async (filePath: string): Promise<Stats> => ({
-        isSymbolicLink: () => filePath === MOCK_SYMLINK_TARGET_1,
-        isFile: () => true,
-        isDirectory: () => false,
-        isBlockDevice: () => false,
-        isCharacterDevice: () => false,
-        isFIFO: () => false,
-        isSocket: () => false,
-        dev: 0,
-        ino: 0,
-        mode: 0o755,
-        nlink: 1,
-        uid: 0,
-        gid: 0,
-        rdev: 0,
-        size: 100,
-        blksize: 4096,
-        blocks: 1,
-        atimeMs: Date.now(),
-        mtimeMs: Date.now(),
-        ctimeMs: Date.now(),
-        birthtimeMs: Date.now(),
-        atime: new Date(),
-        mtime: new Date(),
-        ctime: new Date(),
-        birthtime: new Date(),
-      } as Stats)),
+      lstat: mock(async (filePath: string) => {
+        // Only override the isSymbolicLink method based on the path
+        return {
+          isSymbolicLink: () => filePath === MOCK_SYMLINK_TARGET_1
+        } as Stats;
+      }),
       readlink: mock(async () => MOCK_SYMLINK_SOURCE_1),
-      symlink: mock(async () => {}),
-      chmod: mock(async () => {}),
-      readdir: mock(async () => []),
-      copyFile: mock(async () => {}),
-      rename: mock(async () => {}),
-      // mkdirTemp: mock(async () => '/tmp/test-XXXXXX'), // Removed as it's not in IFileSystem
-    };
+    });
+    
+    mockFileSystem = fs;
 
-    mockLogger = {
-      info: mock(() => {}),
-      warn: mock(() => {}),
-      error: mock(() => {}),
-      debug: mock(() => {}),
-      success: mock(() => {}),
-      log: mock(() => {}),
-      fatal: mock(() => {}),
-      trace: mock(() => {}),
-      verbose: mock(() => {}),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any; // Cast to any to satisfy ConsolaInstance type if methods are missing
+    // Create mock logger using the helper
+    const { mockClientLogger } = createMockClientLogger();
+    mockLogger = mockClientLogger;
   });
 
   it('should successfully cleanup with existing manifest and artifacts', async () => {
