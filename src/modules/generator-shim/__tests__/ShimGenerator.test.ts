@@ -33,50 +33,25 @@
  * - [ ] Update the memory bank.
  */
 
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'; // Added spyOn
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test'; // Removed mock
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system';
+// IFileSystem is no longer directly used as a type annotation here
 import type { AppConfig, ToolConfig } from '@types';
 import { ShimGenerator } from '../ShimGenerator';
-import { createMockAppConfig } from '@testing-helpers';
+import { createMockAppConfig, createMockFileSystem, type MockFileSystem } from '@testing-helpers'; // Import createMockFileSystem and MockFileSystem
 
 describe('ShimGenerator', () => {
-  let mockFileSystem: IFileSystem;
   let mockAppConfig: AppConfig;
   let shimGenerator: ShimGenerator;
-
-  let mockWriteFile: ReturnType<typeof mock>;
-  let mockChmod: ReturnType<typeof mock>;
-  let mockExists: ReturnType<typeof mock>;
-  let mockEnsureDir: ReturnType<typeof mock>;
-  let mockLstat: ReturnType<typeof mock>; // Added for lstat
+  let fsMocks: MockFileSystem; // To hold the collection of mock functions
 
   const MOCK_TARGET_DIR = '/test/shims';
 
   beforeEach(() => {
-    mockWriteFile = mock(() => Promise.resolve());
-    mockChmod = mock(() => Promise.resolve());
-    mockExists = mock(() => Promise.resolve(false));
-    mockEnsureDir = mock(() => Promise.resolve());
-    mockLstat = mock(async () => ({ isDirectory: () => false, isFile: () => true, isSymbolicLink: () => false }) as any); // Basic lstat mock
-
-    mockFileSystem = {
-      writeFile: mockWriteFile,
-      chmod: mockChmod,
-      exists: mockExists,
-      ensureDir: mockEnsureDir,
-      readFile: mock(() => Promise.resolve('')),
-      mkdir: mock(() => Promise.resolve()),
-      readdir: mock(() => Promise.resolve([])),
-      rm: mock(() => Promise.resolve()),
-      stat: mock(async () => ({ isDirectory: () => true, isFile: () => false, isSymbolicLink: () => false }) as any), // Adjusted default stat
-      lstat: mockLstat, // Added lstat
-      symlink: mock(async () => {}),
-      readlink: mock(async () => ''),
-      copyFile: mock(async () => {}),
-      rename: mock(async () => {}),
-      rmdir: mock(async () => {}),
-    };
+    const { mockFileSystem: mfs, fileSystemMocks } = createMockFileSystem();
+    // mockFileSystem is now the IFileSystem compatible object from the helper
+    // fsMocks holds the individual mock functions (e.g., fileSystemMocks.writeFile)
+    fsMocks = fileSystemMocks;
 
     mockAppConfig = createMockAppConfig({
       targetDir: MOCK_TARGET_DIR,
@@ -85,7 +60,8 @@ describe('ShimGenerator', () => {
       generatorCliShimName: 'dotfiles-shim-generator',
     });
 
-    shimGenerator = new ShimGenerator(mockFileSystem, mockAppConfig);
+    // Pass the IFileSystem compatible mock from the helper to ShimGenerator
+    shimGenerator = new ShimGenerator(mfs, mockAppConfig);
   });
 
   describe('constructor', () => {
@@ -124,10 +100,10 @@ describe('ShimGenerator', () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toEqual([expectedShimPath]);
-      expect(mockEnsureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0]).toBeDefined();
-      const writtenContent = mockWriteFile.mock.calls[0]![1];
+      expect(fsMocks.ensureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
       expect(writtenContent).toContain(`#!/usr/bin/env bash`);
       expect(writtenContent).toContain(`# Shim for ${toolName}`);
       expect(writtenContent).toContain(`TOOL_NAME="${toolName}"`);
@@ -138,7 +114,7 @@ describe('ShimGenerator', () => {
       expect(writtenContent).toContain(
         `"\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet`
       );
-      expect(mockChmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
+      expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
     it('should use toolName as binary name if toolConfig.binaries is empty and return path', async () => {
@@ -157,9 +133,9 @@ describe('ShimGenerator', () => {
       const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
 
       expect(result).toEqual([expectedShimPath]);
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0]).toBeDefined();
-      const writtenContent = mockWriteFile.mock.calls[0]![1];
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
       expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
     });
 
@@ -179,9 +155,9 @@ describe('ShimGenerator', () => {
       const result = await shimGenerator.generateForTool(toolName, configUndefinedBinaries);
 
       expect(result).toEqual([expectedShimPath]);
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0]).toBeDefined();
-      const writtenContent = mockWriteFile.mock.calls[0]![1];
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
       expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
     });
 
@@ -189,29 +165,29 @@ describe('ShimGenerator', () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig, {});
 
       expect(result).toEqual([expectedShimPath]);
-      expect(mockEnsureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockChmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
+      expect(fsMocks.ensureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
 
     it('should skip if shim exists and overwrite is false, returning empty array', async () => {
-      mockExists.mockResolvedValue(true);
+      fsMocks.exists.mockResolvedValue(true);
       const result = await shimGenerator.generateForTool(toolName, toolConfig, {
         overwrite: false,
       });
 
       expect(result).toEqual([]);
-      expect(mockWriteFile).not.toHaveBeenCalled();
-      expect(mockChmod).not.toHaveBeenCalled();
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
 
     it('should overwrite if shim exists and overwrite is true, returning path', async () => {
-      mockExists.mockResolvedValue(true);
+      fsMocks.exists.mockResolvedValue(true);
       const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwrite: true });
 
       expect(result).toEqual([expectedShimPath]);
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockChmod).toHaveBeenCalledTimes(1);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      expect(fsMocks.chmod).toHaveBeenCalledTimes(1);
     });
 
     it('should skip if targetDir is not configured, returning empty array', async () => {
@@ -219,12 +195,15 @@ describe('ShimGenerator', () => {
         ...mockAppConfig,
         targetDir: undefined as any,
       });
-      const generator = new ShimGenerator(mockFileSystem, configNoTargetDir);
+      // Need to use the IFileSystem instance from the helper for this specific generator instance
+      const { mockFileSystem: localMockFs } = createMockFileSystem();
+      const generator = new ShimGenerator(localMockFs, configNoTargetDir);
       const result = await generator.generateForTool(toolName, toolConfig);
 
       expect(result).toEqual([]);
-      expect(mockWriteFile).not.toHaveBeenCalled();
-      expect(mockChmod).not.toHaveBeenCalled();
+      // Assert against the specific mocks of localMockFs if needed, or ensure general fsMocks were not called
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
     });
   });
 
