@@ -23,7 +23,7 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage for executable code.
- * - [x] Update the memory bank with the new information when all tasks are complete.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 /**
  * @file generator/src/modules/cli/checkUpdatesCommand.ts

@@ -35,9 +35,13 @@
  * - [x] Test case: error during deletion of `generatedDir`.
  *   - [x] `fs.rm` for `generatedDir` throws an error.
  *   - [x] Verify `logger.error` is called for that error.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
+ * - [x] Test case: dry run mode.
+ *   - [x] Instantiate `CleanupCommand` with `dryRun` set to `true`.
+ *   - [x] Verify `fs.rm` is not called for any artifacts or the generated directory.
+ *   - [x] Verify appropriate "Would delete" log messages.
+ * - [x] Cleanup all linting errors and warnings.
+ * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
+ * - [x] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -302,5 +306,26 @@ describe('CleanupCommand', () => {
 
     expect(mockLogger.error).toHaveBeenCalledWith(`Error deleting generated directory ${MOCK_GENERATED_DIR}: ${String(deleteError)}`);
     expect(mockLogger.info).toHaveBeenCalledWith('Cleanup complete.'); // Should still report completion
+  });
+
+  it('should not delete any files in dry run mode', async () => {
+    const command = new CleanupCommand(mockAppConfig, mockFileSystem, mockLogger, true);
+    await command.execute();
+
+    // Verify fs.rm was not called for any artifacts
+    expect(mockFileSystem.readFile).toHaveBeenCalledWith(MOCK_MANIFEST_PATH, 'utf-8');
+    expect(mockFileSystem.rm).not.toHaveBeenCalled();
+
+    // Verify appropriate log messages
+    expect(mockLogger.info).toHaveBeenCalledWith('Starting dry run cleanup (no files will be removed)...');
+    expect(mockLogger.info).toHaveBeenCalledWith('Deleting shims...');
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Would delete shim: ${MOCK_SHIM_1}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Would delete shim: ${MOCK_SHIM_2}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Deleting shell init file...');
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Would delete shell init: ${MOCK_SHELL_INIT}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Deleting symlinks...');
+    expect(mockLogger.info).toHaveBeenCalledWith(`  Would delete symlink: ${MOCK_SYMLINK_TARGET_1}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(`Would delete generated directory: ${MOCK_GENERATED_DIR}`);
+    expect(mockLogger.info).toHaveBeenCalledWith('Dry run cleanup complete.');
   });
 });

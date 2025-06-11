@@ -22,8 +22,8 @@
  * - [x] Implement `registerAllCommands` function:
  *   - [x] Call `setupServices` once initially.
  *   - [x] Register all commands (`generate`, `install`, `cleanup`, `check-updates`, `update`, `detect-conflicts`).
- *     - [x] Refactor calls to `register...Command` functions to pass only `programInstance` (except for `cleanupCommand`).
- *     - [x] For `cleanupCommand`, create and pass a `clientLogger` instance.
+ *     - [x] Refactor calls to `register...Command` functions to pass only `programInstance`.
+ *     - [x] Update `cleanupCommand` to use `setupServices` in its action handler rather than receiving dependencies directly.
  * - [x] Implement `main` function to orchestrate command registration and parsing.
  *   - [x] Add error handling for `main` execution.
  * - [x] Ensure script runs `main` only if executed directly (`import.meta.main`).
@@ -40,7 +40,7 @@ import {
 } from '@modules/config';
 // createClientLogger was removed from here as it's unused in this file.
 // It's imported and used within individual command modules' action handlers.
-import { createLogger, createClientLogger } from '@modules/logger'; // Added import for createDebugLoggerInternal and createClientLogger
+import { createLogger } from '@modules/logger'; // Added import for createDebugLoggerInternal
 // import { createClientLogger } from '@modules/logger/clientLogger'; // Will be created in each command's action
 import { NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { Downloader } from '@modules/downloader/Downloader';
@@ -210,13 +210,7 @@ program
   .version('0.1.0');
 
 export async function registerAllCommands(programInstance: Command) {
-  // Determine if --dry-run is present to pass to setupServices
-  const dryRun = process.argv.includes('--dry-run');
-  // Verbosity options (verbose, quiet) will be handled by each command's action handler when creating its own logger.
-
-  // Setup services once
-  const services = await setupServices({ dryRun });
-  // clientLogger will be created in each command's action handler.
+  // Each command will call setupServices in its own action handler
 
   // Register Install Command
   registerInstallCommand(programInstance);
@@ -225,9 +219,7 @@ export async function registerAllCommands(programInstance: Command) {
   registerGenerateCommand(programInstance);
 
   // Register Cleanup Command
-  // Note: registerCleanupCommand still requires appConfig and fs due to its class-based nature.
-  const cleanupLogger = createClientLogger({}); // Create a logger for cleanup command
-  registerCleanupCommand(programInstance, services.appConfig, services.fs, cleanupLogger);
+  registerCleanupCommand(programInstance);
 
   // Register CheckUpdates Command
   registerCheckUpdatesCommand(programInstance);
