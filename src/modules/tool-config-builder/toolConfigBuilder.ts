@@ -15,17 +15,20 @@
  * - Update the memory bank.
  */
 
-import type {
-  ToolConfig,
-  GithubReleaseInstallParams,
-  BrewInstallParams,
-  CurlScriptInstallParams,
-  CurlTarInstallParams,
-  ManualInstallParams,
-  AsyncInstallHook,
-  CompletionConfig,
-} from '@types'; 
-import { createClientLogger } from '@modules/logger'; 
+import { createClientLogger } from '@modules/logger';
+import {
+  type AsyncInstallHook,
+  type BrewInstallParams,
+  type CompletionConfig,
+  type CurlScriptInstallParams,
+  type CurlTarInstallParams,
+  type GithubReleaseInstallParams,
+  type ManualInstallParams,
+  type ToolConfig,
+  type ToolConfigInstallationMethod,
+  type ToolConfigInstallParams,
+  type ToolConfigUpdateCheck
+} from '@types';
 
 // Define the ToolConfigBuilder interface with camelCase methods
 export interface IToolConfigBuilder {
@@ -104,13 +107,13 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
   private toolName: string;
   private binaries: string[] = [];
   private versionNum: string = 'latest';
-  private currentInstallationMethod?: ToolConfig['installationMethod'];
-  private currentInstallParams?: ToolConfig['installParams'];
+  private currentInstallationMethod?: ToolConfigInstallationMethod;
+  private currentInstallParams?: ToolConfigInstallParams;
   private zshScripts: string[] = [];
   private symlinkPairs: { source: string; target: string }[] = [];
   private archOverrideConfigs: { [key: string]: (c: IToolConfigBuilder) => void } = {};
   private completionSettings?: CompletionConfig;
-  private updateCheckConfig?: ToolConfig['updateCheck'];
+  private updateCheckConfig?: ToolConfigUpdateCheck;
 
   constructor(toolName: string) {
     this.toolName = toolName;
@@ -132,7 +135,7 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
-  install(method: ToolConfig['installationMethod'], params: ToolConfig['installParams']): this {
+  install(method: ToolConfigInstallationMethod, params: ToolConfigInstallParams): this {
     this.currentInstallationMethod = method;
     this.currentInstallParams = params;
     return this;
@@ -185,7 +188,7 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
   }
 
   build(): ToolConfig {
-    const baseProperties = {
+    const baseProperties: Partial<ToolConfig> = {
       name: this.toolName,
       binaries: this.binaries,
       version: this.versionNum,
@@ -219,7 +222,7 @@ export class ToolConfigBuilder implements IToolConfigBuilder {
       // No installation method defined, return NoInstallToolConfig
       // Ensure binaries are optional for NoInstallToolConfig if they are empty
       const finalBinaries =
-        baseProperties.binaries.length > 0 ? baseProperties.binaries : undefined;
+        baseProperties.binaries && baseProperties.binaries.length > 0 ? baseProperties.binaries : undefined;
 
       if (!finalBinaries && !baseProperties.zshInit && !baseProperties.symlinks) {
         throw new Error(

@@ -1,28 +1,12 @@
 /**
  * @file generator/src/types/toolConfig.types.ts
  * @description Types related to tool configuration.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define types for tool configuration.
- * - [x] Add JSDoc comments to all types and properties.
- * - [ ] Ensure all necessary imports are present.
- * - [ ] Ensure all types are exported.
- * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .roorules)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
 import type { CompletionConfig } from './completion.types';
 import type { GitHubReleaseAsset } from './githubApi.types';
-
-// ============================================
-// Tool Configuration Types
-// ============================================
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.
@@ -378,50 +362,46 @@ export interface ToolConfigBuilder {
    * Configures the installation method and its specific parameters for the tool.
    * This is a polymorphic method; the `params` argument's type depends on the `method` specified.
    *
-   * **GitHub Release Method (`'github-release'`)**:
-   * Installs the tool from a GitHub release asset. Requires `repo` (owner/repo).
-   * Can specify `assetPattern` or `assetSelector` to find the correct download,
-   * `binaryPath` for the executable within an archive, and `version`.
-   * Analogous to Zinit's `from"gh-r"` ice.
+   * ## GitHub Release Method (`'github-release'`)
+   * Installs the tool from a GitHub release asset. Requires `repo` (owner/repo).  Can specify `assetPattern` or
+   * `assetSelector` to find the correct download, `binaryPath` for the executable within an archive, and `version`.
    * See {@link GithubReleaseInstallParams}.
+   *
    * @example Zinit `from"gh-r"`:
    * ```zsh
    * zinit ice from"gh-r"
    * zinit light "junegunn/fzf"
    * ```
    *
-   * **Homebrew Method (`'brew'`)**:
+   * ## Homebrew Method (`'brew'`)
    * Installs the tool using Homebrew. Requires `formula` name. Can specify `cask: true` or `tap`.
    * See {@link BrewInstallParams}.
    *
-   * **Curl Script Method (`'curl-script'`)**:
+   * ## Curl Script Method (`'curl-script'`)
    * Downloads and executes an installation script via `curl`. Requires `url` of the script and `shell` to use.
    * Similar to Zinit's `dl` and `atclone` for scripts.
    * See {@link CurlScriptInstallParams}.
+   *
    * @example Zinit `dl` and `atclone` for script:
    * ```zsh
    * zinit ice dl"https://install.sh/myscript" atclone"sh myscript"
    * zinit snippet "https://install.sh/myscript"
    * ```
    *
-   * **Curl Tarball Method (`'curl-tar'`)**:
-   * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball
-   * and `moveBinaryTo` for the final binary location.
-   * Similar to Zinit's `dl` for archives, combined with `extract` and `pick`.
+   * ## Curl Tarball Method (`'curl-tar'`)
+   * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball and `moveBinaryTo`
+   * for the final binary location. Similar to Zinit's `dl` for archives, combined with `extract` and `pick`.
    * See {@link CurlTarInstallParams}.
+   *
    * @example Zinit `dl` for tarball (conceptual):
    * ```zsh
    * zinit ice dl"https://example.com/tool.tar.gz" extract pick"bin/tool" # Conceptual
    * zinit light "user/tool-from-tarball"
    * ```
    *
-   * **Pip Method (`'pip'`)**:
-   * Installs a Python package using `pip`. Requires `packageName`.
-   * See {@link PipInstallParams}.
-   *
-   * **Manual Method (`'manual'`)**:
-   * For tools installed outside this system. Requires `binaryPath` to check for existence.
-   * Hooks can be used for custom validation.
+   * ## Manual Method (`'manual'`)
+   * For tools installed outside this system. Requires `binaryPath` to check for existence.  Hooks can be used for custom
+   * validation.
    * See {@link ManualInstallParams}.
    *
    * @param method - The installation method to use.
@@ -436,13 +416,15 @@ export interface ToolConfigBuilder {
 
   /**
    * Defines asynchronous TypeScript hook functions to be executed at various stages of the installation lifecycle.
-   * These hooks allow for custom logic, such as pre-installation setup, post-download processing,
-   * archive manipulation after extraction, or final validation steps.
+   * These hooks allow for custom logic, such as pre-installation setup, post-download processing, archive manipulation
+   * after extraction, or final validation steps.
+   *
    * @param hooks - An object containing one or more optional hook functions:
    *   `beforeInstall`: Runs before any installation steps.
    *   `afterDownload`: Runs after the tool's artifact is downloaded. Similar to Zinit's `atclone` when used after a `dl` operation.
    *   `afterExtract`: Runs after an archive is extracted (if applicable). Can be used for `make`, `configure` steps.
    *   `afterInstall`: Runs after the main installation process completes. Similar to Zinit's `atpull` (for updates) or post-`make`/`configure` steps.
+   *
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @see AsyncInstallHook
    * @see InstallHookContext
@@ -469,11 +451,11 @@ export interface ToolConfigBuilder {
   }): this;
 
   /**
-   * Adds raw Zsh shell code to be included in the generated Zsh initialization file
-   * (typically `~/.generated/zsh/init.zsh`, which is then sourced by the user's `.zshrc`).
-   * This is useful for setting environment variables, defining aliases or functions,
-   * adding directories to the `PATH`, or sourcing other scripts related to the tool.
-   * Multiple calls to `zsh()` will append the code.
+   * Adds raw Zsh shell code to be included in the generated Zsh initialization file (typically
+   * `~/.generated/zsh/init.zsh`, which is then sourced by the user's `.zshrc`).  This is useful for setting environment
+   * variables, defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts related to the
+   * tool.  Multiple calls to `zsh()` will append the code.
+   *
    * @param code - A string containing valid Zsh script code.
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
@@ -497,9 +479,10 @@ export interface ToolConfigBuilder {
 
   /**
    * Defines configuration overrides that apply only to a specific operating system and CPU architecture combination.
-   * This allows for tailoring installation methods or parameters for different platforms.
-   * The `osArch` string should typically match the output of `uname -s` and `uname -m` (lowercased),
-   * joined by a hyphen (e.g., `'darwin-arm64'`, `'linux-x86_64'`).
+   * This allows for tailoring installation methods or parameters for different platforms.  The `osArch` string should
+   * typically match the output of `uname -s` and `uname -m` (lowercased), joined by a hyphen (e.g., `'darwin-arm64'`,
+   * `'linux-x86_64'`).
+   *
    * @param osArch - The OS-architecture string identifier.
    * @param configureOverrides - A callback function that receives a new, scoped `ToolConfigBuilder` instance.
    *                           This builder is used to define the overrides specific to this `osArch`.
@@ -557,6 +540,22 @@ export interface ToolConfigBuilder {
  */
 export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
 
+export type ToolConfigUpdateCheck = {
+  /**
+   * Whether update checking is enabled for this tool.
+   * Can be overridden globally by `AppConfig.checkUpdatesOnRun`.
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * An optional SemVer constraint for updates. If specified, only updates satisfying
+   * this constraint relative to the currently installed version will be considered.
+   * E.g., if `1.2.3` is installed and constraint is `~1.2.x`, then `1.2.4` is an update, but `1.3.0` is not.
+   * If `^1.2.3` is installed, then `1.3.0` is an update, but `2.0.0` is not.
+   */
+  constraint?: string;
+};
+
 /**
  * Base properties common to all variants of a fully resolved {@link ToolConfig}.
  * This represents the internal data structure after the `ToolConfigBuilder` has been processed.
@@ -566,7 +565,7 @@ interface BaseToolConfigProperties {
   name: string;
   /**
    * An array of binary names that should have shims generated for this tool.
-491    * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
+   * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
    */
   binaries?: string[];
   /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
@@ -586,21 +585,7 @@ interface BaseToolConfigProperties {
   /**
    * Configuration for automatic update checking for this tool.
    */
-  updateCheck?: {
-    /**
-     * Whether update checking is enabled for this tool.
-     * Can be overridden globally by `AppConfig.checkUpdatesOnRun`.
-     * @default true
-     */
-    enabled?: boolean;
-    /**
-     * An optional SemVer constraint for updates. If specified, only updates satisfying
-     * this constraint relative to the currently installed version will be considered.
-     * E.g., if `1.2.3` is installed and constraint is `~1.2.x`, then `1.2.4` is an update, but `1.3.0` is not.
-     * If `^1.2.3` is installed, then `1.3.0` is an update, but `2.0.0` is not.
-     */
-    constraint?: string;
-  };
+  updateCheck?: ToolConfigUpdateCheck;
 }
 
 /** Resolved tool configuration for the 'github-release' installation method. */
@@ -668,3 +653,6 @@ export type ToolConfig =
   | CurlTarToolConfig
   | ManualToolConfig
   | NoInstallToolConfig;
+
+export type ToolConfigInstallationMethod = ToolConfig['installationMethod'];
+export type ToolConfigInstallParams = ToolConfig['installParams'];

@@ -18,7 +18,6 @@
  * - [x] Define `BrewInstallParams` interface.
  * - [x] Define `CurlScriptInstallParams` interface.
  * - [x] Define `CurlTarInstallParams` interface.
- * - [x] Define `PipInstallParams` interface.
  * - [x] Define `ManualInstallParams` interface.
  * - [x] Define `ToolConfigBuilder` interface.
  * - [x] Define `AsyncConfigureTool` type.

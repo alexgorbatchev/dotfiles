@@ -9,8 +9,9 @@ import {
   createArchitectureRegex,
   getArchitectureRegex,
   matchesArchitecture,
-} from '../index'; // Updated import path
-import type { SystemInfo, ArchitecturePatterns, ArchitectureRegex } from '@types'; // Updated import path
+  type ArchitectureRegex
+} from '../getArchitectureRegex'; 
+import type { SystemInfo, ArchitecturePatterns, } from '@types'; // Updated import path
 
 describe('getArchitecturePatterns', () => {
   it('should generate correct patterns for macOS ARM64', () => {
