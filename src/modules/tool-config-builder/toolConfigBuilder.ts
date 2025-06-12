@@ -16,7 +16,6 @@
  */
 
 import type {
-  // Use type-only import
   ToolConfig,
   GithubReleaseInstallParams,
   BrewInstallParams,
@@ -25,9 +24,8 @@ import type {
   ManualInstallParams,
   AsyncInstallHook,
   CompletionConfig,
-  // SystemInfo, // SystemInfo is not directly used by ToolConfigBuilder but might be relevant for arch overrides context
-} from '@types'; // Updated import path
-import { createClientLogger } from '../logger/clientLogger'; // CreateClientLoggerOptions removed
+} from '@types'; 
+import { createClientLogger } from '@modules/logger'; 
 
 // Define the ToolConfigBuilder interface with camelCase methods
 export interface IToolConfigBuilder {

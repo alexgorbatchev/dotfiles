@@ -21,9 +21,9 @@
  */
 
 import { expect, test, describe, spyOn, mock } from 'bun:test';
-import { ToolConfigBuilder, type IToolConfigBuilder } from '../index'; // Updated import path
-import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types'; // Updated import path
-import * as clientLoggerModule from '../../logger/clientLogger';
+import { ToolConfigBuilder, type IToolConfigBuilder } from '../index'; 
+import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types'; 
+import * as clientLoggerModule from '@modules/logger';
 
 describe('ToolConfigBuilder', () => {
   test('constructor initializes with default values', () => {

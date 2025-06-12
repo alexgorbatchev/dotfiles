@@ -49,7 +49,7 @@ import { describe, it, expect, mock, beforeEach, type Mock as BunMock } from 'bu
 import { CleanupCommand } from '../cleanupCommand';
 import type { AppConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import { createClientLogger } from '@modules/logger/clientLogger';
+import { createClientLogger } from '@modules/logger';
 import type { GeneratedArtifactsManifest } from '@types';
 import path from 'node:path';
 import type { Stats } from 'node:fs';

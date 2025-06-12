@@ -46,7 +46,7 @@ import type { ISymlinkGenerator } from '@modules/generator-symlink/ISymlinkGener
 import type { IGitHubApiCache } from '@modules/github-client/IGitHubApiCache';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { IInstaller, InstallResult } from '@modules/installer/IInstaller';
-import * as clientLoggerModule from '@modules/logger/clientLogger'; // Import the module to spy on createClientLogger
+import * as clientLoggerModule from '@modules/logger'; // Import the module to spy on createClientLogger
 import { createMockAppConfig } from '@testing-helpers/createMockAppConfig'; // Added
 import { createMockClientLogger } from '@testing-helpers/createMockClientLogger'; // Added
 import { createMockFileSystem } from '@testing-helpers/createMockFileSystem'; // Added
@@ -734,9 +734,6 @@ describe('CLI', () => {
     // Reset for the --quiet part
     flagTestInstaller.install.mockClear();
     createClientLoggerSpy.mockClear();
-    // loggerMocks.info.mockClear(); // We will use a new logger mock for quiet
-    // loggerMocks.debug.mockClear();
-    // loggerMocks.error.mockClear();
     setupServicesSpy.mockClear();
 
     // Create a new, truly quiet logger for this part of the test

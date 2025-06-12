@@ -6,5 +6,5 @@
  * createLogger function.
  */
 
-export { createLogger } from './createLogger';
-export { createClientLogger } from './clientLogger';
+export * from './createLogger';
+export * from './createClientLogger';
