@@ -14,7 +14,6 @@
  * - [x] Test case: Create a configuration for multiple platforms (single `platform()` call with array).
  * - [x] Test case: Create a configuration with platform and architecture combinations.
  * - [x] Test case: Ensure `build()` method correctly incorporates platform-specific configurations. (Covered by checking `platformConfigs` after build)
- * - [x] Test case: Ensure backward compatibility with the top-level `arch()` method.
  * - [x] Write tests for the module. (This is the overall goal, achieved by completing individual test cases)
  * - [x] Fix all errors and warnings.
  * - [x] Remove all commented out code and meta-comments.
@@ -153,57 +152,14 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(linuxArmConfig!.config.installationMethod).toBe('github-release');
   });
 
-  it('should maintain backward compatibility with the top-level arch() method', () => {
-    log('test: should maintain backward compatibility with the top-level arch() method');
-    // Note: The callback for arch() receives a ToolConfigBuilder, not a specialized ArchConfigBuilder.
-    // So, methods like 'check' are not directly available unless they are part of ToolConfigBuilder.
-    // We'll test setting a version or binary via the arch-specific builder.
-    builder.arch(`linux-${Architecture.X86_64}`, (ab) => { // osArch string format
-      ab.bin('global-x86_64-bin');
-      ab.version('1.0-x86_64'); // Example: arch-specific version
-    });
-    builder.arch(`linux-${Architecture.Arm64}`, (ab) => {
-      ab.bin('global-arm64-bin');
-    });
-
-    builder.platform(Platform.Windows, (pb) => {
-      pb.bin('win-bin');
-    });
-
-    const config = builder.build();
-
-    expect(config.archOverrides).toBeDefined(); // Changed from config.architectures
-    const topLevelArchOverrides = config.archOverrides!;
-
-    const x86Override = topLevelArchOverrides[`linux-${Architecture.X86_64}`];
-    expect(x86Override).toBeDefined();
-    expect(x86Override!.binaries).toEqual(['global-x86_64-bin']);
-    expect(x86Override!.version).toEqual('1.0-x86_64');
-
-    const armOverride = topLevelArchOverrides[`linux-${Architecture.Arm64}`];
-    expect(armOverride).toBeDefined();
-    expect(armOverride!.binaries).toEqual(['global-arm64-bin']);
-
-    expect(config.platformConfigs).toHaveLength(1);
-    const windowsPlatformConfig = config.platformConfigs![0];
-    expect(windowsPlatformConfig).toBeDefined();
-    expect(windowsPlatformConfig!.platforms).toBe(Platform.Windows);
-    expect(windowsPlatformConfig!.config.binaries).toEqual(['win-bin']);
-  });
-
-  it('should correctly build when mixing global, platform, and arch-specific settings', () => {
-    log('test: should correctly build when mixing global, platform, and arch-specific settings');
+  it('should correctly build with global and platform-specific settings', () => {
+    log('test: should correctly build with global and platform-specific settings');
     builder.version('1.0.0'); // Global
 
     // Platform MacOS, specific for Arm64
     builder.platform(Platform.MacOS, Architecture.Arm64, (pb) => {
       pb.install('github-release', { repo: 'test/macrepo', assetPattern: 'macos-arm64.zip' });
       pb.bin('darwin-arm64-app');
-    });
-
-    // Top-level (deprecated) arch setting for Linux X86_64
-    builder.arch(`linux-${Architecture.X86_64}`, (ab) => {
-      ab.bin('generic-x86_64-app');
     });
 
     const config = builder.build();
@@ -215,10 +171,5 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(darwinArmConfig).toBeDefined();
     expect(darwinArmConfig!.config.installationMethod).toBe('github-release');
     expect(darwinArmConfig!.config.binaries).toEqual(['darwin-arm64-app']);
-
-    expect(config.archOverrides).toBeDefined();
-    const linuxX86ArchOverride = config.archOverrides![`linux-${Architecture.X86_64}`];
-    expect(linuxX86ArchOverride).toBeDefined();
-    expect(linuxX86ArchOverride!.binaries).toEqual(['generic-x86_64-app']);
   });
 });

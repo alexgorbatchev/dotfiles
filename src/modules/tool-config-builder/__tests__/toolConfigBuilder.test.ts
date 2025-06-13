@@ -11,7 +11,6 @@
  * - [x] Test the 'hooks' method correctly sets the hooks on installParams.
  * - Test the 'zsh' method correctly adds Zsh code to zshInit.
  * - Test the 'symlink' method correctly adds symlinks.
- * - Test the 'arch' method correctly stores architecture overrides.
  * - Test the 'completions' method correctly sets completion configuration.
  * - Test the 'build' method returns the correct ToolConfig object.
  * - Test the 'build' method throws errors for missing required fields (name, installationMethod if binaries are present).
@@ -22,7 +21,6 @@
 
 import { expect, test, describe, spyOn, mock } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
-import type { ToolConfigBuilder as ToolConfigBuilderType } from '@types';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
 import * as clientLoggerModule from '@modules/logger';
 
@@ -131,40 +129,6 @@ describe('ToolConfigBuilder', () => {
     ]);
   });
 
-  test('arch method stores architecture overrides correctly and reflects in build', () => {
-    const builder = new ToolConfigBuilder('test-tool');
-    const overrideFn = (c: ToolConfigBuilderType) => { // Use the correctly imported interface type
-      c.version('2.0.0');
-      c.bin(['arch-specific-tool']); // Add a binary to make the override config valid
-    };
-    builder.arch('darwin-aarch64', overrideFn);
-    // Test that the override function is stored internally
-    expect((builder as any).archOverrideConfigs['darwin-aarch64']).toBe(overrideFn);
-    // Also check that the main config version is not yet changed by merely defining an override
-    expect((builder as any).versionNum).toBe('latest');
-
-    // Build the config (it needs at least one defining property like binaries, zsh, or symlinks)
-    builder.bin(['test-bin']); // Add a binary to make it a valid NoInstallToolConfig
-    const configWithArch = builder.build();
-    expect(configWithArch.archOverrides).toEqual({
-      'darwin-aarch64': {
-        version: '2.0.0',
-        binaries: ['arch-specific-tool'],
-        completions: undefined,
-        installParams: undefined,
-        installationMethod: 'none',
-        symlinks: undefined,
-        updateCheck: undefined,
-        zshInit: undefined,
-      },
-    });
-
-    const builderNoArch = new ToolConfigBuilder('test-tool-no-arch');
-    builderNoArch.bin(['test-bin']);
-    const configNoArch = builderNoArch.build();
-    expect(configNoArch.archOverrides).toBeUndefined();
-  });
-
   test('completions method sets completion configuration correctly', () => {
     const builder = new ToolConfigBuilder('test-tool');
     const completionConfig = { zsh: { source: 'completion.zsh' } };
@@ -217,7 +181,6 @@ describe('ToolConfigBuilder', () => {
     expect(config.symlinks).toBeUndefined();
     expect(config.completions).toBeUndefined();
     expect(config.updateCheck).toBeUndefined();
-    expect(config.archOverrides).toBeUndefined();
   });
 
   test('build method returns NoInstallToolConfig if only zshInit is present', () => {
@@ -243,7 +206,7 @@ describe('ToolConfigBuilder', () => {
   test('build method throws error if nothing is configured', () => {
     const builder = new ToolConfigBuilder('test-tool');
     expect(() => builder.build()).toThrow(
-      'Tool "test-tool" must define at least binaries, zshInit, symlinks, archOverrides, or platformConfigs.'
+      'Tool "test-tool" must define at least binaries, zshInit, symlinks, or platformConfigs.'
     );
   });
 

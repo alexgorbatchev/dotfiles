@@ -238,7 +238,6 @@ describe('loadToolConfigs', () => {
       installParams: { binaryPath: 'dummy/path/atool' },
       zshInit: undefined,
       symlinks: undefined,
-      archOverrides: undefined,
       completions: undefined,
       updateCheck: undefined,
     };

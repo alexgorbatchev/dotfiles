@@ -628,27 +628,6 @@ export interface ToolConfigBuilder {
   symlink(source: string, target: string): this;
 
   /**
-   * Defines configuration overrides that apply only to a specific operating system and CPU architecture combination.
-   * This allows for tailoring installation methods or parameters for different platforms.  The `osArch` string should
-   * typically match the output of `uname -s` and `uname -m` (lowercased), joined by a hyphen (e.g., `'darwin-arm64'`,
-   * `'linux-x86_64'`).
-   *
-   * @param osArch - The OS-architecture string identifier.
-   * @param configureOverrides - A callback function that receives a new, scoped `ToolConfigBuilder` instance.
-   *                           This builder is used to define the overrides specific to this `osArch`.
-   *                           The overrides can include different installation methods, versions, binaries, etc.
-   * @returns The `ToolConfigBuilder` instance for chaining.
-   * @example
-   * c.arch('linux-arm64', (linuxArm) => {
-   *   linuxArm.install('github-release', { repo: 'owner/repo', assetPattern: '*linux_arm64.tar.gz' });
-   * });
-   * c.arch('darwin-x86_64', (macIntel) => {
-   *   macIntel.install('brew', { formula: 'tool-for-intel-macs' });
-   * });
-   */
-  arch(osArch: string, configureOverrides: (c: ToolConfigBuilder) => void): this; // To be deprecated
-
-  /**
    * Defines platform-specific configurations for the tool.
    * This allows tailoring installation methods, binaries, versions, etc., for different
    * operating systems and optionally CPU architectures.
@@ -748,7 +727,7 @@ export interface PlatformConfigEntry {
   /** An optional bitmask of target architectures for this configuration. If undefined, applies to all architectures on the specified platforms. */
   architectures?: Architecture;
   /** The actual configuration settings for this platform/architecture combination. This would be the result of the PlatformConfigBuilder. */
-  config: Partial<Omit<ToolConfig, 'name' | 'archOverrides' | 'platformConfigs'>>; // Similar to archOverrides, but for platforms
+  config: Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>>; // For platform-specific configurations
 }
 
 /**
@@ -769,12 +748,6 @@ interface BaseToolConfigProperties {
   zshInit?: string[];
   /** An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths. */
   symlinks?: { source: string; target: string }[];
-  /**
-   * A map of architecture-specific overrides. The keys are `osArch` strings (e.g., 'darwin-arm64'),
-   * and the values are partial `ToolConfig` objects containing the overrides for that architecture.
-   * Defined by `c.arch()`.
-   */
-  archOverrides?: { [osArch: string]: Partial<Omit<ToolConfig, 'name' | 'archOverrides'>> };
   /** Shell completion configurations, defined by `c.completions()`. */
   completions?: CompletionConfig;
   /**
@@ -799,7 +772,7 @@ export interface PlatformConfigEntry {
   /** An optional bitmask of target architectures for this configuration. If undefined, applies to all architectures on the specified platforms. */
   architectures?: Architecture;
   /** The actual configuration settings for this platform/architecture combination. This would be the result of the PlatformConfigBuilder. */
-  config: Partial<Omit<ToolConfig, 'name' | 'archOverrides' | 'platformConfigs'>>; // Similar to archOverrides, but for platforms
+  config: Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>>; // For platform-specific configurations
 }
 
 /** Resolved tool configuration for the 'github-release' installation method. */

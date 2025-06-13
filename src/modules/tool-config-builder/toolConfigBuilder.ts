@@ -5,7 +5,7 @@
  * This class will be used by individual tool configuration files to define how a tool is installed and configured.
  *
  * Tasks:
- * - [x] Implement the ToolConfigBuilder class with methods: bin, version, install, hooks, zsh, symlink, arch, completions.
+ * - [x] Implement the ToolConfigBuilder class with methods: bin, version, install, hooks, zsh, symlink, platform, completions.
  * - [x] Ensure each method returns 'this' for chaining.
  * - [x] Store the configuration details internally within the class instance.
  * - [x] Add JSDoc comments for each method.
@@ -37,7 +37,7 @@ import {
 } from '../../types';
 
 class PlatformConfigBuilderImpl implements PlatformConfigBuilderInterface {
-  private config: Partial<Omit<ToolConfig, 'name' | 'archOverrides' | 'platformConfigs'>> = {};
+  private config: Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>> = {};
   private clientLogger = createClientLogger({});
   private toolName: string; // For logging context
 
@@ -112,7 +112,7 @@ class PlatformConfigBuilderImpl implements PlatformConfigBuilderInterface {
     return this;
   }
 
-  build(): Partial<Omit<ToolConfig, 'name' | 'archOverrides' | 'platformConfigs'>> {
+  build(): Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>> {
     // Ensure binaries is an array if not set but install method implies it
     // This check is more for internal consistency; Zod schema handles final validation.
     if (this.config.installationMethod && this.config.installationMethod !== 'none' && (!this.config.binaries || this.config.binaries.length === 0)) {
@@ -131,7 +131,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private currentInstallParams?: ToolConfigInstallParams;
   private zshScripts: string[] = [];
   private symlinkPairs: { source: string; target: string }[] = [];
-  private archOverrideConfigs: { [key: string]: (c: ToolConfigBuilderInterface) => void } = {}; // Use imported interface
   private completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
@@ -185,11 +184,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
   symlink(source: string, target: string): this {
     this.symlinkPairs.push({ source, target });
-    return this;
-  }
-
-  arch(osArch: string, configureOverrides: (c: ToolConfigBuilderInterface) => void): this {
-    this.archOverrideConfigs[osArch] = configureOverrides;
     return this;
   }
 
@@ -247,37 +241,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       completions: this.completionSettings,
       updateCheck: this.updateCheckConfig,
-      // archOverrides will be populated below if there are any.
-      archOverrides: undefined,
       platformConfigs: this.platformConfigEntries.length > 0 ? this.platformConfigEntries : undefined,
     };
-
-    if (Object.keys(this.archOverrideConfigs).length > 0) {
-      baseProperties.archOverrides = {};
-      for (const osArch in this.archOverrideConfigs) {
-        const overrideConfigureFn = this.archOverrideConfigs[osArch];
-        if (overrideConfigureFn) { 
-          // Create a new builder instance for the override.
-          // This is a simplified approach for the builder. The loader might do more sophisticated merging.
-          const overrideBuilder = new ToolConfigBuilder(`${this.toolName}-${osArch}-override`);
-          overrideConfigureFn(overrideBuilder); 
-          // We take the built partial config. Note: name and archOverrides from this sub-build are ignored.
-          const builtOverride = overrideBuilder.build();
-        baseProperties.archOverrides[osArch] = { 
-          binaries: builtOverride.binaries,
-          version: builtOverride.version,
-          installationMethod: builtOverride.installationMethod,
-          installParams: builtOverride.installParams,
-          zshInit: builtOverride.zshInit,
-          symlinks: builtOverride.symlinks,
-          completions: builtOverride.completions,
-          updateCheck: builtOverride.updateCheck,
-          // platformConfigs from an archOverride are not typically expected/handled here.
-        };
-      } 
-    } 
-  } 
-
 
     if (this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams) {
       return {
@@ -295,11 +260,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       finalBinaries.length === 0 &&
       !baseProperties.zshInit &&
       !baseProperties.symlinks &&
-      (!baseProperties.archOverrides || Object.keys(baseProperties.archOverrides).length === 0) &&
       (!baseProperties.platformConfigs || baseProperties.platformConfigs.length === 0)
     ) {
       throw new Error(
-        `Tool "${this.toolName}" must define at least binaries, zshInit, symlinks, archOverrides, or platformConfigs.`
+        `Tool "${this.toolName}" must define at least binaries, zshInit, symlinks, or platformConfigs.`
       );
     }
 
