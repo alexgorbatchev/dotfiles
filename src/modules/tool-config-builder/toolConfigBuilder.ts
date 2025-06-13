@@ -17,110 +17,24 @@
  */
 
 import { createClientLogger } from '@modules/logger';
-import {
-  type Architecture,
-  type AsyncInstallHook,
-  type BrewInstallParams,
-  type CompletionConfig,
-  type CurlScriptInstallParams,
-  type CurlTarInstallParams,
-  type GithubReleaseInstallParams,
-  type ManualInstallParams,
-  type Platform,
-  type PlatformConfigBuilder as PlatformConfigBuilderInterface,
-  type PlatformConfigEntry,
-  type ToolConfig,
-  type ToolConfigBuilder as ToolConfigBuilderInterface,
-  type ToolConfigInstallationMethod,
-  type ToolConfigInstallParams,
-  type ToolConfigUpdateCheck,
+import type {
+  Architecture,
+  AsyncInstallHook,
+  BrewInstallParams,
+  CompletionConfig,
+  CurlScriptInstallParams,
+  CurlTarInstallParams,
+  GithubReleaseInstallParams,
+  ManualInstallParams,
+  PlatformConfigEntry,
+  ToolConfig,
+  ToolConfigBuilder as ToolConfigBuilderInterface,
+  ToolConfigInstallationMethod,
+  ToolConfigInstallParams,
+  ToolConfigUpdateCheck,
 } from '../../types';
+import { Platform } from '../../types/platform.types';
 
-class PlatformConfigBuilderImpl implements PlatformConfigBuilderInterface {
-  private config: Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>> = {};
-  private clientLogger = createClientLogger({});
-  private toolName: string; // For logging context
-
-  constructor(toolName: string) {
-    this.toolName = toolName;
-    // Initialize with a 'none' installation method by default for platform configs
-    this.config.installationMethod = 'none';
-    this.config.installParams = undefined;
-  }
-
-  bin(names: string | string[]): this {
-    this.config.binaries = Array.isArray(names) ? names : [names];
-    return this;
-  }
-
-  version(version: string): this {
-    this.config.version = version;
-    return this;
-  }
-
-  install(method: 'github-release', params: GithubReleaseInstallParams): this;
-  install(method: 'brew', params: BrewInstallParams): this;
-  install(method: 'curl-script', params: CurlScriptInstallParams): this;
-  install(method: 'curl-tar', params: CurlTarInstallParams): this;
-  install(method: 'manual', params: ManualInstallParams): this;
-  install(method: ToolConfigInstallationMethod, params: ToolConfigInstallParams): this {
-    if (method === 'none') {
-      this.clientLogger.warn(
-        `[PlatformConfigBuilderImpl] 'none' is not a valid installation method for platform-specific config for tool "${this.toolName}". Ignoring.`
-      );
-      return this;
-    }
-    this.config.installationMethod = method;
-    this.config.installParams = params;
-    return this;
-  }
-
-  hooks(hooks: {
-    beforeInstall?: AsyncInstallHook;
-    afterDownload?: AsyncInstallHook;
-    afterExtract?: AsyncInstallHook;
-    afterInstall?: AsyncInstallHook;
-  }): this {
-    if (this.config.installParams) {
-      this.config.installParams.hooks = { ...this.config.installParams.hooks, ...hooks };
-    } else {
-      this.clientLogger.warn(
-        `[PlatformConfigBuilderImpl] hooks() called for tool "${this.toolName}" platform config before install(). Hooks will not be set.`
-      );
-    }
-    return this;
-  }
-
-  zsh(code: string): this {
-    if (!this.config.zshInit) {
-      this.config.zshInit = [];
-    }
-    this.config.zshInit.push(code);
-    return this;
-  }
-
-  symlink(source: string, target: string): this {
-    if (!this.config.symlinks) {
-      this.config.symlinks = [];
-    }
-    this.config.symlinks.push({ source, target });
-    return this;
-  }
-
-  completions(config: CompletionConfig): this {
-    this.config.completions = config;
-    return this;
-  }
-
-  build(): Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>> {
-    // Ensure binaries is an array if not set but install method implies it
-    // This check is more for internal consistency; Zod schema handles final validation.
-    if (this.config.installationMethod && this.config.installationMethod !== 'none' && (!this.config.binaries || this.config.binaries.length === 0)) {
-        // this.clientLogger.debug(`[PlatformConfigBuilderImpl] Tool "${this.toolName}" platform config has installation method but no binaries defined.`);
-    }
-    return this.config;
-  }
-}
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private clientLogger = createClientLogger({});
@@ -135,8 +49,11 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
-  constructor(toolName: string) {
+  private isPlatformScope: boolean;
+
+  constructor(toolName: string, isPlatformScope = false) {
     this.toolName = toolName;
+    this.isPlatformScope = isPlatformScope;
   }
 
   bin(names: string | string[]): this {
@@ -189,11 +106,11 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
   platform(
     platforms: Platform,
-    architecturesOrConfigure: Architecture | ((builder: PlatformConfigBuilderInterface) => void),
-    configureCallback?: (builder: PlatformConfigBuilderInterface) => void,
+    architecturesOrConfigure: Architecture | ((builder: ToolConfigBuilderInterface) => void),
+    configureCallback?: (builder: ToolConfigBuilderInterface) => void,
   ): this {
     let targetArchitectures: Architecture | undefined;
-    let configureFn: (builder: PlatformConfigBuilderInterface) => void;
+    let configureFn: (builder: ToolConfigBuilderInterface) => void;
 
     if (typeof architecturesOrConfigure === 'function') {
       configureFn = architecturesOrConfigure;
@@ -208,7 +125,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       configureFn = configureCallback;
     }
 
-    const platformBuilder = new PlatformConfigBuilderImpl(this.toolName);
+    const platformBuilder = new ToolConfigBuilder(this.toolName, true);
     configureFn(platformBuilder);
     const platformConfig = platformBuilder.build();
 
@@ -233,45 +150,89 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   build(): ToolConfig {
-    const baseProperties: Partial<ToolConfig> = {
-      name: this.toolName,
-      binaries: this.binaries,
-      version: this.versionNum,
-      zshInit: this.zshScripts.length > 0 ? this.zshScripts : undefined,
-      symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
-      completions: this.completionSettings,
-      updateCheck: this.updateCheckConfig,
-      platformConfigs: this.platformConfigEntries.length > 0 ? this.platformConfigEntries : undefined,
-    };
+    // Always return a valid ToolConfig, even for platform scope
+    const name = this.toolName;
+    const binaries = this.binaries;
+    const version = this.versionNum;
+    const zshInit = this.zshScripts.length > 0 ? this.zshScripts : undefined;
+    const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
+    const completions = this.completionSettings;
+    const updateCheck = this.updateCheckConfig;
+    const platformConfigs = this.isPlatformScope ? undefined : (this.platformConfigEntries.length > 0 ? this.platformConfigEntries : undefined);
 
     if (this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams) {
-      return {
-        ...baseProperties,
-        installationMethod: this.currentInstallationMethod,
-        installParams: this.currentInstallParams,
-        binaries: (baseProperties.binaries && baseProperties.binaries.length > 0) ? baseProperties.binaries : [],
-      } as ToolConfig;
+      // Discriminated union: must match the correct type for each installationMethod
+      const base = {
+        name,
+        binaries: binaries && binaries.length > 0 ? binaries : [],
+        version,
+        zshInit,
+        symlinks,
+        completions,
+        updateCheck,
+      };
+      switch (this.currentInstallationMethod) {
+        case 'github-release':
+          return {
+            ...base,
+            installationMethod: 'github-release',
+            installParams: this.currentInstallParams as GithubReleaseInstallParams,
+          };
+        case 'brew':
+          return {
+            ...base,
+            installationMethod: 'brew',
+            installParams: this.currentInstallParams as BrewInstallParams,
+          };
+        case 'curl-script':
+          return {
+            ...base,
+            installationMethod: 'curl-script',
+            installParams: this.currentInstallParams as CurlScriptInstallParams,
+          };
+        case 'curl-tar':
+          return {
+            ...base,
+            installationMethod: 'curl-tar',
+            installParams: this.currentInstallParams as CurlTarInstallParams,
+          };
+        case 'manual':
+          return {
+            ...base,
+            installationMethod: 'manual',
+            installParams: this.currentInstallParams as ManualInstallParams,
+          };
+        default:
+          throw new Error(
+            `Tool "${name}" has unknown installationMethod: ${this.currentInstallationMethod}`
+          );
+      }
     }
 
-    const finalBinaries =
-      baseProperties.binaries && baseProperties.binaries.length > 0 ? baseProperties.binaries : [];
+    const finalBinaries = binaries && binaries.length > 0 ? binaries : [];
 
     if (
       finalBinaries.length === 0 &&
-      !baseProperties.zshInit &&
-      !baseProperties.symlinks &&
-      (!baseProperties.platformConfigs || baseProperties.platformConfigs.length === 0)
+      !zshInit &&
+      !symlinks &&
+      (!platformConfigs || platformConfigs.length === 0)
     ) {
       throw new Error(
-        `Tool "${this.toolName}" must define at least binaries, zshInit, symlinks, or platformConfigs.`
+        `Tool "${name}" must define at least binaries, zshInit, symlinks, or platformConfigs.`
       );
     }
 
     return {
-      ...baseProperties,
+      name,
       binaries: finalBinaries,
+      version,
+      zshInit,
+      symlinks,
+      completions,
+      updateCheck,
+      platformConfigs,
       installationMethod: 'none',
       installParams: undefined,
-    } as ToolConfig;
+    };
   }
 }

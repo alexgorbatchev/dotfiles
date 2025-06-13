@@ -119,6 +119,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
     // Generic Linux config (optional, could be empty or have common settings)
     builder.platform(Platform.Linux, (pb) => {
         pb.version('linux-common'); // Example common setting
+        pb.bin('linux-common-bin'); // Ensure at least one binary is set for platform config
     });
 
     // Linux X86_64 specific

@@ -397,67 +397,6 @@ export interface PlatformConfigBuilder {
  *  Methods are chainable, allowing for a declarative way to define how a tool
  *  should be named, versioned, installed, and integrated into the system.
  */
-export interface PlatformConfigBuilder {
-  /**
-   * Specifies the name(s) of the binary or binaries that this tool provides for this specific platform configuration.
-   * @param names - A single binary name or an array of binary names.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  bin(names: string | string[]): this;
-
-  /**
-   * Specifies the desired version of the tool for this specific platform configuration.
-   * @param version - The version string or constraint.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  version(version: string): this;
-
-  /**
-   * Configures the installation method for this specific platform configuration.
-   * @param method - The installation method.
-   * @param params - Parameters specific to the chosen installation method.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  install(method: 'github-release', params: GithubReleaseInstallParams): this;
-  install(method: 'brew', params: BrewInstallParams): this;
-  install(method: 'curl-script', params: CurlScriptInstallParams): this;
-  install(method: 'curl-tar', params: CurlTarInstallParams): this;
-  install(method: 'manual', params: ManualInstallParams): this;
-
-  /**
-   * Defines asynchronous TypeScript hook functions for this specific platform configuration.
-   * @param hooks - An object containing one or more optional hook functions.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  hooks(hooks: {
-    beforeInstall?: AsyncInstallHook;
-    afterDownload?: AsyncInstallHook;
-    afterExtract?: AsyncInstallHook;
-    afterInstall?: AsyncInstallHook;
-  }): this;
-
-  /**
-   * Adds raw Zsh shell code for this specific platform configuration.
-   * @param code - A string containing valid Zsh script code.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  zsh(code: string): this;
-
-  /**
-   * Configures a symbolic link for this specific platform configuration.
-   * @param source - The path to the source file/directory.
-   * @param target - The path where the symlink should be created.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  symlink(source: string, target: string): this;
-
-  /**
-   * Configures shell command-line completions for this specific platform configuration.
-   * @param config - A `CompletionConfig` object.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  completions(config: CompletionConfig): this;
-}
 
 /**
  * Defines the fluent interface for configuring a tool.
