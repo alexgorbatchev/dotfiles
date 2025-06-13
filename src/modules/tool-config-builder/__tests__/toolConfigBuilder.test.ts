@@ -21,8 +21,9 @@
  */
 
 import { expect, test, describe, spyOn, mock } from 'bun:test';
-import { ToolConfigBuilder, type IToolConfigBuilder } from '../index'; 
-import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types'; 
+import { ToolConfigBuilder } from '../index';
+import type { ToolConfigBuilder as ToolConfigBuilderType } from '@types';
+import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
 import * as clientLoggerModule from '@modules/logger';
 
 describe('ToolConfigBuilder', () => {
@@ -104,7 +105,7 @@ describe('ToolConfigBuilder', () => {
     expect(mockCreateClientLogger).toHaveBeenCalledTimes(1);
     expect(mockWarn).toHaveBeenCalledTimes(1);
     expect(mockWarn).toHaveBeenCalledWith(
-      `[ToolConfigBuilder] hooks() called for tool "test-tool" before install(). Hooks will not be set.`
+      `[ToolConfigBuilder] hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.`
     );
 
     // Restore mocks
@@ -132,8 +133,9 @@ describe('ToolConfigBuilder', () => {
 
   test('arch method stores architecture overrides correctly and reflects in build', () => {
     const builder = new ToolConfigBuilder('test-tool');
-    const overrideFn = (c: IToolConfigBuilder) => {
+    const overrideFn = (c: ToolConfigBuilderType) => { // Use the correctly imported interface type
       c.version('2.0.0');
+      c.bin(['arch-specific-tool']); // Add a binary to make the override config valid
     };
     builder.arch('darwin-aarch64', overrideFn);
     // Test that the override function is stored internally
@@ -144,7 +146,18 @@ describe('ToolConfigBuilder', () => {
     // Build the config (it needs at least one defining property like binaries, zsh, or symlinks)
     builder.bin(['test-bin']); // Add a binary to make it a valid NoInstallToolConfig
     const configWithArch = builder.build();
-    expect(configWithArch.archOverrides).toEqual({}); // Should be an empty object placeholder
+    expect(configWithArch.archOverrides).toEqual({
+      'darwin-aarch64': {
+        version: '2.0.0',
+        binaries: ['arch-specific-tool'],
+        completions: undefined,
+        installParams: undefined,
+        installationMethod: 'none',
+        symlinks: undefined,
+        updateCheck: undefined,
+        zshInit: undefined,
+      },
+    });
 
     const builderNoArch = new ToolConfigBuilder('test-tool-no-arch');
     builderNoArch.bin(['test-bin']);
@@ -230,7 +243,7 @@ describe('ToolConfigBuilder', () => {
   test('build method throws error if nothing is configured', () => {
     const builder = new ToolConfigBuilder('test-tool');
     expect(() => builder.build()).toThrow(
-      'Tool "test-tool" must define at least binaries, zshInit, or symlinks.'
+      'Tool "test-tool" must define at least binaries, zshInit, symlinks, archOverrides, or platformConfigs.'
     );
   });
 

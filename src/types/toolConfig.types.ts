@@ -1,12 +1,24 @@
 /**
  * @file generator/src/types/toolConfig.types.ts
  * @description Types related to tool configuration.
+ *
+ * ## Development Plan
+ *
+ * - [x] Define all core types for tool configuration (ToolConfig, InstallParams, hooks, etc.).
+ * - [x] Add JSDoc comments to all exported types and interfaces.
+ * - [x] Refactor ToolConfig to be a discriminated union based on installationMethod.
+ * - [x] Ensure platform-specific configuration types are robust.
+ * - [x] Remove all commented out code and meta-comments.
+ * - [ ] Write tests for the module (Covered by tests of consuming modules like toolConfigBuilder and configLoader).
+ * - [ ] Fix all errors and warnings.
+ * - [ ] Ensure 100% test coverage for executable code (N/A for type definitions).
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
-
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
 import type { CompletionConfig } from './completion.types';
 import type { GitHubReleaseAsset } from './githubApi.types';
+import type { Platform, Architecture } from './platform.types';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.
@@ -312,6 +324,144 @@ export type InstallParams =
 /**
  * Defines the fluent interface for configuring a tool.
  * An instance of this builder is passed to the `AsyncConfigureTool` function
+ *  in each tool's configuration file (e.g., `fzf.tool.ts`).
+ *  Methods are chainable, allowing for a declarative way to define how a tool
+ *  should be named, versioned, installed, and integrated into the system.
+ */
+export interface PlatformConfigBuilder {
+  /**
+   * Specifies the name(s) of the binary or binaries that this tool provides for this specific platform configuration.
+   * @param names - A single binary name or an array of binary names.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  bin(names: string | string[]): this;
+
+  /**
+   * Specifies the desired version of the tool for this specific platform configuration.
+   * @param version - The version string or constraint.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  version(version: string): this;
+
+  /**
+   * Configures the installation method for this specific platform configuration.
+   * @param method - The installation method.
+   * @param params - Parameters specific to the chosen installation method.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  install(method: 'github-release', params: GithubReleaseInstallParams): this;
+  install(method: 'brew', params: BrewInstallParams): this;
+  install(method: 'curl-script', params: CurlScriptInstallParams): this;
+  install(method: 'curl-tar', params: CurlTarInstallParams): this;
+  install(method: 'manual', params: ManualInstallParams): this;
+
+  /**
+   * Defines asynchronous TypeScript hook functions for this specific platform configuration.
+   * @param hooks - An object containing one or more optional hook functions.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  hooks(hooks: {
+    beforeInstall?: AsyncInstallHook;
+    afterDownload?: AsyncInstallHook;
+    afterExtract?: AsyncInstallHook;
+    afterInstall?: AsyncInstallHook;
+  }): this;
+
+  /**
+   * Adds raw Zsh shell code for this specific platform configuration.
+   * @param code - A string containing valid Zsh script code.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  zsh(code: string): this;
+
+  /**
+   * Configures a symbolic link for this specific platform configuration.
+   * @param source - The path to the source file/directory.
+   * @param target - The path where the symlink should be created.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  symlink(source: string, target: string): this;
+
+  /**
+   * Configures shell command-line completions for this specific platform configuration.
+   * @param config - A `CompletionConfig` object.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  completions(config: CompletionConfig): this;
+}
+
+/**
+ * Defines the fluent interface for configuring a tool.
+ * An instance of this builder is passed to the `AsyncConfigureTool` function
+ *  in each tool's configuration file (e.g., `fzf.tool.ts`).
+ *  Methods are chainable, allowing for a declarative way to define how a tool
+ *  should be named, versioned, installed, and integrated into the system.
+ */
+export interface PlatformConfigBuilder {
+  /**
+   * Specifies the name(s) of the binary or binaries that this tool provides for this specific platform configuration.
+   * @param names - A single binary name or an array of binary names.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  bin(names: string | string[]): this;
+
+  /**
+   * Specifies the desired version of the tool for this specific platform configuration.
+   * @param version - The version string or constraint.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  version(version: string): this;
+
+  /**
+   * Configures the installation method for this specific platform configuration.
+   * @param method - The installation method.
+   * @param params - Parameters specific to the chosen installation method.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  install(method: 'github-release', params: GithubReleaseInstallParams): this;
+  install(method: 'brew', params: BrewInstallParams): this;
+  install(method: 'curl-script', params: CurlScriptInstallParams): this;
+  install(method: 'curl-tar', params: CurlTarInstallParams): this;
+  install(method: 'manual', params: ManualInstallParams): this;
+
+  /**
+   * Defines asynchronous TypeScript hook functions for this specific platform configuration.
+   * @param hooks - An object containing one or more optional hook functions.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  hooks(hooks: {
+    beforeInstall?: AsyncInstallHook;
+    afterDownload?: AsyncInstallHook;
+    afterExtract?: AsyncInstallHook;
+    afterInstall?: AsyncInstallHook;
+  }): this;
+
+  /**
+   * Adds raw Zsh shell code for this specific platform configuration.
+   * @param code - A string containing valid Zsh script code.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  zsh(code: string): this;
+
+  /**
+   * Configures a symbolic link for this specific platform configuration.
+   * @param source - The path to the source file/directory.
+   * @param target - The path where the symlink should be created.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  symlink(source: string, target: string): this;
+
+  /**
+   * Configures shell command-line completions for this specific platform configuration.
+   * @param config - A `CompletionConfig` object.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  completions(config: CompletionConfig): this;
+}
+
+/**
+ * Defines the fluent interface for configuring a tool.
+ * An instance of this builder is passed to the `AsyncConfigureTool` function
  * in each tool's configuration file (e.g., `fzf.tool.ts`).
  * Methods are chainable, allowing for a declarative way to define how a tool
  * should be named, versioned, installed, and integrated into the system.
@@ -496,7 +646,38 @@ export interface ToolConfigBuilder {
    *   macIntel.install('brew', { formula: 'tool-for-intel-macs' });
    * });
    */
-  arch(osArch: string, configureOverrides: (c: ToolConfigBuilder) => void): this;
+  arch(osArch: string, configureOverrides: (c: ToolConfigBuilder) => void): this; // To be deprecated
+
+  /**
+   * Defines platform-specific configurations for the tool.
+   * This allows tailoring installation methods, binaries, versions, etc., for different
+   * operating systems and optionally CPU architectures.
+   *
+   * @param platforms - A bitmask of `Platform` enum values specifying the target operating systems.
+   * @param architecturesOrConfigure - Either a bitmask of `Architecture` enum values or the configuration callback.
+   * @param configure (optional) - The callback function that receives a `PlatformConfigBuilder` instance
+   *                               to define the overrides for the specified platform(s) and architecture(s).
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * // Configure for Linux and MacOS
+   * c.platform(Platform.Linux | Platform.MacOS, (builder) => {
+   *   builder.install('github-release', { repo: 'owner/tool', assetPattern: '*unix*.tar.gz' });
+   * });
+   *
+   * // Configure for Windows on Arm64
+   * c.platform(Platform.Windows, Architecture.Arm64, (builder) => {
+   *   builder.install('manual', { binaryPath: 'C:\\custom\\tool-arm64.exe' });
+   * });
+   */
+  platform(
+    platforms: Platform,
+    configure: (builder: PlatformConfigBuilder) => void,
+  ): this;
+  platform(
+    platforms: Platform,
+    architectures: Architecture,
+    configure: (builder: PlatformConfigBuilder) => void,
+  ): this;
 
   /**
    * Configures shell command-line completions for the tool.
@@ -557,6 +738,20 @@ export type ToolConfigUpdateCheck = {
 };
 
 /**
+ * Represents a single platform-specific configuration entry.
+ * It specifies the target platforms (and optionally architectures) and the
+ * configuration overrides that apply to them.
+ */
+export interface PlatformConfigEntry {
+  /** A bitmask of target platforms for this configuration. */
+  platforms: Platform;
+  /** An optional bitmask of target architectures for this configuration. If undefined, applies to all architectures on the specified platforms. */
+  architectures?: Architecture;
+  /** The actual configuration settings for this platform/architecture combination. This would be the result of the PlatformConfigBuilder. */
+  config: Partial<Omit<ToolConfig, 'name' | 'archOverrides' | 'platformConfigs'>>; // Similar to archOverrides, but for platforms
+}
+
+/**
  * Base properties common to all variants of a fully resolved {@link ToolConfig}.
  * This represents the internal data structure after the `ToolConfigBuilder` has been processed.
  */
@@ -586,6 +781,25 @@ interface BaseToolConfigProperties {
    * Configuration for automatic update checking for this tool.
    */
   updateCheck?: ToolConfigUpdateCheck;
+  /**
+   * An array of platform-specific configurations.
+   * Each entry defines configurations for a specific set of platforms and optionally architectures.
+   */
+  platformConfigs?: PlatformConfigEntry[];
+}
+
+/**
+ * Represents a single platform-specific configuration entry.
+ * It specifies the target platforms (and optionally architectures) and the
+ * configuration overrides that apply to them.
+ */
+export interface PlatformConfigEntry {
+  /** A bitmask of target platforms for this configuration. */
+  platforms: Platform;
+  /** An optional bitmask of target architectures for this configuration. If undefined, applies to all architectures on the specified platforms. */
+  architectures?: Architecture;
+  /** The actual configuration settings for this platform/architecture combination. This would be the result of the PlatformConfigBuilder. */
+  config: Partial<Omit<ToolConfig, 'name' | 'archOverrides' | 'platformConfigs'>>; // Similar to archOverrides, but for platforms
 }
 
 /** Resolved tool configuration for the 'github-release' installation method. */

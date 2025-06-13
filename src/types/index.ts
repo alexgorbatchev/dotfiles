@@ -47,5 +47,6 @@ export * from './completion.types';
 export * from './download.types';
 export * from './githubApi.types';
 export * from './manifest.types';
+export * from './platform.types';
 export * from './toolConfig.types';
 export * from './version.types';

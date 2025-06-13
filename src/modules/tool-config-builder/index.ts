@@ -5,4 +5,4 @@
  * This file exports the public API of the ToolConfigBuilder module.
  */
 
-export { ToolConfigBuilder, type IToolConfigBuilder } from './toolConfigBuilder';
+export { ToolConfigBuilder } from './toolConfigBuilder';
