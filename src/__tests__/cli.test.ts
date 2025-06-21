@@ -55,7 +55,7 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test, type Mock }
 import { Command } from 'commander'; // Import Command directly
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance directly
 import * as path from 'node:path'; // For constructing paths in mocks
-import * as ExitCli from '@exitCli';
+import * as ExitCli from '@modules/cli/exitCli';
 import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs';
 import * as cliModuleActual from '../cli'; // Import the actual module
 

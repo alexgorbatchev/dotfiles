@@ -28,7 +28,7 @@ import { createLogger as createDebugLoggerInternal, createClientLogger } from '@
 import type { ConsolaInstance } from 'consola';
 import type { Command } from 'commander';
 import { setupServices } from '../../cli'; // Import setupServices
-import { exitCli } from '../../exitCli';
+import { exitCli } from './exitCli';
 
 const commandInternalLog = createDebugLoggerInternal('installCommand');
 

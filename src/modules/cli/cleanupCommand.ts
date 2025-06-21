@@ -33,7 +33,7 @@ import { createLogger, createClientLogger } from '@modules/logger';
 import type { GeneratedArtifactsManifest } from '@types';
 import type { Command } from 'commander';
 import type { ConsolaInstance } from 'consola';
-import { exitCli } from '@exitCli';
+import { exitCli } from '@modules/cli/exitCli';
 import { setupServices } from '../../cli';
 
 const log = createLogger('cleanupCommand');

@@ -74,7 +74,7 @@ import { registerDetectConflictsCommand } from '@modules/cli/detectConflictsComm
 import { Command } from 'commander';
 import path from 'path'; // Removed 'node:' prefix
 import os from 'os'; // Assuming 'os' resolves correctly, if not, will adjust
-import { exitCli } from '@exitCli'; // Corrected import to use the alias
+import { exitCli } from '@modules/cli/exitCli'; // Corrected import to use the alias
 
 const internalLog = createLogger('cli'); // createDebugLoggerInternal is defined from @modules/logger
 

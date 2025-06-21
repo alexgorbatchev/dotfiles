@@ -41,7 +41,7 @@ import { loadToolConfigsFromDirectory, loadSingleToolConfig } from '@modules/con
 import type { GithubReleaseToolConfig, ToolConfig } from '@types';
 import { createLogger as createDebugLoggerInternal, createClientLogger } from '@modules/logger'; // Added createClientLogger
 import { setupServices } from '../../cli'; // Import setupServices
-import { exitCli } from '../../exitCli'; // Added
+import { exitCli } from './exitCli'; // Added
 
 const commandInternalLog = createDebugLoggerInternal('checkUpdatesCommand');
 

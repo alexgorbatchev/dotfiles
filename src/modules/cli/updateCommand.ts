@@ -38,7 +38,7 @@ import type { GithubReleaseToolConfig, ToolConfig } from '@types';
 import type { Command } from 'commander';
 import type { ConsolaInstance } from 'consola';
 import { setupServices } from '../../cli'; // Import setupServices
-import { exitCli } from '../../exitCli';
+import { exitCli } from './exitCli';
 
 const commandInternalLog = createDebugLoggerInternal('updateCommand');
 

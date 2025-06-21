@@ -1,5 +1,5 @@
 import { setupServices as actualSetupServices } from '@cli';
-import { exitCli as actualExitCli } from '@exitCli';
+import { exitCli as actualExitCli } from '@modules/cli/exitCli';
 import type { AppConfig } from '@modules/config';
 import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
 import type { IFileSystem } from '@modules/file-system';
@@ -21,7 +21,7 @@ mock.module('@modules/config-loader/loadToolConfigs', () => ({
 }));
 
 const mockActualExitCli = mock(actualExitCli);
-mock.module('@exitCli', () => ({
+mock.module('@modules/cli/exitCli', () => ({
   exitCli: mockActualExitCli,
 }));
 

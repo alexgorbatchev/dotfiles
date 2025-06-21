@@ -5,5 +5,5 @@ export function exitCli(exitCode: number): never {
   }
   // In test environment, throw to signify termination for testing purposes
   // and to satisfy the 'never' return type.
-  throw new Error(`TEST_EXIT_CLI_CALLED_WITH_${exitCode}`);
+  throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${exitCode}`);
 }

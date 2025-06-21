@@ -1,22 +1,19 @@
-import { describe, test, expect, beforeEach, mock } from 'bun:test'; // Import mock
-import path from 'node:path'; // Import path
-import { Command } from 'commander';
-import { registerDetectConflictsCommand, detectConflictsActionLogic } from '../detectConflictsCommand';
-import { createMockAppConfig } from '../../../testing-helpers/createMockAppConfig';
-import { createMockFileSystem, type MockFileSystem } from '../../../testing-helpers/createMockFileSystem';
-import { createMockClientLogger, type MockClientLogger } from '../../../testing-helpers/createMockClientLogger';
-import * as configLoader from '@modules/config-loader/loadToolConfigs';
+import { exitCli } from '@modules/cli/exitCli';
 import type { AppConfig } from '@modules/config';
-import type { ManualToolConfig, GithubReleaseToolConfig } from '@types'; // Removed ToolConfig
-import { exitCli } from '../../../exitCli';
+import * as configLoader from '@modules/config-loader/loadToolConfigs';
 import type { IFileSystem } from '@modules/file-system';
-import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; // Added
-import type { GeneratedArtifactsManifest } from '@types'; // Added
+import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; 
+import { createMockAppConfig, createMockClientLogger, createMockFileSystem, type MockClientLogger, type MockFileSystem } from '@testing-helpers';
+import type { GeneratedArtifactsManifest, GithubReleaseToolConfig, ManualToolConfig } from '@types'; 
+import { beforeEach, describe, expect, mock, test } from 'bun:test'; 
+import { Command } from 'commander';
+import path from 'node:path'; 
+import { detectConflictsActionLogic, registerDetectConflictsCommand } from '../detectConflictsCommand';
 
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance
 
 // Mock exitCli
-mock.module('../../../exitCli', () => ({ // Use mock.module
+mock.module('@modules/cli/exitCli', () => ({ // Use mock.module
   exitCli: mock((code: number) => { // Use mock()
     throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
   }),

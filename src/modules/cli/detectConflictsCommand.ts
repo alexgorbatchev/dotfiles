@@ -37,7 +37,7 @@ import { createClientLogger, createLogger as createDebugLoggerInternal } from '@
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import type { ToolConfig } from '@types';
-import { exitCli } from '../../exitCli';
+import { exitCli } from './exitCli';
 import { setupServices } from '../../cli'; // Import setupServices
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; // Added for services
 

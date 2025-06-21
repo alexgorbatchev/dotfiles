@@ -37,7 +37,7 @@ import type { Command } from 'commander';
 // Removed unused class import: SymlinkGenerator
 // Removed unused module import: path
 import type { ToolConfig } from '@types';
-import { exitCli } from '@exitCli';
+import { exitCli } from '@modules/cli/exitCli';
 import { setupServices } from '../../cli'; // Import setupServices
 
 const commandInternalLog = createDebugLoggerInternal('generateCommand');
