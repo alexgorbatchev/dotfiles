@@ -68,7 +68,7 @@ import * as cliModuleActual from '../cli'; // Import the actual module
 // --- Pre-test Mocks for dynamic imports used by loadToolConfigs ---
 // These paths must match exactly what loadToolConfigs will try to import.
 // The mockToolConfigsDir in the test case must align with this.
-const MOCK_TOOL_CONFIGS_DIR_FOR_IMPORT_MOCK = path.resolve(process.cwd(), 'test-configs/tools');
+const MOCK_TOOL_CONFIGS_DIR_FOR_IMPORT_MOCK = path.resolve('test-configs/tools');
 const FZF_CONFIG_PATH_FOR_IMPORT_MOCK = path.join(
   MOCK_TOOL_CONFIGS_DIR_FOR_IMPORT_MOCK,
   'fzf.tool.ts'
@@ -256,7 +256,7 @@ describe('CLI', () => {
     // Default implementation for setupServicesSpy
     // This will be active unless a specific test overrides it.
     // Default implementation for setupServicesSpy, used by registerAllCommands
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean }) => {
+    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
       const fsInstance = options?.dryRun ? new MemFileSystem() : mockFileSystem; // mockFileSystem is global
       return {
         appConfig: defaultMockAppConfig,
@@ -306,7 +306,7 @@ describe('CLI', () => {
     const mockOrchestrator = { generateAll: mockGenerateAll } as IGeneratorOrchestrator;
 
     // This mockImplementation will be used by the action handler's call to setupServices
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean }) => {
+    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
       expect(options?.dryRun).toBe(false);
       return {
         appConfig: mockAppConfig,
@@ -372,7 +372,7 @@ describe('CLI', () => {
         'lazygit': lazygitConfigObjectForImportMock,
     };
     // Specific mock for setupServices for the dry-run action handler call
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean }) => {
+    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
       expect(options?.dryRun).toBe(true);
       return {
         appConfig: defaultMockAppConfig, // Or a specific one for dry-run if needed
@@ -436,7 +436,7 @@ describe('CLI', () => {
     const testError = new Error('generateActionLogic failed!');
     
     // Mock setupServices for the action handler's call
-    setupServicesSpy.mockImplementation(async () => ({
+    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
         appConfig: defaultMockAppConfig,
         fs: mockFileSystem, // Use the global mock
         generatorOrchestrator: mockGeneratorOrchestrator,
@@ -482,7 +482,7 @@ describe('CLI', () => {
     // Configure setupServicesSpy for the sequence of calls expected during cliModuleActual.main()
     // 1. First call (from registerAllCommands within main()): Should succeed.
     //    We use the default implementation captured from beforeEach or a fresh one.
-    const defaultSetupImplementation = async (options?: { dryRun?: boolean }) => {
+    const defaultSetupImplementation = async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
       const fsInstance = options?.dryRun ? new MemFileSystem() : mockFileSystem;
       return {
         appConfig: defaultMockAppConfig,
@@ -504,9 +504,7 @@ describe('CLI', () => {
       .mockImplementationOnce(defaultSetupImplementation) // For registerAllCommands in main()
       .mockRejectedValueOnce(specificTestError);        // For the install action's call in main()
 
-    const originalArgv = process.argv;
     const toolToInstallInMainTest = 'failing-tool-in-main';
-    process.argv = ['bun', 'cli.ts', 'install', toolToInstallInMainTest];
     
     const mockToolConfigForMainTest: ToolConfig = {
       name: toolToInstallInMainTest,
@@ -523,7 +521,7 @@ describe('CLI', () => {
 
     // Execute main() and handle the error
     try {
-      await cliModuleActual.main();
+      await cliModuleActual.main(['bun', 'cli.ts', 'install', toolToInstallInMainTest]);
       // If we get here, the test should fail because main() should have thrown
       expect(true).toBe(false); // This will fail the test if main() doesn't throw
     } catch (error) {
@@ -551,8 +549,6 @@ describe('CLI', () => {
     expect(exitCliSpy).toHaveBeenNthCalledWith(1, 1);
     expect(exitCliSpy).toHaveBeenNthCalledWith(2, 1);
     expect(exitCliSpy).toHaveBeenNthCalledWith(3, 1);
-
-    process.argv = originalArgv; // Restore original argv
   });
 
   test('install command should call installer.install with correct parameters', async () => {
@@ -561,7 +557,7 @@ describe('CLI', () => {
     const currentTestMockFs = new NodeFileSystem();
     const currentTestMockInstaller = { install: mock(async () => ({ success: true, binaryPath: 'path', version: '1' })) };
 
-    setupServicesSpy.mockImplementationOnce(async () => ({ // For the action handler's call
+    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({ // For the action handler's call
       appConfig: currentTestMockAppConfig,
       fs: currentTestMockFs,
       installer: currentTestMockInstaller,
@@ -614,7 +610,7 @@ describe('CLI', () => {
     const mockToolConfigsDir = '/test/tool/configs/dir';
     const currentTestMockAppConfigOnError = createMockAppConfig({ toolConfigsDir: mockToolConfigsDir });
 
-    setupServicesSpy.mockImplementationOnce(async () => ({ // For the action handler's call
+    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({ // For the action handler's call
       appConfig: currentTestMockAppConfigOnError,
       fs: new NodeFileSystem(),
       installer: mockInstaller, // Use global mockInstaller
@@ -643,7 +639,7 @@ describe('CLI', () => {
     const currentTestMockAppConfigFailure = createMockAppConfig({ toolConfigsDir: '/fake/tools' });
     const failingInstaller = { install: mock(async () => ({ success: false, error: 'Installation failed' })) };
 
-    setupServicesSpy.mockImplementationOnce(async () => ({ // For the action handler's call
+    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({ // For the action handler's call
       appConfig: currentTestMockAppConfigFailure,
       fs: new NodeFileSystem(),
       installer: failingInstaller, // Use specific failing installer
@@ -688,7 +684,7 @@ describe('CLI', () => {
     const flagTestInstaller = { install: mock(async () => ({ success: true, binaryPath: 'path', version: '1' })) };
 
     // Mock for the first parseAsync (force and verbose)
-    setupServicesSpy.mockImplementationOnce(async () => ({
+    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
       appConfig: currentTestMockAppConfigFlags,
       fs: new NodeFileSystem(),
       installer: flagTestInstaller,
@@ -755,7 +751,7 @@ describe('CLI', () => {
 
 
     // Mock for the second parseAsync (quiet)
-    setupServicesSpy.mockImplementationOnce(async () => ({
+    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
       appConfig: currentTestMockAppConfigFlags,
       fs: new NodeFileSystem(),
       installer: flagTestInstaller,
@@ -882,7 +878,7 @@ describe('CLI', () => {
     setupServicesSpy.mockClear(); // Clear beforeEach call
     const emptyChangesInstaller = { install: mock(async () => ({ success: true, binaryPath: '/mock/bin/empty-detail-tool', version: '1.0', otherChanges: [] })) };
     
-    setupServicesSpy.mockImplementationOnce(async () => ({
+    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
       appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
       fs: new NodeFileSystem(),
       installer: emptyChangesInstaller,

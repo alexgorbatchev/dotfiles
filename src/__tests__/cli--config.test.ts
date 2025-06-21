@@ -28,8 +28,6 @@ let generateActionLogicSpy: Mock<typeof generateCommandModule.generateActionLogi
 let loadToolConfigsFromDirectorySpy: Mock<typeof newConfigLoaderModule.loadToolConfigsFromDirectory>;
 
 describe('CLI Global Options --config', () => {
-  const originalArgv = process.argv;
-
   beforeEach(async () => {
     mock.restore()
 
@@ -48,17 +46,13 @@ describe('CLI Global Options --config', () => {
     loadToolConfigsFromDirectorySpy.mockResolvedValue({}); // Default mock
   });
 
-  afterEach(() => {
-    process.argv = originalArgv;
-  });
-
   test('--config option should be parsed and logged if provided', async () => {
     const testConfigPath = './my-test-config.yaml';
-    process.argv = ['node', 'cli.ts', '--config', testConfigPath, 'generate'];
+    const testArgv = ['node', 'cli.ts', '--config', testConfigPath, 'generate'];
 
     generateActionLogicSpy.mockResolvedValue({} as any);
 
-    await actualMain(); // No longer pass testProgram
+    await actualMain(testArgv); // No longer pass testProgram
 
     expect(createClientLoggerSpy).toHaveBeenCalledTimes(2); // Hook + generate action
 
@@ -68,12 +62,12 @@ describe('CLI Global Options --config', () => {
   });
 
   test('--config option should not log config path if not provided, and not error', async () => {
-    process.argv = ['node', 'cli.ts', 'generate']; // No --config
+    const testArgv = ['node', 'cli.ts', 'generate']; // No --config
     generateActionLogicSpy.mockResolvedValue({} as any);
     loadToolConfigsFromDirectorySpy.mockResolvedValue({});
 
 
-    await actualMain(); // No longer pass testProgram
+    await actualMain(testArgv); // No longer pass testProgram
 
     expect(createClientLoggerSpy).toHaveBeenCalledTimes(1); // Only by generate action
     

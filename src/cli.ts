@@ -33,7 +33,8 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage for executable code (covered by `cli.test.ts`).
- * - [x] Update the memory bank with the new information when all tasks are complete.
+ * - [x] Update `setupServices` to accept an `env` parameter and pass it to `createAppConfig`.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { createClientLogger } from '@modules/logger'; // Re-add for parseArg
@@ -97,14 +98,14 @@ export interface Services {
   versionChecker: IVersionChecker; // Added
 }
 
-export async function setupServices(options: { dryRun?: boolean } = {}): Promise<Services> {
+export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.ProcessEnv } = {}): Promise<Services> {
   internalLog('setupServices: Initializing services... options: %o', options);
-  const { dryRun = false } = options;
+  const { dryRun = false, env = process.env } = options;
   const systemInfoForConfig: ConfigModuleSystemInfo = {
     homedir: os.homedir(),
     cwd: process.cwd(),
   };
-  const appConfig = createAppConfig(systemInfoForConfig, process.env as any); // Cast process.env
+  const appConfig = createAppConfig(systemInfoForConfig, env as any); // Cast env
   let fs: IFileSystem; // IFileSystem is now imported
 
   if (dryRun) {
@@ -228,7 +229,7 @@ export async function registerAllCommands(programInstance: Command) {
   registerDetectConflictsCommand(programInstance);
 }
 
-export async function main() {
+export async function main(argv: string[]) {
     const program = new Command(); // Instantiate Command inside main
 
     program
@@ -250,12 +251,12 @@ export async function main() {
     });
 
     await registerAllCommands(program);
-    await program.parseAsync(process.argv);
+    await program.parseAsync(argv);
 }
 
 // Only run main if the script is executed directly
 if (import.meta.main) {
-  main().catch((error) => {
+  main(process.argv).catch((error) => {
     internalLog('main: Top-level unhandled error in main().catch(): %O', error);
     exitCli(1);
   });
