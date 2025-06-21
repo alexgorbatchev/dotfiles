@@ -27,3 +27,4 @@ _.log
 *.tsbuildinfo
 
 tmp
+.qdrant

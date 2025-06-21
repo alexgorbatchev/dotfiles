@@ -6,6 +6,9 @@
  *
  * ## Development Plan
  * - [x] Define `Services` interface.
+ * - [x] Add global --config <path> option.
+ *   - [x] Define option in commander.
+ *   - [x] Log provided path using clientLogger.info() via an 'option:config' hook.
  * - [x] Implement `setupServices` function:
  *   - [x] Initialize `AppConfig`.
  *   - [x] Initialize `IFileSystem` (NodeFileSystem or MemFileSystem based on `dryRun`).
@@ -33,6 +36,7 @@
  * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
+import { createClientLogger } from '@modules/logger'; // Re-add for parseArg
 import {
   createAppConfig,
   type AppConfig,
@@ -202,13 +206,6 @@ export async function setupServices(options: { dryRun?: boolean } = {}): Promise
   };
 }
 
-export const program = new Command();
-
-program
-  .name('generator')
-  .description('CLI tool for managing dotfiles and tool configurations')
-  .version('0.1.0');
-
 export async function registerAllCommands(programInstance: Command) {
   // Each command will call setupServices in its own action handler
 
@@ -232,36 +229,34 @@ export async function registerAllCommands(programInstance: Command) {
 }
 
 export async function main() {
-  try {
+    const program = new Command(); // Instantiate Command inside main
+
+    program
+      .name('generator')
+      .description('CLI tool for managing dotfiles and tool configurations')
+      .version('0.1.0')
+      .option('--config <path>', 'Path to a configuration file', undefined);
+
+    program.on('option:config', function (this: Command, configValue: string | undefined) {
+      // console.log('>>>>>>>>>>>>>>') // Keep this for now if it's helpful for your debugging
+      if (configValue) {
+        const globalOpts = this.opts();
+        const hookLogger = createClientLogger({
+          verbose: globalOpts['verbose'] as boolean | undefined,
+          quiet: globalOpts['quiet'] as boolean | undefined,
+        });
+        hookLogger.info(`Config file path: ${configValue}`);
+      }
+    });
+
     await registerAllCommands(program);
     await program.parseAsync(process.argv);
-  } catch (error) {
-    // This catch block handles errors from registerAllCommands or program.parseAsync
-    // when main() is called directly (e.g., in tests).
-    console.error('Error during main CLI execution:', error);
-    exitCli(1); // Use the imported exitCli directly
-  }
 }
 
 // Only run main if the script is executed directly
 if (import.meta.main) {
   main().catch((error) => {
-    // This .catch() is for when main() itself might throw an unhandled error
-    // (e.g., if exitCli wasn't called or if main had a bug not caught by its own try/catch).
-    // However, with the try/catch now inside main(), this outer catch might only
-    // catch errors if exitCli itself fails to throw properly in a non-test env,
-    // or if there's an issue outside the main try/catch (e.g. top-level await problem if any).
-    // For robustness, we keep a simplified handler.
-    internalLog('main: Top-level unhandled error: %O', error);
-    // Ensure process exits if not already handled by exitCli (which throws in test)
-    if (process.env.NODE_ENV !== 'test') {
-        process.exit(1); // Fallback exit for non-test env if exitCli didn't terminate
-    } else {
-        // In test, if we reached here and exitCli didn't throw, rethrow or throw new.
-        // This path should ideally not be hit if exitCli works as expected.
-        if (!(error instanceof Error && (error.message.startsWith('TEST_EXIT_CLI_CALLED_WITH_') || error.message.startsWith('MOCK_EXIT_CLI_CALLED_')))) {
-          throw error; // Rethrow original error if it wasn't an exit-related throw
-        }
-    }
+    internalLog('main: Top-level unhandled error in main().catch(): %O', error);
+    exitCli(1);
   });
 }

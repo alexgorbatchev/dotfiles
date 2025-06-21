@@ -25,6 +25,10 @@
  * - [x] Test `install` command with `--verbose` flag (formerly `--details`).
  * - [x] Test `install` and `generate` commands with `--quiet` and `--verbose` flags.
  * [x] Ensure 100% test coverage for executable code.
+ * - [x] Add tests for global --config <path> option.
+ *   - [x] Test parsing when provided.
+ *   - [x] Test logging of the path.
+ *   - [x] Test behavior when not provided.
  * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -58,6 +62,7 @@ import * as path from 'node:path'; // For constructing paths in mocks
 import * as ExitCli from '@modules/cli/exitCli';
 import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs';
 import * as cliModuleActual from '../cli'; // Import the actual module
+// Removed unused 'actualMain' import
 
 
 // --- Pre-test Mocks for dynamic imports used by loadToolConfigs ---
@@ -197,6 +202,7 @@ describe('CLI', () => {
     
     if (loadToolConfigsFromDirectorySpy) loadToolConfigsFromDirectorySpy.mockRestore();
     loadToolConfigsFromDirectorySpy = spyOn(newConfigLoaderModule, 'loadToolConfigsFromDirectory');
+    loadToolConfigsFromDirectorySpy.mockResolvedValue({}); // Default mock
     
     if (loadSingleToolConfigSpy) loadSingleToolConfigSpy.mockRestore();
     loadSingleToolConfigSpy = spyOn(newConfigLoaderModule, 'loadSingleToolConfig');
