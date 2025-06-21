@@ -253,12 +253,6 @@ if (import.meta.main) {
     // or if there's an issue outside the main try/catch (e.g. top-level await problem if any).
     // For robustness, we keep a simplified handler.
     internalLog('main: Top-level unhandled error: %O', error);
-    // Avoid calling console.error again if it was already called by main's internal catch.
-    // If error came from exitCli, it's already handled by throwing.
-    // If it's a different error, log it.
-    if (!(error instanceof Error && error.message.startsWith('TEST_EXIT_CLI_CALLED_WITH_')) && !(error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_'))) {
-        console.error('Top-level unhandled error in CLI execution:', error);
-    }
     // Ensure process exits if not already handled by exitCli (which throws in test)
     if (process.env.NODE_ENV !== 'test') {
         process.exit(1); // Fallback exit for non-test env if exitCli didn't terminate
