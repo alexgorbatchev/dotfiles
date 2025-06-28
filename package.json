@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "bun run src/testing-helpers/bun-test-runner.ts",
+    "posttest1": "tsc --noEmit",
     "lint-do-not-use": "tsc --noEmit && eslint . --ext .ts",
     "lint": "tsc --noEmit",
     "fmt": "prettier --write .",
@@ -15,14 +16,13 @@
     "cli": "dotenv -- bun run ./src/cli.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "^1.2.16",
     "@types/debug": "^4.1.12",
     "@types/node": "^22.15.19",
     "@types/semver": "^7.7.0",
     "@types/express": "^5.0.2",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.33.1",
-    "bun-bagel": "^1.2.0",
     "eslint": "^9.28.0",
     "prettier": "^3.5.3",
     "express": "^5.1.0",
@@ -33,14 +33,14 @@
   },
   "dependencies": {
     "commander": "^14.0.0",
+    "consola": "^3.4.2",
     "debug": "^4.4.1",
     "dotenv": "^16.5.0",
     "dotenv-cli": "^8.0.0",
     "memfs": "^4.17.2",
-    "node-fetch": "^3.3.2",
-    "zod": "^3.25.29",
-    "zx": "^8.5.4",
     "semver": "^7.7.2",
-    "consola": "^3.4.2"
+    "yaml": "^2.8.0",
+    "zod": "^3.25.29",
+    "zx": "^8.5.4"
   }
 }
