@@ -179,9 +179,49 @@ let mockClientLogger: ConsolaInstance;
 let createClientLoggerSpy: Mock<typeof clientLoggerModule.createClientLogger>;
 
 describe('CLI', () => {
+  // Helper type for mock setupServices overrides - defined inside describe to access its scope
+  type CreateServicesMockOptions = Partial<Omit<Awaited<ReturnType<typeof cliModuleActual.setupServices>>, 'fs'>> & {
+    expectedDryRun?: boolean;
+    appConfig?: AppConfig;
+    fs?: MemFileSystem | NodeFileSystem;
+    installer?: IInstaller;
+    generatorOrchestrator?: IGeneratorOrchestrator;
+    archiveExtractor?: IArchiveExtractor;
+  };
+
   let consoleErrorSpy: ReturnType<typeof spyOn>;
   let programUnderTest: Command;
   let defaultMockAppConfig: AppConfig;
+
+  // Helper function to create mock implementations for setupServices
+  // Defined inside describe to close over defaultMockAppConfig, mockFileSystem etc. from beforeEach
+  const getMockSetupServicesImplementation = (
+    overrides: CreateServicesMockOptions = {}
+  ) => {
+    return async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }): Promise<Awaited<ReturnType<typeof cliModuleActual.setupServices>>> => {
+      if (typeof overrides.expectedDryRun === 'boolean') {
+        expect(options?.dryRun).toBe(overrides.expectedDryRun);
+      }
+
+      // Use the globally scoped mockFileSystem (NodeFileSystem) as the base for non-dry-run
+      const fsInstance = overrides.fs ?? (options?.dryRun ? new MemFileSystem() : mockFileSystem);
+
+      return {
+        appConfig: overrides.appConfig ?? defaultMockAppConfig,
+        fs: fsInstance,
+        downloader: (overrides.downloader as IDownloader) ?? ({} as IDownloader),
+        githubApiCache: (overrides.githubApiCache as IGitHubApiCache) ?? ({} as IGitHubApiCache),
+        githubApiClient: (overrides.githubApiClient as IGitHubApiClient) ?? ({} as IGitHubApiClient),
+        shimGenerator: (overrides.shimGenerator as IShimGenerator) ?? ({} as IShimGenerator),
+        shellInitGenerator: (overrides.shellInitGenerator as IShellInitGenerator) ?? ({} as IShellInitGenerator),
+        symlinkGenerator: (overrides.symlinkGenerator as ISymlinkGenerator) ?? ({} as ISymlinkGenerator),
+        generatorOrchestrator: overrides.generatorOrchestrator ?? mockGeneratorOrchestrator, // Global mock
+        installer: overrides.installer ?? mockInstaller, // Global mock
+        archiveExtractor: overrides.archiveExtractor ?? mockArchiveExtractor, // Global mock
+        versionChecker: (overrides.versionChecker as any) ?? ({} as any),
+      };
+    };
+  };
 
   beforeEach(async () => {
     programUnderTest = new Command()
@@ -255,24 +295,7 @@ describe('CLI', () => {
 
     // Default implementation for setupServicesSpy
     // This will be active unless a specific test overrides it.
-    // Default implementation for setupServicesSpy, used by registerAllCommands
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
-      const fsInstance = options?.dryRun ? new MemFileSystem() : mockFileSystem; // mockFileSystem is global
-      return {
-        appConfig: defaultMockAppConfig,
-        fs: fsInstance,
-        downloader: {} as IDownloader,
-        githubApiCache: {} as IGitHubApiCache,
-        githubApiClient: {} as IGitHubApiClient,
-        shimGenerator: {} as IShimGenerator,
-        shellInitGenerator: {} as IShellInitGenerator,
-        symlinkGenerator: {} as ISymlinkGenerator,
-        generatorOrchestrator: mockGeneratorOrchestrator, // global mock
-        installer: mockInstaller, // global mock
-        archiveExtractor: mockArchiveExtractor, // global mock
-        versionChecker: {} as any,
-      };
-    });
+    setupServicesSpy.mockImplementation(getMockSetupServicesImplementation()); // Uses defaults
 
     const { mockClientLogger: defaultMcl, loggerMocks: defaultLm } = createMockClientLogger();
     mockClientLogger = defaultMcl;
@@ -301,29 +324,18 @@ describe('CLI', () => {
   test('generate command should call generateActionLogic with correct services (non-dry run)', async () => {
     // setupServicesSpy is already spied and cleared from beforeEach.
     // Set the mock implementation for the call expected from the action handler.
-    const mockAppConfig = createMockAppConfig({ toolConfigsDir: '/fake/tools', targetDir: '/fake/target' });
-    const mockNodeFs = new NodeFileSystem();
-    const mockOrchestrator = { generateAll: mockGenerateAll } as IGeneratorOrchestrator;
+    const currentTestMockAppConfig = createMockAppConfig({ toolConfigsDir: '/fake/tools', targetDir: '/fake/target' });
+    const currentTestMockNodeFs = new NodeFileSystem(); // Specific FS for this test
+    const currentTestMockOrchestrator = { generateAll: mockGenerateAll } as IGeneratorOrchestrator;
 
-    // This mockImplementation will be used by the action handler's call to setupServices
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
-      expect(options?.dryRun).toBe(false);
-      return {
-        appConfig: mockAppConfig,
-        fs: mockNodeFs,
-        generatorOrchestrator: mockOrchestrator,
-        downloader: {} as IDownloader,
-        githubApiCache: {} as IGitHubApiCache,
-        githubApiClient: {} as IGitHubApiClient,
-        shimGenerator: {} as IShimGenerator,
-        shellInitGenerator: {} as IShellInitGenerator,
-        symlinkGenerator: {} as ISymlinkGenerator,
-        installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor,
-        // clientLogger is no longer part of services from setupServices
-        versionChecker: {} as any,
-      };
-    });
+    setupServicesSpy.mockImplementation(
+      getMockSetupServicesImplementation({
+        appConfig: currentTestMockAppConfig,
+        fs: currentTestMockNodeFs,
+        generatorOrchestrator: currentTestMockOrchestrator,
+        expectedDryRun: false,
+      })
+    );
 
     loadToolConfigsFromDirectorySpy.mockResolvedValueOnce({ testTool: { name: 'testTool' } as ToolConfig });
     mockGenerateAll.mockResolvedValueOnce({} as GeneratedArtifactsManifest);
@@ -337,10 +349,10 @@ describe('CLI', () => {
     const [optionsArg, servicesArg] = generateActionLogicSpy.mock.calls[0]!;
 
     expect(optionsArg).toEqual({ dryRun: false, verbose: false, quiet: false });
-    // Now, servicesArg.appConfig should be the mockAppConfig defined in this test case,
+    // Now, servicesArg.appConfig should be the currentTestMockAppConfig defined in this test case,
     // because the action handler for 'generate' calls setupServices, which uses the
     // most recent mockImplementation for setupServicesSpy.
-    expect(servicesArg.appConfig).toEqual(mockAppConfig);
+    expect(servicesArg.appConfig).toEqual(currentTestMockAppConfig);
     expect(servicesArg.fileSystem).toBeInstanceOf(NodeFileSystem);
     expect(servicesArg.clientLogger).toBeDefined(); // This is the logger created by the action itself
     
@@ -371,24 +383,14 @@ describe('CLI', () => {
         'fzf': fzfConfigObjectForImportMock,
         'lazygit': lazygitConfigObjectForImportMock,
     };
-    // Specific mock for setupServices for the dry-run action handler call
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
-      expect(options?.dryRun).toBe(true);
-      return {
-        appConfig: defaultMockAppConfig, // Or a specific one for dry-run if needed
-        fs: new MemFileSystem(), // Ensure MemFileSystem is used
-        generatorOrchestrator: mockGeneratorOrchestrator,
-        downloader: {} as IDownloader,
-        githubApiCache: {} as IGitHubApiCache,
-        githubApiClient: {} as IGitHubApiClient,
-        shimGenerator: {} as IShimGenerator,
-        shellInitGenerator: {} as IShellInitGenerator,
-        symlinkGenerator: {} as ISymlinkGenerator,
-        installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor,
-        versionChecker: {} as any,
-      };
-    });
+
+    setupServicesSpy.mockImplementation(
+      getMockSetupServicesImplementation({
+        expectedDryRun: true,
+        // fs will be new MemFileSystem() due to expectedDryRun: true and no explicit fs override
+        // appConfig will be defaultMockAppConfig
+      })
+    );
 
     loadToolConfigsFromDirectorySpy.mockResolvedValueOnce(expectedToolConfigsForDryRun);
     mockGenerateAll.mockResolvedValueOnce({} as GeneratedArtifactsManifest);
@@ -435,22 +437,16 @@ describe('CLI', () => {
     setupServicesSpy.mockClear(); // Clear calls from registerAllCommands in beforeEach
     const testError = new Error('generateActionLogic failed!');
     
-    // Mock setupServices for the action handler's call
-    setupServicesSpy.mockImplementation(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
-        appConfig: defaultMockAppConfig,
-        fs: mockFileSystem, // Use the global mock
-        generatorOrchestrator: mockGeneratorOrchestrator,
-        downloader: {} as IDownloader,
-        githubApiCache: {} as IGitHubApiCache,
-        githubApiClient: {} as IGitHubApiClient,
-        shimGenerator: {} as IShimGenerator,
-        shellInitGenerator: {} as IShellInitGenerator,
-        symlinkGenerator: {} as ISymlinkGenerator,
-        installer: mockInstaller,
-        archiveExtractor: mockArchiveExtractor,
-        versionChecker: {} as any,
-    }));
-
+    // Use default setupServices mock from beforeEach, or specify if needed
+    // For this error case, the default (non-dry run) setup is appropriate.
+    // setupServicesSpy.mockImplementation(getMockSetupServicesImplementation()); // This would use the default
+    // Or, if we want to be explicit about the non-dry run for this specific error test:
+    setupServicesSpy.mockImplementation(
+      getMockSetupServicesImplementation({
+        expectedDryRun: false, // Ensures NodeFileSystem is used via mockFileSystem
+      })
+    );
+    
     mockGenerateAll.mockRejectedValueOnce(testError);
     loadToolConfigsFromDirectorySpy.mockResolvedValueOnce({});
     
@@ -470,6 +466,7 @@ describe('CLI', () => {
   // The setupServicesSpy here is for the setupServices call *within* main(), if any,
   // or more likely, within the action handler if main() were to call parseAsync.
   // Since main() calls parseAsync, the action handler's setupServices will be invoked.
+  /*
   test.skip('main function should trigger process.exit when setupServices in action handler fails', async () => {
     // This test focuses on the scenario where setupServices (called by an action handler, specifically 'install' here) fails.
     // It verifies that the error propagates correctly, clientLogger.error is called, and the CLI exits.
@@ -481,28 +478,12 @@ describe('CLI', () => {
     
     // Configure setupServicesSpy for the sequence of calls expected during cliModuleActual.main()
     // 1. First call (from registerAllCommands within main()): Should succeed.
-    //    We use the default implementation captured from beforeEach or a fresh one.
-    const defaultSetupImplementation = async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => {
-      const fsInstance = options?.dryRun ? new MemFileSystem() : mockFileSystem;
-      return {
-        appConfig: defaultMockAppConfig,
-        fs: fsInstance,
-        generatorOrchestrator: mockGeneratorOrchestrator,
-        installer: mockInstaller, // Use the global mock installer here
-        archiveExtractor: mockArchiveExtractor,
-        downloader: {} as IDownloader,
-        githubApiCache: {} as IGitHubApiCache,
-        githubApiClient: {} as IGitHubApiClient,
-        shimGenerator: {} as IShimGenerator,
-        shellInitGenerator: {} as IShellInitGenerator,
-        symlinkGenerator: {} as ISymlinkGenerator,
-        versionChecker: {} as any,
-      };
-    };
+    //    This will use the default mock from getMockSetupServicesImplementation.
+    // 2. Second call (from install action): Should fail.
     
     setupServicesSpy
-      .mockImplementationOnce(defaultSetupImplementation) // For registerAllCommands in main()
-      .mockRejectedValueOnce(specificTestError);        // For the install action's call in main()
+      .mockImplementationOnce(getMockSetupServicesImplementation()) // For registerAllCommands in main()
+      .mockRejectedValueOnce(specificTestError); // For the install action's call in main()
 
     const toolToInstallInMainTest = 'failing-tool-in-main';
     
@@ -550,27 +531,22 @@ describe('CLI', () => {
     expect(exitCliSpy).toHaveBeenNthCalledWith(2, 1);
     expect(exitCliSpy).toHaveBeenNthCalledWith(3, 1);
   });
+  //*/
 
   test('install command should call installer.install with correct parameters', async () => {
     setupServicesSpy.mockClear(); // Clear beforeEach call
     const currentTestMockAppConfig = createMockAppConfig({ toolConfigsDir: '/fake/tools' });
-    const currentTestMockFs = new NodeFileSystem();
+    const currentTestMockFs = new NodeFileSystem(); // Specific FS for this test
     const currentTestMockInstaller = { install: mock(async () => ({ success: true, binaryPath: 'path', version: '1' })) };
 
-    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({ // For the action handler's call
-      appConfig: currentTestMockAppConfig,
-      fs: currentTestMockFs,
-      installer: currentTestMockInstaller,
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: currentTestMockAppConfig,
+        fs: currentTestMockFs,
+        installer: currentTestMockInstaller,
+        // expectedDryRun: false (default)
+      })
+    );
 
     const mockToolConfig: ToolConfig = {
       name: 'test-tool',
@@ -610,20 +586,13 @@ describe('CLI', () => {
     const mockToolConfigsDir = '/test/tool/configs/dir';
     const currentTestMockAppConfigOnError = createMockAppConfig({ toolConfigsDir: mockToolConfigsDir });
 
-    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({ // For the action handler's call
-      appConfig: currentTestMockAppConfigOnError,
-      fs: new NodeFileSystem(),
-      installer: mockInstaller, // Use global mockInstaller
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: currentTestMockAppConfigOnError,
+        fs: new NodeFileSystem(), // Specific FS for this test
+        // installer will be the global mockInstaller from beforeEach
+      })
+    );
 
     loadSingleToolConfigSpy.mockResolvedValueOnce(undefined);
 
@@ -639,20 +608,13 @@ describe('CLI', () => {
     const currentTestMockAppConfigFailure = createMockAppConfig({ toolConfigsDir: '/fake/tools' });
     const failingInstaller = { install: mock(async () => ({ success: false, error: 'Installation failed' })) };
 
-    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({ // For the action handler's call
-      appConfig: currentTestMockAppConfigFailure,
-      fs: new NodeFileSystem(),
-      installer: failingInstaller, // Use specific failing installer
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: currentTestMockAppConfigFailure,
+        fs: new NodeFileSystem(), // Specific FS
+        installer: failingInstaller, // Override with specific failing installer
+      })
+    );
 
     const mockToolConfig: ToolConfig = {
       name: 'test-tool',
@@ -684,20 +646,13 @@ describe('CLI', () => {
     const flagTestInstaller = { install: mock(async () => ({ success: true, binaryPath: 'path', version: '1' })) };
 
     // Mock for the first parseAsync (force and verbose)
-    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
-      appConfig: currentTestMockAppConfigFlags,
-      fs: new NodeFileSystem(),
-      installer: flagTestInstaller,
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: currentTestMockAppConfigFlags,
+        fs: new NodeFileSystem(), // Specific FS
+        installer: flagTestInstaller,
+      })
+    );
 
     const mockToolConfig: ToolConfig = {
       name: 'test-tool',
@@ -751,20 +706,13 @@ describe('CLI', () => {
 
 
     // Mock for the second parseAsync (quiet)
-    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
-      appConfig: currentTestMockAppConfigFlags,
-      fs: new NodeFileSystem(),
-      installer: flagTestInstaller,
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: currentTestMockAppConfigFlags,
+        fs: new NodeFileSystem(), // Specific FS
+        installer: flagTestInstaller,
+      })
+    );
     loadSingleToolConfigSpy.mockResolvedValueOnce(mockToolConfig);
 
     await programUnderTest.parseAsync(['bun', 'cli.ts', 'install', 'test-tool', '--quiet']);
@@ -790,20 +738,13 @@ describe('CLI', () => {
     setupServicesSpy.mockClear(); // Clear beforeEach call
     const verboseTestInstaller = { install: mock(async () => ({ success: true, binaryPath: '/mock/bin/detail-tool', version: '1.0', otherChanges: ['Detailed step 1', 'Detailed step 2'] })) };
     
-    setupServicesSpy.mockImplementationOnce(async () => ({
-      appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
-      fs: new NodeFileSystem(),
-      installer: verboseTestInstaller,
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
+        fs: new NodeFileSystem(), // Specific FS
+        installer: verboseTestInstaller,
+      })
+    );
     const mockToolConfigDetail: ToolConfig = {
       name: 'detail-tool',
       binaries: ['detail-tool'],
@@ -830,20 +771,13 @@ describe('CLI', () => {
     setupServicesSpy.mockClear(); // Clear beforeEach call
     const noVerboseTestInstaller = { install: mock(async () => ({ success: true, binaryPath: '/mock/bin/no-detail-tool', version: '1.0', otherChanges: ['Detailed step 1', 'Detailed step 2'] })) };
 
-    setupServicesSpy.mockImplementationOnce(async () => ({
-      appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
-      fs: new NodeFileSystem(),
-      installer: noVerboseTestInstaller,
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
+        fs: new NodeFileSystem(), // Specific FS
+        installer: noVerboseTestInstaller,
+      })
+    );
     const mockToolConfigNoDetail: ToolConfig = {
       name: 'no-detail-tool',
       binaries: ['no-detail-tool'],
@@ -878,20 +812,13 @@ describe('CLI', () => {
     setupServicesSpy.mockClear(); // Clear beforeEach call
     const emptyChangesInstaller = { install: mock(async () => ({ success: true, binaryPath: '/mock/bin/empty-detail-tool', version: '1.0', otherChanges: [] })) };
     
-    setupServicesSpy.mockImplementationOnce(async (options?: { dryRun?: boolean; env?: NodeJS.ProcessEnv }) => ({
-      appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
-      fs: new NodeFileSystem(),
-      installer: emptyChangesInstaller,
-      downloader: {} as IDownloader,
-      githubApiCache: {} as IGitHubApiCache,
-      githubApiClient: {} as IGitHubApiClient,
-      shimGenerator: {} as IShimGenerator,
-      shellInitGenerator: {} as IShellInitGenerator,
-      symlinkGenerator: {} as ISymlinkGenerator,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-      archiveExtractor: mockArchiveExtractor,
-      versionChecker: {} as any,
-    }));
+    setupServicesSpy.mockImplementationOnce(
+      getMockSetupServicesImplementation({
+        appConfig: createMockAppConfig({ toolConfigsDir: '/fake/tools' }),
+        fs: new NodeFileSystem(), // Specific FS
+        installer: emptyChangesInstaller,
+      })
+    );
     const mockToolConfigEmptyDetail: ToolConfig = {
       name: 'empty-detail-tool',
       binaries: ['empty-detail-tool'],
