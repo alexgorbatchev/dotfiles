@@ -3,12 +3,19 @@ import { describe, expect, test } from 'bun:test';
 import { createReadStream } from 'node:fs';
 import { Readable } from 'stream';
 import { BunTestOutputParser } from '../bun-test-runner';
+import * as readline from 'node:readline';
 
 function streamLines(fixtureName: string): Readable {
-  const stream = createReadStream(`${__dirname}/fixtures/bun-test-runner--${fixtureName}.txt`, {
+  const fileStream = createReadStream(`${__dirname}/fixtures/bun-test-runner--${fixtureName}.txt`, {
     encoding: 'utf-8',
   });
-  return stream;
+
+  const lineStream = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity,
+  });
+
+  return Readable.from(lineStream);
 }
 
 function run(fixtureName: string, cb: (results: string) => void) {
@@ -346,4 +353,39 @@ describe('bun-test-runner', () => {
       done();
     });
   });
+
+
+    // test('many-files--no-errors', (done) => {
+    //   run('many-files--no-errors', (results) => {
+    //     expect(results).toMatchInlineSnapshot(
+    //     `
+    //       "-------------------------------------------------------------------------------|---------|---------|-------------------
+    //       File                                                                           | % Funcs | % Lines | Uncovered Line #s
+    //       -------------------------------------------------------------------------------|---------|---------|-------------------
+    //        src/__tests__/helpers.ts                                                      |  100.00 |   93.48 | 115-116
+    //        src/cli.ts                                                                    |   87.50 |   70.71 | 112-115,117-136,139-145,147-152,155,259-260
+    //        src/modules/cli/checkUpdatesCommand.ts                                        |  100.00 |   95.33 | 121-122,143-145
+    //        src/modules/cli/cleanupCommand.ts                                             |   71.43 |   79.87 | 186-195,208-227
+    //        src/modules/cli/detectConflictsCommand.ts                                     |   80.00 |   80.73 | 158-178
+    //        src/modules/cli/generateCommand.ts                                            |   62.50 |   75.89 | 100-108,110,114-115,119-122,130-139
+    //        src/modules/cli/updateCommand.ts                                              |  100.00 |   94.02 | 119-120,194-196,198-199
+    //        src/modules/config-loader/loadToolConfigs.ts                                  |    0.00 |    3.27 | 16-105,116-173
+    //        src/modules/config-loader/toolConfigLoader.ts                                 |  100.00 |   97.83 | 134-135
+    //        src/modules/config/toolConfigSchema.ts                                        |    0.00 |   82.49 | 181-188,250-272
+    //        src/modules/file-system/MemFileSystem.ts                                      |   96.88 |   91.67 | 135-140
+    //        src/modules/file-system/NodeFileSystem.ts                                     |   93.33 |   91.49 | 49-52
+    //        src/modules/generator-shim/ShimGenerator.ts                                   |   83.33 |   68.31 | 174-218
+    //        src/modules/tool-config-builder/toolConfigBuilder.ts                          |   90.91 |   98.58 | 147-148
+    //        src/testing-helpers/bun-test-runner.ts                                        |   75.00 |   92.20 | 309-314,438-452,458-459
+    //        src/testing-helpers/createMockFileSystem.ts                                   |   68.18 |   39.58 | 108-194
+    //        src/types/platform.types.ts                                                   |   50.00 |   53.57 | 50-54,64-71
+    //       -------------------------------------------------------------------------------|---------|---------|-------------------
+    //        459 pass
+    //       Ran 459 tests across 37 files. [1.59s]
+    //       "
+    //     `);
+    //     done();
+    //   });
+    // });
+
 });
