@@ -186,8 +186,17 @@ async function main() {
   const args = process.argv.slice(2);
   const bunArgs = args.filter(arg => arg !== '--watch');
 
+  console.log('Running bun test with args:', bunArgs.join(' '));
+
   try {
-    const { stdout, stderr } = await $`bun test --colors ${bunArgs}`.nothrow().quiet();
+    const $$ = $({
+      env: {
+        ...process.env,
+        BUN_CORRECT_TEST_COMMAND: '1',
+      },
+      cwd: process.cwd(),
+    });   
+    const { stdout, stderr } = await $$`bun test ${bunArgs}`.nothrow().quiet();
     
     // Combine stdout and stderr to ensure all output is processed
     const combinedOutput = stdout + stderr;

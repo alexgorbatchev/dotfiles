@@ -13,12 +13,12 @@
  */
 
 import * as generateCommandModule from '@modules/cli/generateCommand';
+import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs'; // For loadToolConfigsFromDirectorySpy
 import * as clientLoggerModule from '@modules/logger';
 import { createMockClientLogger } from '@testing-helpers';
-import { mock, afterEach, beforeEach, describe, expect, spyOn, test, type Mock } from 'bun:test'; 
+import { beforeEach, describe, expect, mock, spyOn, test, type Mock } from 'bun:test';
 import type { ConsolaInstance } from 'consola';
 import { main as actualMain } from '../cli';
-import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs'; // For loadToolConfigsFromDirectorySpy
 
 // Spies and Mocks needed for these tests
 let loggerMocks: ReturnType<typeof createMockClientLogger>['loggerMocks'];

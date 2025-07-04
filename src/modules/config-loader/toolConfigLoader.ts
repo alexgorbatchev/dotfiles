@@ -39,11 +39,11 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { resolve as resolvePath } from 'path'; // Removed unused join, basename, extname
+import { resolve as resolvePath } from 'path'; 
 import type { AppConfig, ToolConfig } from '@types';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { ToolConfigSchema } from '../config/toolConfigSchema';
-import { ToolConfigBuilder } from '../tool-config-builder/toolConfigBuilder';
+import { ToolConfigSchema } from '@modules/config/toolConfigSchema';
+import { ToolConfigBuilder } from '@modules/tool-config-builder/toolConfigBuilder';
 import { createLogger } from '@modules/logger';
 
 const log = createLogger('toolConfigLoader');
