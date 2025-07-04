@@ -46,6 +46,8 @@ export interface MockGitHubServerResult {
   server: Server;
   /** The base URL of the server (e.g., 'http://localhost:3000') */
   baseUrl: string;
+  /** Closes the server and releases resources */
+  close(): Promise<void>;
 }
 
 /**
@@ -75,7 +77,7 @@ export interface MockGitHubServerResult {
  * // ...
  *
  * // Cleanup when done
- * await new Promise<void>((resolve) => server.close(() => resolve()));
+ * await mockServer.close();
  * ```
  */
 export async function createMockGitHubServer(
@@ -123,7 +125,19 @@ export async function createMockGitHubServer(
       }
 
       const baseUrl = `http://localhost:${address.port}`;
-      resolve({ server, baseUrl });
+      
+      // Add close method to simplify server cleanup
+      const close = async (): Promise<void> => {
+        return new Promise<void>((resolve, reject) => {
+          if (server) {
+            server.close((err?: Error) => (err ? reject(err) : resolve()));
+          } else {
+            resolve();
+          }
+        });
+      };
+      
+      resolve({ server, baseUrl, close });
     });
   });
 }

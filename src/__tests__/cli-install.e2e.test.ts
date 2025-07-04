@@ -55,6 +55,7 @@ import {
   executeCliCommand,
   setupEnvironmentVariables,
   createMockGitHubServer,
+  createBinFile,
   type MockGitHubServerResult
 } from '@testing-helpers';
 
@@ -73,21 +74,6 @@ describe('E2E: bun run cli install', () => {
     const mockAssetFileName = `${mockToolName}-v${mockToolVersion}-linux-amd64`;
     const mockBinaryContent = `#!/bin/sh\necho "Mock Direct Binary Tool v${mockToolVersion}"`;
 
-    const mockToolConfigContent = `
-      import { type GithubReleaseToolConfig } from '@types'; // Use specific type
-      const config: GithubReleaseToolConfig = { // Use specific type
-        name: '${mockToolName}',
-        binaries: ['${mockToolName}'],
-        version: '${mockToolVersion}',
-        installationMethod: 'github-release',
-        installParams: {
-          repo: 'mock-owner/direct-binary-repo',
-          assetPattern: '${mockAssetFileName}',
-        },
-      };
-      export default config;
-    `;
-
     let mockServer!: MockGitHubServerResult;
 
     beforeAll(async () => {
@@ -105,61 +91,50 @@ describe('E2E: bun run cli install', () => {
       } = directories);
 
       // Create mock binary file
-      localMockBinaryFilePath = path.join(tempDir, mockAssetFileName);
-      fs.writeFileSync(localMockBinaryFilePath, mockBinaryContent);
-      fs.chmodSync(localMockBinaryFilePath, 0o755);
+      localMockBinaryFilePath = createBinFile(
+        path.join(tempDir, mockAssetFileName),
+        mockBinaryContent
+      );
 
       // Setup mock server
-      const serverRoutePath = `/${mockAssetFileName}`;
-      const assetApiDownloadPath = serverRoutePath;
-
       mockServer = await createMockGitHubServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/direct-binary-repo/releases/tags/v${mockToolVersion}`,
             response: {
               tag_name: `v${mockToolVersion}`,
-              assets: [{ name: mockAssetFileName, browser_download_url: assetApiDownloadPath }],
+              assets: [{ name: mockAssetFileName, browser_download_url: `/${mockAssetFileName}` }],
             },
           },
           {
             path: `/repos/mock-owner/direct-binary-repo/releases/latest`,
             response: {
               tag_name: `v${mockToolVersion}`,
-              assets: [{ name: mockAssetFileName, browser_download_url: assetApiDownloadPath }],
+              assets: [{ name: mockAssetFileName, browser_download_url: `/${mockAssetFileName}` }],
             },
           },
         ],
-        binaryPaths: [{ path: serverRoutePath, filePath: localMockBinaryFilePath }],
-      });
-
-      // Setup environment variables
-      const envVarsForCli = setupEnvironmentVariables({
-        directories,
-        mockServerBaseUrl: mockServer.baseUrl,
-      });
-
-      // Create tool config
-      createToolConfig({
-        toolConfigsDir,
-        name: mockToolName,
-        content: mockToolConfigContent,
+        binaryPaths: [{ path: `/${mockAssetFileName}`, filePath: localMockBinaryFilePath }],
       });
 
       // Setup paths for verification
       expectedInstalledBinaryPath = path.join(binariesDir, mockToolName, mockAssetFileName);
       symlinkPath = path.join(binDir, mockToolName);
 
-      // Clean up existing files if needed
-      if (fs.existsSync(symlinkPath)) fs.unlinkSync(symlinkPath);
-      if (fs.existsSync(expectedInstalledBinaryPath)) {
-        fs.rmSync(path.dirname(expectedInstalledBinaryPath), { recursive: true, force: true });
-      }
+      // Create tool config from fixture
+      createToolConfig({
+        toolConfigsDir,
+        name: mockToolName,
+        fixturePath: path.resolve(__dirname, 'fixtures', 'mock-direct-binary-tool.tool.ts'),
+      });
 
       // Execute CLI command
       const result = executeCliCommand({
         command: ['install', mockToolName],
-        env: envVarsForCli as Record<string, string>,
+        env: setupEnvironmentVariables({
+          directories,
+          mockServerBaseUrl: mockServer.baseUrl,
+        }) as Record<string, string>,
         homeDir: tempDir,
       });
 
@@ -168,10 +143,8 @@ describe('E2E: bun run cli install', () => {
     });
 
     afterAll(async () => {
-      if (mockServer?.server) {
-        await new Promise<void>((resolve, reject) => {
-          mockServer.server.close((err?: Error) => (err ? reject(err) : resolve()));
-        });
+      if (mockServer) {
+        await mockServer.close();
       }
     });
 
@@ -202,30 +175,16 @@ describe('E2E: bun run cli install', () => {
     const mockArchiveToolName = 'archive-tool';
     const mockArchiveToolVersion = '1.0.0';
     const mockArchiveFileName = `${mockArchiveToolName}-v${mockArchiveToolVersion}-linux-amd64.tar.gz`;
-    const mockBinaryContentInArchive = `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`;
-
-    const mockArchiveToolConfigContent = `
-      import { type GithubReleaseToolConfig } from '@types'; // Use specific type
-      const config: GithubReleaseToolConfig = { // Use specific type
-        name: '${mockArchiveToolName}',
-        binaries: ['${mockArchiveToolName}'],
-        version: '${mockArchiveToolVersion}',
-        installationMethod: 'github-release',
-        installParams: {
-          repo: 'mock-owner/archive-repo',
-          assetPattern: '${mockArchiveFileName}',
-          binaryPath: '${mockArchiveToolName}', // This is a valid property for GithubReleaseInstallParams
-        },
-      };
-      export default config;
-    `;
 
     let mockServer!: MockGitHubServerResult;
 
     beforeAll(async () => {
       // Create test directories
       const directories = createTestDirectories({
-        testName: 'cli-install-archive-mock'
+        testName: 'cli-install-archive-mock',
+        additionalDirs: {
+          'temp-archive-source': { path: 'temp-archive-source', relativeTo: 'tempDir' }
+        }
       });
       
       // Destructure directory paths
@@ -236,52 +195,35 @@ describe('E2E: bun run cli install', () => {
         binDir
       } = directories);
 
-      // Create archive with binary inside
-      const tempArchiveSourceDir = path.join(tempDir, 'temp-archive-source');
-      fs.mkdirSync(tempArchiveSourceDir, { recursive: true });
-      const binaryInArchiveSource = path.join(tempArchiveSourceDir, mockArchiveToolName);
-      fs.writeFileSync(binaryInArchiveSource, mockBinaryContentInArchive);
-      fs.chmodSync(binaryInArchiveSource, 0o755);
+      // Create binary file in the archive source directory
+      createBinFile(
+        path.join(directories.getDir('temp-archive-source'), mockArchiveToolName),
+        `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`
+      );
 
+      // Create the archive file
       localArchiveFilePath = path.join(tempDir, mockArchiveFileName);
-      $.quiet = true;
-      await $`tar -czf ${localArchiveFilePath} -C ${tempArchiveSourceDir} ${mockArchiveToolName}`;
-      $.quiet = false;
+      await $`tar -czf ${localArchiveFilePath} -C ${directories.getDir('temp-archive-source')} ${mockArchiveToolName}`.quiet();
 
       // Setup mock server
-      const serverRoutePath = `/${mockArchiveFileName}`;
-      const assetApiDownloadPath = serverRoutePath;
-
       mockServer = await createMockGitHubServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/archive-repo/releases/tags/v${mockArchiveToolVersion}`,
             response: {
               tag_name: `v${mockArchiveToolVersion}`,
-              assets: [{ name: mockArchiveFileName, browser_download_url: assetApiDownloadPath }],
+              assets: [{ name: mockArchiveFileName, browser_download_url: `/${mockArchiveFileName}` }],
             },
           },
           {
             path: `/repos/mock-owner/archive-repo/releases/latest`,
             response: {
               tag_name: `v${mockArchiveToolVersion}`,
-              assets: [{ name: mockArchiveFileName, browser_download_url: assetApiDownloadPath }],
+              assets: [{ name: mockArchiveFileName, browser_download_url: `/${mockArchiveFileName}` }],
             },
           },
         ],
-        binaryPaths: [{ path: serverRoutePath, filePath: localArchiveFilePath }],
-      });
-
-      const envVarsForCli = setupEnvironmentVariables({
-        directories,
-        mockServerBaseUrl: mockServer.baseUrl,
-      });
-
-      // Create tool config
-      createToolConfig({
-        toolConfigsDir,
-        name: mockArchiveToolName,
-        content: mockArchiveToolConfigContent,
+        binaryPaths: [{ path: `/${mockArchiveFileName}`, filePath: localArchiveFilePath }],
       });
 
       // Setup paths for verification
@@ -292,16 +234,20 @@ describe('E2E: bun run cli install', () => {
       );
       symlinkPath = path.join(binDir, mockArchiveToolName);
 
-      // Clean up existing files if needed
-      if (fs.existsSync(symlinkPath)) fs.unlinkSync(symlinkPath);
-      if (fs.existsSync(expectedExtractedBinaryPath)) {
-        fs.rmSync(path.dirname(expectedExtractedBinaryPath), { recursive: true, force: true });
-      }
+      // Create tool config from fixture
+      createToolConfig({
+        toolConfigsDir,
+        name: mockArchiveToolName,
+        fixturePath: path.resolve(__dirname, 'fixtures', 'archive-tool.tool.ts'),
+      });
 
       // Execute CLI command
       const result = executeCliCommand({
         command: ['install', mockArchiveToolName],
-        env: envVarsForCli as Record<string, string>,
+        env: setupEnvironmentVariables({
+          directories,
+          mockServerBaseUrl: mockServer.baseUrl,
+        }) as Record<string, string>,
         homeDir: tempDir,
       });
 
@@ -310,20 +256,11 @@ describe('E2E: bun run cli install', () => {
     });
 
     afterAll(async () => {
-      if (mockServer?.server) {
-        await new Promise<void>((resolve, reject) => {
-          mockServer.server.close((err?: Error) => (err ? reject(err) : resolve()));
-        });
-      }
+      await mockServer?.close();
     });
 
     it('should download archive to the correct location', () => {
-      const expectedDownloadedArchivePath = path.join(
-        binariesDir,
-        mockArchiveToolName,
-        mockArchiveFileName
-      );
-      expect(fs.existsSync(expectedDownloadedArchivePath)).toBe(true);
+      expect(fs.existsSync(path.join(binariesDir, mockArchiveToolName, mockArchiveFileName))).toBe(true);
     });
     it('should extract binary to the correct location', () => {
       expect(fs.existsSync(expectedExtractedBinaryPath)).toBe(true);

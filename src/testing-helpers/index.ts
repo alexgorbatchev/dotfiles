@@ -17,3 +17,4 @@ export * from './createTestDirectories';
 export * from './setupEnvironmentVariables';
 export * from './executeCliCommand';
 export * from './createToolConfig';
+export * from './createBinFile';

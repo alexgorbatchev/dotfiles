@@ -64,7 +64,7 @@ export function executeCliCommand(options: CliCommandOptions): CliCommandResult 
     execCwd = cwd || process.cwd();
   } else {
     // Find CLI entry point
-    const generatorProjectRootPath = path.resolve(__dirname, '../../../');
+    const generatorProjectRootPath = path.resolve(__dirname, '../../');
     const cliEntryPoint = path.join(generatorProjectRootPath, 'src', 'cli.ts');
     cmd = ['bun', cliEntryPoint, ...command];
     execCwd = cwd || generatorProjectRootPath;
