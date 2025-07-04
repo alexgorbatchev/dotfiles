@@ -14,7 +14,8 @@ describe('bun-test-runner', () => {
       const output = getFixtureContent('no-errors');
       const results = processBunTestOutput(output);
       expect(stripAnsi(results)).toMatchInlineSnapshot(`
-        "Coverage Report (file_name:uncovered_lines):
+        "
+        Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
         - src/cli.ts:112-115,117-136,139-145,147-152,155,259-260
         - src/modules/cli/checkUpdatesCommand.ts:121-122,143-145
@@ -45,7 +46,8 @@ describe('bun-test-runner', () => {
       const output = getFixtureContent('no-errors--one-skipped');
       const results = processBunTestOutput(output);
       expect(stripAnsi(results)).toMatchInlineSnapshot(`
-        "Coverage Report (file_name:uncovered_lines):
+        "
+        Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
         - src/cli.ts:112-115,117-136,139-145,147-152,155,259-260
         - src/modules/cli/checkUpdatesCommand.ts:121-122,143-145
@@ -66,6 +68,7 @@ describe('bun-test-runner', () => {
 
          453 pass
          1 skip
+         0 fail
          1298 expect() calls
         Ran 454 tests across 36 files. [1.97s]
         "
@@ -85,10 +88,12 @@ describe('bun-test-runner', () => {
         522 |     expect(consoleErrorSpy).toHaveBeenCalledWith('Error during main CLI execution:', new Error('TEST_EXIT_CLI_CALLED_WITH_1'));
                                           ^
         error: expect(received).toHaveBeenCalledWith(expected)
+
         Number of calls: 0
+
               at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
         (fail) CLI > main function should trigger process.exit when setupServices in action handler fails [1.18ms]
-        
+
         Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
         - src/cli.ts:112-115,117-136,139-145,147-152,155,259-260
@@ -130,7 +135,9 @@ describe('bun-test-runner', () => {
         433 |     expect(mockGenerateAll).not.toHaveBeenCalledWith(expectedArgForGenerateAllAfterDryRun, {});
                                               ^
         error: expect(received).not.toHaveBeenCalledWith(expected)
+
         Number of calls: 1
+
               at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:433:33)
         (fail) CLI > generate command with --dry-run should call generateActionLogic with MemFileSystem [1.61ms]
         456 |     const callArgs = loggerMocks.error.mock.calls[0] as [string, string];
@@ -141,10 +148,12 @@ describe('bun-test-runner', () => {
         461 |     expect(exitCliSpy).toHaveBeenCalledWith(0);
                                      ^
         error: expect(received).toHaveBeenCalledWith(expected)
+
         Number of calls: 1
+
               at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
         (fail) CLI > generate command should handle errors from generateActionLogic and exit [0.56ms]
-        
+
         Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
         - src/cli.ts:112-115,117-136,139-145,147-152,155,259-260
@@ -186,8 +195,10 @@ describe('bun-test-runner', () => {
         189 |       expect(proc.exitCode).toBe(2);
                                           ^
         error: expect(received).toBe(expected)
+
         Expected: 2
         Received: 0
+
               at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli-install.e2e.test.ts:189:29)
         (fail) E2E: bun run cli install > downloaded direct binary (GitHub Release with Mock Server) > should verify the downloaded binary works via symlink [175.42ms]
         src/__tests__/cli.test.ts:
@@ -199,10 +210,12 @@ describe('bun-test-runner', () => {
         461 |     expect(exitCliSpy).toHaveBeenCalledWith(0);
                                      ^
         error: expect(received).toHaveBeenCalledWith(expected)
+
         Number of calls: 1
+
               at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
         (fail) CLI > generate command should handle errors from generateActionLogic and exit [0.90ms]
-        
+
         Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
         - src/cli.ts:112-115,117-136,139-145,147-152,155,259-260
@@ -244,7 +257,9 @@ describe('bun-test-runner', () => {
       522 |     expect(consoleErrorSpy).toHaveBeenCalledWith('Error during main CLI execution:', new Error('TEST_EXIT_CLI_CALLED_WITH_1'));
                                         ^
       error: expect(received).toHaveBeenCalledWith(expected)
+
       Number of calls: 0
+
             at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
       (fail) CLI > main function should trigger process.exit when setupServices in action handler fails [1.18ms]
       # Unhandled error between tests
@@ -270,10 +285,12 @@ describe('bun-test-runner', () => {
       522 |     expect(consoleErrorSpy).toHaveBeenCalledWith('Error during main CLI execution:', new Error('TEST_EXIT_CLI_CALLED_WITH_1'));
                                         ^
       error: expect(received).toHaveBeenCalledWith(expected)
+
       Number of calls: 0
+
             at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
       ---
-      
+
       Coverage Report (file_name:uncovered_lines):
       - src/__tests__/helpers.ts:115-116
       - src/cli.ts:112-115,117-136,139-145,147-152,155,259-260
