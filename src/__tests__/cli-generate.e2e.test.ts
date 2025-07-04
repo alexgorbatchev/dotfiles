@@ -49,7 +49,7 @@ import {
   createTestDirectories,
   executeCliCommand,
   setupEnvironmentVariables
-} from './helpers';
+} from '@testing-helpers';
 
 describe('E2E: bun run cli generate', () => {
   let tempDir: string;

@@ -54,9 +54,9 @@ import {
   createToolConfig,
   executeCliCommand,
   setupEnvironmentVariables,
-  setupMockGitHubServer,
+  createMockGitHubServer,
   type MockGitHubServerResult
-} from './helpers';
+} from '@testing-helpers';
 
 describe('E2E: bun run cli install', () => {
   describe('downloaded direct binary (GitHub Release with Mock Server)', () => {
@@ -113,7 +113,7 @@ describe('E2E: bun run cli install', () => {
       const serverRoutePath = `/${mockAssetFileName}`;
       const assetApiDownloadPath = serverRoutePath;
 
-      mockServer = await setupMockGitHubServer({
+      mockServer = await createMockGitHubServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/direct-binary-repo/releases/tags/v${mockToolVersion}`,
@@ -252,7 +252,7 @@ describe('E2E: bun run cli install', () => {
       const serverRoutePath = `/${mockArchiveFileName}`;
       const assetApiDownloadPath = serverRoutePath;
 
-      mockServer = await setupMockGitHubServer({
+      mockServer = await createMockGitHubServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/archive-repo/releases/tags/v${mockArchiveToolVersion}`,
