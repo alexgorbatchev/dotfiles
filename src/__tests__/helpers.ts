@@ -7,6 +7,7 @@ import * as path from 'path';
 import express from 'express';
 import type { Express } from 'express';
 import type { Server } from 'node:http';
+import type { ConfigEnvironment } from '@modules/config';
 
 /**
  * Creates a temporary directory for tests
@@ -140,4 +141,230 @@ export async function setupMockGitHubServer(
       resolve({ server, baseUrl });
     });
   });
+}
+
+/**
+ * Options for creating test directories
+ */
+export interface TestDirectoryOptions {
+  /** Name for the temporary directory */
+  testName: string;
+  /** Optional flag to create additional directories */
+  createLazygitConfigDir?: boolean;
+}
+
+/**
+ * Structure containing paths to test directories
+ */
+export interface TestDirectories {
+  /** Root temporary directory */
+  tempDir: string;
+  /** Dotfiles repository directory */
+  dotfilesDir: string;
+  /** Generated files directory */
+  generatedDir: string;
+  /** Tool configs directory */
+  toolConfigsDir: string;
+  /** Binaries directory */
+  binariesDir: string;
+  /** Bin directory for symlinks */
+  binDir: string;
+  /** Path to lazygit config directory (if created) */
+  lazygitConfigDir?: string;
+}
+
+/**
+ * Creates a standard directory structure for E2E tests
+ *
+ * @param options - Options for creating test directories
+ * @returns Object containing paths to created directories
+ */
+export function createTestDirectories(options: TestDirectoryOptions): TestDirectories {
+  const tempDir = createTempDir(options.testName);
+  const dotfilesDir = path.join(tempDir, 'my-dotfiles-repo');
+  const generatedDir = path.join(dotfilesDir, '.generated');
+  const toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs');
+  const binariesDir = path.join(generatedDir, 'binaries');
+  const binDir = path.join(generatedDir, 'bin');
+
+  // Create standard directories
+  fs.mkdirSync(dotfilesDir, { recursive: true });
+  fs.mkdirSync(generatedDir, { recursive: true });
+  fs.mkdirSync(toolConfigsDir, { recursive: true });
+  fs.mkdirSync(binariesDir, { recursive: true });
+  fs.mkdirSync(binDir, { recursive: true });
+
+  const result: TestDirectories = {
+    tempDir,
+    dotfilesDir,
+    generatedDir,
+    toolConfigsDir,
+    binariesDir,
+    binDir,
+  };
+
+  // Create additional directories if needed
+  if (options.createLazygitConfigDir) {
+    const lazygitConfigDir = path.join(dotfilesDir, '02-configs', 'lazygit');
+    fs.mkdirSync(lazygitConfigDir, { recursive: true });
+    result.lazygitConfigDir = lazygitConfigDir;
+  }
+
+  return result;
+}
+
+/**
+ * Options for setting up environment variables
+ */
+export interface EnvironmentOptions {
+  /** Test directories from createTestDirectories */
+  directories: TestDirectories;
+  /** Optional additional environment variables */
+  additionalEnv?: Record<string, string>;
+  /** Optional mock server base URL */
+  mockServerBaseUrl?: string;
+}
+
+/**
+ * Sets up standard environment variables for E2E tests
+ *
+ * @param options - Options for environment setup
+ * @returns Environment variables for CLI execution
+ */
+export function setupEnvironmentVariables(options: EnvironmentOptions): ConfigEnvironment {
+  const { directories, additionalEnv = {}, mockServerBaseUrl } = options;
+
+  // Create manifest path
+  const manifestPath = path.join(directories.generatedDir, 'generated-manifest.json');
+
+  // Set up standard environment variables
+  const envVars: ConfigEnvironment = {
+    DOTFILES_DIR: directories.dotfilesDir,
+    GENERATED_DIR: directories.generatedDir,
+    TOOL_CONFIGS_DIR: directories.toolConfigsDir,
+    TARGET_DIR: directories.binDir,
+    GENERATED_ARTIFACTS_MANIFEST_PATH: manifestPath,
+    DEBUG: process.env['DEBUG'] || 'true',
+    CACHE_ENABLED: 'false',
+    GITHUB_API_CACHE_ENABLED: 'false',
+    CHECK_UPDATES_ON_RUN: 'false',
+    ...additionalEnv,
+  };
+
+  // Add mock server URL if provided
+  if (mockServerBaseUrl) {
+    envVars.GITHUB_HOST = mockServerBaseUrl;
+  }
+
+  return envVars;
+}
+
+/**
+ * Options for executing a CLI command
+ */
+export interface CliCommandOptions {
+  /** CLI command and arguments */
+  command: string[];
+  /** Environment variables */
+  env: Record<string, string>;
+  /** Optional current working directory */
+  cwd?: string;
+  /** Optional additional environment variables */
+  additionalEnv?: Record<string, string>;
+  /** Optional home directory */
+  homeDir?: string;
+  /** Optional custom command to use instead of the CLI entry point */
+  customCmd?: string[];
+}
+
+/**
+ * Result of executing a CLI command
+ */
+export interface CliCommandResult {
+  /** Exit code of the command */
+  exitCode: number | null;
+  /** Standard output */
+  stdout: string;
+  /** Standard error */
+  stderr: string;
+}
+
+/**
+ * Executes a CLI command using Bun.spawnSync
+ *
+ * @param options - Options for executing the command
+ * @returns Result of the command execution
+ */
+export function executeCliCommand(options: CliCommandOptions): CliCommandResult {
+  const { command, env, additionalEnv = {}, cwd, homeDir, customCmd } = options;
+
+  // Prepare environment variables
+  const execEnv: Record<string, string> = {
+    ...env,
+    ...additionalEnv,
+    PATH: process.env['PATH'] || '',
+  };
+
+  // Add HOME if provided
+  if (homeDir) {
+    execEnv['HOME'] = homeDir;
+  }
+
+  let cmd: string[];
+  let execCwd: string;
+
+  if (customCmd) {
+    // Use custom command if provided
+    cmd = [...customCmd, ...command];
+    execCwd = cwd || process.cwd();
+  } else {
+    // Find CLI entry point
+    const generatorProjectRootPath = path.resolve(__dirname, '../../../generator');
+    const cliEntryPoint = path.join(generatorProjectRootPath, 'src', 'cli.ts');
+    cmd = ['bun', cliEntryPoint, ...command];
+    execCwd = cwd || generatorProjectRootPath;
+  }
+
+  // Execute command
+  const proc = Bun.spawnSync({
+    cmd,
+    cwd: execCwd,
+    env: execEnv,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+
+  return {
+    exitCode: proc.exitCode,
+    stdout: proc.stdout.toString(),
+    stderr: proc.stderr.toString(),
+  };
+}
+
+/**
+ * Options for creating a tool configuration
+ */
+export interface ToolConfigOptions {
+  /** Directory to create tool config in */
+  toolConfigsDir: string;
+  /** Tool name */
+  name: string;
+  /** Tool config content */
+  content: string;
+}
+
+/**
+ * Creates a tool configuration file
+ *
+ * @param options - Options for creating the tool config
+ * @returns Path to the created config file
+ */
+export function createToolConfig(options: ToolConfigOptions): string {
+  const { toolConfigsDir, name, content } = options;
+
+  // Create tool config file
+  const configPath = path.join(toolConfigsDir, `${name}.tool.ts`);
+  fs.writeFileSync(configPath, content);
+
+  return configPath;
 }

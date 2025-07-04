@@ -48,20 +48,23 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ConfigEnvironment } from '@modules/config';
 import { $ } from 'zx';
-import { createTempDir, setupMockGitHubServer, type MockGitHubServerResult } from './helpers';
+import {
+  createTestDirectories,
+  createToolConfig,
+  executeCliCommand,
+  setupEnvironmentVariables,
+  setupMockGitHubServer,
+  type MockGitHubServerResult
+} from './helpers';
 
 describe('E2E: bun run cli install', () => {
   describe('downloaded direct binary (GitHub Release with Mock Server)', () => {
     let tempDir: string;
-    let dotfilesDir: string;
-    let generatedDir: string;
     let toolConfigsDir: string;
     let binariesDir: string;
     let binDir: string;
     let symlinkPath: string;
-    let manifestPathFromEnv: string;
     let localMockBinaryFilePath: string;
     let expectedInstalledBinaryPath: string;
 
@@ -88,23 +91,25 @@ describe('E2E: bun run cli install', () => {
     let mockServer!: MockGitHubServerResult;
 
     beforeAll(async () => {
-      tempDir = createTempDir('cli-install-direct-binary-mock');
-      dotfilesDir = path.join(tempDir, 'my-dotfiles-repo');
-      generatedDir = path.join(dotfilesDir, '.generated');
-      toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs');
-      binariesDir = path.join(generatedDir, 'binaries');
-      binDir = path.join(generatedDir, 'bin');
+      // Create test directories
+      const directories = createTestDirectories({
+        testName: 'cli-install-direct-binary-mock'
+      });
+      
+      // Destructure directory paths
+      ({
+        tempDir,
+        toolConfigsDir,
+        binariesDir,
+        binDir
+      } = directories);
 
-      fs.mkdirSync(dotfilesDir, { recursive: true });
-      fs.mkdirSync(generatedDir, { recursive: true });
-      fs.mkdirSync(toolConfigsDir, { recursive: true });
-      fs.mkdirSync(binariesDir, { recursive: true });
-      fs.mkdirSync(binDir, { recursive: true });
-
+      // Create mock binary file
       localMockBinaryFilePath = path.join(tempDir, mockAssetFileName);
       fs.writeFileSync(localMockBinaryFilePath, mockBinaryContent);
       fs.chmodSync(localMockBinaryFilePath, 0o755);
 
+      // Setup mock server
       const serverRoutePath = `/${mockAssetFileName}`;
       const assetApiDownloadPath = serverRoutePath;
 
@@ -128,43 +133,38 @@ describe('E2E: bun run cli install', () => {
         binaryPaths: [{ path: serverRoutePath, filePath: localMockBinaryFilePath }],
       });
 
-      manifestPathFromEnv = path.join(generatedDir, 'generated-manifest.json');
-      const envVarsForCli: ConfigEnvironment = {
-        DOTFILES_DIR: dotfilesDir,
-        GENERATED_DIR: generatedDir,
-        TOOL_CONFIGS_DIR: toolConfigsDir,
-        TARGET_DIR: binDir,
-        GENERATED_ARTIFACTS_MANIFEST_PATH: manifestPathFromEnv,
-        DEBUG: process.env['DEBUG'] || 'true', // Force some debug output from CLI
-        CACHE_ENABLED: 'false',
-        GITHUB_API_CACHE_ENABLED: 'false',
-        CHECK_UPDATES_ON_RUN: 'false',
-        GITHUB_HOST: mockServer.baseUrl,
-      };
+      // Setup environment variables
+      const envVarsForCli = setupEnvironmentVariables({
+        directories,
+        mockServerBaseUrl: mockServer.baseUrl,
+      });
 
-      const mockToolConfigDest = path.join(toolConfigsDir, `${mockToolName}.tool.ts`);
-      fs.writeFileSync(mockToolConfigDest, mockToolConfigContent);
+      // Create tool config
+      createToolConfig({
+        toolConfigsDir,
+        name: mockToolName,
+        content: mockToolConfigContent,
+      });
 
+      // Setup paths for verification
       expectedInstalledBinaryPath = path.join(binariesDir, mockToolName, mockAssetFileName);
       symlinkPath = path.join(binDir, mockToolName);
 
+      // Clean up existing files if needed
       if (fs.existsSync(symlinkPath)) fs.unlinkSync(symlinkPath);
       if (fs.existsSync(expectedInstalledBinaryPath)) {
         fs.rmSync(path.dirname(expectedInstalledBinaryPath), { recursive: true, force: true });
       }
 
-      const generatorProjectRootPath = path.resolve(__dirname, '../../../generator');
-      const cliEntryPoint = path.join(generatorProjectRootPath, 'src', 'cli.ts');
-      const proc = Bun.spawnSync({
-        cmd: ['bun', cliEntryPoint, 'install', mockToolName],
-        cwd: generatorProjectRootPath,
-        env: { ...envVarsForCli, PATH: process.env['PATH'], HOME: tempDir },
-        stdout: 'pipe',
-        stderr: 'pipe',
+      // Execute CLI command
+      const result = executeCliCommand({
+        command: ['install', mockToolName],
+        env: envVarsForCli as Record<string, string>,
+        homeDir: tempDir,
       });
 
-      expect(proc.stderr.toString().trim()).toEqual('');
-      expect(proc.exitCode).toEqual(0);
+      expect(result.stderr).toEqual('');
+      expect(result.exitCode).toEqual(0);
     });
 
     afterAll(async () => {
@@ -192,13 +192,10 @@ describe('E2E: bun run cli install', () => {
 
   describe('downloaded tar.gz archive (GitHub Release with Mock Server)', () => {
     let tempDir: string;
-    let dotfilesDir: string;
-    let generatedDir: string;
     let toolConfigsDir: string;
     let binariesDir: string;
     let binDir: string;
     let symlinkPath: string;
-    let manifestPathFromEnv: string;
     let localArchiveFilePath: string;
     let expectedExtractedBinaryPath: string;
 
@@ -226,19 +223,20 @@ describe('E2E: bun run cli install', () => {
     let mockServer!: MockGitHubServerResult;
 
     beforeAll(async () => {
-      tempDir = createTempDir('cli-install-archive-mock');
-      dotfilesDir = path.join(tempDir, 'my-dotfiles-repo');
-      generatedDir = path.join(dotfilesDir, '.generated');
-      toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs');
-      binariesDir = path.join(generatedDir, 'binaries');
-      binDir = path.join(generatedDir, 'bin');
+      // Create test directories
+      const directories = createTestDirectories({
+        testName: 'cli-install-archive-mock'
+      });
+      
+      // Destructure directory paths
+      ({
+        tempDir,
+        toolConfigsDir,
+        binariesDir,
+        binDir
+      } = directories);
 
-      fs.mkdirSync(dotfilesDir, { recursive: true });
-      fs.mkdirSync(generatedDir, { recursive: true });
-      fs.mkdirSync(toolConfigsDir, { recursive: true });
-      fs.mkdirSync(binariesDir, { recursive: true });
-      fs.mkdirSync(binDir, { recursive: true });
-
+      // Create archive with binary inside
       const tempArchiveSourceDir = path.join(tempDir, 'temp-archive-source');
       fs.mkdirSync(tempArchiveSourceDir, { recursive: true });
       const binaryInArchiveSource = path.join(tempArchiveSourceDir, mockArchiveToolName);
@@ -250,6 +248,7 @@ describe('E2E: bun run cli install', () => {
       await $`tar -czf ${localArchiveFilePath} -C ${tempArchiveSourceDir} ${mockArchiveToolName}`;
       $.quiet = false;
 
+      // Setup mock server
       const serverRoutePath = `/${mockArchiveFileName}`;
       const assetApiDownloadPath = serverRoutePath;
 
@@ -273,23 +272,19 @@ describe('E2E: bun run cli install', () => {
         binaryPaths: [{ path: serverRoutePath, filePath: localArchiveFilePath }],
       });
 
-      manifestPathFromEnv = path.join(generatedDir, 'generated-manifest.json');
-      const envVarsForCli: ConfigEnvironment = {
-        DOTFILES_DIR: dotfilesDir,
-        GENERATED_DIR: generatedDir,
-        TOOL_CONFIGS_DIR: toolConfigsDir,
-        TARGET_DIR: binDir,
-        GENERATED_ARTIFACTS_MANIFEST_PATH: manifestPathFromEnv,
-        DEBUG: process.env['DEBUG'] || 'true', // Force some debug output from CLI
-        CACHE_ENABLED: 'false',
-        GITHUB_API_CACHE_ENABLED: 'false',
-        CHECK_UPDATES_ON_RUN: 'false',
-        GITHUB_HOST: mockServer.baseUrl,
-      };
+      const envVarsForCli = setupEnvironmentVariables({
+        directories,
+        mockServerBaseUrl: mockServer.baseUrl,
+      });
 
-      const mockToolConfigDest = path.join(toolConfigsDir, `${mockArchiveToolName}.tool.ts`);
-      fs.writeFileSync(mockToolConfigDest, mockArchiveToolConfigContent);
+      // Create tool config
+      createToolConfig({
+        toolConfigsDir,
+        name: mockArchiveToolName,
+        content: mockArchiveToolConfigContent,
+      });
 
+      // Setup paths for verification
       expectedExtractedBinaryPath = path.join(
         binariesDir,
         mockArchiveToolName,
@@ -297,23 +292,21 @@ describe('E2E: bun run cli install', () => {
       );
       symlinkPath = path.join(binDir, mockArchiveToolName);
 
+      // Clean up existing files if needed
       if (fs.existsSync(symlinkPath)) fs.unlinkSync(symlinkPath);
       if (fs.existsSync(expectedExtractedBinaryPath)) {
         fs.rmSync(path.dirname(expectedExtractedBinaryPath), { recursive: true, force: true });
       }
 
-      const generatorProjectRootPath = path.resolve(__dirname, '../../../generator');
-      const cliEntryPoint = path.join(generatorProjectRootPath, 'src', 'cli.ts');
-      const proc = Bun.spawnSync({
-        cmd: ['bun', cliEntryPoint, 'install', mockArchiveToolName],
-        cwd: generatorProjectRootPath,
-        env: { ...envVarsForCli, PATH: process.env['PATH'], HOME: tempDir },
-        stdout: 'pipe',
-        stderr: 'pipe',
+      // Execute CLI command
+      const result = executeCliCommand({
+        command: ['install', mockArchiveToolName],
+        env: envVarsForCli as Record<string, string>,
+        homeDir: tempDir,
       });
 
-      expect(proc.stderr.toString().trim()).toEqual('');
-      expect(proc.exitCode).toEqual(0);
+      expect(result.stderr).toEqual('');
+      expect(result.exitCode).toEqual(0);
     });
 
     afterAll(async () => {
