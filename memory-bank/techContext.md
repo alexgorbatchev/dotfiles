@@ -34,7 +34,7 @@ The project utilizes a primary `@`-prefixed import path alias configured in [`ts
 
 Common usage patterns based on this single alias include:
 
--   `@/path/to/file`: Resolves to `src/path/to/file` (general form).
+-   `@path/to/file`: Resolves to `src/path/to/file` (general form).
 -   `@modules/module-name`: Resolves to `src/modules/module-name`.
 -   `@testing-helpers/helper-name`: Resolves to `src/testing-helpers/helper-name`.
 -   `@types/type-definition`: Resolves to `src/types/type-definition`.
@@ -58,6 +58,10 @@ import { MyModule } from '@modules/my-module';
 -   **Readability:** Makes import paths shorter and easier to understand at a glance.
 -   **Maintainability:** Reduces the need to update import paths when files are moved, as long as they remain within the aliased base directory.
 -   **Reduced Errors:** Simplifies path construction, minimizing the chances of typos or incorrect relative path calculations.
+
+## Import Style
+
+All internal project imports must use the `'@...'` alias, which maps to the `src/` directory. For example, to import a type from `src/types/my-type.ts`, you must use the path `import { MyType } from '@types/my-type';`. Relative imports (`../`) are only permissible for files within the same module directory.
 ## Dependencies
 
 - Git
