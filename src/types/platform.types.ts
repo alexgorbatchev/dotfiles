@@ -12,7 +12,7 @@
  * - [ ] Ensure 100% test coverage for executable code.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
-import { createLogger } from '../modules/logger/createLogger';
+import { createLogger } from '@modules/logger/createLogger';
 
 const log = createLogger('platform.types');
 

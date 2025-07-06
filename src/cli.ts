@@ -37,19 +37,19 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { createAppConfig, type AppConfig, type SystemInfo as ConfigModuleSystemInfo } from '@modules/config';
-import { createLogger } from '@modules/logger'; 
 import { exitCli, registerCheckUpdatesCommand, registerCleanupCommand, registerDetectConflictsCommand, registerGenerateCommand, registerInstallCommand, registerUpdateCommand } from '@modules/cli';
+import { createAppConfig, type AppConfig, type SystemInfo as ConfigModuleSystemInfo } from '@modules/config';
 import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
-import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; 
-import { MemFileSystem, NodeFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system'; 
+import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
+import { MemFileSystem, NodeFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system';
 import { GeneratorOrchestrator, type IGeneratorOrchestrator, } from '@modules/generator-orchestrator';
 import { ShellInitGenerator, type IShellInitGenerator } from '@modules/generator-shell-init';
 import { ShimGenerator, type IShimGenerator } from '@modules/generator-shim';
 import { SymlinkGenerator, type ISymlinkGenerator } from '@modules/generator-symlink';
 import { FileGitHubApiCache, GitHubApiClient, type IGitHubApiCache, type IGitHubApiClient } from '@modules/github-client';
 import { Installer, type IInstaller } from '@modules/installer';
-import { VersionChecker, type IVersionChecker } from '@modules/version-checker'; 
+import { createClientLogger, createLogger } from '@modules/logger';
+import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
@@ -125,7 +125,7 @@ export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.Pr
       );
       // Optionally, decide whether to throw or continue.
     }
-    fs = new MemFileSystem(toolFilesJson); // MemFileSystem is now imported
+    fs = new MemFileSystem(toolFilesJson); 
   } else {
     fs = new NodeFileSystem();
   }
@@ -147,15 +147,15 @@ export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.Pr
 
   // Corrected GeneratorOrchestrator instantiation
   const generatorOrchestrator = new GeneratorOrchestrator(
-    shimGenerator, // IShimGenerator
-    shellInitGenerator, // IShellInitGenerator
-    symlinkGenerator, // ISymlinkGenerator
-    fs, // IFileSystem
-    appConfig // AppConfig
+    shimGenerator, 
+    shellInitGenerator, 
+    symlinkGenerator, 
+    fs, 
+    appConfig 
   );
 
-  const archiveExtractor = new ArchiveExtractor(fs); // Added
-  const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig); // Added archiveExtractor
+  const archiveExtractor = new ArchiveExtractor(fs); 
+  const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig); 
   const versionChecker = new VersionChecker(githubApiClient);
 
   internalLog('setupServices: Services initialized.');
@@ -186,7 +186,7 @@ export async function registerAllCommands(programInstance: Command) {
 }
 
 export async function main(argv: string[]) {
-    const program = new Command(); // Instantiate Command inside main
+    const program = new Command(); 
 
     program
       .name('generator')
