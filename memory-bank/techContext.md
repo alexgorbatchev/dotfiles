@@ -46,7 +46,7 @@ Instead of a deep relative path like:
 import { MyModule } from '../../../../modules/my-module';
 ```
 
-You can use the alias:
+You must use the alias:
 
 ```typescript
 import { MyModule } from '@modules/my-module';
@@ -64,6 +64,7 @@ import { MyModule } from '@modules/my-module';
 - Bash (for shims)
 - Bun (or Node.js/npm for the management tool development)
 - TypeScript
+- **Testing Helpers**: A comprehensive suite of testing helpers is available in `src/testing-helpers` to support unit, integration, and E2E tests. For a detailed overview of these helpers, see [docs/testing-helpers-analysis.md](docs/testing-helpers-analysis.md:1).
 - NPM packages:
   - `consola`: Used by the `clientLogger` (from `src/modules/logger/clientLogger.ts`) for standardized CLI output.
   - `debug`: For structured, namespaced logging (used internally by modules, distinct from `clientLogger`).
@@ -166,6 +167,7 @@ import { MyModule } from '@modules/my-module';
 - System tools used for archive extraction (via zx): `tar`, `unzip`, `gunzip`.
 
 ## Testing Conventions
+- **E2E Testing for CLI Commands**: A standard pattern for E2E testing of CLI commands has been established. For details, see [docs/cli-e2e-testing-analysis.md](docs/cli-e2e-testing-analysis.md:1).
 
 - **Test File Location:** Test files are named `*.test.ts` and must be stored in a `__tests__` directory located *directly next to the file or module directory they are testing*. For example, tests for `src/utils/myUtil.ts` should be in `src/utils/__tests__/myUtil.test.ts`.
 - **Splitting Large Test Files:**

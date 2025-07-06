@@ -151,12 +151,15 @@ describe('E2E: bun run cli install', () => {
     it('should download the binary asset to the correct location', () => {
       expect(fs.existsSync(expectedInstalledBinaryPath)).toBe(true);
     });
+
     it('should make the downloaded binary executable', () => {
       expect(fs.statSync(expectedInstalledBinaryPath).mode & 0o100).toBeGreaterThan(0);
     });
+
     it('should create a symlink to the downloaded binary', () => {
       expect(fs.existsSync(symlinkPath)).toBe(true);
     });
+
     it('should verify the downloaded binary works via symlink', () => {
       const proc = Bun.spawnSync([symlinkPath], { stdout: 'pipe', env: { HOME: tempDir } });
       expect(proc.exitCode).toBe(0);
@@ -262,15 +265,19 @@ describe('E2E: bun run cli install', () => {
     it('should download archive to the correct location', () => {
       expect(fs.existsSync(path.join(binariesDir, mockArchiveToolName, mockArchiveFileName))).toBe(true);
     });
+
     it('should extract binary to the correct location', () => {
       expect(fs.existsSync(expectedExtractedBinaryPath)).toBe(true);
     });
+
     it('should make extracted binary executable', () => {
       expect(fs.statSync(expectedExtractedBinaryPath).mode & 0o100).toBeGreaterThan(0);
     });
+
     it('should create symlink to extracted binary', () => {
       expect(fs.existsSync(symlinkPath)).toBe(true);
     });
+
     it('should verify extracted binary works via symlink', () => {
       const proc = Bun.spawnSync([symlinkPath], { stdout: 'pipe', env: { HOME: tempDir } });
       expect(proc.exitCode).toBe(0);
