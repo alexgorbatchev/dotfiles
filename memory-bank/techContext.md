@@ -8,6 +8,7 @@ This document details the technologies, development setup, and technical constra
 - **Management Tool:** TypeScript and Bun are used to build the core dotfiles management CLI application.
 - **Command-line Tools:** Various tools are managed, including:
     - Fzf, Navi, Yazi, Zellij, Jq, Caddy, Chatgpt, Bat, Aerospace, Lazydocker, Fnm, K9s, Sentences, Eza, Grit, Shfmt, Spf, Bun, Sgpt, Gitui, Rust, Hermit, Zoxide, Fq, Dive, Nvim, Lazygit, Fly, Git-Town, Borders, Gh, Gum, Onefetch, Ast-grep, Btm, Ruff.
+- **Configuration:** YAML is used for the main configuration file (`config.yaml`).
 - **Version Control:** Git is used for managing the repository.
 - **Scripting:** Bash scripting will be used within the generated shims for tool installation and execution logic. `zx` is used for running system commands within TypeScript.
 
@@ -919,11 +920,11 @@ The main CLI's installation command will:
 13. Handle completions if specified using the `completions` service.
 14. Update the manifest with version information.
 
-## Configuration System (.env)
+## Configuration System (`config.yaml` and `.env`)
 
-The generator uses a `.env` file for configuration. An example/template `.env` file is available at `.env`. This file lists all available environment variables, their JSDoc descriptions, and default values, serving as a comprehensive guide for users to understand and customize their setup. By default, variables with non-empty default values are uncommented in this template.
+The project is migrating from a `.env` file to a structured `config.yaml` file as the primary source of configuration. The `.env` file may still be used for environment-specific overrides (e.g., secrets, local paths) that are not suitable for checking into version control. The new `config.yaml` provides a more robust and flexible way to manage settings, especially platform-specific configurations. See `systemPatterns.md` for details on the new YAML-based loading pattern.
 
-The general structure for defining variables in the `.env` file (and as reflected in the template) is:
+An example/template `.env` file is available at `.env`. This file lists all available environment variables, their JSDoc descriptions, and default values, serving as a comprehensive guide for users to understand and customize their setup. By default, variables with non-empty default values are uncommented in this template. The general structure for defining variables in the `.env` file (and as reflected in the template) is:
 ```bash
 # Dotfiles Generator Configuration
 

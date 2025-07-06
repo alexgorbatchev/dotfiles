@@ -4,17 +4,16 @@ This document captures the current work focus, recent changes, next steps, and a
 
 ## Current Work Focus
 
-- The `generate` CLI command is now fully functional with respect to loading configurations.
-- Both `fzf.tool.ts` and `lazygit.tool.ts` configurations are now correctly ported according to the new stricter guidelines.
-- Next priorities include:
-  1.  Test the `generate` command with the `fzf.tool.ts` and `lazygit.tool.ts` configurations. (DONE)
-  2.  Implement the `Extractor` core service. (DONE - Covered by `ArchiveExtractor` module)
-  3.  Begin adding more CLI commands as outlined in [`memory-bank/progress.md`](memory-bank/progress.md:1) (e.g., `cleanup`, `check-updates`).
-  4.  Implement the `CompletionInstaller` core service.
-  5.  Implement tool installation logic.
-  6.  Port all remaining tool configurations to the `*.tool.ts` format (to be handled as a final step after all other core functionalities are implemented and tested).
+- **Configuration System Migration:** The primary focus is the migration from the current `.env`-based configuration system to a structured `config.yaml` file. This is a significant architectural change aimed at improving support for platform-specific configurations and enhancing overall maintainability. The detailed plan for this migration is documented in [`docs/config-migration-plan.md`](docs/config-migration-plan.md).
 
 ## Recent Changes
+
+*   **Configuration Migration Planning:** Completed an intensive planning and design phase for migrating the application's configuration from `.env` files to a single, structured `config.yaml`. This involved:
+    *   Creating a detailed, multi-phase migration plan, now documented in [`docs/config-migration-plan.md`](docs/config-migration-plan.md).
+    *   Iteratively designing and refining the `config.yaml` schema, including the structure for platform-specific overrides using `platform` and `match` keys.
+    *   Defining the architecture for a new `YamlConfigLoader` module responsible for reading, parsing, merging, and validating the new configuration format.
+    *   Outlining a comprehensive testing strategy update, including the replacement of `setupEnvironmentVariables` with a new `createTestConfig` helper for E2E tests.
+*   **Meta-Comment Rule:** Added a new rule to `.roo/rules/rules.md` to explicitly forbid meta-comments (e.g., `// added`, `// removed`) in the codebase to improve code quality.
 *   **Global `--config` Option and Test Refactoring:**
     *   Implemented the global `--config <path>` option in [`src/cli.ts`](src/cli.ts:1). The option's value is logged using `clientLogger.info()` via an `option:config` hook.
     *   Refactored tests for the `--config` option from [`src/__tests__/cli.test.ts`](src/__tests__/cli.test.ts:1) into a new dedicated file, [`src/__tests__/cli--config.test.ts`](src/__tests__/cli--config.test.ts:1), following project conventions.
