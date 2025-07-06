@@ -32,9 +32,8 @@ import type {
   ToolConfigInstallationMethod,
   ToolConfigInstallParams,
   ToolConfigUpdateCheck,
-} from '../../types';
-import { Platform } from '../../types/platform.types';
-
+  Platform,
+} from '@types';
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private clientLogger = createClientLogger({});
@@ -107,7 +106,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   platform(
     platforms: Platform,
     architecturesOrConfigure: Architecture | ((builder: ToolConfigBuilderInterface) => void),
-    configureCallback?: (builder: ToolConfigBuilderInterface) => void,
+    configureCallback?: (builder: ToolConfigBuilderInterface) => void
   ): this {
     let targetArchitectures: Architecture | undefined;
     let configureFn: (builder: ToolConfigBuilderInterface) => void;
@@ -158,9 +157,17 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
     const completions = this.completionSettings;
     const updateCheck = this.updateCheckConfig;
-    const platformConfigs = this.isPlatformScope ? undefined : (this.platformConfigEntries.length > 0 ? this.platformConfigEntries : undefined);
+    const platformConfigs = this.isPlatformScope
+      ? undefined
+      : this.platformConfigEntries.length > 0
+        ? this.platformConfigEntries
+        : undefined;
 
-    if (this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams) {
+    if (
+      this.currentInstallationMethod &&
+      this.currentInstallationMethod !== 'none' &&
+      this.currentInstallParams
+    ) {
       // Discriminated union: must match the correct type for each installationMethod
       const base = {
         name,
