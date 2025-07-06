@@ -37,55 +37,28 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { createClientLogger } from '@modules/logger'; // Re-add for parseArg
-import {
-  createAppConfig,
-  type AppConfig,
-  type SystemInfo as ConfigModuleSystemInfo,
-} from '@modules/config';
-// createClientLogger was removed from here as it's unused in this file.
-// It's imported and used within individual command modules' action handlers.
-import { createLogger } from '@modules/logger'; // Added import for createDebugLoggerInternal
-// import { createClientLogger } from '@modules/logger/clientLogger'; // Will be created in each command's action
-import { NodeFetchStrategy, type IDownloader } from '@modules/downloader';
-import { Downloader } from '@modules/downloader/Downloader';
-import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; // Added import
-import { MemFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system'; // Added MemFileSystem and types
-import { NodeFileSystem } from '@modules/file-system/NodeFileSystem';
-import {
-  GeneratorOrchestrator,
-  type IGeneratorOrchestrator,
-} from '@modules/generator-orchestrator';
-import { type IShellInitGenerator } from '@modules/generator-shell-init';
-import { ShellInitGenerator } from '@modules/generator-shell-init/ShellInitGenerator';
-import { type IShimGenerator } from '@modules/generator-shim';
-import { ShimGenerator } from '@modules/generator-shim/ShimGenerator';
-import { type ISymlinkGenerator } from '@modules/generator-symlink';
-import { SymlinkGenerator } from '@modules/generator-symlink/SymlinkGenerator';
-import { type IGitHubApiClient, type IGitHubApiCache } from '@modules/github-client';
-import { FileGitHubApiCache } from '@modules/github-client/FileGitHubApiCache';
-import { GitHubApiClient } from '@modules/github-client/GitHubApiClient';
+import { createAppConfig, type AppConfig, type SystemInfo as ConfigModuleSystemInfo } from '@modules/config';
+import { createLogger } from '@modules/logger'; 
+import { exitCli, registerCheckUpdatesCommand, registerCleanupCommand, registerDetectConflictsCommand, registerGenerateCommand, registerInstallCommand, registerUpdateCommand } from '@modules/cli';
+import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
+import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor'; 
+import { MemFileSystem, NodeFileSystem, type DirectoryJSON, type IFileSystem } from '@modules/file-system'; 
+import { GeneratorOrchestrator, type IGeneratorOrchestrator, } from '@modules/generator-orchestrator';
+import { ShellInitGenerator, type IShellInitGenerator } from '@modules/generator-shell-init';
+import { ShimGenerator, type IShimGenerator } from '@modules/generator-shim';
+import { SymlinkGenerator, type ISymlinkGenerator } from '@modules/generator-symlink';
+import { FileGitHubApiCache, GitHubApiClient, type IGitHubApiCache, type IGitHubApiClient } from '@modules/github-client';
 import { Installer, type IInstaller } from '@modules/installer';
-// The duplicate createLogger import that was here is confirmed removed.
-import { VersionChecker, type IVersionChecker } from '@modules/version-checker'; // Added
-import {
-  registerGenerateCommand,
-} from '@modules/cli/generateCommand';
-import { registerInstallCommand } from '@modules/cli/installCommand';
-import { registerCleanupCommand } from '@modules/cli/cleanupCommand';
-import { registerCheckUpdatesCommand } from '@modules/cli/checkUpdatesCommand';
-import { registerUpdateCommand } from '@modules/cli/updateCommand';
-import { registerDetectConflictsCommand } from '@modules/cli/detectConflictsCommand'; // Added
+import { VersionChecker, type IVersionChecker } from '@modules/version-checker'; 
 import { Command } from 'commander';
-import path from 'path'; // Removed 'node:' prefix
-import os from 'os'; // Assuming 'os' resolves correctly, if not, will adjust
-import { exitCli } from '@modules/cli/exitCli'; // Corrected import to use the alias
+import os from 'node:os';
+import path from 'node:path';
 
-const internalLog = createLogger('cli'); // createDebugLoggerInternal is defined from @modules/logger
+const internalLog = createLogger('cli'); 
 
 export interface Services {
   appConfig: AppConfig;
-  fs: IFileSystem; // IFileSystem is now imported
+  fs: IFileSystem; 
   downloader: IDownloader;
   githubApiCache: IGitHubApiCache;
   githubApiClient: IGitHubApiClient;
@@ -94,8 +67,8 @@ export interface Services {
   symlinkGenerator: ISymlinkGenerator;
   generatorOrchestrator: IGeneratorOrchestrator;
   installer: IInstaller;
-  archiveExtractor: IArchiveExtractor; // Added
-  versionChecker: IVersionChecker; // Added
+  archiveExtractor: IArchiveExtractor; 
+  versionChecker: IVersionChecker; 
 }
 
 export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.ProcessEnv } = {}): Promise<Services> {
@@ -105,8 +78,8 @@ export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.Pr
     homedir: os.homedir(),
     cwd: process.cwd(),
   };
-  const appConfig = createAppConfig(systemInfoForConfig, env as any); // Cast env
-  let fs: IFileSystem; // IFileSystem is now imported
+  const appConfig = createAppConfig(systemInfoForConfig, env as any); 
+  let fs: IFileSystem; 
 
   if (dryRun) {
     internalLog('setupServices: Dry run enabled. Initializing MemFileSystem with tool configs.');
@@ -181,13 +154,8 @@ export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.Pr
     appConfig // AppConfig
   );
 
-  // Initialize the archive extractor
   const archiveExtractor = new ArchiveExtractor(fs); // Added
-
-  // Initialize the installer
   const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig); // Added archiveExtractor
-
-  // Initialize VersionChecker
   const versionChecker = new VersionChecker(githubApiClient);
 
   internalLog('setupServices: Services initialized.');
@@ -202,30 +170,18 @@ export async function setupServices(options: { dryRun?: boolean; env?: NodeJS.Pr
     symlinkGenerator,
     generatorOrchestrator,
     installer,
-    archiveExtractor, // Added
-    versionChecker, // Added
+    archiveExtractor, 
+    versionChecker, 
   };
 }
 
 export async function registerAllCommands(programInstance: Command) {
   // Each command will call setupServices in its own action handler
-
-  // Register Install Command
   registerInstallCommand(programInstance);
-
-  // Register Generate Command
   registerGenerateCommand(programInstance);
-
-  // Register Cleanup Command
   registerCleanupCommand(programInstance);
-
-  // Register CheckUpdates Command
   registerCheckUpdatesCommand(programInstance);
-
-  // Register Update Command
   registerUpdateCommand(programInstance);
-
-  // Register Detect Conflicts Command
   registerDetectConflictsCommand(programInstance);
 }
 
@@ -239,7 +195,6 @@ export async function main(argv: string[]) {
       .option('--config <path>', 'Path to a configuration file', undefined);
 
     program.on('option:config', function (this: Command, configValue: string | undefined) {
-      // console.log('>>>>>>>>>>>>>>') // Keep this for now if it's helpful for your debugging
       if (configValue) {
         const globalOpts = this.opts();
         const hookLogger = createClientLogger({

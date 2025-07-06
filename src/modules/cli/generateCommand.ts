@@ -26,19 +26,12 @@ import type { AppConfig } from '@modules/config';
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
-// Removed unused class import: GeneratorOrchestrator
 import { createLogger as createDebugLoggerInternal, createClientLogger } from '@modules/logger'; // Ensure createClientLogger is imported
 import type { ConsolaInstance } from 'consola';
 import type { Command } from 'commander';
-// Removed unused type import: DirectoryJSON
-// Removed unused class imports: MemFileSystem, NodeFileSystem
-// Removed unused class import: ShellInitGenerator
-// Removed unused class import: ShimGenerator
-// Removed unused class import: SymlinkGenerator
-// Removed unused module import: path
 import type { ToolConfig } from '@types';
 import { exitCli } from '@modules/cli/exitCli';
-import { setupServices } from '../../cli'; // Import setupServices
+import { setupServices } from '../../cli'; 
 
 const commandInternalLog = createDebugLoggerInternal('generateCommand');
 
