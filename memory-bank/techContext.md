@@ -41,16 +41,10 @@ Common usage patterns based on this single alias include:
 
 **Example:**
 
-Instead of a deep relative path like:
-
-```typescript
-import { MyModule } from '../../../../modules/my-module';
-```
-
 You must use the alias:
 
 ```typescript
-import { MyModule } from '@modules/my-module';
+import { Foo, type Bar, Baz } from '@modules/my-module';
 ```
 
 **Benefits:**
@@ -157,7 +151,7 @@ All internal project imports must use the `'@...'` alias, which maps to the `src
       // stats.isFile() will return true, stats.isDirectory() will return false, stats.size will be 123.
       ```
   - `zx`: For executing system commands within TypeScript scripts
-  - `zod`: For schema validation (e.g., GitHub API responses)
+  - `zod/v4`: For schema validation (e.g., GitHub API responses)
   - `eslint` and related plugins: For code quality and consistency
   - `prettier`: For code formatting
   - `semver`: For version comparison and constraint checking

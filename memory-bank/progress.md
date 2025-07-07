@@ -21,7 +21,7 @@ The project is currently focused on refactoring the `src` directory into a modul
     - Bun project initialized (`bun init`).
     - TypeScript configuration (`tsconfig.json`) set up and refined.
     - `package.json` created with basic scripts (test, lint, fmt).
-    - Necessary development dependencies (including `@types/bun`, `@types/node`, `eslint`, `prettier`, `zod`, `debug`, `dotenv`, etc.) are installed.
+    - Necessary development dependencies (including `@types/bun`, `@types/node`, `eslint`, `prettier`, `zod/v4`, `debug`, `dotenv`, etc.) are installed.
     - A `.env` file for configuration has been created.
     - The `.generated` directory structure for output artifacts is established.
     - The `src` directory and its basic subdirectories (`utils`, `__tests__`, etc.) have been created.

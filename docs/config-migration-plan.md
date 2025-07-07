@@ -14,74 +14,86 @@ This phase establishes the new configuration structure and default values.
     *   **Action**: Within a `platform` entry, the `match` and `config` keys will be required.
     *   **Zod Schema (`config.yaml.schema.ts`)**:
         ```typescript
-        import { z } from 'zod';
+        import { z } from 'zod/v4';
 
-        const pathsConfigSchema = z.object({
-          dotfilesDir: z.string(),
-          targetDir: z.string(),
-          generatedDir: z.string(),
-          toolConfigsDir: z.string(),
-          completionsDir: z.string(),
-          manifestPath: z.string(),
-        });
+        const pathsConfigSchema = z
+          .object({
+            dotfilesDir: z.string(),
+            targetDir: z.string(),
+            generatedDir: z.string(),
+            toolConfigsDir: z.string(),
+            completionsDir: z.string(),
+            manifestPath: z.string(),
+          })
 
-        const systemConfigSchema = z.object({
-          sudoPrompt: z.string(),
-        });
+        const systemConfigSchema = z
+          .object({
+            sudoPrompt: z.string(),
+          })
 
-        const loggingConfigSchema = z.object({
-          debug: z.string(),
-        });
+        const loggingConfigSchema = z
+          .object({
+            debug: z.string(),
+          })
 
-        const updatesConfigSchema = z.object({
-          checkOnRun: z.boolean(),
-          checkInterval: z.number(),
-        });
+        const updatesConfigSchema = z
+          .object({
+            checkOnRun: z.boolean(),
+            checkInterval: z.number(),
+          })
 
-        const gitHubCacheConfigSchema = z.object({
-          enabled: z.boolean(),
-          ttl: z.number(),
-        });
+        const gitHubCacheConfigSchema = z
+          .object({
+            enabled: z.boolean(),
+            ttl: z.number(),
+          })
 
-        const gitHubConfigSchema = z.object({
-          token: z.string(),
-          host: z.string(),
-          userAgent: z.string(),
-          cache: gitHubCacheConfigSchema,
-        });
+        const gitHubConfigSchema = z
+          .object({
+            token: z.string(),
+            host: z.string(),
+            userAgent: z.string(),
+            cache: gitHubCacheConfigSchema,
+          })
 
-        const downloaderCacheConfigSchema = z.object({
-          enabled: z.boolean(),
-        });
+        const downloaderCacheConfigSchema = z
+          .object({
+            enabled: z.boolean(),
+          })
 
-        const downloaderConfigSchema = z.object({
-          timeout: z.number(),
-          retryCount: z.number(),
-          retryDelay: z.number(),
-          cache: downloaderCacheConfigSchema,
-        });
+        const downloaderConfigSchema = z
+          .object({
+            timeout: z.number(),
+            retryCount: z.number(),
+            retryDelay: z.number(),
+            cache: downloaderCacheConfigSchema,
+          })
 
         const platformMatchSchema = z.object({
-            os: z.enum(['macos', 'linux', 'windows']).optional(),
-            arch: z.enum(['x86_64', 'arm64']).optional(),
+          os: z.enum(['macos', 'linux', 'windows']).optional(),
+          arch: z.enum(['x86_64', 'arm64']).optional(),
         });
 
-        const baseYamlConfigSchema = z.object({
-          paths: pathsConfigSchema,
-          system: systemConfigSchema,
-          logging: loggingConfigSchema,
-          updates: updatesConfigSchema,
-          github: gitHubConfigSchema,
-          downloader: downloaderConfigSchema,
-        });
+        const baseYamlConfigSchema = (required: boolean) =>
+          z.object({
+            paths: required ? pathsConfigSchema.required() : pathsConfigSchema.optional(),
+            system: required ? systemConfigSchema.required() : systemConfigSchema.optional(),
+            logging: required ? loggingConfigSchema.required() : loggingConfigSchema.optional(),
+            updates: required ? updatesConfigSchema.required() : updatesConfigSchema.optional(),
+            github: required ? gitHubConfigSchema.required() : gitHubConfigSchema.optional(),
+            downloader: required ? downloaderConfigSchema.required() : downloaderConfigSchema.optional(),
+          });
 
-        // Use z.lazy() to handle recursive partial type for platform overrides
-        const platformOverrideSchema = z.object({
-          match: z.array(platformMatchSchema).nonempty(),
-          config: z.lazy(() => yamlConfigSchema.partial()),
-        });
+        const platformOverrideSchema = z.lazy(() =>
+          z.object({
+            match: z.array(platformMatchSchema).nonempty(),
+            get config() {
+              return baseYamlConfigSchema(false).partial();
+            },
+          })
+        );
 
-        export const yamlConfigSchema = baseYamlConfigSchema.extend({
+        export const yamlConfigSchema = baseYamlConfigSchema(true).extend({
           platform: z.array(platformOverrideSchema).optional(),
         });
         ```
