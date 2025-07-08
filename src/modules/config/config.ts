@@ -248,6 +248,11 @@ type ValidatedEnv = z.infer<typeof EnvSchema>;
  * @param systemInfo - An object containing system-specific information like the home directory.
  * @param rawEnv - An object representing the raw environment variables to be used for configuration.
  * @returns A new, validated `AppConfig` object.
+ *
+ * @testing
+ * For testing modules that consume this configuration, a mock generator
+ * is available.
+ * @see {@link createMockAppConfig} in `src/testing-helpers/createMockAppConfig.ts`
  */
 export function createAppConfig(
   systemInfo: SystemInfo,

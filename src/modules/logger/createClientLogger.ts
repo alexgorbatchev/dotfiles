@@ -35,6 +35,21 @@ export interface CreateClientLoggerOptions {
  * @param options - Configuration options for the logger.
  * @returns A configured logger instance.
  */
+/**
+ * Creates a new client logger instance using `consola`.
+ *
+ * This function configures the logger's verbosity and silence settings based on
+ * the provided options and the `NODE_ENV` environment variable. The actual logging
+ * level (e.g., `info` vs. `debug`) is determined by which method is called on the
+ * logger instance by the CLI.
+ *
+ * @param options - Configuration options for the logger.
+ * @returns A configured `consola` instance.
+ *
+ * @testing
+ * A testing helper is available to create a mock client logger for tests.
+ * @see {@link createMockClientLogger} in `src/testing-helpers/createMockClientLogger.ts`
+ */
 export function createClientLogger(options: CreateClientLoggerOptions = {}) {
   const { quiet = false } = options; // Default quiet to false if not provided
   // The 'verbose' option from CreateClientLoggerOptions is not directly used to set a level

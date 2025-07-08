@@ -65,6 +65,11 @@ const log = createLogger('toolConfigLoader');
  * @param fs The file system interface to use.
  * @returns A promise that resolves to a record of tool configurations,
  *          where keys are tool names and values are valid ToolConfig objects.
+ *
+ * @testing
+ * For testing modules that consume `ToolConfig` objects, a mock generator
+ * is available.
+ * @see {@link createToolConfig} in `src/testing-helpers/createToolConfig.ts`
  */
 export async function loadToolConfigs(
   appConfig: AppConfig,

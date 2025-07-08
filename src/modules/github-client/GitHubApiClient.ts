@@ -93,6 +93,15 @@ const log = createLogger('GitHubApiClient');
  * ### Host Configuration
  * The GitHub API base URL is configurable via `appConfig.githubHost`, which is
  * essential for testing against a mock server.
+ *
+ * @testing
+ * For testing this client, two primary helpers are available:
+ * - `FetchMockHelper`: For mocking `fetch` requests and their responses.
+ *   (from `src/testing-helpers/FetchMockHelper.ts`)
+ * - `createMockGitHubServer`: For creating a lightweight mock GitHub API server
+ *   using `express`, allowing for end-to-end testing of the client's
+ *   interaction with a live server.
+ *   (from `src/testing-helpers/createMockGitHubServer.ts`)
  */
 export class GitHubApiClient implements IGitHubApiClient {
   private readonly baseUrl: string;

@@ -48,6 +48,23 @@ import type { Stats } from 'node:fs'; // memfs Stats is compatible
 //   return buffer.toString(encoding || 'utf8');
 // }
 
+/**
+ * In-memory implementation of the `IFileSystem` interface using `memfs`.
+ *
+ * This class provides a virtual file system that is useful for testing and
+ * dry-run scenarios, allowing file operations to be performed without
+ * affecting the actual file system.
+ *
+ * @testing
+ * For unit and integration tests, two primary helpers are available:
+ * - `createMemFileSystem`: A simple factory to create an instance of this
+ *   class, optionally seeding it with an initial directory structure.
+ *   (from `src/testing-helpers/createMemFileSystem.ts`)
+ * - `createMockFileSystem`: A more advanced factory that creates a fully
+ *   mocked `IFileSystem` instance with spies for each method, allowing for
+ *   fine-grained control over the mock's behavior.
+ *   (from `src/testing-helpers/createMockFileSystem.ts`)
+ */
 export class MemFileSystem implements IFileSystem {
   private vol: Volume;
 
