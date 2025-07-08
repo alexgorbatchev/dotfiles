@@ -10,7 +10,6 @@ This phase establishes the new configuration structure and default values.
 
 *   **[x] Task 1.1: Define the Comprehensive & Required YAML Schema**
     *   **[x] Action**: A Zod schema will be created in `src/modules/config/config.yaml.schema.ts` to enforce that all configuration keys are required. Default values will no longer be handled by the schema itself.
-    *   **[x] Action**: The corresponding TypeScript types in `src/types/config.yaml.types.ts` will be updated to reflect that all properties are required (except for the `platform` field, which is optional).
     *   **[x] Action**: Within a `platform` entry, the `match` and `config` keys will be required.
     *   **Zod Schema (`config.yaml.schema.ts`)**:
         ```typescript
@@ -99,7 +98,7 @@ This phase establishes the new configuration structure and default values.
         ```
 
 *   **[x] Task 1.2: Create `default-config.yaml`**
-    *   **[x] Action**: A new `default-config.yaml` file will be created in the source tree (e.g., `src/config/`). This file will contain a complete set of all configuration keys with their default values.
+    *   **[x] Action**: A new `default-config.yaml` file will be created in the source tree (e.g., `src/modules/config-loader/`). This file will contain a complete set of all configuration keys with their default values.
     *   **`default-config.yaml` structure**:
         ```yaml
         # Default configuration values.
@@ -157,6 +156,20 @@ This phase establishes the new configuration structure and default values.
           cache:
             # Enables or disables caching for downloaded tool assets. Defaults to true.
             enabled: true # Corresponds to CACHE_ENABLED
+        ```
+
+*   **[x] Task 1.3: Update User `config.yaml` Role**
+    *   **[x] Action**: The user-facing `config.yaml` in the project root is now optional and serves as a partial override file. It only needs to contain the settings the user wishes to change from `default-config.yaml`.
+    *   **Example `config.yaml`**:
+        ```yaml
+        # User-specific overrides.
+        # These values will be merged on top of default-config.yaml.
+        paths:
+          dotfilesDir: ~/.dotfiles
+          generatedDir: ${paths.dotfilesDir}/.generated/shim
+
+        updates:
+          checkOnRun: false
 
         # Platform-specific overrides. This entire 'platform' key is optional.
         # If present, each entry requires 'match' and 'config' keys.
@@ -174,27 +187,6 @@ This phase establishes the new configuration structure and default values.
             config:
               downloader:
                 timeout: 600000
-        ```
-
-*   **[x] Task 1.3: Update User `config.yaml` Role**
-    *   **[x] Action**: The user-facing `config.yaml` in the project root is now optional and serves as a partial override file. It only needs to contain the settings the user wishes to change from `default-config.yaml`.
-    *   **Example `config.yaml`**:
-        ```yaml
-        # User-specific overrides.
-        # These values will be merged on top of default-config.yaml.
-        paths:
-          dotfilesDir: ~/.dotfiles
-          generatedDir: ${paths.dotfilesDir}/.generated/shim
-
-        updates:
-          checkOnRun: false
-
-        platform:
-          - match:
-              - os: macos
-            config:
-              downloader:
-                timeout: 450000
         ```
 
 ---
@@ -215,15 +207,15 @@ flowchart TD
     end
 ```
 
-*   **[x] Task 2.1: Implement `YamlConfigLoader` with Layering**
+*   **[x] Task 2.1: Implement `YamlConfig` loader with Layering**
     *   **[x] Action**: Create/update `src/modules/config-loader/YamlConfigLoader.ts`.
-    *   **[x] Action**: The `YamlConfigLoader.load(userConfigPath)` method will:
+    *   **[x] Action**: The `createYamlConfigFromFileSystem(userConfigPath)` function will:
         1.  Read and parse the `default-config.yaml` from its source location.
         2.  Read and parse the user's `config.yaml` from `userConfigPath`. If it doesn't exist, use an empty object.
         3.  Perform a **deep merge** of the user's configuration on top of the default configuration.
         4.  Validate the final, merged object against the updated Zod schema, which now expects a complete configuration object.
         5.  Perform token substitution for values like `${VAR_NAME}` from both `process.env` and other values within the YAML file.
-        6.  Return the final, fully-formed `AppConfig` object.
+        6.  Return the final, fully-formed `YamlConfig` object.
 
 *   **[x] Task 2.2: Deprecate `createAppConfig`**
     *   **[x] Action**: The `createAppConfig` function in `src/modules/config/config.ts` will be deprecated and removed. Its logic will be moved into the `YamlConfigLoader` and the Zod schema.
@@ -234,9 +226,8 @@ flowchart TD
 
 *   **[x] Task 3.1: Create `createTestConfig` Helper**: This remains a valid requirement, but will be updated to support the new layered loading for more accurate testing.
 *   **[x] Task 3.2: Refactor Unit & E2E Tests**: This remains a valid requirement. Tests will be updated to use the new helper and pass the `--config` flag.
-*   **[x] Task 3.3: Integrate `YamlConfigLoader` into the CLI**: In `src/cli.ts`, `setupServices` will be updated to:
-    1.  Instantiate `YamlConfigLoader`.
-    2.  Call `loader.load(configPath)` to get the final `AppConfig` object.
+*   **[x] Task 3.3: Integrate `YamlConfig` into the CLI**: In `src/cli.ts`, `setupServices` will be updated to:
+    1.  Call `createYamlConfigFromFileSystem(configPath)` to get the final `YamlConfig` object.
 
 ---
 
