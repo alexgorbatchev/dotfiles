@@ -16,6 +16,8 @@
  * - [x] Implement YamlConfigLoader class
  *   - [x] Implement constructor with IFileSystem dependency
  *   - [x] Implement load() method to read and merge YAML files
+ *   - [x] Implement fromFileSystem() to load from files and process
+ *   - [x] Implement fromObjects() to load from objects and process
  *   - [x] Implement token substitution for environment variables and config references
  *   - [x] Implement deep merge functionality for configs
  *   - [x] Implement platform-specific overrides based on OS and architecture
@@ -23,13 +25,13 @@
  * - [x] Fix all errors and warnings by running lint and test
  * - [x] Remove all commented out code and meta-comments
  * - [x] Ensure 100% test coverage for executable code
- * - [x] Update the memory bank with the new information when all tasks are complete
+ * - [ ] Update the memory bank with the new information when all tasks are complete
  */
 
 import { yamlConfigSchema, type YamlConfig } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
 import { createLogger } from '@modules/logger';
-import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo, } from '@types';
+import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
 import { join } from 'path';
 import { parse, stringify } from 'yaml';
 
@@ -80,70 +82,109 @@ export interface PlatformOverride {
 export interface IYamlConfigLoader {
   /**
    * Loads and merges configuration from default-config.yaml and user's config.yaml
-   * @param userConfigPath - Path to the user's config.yaml file
    * @param systemInfo - System information for platform detection and path resolution
    * @param env - Environment variables for token substitution
    * @returns The merged and validated configuration object
    */
-  load(userConfigPath: string, systemInfo: SystemInfo, env: Record<string, string | undefined>): Promise<YamlConfig>;
+  load(systemInfo: SystemInfo, env: Record<string, string | undefined>): Promise<YamlConfig>;
 }
 
 /**
  * Loads and merges configuration from default-config.yaml and user's config.yaml
  */
 export class YamlConfigLoader implements IYamlConfigLoader {
-  private readonly fileSystem: IFileSystem;
-  private readonly defaultConfigPath: string;
+  private readonly defaultConfig: Record<string, unknown>;
+  private readonly userConfig: Record<string, unknown>;
 
   /**
-   * Creates a new YamlConfigLoader
-   * @param fileSystem - The file system implementation to use
-   * @param defaultConfigPath - Path to the default-config.yaml file (optional)
+   * Creates a new YamlConfigLoader from raw configuration objects.
+   * @param defaultConfig - The default configuration object.
+   * @param userConfig - The user's configuration object.
    */
-  constructor(fileSystem: IFileSystem, defaultConfigPath?: string) {
-    log('constructor: fileSystem=%o, defaultConfigPath=%s', fileSystem, defaultConfigPath);
-    this.fileSystem = fileSystem;
-    this.defaultConfigPath = defaultConfigPath || join(process.cwd(), 'src', 'config', 'default-config.yaml');
+  constructor(defaultConfig: Record<string, unknown>, userConfig: Record<string, unknown>) {
+    log('constructor: defaultConfig=%o, userConfig=%o', defaultConfig, userConfig);
+    this.defaultConfig = defaultConfig;
+    this.userConfig = userConfig;
   }
-
   /**
-   * Loads and merges configuration from default-config.yaml and user's config.yaml
-   * @param userConfigPath - Path to the user's config.yaml file
-   * @param systemInfo - System information for platform detection and path resolution
-   * @param env - Environment variables for token substitution
-   * @returns The merged and validated configuration object
+   * Creates a YamlConfig by loading configuration from the file system.
+   * @param fileSystem - The file system implementation to use.
+   * @param userConfigPath - Path to the user's config.yaml file.
+   * @param systemInfo - System information for platform detection and path resolution.
+   * @param env - Environment variables for token substitution.
+   * @param defaultConfigPath - Optional path to the default-config.yaml file.
+   * @returns The merged and validated configuration object.
    */
-  async load(
+  static async fromFileSystem(
+    fileSystem: IFileSystem,
     userConfigPath: string,
     systemInfo: SystemInfo,
-    env: Record<string, string | undefined>
+    env: Record<string, string | undefined>,
+    defaultConfigPath?: string
   ): Promise<YamlConfig> {
-    log('load: userConfigPath=%s, systemInfo=%o', userConfigPath, systemInfo);
+    const finalDefaultConfigPath = defaultConfigPath || join(__dirname, 'default-config.yaml');
 
-    // 1. Read and parse the default-config.yaml
-    const defaultConfigContent = await this.fileSystem.readFile(this.defaultConfigPath, 'utf-8');
-    const defaultConfig = parse(defaultConfigContent);
+    let defaultConfig = {};
+    try {
+      const defaultConfigContent = await fileSystem.readFile(finalDefaultConfigPath, 'utf-8');
+      defaultConfig = parse(defaultConfigContent);
+    } catch (error) {
+      log('Default config file not found or invalid: %s', error);
+      throw new Error(`Failed to load or parse default config at ${finalDefaultConfigPath}`);
+    }
 
-    // 2. Apply platform-specific overrides to default config
-    const defaultConfigWithPlatformOverrides = this.applyPlatformOverrides(defaultConfig, systemInfo);
-
-    // 3. Read and parse the user's config.yaml if it exists
     let userConfig = {};
     try {
-      const userConfigContent = await this.fileSystem.readFile(userConfigPath, 'utf-8');
+      const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
       userConfig = parse(userConfigContent) || {};
     } catch (error) {
-      // If the user's config file doesn't exist, use an empty object
       log('User config file not found or invalid: %s', error);
     }
 
-    // 4. Deep merge the user's config on top of the default config with platform overrides
-    const mergedConfig = this.deepMerge(defaultConfigWithPlatformOverrides, userConfig);
+    const loader = new YamlConfigLoader(defaultConfig, userConfig);
+    return loader.load(systemInfo, env);
+  }
 
-    // 5. Perform token substitution
+  /**
+   * Creates and processes a YamlConfig from raw configuration objects.
+   * @param defaultConfig - The default configuration object.
+   * @param userConfig - The user's configuration object.
+   * @param systemInfo - System information for platform detection and path resolution.
+   * @param env - Environment variables for token substitution.
+   * @returns The merged and validated configuration object.
+   */
+  static async fromObjects(
+    defaultConfig: Record<string, unknown>,
+    userConfig: Record<string, unknown>,
+    systemInfo: SystemInfo,
+    env: Record<string, string | undefined>
+  ): Promise<YamlConfig> {
+    const loader = new YamlConfigLoader(defaultConfig, userConfig);
+    return loader.load(systemInfo, env);
+  }
+
+  /**
+   * Processes the loaded configuration objects.
+   * @param systemInfo - System information for platform detection and path resolution.
+   * @param env - Environment variables for token substitution.
+   * @returns The merged and validated configuration object.
+   */
+  async load(systemInfo: SystemInfo, env: Record<string, string | undefined>): Promise<YamlConfig> {
+    log('load: systemInfo=%o', systemInfo);
+
+    // 1. Apply platform-specific overrides to default config
+    const defaultConfigWithPlatformOverrides = this.applyPlatformOverrides(
+      this.defaultConfig,
+      systemInfo
+    );
+
+    // 2. Deep merge the user's config on top of the default config with platform overrides
+    const mergedConfig = this.deepMerge(defaultConfigWithPlatformOverrides, this.userConfig);
+
+    // 3. Perform token substitution
     const configWithTokens = this.substituteTokens(mergedConfig, env, mergedConfig);
 
-    // 6. Validate the final config against the schema
+    // 4. Validate the final config against the schema
     const validatedConfig = yamlConfigSchema.parse(configWithTokens);
 
     return validatedConfig;
@@ -155,7 +196,10 @@ export class YamlConfigLoader implements IYamlConfigLoader {
    * @param source - The source object to merge from
    * @returns The merged object
    */
-  private deepMerge<T extends Record<string, unknown>>(target: T, source: Record<string, unknown>): T {
+  private deepMerge<T extends Record<string, unknown>>(
+    target: T,
+    source: Record<string, unknown>
+  ): T {
     const output = { ...target } as Record<string, unknown>;
 
     for (const key in source) {
@@ -191,10 +235,10 @@ export class YamlConfigLoader implements IYamlConfigLoader {
    */
   private applyPlatformOverrides(
     config: Record<string, unknown>,
-    systemInfo: SystemInfo,
+    systemInfo: SystemInfo
   ): Record<string, unknown> {
     const platformOverrides = config['platform'] as PlatformOverride[] | undefined;
-    
+
     if (!platformOverrides || !Array.isArray(platformOverrides)) {
       return config;
     }
@@ -210,7 +254,11 @@ export class YamlConfigLoader implements IYamlConfigLoader {
 
     // Apply each platform override that matches the current OS and architecture
     for (const platformOverride of platformOverrides) {
-      if (!platformOverride.match || !Array.isArray(platformOverride.match) || !platformOverride.config) {
+      if (
+        !platformOverride.match ||
+        !Array.isArray(platformOverride.match) ||
+        !platformOverride.config
+      ) {
         continue;
       }
 
@@ -221,22 +269,22 @@ export class YamlConfigLoader implements IYamlConfigLoader {
         if (match.os === 'macos') targetPlatform = Platform.MacOS;
         else if (match.os === 'linux') targetPlatform = Platform.Linux;
         else if (match.os === 'windows') targetPlatform = Platform.Windows;
-        
+
         // Convert string architecture to Architecture enum
         let targetArch = Architecture.None;
         if (match.arch === 'x86_64') targetArch = Architecture.X86_64;
         else if (match.arch === 'arm64') targetArch = Architecture.Arm64;
-        
+
         // Convert currentPlatform and currentArch strings to enum values
         let currentPlatformEnum = Platform.None;
         if (currentPlatform === 'macos') currentPlatformEnum = Platform.MacOS;
         else if (currentPlatform === 'linux') currentPlatformEnum = Platform.Linux;
         else if (currentPlatform === 'windows') currentPlatformEnum = Platform.Windows;
-        
+
         let currentArchEnum = Architecture.None;
         if (currentArch === 'x86_64') currentArchEnum = Architecture.X86_64;
         else if (currentArch === 'arm64') currentArchEnum = Architecture.Arm64;
-        
+
         const osMatches = !match.os || hasPlatform(targetPlatform, currentPlatformEnum);
         const archMatches = !match.arch || hasArchitecture(targetArch, currentArchEnum);
         return osMatches && archMatches;
@@ -285,11 +333,6 @@ export class YamlConfigLoader implements IYamlConfigLoader {
   }
 
   /**
-   * Detects the current operating system
-   * @returns The detected OS as a string ('macos', 'linux', or 'windows')
-  }
-
-  /**
    * Substitutes tokens in the configuration with values from environment variables and other config values
    * @param config - The configuration object to substitute tokens in
    * @param env - Environment variables for substitution
@@ -304,11 +347,11 @@ export class YamlConfigLoader implements IYamlConfigLoader {
     // Convert the config to a string to easily find and replace tokens
     let configStr = stringify(config);
     let previousConfigStr = '';
-    
+
     // Keep substituting tokens until no more substitutions can be made
     while (previousConfigStr !== configStr) {
       previousConfigStr = configStr;
-      
+
       // Replace environment variable tokens (${VAR_NAME})
       configStr = configStr.replace(/\${([^}]+)}/g, (match, varName) => {
         // Check if this is a reference to another config value (e.g., ${paths.dotfilesDir})

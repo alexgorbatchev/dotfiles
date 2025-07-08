@@ -14,7 +14,7 @@ paths:
   # Specifies the base directory where shell completion files should be installed. Defaults to `${paths.generatedDir}/completions`.
   completionsDir: ${paths.generatedDir}/completions # Corresponds to COMPLETIONS_DIR
   # Specifies the path to the manifest file that tracks all generated artifacts. Defaults to `${paths.generatedDir}/manifest.json`.
-  manifestPath: ${paths.generatedDir}/generated-manifest.json # Corresponds to GENERATED_ARTIFACTS_MANIFEST_PATH
+  manifestPath: ${paths.generatedDir}/manifest.json # Corresponds to GENERATED_ARTIFACTS_MANIFEST_PATH
 
 system:
   # Custom prompt message to display when `sudo` is required.
@@ -53,20 +53,3 @@ downloader:
   cache:
     # Enables or disables caching for downloaded tool assets. Defaults to true.
     enabled: true # Corresponds to CACHE_ENABLED
-
-# Platform-specific overrides. This entire 'platform' key is optional.
-# If present, each entry requires 'match' and 'config' keys.
-# Merged on top of the base config in order.
-platform:
-  - match:
-      - os: macos
-    config:
-      paths:
-        targetDir: /opt/homebrew/bin
-
-  - match:
-      - os: linux
-        arch: arm64
-    config:
-      downloader:
-        timeout: 600000
