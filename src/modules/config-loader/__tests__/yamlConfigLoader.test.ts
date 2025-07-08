@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/config-loader/__tests__/YamlConfigLoader.test.ts
+ * @file generator/src/modules/config-loader/__tests__/yamlConfigLoader.test.ts
  * @description Unit tests for the YamlConfigLoader.
  *
  * ## Development Plan
@@ -14,7 +14,7 @@
  * ### Tasks:
  * - [x] Import necessary modules and types.
  * - [x] Mock `IFileSystem` using testing helpers.
- * - [x] Refactor tests to use `YamlConfigLoader.fromFileSystem`.
+ * - [x] Refactor tests to use `createYamlConfigFromFileSystem`.
  * - [x] Remove global mock of `yamlConfigSchema.parse` and apply mocks only where needed.
  * - [x] Test scenario: Loading default config only (no user config).
  * - [x] Test scenario: Loading and merging default config with user config.
@@ -22,7 +22,7 @@
  * - [x] Test scenario: Token substitution for environment variables.
  * - [x] Test scenario: Token substitution for config references.
  * - [x] Test scenario: Error handling when default config file doesn't exist.
- * - [x] Test scenario: Error handling when user config file doesn't exist (covered by `fromFileSystem` behavior).
+ * - [x] Test scenario: Error handling when user config file doesn't exist (covered by `createYamlConfigFromFileSystem` behavior).
  * - [x] Test scenario: Error handling when config validation fails.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -31,9 +31,9 @@ import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import * as yamlConfigSchema from '@modules/config/config.yaml.schema';
 import type { IFileSystem } from '@modules/file-system';
 import { createMockFileSystem } from '@testing-helpers';
-import { YamlConfigLoader } from '../YamlConfigLoader';
+import { createYamlConfigFromFileSystem } from '../yamlConfigLoader';
 
-describe('YamlConfigLoader', () => {
+describe('yamlConfigLoader', () => {
   let mockFileSystem: IFileSystem;
   let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
 
@@ -129,7 +129,7 @@ github:
     } as const;
     const env = { GITHUB_TOKEN: 'test-token' };
 
-    const result = await YamlConfigLoader.fromFileSystem(
+    const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -151,7 +151,7 @@ github:
     } as const;
     const env = { GITHUB_TOKEN: 'test-token' };
 
-    const result = await YamlConfigLoader.fromFileSystem(
+    const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -178,7 +178,7 @@ github:
     } as const;
     const env = {};
 
-    const result = await YamlConfigLoader.fromFileSystem(
+    const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -199,7 +199,7 @@ github:
     } as const;
     const env = {};
 
-    const result = await YamlConfigLoader.fromFileSystem(
+    const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -229,7 +229,7 @@ github:
     } as const;
     const env = { GITHUB_TOKEN: 'env-github-token' };
 
-    const result = await YamlConfigLoader.fromFileSystem(
+    const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -249,7 +249,7 @@ github:
     } as const;
     const env = {};
 
-    const result = await YamlConfigLoader.fromFileSystem(
+    const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -272,7 +272,7 @@ github:
     mockFileSystem = mfsInstance;
 
     expect(
-      YamlConfigLoader.fromFileSystem(
+      createYamlConfigFromFileSystem(
         mockFileSystem,
         USER_CONFIG_PATH,
         {} as any,
@@ -294,7 +294,7 @@ github:
     } as const;
     const env = {};
 
-    await YamlConfigLoader.fromFileSystem(
+    await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
@@ -322,7 +322,7 @@ github:
     const env = {};
 
     expect(
-      YamlConfigLoader.fromFileSystem(
+      createYamlConfigFromFileSystem(
         mockFileSystem,
         USER_CONFIG_PATH,
         systemInfo,
