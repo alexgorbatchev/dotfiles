@@ -26,14 +26,37 @@
  * - [x] Update the memory bank with the new information when all tasks are complete
  */
 
-import { yamlConfigSchema, type SystemInfo, type YamlConfig } from '@modules/config';
+import { yamlConfigSchema, type YamlConfig } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
 import { createLogger } from '@modules/logger';
-import { Architecture, hasArchitecture, hasPlatform, Platform, } from '@types';
+import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo, } from '@types';
 import { join } from 'path';
 import { parse, stringify } from 'yaml';
 
 const log = createLogger('YamlConfigLoader');
+
+/**
+ * Detects the current operating system
+ * @param platform - The platform from NodeJS.Process
+ * @returns The detected OS as a string ('macos', 'linux', or 'windows')
+ */
+function detectOS(platform: string): string {
+  if (platform === 'darwin') return 'macos';
+  if (platform === 'linux') return 'linux';
+  if (platform === 'win32') return 'windows';
+  return platform;
+}
+
+/**
+ * Detects the current architecture
+ * @param arch - The architecture from NodeJS.Process
+ * @returns The detected architecture as a string ('x86_64' or 'arm64')
+ */
+function detectArch(arch: string): string {
+  if (arch === 'x64') return 'x86_64';
+  if (arch === 'arm64') return 'arm64';
+  return arch;
+}
 
 /**
  * Platform match condition from config.yaml
@@ -101,7 +124,10 @@ export class YamlConfigLoader implements IYamlConfigLoader {
     const defaultConfigContent = await this.fileSystem.readFile(this.defaultConfigPath, 'utf-8');
     const defaultConfig = parse(defaultConfigContent);
 
-    // 2. Read and parse the user's config.yaml if it exists
+    // 2. Apply platform-specific overrides to default config
+    const defaultConfigWithPlatformOverrides = this.applyPlatformOverrides(defaultConfig, systemInfo);
+
+    // 3. Read and parse the user's config.yaml if it exists
     let userConfig = {};
     try {
       const userConfigContent = await this.fileSystem.readFile(userConfigPath, 'utf-8');
@@ -110,9 +136,6 @@ export class YamlConfigLoader implements IYamlConfigLoader {
       // If the user's config file doesn't exist, use an empty object
       log('User config file not found or invalid: %s', error);
     }
-
-    // 3. Apply platform-specific overrides to default config
-    const defaultConfigWithPlatformOverrides = this.applyPlatformOverrides(defaultConfig);
 
     // 4. Deep merge the user's config on top of the default config with platform overrides
     const mergedConfig = this.deepMerge(defaultConfigWithPlatformOverrides, userConfig);
@@ -167,7 +190,8 @@ export class YamlConfigLoader implements IYamlConfigLoader {
    * @returns The configuration with platform-specific overrides applied
    */
   private applyPlatformOverrides(
-    config: Record<string, unknown>
+    config: Record<string, unknown>,
+    systemInfo: SystemInfo,
   ): Record<string, unknown> {
     const platformOverrides = config['platform'] as PlatformOverride[] | undefined;
     
@@ -176,8 +200,8 @@ export class YamlConfigLoader implements IYamlConfigLoader {
     }
 
     // Determine the current OS and architecture
-    const currentPlatform = this.detectOS();
-    const currentArch = this.detectArch();
+    const currentPlatform = detectOS(systemInfo.platform);
+    const currentArch = detectArch(systemInfo.arch);
 
     log('applyPlatformOverrides: platform=%s, arch=%s', currentPlatform, currentArch);
 
@@ -263,24 +287,6 @@ export class YamlConfigLoader implements IYamlConfigLoader {
   /**
    * Detects the current operating system
    * @returns The detected OS as a string ('macos', 'linux', or 'windows')
-   */
-  private detectOS(): string {
-    const platform = process.platform;
-    if (platform === 'darwin') return 'macos';
-    if (platform === 'linux') return 'linux';
-    if (platform === 'win32') return 'windows';
-    return platform;
-  }
-
-  /**
-   * Detects the current architecture
-   * @returns The detected architecture as a string ('x86_64' or 'arm64')
-   */
-  private detectArch(): string {
-    const arch = process.arch;
-    if (arch === 'x64') return 'x86_64';
-    if (arch === 'arm64') return 'arm64';
-    return arch;
   }
 
   /**

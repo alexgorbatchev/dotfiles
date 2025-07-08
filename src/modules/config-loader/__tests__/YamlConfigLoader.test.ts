@@ -139,7 +139,7 @@ github:
     fileSystemMocks = fsMocksInstance;
     yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
 
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = { GITHUB_TOKEN: 'test-token' };
 
     const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
@@ -151,7 +151,7 @@ github:
   });
 
   it('should merge default config with user config', async () => {
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = { GITHUB_TOKEN: 'test-token' };
 
     const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
@@ -171,21 +171,12 @@ github:
   });
 
   it('should apply platform-specific overrides for macOS', async () => {
-    // Mock detectOS to return MacOS
-    const detectOSSpy = mock(() => 'macos');
-    const detectArchSpy = mock(() => 'x86_64');
-    
-    // @ts-ignore - Replace private methods for testing
-    yamlConfigLoader.detectOS = detectOSSpy;
-    // @ts-ignore
-    yamlConfigLoader.detectArch = detectArchSpy;
-
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'darwin', arch: 'x64' } as const;
     const env = {};
 
     const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
 
-    // Verify platform override was applied for macOS
+    // Verify platform override was applied for macOS, but user config takes precedence
     expect(result.paths.targetDir).toBe('/custom/bin');
     
     // Verify platform key was removed from final config
@@ -193,16 +184,7 @@ github:
   });
 
   it('should apply platform-specific overrides for Linux ARM64', async () => {
-    // Mock detectOS to return Linux and detectArch to return ARM64
-    const detectOSSpy = mock(() => 'linux');
-    const detectArchSpy = mock(() => 'arm64');
-    
-    // @ts-ignore - Replace private methods for testing
-    yamlConfigLoader.detectOS = detectOSSpy;
-    // @ts-ignore
-    yamlConfigLoader.detectArch = detectArchSpy;
-
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'arm64' } as const;
     const env = {};
 
     const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
@@ -224,7 +206,7 @@ github:
     fileSystemMocks = fsMocksInstance;
     yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
 
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = { GITHUB_TOKEN: 'env-github-token' };
 
     const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
@@ -234,7 +216,7 @@ github:
   });
 
   it('should substitute config references in config', async () => {
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = {};
 
     const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
@@ -256,7 +238,7 @@ github:
     fileSystemMocks = fsMocksInstance;
     yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
 
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = {};
 
     await expect(yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env)).rejects.toThrow();
@@ -266,7 +248,7 @@ github:
     const validateSpy = mock((data: any) => ({ ...data, validated: true }));
     yamlConfigSchema.yamlConfigSchema.parse = validateSpy;
 
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = {};
 
     await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
@@ -281,7 +263,7 @@ github:
       throw validationError;
     });
 
-    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project', platform: 'linux', arch: 'x64' } as const;
     const env = {};
 
     await expect(yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env)).rejects.toThrow(validationError);
