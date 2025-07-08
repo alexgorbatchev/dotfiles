@@ -77,22 +77,6 @@ Platform-specific configurations are stored in the `platformConfigs` property of
 - `architectures`: An optional bitmask of target architectures
 - `config`: The platform-specific configuration settings
 
-### Backward Compatibility
-
-The new `platform()` method replaces the previous weakly-typed `arch()` method, which is still maintained for backward compatibility. The `arch()` method used string identifiers like `'linux-x86_64'` or `'darwin-arm64'`, which were not type-safe.
-
-```typescript
-// Old approach (still supported)
-c.arch('linux-x86_64', (builder) => {
-  builder.bin('linux-x86_64-bin');
-});
-
-// New approach
-c.platform(Platform.Linux, Architecture.X86_64, (builder) => {
-  builder.bin('linux-x86_64-bin');
-});
-```
-
 ### Example Usage
 
 Here's a complete example of configuring a tool with platform-specific settings:
