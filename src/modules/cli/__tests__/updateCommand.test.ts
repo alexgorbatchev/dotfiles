@@ -175,7 +175,7 @@ describe('updateCommand', () => {
     (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
     (mockInstallerService.install as any).mockResolvedValue({ success: false, error: 'Install failed miserably' });
 
-    await expect(program.parseAsync(['update', 'fzf'], { from: 'user' }))
+    expect(program.parseAsync(['update', 'fzf'], { from: 'user' }))
       .rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
     expect(loggerMocks.error).toHaveBeenCalledWith('Failed to update fzf: Install failed miserably');
@@ -185,7 +185,7 @@ describe('updateCommand', () => {
   test('tool config not found', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(undefined);
 
-    await expect(program.parseAsync(['update', 'nonexistent'], { from: 'user' }))
+    expect(program.parseAsync(['update', 'nonexistent'], { from: 'user' }))
       .rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
     expect(loggerMocks.error).toHaveBeenCalledWith('Tool configuration for "nonexistent" not found in /fake/tools.');
@@ -260,7 +260,7 @@ describe('updateCommand', () => {
     const loadError = new Error('Failed to load config file');
     mockActualLoadSingleToolConfig.mockRejectedValue(loadError);
 
-    await expect(program.parseAsync(['update', 'sometool'], { from: 'user' }))
+    expect(program.parseAsync(['update', 'sometool'], { from: 'user' }))
       .rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
     
     expect(loggerMocks.error).toHaveBeenCalledWith('Error loading configuration for tool "sometool": Failed to load config file');

@@ -86,7 +86,7 @@ describe('GitHubApiClient', () => {
         )
       );
 
-      await expect(
+      expect(
         mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')
       ).rejects.toThrow(GitHubApiClientError);
 
@@ -107,7 +107,7 @@ describe('GitHubApiClient', () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0';
       mocks.mockDownloader.download.mockRejectedValue(new ClientError(url, 400, 'Bad Request'));
 
-      await expect(
+      expect(
         mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')
       ).rejects.toThrow(GitHubApiClientError);
 

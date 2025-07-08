@@ -60,14 +60,7 @@ describe('detectConflictsCommand', () => {
 
 
   beforeEach(() => {
-    // Reset individual mocks if they were spied on or had specific implementations per test
-    // For mocks created with `mock()`, often they are fresh or reset by default.
-    // If `mockLoadToolConfigsFromDirectory` needs resetting:
-    mockLoadToolConfigsFromDirectory.mockClear(); // or .mockReset() if restoring original impl is needed
-    // If exitCli's mock (created via mock.module) needs its call count reset,
-    // you might need to re-assign it or handle it if Bun's mock.module doesn't auto-clear calls.
-    // For now, assuming Bun's test runner handles mock state well between tests or rely on specific mock.clear()
-    // No direct equivalent for a global vi.clearAllMocks() when using imported mocks.
+    mock.restore();
 
     program = new Command();
     mockAppConfig = createMockAppConfig({
@@ -117,7 +110,7 @@ describe('detectConflictsCommand', () => {
     test('No tool configs found - should log info and exit 0', async () => {
       mockLoadToolConfigsFromDirectory.mockResolvedValue({});
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
 
       expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(mockAppConfig.toolConfigsDir, services.fileSystem);
       expect(loggerMocks.info).toHaveBeenCalledWith('No tool configurations found. Nothing to check for conflicts.');
@@ -128,7 +121,7 @@ describe('detectConflictsCommand', () => {
       const loadError = new Error('Failed to load configs');
       mockLoadToolConfigsFromDirectory.mockRejectedValue(loadError);
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       expect(loggerMocks.error).toHaveBeenCalledWith(`Error loading tool configurations: ${loadError.message}`);
       expect(exitCli).toHaveBeenCalledWith(1);
@@ -142,7 +135,7 @@ describe('detectConflictsCommand', () => {
       });
 
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
 
       expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
       expect(exitCli).toHaveBeenCalledWith(0);
@@ -160,7 +153,7 @@ describe('detectConflictsCommand', () => {
         throw { code: 'ENOENT' };
       });
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const expectedMessageShim = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${shimPath} (exists but is not a generator shim)`;
       expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessageShim);
@@ -180,7 +173,7 @@ describe('detectConflictsCommand', () => {
         throw { code: 'ENOENT' };
       });
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
       expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
       expect(loggerMocks.warn).not.toHaveBeenCalled(); // No warnings at all
       expect(exitCli).toHaveBeenCalledWith(0);
@@ -199,7 +192,7 @@ describe('detectConflictsCommand', () => {
         throw { code: 'ENOENT' };
       });
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       // Check for the specific warning about not being able to read
       expect(loggerMocks.warn).toHaveBeenCalledWith(`Could not read potential shim at '${shimPath}' for tool 'toolA': ${readError.message}`);
@@ -220,7 +213,7 @@ describe('detectConflictsCommand', () => {
         throw { code: 'ENOENT' };
       });
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const expectedMessageSymlinkFile = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${symlinkTargetPath} (exists but is not a symlink)`;
       expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessageSymlinkFile);
@@ -242,19 +235,12 @@ describe('detectConflictsCommand', () => {
 
       // Test with absolute wrong path
       fileSystemMocks.readlink.mockResolvedValue(pointsToWrongAbsolutePath);
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
       let expectedMessage = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
       expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessage);
 
-      // Test with relative wrong path
-      loggerMocks.warn.mockClear(); // Clear previous call
-      // Ensure exitCli mock is reset or we check for multiple calls if that's the desired behavior.
-      // For simplicity, let's assume exitCli is called once per logical failure scenario.
-      // If exitCli is only checked at the end, this mockClear for loggerMocks.warn is fine.
-      (exitCli as any).mockClear(); // Reset exitCli mock for the next assertion in this test
-
       fileSystemMocks.readlink.mockResolvedValue(pointsToWrongRelativePath);
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
       expectedMessage = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongRelativePath}', expected '${expectedSourcePath}')`;
       expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessage);
 
@@ -273,7 +259,7 @@ describe('detectConflictsCommand', () => {
       });
       fileSystemMocks.readlink.mockResolvedValue(expectedSourcePath); // Points to correct absolute source
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
       expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
       expect(loggerMocks.warn).not.toHaveBeenCalled();
       expect(exitCli).toHaveBeenCalledWith(0);
@@ -292,7 +278,7 @@ describe('detectConflictsCommand', () => {
       });
       fileSystemMocks.readlink.mockResolvedValue(correctRelativeLink);
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
       expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
       expect(loggerMocks.warn).not.toHaveBeenCalled();
       expect(exitCli).toHaveBeenCalledWith(0);
@@ -320,7 +306,7 @@ describe('detectConflictsCommand', () => {
         throw new Error("File not found in mock for other paths");
       });
 
-      await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const expectedMessageMultiple = `Conflicts detected with files not owned by the generator:\n  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
       expect(loggerMocks.warn).toHaveBeenCalledWith(expectedMessageMultiple);
@@ -343,7 +329,7 @@ describe('detectConflictsCommand', () => {
 
         // Since only a warning is logged, and no actual conflict is added to conflictMessages,
         // it should still exit with 0 if no other conflicts are found.
-        await expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
+        expect(detectConflictsActionLogic({}, services)).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
         expect(loggerMocks.warn).toHaveBeenCalledWith(`Could not check symlink target '${symlinkTargetPath}': ${statError.message}`);
         expect(loggerMocks.info).toHaveBeenCalledWith('No conflicts detected.');
         expect(exitCli).toHaveBeenCalledWith(0);

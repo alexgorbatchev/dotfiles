@@ -74,6 +74,8 @@ describe('GeneratorOrchestrator', () => {
   const MOCK_HOME_DIR = '/test/home'; // For symlink targets, shell init path resolution
 
   beforeEach(async () => {
+    mock.restore();
+
     // Directly create mock functions for the methods on the mock objects
     mockShimGenerator = {
       generate: mock(async () => Promise.resolve([] as string[])),
@@ -163,12 +165,6 @@ describe('GeneratorOrchestrator', () => {
     };
 
     it('should call sub-generators with correct options', async () => {
-      (mockShimGenerator.generate as ReturnType<typeof mock>).mockClear();
-      (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockClear();
-      (mockShimGenerator.generate as ReturnType<typeof mock>).mockClear();
-      (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockClear();
-      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockClear();
-      mockFsExists.mockReset(); // Reset spy
       mockFsExists.mockResolvedValue(false); // No existing manifest for this path
 
       // The dryRun option is no longer passed to orchestrator.generateAll
@@ -197,8 +193,6 @@ describe('GeneratorOrchestrator', () => {
         symlinks: [{ sourcePath: 'old.conf', targetPath: '/prev/old.conf', status: 'created' }],
         generatorVersion: '0.1.0',
       };
-      mockFsExists.mockReset();
-      mockFsReadFile.mockReset();
       mockFsExists.mockResolvedValue(true);
       mockFsReadFile.mockResolvedValue(JSON.stringify(existingManifest));
 
@@ -209,8 +203,6 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should handle no existing manifest', async () => {
-      mockFsExists.mockReset();
-      mockFsReadFile.mockReset();
       mockFsExists.mockResolvedValue(false);
       const result = await orchestrator.generateAll(toolConfigs, { generatorVersion: '0.1.0' });
 
@@ -220,8 +212,6 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should handle corrupted/invalid manifest by creating a new one', async () => {
-      mockFsExists.mockReset();
-      mockFsReadFile.mockReset();
       mockFsExists.mockResolvedValue(true);
       mockFsReadFile.mockResolvedValue('this is not json');
 
@@ -234,7 +224,6 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should update manifest with generated artifact details from generator results', async () => {
-      mockFsExists.mockReset();
       mockFsExists.mockResolvedValue(false); // No existing manifest
 
       const mockShimPaths = [
@@ -270,9 +259,6 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should write the updated manifest to the file system', async () => {
-      mockFsExists.mockReset();
-      // mockFsWriteFile.mockReset(); // Spy removed
-      // mockFsEnsureDir.mockReset(); // Spy removed
       mockFsExists.mockResolvedValue(false); // No existing manifest
 
       const mockShimPaths = [path.join(MOCK_TARGET_DIR, 'toolA-write')];
@@ -318,10 +304,6 @@ describe('GeneratorOrchestrator', () => {
 
     describe('dryRun behavior', () => {
       it('should call sub-generators WITHOUT dryRun option', async () => {
-        (mockShimGenerator.generate as ReturnType<typeof mock>).mockClear();
-        (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockClear();
-        (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockClear();
-
         // Orchestrator is instantiated with MemFileSystem in beforeEach
         // No dryRun option is passed to generateAll itself
         await orchestrator.generateAll(toolConfigs, {}); // Empty options or other non-dryRun options
@@ -330,12 +312,8 @@ describe('GeneratorOrchestrator', () => {
           // dryRun: true, // This is removed
           overwrite: true,
         });
-        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-          /* dryRun: true */
-          // This is removed
-        }); // Options might be empty if only dryRun was there
+        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {}); 
         expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
-          // dryRun: true, // This is removed
           overwrite: true,
           backup: true,
         });
@@ -405,8 +383,6 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should handle empty toolConfigs gracefully', async () => {
-      mockFsExists.mockReset();
-      // mockFsWriteFile.mockReset(); // Spy removed
       mockFsExists.mockResolvedValue(false);
 
       const expectedShellPath = path.join(mockAppConfig.zshInitDir, 'init.zsh');

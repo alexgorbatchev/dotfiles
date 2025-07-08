@@ -67,7 +67,7 @@ describe('GitHubApiClient', () => {
         new HttpError('API unavailable', url, 500, 'Internal Server Error')
       );
 
-      await expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);
+      expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);
 
       try {
         await mocks.apiClient.getRateLimit();

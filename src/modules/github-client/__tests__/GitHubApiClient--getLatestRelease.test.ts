@@ -71,7 +71,7 @@ describe('GitHubApiClient', () => {
         )
       );
 
-      await expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
+      expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError
       );
 
@@ -92,7 +92,7 @@ describe('GitHubApiClient', () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
       mocks.mockDownloader.download.mockRejectedValue(new NetworkError('Connection lost', url));
 
-      await expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
+      expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError
       );
 

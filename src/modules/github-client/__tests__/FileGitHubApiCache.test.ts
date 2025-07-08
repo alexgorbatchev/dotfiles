@@ -57,7 +57,7 @@
  * - [ ] Update the memory bank.
  */
 
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { mock, beforeEach, describe, expect, it } from 'bun:test';
 import { FileGitHubApiCache } from '../FileGitHubApiCache';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { AppConfig } from '@types';
@@ -73,6 +73,8 @@ describe('FileGitHubApiCache', () => {
   let cache: FileGitHubApiCache;
 
   beforeEach(() => {
+    mock.restore();
+
     // Setup mock file system
     const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
     mockFileSystem = fsInstance;
@@ -249,7 +251,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.ensureDir.mockResolvedValue(undefined);
       fileSystemMocks.writeFile.mockRejectedValue(new Error('Write error'));
 
-      await expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
+      expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.writeFile).toHaveBeenCalled();
     });
@@ -257,7 +259,7 @@ describe('FileGitHubApiCache', () => {
     it('should handle directory creation errors', async () => {
       fileSystemMocks.ensureDir.mockRejectedValue(new Error('Directory creation error'));
 
-      await expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
+      expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.writeFile).not.toHaveBeenCalled();
     });
@@ -360,7 +362,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.exists.mockResolvedValue(true);
       fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
-      await expect(cache.delete('test-key')).rejects.toThrow('Failed to delete cache entry');
+      expect(cache.delete('test-key')).rejects.toThrow('Failed to delete cache entry');
       expect(fileSystemMocks.exists).toHaveBeenCalled();
       expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
@@ -420,7 +422,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.ensureDir.mockResolvedValue(undefined);
       fileSystemMocks.readdir.mockRejectedValue(new Error('Directory read error'));
 
-      await expect(cache.clearExpired()).rejects.toThrow('Failed to clear expired cache entries');
+      expect(cache.clearExpired()).rejects.toThrow('Failed to clear expired cache entries');
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.readdir).toHaveBeenCalled();
     });
@@ -494,7 +496,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.exists.mockResolvedValue(true);
       fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
-      await expect(cache.clear()).rejects.toThrow('Failed to clear cache');
+      expect(cache.clear()).rejects.toThrow('Failed to clear cache');
       expect(fileSystemMocks.exists).toHaveBeenCalled();
       expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
@@ -511,7 +513,6 @@ describe('FileGitHubApiCache', () => {
       const firstCall = firstCallArgs?.[0];
       expect(firstCall).toBeDefined();
 
-      fileSystemMocks.exists.mockReset();
       fileSystemMocks.exists.mockResolvedValue(false);
 
       await cache.has('test-key');

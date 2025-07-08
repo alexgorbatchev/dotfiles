@@ -75,7 +75,7 @@ describe('MemFileSystem', () => {
   });
 
   it('readFile should throw for non-existent file', async () => {
-    await expect(fileSystem.readFile('/nonexistent.txt')).rejects.toThrow();
+    expect(fileSystem.readFile('/nonexistent.txt')).rejects.toThrow();
   });
 
   it('should writeFile correctly', async () => {
@@ -99,7 +99,7 @@ describe('MemFileSystem', () => {
     const newContent = 'content for non-existent dir';
     // Expect an error (typically ENOENT) when trying to write to a file
     // if its parent directory does not exist.
-    await expect(fileSystem.writeFile(newFilePath, newContent)).rejects.toThrow();
+    expect(fileSystem.writeFile(newFilePath, newContent)).rejects.toThrow();
   });
 
   it('should check existence correctly with exists', async () => {
@@ -146,15 +146,15 @@ describe('MemFileSystem', () => {
 
   it('rm should throw if trying to remove non-empty directory without recursive', async () => {
     const dirPath = '/data';
-    await expect(fileSystem.rm(dirPath)).rejects.toThrow(); // EISDIR or similar
+    expect(fileSystem.rm(dirPath)).rejects.toThrow(); // EISDIR or similar
   });
 
   it('rm should not throw for non-existent file if force is true', async () => {
-    await expect(fileSystem.rm('/nonexistent.txt', { force: true })).resolves.toBeUndefined();
+    expect(fileSystem.rm('/nonexistent.txt', { force: true })).resolves.toBeUndefined();
   });
 
   it('rm should throw for non-existent file if force is false or undefined', async () => {
-    await expect(fileSystem.rm('/nonexistent.txt')).rejects.toThrow();
+    expect(fileSystem.rm('/nonexistent.txt')).rejects.toThrow();
   });
 
   it('should remove an empty directory with rmdir', async () => {
@@ -166,7 +166,7 @@ describe('MemFileSystem', () => {
 
   it('rmdir should throw for non-empty directory', async () => {
     const dirPath = '/data';
-    await expect(fileSystem.rmdir(dirPath)).rejects.toThrow();
+    expect(fileSystem.rmdir(dirPath)).rejects.toThrow();
   });
 
   it('should get file stats with stat', async () => {

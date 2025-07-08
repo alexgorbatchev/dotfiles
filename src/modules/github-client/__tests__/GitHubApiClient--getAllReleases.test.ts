@@ -3,7 +3,7 @@
  * @description Tests for the GitHubApiClient's getAllReleases method.
  */
 
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { GitHubRelease } from '@types';
 import { RateLimitError, ServerError } from '../../downloader/errors';
 import { GitHubApiClientError } from '../GitHubApiClientError';
@@ -27,6 +27,8 @@ describe('GitHubApiClient', () => {
   let mocks: MockSetup;
 
   beforeEach(() => {
+    mock.restore();
+
     // Explicitly disable API cache for these non-caching tests
     mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
   });
@@ -40,7 +42,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(i + 31, `v0.${i}.0`)
       );
 
-      mocks.mockDownloader.download.mockReset(); // Ensure clean mock for multi-call test
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases)))
@@ -62,7 +63,6 @@ describe('GitHubApiClient', () => {
 
     it('should fetch releases with custom perPage option', async () => {
       const customPageReleases: GitHubRelease[] = [createMockRelease(1, 'v1.0.0')];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(customPageReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -80,7 +80,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(2, 'v0.9.0-beta', true),
         createMockRelease(3, 'v0.8.0', false),
       ];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -96,7 +95,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(1, 'v1.0.0', false),
         createMockRelease(2, 'v0.9.0-beta', true),
       ];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(mixedReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -115,7 +113,6 @@ describe('GitHubApiClient', () => {
     });
 
     it('should return an empty array if no releases are found', async () => {
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify([])));
       const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releases).toEqual([]);
@@ -124,7 +121,6 @@ describe('GitHubApiClient', () => {
     it('should throw a GitHubApiClientError with rate limit details if a RateLimitError occurs', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
       const resetTimestamp = Date.now() + 600 * 1000;
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download.mockRejectedValue(
         new RateLimitError(
           'Rate limited on getAllReleases',
@@ -137,7 +133,7 @@ describe('GitHubApiClient', () => {
         )
       );
 
-      await expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
+      expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError
       );
 
@@ -156,12 +152,11 @@ describe('GitHubApiClient', () => {
 
     it('should throw a GitHubApiClientError for other failures (ServerError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download.mockRejectedValue(
         new ServerError(url, 503, 'Service Unavailable')
       );
 
-      await expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
+      expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError
       );
 

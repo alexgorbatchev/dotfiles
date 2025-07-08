@@ -198,7 +198,7 @@ describe('FetchMockHelper', () => {
       expect(res2.status).toBe(201);
       expect(await res2.text()).toBe('response two');
 
-      await expect(fetch('http://example.com/3')).rejects.toThrow(error);
+      expect(fetch('http://example.com/3')).rejects.toThrow(error);
     });
   });
 
@@ -269,13 +269,13 @@ describe('FetchMockHelper', () => {
       const customError = new TypeError('Custom network error');
       fetchMockHelper.mockErrorOnce(customError);
 
-      await expect(globalThis.fetch('http://example.com')).rejects.toThrow(customError);
+      expect(globalThis.fetch('http://example.com')).rejects.toThrow(customError);
     });
 
     it('should mock a fetch call to reject with a default error if none provided', async () => {
       fetchMockHelper.mockErrorOnce();
 
-      await expect(globalThis.fetch('http://example.com')).rejects.toThrow(
+      expect(globalThis.fetch('http://example.com')).rejects.toThrow(
         'Simulated network error'
       );
     });
@@ -304,8 +304,8 @@ describe('FetchMockHelper', () => {
       const error = new Error('Persistent failure');
       fetchMockHelper.mockImplementation({ error });
 
-      await expect(globalThis.fetch('http://example.com/err1')).rejects.toThrow(error);
-      await expect(globalThis.fetch('http://example.com/err2')).rejects.toThrow(error);
+      expect(globalThis.fetch('http://example.com/err1')).rejects.toThrow(error);
+      expect(globalThis.fetch('http://example.com/err2')).rejects.toThrow(error);
     });
 
     it('mockImplementation can be overridden by mockResponseOnce', async () => {

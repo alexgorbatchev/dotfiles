@@ -44,6 +44,8 @@ describe('ArchiveExtractor (with NodeFS)', () => {
   });
 
   beforeEach(() => {
+    mock.restore();
+
     nodeFsInstance = new NodeFileSystem();
     extractor = new ArchiveExtractor(nodeFsInstance);
 
@@ -53,7 +55,6 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     );
     nodeFs.mkdirSync(currentTestSubDir, { recursive: true });
 
-    mockExecCallback.mockClear();
     // Default mock implementation for exec (simulates success)
     mockExecCallback.mockImplementation(
       (command: string, optionsOrCallback: any, callback?: any) => {
@@ -110,7 +111,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       });
       const dummyFilePath = nodePath.join(currentTestSubDir, 'archive.unknown');
       nodeFs.writeFileSync(dummyFilePath, 'dummy data'); // file command needs a real file
-      await expect(extractor.detectFormat(dummyFilePath)).rejects.toThrow(
+      expect(extractor.detectFormat(dummyFilePath)).rejects.toThrow(
         `Unsupported or undetectable archive format for: ${dummyFilePath}`
       );
     });
@@ -325,7 +326,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       const outputDir = nodePath.join(currentTestSubDir, 'output_cleanup_fail');
       nodeFs.mkdirSync(outputDir);
 
-      await expect(extractor.extract(realArchivePath, { targetDir: outputDir })).rejects.toThrow(
+      expect(extractor.extract(realArchivePath, { targetDir: outputDir })).rejects.toThrow(
         'Mocked tar failure'
       );
 

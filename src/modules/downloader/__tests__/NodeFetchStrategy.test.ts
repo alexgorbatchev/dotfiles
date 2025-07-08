@@ -12,31 +12,26 @@
  * - [ ] Update memory bank if necessary (not for this subtask).
  */
 
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import { createLogger } from '@modules/logger';
 import {
-  describe,
-  it,
-  expect,
-  mock,
   beforeEach,
-  afterEach,
-  // spyOn, // No longer needed directly for fetch
-  afterAll,
-  beforeAll,
+  describe,
+  expect,
+  it,
+  mock
 } from 'bun:test';
-import { FetchMockHelper } from '../../../testing-helpers';
+import { createMockFileSystem, FetchMockHelper } from '../../../testing-helpers';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 import {
-  NetworkError,
-  HttpError,
-  NotFoundError,
-  ForbiddenError,
-  RateLimitError,
   ClientError,
+  ForbiddenError,
+  HttpError,
+  NetworkError,
+  NotFoundError,
+  RateLimitError,
   ServerError,
 } from '../errors';
-import { createLogger } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { createMockFileSystem } from '../../../testing-helpers';
 
 createLogger('NodeFetchStrategy.test');
 
@@ -50,28 +45,16 @@ describe('NodeFetchStrategy', () => {
   const mockFileData = 'This is mock file data.';
   const mockFileBuffer = Buffer.from(mockFileData);
 
-  beforeAll(() => {
-    fetchMockHelper.setup();
-  });
-
   beforeEach(() => {
+    mock.restore();
+
+    fetchMockHelper.setup();
+
     const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
     mockFileSystem = fsInstance;
     fileSystemMocks = fsMocks;
 
     strategy = new NodeFetchStrategy(mockFileSystem);
-    fetchMockHelper.reset();
-    if (fileSystemMocks.writeFile.mockClear) {
-      fileSystemMocks.writeFile.mockClear();
-    }
-  });
-
-  afterEach(() => {
-    // fetchMockHelper.reset() in beforeEach should be enough
-  });
-
-  afterAll(() => {
-    fetchMockHelper.restore();
   });
 
   it('isAvailable() should return true', async () => {
@@ -231,7 +214,7 @@ describe('NodeFetchStrategy', () => {
   describe('Timeout handling', () => {
     it('should throw NetworkError on timeout', async () => {
       fetchMockHelper.mockErrorOnce(new DOMException('Aborted', 'AbortError'));
-      await expect(strategy.download(testUrl, { timeout: 50 })).rejects.toThrow(NetworkError);
+      expect(strategy.download(testUrl, { timeout: 50 })).rejects.toThrow(NetworkError);
 
       // Test the internal error properties
       fetchMockHelper.reset(); // Reset for the next mock
@@ -260,7 +243,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should fail after all retries', async () => {
       fetchMockHelper.mockImplementation({ body: 'Server Error', status: 500 });
-      await expect(strategy.download(testUrl, { retryCount: 2, retryDelay: 10 })).rejects.toThrow(
+      expect(strategy.download(testUrl, { retryCount: 2, retryDelay: 10 })).rejects.toThrow(
         ServerError
       );
       expect(fetchMockHelper.getSpy().mock.calls.length).toBe(3);
@@ -268,7 +251,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw NetworkError if retries exhausted on non-HttpError', async () => {
       fetchMockHelper.mockImplementation({ error: new Error('Simulated network issue') });
-      await expect(strategy.download(testUrl, { retryCount: 1, retryDelay: 10 })).rejects.toThrow(
+      expect(strategy.download(testUrl, { retryCount: 1, retryDelay: 10 })).rejects.toThrow(
         NetworkError
       );
 
@@ -289,7 +272,7 @@ describe('NodeFetchStrategy', () => {
     it('should throw NetworkError if fetch itself throws', async () => {
       const originalError = new Error('Connection refused');
       fetchMockHelper.mockErrorOnce(originalError);
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(NetworkError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(NetworkError);
 
       fetchMockHelper.reset();
       fetchMockHelper.mockErrorOnce(originalError);
@@ -304,7 +287,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw NotFoundError for 404', async () => {
       fetchMockHelper.mockResponseOnce({ body: 'Not Here', status: 404 });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(NotFoundError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(NotFoundError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({ body: 'Not Here', status: 404 });
       try {
@@ -321,7 +304,7 @@ describe('NodeFetchStrategy', () => {
         status: 429,
         headers: { 'Retry-After': '60' },
       });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({
         body: 'Too Fast',
@@ -344,7 +327,7 @@ describe('NodeFetchStrategy', () => {
         status: 403,
         headers: { 'X-RateLimit-Reset': String(resetTime) },
       });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({
         body: 'Rate Limited',
@@ -366,7 +349,7 @@ describe('NodeFetchStrategy', () => {
         status: 403,
         headers: { 'Retry-After': '120' },
       });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({
         body: 'Rate Limited',
@@ -389,7 +372,7 @@ describe('NodeFetchStrategy', () => {
         status: 403,
         headers: { 'Retry-After': retryDate.toUTCString() },
       });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(RateLimitError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({
         body: 'Rate Limited',
@@ -407,7 +390,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw ForbiddenError for 403 without rate limit headers', async () => {
       fetchMockHelper.mockResponseOnce({ body: 'Forbidden Access', status: 403 });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(ForbiddenError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(ForbiddenError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({ body: 'Forbidden Access', status: 403 });
       try {
@@ -420,7 +403,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw ClientError for other 4xx (e.g., 400)', async () => {
       fetchMockHelper.mockResponseOnce({ body: 'Bad Request', status: 400 });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(ClientError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(ClientError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({ body: 'Bad Request', status: 400 });
       try {
@@ -433,7 +416,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw ServerError for 5xx (e.g., 503)', async () => {
       fetchMockHelper.mockResponseOnce({ body: 'Service Unavailable', status: 503 });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(ServerError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(ServerError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({ body: 'Service Unavailable', status: 503 });
       try {
@@ -446,7 +429,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw HttpError for other non-ok statuses (e.g., 300)', async () => {
       fetchMockHelper.mockResponseOnce({ body: 'Temporary Redirect', status: 307 });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(HttpError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(HttpError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({ body: 'Temporary Redirect', status: 307 });
       try {
@@ -459,7 +442,7 @@ describe('NodeFetchStrategy', () => {
 
     it('should throw NetworkError if response.body is null', async () => {
       fetchMockHelper.mockResponseOnce({ body: null, status: 200 });
-      await expect(strategy.download(testUrl, {})).rejects.toThrow(NetworkError);
+      expect(strategy.download(testUrl, {})).rejects.toThrow(NetworkError);
       fetchMockHelper.reset();
       fetchMockHelper.mockResponseOnce({ body: null, status: 200 });
       try {

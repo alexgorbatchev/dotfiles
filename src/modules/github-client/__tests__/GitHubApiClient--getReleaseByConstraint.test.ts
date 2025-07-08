@@ -3,7 +3,7 @@
  * @description Tests for the GitHubApiClient's getReleaseByConstraint method.
  */
 
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { GitHubRelease } from '@types';
 import { NotFoundError } from '../../downloader/errors';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
@@ -26,6 +26,7 @@ describe('GitHubApiClient', () => {
   let mocks: MockSetup;
 
   beforeEach(() => {
+    mock.restore();
     // Explicitly disable API cache for these non-caching tests
     mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
   });
@@ -70,7 +71,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(5, 'v0.9.0'),
         createMockRelease(6, '2.0.0'),
       ];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -91,7 +91,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(3, 'v1.1.0-alpha', true),
         createMockRelease(4, 'v1.0.1'),
       ];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -109,7 +108,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(1, 'v1.0.0'),
         createMockRelease(2, 'v0.9.0'),
       ];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -123,7 +121,6 @@ describe('GitHubApiClient', () => {
     });
 
     it('should return null if getAllReleases returns an empty list', async () => {
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify([])));
       const release = await mocks.apiClient.getReleaseByConstraint(
         'test-owner',
@@ -139,7 +136,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(2, 'v1.0.0'),
         createMockRelease(3, 'my-feature-branch'),
       ];
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -166,7 +162,6 @@ describe('GitHubApiClient', () => {
         createMockRelease(perPage + 3, 'v1.2.3'),
       ].sort((a, b) => (new Date(b.published_at) as any) - (new Date(a.published_at) as any)); // Simulate API sort
 
-      mocks.mockDownloader.download.mockReset();
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases))) // Page 1
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases))) // Page 2

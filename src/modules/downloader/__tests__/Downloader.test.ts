@@ -134,7 +134,7 @@ describe('Downloader', () => {
     const downloader = new Downloader(fileSystem, [unavailableStrategy]);
     const url = 'http://example.com/file.txt';
 
-    await expect(downloader.download(url)).rejects.toThrow(
+    expect(downloader.download(url)).rejects.toThrow(
       'No available download strategy succeeded for http://example.com/file.txt.'
     );
   });
@@ -143,14 +143,14 @@ describe('Downloader', () => {
     const downloader = new Downloader(fileSystem, [failingStrategy, failingStrategy]); // Two instances of failing strategy
     const url = 'http://example.com/file.txt';
 
-    await expect(downloader.download(url)).rejects.toThrow('failingStrategy failed');
+    expect(downloader.download(url)).rejects.toThrow('failingStrategy failed');
     expect(failingStrategy.download).toHaveBeenCalledTimes(2); // Called for both instances
   });
 
   it('should throw an error if no strategies are registered and download is called', async () => {
     const downloader = new Downloader(fileSystem, []); // Initialize with empty array
     const url = 'http://example.com/file.txt';
-    await expect(downloader.download(url)).rejects.toThrow('No download strategies registered.');
+    expect(downloader.download(url)).rejects.toThrow('No download strategies registered.');
   });
 
   it('can register a new strategy which is then used first', async () => {
@@ -180,7 +180,7 @@ describe('Downloader', () => {
     const downloader = new Downloader(fileSystem, [nonErrorObjectThrowingStrategy]);
     const url = 'http://example.com/file.txt';
 
-    await expect(downloader.download(url)).rejects.toThrowError(
+    expect(downloader.download(url)).rejects.toThrowError(
       // String({ message: 'simulated non-error object', code: 123 }) becomes '[object Object]'
       new Error('[object Object]')
     );
@@ -191,7 +191,7 @@ describe('Downloader', () => {
     const downloader = new Downloader(fileSystem, [nonErrorStringThrowingStrategy]);
     const url = 'http://example.com/file.txt';
 
-    await expect(downloader.download(url)).rejects.toThrowError(
+    expect(downloader.download(url)).rejects.toThrowError(
       new Error('simulated string error')
     );
     expect((nonErrorStringThrowingStrategy.download as any).mock.calls.length).toBe(1);
@@ -244,7 +244,7 @@ describe('Downloader', () => {
       };
       const downloader = new Downloader(fileSystem, [mockNoProgressStrategy]);
 
-      await expect(downloader.download('http://example.com/file', {})).resolves.toBeInstanceOf(
+      expect(downloader.download('http://example.com/file', {})).resolves.toBeInstanceOf(
         Buffer
       );
       expect(mockStrategyDownload).toHaveBeenCalledWith(

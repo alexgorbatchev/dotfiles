@@ -196,7 +196,7 @@ describe('checkUpdatesCommand', () => {
   test('should handle tool config not found for specific tool', async () => {
     (loadSingleToolConfig as any).mockResolvedValue(undefined);
     // The action handler calls exitCli, which is mocked to throw in tests
-    await expect(program.parseAsync(['check-updates', 'nonexistenttool'], { from: 'user' })).rejects.toThrow();
+    expect(program.parseAsync(['check-updates', 'nonexistenttool'], { from: 'user' })).rejects.toThrow();
     expect(loggerMocks.error).toHaveBeenCalledWith('Tool configuration for "nonexistenttool" not found in /fake/tools.');
   });
 
@@ -235,14 +235,14 @@ describe('checkUpdatesCommand', () => {
   test('should handle error during loadToolConfigsFromDirectory', async () => {
     const errorMessage = 'FS read error';
     (loadToolConfigsFromDirectory as any).mockRejectedValue(new Error(errorMessage));
-    await expect(program.parseAsync(['check-updates'], { from: 'user' })).rejects.toThrow();
+    expect(program.parseAsync(['check-updates'], { from: 'user' })).rejects.toThrow();
     expect(loggerMocks.error).toHaveBeenCalledWith('Error loading tool configurations: %s', errorMessage);
   });
 
   test('should handle error during loadSingleToolConfig', async () => {
     const errorMessage = 'FS read error single';
     (loadSingleToolConfig as any).mockRejectedValue(new Error(errorMessage));
-    await expect(program.parseAsync(['check-updates', 'sometool'], { from: 'user' })).rejects.toThrow();
+    expect(program.parseAsync(['check-updates', 'sometool'], { from: 'user' })).rejects.toThrow();
     expect(loggerMocks.error).toHaveBeenCalledWith('Error loading tool configurations: %s', errorMessage);
   });
 
