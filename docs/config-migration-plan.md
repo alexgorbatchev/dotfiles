@@ -8,10 +8,10 @@ This document outlines the detailed, step-by-step plan to migrate the project's 
 
 This phase establishes the new configuration structure and default values.
 
-*   **Task 1.1: Define the Comprehensive & Required YAML Schema**
-    *   **Action**: A Zod schema will be created in `src/modules/config/config.yaml.schema.ts` to enforce that all configuration keys are required. Default values will no longer be handled by the schema itself.
-    *   **Action**: The corresponding TypeScript types in `src/types/config.yaml.types.ts` will be updated to reflect that all properties are required (except for the `platform` field, which is optional).
-    *   **Action**: Within a `platform` entry, the `match` and `config` keys will be required.
+*   **[x] Task 1.1: Define the Comprehensive & Required YAML Schema**
+    *   **[x] Action**: A Zod schema will be created in `src/modules/config/config.yaml.schema.ts` to enforce that all configuration keys are required. Default values will no longer be handled by the schema itself.
+    *   **[x] Action**: The corresponding TypeScript types in `src/types/config.yaml.types.ts` will be updated to reflect that all properties are required (except for the `platform` field, which is optional).
+    *   **[x] Action**: Within a `platform` entry, the `match` and `config` keys will be required.
     *   **Zod Schema (`config.yaml.schema.ts`)**:
         ```typescript
         import { z } from 'zod/v4';
@@ -98,8 +98,8 @@ This phase establishes the new configuration structure and default values.
         });
         ```
 
-*   **Task 1.2: Create `default-config.yaml`**
-    *   **Action**: A new `default-config.yaml` file will be created in the source tree (e.g., `src/config/`). This file will contain a complete set of all configuration keys with their default values.
+*   **[x] Task 1.2: Create `default-config.yaml`**
+    *   **[x] Action**: A new `default-config.yaml` file will be created in the source tree (e.g., `src/config/`). This file will contain a complete set of all configuration keys with their default values.
     *   **`default-config.yaml` structure**:
         ```yaml
         # Default configuration values.
@@ -176,15 +176,15 @@ This phase establishes the new configuration structure and default values.
                 timeout: 600000
         ```
 
-*   **Task 1.3: Update User `config.yaml` Role**
-    *   **Action**: The user-facing `config.yaml` in the project root is now optional and serves as a partial override file. It only needs to contain the settings the user wishes to change from `default-config.yaml`.
+*   **[x] Task 1.3: Update User `config.yaml` Role**
+    *   **[x] Action**: The user-facing `config.yaml` in the project root is now optional and serves as a partial override file. It only needs to contain the settings the user wishes to change from `default-config.yaml`.
     *   **Example `config.yaml`**:
         ```yaml
         # User-specific overrides.
         # These values will be merged on top of default-config.yaml.
         paths:
           dotfilesDir: ~/.dotfiles
-          generatedDir: ${paths.dotfilesDir}/.generated/shim 
+          generatedDir: ${paths.dotfilesDir}/.generated/shim
 
         updates:
           checkOnRun: false
@@ -215,9 +215,9 @@ flowchart TD
     end
 ```
 
-*   **Task 2.1: Implement `YamlConfigLoader` with Layering**
-    *   **Action**: Create/update `src/modules/config-loader/YamlConfigLoader.ts`.
-    *   **Action**: The `YamlConfigLoader.load(userConfigPath)` method will:
+*   **[x] Task 2.1: Implement `YamlConfigLoader` with Layering**
+    *   **[x] Action**: Create/update `src/modules/config-loader/YamlConfigLoader.ts`.
+    *   **[x] Action**: The `YamlConfigLoader.load(userConfigPath)` method will:
         1.  Read and parse the `default-config.yaml` from its source location.
         2.  Read and parse the user's `config.yaml` from `userConfigPath`. If it doesn't exist, use an empty object.
         3.  Perform a **deep merge** of the user's configuration on top of the default configuration.
@@ -225,16 +225,16 @@ flowchart TD
         5.  Perform token substitution for values like `${VAR_NAME}` from both `process.env` and other values within the YAML file.
         6.  Return the final, fully-formed `AppConfig` object.
 
-*   **Task 2.2: Deprecate `createAppConfig`**
-    *   **Action**: The `createAppConfig` function in `src/modules/config/config.ts` will be deprecated and removed. Its logic will be moved into the `YamlConfigLoader` and the Zod schema.
+*   **[x] Task 2.2: Deprecate `createAppConfig`**
+    *   **[x] Action**: The `createAppConfig` function in `src/modules/config/config.ts` will be deprecated and removed. Its logic will be moved into the `YamlConfigLoader` and the Zod schema.
 
 ---
 
 ### **Phase 3: Integration & Testing**
 
-*   **Task 3.1: Create `createTestConfig` Helper**: This remains a valid requirement, but will be updated to support the new layered loading for more accurate testing.
-*   **Task 3.2: Refactor Unit & E2E Tests**: This remains a valid requirement. Tests will be updated to use the new helper and pass the `--config` flag.
-*   **Task 3.3: Integrate `YamlConfigLoader` into the CLI**: In `src/cli.ts`, `setupServices` will be updated to:
+*   **[x] Task 3.1: Create `createTestConfig` Helper**: This remains a valid requirement, but will be updated to support the new layered loading for more accurate testing.
+*   **[x] Task 3.2: Refactor Unit & E2E Tests**: This remains a valid requirement. Tests will be updated to use the new helper and pass the `--config` flag.
+*   **[x] Task 3.3: Integrate `YamlConfigLoader` into the CLI**: In `src/cli.ts`, `setupServices` will be updated to:
     1.  Instantiate `YamlConfigLoader`.
     2.  Call `loader.load(configPath)` to get the final `AppConfig` object.
 
@@ -242,5 +242,24 @@ flowchart TD
 
 ### **Phase 4: Cleanup and Documentation**
 
-*   **Task 4.1: Remove Old System**: Deprecate and remove `.env` loading via `dotenv` and the `createAppConfig` function.
-*   **Task 4.2: Update Memory Bank**: Update all relevant Memory Bank documents to reflect the new, layered, and required-key YAML-based configuration system.
+*   **[x] Task 4.1: Remove Old System**: Deprecate and remove `.env` loading via `dotenv` and the `createAppConfig` function.
+*   **[x] Task 4.2: Update Memory Bank**: Update all relevant Memory Bank documents to reflect the new, layered, and required-key YAML-based configuration system.
+
+---
+
+### **Progress**
+
+*   **[x] Phase 1: Foundation & Schema Design (Revised)**
+    *   **[x] Task 1.1: Define the Comprehensive & Required YAML Schema**
+    *   **[x] Task 1.2: Create `default-config.yaml`**
+    *   **[x] Task 1.3: Update User `config.yaml` Role**
+*   **[x] Phase 2: Implement the New Layered Configuration Loader**
+    *   **[x] Task 2.1: Implement `YamlConfigLoader` with Layering**
+    *   **[x] Task 2.2: Deprecate `createAppConfig`**
+*   **[x] Phase 3: Integration & Testing**
+    *   **[x] Task 3.1: Create `createTestConfig` Helper**
+    *   **[x] Task 3.2: Refactor Unit & E2E Tests**
+    *   **[x] Task 3.3: Integrate `YamlConfigLoader` into the CLI**
+*   **[x] Phase 4: Cleanup and Documentation**
+    *   **[x] Task 4.1: Remove Old System**
+    *   **[x] Task 4.2: Update Memory Bank**

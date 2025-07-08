@@ -1,144 +1,151 @@
 /**
  * @file Defines the Zod schema for validating the `config.yaml` file.
- *
- * ## Development Plan
- *
- * - [x] Define the Zod schema for the `config.yaml` file.
- * - [ ] Write tests for the schema.
- * - [ ] Fix all errors and warnings.
- * - [ ] Remove all commented out code and meta-comments.
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 import { z } from 'zod/v4';
 
-const pathsConfigSchema = z
-  .object({
-    dotfilesDir: z.string(),
-    targetDir: z.string(),
-    generatedDir: z.string(),
-    toolConfigsDir: z.string(),
-    completionsDir: z.string(),
-    manifestPath: z.string(),
-  })
-
-const systemConfigSchema = z
-  .object({
-    sudoPrompt: z.string(),
-  })
-
-const loggingConfigSchema = z
-  .object({
-    debug: z.string(),
-  })
-
-const updatesConfigSchema = z
-  .object({
-    checkOnRun: z.boolean(),
-    checkInterval: z.number(),
-  })
-
-const gitHubCacheConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-    ttl: z.number(),
-  })
-
-const gitHubConfigSchema = z
-  .object({
-    token: z.string(),
-    host: z.string(),
-    userAgent: z.string(),
-    cache: gitHubCacheConfigSchema,
-  })
-
-const downloaderCacheConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-  })
-
-const downloaderConfigSchema = z
-  .object({
-    timeout: z.number(),
-    retryCount: z.number(),
-    retryDelay: z.number(),
-    cache: downloaderCacheConfigSchema,
-  })
-
-const platformMatchSchema = z.object({
-  os: z.enum(['macos', 'linux', 'windows']).optional(),
-  arch: z.enum(['x86_64', 'arm64']).optional(),
+const pathsConfigSchema = z.object({
+  dotfilesDir: z.string(),
+  targetDir: z.string(),
+  generatedDir: z.string(),
+  toolConfigsDir: z.string(),
+  completionsDir: z.string(),
+  manifestPath: z.string(),
 });
 
-const baseYamlConfigSchema = (required: boolean) =>
+const systemConfigSchema = z.object({
+  sudoPrompt: z.string(),
+});
+
+const loggingConfigSchema = z.object({
+  debug: z.string(),
+});
+
+const updatesConfigSchema = z.object({
+  checkOnRun: z.boolean(),
+  checkInterval: z.number(),
+});
+
+const gitHubCacheConfigSchema = z.object({
+  enabled: z.boolean(),
+  ttl: z.number(),
+});
+
+const gitHubConfigSchema = z.object({
+  token: z.string(),
+  host: z.string(),
+  userAgent: z.string(),
+  cache: gitHubCacheConfigSchema,
+});
+
+const downloaderCacheConfigSchema = z.object({
+  enabled: z.boolean(),
+});
+
+const downloaderConfigSchema = z.object({
+  timeout: z.number(),
+  retryCount: z.number(),
+  retryDelay: z.number(),
+  cache: downloaderCacheConfigSchema,
+});
+
+const OS_VALUES = ['macos', 'linux', 'windows'] as const;
+const ARCH_VALUES = ['x86_64', 'arm64'] as const;
+
+const platformMatchSchema = z.union([
   z.object({
-    paths: required ? pathsConfigSchema.required() : pathsConfigSchema.optional(),
-    system: required ? systemConfigSchema.required() : systemConfigSchema.optional(),
-    logging: required ? loggingConfigSchema.required() : loggingConfigSchema.optional(),
-    updates: required ? updatesConfigSchema.required() : updatesConfigSchema.optional(),
-    github: required ? gitHubConfigSchema.required() : gitHubConfigSchema.optional(),
-    downloader: required ? downloaderConfigSchema.required() : downloaderConfigSchema.optional(),
+    os: z.enum(OS_VALUES),
+    arch: z.enum(ARCH_VALUES).optional(),
+  }),
+  z.object({
+    os: z.enum(OS_VALUES).optional(),
+    arch: z.enum(ARCH_VALUES),
+  }),
+]);
+
+const baseYamlConfigSchemaRequired = 
+  z.object({
+    paths: pathsConfigSchema.required(),
+    system: systemConfigSchema.required(),
+    logging: loggingConfigSchema.required(),
+    updates: updatesConfigSchema.required(),
+    github: gitHubConfigSchema.required(),
+    downloader: downloaderConfigSchema.required(),
   });
 
-const platformOverrideSchema = z.lazy(() =>
+const baseYamlConfigSchemaPartial = 
   z.object({
-    match: z.array(platformMatchSchema).nonempty(),
-    get config() {
-      return baseYamlConfigSchema(false).partial();
-    },
-  })
-);
+    paths: pathsConfigSchema.partial().optional(),
+    system: systemConfigSchema.partial().optional(),
+    logging: loggingConfigSchema.partial().optional(),
+    updates: updatesConfigSchema.partial().optional(),
+    github: gitHubConfigSchema.partial().optional(),
+    downloader: downloaderConfigSchema.partial().optional(),
+  });
 
-export const yamlConfigSchema = baseYamlConfigSchema(true).extend({
+const platformOverrideSchema = z.object({
+  match: z.array(platformMatchSchema).nonempty(),
+  get config() {
+    return baseYamlConfigSchemaPartial.partial();
+  },
+});
+
+export const yamlConfigSchema = baseYamlConfigSchemaRequired.extend({
   platform: z.array(platformOverrideSchema).optional(),
 });
 
-type BaseYamlConfig = z.infer<typeof baseYamlConfigSchema>;
-const f: BaseYamlConfig & { platform?: Array<z.infer<typeof platformOverrideSchema>> } = {
-  paths: {
-    dotfilesDir: 'test',
-    targetDir: '',
-    generatedDir: '',
-    toolConfigsDir: '',
-    completionsDir: '',
-    manifestPath: '',
-  },
-  system: {
-    sudoPrompt: '',
-  },
-  logging: {
-    debug: '',
-  },
-  updates: {
-    checkOnRun: false,
-    checkInterval: 0,
-  },
-  github: {
-    token: '',
-    host: '',
-    userAgent: '',
-    cache: {
-      enabled: false,
-      ttl: 0,
+export type YamlConfig = z.infer<typeof yamlConfigSchema>;
+
+{
+  // This is a type assertion to ensure that the schema is correct. DO NOT REMOVE.
+  // @ts-ignore
+  let check: YamlConfig;
+
+  check = {
+    paths: {
+      dotfilesDir: 'test',
+      targetDir: '',
+      generatedDir: '',
+      toolConfigsDir: '',
+      completionsDir: '',
+      manifestPath: '',
     },
-  },
-  downloader: {
-    timeout: 0,
-    retryCount: 0,
-    retryDelay: 0,
-    cache: {
-      enabled: false,
+    system: {
+      sudoPrompt: '',
     },
-  },
-  platform: [
-    {
-      // match: [{ os: 'macos', arch: 'arm64' }],
-      match: [{ }],
-      config: {
-        paths: {
-          dotfilesDir: 'macos-arm64-dotfiles',
-        },
+    logging: {
+      debug: '',
+    },
+    updates: {
+      checkOnRun: false,
+      checkInterval: 0,
+    },
+    github: {
+      token: '',
+      host: '',
+      userAgent: '',
+      cache: {
+        enabled: false,
+        ttl: 0,
       },
     },
-  ],
-};
+    downloader: {
+      timeout: 0,
+      retryCount: 0,
+      retryDelay: 0,
+      cache: {
+        enabled: false,
+      },
+    },
+    platform: [
+      {
+        match: [{ os: 'macos' }, { arch: 'arm64' }],
+        config: {
+          paths: {
+
+            dotfilesDir: 'macos-arm64-dotfiles',
+          },
+        },
+      },
+    ],
+  };
+}

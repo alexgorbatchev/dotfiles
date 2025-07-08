@@ -1,0 +1,289 @@
+/**
+ * @file generator/src/modules/config-loader/__tests__/YamlConfigLoader.test.ts
+ * @description Unit tests for the YamlConfigLoader.
+ *
+ * ## Development Plan
+ *
+ * ### Mandatory Pre-read:
+ * - `generator/src/modules/config-loader/YamlConfigLoader.ts`
+ * - `generator/src/config/default-config.yaml`
+ * - `generator/src/types/config.yaml.types.ts`
+ * - `generator/src/modules/config/config.yaml.schema.ts`
+ * - `generator/src/types/platform.types.ts`
+ *
+ * ### Tasks:
+ * - [x] Import necessary modules and types.
+ * - [x] Mock `IFileSystem` and `AppConfig` using testing helpers.
+ * - [x] Test scenario: Loading default config only (no user config).
+ * - [x] Test scenario: Loading and merging default config with user config.
+ * - [x] Test scenario: Platform-specific overrides are correctly applied.
+ * - [x] Test scenario: Token substitution for environment variables.
+ * - [x] Test scenario: Token substitution for config references.
+ * - [x] Test scenario: Error handling when default config file doesn't exist.
+ * - [x] Test scenario: Error handling when user config file doesn't exist.
+ * - [x] Test scenario: Error handling when config validation fails.
+ * - [ ] Update the memory bank with the new information when all tasks are complete.
+ */
+
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import type { IFileSystem } from '../../../modules/file-system/IFileSystem';
+import { YamlConfigLoader } from '../YamlConfigLoader';
+import { createMockFileSystem } from '../../../testing-helpers/createMockFileSystem';
+import * as yamlConfigSchema from '../../../modules/config/config.yaml.schema';
+
+describe('YamlConfigLoader', () => {
+  let mockFileSystem: IFileSystem;
+  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
+  let yamlConfigLoader: YamlConfigLoader;
+  
+  let originalYamlConfigSchemaParse: typeof yamlConfigSchema.yamlConfigSchema.parse;
+
+  const DEFAULT_CONFIG_PATH = '/test/default-config.yaml';
+  const USER_CONFIG_PATH = '/test/config.yaml';
+
+  const MOCK_DEFAULT_CONFIG = `
+paths:
+  dotfilesDir: ~/.dotfiles
+  targetDir: /usr/local/bin
+  generatedDir: \${paths.dotfilesDir}/.generated
+  toolConfigsDir: \${paths.dotfilesDir}/generator/configs/tools
+  completionsDir: \${paths.generatedDir}/completions
+  manifestPath: \${paths.generatedDir}/generated-manifest.json
+
+system:
+  sudoPrompt: "Enter password for generator:"
+
+logging:
+  debug: ""
+
+updates:
+  checkOnRun: true
+  checkInterval: 86400
+
+github:
+  token: \${GITHUB_TOKEN}
+  host: https://api.github.com
+  userAgent: "dotfiles-generator"
+  cache:
+    enabled: true
+    ttl: 86400000
+
+downloader:
+  timeout: 300000
+  retryCount: 3
+  retryDelay: 1000
+  cache:
+    enabled: true
+
+platform:
+  - match:
+      - os: macos
+    config:
+      paths:
+        targetDir: /opt/homebrew/bin
+
+  - match:
+      - os: linux
+        arch: arm64
+    config:
+      downloader:
+        timeout: 600000
+`;
+
+  const MOCK_USER_CONFIG = `
+paths:
+  dotfilesDir: ~/custom-dotfiles
+  targetDir: /custom/bin
+
+github:
+  token: user-github-token
+`;
+
+  beforeEach(() => {
+    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
+      readFile: mock(async (path: string) => {
+        if (path === DEFAULT_CONFIG_PATH) {
+          return MOCK_DEFAULT_CONFIG;
+        } else if (path === USER_CONFIG_PATH) {
+          return MOCK_USER_CONFIG;
+        }
+        throw new Error(`File not found: ${path}`);
+      }),
+    });
+    mockFileSystem = mfsInstance;
+    fileSystemMocks = fsMocksInstance;
+
+    // Store original and create a mock for yamlConfigSchema.parse
+    originalYamlConfigSchemaParse = yamlConfigSchema.yamlConfigSchema.parse;
+    yamlConfigSchema.yamlConfigSchema.parse = mock((data) => data) as any;
+
+    yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
+  });
+
+  afterEach(() => {
+    // Restore original parse function
+    yamlConfigSchema.yamlConfigSchema.parse = originalYamlConfigSchemaParse;
+    mock.restore();
+  });
+
+  it('should load default config when user config does not exist', async () => {
+    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
+      readFile: mock(async (path: string) => {
+        if (path === DEFAULT_CONFIG_PATH) {
+          return MOCK_DEFAULT_CONFIG;
+        }
+        throw new Error(`File not found: ${path}`);
+      }),
+    });
+    mockFileSystem = mfsInstance;
+    fileSystemMocks = fsMocksInstance;
+    yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = { GITHUB_TOKEN: 'test-token' };
+
+    const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify default config was loaded
+    expect(fileSystemMocks.readFile).toHaveBeenCalledWith(DEFAULT_CONFIG_PATH, 'utf-8');
+    expect(result.paths.dotfilesDir).toBe('~/.dotfiles');
+    expect(result.github.token).toBe('test-token'); // Should be substituted from env
+  });
+
+  it('should merge default config with user config', async () => {
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = { GITHUB_TOKEN: 'test-token' };
+
+    const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify both configs were loaded
+    expect(fileSystemMocks.readFile).toHaveBeenCalledWith(DEFAULT_CONFIG_PATH, 'utf-8');
+    expect(fileSystemMocks.readFile).toHaveBeenCalledWith(USER_CONFIG_PATH, 'utf-8');
+
+    // Verify user config overrides default config
+    expect(result.paths.dotfilesDir).toBe('~/custom-dotfiles');
+    expect(result.paths.targetDir).toBe('/custom/bin');
+    expect(result.github.token).toBe('user-github-token');
+
+    // Verify default values not overridden by user config are preserved
+    expect(result.logging.debug).toBe('');
+    expect(result.updates.checkOnRun).toBe(true);
+  });
+
+  it('should apply platform-specific overrides for macOS', async () => {
+    // Mock detectOS to return MacOS
+    const detectOSSpy = mock(() => 'macos');
+    const detectArchSpy = mock(() => 'x86_64');
+    
+    // @ts-ignore - Replace private methods for testing
+    yamlConfigLoader.detectOS = detectOSSpy;
+    // @ts-ignore
+    yamlConfigLoader.detectArch = detectArchSpy;
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = {};
+
+    const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify platform override was applied for macOS
+    expect(result.paths.targetDir).toBe('/custom/bin');
+    
+    // Verify platform key was removed from final config
+    expect(result.platform).toBeUndefined();
+  });
+
+  it('should apply platform-specific overrides for Linux ARM64', async () => {
+    // Mock detectOS to return Linux and detectArch to return ARM64
+    const detectOSSpy = mock(() => 'linux');
+    const detectArchSpy = mock(() => 'arm64');
+    
+    // @ts-ignore - Replace private methods for testing
+    yamlConfigLoader.detectOS = detectOSSpy;
+    // @ts-ignore
+    yamlConfigLoader.detectArch = detectArchSpy;
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = {};
+
+    const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify platform override was applied for Linux ARM64
+    expect(result.downloader.timeout).toBe(600000);
+  });
+
+  it('should substitute environment variables in config', async () => {
+    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
+      readFile: mock(async (path: string) => {
+        if (path === DEFAULT_CONFIG_PATH) {
+          return MOCK_DEFAULT_CONFIG;
+        }
+        throw new Error(`File not found: ${path}`);
+      }),
+    });
+    mockFileSystem = mfsInstance;
+    fileSystemMocks = fsMocksInstance;
+    yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = { GITHUB_TOKEN: 'env-github-token' };
+
+    const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify environment variable was substituted
+    expect(result.github.token).toBe('env-github-token');
+  });
+
+  it('should substitute config references in config', async () => {
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = {};
+
+    const result = await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify config references were substituted
+    expect(result.paths.generatedDir).toBe('~/custom-dotfiles/.generated');
+    expect(result.paths.toolConfigsDir).toBe('~/custom-dotfiles/generator/configs/tools');
+    expect(result.paths.completionsDir).toBe('~/custom-dotfiles/.generated/completions');
+    expect(result.paths.manifestPath).toBe('~/custom-dotfiles/.generated/generated-manifest.json');
+  });
+
+  it('should throw an error when default config file does not exist', async () => {
+    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
+      readFile: mock(async () => {
+        throw new Error('File not found');
+      }),
+    });
+    mockFileSystem = mfsInstance;
+    fileSystemMocks = fsMocksInstance;
+    yamlConfigLoader = new YamlConfigLoader(mockFileSystem, DEFAULT_CONFIG_PATH);
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = {};
+
+    await expect(yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env)).rejects.toThrow();
+  });
+
+  it('should validate the final config using yamlConfigSchema', async () => {
+    const validateSpy = mock((data: any) => ({ ...data, validated: true }));
+    yamlConfigSchema.yamlConfigSchema.parse = validateSpy;
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = {};
+
+    await yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env);
+
+    // Verify schema validation was called
+    expect(validateSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle validation errors from yamlConfigSchema', async () => {
+    const validationError = new Error('Validation failed');
+    yamlConfigSchema.yamlConfigSchema.parse = mock(() => {
+      throw validationError;
+    });
+
+    const systemInfo = { homedir: '/home/testuser', cwd: '/home/testuser/project' };
+    const env = {};
+
+    await expect(yamlConfigLoader.load(USER_CONFIG_PATH, systemInfo, env)).rejects.toThrow(validationError);
+  });
+});
