@@ -267,6 +267,41 @@ function processConfig(
 }
 
 /**
+ * Creates a validated YAML configuration from the default configuration file.
+ *
+ * @param fileSystem - The file system interface for reading files.
+ * @param systemInfo - System information for platform-specific overrides.
+ * @param env - Environment variables for token substitution.
+ * @param defaultConfigPath - Optional path to the default configuration file.
+ * @returns A promise that resolves to the validated default YAML configuration.
+ */
+export async function createDefaultYamlConfig(
+  fileSystem: IFileSystem,
+  systemInfo: SystemInfo,
+  env: Record<string, string | undefined>,
+  defaultConfigPath?: string,
+): Promise<YamlConfig> {
+  const finalDefaultConfigPath = defaultConfigPath || join(__dirname, 'default-config.yaml');
+  let defaultConfig = {};
+
+  try {
+    const defaultConfigContent = await fileSystem.readFile(finalDefaultConfigPath, 'utf-8');
+    defaultConfig = parse(defaultConfigContent);
+  } catch (error) {
+    clientLogger.error(
+      `Default config file not found or invalid: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    if (process.env.NODE_ENV === 'test') {
+      throw new Error(`Failed to load or parse default config at ${finalDefaultConfigPath}`);
+    }
+  }
+
+  return processConfig(defaultConfig, {}, systemInfo, env);
+}
+
+/**
  * Creates a validated YAML configuration by loading and merging default and user config files from the filesystem.
  * Applies platform-specific overrides and performs token substitution.
  *
@@ -282,17 +317,19 @@ export async function createYamlConfigFromFileSystem(
   userConfigPath: string,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>,
-  defaultConfigPath?: string
+  defaultConfigPath?: string,
 ): Promise<YamlConfig> {
   const finalDefaultConfigPath = defaultConfigPath || join(__dirname, 'default-config.yaml');
-
   let defaultConfig = {};
+
   try {
     const defaultConfigContent = await fileSystem.readFile(finalDefaultConfigPath, 'utf-8');
     defaultConfig = parse(defaultConfigContent);
   } catch (error) {
     clientLogger.error(
-      `Default config file not found or invalid: ${error instanceof Error ? error.message : String(error)}`
+      `Default config file not found or invalid: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
     if (process.env.NODE_ENV === 'test') {
       throw new Error(`Failed to load or parse default config at ${finalDefaultConfigPath}`);
@@ -305,7 +342,9 @@ export async function createYamlConfigFromFileSystem(
     userConfig = parse(userConfigContent) || {};
   } catch (error) {
     clientLogger.error(
-      `User config file not found or invalid: ${error instanceof Error ? error.message : String(error)}`
+      `User config file not found or invalid: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
   }
 

@@ -18,7 +18,8 @@
  * - [x] Remove global mock of `yamlConfigSchema.parse` and apply mocks only where needed.
  * - [x] Test scenario: Loading default config only (no user config).
  * - [x] Test scenario: Loading and merging default config with user config.
- * - [x] Test scenario: Platform-specific overrides are correctly applied.
+ * - [x] Test scenario: Platform-specific overrides from user config are correctly applied.
+ * - [x] Test scenario: No platform-specific overrides are applied when none are defined.
  * - [x] Test scenario: Token substitution for environment variables.
  * - [x] Test scenario: Token substitution for config references.
  * - [x] Test scenario: Error handling when default config file does not exist.
@@ -30,7 +31,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IFileSystem } from '@modules/file-system';
 import { createMockFileSystem } from '@testing-helpers';
-import { createYamlConfigFromFileSystem } from '../yamlConfigLoader';
+import { createYamlConfigFromFileSystem, createDefaultYamlConfig } from '../yamlConfigLoader';
 
 describe('yamlConfigLoader', () => {
   let mockFileSystem: IFileSystem;
@@ -67,6 +68,17 @@ downloader:
   retryDelay: 1000
   cache:
     enabled: true
+`;
+
+  const MOCK_USER_CONFIG = `
+paths:
+  dotfilesDir: ~/custom-dotfiles
+  targetDir: /custom/bin
+github:
+  token: user-github-token
+`;
+
+  const MOCK_USER_CONFIG_WITH_PLATFORM = `
 platform:
   - match:
       - os: macos
@@ -79,14 +91,6 @@ platform:
     config:
       downloader:
         timeout: 600000
-`;
-
-  const MOCK_USER_CONFIG = `
-paths:
-  dotfilesDir: ~/custom-dotfiles
-  targetDir: /custom/bin
-github:
-  token: user-github-token
 `;
 
   beforeEach(() => {
@@ -128,9 +132,8 @@ github:
     } as const;
     const env = { GITHUB_TOKEN: 'test-token' };
 
-    const result = await createYamlConfigFromFileSystem(
+    const result = await createDefaultYamlConfig(
       mockFileSystem,
-      USER_CONFIG_PATH,
       systemInfo,
       env,
       DEFAULT_CONFIG_PATH
@@ -168,45 +171,72 @@ github:
     expect(result.updates.checkOnRun).toBe(true);
   });
 
-  it('should apply platform-specific overrides for macOS', async () => {
-    const systemInfo = {
+  it('should apply platform-specific overrides from user config', async () => {
+    const { mockFileSystem: mfsWithPlatform } = createMockFileSystem({
+      readFile: mock(async (path: string) => {
+        if (path === DEFAULT_CONFIG_PATH) {
+          return MOCK_DEFAULT_CONFIG;
+        } else if (path === USER_CONFIG_PATH) {
+          return MOCK_USER_CONFIG_WITH_PLATFORM;
+        }
+        throw new Error(`File not found: ${path}`);
+      }),
+    });
+
+    // Test for macOS
+    const macSystemInfo = {
       homedir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'darwin',
       arch: 'x64',
     } as const;
-    const env = {};
-
-    const result = await createYamlConfigFromFileSystem(
-      mockFileSystem,
+    const macResult = await createYamlConfigFromFileSystem(
+      mfsWithPlatform,
       USER_CONFIG_PATH,
-      systemInfo,
-      env,
+      macSystemInfo,
+      {},
       DEFAULT_CONFIG_PATH
     );
+    expect(macResult.paths.targetDir).toBe('/opt/homebrew/bin');
+    expect(macResult.platform).toBeUndefined();
 
-    expect(result.paths.targetDir).toBe('/opt/homebrew/bin');
-    expect(result.platform).toBeUndefined();
-  });
-
-  it('should apply platform-specific overrides for Linux ARM64', async () => {
-    const systemInfo = {
+    // Test for Linux ARM64
+    const linuxSystemInfo = {
       homedir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'linux',
       arch: 'arm64',
     } as const;
-    const env = {};
+    const linuxResult = await createYamlConfigFromFileSystem(
+      mfsWithPlatform,
+      USER_CONFIG_PATH,
+      linuxSystemInfo,
+      {},
+      DEFAULT_CONFIG_PATH
+    );
+    expect(linuxResult.downloader.timeout).toBe(600000);
+  });
+
+  it('should not apply platform overrides if none are defined', async () => {
+    const systemInfo = {
+      homedir: '/home/testuser',
+      cwd: '/home/testuser/project',
+      platform: 'darwin', 
+      arch: 'x64',
+    } as const;
+    const env = { GITHUB_TOKEN: 'test-token' };
 
     const result = await createYamlConfigFromFileSystem(
       mockFileSystem,
       USER_CONFIG_PATH,
       systemInfo,
       env,
-      DEFAULT_CONFIG_PATH
+      DEFAULT_CONFIG_PATH,
     );
 
-    expect(result.downloader.timeout).toBe(600000);
+    // It should use the value from the merged user/default config, not an override
+    expect(result.paths.targetDir).toBe('/custom/bin');
+    expect(result.platform).toBeUndefined();
   });
 
   it('should substitute environment variables in config', async () => {
@@ -306,7 +336,7 @@ github:
     } as const;
     const env = {};
 
-    expect(
+    await expect(
       createYamlConfigFromFileSystem(
         mockFileSystem,
         USER_CONFIG_PATH,
