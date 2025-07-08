@@ -21,7 +21,6 @@
  * - [x] Define `createMockFileSystem` function signature.
  * - [x] Implement `MemFileSystem` instantiation.
  * - [x] Implement logic to use `initialVolumeJson` if provided.
- * - [ ] Write tests for the module. (N/A - This helper itself does not require tests as per task instructions)
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage for executable code. (N/A)

@@ -4,13 +4,17 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { createMockYamlConfig } from '../createMockYamlConfig';
+import {
+  createMockYamlConfig,
+  type PartialYamlConfig,
+} from '../createMockYamlConfig';
 import { createMemFileSystem } from '../createMemFileSystem';
-import type { YamlConfig } from '../../modules/config/config.yaml.schema';
+import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
 import { stringify } from 'yaml';
+import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 
 describe('createMockYamlConfig', () => {
-  const mockConfig: YamlConfig = {
+  const mockConfig: PartialYamlConfig = {
     paths: {
       dotfilesDir: '/dotfiles',
       targetDir: '/target',
@@ -19,40 +23,30 @@ describe('createMockYamlConfig', () => {
       completionsDir: '/completions',
       manifestPath: '/manifest.json',
     },
-    system: {
-      sudoPrompt: 'sudo',
-    },
-    logging: {
-      debug: 'false',
-    },
-    updates: {
-      checkOnRun: false,
-      checkInterval: 0,
-    },
-    github: {
-      token: 'token',
-      host: 'host',
-      userAgent: 'userAgent',
-      cache: {
-        enabled: false,
-        ttl: 0,
-      },
-    },
-    downloader: {
-      timeout: 0,
-      retryCount: 0,
-      retryDelay: 0,
-      cache: {
-        enabled: false,
-      },
-    },
   };
 
   it('should write the YAML string to the specified path', async () => {
-    const fs = createMemFileSystem();
+    const fs = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG
+    }
+    );
     const filePath = '/test.yaml';
-    await createMockYamlConfig({ config: mockConfig, filePath, fileSystem: fs });
+    const systemInfo = { platform: 'darwin', arch: 'arm64' };
+    const env = {};
+    await createMockYamlConfig({
+      config: mockConfig,
+      filePath,
+      fileSystem: fs,
+      systemInfo,
+      env,
+    });
     const fileContent = await fs.readFile(filePath, 'utf8');
-    expect(fileContent).toBe(stringify(mockConfig));
+    const expectedConfig = await createYamlConfigFromObject(
+      fs,
+      mockConfig,
+      systemInfo,
+      env,
+    );
+    expect(fileContent).toBe(stringify(expectedConfig));
   });
 });

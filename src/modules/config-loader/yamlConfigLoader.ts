@@ -12,7 +12,7 @@
  * ### Tasks:
  * - [x] Import required dependencies.
  * - [x] Implement `createYamlConfigFromFileSystem` to load and process config from files.
- * - [x] Implement `createYamlConfigFromObjects` to process config from objects.
+ * - [x] Implement `createYamlConfigFromObject` to process config from objects.
  * - [x] Implement helper functions for token substitution, deep merging, and platform-specific overrides.
  * - [x] Write tests for all exported functions.
  * - [x] Fix all errors and warnings by running lint and test.
@@ -266,22 +266,18 @@ function processConfig(
   return result.data;
 }
 
+export const getDefaultConfigPath = (): string => join(__dirname, 'default-config.yaml');
+
 /**
- * Creates a validated YAML configuration from the default configuration file.
+ * Loads the default YAML configuration file from the filesystem and returns it as a raw object.
  *
  * @param fileSystem - The file system interface for reading files.
- * @param systemInfo - System information for platform-specific overrides.
- * @param env - Environment variables for token substitution.
- * @param defaultConfigPath - Optional path to the default configuration file.
- * @returns A promise that resolves to the validated default YAML configuration.
+ * @returns A promise that resolves to the raw YAML object.
  */
-export async function createDefaultYamlConfig(
+export async function loadDefaultYamlConfigAsRecord(
   fileSystem: IFileSystem,
-  systemInfo: SystemInfo,
-  env: Record<string, string | undefined>,
-  defaultConfigPath?: string,
-): Promise<YamlConfig> {
-  const finalDefaultConfigPath = defaultConfigPath || join(__dirname, 'default-config.yaml');
+): Promise<Record<string, unknown>> {
+  const finalDefaultConfigPath = getDefaultConfigPath();
   let defaultConfig = {};
 
   try {
@@ -294,11 +290,11 @@ export async function createDefaultYamlConfig(
       }`,
     );
     if (process.env.NODE_ENV === 'test') {
-      throw new Error(`Failed to load or parse default config at ${finalDefaultConfigPath}`);
+      throw error;
     }
   }
 
-  return processConfig(defaultConfig, {}, systemInfo, env);
+  return defaultConfig;
 }
 
 /**
@@ -309,7 +305,6 @@ export async function createDefaultYamlConfig(
  * @param userConfigPath - Path to the user's configuration file
  * @param systemInfo - System information for platform detection
  * @param env - Environment variables for token substitution
- * @param defaultConfigPath - Optional path to the default configuration file (falls back to default-config.yaml in the same directory)
  * @returns A promise that resolves to the validated YAML configuration
  */
 export async function createYamlConfigFromFileSystem(
@@ -317,26 +312,10 @@ export async function createYamlConfigFromFileSystem(
   userConfigPath: string,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>,
-  defaultConfigPath?: string,
 ): Promise<YamlConfig> {
-  const finalDefaultConfigPath = defaultConfigPath || join(__dirname, 'default-config.yaml');
-  let defaultConfig = {};
-
-  try {
-    const defaultConfigContent = await fileSystem.readFile(finalDefaultConfigPath, 'utf-8');
-    defaultConfig = parse(defaultConfigContent);
-  } catch (error) {
-    clientLogger.error(
-      `Default config file not found or invalid: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-    if (process.env.NODE_ENV === 'test') {
-      throw new Error(`Failed to load or parse default config at ${finalDefaultConfigPath}`);
-    }
-  }
-
+  const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   let userConfig = {};
+
   try {
     const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
     userConfig = parse(userConfigContent) || {};
@@ -361,11 +340,12 @@ export async function createYamlConfigFromFileSystem(
  * @param env - Environment variables for token substitution
  * @returns A promise that resolves to the validated YAML configuration
  */
-export async function createYamlConfigFromObjects(
-  defaultConfig: Record<string, unknown>,
+export async function createYamlConfigFromObject(
+  fileSystem: IFileSystem,
   userConfig: Record<string, unknown>,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
 ): Promise<YamlConfig> {
+  const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   return processConfig(defaultConfig, userConfig, systemInfo, env);
 }

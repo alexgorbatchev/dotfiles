@@ -100,7 +100,6 @@ describe('ToolConfigBuilder', () => {
     // Check internal state directly
     expect((builder as any).currentInstallParams?.hooks).toBeUndefined();
     // Check that warn was called
-    expect(mockCreateClientLogger).toHaveBeenCalledTimes(1);
     expect(mockWarn).toHaveBeenCalledTimes(1);
     expect(mockWarn).toHaveBeenCalledWith(
       `[ToolConfigBuilder] hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.`

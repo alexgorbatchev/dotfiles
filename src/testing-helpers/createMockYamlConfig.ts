@@ -21,10 +21,23 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { YamlConfig } from '@modules/config/config.yaml.schema';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { NodeFileSystem } from '@modules/file-system/NodeFileSystem';
+import type { YamlConfig } from '@modules/config';
+import { createYamlConfigFromObject } from '@modules/config-loader';
+import type { IFileSystem } from '@modules/file-system';
+import type { SystemInfo } from '@types';
 import { stringify } from 'yaml';
+
+/**
+ * Represents a deep partial version of `YamlConfig`, where all properties and sub-properties are optional.
+ * This is useful for representing user-provided configuration fragments that will be merged with a default configuration.
+ */
+export type PartialYamlConfig = {
+  [P in keyof YamlConfig]?: YamlConfig[P] extends unknown[]
+    ? PartialYamlConfig[]
+    : YamlConfig[P] extends object
+    ? Partial<YamlConfig[P]>
+    : YamlConfig[P];
+};
 
 /**
  * Creates a mock `YamlConfig` string and optionally writes it to a file.
@@ -38,12 +51,17 @@ import { stringify } from 'yaml';
 export async function createMockYamlConfig({
   config,
   filePath,
-  fileSystem = new NodeFileSystem(),
+  fileSystem,
+  systemInfo,
+  env,
 }: {
-  config: YamlConfig;
+  config: PartialYamlConfig;
   filePath: string;
-  fileSystem?: IFileSystem;
+  fileSystem: IFileSystem;
+  systemInfo: SystemInfo;
+  env: Record<string, string | undefined>;
 }): Promise<void> {
-  const yamlString = stringify(config);
+  const fullConfig = await createYamlConfigFromObject(fileSystem, config, systemInfo, env);
+  const yamlString = stringify(fullConfig);
   await fileSystem.writeFile(filePath, yamlString, 'utf8');
 }

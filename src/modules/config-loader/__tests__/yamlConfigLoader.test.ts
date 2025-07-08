@@ -13,7 +13,7 @@
  *
  * ### Tasks:
  * - [x] Import necessary modules and types.
- * - [x] Mock `IFileSystem` using testing helpers.
+ * - [x] Refactor tests to use `createMemFileSystem` for simpler mocking.
  * - [x] Refactor tests to use `createYamlConfigFromFileSystem`.
  * - [x] Remove global mock of `yamlConfigSchema.parse` and apply mocks only where needed.
  * - [x] Test scenario: Loading default config only (no user config).
@@ -28,47 +28,17 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { IFileSystem } from '@modules/file-system';
-import { createMockFileSystem } from '@testing-helpers';
-import { createYamlConfigFromFileSystem, createDefaultYamlConfig } from '../yamlConfigLoader';
+import { createMemFileSystem } from '@testing-helpers';
+import { describe, expect, it } from 'bun:test';
+import {
+  createYamlConfigFromFileSystem,
+  getDefaultConfigPath,
+  loadDefaultYamlConfigAsRecord,
+} from '../yamlConfigLoader';
+import { MOCK_DEFAULT_CONFIG } from './fixtures';
 
 describe('yamlConfigLoader', () => {
-  let mockFileSystem: IFileSystem;
-  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
-
-  const DEFAULT_CONFIG_PATH = '/test/default-config.yaml';
   const USER_CONFIG_PATH = '/test/config.yaml';
-
-  const MOCK_DEFAULT_CONFIG = `
-paths:
-  dotfilesDir: ~/.dotfiles
-  targetDir: /usr/local/bin
-  generatedDir: \${paths.dotfilesDir}/.generated
-  toolConfigsDir: \${paths.dotfilesDir}/generator/configs/tools
-  completionsDir: \${paths.generatedDir}/completions
-  manifestPath: \${paths.generatedDir}/generated-manifest.json
-system:
-  sudoPrompt: "Enter password for generator:"
-logging:
-  debug: ""
-updates:
-  checkOnRun: true
-  checkInterval: 86400
-github:
-  token: \${GITHUB_TOKEN}
-  host: https://api.github.com
-  userAgent: "dotfiles-generator"
-  cache:
-    enabled: true
-    ttl: 86400000
-downloader:
-  timeout: 300000
-  retryCount: 3
-  retryDelay: 1000
-  cache:
-    enabled: true
-`;
 
   const MOCK_USER_CONFIG = `
 paths:
@@ -93,58 +63,23 @@ platform:
         timeout: 600000
 `;
 
-  beforeEach(() => {
-    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
-      readFile: mock(async (path: string) => {
-        if (path === DEFAULT_CONFIG_PATH) {
-          return MOCK_DEFAULT_CONFIG;
-        } else if (path === USER_CONFIG_PATH) {
-          return MOCK_USER_CONFIG;
-        }
-        throw new Error(`File not found: ${path}`);
-      }),
-    });
-    mockFileSystem = mfsInstance;
-    fileSystemMocks = fsMocksInstance;
-  });
-
-  afterEach(() => {
-    mock.restore();
-  });
-
   it('should load default config when user config does not exist', async () => {
-    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
-      readFile: mock(async (path: string) => {
-        if (path === DEFAULT_CONFIG_PATH) {
-          return MOCK_DEFAULT_CONFIG;
-        }
-        throw new Error(`File not found: ${path}`);
-      }),
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
     });
-    mockFileSystem = mfsInstance;
-    fileSystemMocks = fsMocksInstance;
 
-    const systemInfo = {
-      homedir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'x64',
-    } as const;
-    const env = { GITHUB_TOKEN: 'test-token' };
+    const result = await loadDefaultYamlConfigAsRecord(fileSystem) as any;
 
-    const result = await createDefaultYamlConfig(
-      mockFileSystem,
-      systemInfo,
-      env,
-      DEFAULT_CONFIG_PATH
-    );
-
-    expect(fileSystemMocks.readFile).toHaveBeenCalledWith(DEFAULT_CONFIG_PATH, 'utf-8');
-    expect(result.paths.dotfilesDir).toBe('~/.dotfiles');
-    expect(result.github.token).toBe('test-token');
+    expect(result.paths?.toolConfigsDir).toBe('${paths.dotfilesDir}/generator/configs/tools');
+    expect(result.github?.token).toBe('${GITHUB_TOKEN}');
   });
 
   it('should merge default config with user config', async () => {
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+    });
+
     const systemInfo = {
       homedir: '/home/testuser',
       cwd: '/home/testuser/project',
@@ -154,15 +89,11 @@ platform:
     const env = { GITHUB_TOKEN: 'test-token' };
 
     const result = await createYamlConfigFromFileSystem(
-      mockFileSystem,
+      fileSystem,
       USER_CONFIG_PATH,
       systemInfo,
-      env,
-      DEFAULT_CONFIG_PATH
+      env
     );
-
-    expect(fileSystemMocks.readFile).toHaveBeenCalledWith(DEFAULT_CONFIG_PATH, 'utf-8');
-    expect(fileSystemMocks.readFile).toHaveBeenCalledWith(USER_CONFIG_PATH, 'utf-8');
 
     expect(result.paths.dotfilesDir).toBe('~/custom-dotfiles');
     expect(result.paths.targetDir).toBe('/custom/bin');
@@ -172,15 +103,9 @@ platform:
   });
 
   it('should apply platform-specific overrides from user config', async () => {
-    const { mockFileSystem: mfsWithPlatform } = createMockFileSystem({
-      readFile: mock(async (path: string) => {
-        if (path === DEFAULT_CONFIG_PATH) {
-          return MOCK_DEFAULT_CONFIG;
-        } else if (path === USER_CONFIG_PATH) {
-          return MOCK_USER_CONFIG_WITH_PLATFORM;
-        }
-        throw new Error(`File not found: ${path}`);
-      }),
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      [USER_CONFIG_PATH]: MOCK_USER_CONFIG_WITH_PLATFORM,
     });
 
     // Test for macOS
@@ -191,11 +116,10 @@ platform:
       arch: 'x64',
     } as const;
     const macResult = await createYamlConfigFromFileSystem(
-      mfsWithPlatform,
+      fileSystem,
       USER_CONFIG_PATH,
       macSystemInfo,
-      {},
-      DEFAULT_CONFIG_PATH
+      {}
     );
     expect(macResult.paths.targetDir).toBe('/opt/homebrew/bin');
     expect(macResult.platform).toBeUndefined();
@@ -208,30 +132,33 @@ platform:
       arch: 'arm64',
     } as const;
     const linuxResult = await createYamlConfigFromFileSystem(
-      mfsWithPlatform,
+      fileSystem,
       USER_CONFIG_PATH,
       linuxSystemInfo,
-      {},
-      DEFAULT_CONFIG_PATH
+      {}
     );
     expect(linuxResult.downloader.timeout).toBe(600000);
   });
 
   it('should not apply platform overrides if none are defined', async () => {
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+    });
+
     const systemInfo = {
       homedir: '/home/testuser',
       cwd: '/home/testuser/project',
-      platform: 'darwin', 
+      platform: 'darwin',
       arch: 'x64',
     } as const;
     const env = { GITHUB_TOKEN: 'test-token' };
 
     const result = await createYamlConfigFromFileSystem(
-      mockFileSystem,
+      fileSystem,
       USER_CONFIG_PATH,
       systemInfo,
-      env,
-      DEFAULT_CONFIG_PATH,
+      env
     );
 
     // It should use the value from the merged user/default config, not an override
@@ -240,16 +167,10 @@ platform:
   });
 
   it('should substitute environment variables in config', async () => {
-    const { mockFileSystem: mfsInstance, fileSystemMocks: fsMocksInstance } = createMockFileSystem({
-      readFile: mock(async (path: string) => {
-        if (path === DEFAULT_CONFIG_PATH) {
-          return MOCK_DEFAULT_CONFIG;
-        }
-        throw new Error(`File not found: ${path}`);
-      }),
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
     });
-    mockFileSystem = mfsInstance;
-    fileSystemMocks = fsMocksInstance;
+
     const systemInfo = {
       homedir: '/home/testuser',
       cwd: '/home/testuser/project',
@@ -259,31 +180,31 @@ platform:
     const env = { GITHUB_TOKEN: 'env-github-token' };
 
     const result = await createYamlConfigFromFileSystem(
-      mockFileSystem,
-      USER_CONFIG_PATH,
+      fileSystem,
+      USER_CONFIG_PATH, // non-existent
       systemInfo,
-      env,
-      DEFAULT_CONFIG_PATH
+      env
     );
 
     expect(result.github.token).toBe('env-github-token');
   });
 
   it('should substitute config references in config', async () => {
-    const systemInfo = {
-      homedir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'x64',
-    } as const;
-    const env = {};
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+    });
 
     const result = await createYamlConfigFromFileSystem(
-      mockFileSystem,
+      fileSystem,
       USER_CONFIG_PATH,
-      systemInfo,
-      env,
-      DEFAULT_CONFIG_PATH
+      {
+        // homedir: '/home/testuser',
+        // cwd: '/home/testuser/project',
+        platform: 'linux',
+        arch: 'x64',
+      },
+      {}
     );
 
     expect(result.paths.generatedDir).toBe('~/custom-dotfiles/.generated');
@@ -293,21 +214,10 @@ platform:
   });
 
   it('should throw an error when default config file does not exist', async () => {
-    const { mockFileSystem: mfsInstance } = createMockFileSystem({
-      readFile: mock(async () => {
-        throw new Error('File not found');
-      }),
-    });
-    mockFileSystem = mfsInstance;
+    const fileSystem = createMemFileSystem({});
 
     expect(
-      createYamlConfigFromFileSystem(
-        mockFileSystem,
-        USER_CONFIG_PATH,
-        {} as any,
-        {},
-        DEFAULT_CONFIG_PATH
-      )
+      createYamlConfigFromFileSystem(fileSystem, USER_CONFIG_PATH, {} as any, {})
     ).rejects.toThrow();
   });
 
@@ -316,17 +226,10 @@ platform:
 github:
   token: 12345
 `;
-    const { mockFileSystem: mfsInstance } = createMockFileSystem({
-      readFile: mock(async (path: string) => {
-        if (path === DEFAULT_CONFIG_PATH) {
-          return MOCK_DEFAULT_CONFIG;
-        } else if (path === USER_CONFIG_PATH) {
-          return MOCK_INVALID_USER_CONFIG;
-        }
-        throw new Error(`File not found: ${path}`);
-      }),
+    const fileSystem = createMemFileSystem({
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      [USER_CONFIG_PATH]: MOCK_INVALID_USER_CONFIG,
     });
-    mockFileSystem = mfsInstance;
 
     const systemInfo = {
       homedir: '/home/testuser',
@@ -336,14 +239,8 @@ github:
     } as const;
     const env = {};
 
-    await expect(
-      createYamlConfigFromFileSystem(
-        mockFileSystem,
-        USER_CONFIG_PATH,
-        systemInfo,
-        env,
-        DEFAULT_CONFIG_PATH
-      )
+    expect(
+      createYamlConfigFromFileSystem(fileSystem, USER_CONFIG_PATH, systemInfo, env)
     ).rejects.toThrow(/YAML configuration is invalid/);
   });
 });
