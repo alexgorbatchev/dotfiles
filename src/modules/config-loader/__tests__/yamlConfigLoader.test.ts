@@ -21,14 +21,13 @@
  * - [x] Test scenario: Platform-specific overrides are correctly applied.
  * - [x] Test scenario: Token substitution for environment variables.
  * - [x] Test scenario: Token substitution for config references.
- * - [x] Test scenario: Error handling when default config file doesn't exist.
- * - [x] Test scenario: Error handling when user config file doesn't exist (covered by `createYamlConfigFromFileSystem` behavior).
+ * - [x] Test scenario: Error handling when default config file does not exist.
+ * - [x] Test scenario: Error handling when user config file does not exist (covered by `createYamlConfigFromFileSystem` behavior).
  * - [x] Test scenario: Error handling when config validation fails.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import * as yamlConfigSchema from '@modules/config/config.yaml.schema';
 import type { IFileSystem } from '@modules/file-system';
 import { createMockFileSystem } from '@testing-helpers';
 import { createYamlConfigFromFileSystem } from '../yamlConfigLoader';
@@ -186,7 +185,7 @@ github:
       DEFAULT_CONFIG_PATH
     );
 
-    expect(result.paths.targetDir).toBe('/custom/bin');
+    expect(result.paths.targetDir).toBe('/opt/homebrew/bin');
     expect(result.platform).toBeUndefined();
   });
 
@@ -282,36 +281,22 @@ github:
     ).rejects.toThrow();
   });
 
-  it('should validate the final config using yamlConfigSchema', async () => {
-    const originalParse = yamlConfigSchema.yamlConfigSchema.parse;
-    const parseSpy = mock(originalParse);
-    yamlConfigSchema.yamlConfigSchema.parse = parseSpy;
-    const systemInfo = {
-      homedir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'x64',
-    } as const;
-    const env = {};
-
-    await createYamlConfigFromFileSystem(
-      mockFileSystem,
-      USER_CONFIG_PATH,
-      systemInfo,
-      env,
-      DEFAULT_CONFIG_PATH
-    );
-
-    expect(parseSpy).toHaveBeenCalledTimes(1);
-    yamlConfigSchema.yamlConfigSchema.parse = originalParse;
-  });
-
   it('should handle validation errors from yamlConfigSchema', async () => {
-    const validationError = new Error('Validation failed');
-    const originalParse = yamlConfigSchema.yamlConfigSchema.parse;
-    yamlConfigSchema.yamlConfigSchema.parse = mock(() => {
-      throw validationError;
+    const MOCK_INVALID_USER_CONFIG = `
+github:
+  token: 12345
+`;
+    const { mockFileSystem: mfsInstance } = createMockFileSystem({
+      readFile: mock(async (path: string) => {
+        if (path === DEFAULT_CONFIG_PATH) {
+          return MOCK_DEFAULT_CONFIG;
+        } else if (path === USER_CONFIG_PATH) {
+          return MOCK_INVALID_USER_CONFIG;
+        }
+        throw new Error(`File not found: ${path}`);
+      }),
     });
+    mockFileSystem = mfsInstance;
 
     const systemInfo = {
       homedir: '/home/testuser',
@@ -329,7 +314,6 @@ github:
         env,
         DEFAULT_CONFIG_PATH
       )
-    ).rejects.toThrow(validationError);
-    yamlConfigSchema.yamlConfigSchema.parse = originalParse;
+    ).rejects.toThrow(/YAML configuration is invalid/);
   });
 });

@@ -24,15 +24,10 @@
 import { yamlConfigSchema, type YamlConfig } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
 import { createClientLogger, createLogger } from '@modules/logger';
-import {
-  Architecture,
-  hasArchitecture,
-  hasPlatform,
-  Platform,
-  type SystemInfo,
-} from '@types';
+import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
 import { join } from 'path';
 import { parse, stringify } from 'yaml';
+import { z } from 'zod/v4';
 
 const log = createLogger('YamlConfigLoader');
 const clientLogger = createClientLogger();
@@ -251,17 +246,30 @@ function processConfig(
   env: Record<string, string | undefined>
 ): YamlConfig {
   log('load: systemInfo=%o', systemInfo);
-  const defaultConfigWithPlatformOverrides = applyPlatformOverrides(defaultConfig, systemInfo);
-  const mergedConfig = deepMerge(defaultConfigWithPlatformOverrides, userConfig);
-  const configWithTokens = substituteTokens(mergedConfig, env, mergedConfig);
-  const validatedConfig = yamlConfigSchema.parse(configWithTokens);
-  return validatedConfig;
+
+  const mergedConfig = deepMerge(defaultConfig, userConfig);
+  const configWithPlatformOverrides = applyPlatformOverrides(mergedConfig, systemInfo);
+  const configWithTokens = substituteTokens(
+    configWithPlatformOverrides,
+    env,
+    configWithPlatformOverrides
+  );
+
+  const result = yamlConfigSchema.safeParse(configWithTokens);
+
+  if (!result.success) {
+    const pretty = z.prettifyError(result.error);
+    clientLogger.error('YAML config validation error:\n%s', pretty);
+    throw new Error(`YAML configuration is invalid.\n${pretty}`);
+  }
+
+  return result.data;
 }
 
 /**
  * Creates a validated YAML configuration by loading and merging default and user config files from the filesystem.
  * Applies platform-specific overrides and performs token substitution.
- * 
+ *
  * @param fileSystem - The file system interface used to read configuration files
  * @param userConfigPath - Path to the user's configuration file
  * @param systemInfo - System information for platform detection
@@ -284,12 +292,10 @@ export async function createYamlConfigFromFileSystem(
     defaultConfig = parse(defaultConfigContent);
   } catch (error) {
     clientLogger.error(
-      `Default config file not found or invalid: ${error instanceof Error ? error.message : String(error)}`,
+      `Default config file not found or invalid: ${error instanceof Error ? error.message : String(error)}`
     );
     if (process.env.NODE_ENV === 'test') {
-      throw new Error(
-        `Failed to load or parse default config at ${finalDefaultConfigPath}`,
-      );
+      throw new Error(`Failed to load or parse default config at ${finalDefaultConfigPath}`);
     }
   }
 
@@ -299,7 +305,7 @@ export async function createYamlConfigFromFileSystem(
     userConfig = parse(userConfigContent) || {};
   } catch (error) {
     clientLogger.error(
-      `User config file not found or invalid: ${error instanceof Error ? error.message : String(error)}`,
+      `User config file not found or invalid: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 
@@ -309,7 +315,7 @@ export async function createYamlConfigFromFileSystem(
 /**
  * Creates a validated YAML configuration by merging default and user config objects.
  * Applies platform-specific overrides and performs token substitution.
- * 
+ *
  * @param defaultConfig - The default configuration object
  * @param userConfig - The user configuration object that overrides default values
  * @param systemInfo - System information for platform detection
