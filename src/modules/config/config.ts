@@ -230,6 +230,25 @@ const EnvSchema = z.object({
 
 type ValidatedEnv = z.infer<typeof EnvSchema>;
 
+/**
+ * Creates a new, validated `AppConfig` object.
+ *
+ * This is a pure function that does not perform any I/O or access global state
+ * like `process.env`. All necessary inputs must be provided via the `systemInfo`
+ * and `rawEnv` arguments.
+ *
+ * It performs the following key operations:
+ * - Validates the raw environment object (`rawEnv`) against the `EnvSchema`.
+ * - Expands tilde (`~`) characters in all path-related configuration values
+ *   (e.g., `DOTFILES_DIR`, `TARGET_DIR`) to absolute paths based on the
+ *   provided `systemInfo.homedir`.
+ * - Computes and returns a complete `AppConfig` object with all defaults applied
+ *   and paths fully resolved.
+ *
+ * @param systemInfo - An object containing system-specific information like the home directory.
+ * @param rawEnv - An object representing the raw environment variables to be used for configuration.
+ * @returns A new, validated `AppConfig` object.
+ */
 export function createAppConfig(
   systemInfo: SystemInfo,
   rawEnv: ConfigEnvironment // Expects an object matching ConfigEnvironment shape

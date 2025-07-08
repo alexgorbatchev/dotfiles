@@ -49,8 +49,17 @@ import { createLogger } from '@modules/logger';
 const log = createLogger('toolConfigLoader');
 
 /**
- * Loads, parses, and validates all tool configurations from *.tool.ts files
+ * Loads, parses, and validates all tool configurations from `*.tool.ts` files
  * found in the specified directory.
+ *
+ * This function dynamically imports modules, which allows for tool configurations
+ * to be written as TypeScript code. It supports two patterns for defining configurations:
+ * 1.  A `ToolConfig` object exported directly as the default export.
+ * 2.  An `AsyncConfigureTool` function as the default export, which provides a
+ *     `ToolConfigBuilder` for programmatically constructing the configuration.
+ *
+ * All resolved configurations are validated against the `ToolConfigSchema` to ensure
+ * they are well-formed before being returned.
  *
  * @param appConfig The application configuration.
  * @param fs The file system interface to use.

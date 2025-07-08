@@ -37,6 +37,16 @@ import type { AppConfig, ToolConfig } from '@types';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 
 const log = createLogger('ShimGenerator');
+/**
+ * Generates executable shims for tools.
+ *
+ * The core logic of the generated Bash shims is to first check for the
+ * existence of the target binary. If it's not found, the shim executes the main
+ * generator CLI's `install` command to perform an on-demand installation.
+ * After a successful installation, it proceeds to execute the actual tool.
+ * This ensures that tools are available when needed without requiring
+ * them to be installed beforehand.
+ */
 
 export class ShimGenerator implements IShimGenerator {
   private readonly fs: IFileSystem;

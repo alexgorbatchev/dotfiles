@@ -43,7 +43,33 @@ import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 const log = createLogger('Installer');
 
 /**
- * Implementation of the tool installer
+ * Orchestrates the tool installation process by coordinating services like `Downloader`, 
+ * `ArchiveExtractor`, and `GitHubApiClient`. It manages the entire lifecycle, including
+ * directory setup, hooks, and artifact tracking.
+ *
+ * The installer determines the installation method from the `ToolConfig` and delegates
+ * to the appropriate private method (e.g., `installFromGitHubRelease`).
+ *
+ * It is responsible for populating the `InstallResult` object with rich details,
+ * including the final `symlinkPath` and a log of all filesystem changes in `otherChanges`.
+ *
+ * ### GitHub Asset Selection
+ * For `github-release` installations, the asset selection follows this order of precedence:
+ * 1. **`assetSelector` function:** A custom function in the `ToolConfig` for complex selection logic.
+ * 2. **`assetPattern` regex:** A regular expression to match against asset filenames.
+ * 3. **Default Heuristics:** If the above are not provided, it attempts to find a suitable asset
+ *    by matching common platform and architecture names (e.g., "darwin", "linux", "amd64")
+ *    in the asset filenames.
+ *
+ * ### Installation Hooks
+ * The installer supports several hooks defined in the `ToolConfig` to allow for
+ * custom logic at various stages of the installation process:
+ * - `beforeInstall`: Runs before any installation steps.
+ * - `afterDownload`: Runs after the tool's asset has been downloaded.
+ * - `afterExtract`: Runs after an archive has been extracted.
+ * - `afterInstall`: Runs after the main installation process is complete.
+ *
+ * Each hook receives an `InstallHookContext` object with relevant paths and system info.
  */
 export class Installer implements IInstaller {
   private readonly fs: IFileSystem;

@@ -71,6 +71,29 @@ import crypto from 'crypto';
 
 const log = createLogger('GitHubApiClient');
 
+/**
+ * Implements the IGitHubApiClient interface for interacting with the GitHub API.
+ *
+ * This client handles the construction of API requests, authentication,
+ * and response parsing. It also integrates a caching layer to reduce
+ * redundant API calls and avoid rate-limiting issues.
+ *
+ * ### API Caching
+ * The client features a built-in, configurable caching mechanism that utilizes
+ * an `IGitHubApiCache` implementation (e.g., `FileGitHubApiCache`). Caching behavior
+ * is controlled by `appConfig.githubApiCacheEnabled` and `appConfig.githubApiCacheTtl`.
+ * Cache keys are uniquely generated based on the API endpoint and the authentication
+ * token to ensure data integrity.
+ *
+ * ### Error Handling
+ * It translates HTTP errors from the downloader into specific, custom error classes
+ * like `NotFoundError` and `RateLimitError`. This allows consumers of the client
+ * to handle API errors in a predictable manner.
+ *
+ * ### Host Configuration
+ * The GitHub API base URL is configurable via `appConfig.githubHost`, which is
+ * essential for testing against a mock server.
+ */
 export class GitHubApiClient implements IGitHubApiClient {
   private readonly baseUrl: string;
   private readonly githubToken?: string;

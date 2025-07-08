@@ -14,6 +14,17 @@ import { createLogger } from '@modules/logger';
 
 const log = createLogger('ArchiveExtractor');
 
+/**
+ * Implements the IArchiveExtractor interface using system commands.
+ *
+ * @remarks
+ * This module has a hard dependency on system commands like `tar`, `unzip`,
+ * and `file` being available on the system's PATH.
+ *
+ * The `stripComponents` option is only effective for `tar`-based archives
+ * and is ignored for `.zip` files due to limitations of the standard `unzip`
+ * command.
+ */
 export class ArchiveExtractor implements IArchiveExtractor {
   private fs: IFileSystem;
 
