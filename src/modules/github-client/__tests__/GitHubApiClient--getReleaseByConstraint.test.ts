@@ -1,12 +1,11 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--getReleaseByConstraint.test.ts
- * @description Tests for the GitHubApiClient's getReleaseByConstraint method.
- */
-
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { GitHubRelease } from '@types';
 import { NotFoundError } from '../../downloader/errors';
-import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
+import {
+  type MockSetup,
+  setupMockGitHubApiClient,
+  createGitHubConfigOverride
+} from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function
 const createMockRelease = (id: number, tagName: string, prerelease = false): GitHubRelease => ({
@@ -28,7 +27,7 @@ describe('GitHubApiClient', () => {
   beforeEach(() => {
     mock.restore();
     // Explicitly disable API cache for these non-caching tests
-    mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
+    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
   describe('getReleaseByConstraint', () => {

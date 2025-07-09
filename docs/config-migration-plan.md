@@ -46,7 +46,7 @@ This phase focuses on incrementally migrating the entire application from the ol
         3.  All tests are passing
 
 *   **[ ] Task 3.1: Migrate Core Modules**: This is the ordered list of modules to be migrated.
-    *   **[ ]** `github-client`: Migrate `GitHubApiClient` and `FileGitHubApiCache`.
+    *   **[x]** `github-client`: Migrate `GitHubApiClient` and `FileGitHubApiCache`.
     *   **[ ]** `installer`: Depends on `github-client`.
     *   **[ ]** `generator-symlink`: Depends on `file-system`.
     *   **[ ]** `generator-shim`: Depends on `file-system`.

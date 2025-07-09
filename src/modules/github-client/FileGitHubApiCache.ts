@@ -1,30 +1,7 @@
-/**
- * @file src/modules/github-client/FileGitHubApiCache.ts
- * @description File-based implementation of the GitHub API cache.
- *
- * ## Development Plan
- *
- * - [x] Import required dependencies (IFileSystem, path, crypto)
- * - [x] Define FileGitHubApiCache class implementing IGitHubApiCache
- *   - [x] Constructor accepting IFileSystem and AppConfig
- *   - [x] Implement get<T>(key) method
- *   - [x] Implement set<T>(key, data, ttlMs) method
- *   - [x] Implement has(key) method
- *   - [x] Implement delete(key) method
- *   - [x] Implement clearExpired() method
- *   - [x] Implement clear() method
- *   - [x] Add private helper methods (getCacheFilePath, ensureCacheDir, isExpired)
- * - [x] Add proper error handling for file operations
- * - [x] Add logging using createLogger
- * - [x] Cleanup all linting errors and warnings
- * - [ ] Write tests for FileGitHubApiCache (to be done separately)
- * - [ ] Update the memory bank with the new information when all tasks are complete
- */
-
 import path from 'path';
 import crypto from 'crypto';
-import type { AppConfig } from '@types';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
 import type { CacheEntry, IGitHubApiCache } from './IGitHubApiCache';
 import { createLogger } from '@modules/logger';
 
@@ -45,11 +22,11 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @param fileSystem The file system implementation to use
    * @param config Application configuration
    */
-  constructor(fileSystem: IFileSystem, config: AppConfig) {
+  constructor(fileSystem: IFileSystem, config: YamlConfig) {
     this.fileSystem = fileSystem;
-    this.cacheDir = path.join(config.cacheDir, 'github-api');
-    this.defaultTtlMs = config.githubApiCacheTtl ?? 86400000; // Default: 24 hours
-    this.enabled = config.githubApiCacheEnabled ?? true;
+    this.cacheDir = path.join(config.paths.generatedDir, 'cache', 'github-api');
+    this.defaultTtlMs = config.github.cache.ttl;
+    this.enabled = config.github.cache.enabled;
 
     log(
       'constructor: Cache directory: %s, TTL: %d ms, Enabled: %s',

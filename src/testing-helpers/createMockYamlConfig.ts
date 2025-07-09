@@ -1,26 +1,3 @@
-/**
- * @file src/testing-helpers/createMockYamlConfig.ts
- * @description Shared testing helper functions for creating YamlConfig mocks.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define `createMockYamlConfig` function.
- *   - [x] Import `YamlConfig`.
- *   - [x] Import `IFileSystem`, `NodeFileSystem`.
- *   - [x] Import `dump` from `js-yaml`.
- *   - [x] Implement the function signature: `createMockYamlConfig(config: YamlConfig, { filePath?: string, fileSystem?: IFileSystem = new NodeFileSystem() })`.
- *   - [x] Stringify the config object using `dump`.
- *   - [x] If `filePath` is provided, write the stringified config to the file using the `fileSystem`.
- *   - [x] Return the YAML string.
- * - [x] Add JSDoc for the function.
- * - [x] Write tests for `createMockYamlConfig` in `src/testing-helpers/__tests__/createMockYamlConfig.test.ts`.
- * - [x] Ensure 100% test coverage.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';

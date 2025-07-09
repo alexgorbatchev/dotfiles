@@ -1,24 +1,3 @@
-/**
- * @file src/testing-helpers/appConfigTestHelpers.ts
- * @description Shared testing helper functions for creating AppConfig mocks.
- *
- * ## Development Plan
- *
- * ### Tasks:
- * - [x] Define `createMockAppConfig` function.
- *   - [x] Import `AppConfig`, `SystemInfo`, `ConfigEnvironment`, `createAppConfig`.
- *   - [x] Establish default `SystemInfo` and `ConfigEnvironment` for base config generation.
- *   - [x] Call `createAppConfig` to generate a base default configuration.
- *   - [x] Accept `Partial<AppConfig>` overrides.
- *   - [x] Return the merged `AppConfig` object (base + overrides).
- * - [x] Add JSDoc for the function.
- * - [x] Write tests for `createMockAppConfig` in `src/testing-helpers/__tests__/appConfigTestHelpers.test.ts`. (Tests were created then removed as per user instruction)
- * - [x] Ensure 100% test coverage. (N/A as tests were removed)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { AppConfig } from '@types';
 import { createAppConfig, type ConfigEnvironment, type SystemInfo } from '@modules/config';
 import { homedir } from 'os'; // For realistic defaults

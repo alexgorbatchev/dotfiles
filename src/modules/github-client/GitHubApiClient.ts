@@ -1,73 +1,15 @@
-/**
- * @file GitHubApiClient.ts
- * @description Implements the IGitHubApiClient interface for interacting with the GitHub API.
- *
- * ## Development Plan
- *
- * - [x] Implement `GitHubApiClient` class which implements `IGitHubApiClient`.
- *   - [x] Constructor:
- *     - [x] Accept `AppConfig` (for `githubToken`, `downloadTimeout`).
- *     - [x] Accept `IDownloader` instance for making HTTP requests.
- *     - [x] Initialize base URL from config (`githubHost` or default to `https://api.github.com`).
- *     - [x] Initialize `User-Agent` header.
- *   - [x] Implement `getLatestRelease(owner, repo)`:
- *     - [x] Construct URL: `/repos/{owner}/{repo}/releases/latest`.
- *     - [x] Make request using `downloader`.
- *     - [x] Validate response and parse JSON.
- *     - [x] Handle API errors (404 returns null, 403 rate limit, etc.).
- *   - [x] Implement `getReleaseByTag(owner, repo, tag)`:
- *     - [x] Construct URL: `/repos/{owner}/{repo}/releases/tags/{tag}`.
- *     - [x] Make request, validate, parse, handle errors (404 returns null).
- *   - [x] Implement `getAllReleases(owner, repo, options)`:
- *     - [x] Construct URL: `/repos/{owner}/{repo}/releases`.
- *     - [x] Handle `perPage` option.
- *     - [x] Implement pagination (fetch all pages if necessary).
- *     - [x] Filter by `includePrerelease` if applicable (client-side).
- *     - [x] Make requests, validate, parse, handle errors.
- *   - [x] Implement `getReleaseByConstraint(owner, repo, constraint)`:
- *     - [x] Call `getLatestRelease` for 'latest' constraint.
- *     - [x] Use `semver` to find the best match for other constraints after fetching all releases.
- *     - [x] Return the matching release or null.
- *   - [x] Implement `getRateLimit()`:
- *     - [x] Construct URL: `/rate_limit`.
- *     - [x] Make request, validate, parse, handle errors.
- *   - [x] Helper method for making authenticated requests with error handling and JSON parsing.
- * - [x] Write tests for `GitHubApiClient.ts` in `__tests__/GitHubApiClient.test.ts`.
- *   - [x] Mock `IDownloader` and `AppConfig`.
- *   - [x] Test `getLatestRelease` success and error cases.
- *   - [x] Test `getReleaseByTag` success and error cases.
- *   - [x] Test `getAllReleases` (no options, with perPage, with includePrerelease, pagination).
- *   - [x] Test `getReleaseByConstraint` ('latest' constraint and placeholder for others).
- *   - [x] Test `getRateLimit` success and error cases.
- *   - [x] Test GitHub API error responses (403, 404, etc.).
- *   - [x] Test rate limit information parsing.
- * - [x] Make `userAgent` configurable via `AppConfig`.
- * - [x] Cleaned up internal TODO comments related to downloader interaction.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Ensure 100% test coverage.
- * - [x] Update to use configurable `githubHost` from AppConfig.
- * - [x] Add tests for custom GitHub host functionality.
- * - [ ] Update the memory bank.
- */
-
-import type { IGitHubApiClient } from './IGitHubApiClient';
-import type { AppConfig, GitHubRateLimit, GitHubRelease } from '@types';
-// Attempting direct import to resolve module issue
-import type { IDownloader } from '../downloader/IDownloader';
+import type { YamlConfig } from '@modules/config';
 import {
-  NotFoundError,
-  ForbiddenError,
-  RateLimitError,
-  ClientError,
-  ServerError,
-  HttpError,
-  NetworkError,
-} from '../downloader/errors';
+  ClientError, ForbiddenError, HttpError,
+  NetworkError, NotFoundError, RateLimitError, ServerError, type IDownloader
+} from '@modules/downloader';
 import { createLogger } from '@modules/logger';
+import type { GitHubRateLimit, GitHubRelease } from '@types';
+import crypto from 'crypto';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiCache } from './IGitHubApiCache';
-import crypto from 'crypto';
+import type { IGitHubApiClient } from './IGitHubApiClient';
 
 const log = createLogger('GitHubApiClient');
 
@@ -112,14 +54,14 @@ export class GitHubApiClient implements IGitHubApiClient {
   private readonly cacheEnabled: boolean;
   private readonly cacheTtlMs: number;
 
-  constructor(config: AppConfig, downloader: IDownloader, cache?: IGitHubApiCache) {
-    this.baseUrl = config.githubHost || 'https://api.github.com';
-    this.githubToken = config.githubToken;
+  constructor(config: YamlConfig, downloader: IDownloader, cache?: IGitHubApiCache) {
+    this.baseUrl = config.github.host;
+    this.githubToken = config.github.token;
     this.downloader = downloader;
-    this.userAgent = config.githubClientUserAgent || 'dotfiles-generator/1.0.0';
+    this.userAgent = config.github.userAgent;
     this.cache = cache;
-    this.cacheEnabled = config.githubApiCacheEnabled ?? true;
-    this.cacheTtlMs = config.githubApiCacheTtl ?? 86400000; // Default: 24 hours
+    this.cacheEnabled = config.github.cache.enabled;
+    this.cacheTtlMs = config.github.cache.ttl;
 
     log(
       'constructor: GitHub API Client initialized. Base URL: %s, User-Agent: %s',

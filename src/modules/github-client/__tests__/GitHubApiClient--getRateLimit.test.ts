@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRateLimit } from '@types';
 import { HttpError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
-import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
+import {
+  type MockSetup,
+  setupMockGitHubApiClient,
+  createGitHubConfigOverride
+} from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
   let mocks: MockSetup;
 
   beforeEach(() => {
     // Explicitly disable API cache for these non-caching tests
-    mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
+    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
   describe('getRateLimit', () => {
@@ -50,7 +54,7 @@ describe('GitHubApiClient', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             Accept: 'application/vnd.github.v3+json',
-            'User-Agent': mocks.mockAppConfig.githubClientUserAgent,
+            'User-Agent': mocks.mockYamlConfig.github.userAgent,
           }),
         })
       );

@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRateLimit } from '@types';
 import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from './fixtures/cacheTestFixtures';
-import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
+import {
+  type MockSetup,
+  setupMockGitHubApiClient,
+  createGitHubConfigOverride
+} from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
   describe('caching', () => {
@@ -9,7 +13,7 @@ describe('GitHubApiClient', () => {
 
     beforeEach(() => {
       // Default setup for most caching tests, cache enabled.
-      mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: true });
+      mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: true }));
     });
 
     it('should return cached data for getLatestRelease when available', async () => {
@@ -38,13 +42,13 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases/latest',
         FIXTURE_RELEASE,
-        mocks.mockAppConfig.githubApiCacheTtl
+        mocks.mockYamlConfig.github.cache.ttl
       );
     });
 
     it('should not use cache for getLatestRelease when disabled in config', async () => {
       // Specific setup for this test: cache disabled
-      const localMocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
+      const localMocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
 
       localMocks.mockDownloader.download.mockResolvedValue(
         Buffer.from(JSON.stringify(FIXTURE_RELEASE))
@@ -114,7 +118,7 @@ describe('GitHubApiClient', () => {
 
     it('should use custom TTL from AppConfig when caching', async () => {
       const customTtl = 7200000; // 2 hours
-      const localMocks = setupMockGitHubApiClient({ githubApiCacheTtl: customTtl });
+      const localMocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheTtl: customTtl }));
 
       localMocks.mockDownloader.download.mockResolvedValue(
         Buffer.from(JSON.stringify(FIXTURE_RELEASE))
@@ -145,7 +149,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1',
         FIXTURE_RELEASES_LIST,
-        mocks.mockAppConfig.githubApiCacheTtl
+        mocks.mockYamlConfig.github.cache.ttl
       );
       expect(mocks.mockCache.set).toHaveBeenCalledTimes(1);
     });
@@ -177,7 +181,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1',
         FIXTURE_RELEASES_LIST,
-        mocks.mockAppConfig.githubApiCacheTtl
+        mocks.mockYamlConfig.github.cache.ttl
       );
       const relevantSetCalls = mocks.mockCache.set.mock.calls.filter(
         (call) => call[0] === 'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1'
@@ -210,12 +214,12 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/rate_limit',
         mockRateLimitData,
-        mocks.mockAppConfig.githubApiCacheTtl
+        mocks.mockYamlConfig.github.cache.ttl
       );
     });
 
     it('should include token hash in cache key when token is provided', async () => {
-      const mocksWithToken = setupMockGitHubApiClient({ githubToken: 'test-token' });
+      const mocksWithToken = setupMockGitHubApiClient(createGitHubConfigOverride({ githubToken: 'test-token' }));
       // mocks (without token) is from the outer beforeEach
 
       mocksWithToken.mockDownloader.download.mockResolvedValue(

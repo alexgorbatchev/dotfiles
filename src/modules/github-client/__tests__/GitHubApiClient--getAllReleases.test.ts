@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { GitHubRelease } from '@types';
 import { RateLimitError, ServerError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
-import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
+import {
+  type MockSetup,
+  setupMockGitHubApiClient,
+  createGitHubConfigOverride
+} from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function from original test file
 const createMockRelease = (id: number, tagName: string, prerelease = false): GitHubRelease => ({
@@ -25,7 +29,7 @@ describe('GitHubApiClient', () => {
     mock.restore();
 
     // Explicitly disable API cache for these non-caching tests
-    mocks = setupMockGitHubApiClient({ githubApiCacheEnabled: false });
+    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
   describe('getAllReleases', () => {

@@ -1,39 +1,78 @@
-/**
- * @file src/modules/github-client/__tests__/helpers/sharedGitHubApiClientTestSetup.ts
- * @description Shared setup utilities for GitHubApiClient tests.
- */
-
 import { mock } from 'bun:test';
-import type { AppConfig } from '@types';
-import type { IDownloader } from '../../../downloader/IDownloader';
+import type { YamlConfig } from '@modules/config';
+import type { PartialYamlConfig } from '@testing-helpers';
+import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
 import type { IGitHubApiCache } from '../../IGitHubApiCache';
 
-export const createMockAppConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
-  githubToken: undefined,
-  githubHost: 'https://api.github.com', // Default GitHub API URL
-  targetDir: '/usr/bin',
-  dotfilesDir: '/test/dotfiles',
-  homeDir: '/test/home/user', // Added homeDir
-  generatedDir: '/test/dotfiles/.generated',
-  toolConfigDir: '/test/dotfiles/src/tools', // Existing
-  toolConfigsDir: '/test/dotfiles/configs/tools', // New default for tests
-  debug: '',
-  cacheEnabled: true,
-  cacheDir: '/test/dotfiles/.generated/cache',
-  binariesDir: '/test/dotfiles/.generated/binaries',
-  binDir: '/test/dotfiles/.generated/bin',
-  zshInitDir: '/test/dotfiles/.generated/zsh',
-  manifestPath: '/test/dotfiles/.generated/manifest.json',
-  completionsDir: '/test/dotfiles/.generated/completions',
-  githubClientUserAgent: 'dotfiles-generator-test/1.0.0',
-  githubApiCacheEnabled: true, // Default to true for most tests
-  githubApiCacheTtl: 3600000, // 1 hour
-  githubApiCacheDir: '/test/dotfiles/.generated/cache/github-api', // Added
-  generatedArtifactsManifestPath: '/test/dotfiles/.generated/generated-manifest.json',
-  generatorCliShimName: 'dotfiles-shim-generator', // Added
-  ...overrides,
-});
+export const createMockYamlConfig = (overrides: PartialYamlConfig = {}): YamlConfig => {
+  const defaultConfig: YamlConfig = {
+    paths: {
+      dotfilesDir: '/test/dotfiles',
+      targetDir: '/usr/bin',
+      generatedDir: '/test/dotfiles/.generated',
+      toolConfigsDir: '/test/dotfiles/configs/tools',
+      completionsDir: '/test/dotfiles/.generated/completions',
+      manifestPath: '/test/dotfiles/.generated/manifest.json',
+    },
+    system: {
+      sudoPrompt: 'Please enter your password:',
+    },
+    logging: {
+      debug: '',
+    },
+    updates: {
+      checkOnRun: true,
+      checkInterval: 86400000, // 24 hours
+    },
+    github: {
+      token: '', // Empty string instead of undefined
+      host: 'https://api.github.com',
+      userAgent: 'dotfiles-generator-test/1.0.0',
+      cache: {
+        enabled: true,
+        ttl: 3600000, // 1 hour
+      },
+    },
+    downloader: {
+      timeout: 30000,
+      retryCount: 3,
+      retryDelay: 1000,
+      cache: {
+        enabled: true,
+      },
+    },
+  };
+
+  // Deep merge the overrides with the default config
+  return {
+    ...defaultConfig,
+    ...overrides,
+    // Handle nested objects if they exist in overrides
+    paths: { ...defaultConfig.paths, ...(overrides.paths || {}) },
+    system: { ...defaultConfig.system, ...(overrides.system || {}) },
+    logging: { ...defaultConfig.logging, ...(overrides.logging || {}) },
+    updates: { ...defaultConfig.updates, ...(overrides.updates || {}) },
+    github: {
+      ...defaultConfig.github,
+      ...(overrides.github || {}),
+      // Handle nested cache object
+      cache: {
+        ...defaultConfig.github.cache,
+        ...(overrides.github?.cache || {})
+      }
+    },
+    downloader: {
+      ...defaultConfig.downloader,
+      ...(overrides.downloader || {}),
+      // Handle nested cache object
+      cache: {
+        ...defaultConfig.downloader.cache,
+        ...(overrides.downloader?.cache || {})
+      }
+    },
+  };
+};
 
 export const createMockDownloader = (): IDownloader & {
   download: ReturnType<typeof mock<IDownloader['download']>>;
@@ -65,7 +104,7 @@ export const createMockGitHubApiCache = (): IGitHubApiCache & {
 };
 
 export interface MockSetup {
-  mockAppConfig: AppConfig;
+  mockYamlConfig: YamlConfig;
   mockDownloader: IDownloader & {
     download: ReturnType<typeof mock<IDownloader['download']>>;
   };
@@ -80,21 +119,76 @@ export interface MockSetup {
   apiClient: GitHubApiClient;
 }
 
-export const setupMockGitHubApiClient = (configOverrides: Partial<AppConfig> = {}): MockSetup => {
-  const mockAppConfig = createMockAppConfig(configOverrides);
+export const setupMockGitHubApiClient = (configOverrides: PartialYamlConfig = {}): MockSetup => {
+  const mockYamlConfig = createMockYamlConfig(configOverrides);
   const mockDownloader = createMockDownloader();
   const mockCache = createMockGitHubApiCache();
 
   const apiClient = new GitHubApiClient(
-    mockAppConfig,
-    mockDownloader, // Pass the whole object
+    mockYamlConfig,
+    mockDownloader,
     mockCache
   );
 
   return {
-    mockAppConfig,
+    mockYamlConfig,
     mockDownloader,
     mockCache,
     apiClient,
   };
+};
+
+/**
+ * Helper function to create GitHub-specific config overrides
+ * for backward compatibility with test files still using the old AppConfig structure
+ */
+export const createGitHubConfigOverride = ({
+  githubToken,
+  githubHost,
+  githubClientUserAgent,
+  githubApiCacheEnabled,
+  githubApiCacheTtl,
+}: {
+  githubToken?: string;
+  githubHost?: string;
+  githubClientUserAgent?: string;
+  githubApiCacheEnabled?: boolean;
+  githubApiCacheTtl?: number;
+} = {}): PartialYamlConfig => {
+  const overrides: PartialYamlConfig = {};
+  
+  if (githubToken !== undefined || githubHost !== undefined || githubClientUserAgent !== undefined ||
+      githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
+    overrides.github = {};
+    
+    if (githubToken !== undefined) {
+      overrides.github.token = githubToken;
+    }
+    
+    if (githubHost !== undefined) {
+      overrides.github.host = githubHost;
+    }
+    
+    if (githubClientUserAgent !== undefined) {
+      overrides.github.userAgent = githubClientUserAgent;
+    }
+    
+    if (githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
+      // Initialize with default values from the schema
+      overrides.github.cache = {
+        enabled: true,
+        ttl: 3600000,
+      };
+      
+      if (githubApiCacheEnabled !== undefined) {
+        overrides.github.cache.enabled = githubApiCacheEnabled;
+      }
+      
+      if (githubApiCacheTtl !== undefined) {
+        overrides.github.cache.ttl = githubApiCacheTtl;
+      }
+    }
+  }
+  
+  return overrides;
 };

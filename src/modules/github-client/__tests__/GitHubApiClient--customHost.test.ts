@@ -1,10 +1,5 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--customHost.test.ts
- * @description Tests for the GitHubApiClient's custom host functionality.
- */
-
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
+import { setupMockGitHubApiClient, createGitHubConfigOverride } from './helpers/sharedGitHubApiClientTestSetup';
 import type { MockSetup } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient with custom host', () => {
@@ -13,7 +8,7 @@ describe('GitHubApiClient with custom host', () => {
 
   beforeEach(() => {
     // Setup with custom GitHub host
-    mocks = setupMockGitHubApiClient({ githubHost: customHost });
+    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubHost: customHost }));
   });
 
   it('should use the custom host for API requests', async () => {
