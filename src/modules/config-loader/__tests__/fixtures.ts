@@ -7,6 +7,7 @@ paths:
   toolConfigsDir: \${paths.dotfilesDir}/generator/configs/tools
   completionsDir: \${paths.generatedDir}/completions
   manifestPath: \${paths.generatedDir}/generated-manifest.json
+  binariesDir: \${paths.generatedDir}/bin
 system:
   sudoPrompt: "Enter password for generator:"
 logging:

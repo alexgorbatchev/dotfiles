@@ -1,19 +1,3 @@
-/**
- * @file src/modules/generator-orchestrator/IGeneratorOrchestrator.ts
- * @description Interface for the GeneratorOrchestrator module.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define `GenerateAllOptions` interface.
- * - [x] Define `IGeneratorOrchestrator` interface with `generateAll` method.
- * - [x] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests)
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateAllOptions`.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { ToolConfig, GeneratedArtifactsManifest } from '@types';
 
 /**

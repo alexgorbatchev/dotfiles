@@ -1,47 +1,7 @@
-/**
- * @file src/modules/generator-orchestrator/GeneratorOrchestrator.ts
- * @description Implementation of the GeneratorOrchestrator module.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Implement constructor to accept dependencies: `IShimGenerator`, `IShellInitGenerator`, `ISymlinkGenerator`, `IFileSystem`, `AppConfig`.
- * - [x] Implement `generateAll` method:
- *   - [x] Determine manifest file path from `AppConfig.generatedArtifactsManifestPath`.
- *   - [x] Read existing manifest using `IFileSystem.readFile()` (behavior determined by injected `IFileSystem` type):
- *     - [x] Parse JSON.
- *     - [x] Handle case where manifest doesn't exist or is invalid (return a new/empty manifest structure).
- *   - [x] Call `shimGenerator.generate()`:
- *     - [x] Pass `toolConfigs`.
- *     - [x] Capture `Promise<string[]>` and store in manifest.
- *   - [x] Call `shellInitGenerator.generate()`:
- *     - [x] Pass `toolConfigs`.
- *     - [x] Capture `Promise<string | null>` and store in manifest.
- *   - [x] Call `symlinkGenerator.generate()`:
- *     - [x] Pass `toolConfigs`.
- *     - [x] Capture `Promise<SymlinkOperationResult[]>` and store in manifest.
- *   - [x] Update the `GeneratedArtifactsManifest` data structure:
- *     - [x] Use `lastGenerated` instead of `lastGenerationTimestamp`.
- *     - [x] Store detailed artifact information.
- *     - [x] Include `generatorVersion` if provided in options.
- *   - [x] Write the new/updated manifest to the file system using `IFileSystem.writeFile()` (behavior determined by injected `IFileSystem` type).
- *     - [x] Ensure parent directory for manifest exists.
- *     - [x] Serialize manifest to JSON string with indentation.
- *   - [x] Return the updated `GeneratedArtifactsManifest`.
- * - [x] Write unit tests (`__tests__/GeneratorOrchestrator.test.ts`).
- * - [x] Refactor dry run mechanism:
- *   - [x] Remove internal `dryRun` logic.
- *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
- *   - [x] Remove `dryRun` option from sub-generator calls.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Ensure 100% test coverage.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
-import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
+import type { YamlConfig } from '@modules/config';
+import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import type { IShimGenerator, GenerateShimsOptions } from '@modules/generator-shim';
 import type { IShellInitGenerator, GenerateShellInitOptions } from '@modules/generator-shell-init';
 import type {
@@ -59,14 +19,14 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly shellInitGenerator: IShellInitGenerator;
   private readonly symlinkGenerator: ISymlinkGenerator;
   private readonly fs: IFileSystem;
-  private readonly appConfig: AppConfig;
+  private readonly appConfig: YamlConfig;
 
   constructor(
     shimGenerator: IShimGenerator,
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
     fs: IFileSystem,
-    appConfig: AppConfig
+    appConfig: YamlConfig
   ) {
     log('constructor: Initializing GeneratorOrchestrator.');
     this.shimGenerator = shimGenerator;
@@ -86,8 +46,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       this.fs.constructor.name
     );
     log(
-      'generateAll: Initial appConfig.generatedArtifactsManifestPath: %s',
-      this.appConfig?.generatedArtifactsManifestPath
+      'generateAll: Initial appConfig.paths.manifestPath: %s',
+      this.appConfig.paths.manifestPath
     );
 
     const generatorVersion = options?.generatorVersion;
@@ -102,17 +62,17 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       throw new Error('GeneratorOrchestrator: AppConfig is not available.');
     }
     log(
-      'generateAll: AppConfig available. generatedArtifactsManifestPath: %s',
-      this.appConfig.generatedArtifactsManifestPath
+      'generateAll: YamlConfig available. paths.manifestPath: %s',
+      this.appConfig.paths.manifestPath
     );
 
-    if (!this.appConfig.generatedArtifactsManifestPath) {
-      log('generateAll: CRITICAL: generatedArtifactsManifestPath is undefined/null on appConfig.');
+    if (!this.appConfig.paths.manifestPath) {
+      log('generateAll: CRITICAL: paths.manifestPath is undefined/null on appConfig.');
       throw new Error(
-        'GeneratorOrchestrator: AppConfig.generatedArtifactsManifestPath is missing.'
+        'GeneratorOrchestrator: YamlConfig.paths.manifestPath is missing.'
       );
     }
-    const manifestPath = this.appConfig.generatedArtifactsManifestPath;
+    const manifestPath = this.appConfig.paths.manifestPath;
     log(`generateAll: Manifest path determined as: ${manifestPath}`);
 
     let currentManifest: GeneratedArtifactsManifest;

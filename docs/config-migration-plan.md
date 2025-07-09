@@ -61,7 +61,7 @@ This phase focuses on incrementally migrating the entire application from the ol
     *   **[x]** `generator-shim`: Depends on `file-system`.
     *   **[x]** `generator-shell-init`: Depends on `file-system`.
 *   **[ ] Task 3.2: Migrate Orchestrator & CLI**:
-    *   **[ ]** `generator-orchestrator`: Depends on all `generator-*` modules.
+    *   **[x]** `generator-orchestrator`: Depends on all `generator-*` modules.
     *   **[ ]** `cli`: Migrate all commands (`checkUpdates`, `cleanup`, `detectConflicts`, `generate`, `install`, `update`).
 
 ---
