@@ -1,16 +1,17 @@
+import { type YamlConfig } from '@modules/config';
+import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
+import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import type { IDownloader } from '@modules/downloader';
-import type { IArchiveExtractor } from '@modules/extractor'; // Added
+import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
-import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
-import type { AppConfig, ExtractResult, GitHubRelease, ToolConfig } from '@types';
+import { createMemFileSystem, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { Installer } from '../Installer';
 
 describe('Installer with custom GitHub host', () => {
   // Mock data
-  const MOCK_BINARIES_DIR = '/test/binaries';
-  const MOCK_BIN_DIR = '/test/bin';
   const MOCK_TOOL_NAME = 'test-tool';
   const MOCK_REPO = 'owner/repo';
   const MOCK_VERSION = '1.0.0';
@@ -20,20 +21,25 @@ describe('Installer with custom GitHub host', () => {
   let mockFileSystem: IFileSystem;
   let mockDownloader: IDownloader;
   let mockGitHubApiClient: IGitHubApiClient;
-  let mockArchiveExtractor: IArchiveExtractor; // Added
-  let mockAppConfig: AppConfig;
+  let mockArchiveExtractor: IArchiveExtractor;
+  let mockAppConfig: YamlConfig;
   let installer: Installer;
+  let testDirs: TestDirectories;
 
   // Mock function references
   let mockDownload: ReturnType<typeof mock>;
   let mockGetLatestRelease: ReturnType<typeof mock>;
-  let mockExtract: ReturnType<typeof mock>; // Added
+  let mockExtract: ReturnType<typeof mock>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    testDirs = createTestDirectories({ testName: 'installer-custom-host-tests' });
     // Setup mock file system
-    const { fs: fsInstance } = createMemFileSystem(); // Only destructure mockFileSystem
+    const { fs: fsInstance } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
+    });
     mockFileSystem = fsInstance;
-    // fileSystemMocks = fsMocks; // Removed as it's unused
 
     // Setup mock downloader
     mockDownload = mock(() => Promise.resolve());
@@ -64,7 +70,7 @@ describe('Installer with custom GitHub host', () => {
           },
         ],
         html_url: 'https://github.com/owner/repo/releases/tag/1.0.0',
-      } as GitHubRelease)
+      })
     );
 
     mockGitHubApiClient = {
@@ -92,11 +98,20 @@ describe('Installer with custom GitHub host', () => {
     };
 
     // Setup mock AppConfig with custom GitHub host
-    mockAppConfig = createMockAppConfig({
-      binariesDir: MOCK_BINARIES_DIR,
-      binDir: MOCK_BIN_DIR,
-      githubHost: CUSTOM_GITHUB_HOST,
-    });
+    mockAppConfig = await createYamlConfigFromObject(
+      mockFileSystem,
+      {
+        paths: {
+          dotfilesDir: testDirs.dotfilesDir,
+          generatedDir: testDirs.generatedDir,
+        },
+        github: {
+          host: CUSTOM_GITHUB_HOST,
+        },
+      },
+      { platform: 'linux', arch: 'x64', release: 'test' },
+      {}
+    );
 
     // Create installer instance
     installer = new Installer(
@@ -180,7 +195,7 @@ describe('Installer with custom GitHub host', () => {
       mockFileSystem,
       mockDownloader,
       mockGitHubApiClientWithDifferentUrl,
-      mockArchiveExtractor, // Added
+      mockArchiveExtractor,
       mockAppConfig
     );
 

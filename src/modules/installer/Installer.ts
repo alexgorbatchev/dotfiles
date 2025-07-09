@@ -37,7 +37,13 @@ import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
-import type { AppConfig, ToolConfig, GitHubReleaseAsset, SystemInfo, ExtractResult } from '@types';
+import type { YamlConfig } from '@modules/config';
+import type {
+  ToolConfig,
+  GitHubReleaseAsset,
+  SystemInfo,
+  ExtractResult,
+} from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 
 const log = createLogger('Installer');
@@ -76,14 +82,14 @@ export class Installer implements IInstaller {
   private readonly downloader: IDownloader;
   private readonly githubApiClient: IGitHubApiClient;
   private readonly archiveExtractor: IArchiveExtractor;
-  private readonly appConfig: AppConfig;
+  private readonly appConfig: YamlConfig;
 
   constructor(
     fileSystem: IFileSystem,
     downloader: IDownloader,
     githubApiClient: IGitHubApiClient,
     archiveExtractor: IArchiveExtractor,
-    appConfig: AppConfig
+    appConfig: YamlConfig
   ) {
     log(
       'constructor: fileSystem=%s, downloader=%s, githubApiClient=%s, archiveExtractor=%s, appConfig=%o',
@@ -113,7 +119,8 @@ export class Installer implements IInstaller {
 
     try {
       // Create installation directory if it doesn't exist
-      const installDir = path.join(this.appConfig.binariesDir, toolName);
+      const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
+      const installDir = path.join(binariesDir, toolName);
       await this.fs.ensureDir(installDir);
       otherChanges.push(`Ensured installation directory exists: ${installDir}`);
       log('install: Created installation directory: %s', installDir);
@@ -327,7 +334,7 @@ export class Installer implements IInstaller {
       // Download the asset
       let downloadUrl: string;
       const rawBrowserDownloadUrl = asset.browser_download_url;
-      const customHost = this.appConfig.githubHost;
+      const customHost = this.appConfig.github.host;
 
       log(
         'installFromGitHubRelease: Determining download URL. rawBrowserDownloadUrl="%s", customHost="%s"',
@@ -567,7 +574,7 @@ export class Installer implements IInstaller {
       }
 
       // Create a symlink in the bin directory
-      const binDir = this.appConfig.binDir;
+      const binDir = path.join(this.appConfig.paths.generatedDir, 'bin');
       await this.fs.ensureDir(binDir);
       const symlinkPath = path.join(binDir, toolName);
 
@@ -950,7 +957,7 @@ export class Installer implements IInstaller {
       }
 
       // Create a symlink in the bin directory
-      const binDirForCurl = this.appConfig.binDir; // Renamed to avoid conflict
+      const binDirForCurl = path.join(this.appConfig.paths.generatedDir, 'bin'); // Renamed to avoid conflict
       await this.fs.ensureDir(binDirForCurl);
       const symlinkPathForCurl = path.join(binDirForCurl, toolName); // Renamed
 

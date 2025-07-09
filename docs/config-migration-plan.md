@@ -40,6 +40,10 @@ This phase focuses on incrementally migrating the entire application from the ol
     *   **Module-Specific Details**: Each module's migration will be handled on a case-by-case basis, addressing the specific configuration needs of that module.
     *   **Dependency Management**: During the transition period, modules will be migrated incrementally. Once the entire migration is complete, all dependencies will naturally align with the new configuration system. No adapters necessary, backward compatability is not necessary.
     *   **Testing Strategy**: Use `bun run test {file}` to verify each module after migration. All tests must pass before considering a module's migration complete.
+    *   **Testing Conventions**:
+        *   Use `MOCK_DEFAULT_CONFIG` from `@modules/config-loader/__tests__/fixtures` for the default configuration in tests.
+        *   Use the `initialVolumeJson` property of the `createMemFileSystem` function to provide the default configuration.
+        *   Use the `getDefaultConfigPath` helper function from `@modules/config-loader` to get the path to the default configuration file.
     *   **Validation Criteria**: A module is considered successfully migrated when:
         1.  All its code has been updated to use `YamlConfig` instead of `AppConfig`
         2.  All its tests have been updated to use `createMockYamlConfig`
@@ -47,7 +51,7 @@ This phase focuses on incrementally migrating the entire application from the ol
 
 *   **[ ] Task 3.1: Migrate Core Modules**: This is the ordered list of modules to be migrated.
     *   **[x]** `github-client`: Migrate `GitHubApiClient` and `FileGitHubApiCache`.
-    *   **[ ]** `installer`: Depends on `github-client`.
+    *   **[x]** `installer`: Depends on `github-client`.
     *   **[ ]** `generator-symlink`: Depends on `file-system`.
     *   **[ ]** `generator-shim`: Depends on `file-system`.
     *   **[ ]** `generator-shell-init`: Depends on `file-system`.

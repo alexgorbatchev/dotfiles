@@ -1,14 +1,12 @@
+import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
 import type { IDownloader } from '@modules/downloader';
-import type { IArchiveExtractor } from '@modules/extractor'; // Added
+import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
-import {
-  createMemFileSystem,
-  createMockAppConfig,
-  createTestDirectories,
-  type TestDirectories,
-} from '@testing-helpers';
-import type { AppConfig, ExtractResult, GitHubRelease, ToolConfig } from '@types'; // Added ExtractResult
+import { createMemFileSystem, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import type { YamlConfig } from '@modules/config';
+import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import { Installer } from '../Installer';
@@ -17,8 +15,8 @@ describe('Installer', () => {
   let mockFileSystem: IFileSystem;
   let mockDownloader: IDownloader;
   let mockGitHubApiClient: IGitHubApiClient;
-  let mockArchiveExtractor: IArchiveExtractor; // Added
-  let mockAppConfig: AppConfig;
+  let mockArchiveExtractor: IArchiveExtractor;
+  let mockAppConfig: YamlConfig;
   let installer: Installer;
   let fileSystemMocks: ReturnType<typeof createMemFileSystem>['spies'];
   let testDirs: TestDirectories;
@@ -27,7 +25,7 @@ describe('Installer', () => {
   let mockDownload: ReturnType<typeof mock>;
   let mockGetLatestRelease: ReturnType<typeof mock>;
   let mockGetReleaseByTag: ReturnType<typeof mock>;
-  let mockExtract: ReturnType<typeof mock>; // Added
+  let mockExtract: ReturnType<typeof mock>;
 
   // Mock data
   const MOCK_TOOL_NAME = 'test-tool';
@@ -95,8 +93,16 @@ describe('Installer', () => {
     ],
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     testDirs = createTestDirectories({ testName: 'installer-tests' });
+    const { fs, spies } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
+    });
+    mockFileSystem = fs;
+    fileSystemMocks = spies;
+
     MOCK_BINARY_PATH = path.join(testDirs.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
     // Reset process.platform and process.arch before each test
@@ -104,11 +110,6 @@ describe('Installer', () => {
     process.platform = 'linux';
     // @ts-ignore
     process.arch = 'x64';
-
-    // Setup mock file system
-    const { fs: fsInstance, spies: fsMocks } = createMemFileSystem();
-    mockFileSystem = fsInstance;
-    fileSystemMocks = fsMocks; // Store for direct use in tests
 
     // Setup mock downloader
     mockDownload = mock(() => Promise.resolve());
@@ -144,10 +145,17 @@ describe('Installer', () => {
     };
 
     // Setup mock app config
-    mockAppConfig = createMockAppConfig({
-      binariesDir: testDirs.binariesDir,
-      binDir: testDirs.binDir,
-    });
+    mockAppConfig = await createYamlConfigFromObject(
+      mockFileSystem,
+      {
+        paths: {
+          dotfilesDir: testDirs.dotfilesDir,
+          generatedDir: testDirs.generatedDir,
+        },
+      },
+      { platform: 'linux', arch: 'x64', release: 'test' },
+      {}
+    );
 
     // Create installer instance
     installer = new Installer(
@@ -211,7 +219,7 @@ describe('Installer', () => {
       };
 
       const installFromGitHubReleaseSpy = spyOn(
-        installer as any,
+        installer,
         'installFromGitHubRelease'
       ).mockResolvedValue({ success: true, binaryPath: MOCK_BINARY_PATH });
 
@@ -240,7 +248,7 @@ describe('Installer', () => {
 
       const error = new Error('Test error');
       const installFromGitHubReleaseSpy = spyOn(
-        installer as any,
+        installer,
         'installFromGitHubRelease'
       ).mockRejectedValue(error);
 
@@ -276,7 +284,7 @@ describe('Installer', () => {
       };
 
       const installFromGitHubReleaseSpy = spyOn(
-        installer as any,
+        installer,
         'installFromGitHubRelease'
       ).mockResolvedValue({ success: true, binaryPath: MOCK_BINARY_PATH, otherChanges: [] }); // Ensure spy returns otherChanges
 
@@ -334,8 +342,8 @@ describe('Installer', () => {
       fileSystemMocks.symlink.mockResolvedValue(undefined);
 
       const installFromGitHubReleaseSpy = spyOn(
-        installer as any,
-        'installFromGitHubRelease',
+        installer,
+        'installFromGitHubRelease'
       ).mockResolvedValue({ success: true, binaryPath: MOCK_BINARY_PATH, otherChanges: [] });
 
       await installer.install(MOCK_TOOL_NAME, toolConfig);
@@ -357,6 +365,8 @@ describe('Installer', () => {
       const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       expect(result.success).toBe(false);
@@ -383,11 +393,7 @@ describe('Installer', () => {
         otherChanges: initialOtherChanges,
       };
 
-      const result = await installer.installFromGitHubRelease(
-        MOCK_TOOL_NAME,
-        toolConfig,
-        context
-      );
+      const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, context);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain(
@@ -436,6 +442,7 @@ describe('Installer', () => {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -471,8 +478,19 @@ describe('Installer', () => {
         ],
       });
 
-      // Ensure appConfig.githubHost is undefined or not api.github.com
-      const testAppConfig = { ...mockAppConfig, githubHost: undefined };
+      // Ensure appConfig.github.host is undefined or not api.github.com
+      const testAppConfig = await createYamlConfigFromObject(
+        mockFileSystem,
+        {
+          paths: {
+            dotfilesDir: testDirs.dotfilesDir,
+            generatedDir: testDirs.generatedDir,
+          },
+          github: { host: undefined },
+        },
+        { platform: 'linux', arch: 'x64', release: 'test' },
+        {}
+      );
       const tempInstaller = new Installer(
         mockFileSystem,
         mockDownloader,
@@ -481,10 +499,11 @@ describe('Installer', () => {
         testAppConfig
       );
 
-      await (tempInstaller as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+      await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -520,7 +539,18 @@ describe('Installer', () => {
         ],
       });
 
-      const testAppConfig = { ...mockAppConfig, githubHost: 'github.my-company.com' };
+      const testAppConfig = await createYamlConfigFromObject(
+        mockFileSystem,
+        {
+          paths: {
+            dotfilesDir: testDirs.dotfilesDir,
+            generatedDir: testDirs.generatedDir,
+          },
+          github: { host: 'github.my-company.com' },
+        },
+        { platform: 'linux', arch: 'x64', release: 'test' },
+        {}
+      );
       const tempInstaller = new Installer(
         mockFileSystem,
         mockDownloader,
@@ -529,10 +559,11 @@ describe('Installer', () => {
         testAppConfig
       );
 
-      await (tempInstaller as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+      await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -568,7 +599,18 @@ describe('Installer', () => {
         ],
       });
 
-      const testAppConfig = { ...mockAppConfig, githubHost: 'api.github.com' }; // API host
+      const testAppConfig = await createYamlConfigFromObject(
+        mockFileSystem,
+        {
+          paths: {
+            dotfilesDir: testDirs.dotfilesDir,
+            generatedDir: testDirs.generatedDir,
+          },
+          github: { host: 'api.github.com' },
+        },
+        { platform: 'linux', arch: 'x64', release: 'test' },
+        {}
+      ); // API host
       const tempInstaller = new Installer(
         mockFileSystem,
         mockDownloader,
@@ -577,10 +619,11 @@ describe('Installer', () => {
         testAppConfig
       );
 
-      await (tempInstaller as any).installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
+      await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       // Should default to github.com for asset downloads, not api.github.com
@@ -609,6 +652,7 @@ describe('Installer', () => {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       expect(result.success).toBe(false);
@@ -645,6 +689,7 @@ describe('Installer', () => {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo,
+        otherChanges: [],
       });
 
       expect(result.success).toBe(false);
@@ -672,6 +717,7 @@ describe('Installer', () => {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        otherChanges: [],
       });
 
       expect(result.success).toBe(false);
@@ -700,6 +746,7 @@ describe('Installer', () => {
       const result = await installer.installFromBrew(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        otherChanges: [],
       });
 
       expect(result.success).toBe(true);
@@ -747,13 +794,14 @@ describe('Installer', () => {
       const result = await installer.installFromCurlScript(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir,
+        otherChanges: [],
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
         'https://example.com/install.sh',
         expect.objectContaining({
           destinationPath: expect.stringContaining('test-tool-install.sh'),
-        }),
+        })
       );
 
       expect(fileSystemMocks.chmod).toHaveBeenCalled();
@@ -827,14 +875,14 @@ describe('Installer', () => {
       const result = await installer.installFromCurlTar(
         MOCK_TOOL_NAME,
         toolConfig,
-        context, // Pass the defined context
+        context // Pass the defined context
       );
 
       expect(mockDownload).toHaveBeenCalledWith(
         'https://example.com/archive.tar.gz',
         expect.objectContaining({
           destinationPath: expect.stringContaining('test-tool.tar.gz'),
-        }),
+        })
       );
 
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
