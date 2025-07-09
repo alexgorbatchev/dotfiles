@@ -20,7 +20,7 @@
  */
 
 import type { AppConfig } from '@types';
-import { createAppConfig, type ConfigEnvironment, type SystemInfo } from '@modules/config/config';
+import { createAppConfig, type ConfigEnvironment, type SystemInfo } from '@modules/config';
 import { homedir } from 'os'; // For realistic defaults
 import { cwd as processCwd } from 'process'; // For realistic defaults
 

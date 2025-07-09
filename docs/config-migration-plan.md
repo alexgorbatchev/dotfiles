@@ -1,256 +1,88 @@
 # Plan: `.env` to Layered `config.yaml` Migration
 
-This document outlines the detailed, step-by-step plan to migrate the project's configuration from a `.env` file to a structured, layered `config.yaml` system. This migration will improve support for platform-specific features and enhance the overall maintainability of the configuration. The new system will use a `default-config.yaml` for base values, which can be selectively overridden by a user's local `config.yaml`.
+This document outlines the detailed, step-by-step plan to migrate the project's configuration from a `.env` file to a structured, layered `config.yaml` system.
 
 ---
 
-### **Phase 1: Foundation & Schema Design (Revised)**
+### **Phase 1: Foundation & Schema Design (Completed)**
 
-This phase establishes the new configuration structure and default values.
+This phase established the new configuration structure and default values.
 
-*   **[x] Task 1.1: Define the Comprehensive & Required YAML Schema**
-    *   **[x] Action**: A Zod schema will be created in `src/modules/config/config.yaml.schema.ts` to enforce that all configuration keys are required. Default values will no longer be handled by the schema itself.
-    *   **[x] Action**: Within a `platform` entry, the `match` and `config` keys will be required.
-    *   **Zod Schema (`config.yaml.schema.ts`)**:
-        ```typescript
-        import { z } from 'zod/v4';
-
-        const pathsConfigSchema = z
-          .object({
-            dotfilesDir: z.string(),
-            targetDir: z.string(),
-            generatedDir: z.string(),
-            toolConfigsDir: z.string(),
-            completionsDir: z.string(),
-            manifestPath: z.string(),
-          })
-
-        const systemConfigSchema = z
-          .object({
-            sudoPrompt: z.string(),
-          })
-
-        const loggingConfigSchema = z
-          .object({
-            debug: z.string(),
-          })
-
-        const updatesConfigSchema = z
-          .object({
-            checkOnRun: z.boolean(),
-            checkInterval: z.number(),
-          })
-
-        const gitHubCacheConfigSchema = z
-          .object({
-            enabled: z.boolean(),
-            ttl: z.number(),
-          })
-
-        const gitHubConfigSchema = z
-          .object({
-            token: z.string(),
-            host: z.string(),
-            userAgent: z.string(),
-            cache: gitHubCacheConfigSchema,
-          })
-
-        const downloaderCacheConfigSchema = z
-          .object({
-            enabled: z.boolean(),
-          })
-
-        const downloaderConfigSchema = z
-          .object({
-            timeout: z.number(),
-            retryCount: z.number(),
-            retryDelay: z.number(),
-            cache: downloaderCacheConfigSchema,
-          })
-
-        const platformMatchSchema = z.object({
-          os: z.enum(['macos', 'linux', 'windows']).optional(),
-          arch: z.enum(['x86_64', 'arm64']).optional(),
-        });
-
-        const baseYamlConfigSchema = (required: boolean) =>
-          z.object({
-            paths: required ? pathsConfigSchema.required() : pathsConfigSchema.optional(),
-            system: required ? systemConfigSchema.required() : systemConfigSchema.optional(),
-            logging: required ? loggingConfigSchema.required() : loggingConfigSchema.optional(),
-            updates: required ? updatesConfigSchema.required() : updatesConfigSchema.optional(),
-            github: required ? gitHubConfigSchema.required() : gitHubConfigSchema.optional(),
-            downloader: required ? downloaderConfigSchema.required() : downloaderConfigSchema.optional(),
-          });
-
-        const platformOverrideSchema = z.lazy(() =>
-          z.object({
-            match: z.array(platformMatchSchema).nonempty(),
-            get config() {
-              return baseYamlConfigSchema(false).partial();
-            },
-          })
-        );
-
-        export const yamlConfigSchema = baseYamlConfigSchema(true).extend({
-          platform: z.array(platformOverrideSchema).optional(),
-        });
-        ```
-
-*   **[x] Task 1.2: Create `default-config.yaml`**
-    *   **[x] Action**: A new `default-config.yaml` file will be created in the source tree (e.g., `src/modules/config-loader/`). This file will contain a complete set of all configuration keys with their default values.
-    *   **`default-config.yaml` structure**:
-        ```yaml
-        # Default configuration values.
-        # Users can override these in their local config.yaml.
-        # Environment variables from process.env (e.g., ${VAR_NAME}) and other config values (e.g., ${paths.dotfilesDir}) can be used for substitution.
-
-        paths:
-          # Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`.
-          dotfilesDir: ~/.dotfiles # Corresponds to DOTFILES_DIR
-          # Sets the target directory where executable shims for tools will be placed. Defaults to `/usr/local/bin`.
-          targetDir: /usr/local/bin # Corresponds to TARGET_DIR
-          # Defines the directory where all generated files will be stored. Defaults to `${paths.dotfilesDir}/.generated`.
-          generatedDir: ${paths.dotfilesDir}/.generated # Corresponds to GENERATED_DIR
-          # Specifies the directory containing `*.tool.ts` tool configuration files. Defaults to `${paths.dotfilesDir}/generator/configs/tools`.
-          toolConfigsDir: ${paths.dotfilesDir}/generator/configs/tools # Corresponds to TOOL_CONFIGS_DIR
-          # Specifies the base directory where shell completion files should be installed. Defaults to `${paths.generatedDir}/completions`.
-          completionsDir: ${paths.generatedDir}/completions # Corresponds to COMPLETIONS_DIR
-          # Specifies the path to the manifest file that tracks all generated artifacts. Defaults to `${paths.generatedDir}/manifest.json`.
-          manifestPath: ${paths.generatedDir}/manifest.json # Corresponds to GENERATED_ARTIFACTS_MANIFEST_PATH
-
-        system:
-          # Custom prompt message to display when `sudo` is required.
-          sudoPrompt: "Enter password for generator:" # Corresponds to SUDO_PROMPT
-
-        logging:
-          # Controls debug logging output. Defaults to an empty string.
-          debug: "" # Corresponds to DEBUG
-
-        updates:
-          # Determines if the tool should automatically check for updates on certain runs. Defaults to true.
-          checkOnRun: true # Corresponds to CHECK_UPDATES_ON_RUN
-          # Interval in seconds between automatic update checks for tools. Defaults to 86400 (24 hours).
-          checkInterval: 86400 # Corresponds to UPDATE_CHECK_INTERVAL
-
-        github:
-          # GitHub Personal Access Token (PAT) for accessing the GitHub API.
-          token: ${GITHUB_TOKEN} # Corresponds to GITHUB_TOKEN
-          # Custom GitHub API host URL. Defaults to "https://api.github.com".
-          host: https://api.github.com # Corresponds to GITHUB_HOST
-          # Custom User-Agent string for requests made by the GitHub API client. Defaults to "dotfiles-generator".
-          userAgent: "dotfiles-generator" # Corresponds to GITHUB_CLIENT_USER_AGENT
-          cache:
-            # Enables or disables caching for GitHub API responses. Defaults to true.
-            enabled: true # Corresponds to GITHUB_API_CACHE_ENABLED
-            # Time-to-live (TTL) in milliseconds for GitHub API cache entries. Defaults to 86400000 (24 hours).
-            ttl: 86400000 # Corresponds to GITHUB_API_CACHE_TTL
-
-        downloader:
-          # Timeout in milliseconds for download operations. Defaults to 300000 (5 minutes).
-          timeout: 300000 # Corresponds to DOWNLOAD_TIMEOUT
-          # Number of retry attempts for failed downloads. Defaults to 3.
-          retryCount: 3 # Corresponds to DOWNLOAD_RETRY_COUNT
-          # Delay in milliseconds between download retry attempts. Defaults to 1000 (1 second).
-          retryDelay: 1000 # Corresponds to DOWNLOAD_RETRY_DELAY
-          cache:
-            # Enables or disables caching for downloaded tool assets. Defaults to true.
-            enabled: true # Corresponds to CACHE_ENABLED
-        ```
-
-*   **[x] Task 1.3: Update User `config.yaml` Role**
-    *   **[x] Action**: The user-facing `config.yaml` in the project root is now optional and serves as a partial override file. It only needs to contain the settings the user wishes to change from `default-config.yaml`.
-    *   **Example `config.yaml`**:
-        ```yaml
-        # User-specific overrides.
-        # These values will be merged on top of default-config.yaml.
-        paths:
-          dotfilesDir: ~/.dotfiles
-          generatedDir: ${paths.dotfilesDir}/.generated/shim
-
-        updates:
-          checkOnRun: false
-
-        # Platform-specific overrides. This entire 'platform' key is optional.
-        # If present, each entry requires 'match' and 'config' keys.
-        # Merged on top of the base config in order.
-        platform:
-          - match:
-              - os: macos
-            config:
-              paths:
-                targetDir: /opt/homebrew/bin
-
-          - match:
-              - os: linux
-                arch: arm64
-            config:
-              downloader:
-                timeout: 600000
-        ```
+*   **[x]** Defined the comprehensive Zod schema in `@modules/config`.
+*   **[x]** Created `default-config.yaml` with all default values.
+*   **[x]** Established that the user's `config.yaml` is an optional override file.
 
 ---
 
-### **Phase 2: Implement the New Layered Configuration Loader**
+### **Phase 2: New Configuration Loader (Completed)**
 
-This phase involves building the logic to read, merge, and process the configuration files.
+This phase implemented the core logic for loading, merging, and validating the new YAML-based configuration.
 
-```mermaid
-flowchart TD
-    subgraph Phase 2: New Loader Logic
-        A[Start: YamlConfigLoader.load()] --> B[Read & Parse `default-config.yaml`];
-        B --> C{Read & Parse User `config.yaml` (if exists)};
-        C --> D[Deep Merge User Config onto Default Config];
-        D --> E[Validate Merged Config with Zod (all keys required)];
-        E --> F[Perform Token Substitution (e.g., `${VAR_NAME}`)];
-        F --> G[Return Final `AppConfig` Object];
-    end
-```
-
-*   **[x] Task 2.1: Implement `YamlConfig` loader with Layering**
-    *   **[x] Action**: Create/update `src/modules/config-loader/YamlConfigLoader.ts`.
-    *   **[x] Action**: The `createYamlConfigFromFileSystem(userConfigPath)` function will:
-        1.  Read and parse the `default-config.yaml` from its source location.
-        2.  Read and parse the user's `config.yaml` from `userConfigPath`. If it doesn't exist, use an empty object.
-        3.  Perform a **deep merge** of the user's configuration on top of the default configuration.
-        4.  Validate the final, merged object against the updated Zod schema, which now expects a complete configuration object.
-        5.  Perform token substitution for values like `${VAR_NAME}` from both `process.env` and other values within the YAML file.
-        6.  Return the final, fully-formed `YamlConfig` object.
-
-*   **[x] Task 2.2: Deprecate `createAppConfig`**
-    *   **[x] Action**: The `createAppConfig` function in `src/modules/config/config.ts` will be deprecated and removed. Its logic will be moved into the `YamlConfigLoader` and the Zod schema.
+*   **[x]** Implemented the `YamlConfigLoader` in `@modules/config-loader` to handle layering, token substitution, and platform-specific overrides.
+*   **[x]** Implemented the `createMockYamlConfig` test helper in `@testing-helpers`.
 
 ---
 
-### **Phase 3: Integration & Testing**
+### **Phase 3: Application-wide Migration to `YamlConfig`**
 
-*   **[x] Task 3.1: Create `createTestConfig` Helper**: This remains a valid requirement, but will be updated to support the new layered loading for more accurate testing.
-*   **[x] Task 3.2: Refactor Unit & E2E Tests**: This remains a valid requirement. Tests will be updated to use the new helper and pass the `--config` flag.
-*   **[x] Task 3.3: Integrate `YamlConfig` into the CLI**: In `src/cli.ts`, `setupServices` will be updated to:
-    1.  Call `createYamlConfigFromFileSystem(configPath)` to get the final `YamlConfig` object.
+This phase focuses on incrementally migrating the entire application from the old `AppConfig` to the new `YamlConfig`.
+
+*   **Core Strategy**:
+    *   **Inside-Out Migration**: The migration will proceed one module at a time, starting with modules that have the fewest dependencies and moving towards the outer layers (like the CLI).
+    *   **Per-Module Workflow**: For each module, the following steps must be completed before moving to the next:
+        1.  **Update Implementation**: Refactor the module's functions and classes to accept and use the new `YamlConfig` object instead of `AppConfig`.
+        2.  **Update Tests**: Refactor the module's tests to use the `createMockYamlConfig` helper.
+        3.  **Verify**: Ensure all tests for the refactored module pass (`bun run test {file_path}`).
+        4.  **Update Plan & Report**: After a module is migrated, the agent must update this migration plan by marking the corresponding task as complete (`[x]`). It must then stop and report the progress before proceeding to the next module.
+    *   **No Type Casting**: The new `YamlConfig` must **not** be cast to the old `AppConfig` type (e.g., `YamlConfig as AppConfig`). The code must be refactored to use the `YamlConfig` type directly. `YamlConfig` is fully typed, all properties are defined and can be accessed directly like `yamlConfig.github.cache.ttl`.
+    *   **Direct Property Access**: Always use direct property access (`config.value.value`) instead of optional chaining (`config.value?.value?`). All configuration properties are required and have defaults in the default config, so optional chaining is unnecessary.
+    *   **No Defaults in Implementation**: Do not add default values in implementation code (e.g., `config.value || 'default'`). All defaults should come from the default config file. Implementation code should directly use the config values as they are guaranteed to exist.
+    *   **Module-Specific Details**: Each module's migration will be handled on a case-by-case basis, addressing the specific configuration needs of that module.
+    *   **Dependency Management**: During the transition period, modules will be migrated incrementally. Once the entire migration is complete, all dependencies will naturally align with the new configuration system. No adapters necessary, backward compatability is not necessary.
+    *   **Testing Strategy**: Use `bun run test {file}` to verify each module after migration. All tests must pass before considering a module's migration complete.
+    *   **Validation Criteria**: A module is considered successfully migrated when:
+        1.  All its code has been updated to use `YamlConfig` instead of `AppConfig`
+        2.  All its tests have been updated to use `createMockYamlConfig`
+        3.  All tests are passing
+
+*   **[ ] Task 3.1: Migrate Core Modules**: This is the ordered list of modules to be migrated.
+    *   **[ ]** `github-client`: Migrate `GitHubApiClient` and `FileGitHubApiCache`.
+    *   **[ ]** `installer`: Depends on `github-client`.
+    *   **[ ]** `generator-symlink`: Depends on `file-system`.
+    *   **[ ]** `generator-shim`: Depends on `file-system`.
+    *   **[ ]** `generator-shell-init`: Depends on `file-system`.
+*   **[ ] Task 3.2: Migrate Orchestrator & CLI**:
+    *   **[ ]** `generator-orchestrator`: Depends on all `generator-*` modules.
+    *   **[ ]** `cli`: Migrate all commands (`checkUpdates`, `cleanup`, `detectConflicts`, `generate`, `install`, `update`).
 
 ---
 
-### **Phase 4: Cleanup and Documentation**
+### **Phase 4: Finalization & Cleanup**
 
-*   **[x] Task 4.1: Remove Old System**: Deprecate and remove `.env` loading via `dotenv` and the `createAppConfig` function.
-*   **[x] Task 4.2: Update Memory Bank**: Update all relevant Memory Bank documents to reflect the new, layered, and required-key YAML-based configuration system.
+This is the final phase, to be executed only after all modules and the CLI have been fully migrated and all tests are passing.
+
+*   **[ ] Task 4.1: Remove Old System**:
+    *   **[ ]** Remove the `createAppConfig` function from `src/modules/config/config.ts`.
+    *   **[ ]** Remove the `createMockAppConfig` helper from `src/testing-helpers/createMockAppConfig.ts`.
+    *   **[ ]** Remove any remaining `.env` loading logic and dependencies (e.g., `dotenv`).
+    *   **[ ]** Remove any unused imports or references to the old configuration system.
+    *   **[ ]** Run `bun run lint` and `bun run test` to ensure no regressions were introduced during cleanup.
+*   **[ ] Task 4.2: Documentation Updates**:
+    *   **[ ]** Update all relevant Memory Bank documents to reflect the completed migration.
+    *   **[ ]** Update internal documentation to reference the new configuration system.
+*   **[ ] Task 4.3: Final Verification**:
+    *   **[ ]** Run a full test (`bun run test`) suite to verify all functionality works with the new configuration system.
+    *   **[ ]** Verify that all modules are correctly using the new `YamlConfig` type.
+    *   **[ ]** Ensure no references to the old `AppConfig` type remain in the codebase.
 
 ---
 
-### **Progress**
+### **Progress Summary**
 
-*   **[x] Phase 1: Foundation & Schema Design (Revised)**
-    *   **[x] Task 1.1: Define the Comprehensive & Required YAML Schema**
-    *   **[x] Task 1.2: Create `default-config.yaml`**
-    *   **[x] Task 1.3: Update User `config.yaml` Role**
-*   **[x] Phase 2: Implement the New Layered Configuration Loader**
-    *   **[x] Task 2.1: Implement `YamlConfigLoader` with Layering**
-    *   **[x] Task 2.2: Deprecate `createAppConfig`**
-*   **[x] Phase 3: Integration & Testing**
-    *   **[x] Task 3.1: Create `createTestConfig` Helper**
-    *   **[x] Task 3.2: Refactor Unit & E2E Tests**
-    *   **[x] Task 3.3: Integrate `YamlConfigLoader` into the CLI**
-*   **[x] Phase 4: Cleanup and Documentation**
-    *   **[x] Task 4.1: Remove Old System**
-    *   **[x] Task 4.2: Update Memory Bank**
+*   **[x] Phase 1: Foundation & Schema Design**
+*   **[x] Phase 2: New Configuration Loader**
+*   **[ ] Phase 3: Application-wide Migration to `YamlConfig`**
+*   **[ ] Phase 4: Finalization & Cleanup**
+    *   **[ ] Task 4.1: Remove Old System**
+    *   **[ ] Task 4.2: Documentation Updates**
+    *   **[ ] Task 4.3: Final Verification**
