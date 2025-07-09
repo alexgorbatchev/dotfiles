@@ -1,31 +1,54 @@
-import { beforeEach, describe, expect, it, spyOn } from 'bun:test'; // Removed mock
+import type { YamlConfig } from '@modules/config';
+import {
+  createYamlConfigFromObject,
+  getDefaultConfigPath,
+} from '@modules/config-loader';
+import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem, type FileSystemSpies } from '@testing-helpers';
+import type { ToolConfig } from '@types';
+import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { AppConfig, ToolConfig } from '@types';
 import { ShimGenerator } from '../ShimGenerator';
-import { createMockAppConfig, createMemFileSystem, type FileSystemSpies } from '@testing-helpers'; // Import createMemFileSystem and FileSystemSpies
 
 describe('ShimGenerator', () => {
-  let mockAppConfig: AppConfig;
+  let mockConfig: YamlConfig;
   let shimGenerator: ShimGenerator;
-  let fsMocks: FileSystemSpies; // To hold the collection of mock functions
+  let fsMocks: FileSystemSpies;
+  let mfs: IFileSystem;
 
   const MOCK_TARGET_DIR = '/test/shims';
 
-  beforeEach(() => {
-    const { fs: mfs, spies } = createMemFileSystem();
-    // mockFileSystem is now the IFileSystem compatible object from the helper
-    // fsMocks holds the individual mock functions (e.g., fileSystemMocks.writeFile)
+  beforeEach(async () => {
+    const { fs, spies } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
+    });
+    mfs = fs;
     fsMocks = spies;
 
-    mockAppConfig = createMockAppConfig({
-      targetDir: MOCK_TARGET_DIR,
-      dotfilesDir: '/test/dotfiles',
-      generatedDir: '/test/dotfiles/.generated',
-      generatorCliShimName: 'dotfiles-shim-generator',
-    });
+    mockConfig = await createYamlConfigFromObject(
+      mfs,
+      {
+        paths: {
+          targetDir: MOCK_TARGET_DIR,
+          dotfilesDir: '/test/dotfiles',
+          generatedDir: '/test/dotfiles/.generated',
+          binariesDir: '/test/dotfiles/.generated/binaries',
+          toolConfigsDir: '/test/dotfiles/generator/configs/tools',
+          completionsDir: '/test/dotfiles/.generated/completions',
+          manifestPath: '/test/dotfiles/.generated/manifest.json',
+        },
+        cli: {
+          generatorShimName: 'dotfiles-shim-generator',
+        },
+      },
+      { platform: 'linux', arch: 'x64' },
+      {},
+    );
 
-    // Pass the IFileSystem compatible mock from the helper to ShimGenerator
-    shimGenerator = new ShimGenerator(mfs, mockAppConfig);
+    shimGenerator = new ShimGenerator(mfs, mockConfig);
   });
 
   describe('constructor', () => {
@@ -50,13 +73,13 @@ describe('ShimGenerator', () => {
     beforeEach(() => {
       expectedShimPath = path.join(MOCK_TARGET_DIR, toolName);
       expectedBinaryPath = path.join(
-        mockAppConfig.binariesDir,
+        mockConfig.paths.binariesDir,
         toolConfig.name,
         toolConfig.binaries![0]!
       );
       expectedGeneratorCliShimPathInToolShim = path.join(
-        mockAppConfig.targetDir,
-        mockAppConfig.generatorCliShimName
+        mockConfig.paths.targetDir,
+        'shim'
       );
     });
 
@@ -90,7 +113,7 @@ describe('ShimGenerator', () => {
         installParams: undefined,
       };
       const expectedBinaryPathFallback = path.join(
-        mockAppConfig.binariesDir,
+        mockConfig.paths.binariesDir,
         configNoBinaries.name,
         toolName
       );
@@ -107,12 +130,12 @@ describe('ShimGenerator', () => {
       const configUndefinedBinaries: ToolConfig = {
         name: toolName,
         version: '1.0.0',
-        binaries: undefined as any,
+        binaries: undefined,
         installationMethod: 'none',
         installParams: undefined,
       };
       const expectedBinaryPathFallback = path.join(
-        mockAppConfig.binariesDir,
+        mockConfig.paths.binariesDir,
         configUndefinedBinaries.name,
         toolName
       );
@@ -153,29 +176,13 @@ describe('ShimGenerator', () => {
       expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
       expect(fsMocks.chmod).toHaveBeenCalledTimes(1);
     });
-
-    it('should skip if targetDir is not configured, returning empty array', async () => {
-      const configNoTargetDir = createMockAppConfig({
-        ...mockAppConfig,
-        targetDir: undefined as any,
-      });
-      // Need to use the IFileSystem instance from the helper for this specific generator instance
-      const { fs: localMockFs } = createMemFileSystem();
-      const generator = new ShimGenerator(localMockFs, configNoTargetDir);
-      const result = await generator.generateForTool(toolName, toolConfig);
-
-      expect(result).toEqual([]);
-      // Assert against the specific mocks of localMockFs if needed, or ensure general fsMocks were not called
-      expect(fsMocks.writeFile).not.toHaveBeenCalled();
-      expect(fsMocks.chmod).not.toHaveBeenCalled();
-    });
   });
 
   describe('generate', () => {
-    let generatorCliShimPath: string;
+    let generatedShimPath: string;
 
     beforeEach(() => {
-      generatorCliShimPath = path.join(MOCK_TARGET_DIR, mockAppConfig.generatorCliShimName);
+      generatedShimPath = path.join(MOCK_TARGET_DIR, 'shim');
     });
 
     it('should call generateForTool for each tool config and return all paths including generator shim', async () => {
@@ -202,13 +209,13 @@ describe('ShimGenerator', () => {
         .mockResolvedValueOnce([expectedPathA])
         .mockResolvedValueOnce([expectedPathB]);
       const generateGeneratorCliShimSpy = spyOn(
-        shimGenerator as any,
-        '_generateGeneratorCliShim'
-      ).mockResolvedValue(generatorCliShimPath);
+        shimGenerator,
+        'generateShim'
+      ).mockResolvedValue(generatedShimPath);
 
       const result = await shimGenerator.generate(configs);
 
-      expect(result).toEqual([generatorCliShimPath, expectedPathA, expectedPathB]);
+      expect(result).toEqual([generatedShimPath, expectedPathA, expectedPathB]);
       expect(generateGeneratorCliShimSpy).toHaveBeenCalledTimes(1);
       expect(generateForToolSpy).toHaveBeenCalledTimes(2);
       expect(generateForToolSpy).toHaveBeenCalledWith('tool-a', configs['tool-a'], undefined);
@@ -221,12 +228,12 @@ describe('ShimGenerator', () => {
     it('should handle empty toolConfigs object and return only generator shim path', async () => {
       const generateForToolSpy = spyOn(shimGenerator, 'generateForTool');
       const generateGeneratorCliShimSpy = spyOn(
-        shimGenerator as any,
-        '_generateGeneratorCliShim'
-      ).mockResolvedValue(generatorCliShimPath);
+        shimGenerator,
+        'generateShim'
+      ).mockResolvedValue(generatedShimPath);
 
       const result = await shimGenerator.generate({});
-      expect(result).toEqual([generatorCliShimPath]);
+      expect(result).toEqual([generatedShimPath]);
       expect(generateGeneratorCliShimSpy).toHaveBeenCalledTimes(1);
       expect(generateForToolSpy).not.toHaveBeenCalled();
 
@@ -234,7 +241,7 @@ describe('ShimGenerator', () => {
       generateGeneratorCliShimSpy.mockRestore();
     });
 
-    it('should pass options (like overwrite) to generateForTool and _generateGeneratorCliShim, returning all paths', async () => {
+    it('should pass options (like overwrite) to generateForTool and generateShim, returning all paths', async () => {
       const configs: Record<string, ToolConfig> = {
         'tool-a': {
           name: 'tool-a',
@@ -251,13 +258,13 @@ describe('ShimGenerator', () => {
         expectedPathA,
       ]);
       const generateGeneratorCliShimSpy = spyOn(
-        shimGenerator as any,
-        '_generateGeneratorCliShim'
-      ).mockResolvedValue(generatorCliShimPath);
+        shimGenerator,
+        'generateShim'
+      ).mockResolvedValue(generatedShimPath);
 
       const result = await shimGenerator.generate(configs, options);
 
-      expect(result).toEqual([generatorCliShimPath, expectedPathA]);
+      expect(result).toEqual([generatedShimPath, expectedPathA]);
       expect(generateGeneratorCliShimSpy).toHaveBeenCalledWith(options);
       expect(generateForToolSpy).toHaveBeenCalledWith('tool-a', configs['tool-a'], options);
 

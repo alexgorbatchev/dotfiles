@@ -2,10 +2,9 @@
 
 This document outlines the detailed, step-by-step plan to migrate the project's configuration from a `.env` file to a structured, layered `config.yaml` system.
 
-### Mandatory Reading
-- src/modules/config-loader/default-config.yaml
-- src/testing-helpers/createMockYamlConfig.ts
-- src/modules/config-loader/__tests__/fixtures.ts
+## Mandatory Restrictions
+- You can not make changes files outside of the module you are working on.
+- You MUST use correct configuration values.
 
 ---
 
@@ -59,8 +58,8 @@ This phase focuses on incrementally migrating the entire application from the ol
     *   **[x]** `github-client`: Migrate `GitHubApiClient` and `FileGitHubApiCache`.
     *   **[x]** `installer`: Depends on `github-client`.
     *   **[x]** `generator-symlink`: Depends on `file-system`.
-    *   **[ ]** `generator-shim`: Depends on `file-system`.
-    *   **[ ]** `generator-shell-init`: Depends on `file-system`.
+    *   **[x]** `generator-shim`: Depends on `file-system`.
+    *   **[x]** `generator-shell-init`: Depends on `file-system`.
 *   **[ ] Task 3.2: Migrate Orchestrator & CLI**:
     *   **[ ]** `generator-orchestrator`: Depends on all `generator-*` modules.
     *   **[ ]** `cli`: Migrate all commands (`checkUpdates`, `cleanup`, `detectConflicts`, `generate`, `install`, `update`).

@@ -1,22 +1,4 @@
-/**
- * @file Defines the interface for the Shim Generator module.
- *
- * ## Development Plan
- *
- * - [x] Define `GenerateShimsOptions` interface.
- * - [x] Define `IShimGenerator` interface.
- *   - [x] Add `generate` method.
- *   - [x] Add `generateForTool` method.
- *   - [x] Update `generate` and `generateForTool` return types to `Promise<string[]>`.
- * - [ ] Write tests for the module (covered in ShimGenerator.test.ts).
- * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateShimsOptions`.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-import type { ToolConfig } from '@types'; // Removed AppConfig as it's not used here
+import type { ToolConfig } from '@types';
 
 /**
  * Options for generating shims.

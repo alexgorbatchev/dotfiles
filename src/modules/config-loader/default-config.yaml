@@ -15,6 +15,8 @@ paths:
   completionsDir: ${paths.generatedDir}/completions # Corresponds to COMPLETIONS_DIR
   # Specifies the path to the manifest file that tracks all generated artifacts. Defaults to `${paths.generatedDir}/manifest.json`.
   manifestPath: ${paths.generatedDir}/manifest.json # Corresponds to GENERATED_ARTIFACTS_MANIFEST_PATH
+  # Defines the directory where downloaded tool binaries are stored. Defaults to `${paths.generatedDir}/binaries`.
+  binariesDir: ${paths.generatedDir}/binaries # Corresponds to BINARIES_DIR
 
 system:
   # Custom prompt message to display when `sudo` is required.

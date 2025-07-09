@@ -10,6 +10,7 @@ const pathsConfigSchema = z.object({
   toolConfigsDir: z.string(),
   completionsDir: z.string(),
   manifestPath: z.string(),
+  binariesDir: z.string(),
 });
 
 const systemConfigSchema = z.object({
@@ -62,7 +63,7 @@ const platformMatchSchema = z.union([
   }),
 ]);
 
-const baseYamlConfigSchemaRequired = 
+const baseYamlConfigSchemaRequired =
   z.object({
     paths: pathsConfigSchema.required(),
     system: systemConfigSchema.required(),
@@ -72,7 +73,7 @@ const baseYamlConfigSchemaRequired =
     downloader: downloaderConfigSchema.required(),
   });
 
-const baseYamlConfigSchemaPartial = 
+const baseYamlConfigSchemaPartial =
   z.object({
     paths: pathsConfigSchema.partial().optional(),
     system: systemConfigSchema.partial().optional(),
@@ -108,6 +109,7 @@ export type YamlConfig = z.infer<typeof yamlConfigSchema>;
       toolConfigsDir: '',
       completionsDir: '',
       manifestPath: '',
+      binariesDir: '',
     },
     system: {
       sudoPrompt: '',
