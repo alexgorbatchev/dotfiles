@@ -41,7 +41,7 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage (passes in full suite).
- * - [x] Refactor to use `createMockFileSystem` helper.
+ * - [x] Refactor to use `createMemFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
@@ -116,15 +116,6 @@ describe('GeneratorOrchestrator', () => {
       zshInitDir: path.join(MOCK_GENERATED_DIR, 'zsh'),
       completionsDir: path.join(MOCK_GENERATED_DIR, 'completions'),
     });
-
-    // Ensure base directories used by appConfig and tests exist in MemFileSystem
-    // createMockAppConfig doesn't know about MOCK_HOME_DIR, so ensure dotfilesDir is correctly set for tests
-    await mockFileSystem.ensureDir(mockAppConfig.dotfilesDir);
-    await mockFileSystem.ensureDir(MOCK_HOME_DIR); // Ensure MOCK_HOME_DIR itself exists
-    await mockFileSystem.ensureDir(mockAppConfig.targetDir); // For shims and symlink targets if relative to home
-    await mockFileSystem.ensureDir(mockAppConfig.generatedDir); // For manifest, zshInitDir etc.
-    await mockFileSystem.ensureDir(mockAppConfig.zshInitDir);
-    await mockFileSystem.ensureDir(path.dirname(mockAppConfig.generatedArtifactsManifestPath));
 
     orchestrator = new GeneratorOrchestrator(
       mockShimGenerator,

@@ -38,20 +38,20 @@ import path from 'node:path';
 // IFileSystem is no longer directly used as a type annotation here
 import type { AppConfig, ToolConfig } from '@types';
 import { ShimGenerator } from '../ShimGenerator';
-import { createMockAppConfig, createMockFileSystem, type MockFileSystem } from '@testing-helpers'; // Import createMockFileSystem and MockFileSystem
+import { createMockAppConfig, createMemFileSystem, type FileSystemSpies } from '@testing-helpers'; // Import createMemFileSystem and FileSystemSpies
 
 describe('ShimGenerator', () => {
   let mockAppConfig: AppConfig;
   let shimGenerator: ShimGenerator;
-  let fsMocks: MockFileSystem; // To hold the collection of mock functions
+  let fsMocks: FileSystemSpies; // To hold the collection of mock functions
 
   const MOCK_TARGET_DIR = '/test/shims';
 
   beforeEach(() => {
-    const { mockFileSystem: mfs, fileSystemMocks } = createMockFileSystem();
+    const { fs: mfs, spies } = createMemFileSystem();
     // mockFileSystem is now the IFileSystem compatible object from the helper
     // fsMocks holds the individual mock functions (e.g., fileSystemMocks.writeFile)
-    fsMocks = fileSystemMocks;
+    fsMocks = spies;
 
     mockAppConfig = createMockAppConfig({
       targetDir: MOCK_TARGET_DIR,
@@ -196,7 +196,7 @@ describe('ShimGenerator', () => {
         targetDir: undefined as any,
       });
       // Need to use the IFileSystem instance from the helper for this specific generator instance
-      const { mockFileSystem: localMockFs } = createMockFileSystem();
+      const { fs: localMockFs } = createMemFileSystem();
       const generator = new ShimGenerator(localMockFs, configNoTargetDir);
       const result = await generator.generateForTool(toolName, toolConfig);
 

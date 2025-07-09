@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, mock } from 'bun:test';
 // Removed unused import: path
 import { Installer } from '../Installer';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { createMockFileSystem, createMockAppConfig } from '../../../testing-helpers';
+import { createMemFileSystem, createMockAppConfig } from '../../../testing-helpers';
 import type { IDownloader } from '@modules/downloader';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { IArchiveExtractor } from '@modules/extractor'; // Added
@@ -29,7 +29,6 @@ describe('Installer with custom GitHub host', () => {
   let mockGitHubApiClient: IGitHubApiClient;
   let mockArchiveExtractor: IArchiveExtractor; // Added
   let mockAppConfig: AppConfig;
-  // let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks']; // Removed as it's unused in this file
   let installer: Installer;
 
   // Mock function references
@@ -39,7 +38,7 @@ describe('Installer with custom GitHub host', () => {
 
   beforeEach(() => {
     // Setup mock file system
-    const { mockFileSystem: fsInstance } = createMockFileSystem(); // Only destructure mockFileSystem
+    const { fs: fsInstance } = createMemFileSystem(); // Only destructure mockFileSystem
     mockFileSystem = fsInstance;
     // fileSystemMocks = fsMocks; // Removed as it's unused
 

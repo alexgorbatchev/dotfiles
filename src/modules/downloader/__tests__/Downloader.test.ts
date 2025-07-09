@@ -9,7 +9,7 @@ import type { DownloadOptions } from '../IDownloader';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { createMockFileSystem } from '../../../testing-helpers';
+import { createMemFileSystem } from '../../../testing-helpers';
 
 // Mock DownloadStrategy
 // Define types for our mock strategies to be reassigned in beforeEach
@@ -23,7 +23,7 @@ let fileSystem: IFileSystem;
 
 describe('Downloader', () => {
   beforeEach(() => {
-    const { mockFileSystem: fsInstance } = createMockFileSystem();
+    const { fs: fsInstance } = createMemFileSystem();
     fileSystem = fsInstance;
     // Re-initialize mocks before each test to reset their state (e.g., call counts)
     mockStrategy1 = {
@@ -181,8 +181,7 @@ describe('Downloader', () => {
     const url = 'http://example.com/file.txt';
 
     expect(downloader.download(url)).rejects.toThrowError(
-      // String({ message: 'simulated non-error object', code: 123 }) becomes '[object Object]'
-      new Error('[object Object]')
+      'An unknown error occurred during download: {"message":"simulated non-error object","code":123}'
     );
     expect((nonErrorObjectThrowingStrategy.download as any).mock.calls.length).toBe(1);
   });

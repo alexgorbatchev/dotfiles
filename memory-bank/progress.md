@@ -114,7 +114,7 @@ The project is currently focused on refactoring the `src` directory into a modul
     * [ ] Test that each tool configuration loads correctly.
 
 12. **Follow up actions**:
-  * [ ] Replace all usage of `createMockFileSystem` with `createMemFileSystem` in tests.
+  * [x] Replace all usage of `createMockFileSystem` with `createMemFileSystem` in tests.
 
 ## Known Issues
 

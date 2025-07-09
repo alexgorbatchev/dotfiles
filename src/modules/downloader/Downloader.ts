@@ -55,7 +55,13 @@ export class Downloader implements IDownloader {
         try {
           return await strategy.download(url, options);
         } catch (error) {
-          lastError = error instanceof Error ? error : new Error(String(error));
+          if (error instanceof Error) {
+            lastError = error;
+          } else if (typeof error === 'string') {
+            lastError = new Error(error);
+          } else {
+            lastError = new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
+          }
         }
       }
     }
@@ -63,6 +69,7 @@ export class Downloader implements IDownloader {
     if (lastError) {
       throw lastError;
     }
+
     throw new Error(`No available download strategy succeeded for ${url}.`);
   }
 }

@@ -25,7 +25,7 @@
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update appConfig with `generatedArtifactsManifestPath`. (Now uses `createMockAppConfig`)
  * - [x] Ensure 100% test coverage for executable code.
- * - [x] Refactor to use `createMockFileSystem` helper.
+ * - [x] Refactor to use `createMemFileSystem` helper.
  * - [x] Update mock AppConfig to correctly set `homeDir` for tests.
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
@@ -52,21 +52,9 @@ describe('SymlinkGenerator', () => {
     appConfig = createMockAppConfig({
       dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
       homeDir: MOCK_HOME_DIR, // Ensure appConfig.homeDir is the mocked home directory
-      // targetDir will default to homedir() from createMockAppConfig,
-      // which is mocked to MOCK_HOME_DIR in these tests if os.homedir is spied on.
-      // If not spied on before createMockAppConfig, it would use actual homedir.
-      // For consistency in these tests, we might want to ensure MOCK_HOME_DIR is used.
-      // However, SymlinkGenerator primarily uses appConfig.dotfilesDir and resolves target against MOCK_HOME_DIR.
     });
-    // For SymlinkGenerator, the key is that it resolves target paths relative to MOCK_HOME_DIR.
-    // The appConfig.targetDir itself isn't directly used by SymlinkGenerator's core logic for resolving symlink targets.
-    // It uses the provided MOCK_HOME_DIR for tilde expansion.
 
     symlinkGenerator = new SymlinkGenerator(fs, appConfig);
-
-    // Setup mock home and project root in MemFileSystem
-    fs.mkdir(MOCK_HOME_DIR, { recursive: true });
-    fs.mkdir(MOCK_PROJECT_ROOT, { recursive: true });
   });
 
   afterEach(() => {

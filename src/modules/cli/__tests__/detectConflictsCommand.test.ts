@@ -3,7 +3,7 @@ import type { AppConfig } from '@modules/config';
 import * as configLoader from '@modules/config-loader/loadToolConfigs';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; 
-import { createMockAppConfig, createMockClientLogger, createMockFileSystem, type MockClientLogger, type MockFileSystem } from '@testing-helpers';
+import { createMockAppConfig, createMockClientLogger, createMemFileSystem, type MockClientLogger, type FileSystemSpies } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, GithubReleaseToolConfig, ManualToolConfig } from '@types'; 
 import { beforeEach, describe, expect, mock, test } from 'bun:test'; 
 import { Command } from 'commander';
@@ -29,7 +29,7 @@ mock.module('@modules/config-loader/loadToolConfigs', () => ({ // Use mock.modul
 describe('detectConflictsCommand', () => {
   let program: Command;
   let mockAppConfig: AppConfig;
-  let fileSystemMocks: MockFileSystem; // Correctly named for the collection of mocks
+  let fileSystemMocks: FileSystemSpies; // Correctly named for the collection of mocks
   let loggerMocks: MockClientLogger; // Correctly named for the collection of mocks
   let services: {
     appConfig: AppConfig;
@@ -70,11 +70,11 @@ describe('detectConflictsCommand', () => {
       toolConfigsDir: '/Users/testuser/.dotfiles/generator/tool-configs',
     });
 
-    const fsHelperReturn = createMockFileSystem();
+    const fsHelperReturn = createMemFileSystem();
     const loggerHelperReturn = createMockClientLogger();
 
     // Assign to the correctly declared variables at the describe scope
-    fileSystemMocks = fsHelperReturn.fileSystemMocks;
+    fileSystemMocks = fsHelperReturn.spies;
     loggerMocks = loggerHelperReturn.loggerMocks;
 
     mockGeneratorOrchestrator = { // Added
@@ -93,7 +93,7 @@ describe('detectConflictsCommand', () => {
 
     services = {
       appConfig: mockAppConfig,
-      fileSystem: fsHelperReturn.mockFileSystem,
+      fileSystem: fsHelperReturn.fs,
       clientLogger: loggerHelperReturn.mockClientLogger,
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
       generatorOrchestrator: mockGeneratorOrchestrator, // Added

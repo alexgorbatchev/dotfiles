@@ -26,7 +26,7 @@
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
- * - [x] Refactor to use `createMockFileSystem` helper.
+ * - [x] Refactor to use `createMemFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
 import { beforeEach, describe, expect, it } from 'bun:test';
@@ -57,7 +57,6 @@ describe('ShellInitGenerator', () => {
       completionsDir: DEFAULT_COMPLETIONS_DIR,
       binDir: DEFAULT_BIN_DIR,
       generatedDir: path.join(DEFAULT_DOTFILES_DIR, '.generated'), // Ensure consistency
-      // Other properties will use defaults from createMockAppConfig
     });
     generator = new ShellInitGenerator(mockFileSystem, mockAppConfig);
   });

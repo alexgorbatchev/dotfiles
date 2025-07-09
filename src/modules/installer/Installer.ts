@@ -188,7 +188,7 @@ export class Installer implements IInstaller {
   /**
    * Install a tool from GitHub releases
    */
-  private async installFromGitHubRelease(
+  public async installFromGitHubRelease(
     toolName: string,
     toolConfig: ToolConfig,
     context: any, // context now includes otherChanges
@@ -606,7 +606,7 @@ export class Installer implements IInstaller {
   /**
    * Install a tool using Homebrew
    */
-  private async installFromBrew(
+  public async installFromBrew(
     toolName: string,
     toolConfig: ToolConfig,
     context: any, // context now includes otherChanges
@@ -698,7 +698,7 @@ export class Installer implements IInstaller {
   /**
    * Install a tool using a curl script
    */
-  private async installFromCurlScript(
+  public async installFromCurlScript(
     toolName: string,
     toolConfig: ToolConfig,
     context: any, // context now includes otherChanges
@@ -781,7 +781,7 @@ export class Installer implements IInstaller {
   /**
    * Install a tool from a tarball using curl
    */
-  private async installFromCurlTar(
+  public async installFromCurlTar(
     toolName: string,
     toolConfig: ToolConfig,
     context: any, // context now includes otherChanges
@@ -990,7 +990,7 @@ export class Installer implements IInstaller {
   /**
    * Install a tool manually
    */
-  private async installManually(
+  public async installManually(
     toolName: string,
     toolConfig: ToolConfig,
     context: any, // context now includes otherChanges

@@ -89,39 +89,35 @@ import { Foo, type Bar, Baz } from '@modules/my-module';
       });
       // Now use customConfig in your test...
       ```
-- **`createMockFileSystem` (Customizable Mock):** A utility function (`createMockFileSystem(options?: MockFileSystemOptions): MockFileSystemReturn`) located in [`src/testing-helpers/fileSystemMock.ts`](src/testing-helpers/fileSystemMock.ts:0) for creating highly customizable mock `IFileSystem` instances.
-    - **Benefits:** Allows fine-grained control over the behavior of each `IFileSystem` method for specific test scenarios. Returns both the `IFileSystem` instance and an object containing the individual mock functions.
-    - **Return Value (`MockFileSystemReturn`):**
-      - `mockFileSystem: IFileSystem`: The fully assembled mock `IFileSystem` instance.
-      - `fileSystemMocks: Required<MockFileSystemOptions>`: An object containing all the individual mock functions (e.g., `ensureDir`, `readFile`, `stat`). This allows direct access to spy on or further customize individual mocks.
-    - **Options (`MockFileSystemOptions`):**
-      - Each method of `IFileSystem` can be provided as a `MockFn` (a `bun:test` mock function).
-      - `statOverrides?: StatOverrides`: Allows easy customization of the default `stat` mock's return values for `isFile()`, `isDirectory()`, etc., without providing a full `stat` mock function.
+- **`createMemFileSystem` (In-Memory & Mockable File System):** A utility function (`createMemFileSystem(options: MemFileSystemOptions = {}): MemFileSystemReturn`) located in [`src/testing-helpers/createMemFileSystem.ts`](src/testing-helpers/createMemFileSystem.ts:1) for creating a fully functional in-memory `IFileSystem` instance that can be partially or fully mocked.
+    - **Benefits:** Provides a real `MemFileSystem` instance by default, allowing tests to interact with a stateful file system. It also allows providing mocks for any `IFileSystem` method, offering the same level of control as the deprecated `createMockFileSystem`.
+    - **Return Value (`MemFileSystemReturn`):**
+      - `fs: IFileSystem`: The file system instance, which is a `MemFileSystem` wrapped with spies/mocks.
+      - `spies: FileSystemSpies`: An object containing spies for all `IFileSystem` methods. This allows tests to make assertions about how the file system was used (e.g., `expect(spies.writeFile).toHaveBeenCalled()`).
+    - **Options (`MemFileSystemOptions`):**
+      - `initialVolumeJson?: Record<string, string>`: A JSON object to pre-populate the in-memory file system with files and their content.
+      - `...mocks`: Any method from `IFileSystem` can be provided as a mock function, which will be used instead of the real `MemFileSystem` method.
     - **Importing:**
       ```typescript
-      import { createMockFileSystem, type MockFileSystemOptions, type StatOverrides } from '@testing-helpers'; // Uses @testing-helpers alias
-      import { type IFileSystem } from '@modules/file-system';
+      import { createMemFileSystem } from '@testing-helpers';
       ```
-    - **Basic Usage (Default Mocks):**
+    - **Basic Usage (Stateful In-Memory FS):**
       ```typescript
-      const { mockFileSystem, fileSystemMocks } = createMockFileSystem();
-      // mockFileSystem can be passed to classes expecting IFileSystem.
-      // fileSystemMocks.ensureDir.mockResolvedValue(undefined); // Example: further customize a specific mock
+      const { fs, spies } = createMemFileSystem({
+        initialVolumeJson: {
+          '/test/file.txt': 'hello world',
+        },
+      });
+      // fs can be passed to classes expecting IFileSystem.
+      // const content = await fs.readFile('/test/file.txt', 'utf8'); // content will be 'hello world'
+      // expect(spies.readFile).toHaveBeenCalledWith('/test/file.txt', 'utf8');
       ```
-    - **Customizing a Specific Method:**
+    - **Customizing a Specific Method (Mocking):**
       ```typescript
       import { mock } from 'bun:test';
-      const mockReadFile = mock(async (path: string) => `content of ${path}`);
-      const { mockFileSystem } = createMockFileSystem({ readFile: mockReadFile });
-      // Now mockFileSystem.readFile will use your custom mockReadFile.
-      ```
-    - **Customizing `stat` Behavior with `statOverrides`:**
-      ```typescript
-      const { mockFileSystem } = createMockFileSystem({
-        statOverrides: { isFile: true, isDirectory: false, size: 123 }
-      });
-      // const stats = await mockFileSystem.stat('some/path');
-      // stats.isFile() will return true, stats.isDirectory() will return false, stats.size will be 123.
+      const mockReadFile = mock(async (path: string) => 'mocked content');
+      const { fs } = createMemFileSystem({ readFile: mockReadFile });
+      // Now fs.readFile will use your custom mockReadFile.
       ```
   - `zx`: For executing system commands within TypeScript scripts
   - `zod/v4`: For schema validation (e.g., GitHub API responses)

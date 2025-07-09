@@ -6,7 +6,6 @@
  * This file exports the public API of the testing-helpers module.
  */
 export * from './FetchMockHelper';
-export * from './createMockFileSystem';
 export * from './createMockAppConfig';
 export * from './createMemFileSystem';
 export * from './createMockClientLogger';

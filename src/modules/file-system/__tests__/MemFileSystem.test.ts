@@ -8,21 +8,21 @@
  * This file contains unit tests for the `MemFileSystem` class, which implements the `IFileSystem` interface
  * using an in-memory file system provided by the `memfs` library. The tests cover all public methods
  * of `MemFileSystem`, ensuring they behave as expected according to the `IFileSystem` contract.
- * It now uses the `createMockFileSystem` helper for instantiation.
+ * It now uses the `createMemFileSystem` helper for instantiation.
  *
  * ### Technical Requirements
  * - Test all 14 methods of the `IFileSystem` interface as implemented by `MemFileSystem`.
  * - Ensure asynchronous operations are correctly tested (e.g., using `async/await`).
  * - Verify correct handling of file content, paths, symbolic links, and directory structures.
  * - Test error conditions where appropriate (e.g., file not found).
- * - Use a consistent setup for the in-memory file system for each test or group of tests, leveraging `createMockFileSystem`.
+ * - Use a consistent setup for the in-memory file system for each test or group of tests, leveraging `createMemFileSystem`.
  * - Adhere to project testing conventions and `.roorules`.
  *
  * ### Tasks
  * - [x] **Initial Setup:**
- *   - [x] Import necessary modules (`IFileSystem`, `createMockFileSystem`, `DirectoryJSON`).
+ *   - [x] Import necessary modules (`IFileSystem`, `createMemFileSystem`, `DirectoryJSON`).
  *   - [x] Define a base JSON structure for initializing the file system for tests.
- *   - [x] Set up `beforeEach` to create a new `MemFileSystem` instance (via `createMockFileSystem`) with the base JSON and a symlink.
+ *   - [x] Set up `beforeEach` to create a new `MemFileSystem` instance (via `createMemFileSystem`) with the base JSON and a symlink.
  * - [x] **Test `readFile(path, encoding)`:** (Covered by existing tests)
  * - [x] **Test `writeFile(path, data)`:** (Covered by existing tests)
  * - [x] **Test `exists(path)`:** (Covered by existing tests)
@@ -36,7 +36,7 @@
  * - [x] **Test `copyFile(source, destination)`:** (Covered by existing tests)
  * - [x] **Test `rename(oldPath, newPath)`:** (Covered by existing tests)
  * - [x] **Test `ensureDir(path)`:** (Covered by existing tests)
- * - [x] **Refactor to use `createMockFileSystem` helper.**
+ * - [x] **Refactor to use `createMemFileSystem` helper.**
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
  * - [x] Ensure 100% test coverage for `MemFileSystem.ts`.

@@ -21,7 +21,7 @@ import {
   it,
   mock
 } from 'bun:test';
-import { createMockFileSystem, FetchMockHelper } from '../../../testing-helpers';
+import { createMemFileSystem, FetchMockHelper } from '../../../testing-helpers';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 import {
   ClientError,
@@ -37,7 +37,7 @@ createLogger('NodeFetchStrategy.test');
 
 describe('NodeFetchStrategy', () => {
   let mockFileSystem: IFileSystem;
-  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
+  let fileSystemMocks: ReturnType<typeof createMemFileSystem>['spies'];
   let strategy: NodeFetchStrategy;
   const fetchMockHelper = new FetchMockHelper();
 
@@ -50,7 +50,7 @@ describe('NodeFetchStrategy', () => {
 
     fetchMockHelper.setup();
 
-    const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
+    const { fs: fsInstance, spies: fsMocks } = createMemFileSystem();
     mockFileSystem = fsInstance;
     fileSystemMocks = fsMocks;
 
@@ -98,6 +98,7 @@ describe('NodeFetchStrategy', () => {
   describe('download to File', () => {
     it('should download data to a file successfully using IFileSystem', async () => {
       const destinationPath = '/tmp/testdownload.txt';
+      await mockFileSystem.ensureDir('/tmp');
       fetchMockHelper.mockTextResponseOnce(mockFileData, {
         status: 200,
         headers: { 'Content-Length': String(mockFileBuffer.length) },

@@ -62,13 +62,13 @@ import { FileGitHubApiCache } from '../FileGitHubApiCache';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { AppConfig } from '@types';
 import { createMockAppConfig } from '@testing-helpers';
-import { createMockFileSystem } from '../../../testing-helpers'; // Corrected path
+import { createMemFileSystem } from '../../../testing-helpers'; // Corrected path
 import type { CacheEntry } from '../IGitHubApiCache'; // Corrected import for CacheEntry
 import path from 'path';
 
 describe('FileGitHubApiCache', () => {
   let mockFileSystem: IFileSystem;
-  let fileSystemMocks: ReturnType<typeof createMockFileSystem>['fileSystemMocks'];
+  let fileSystemMocks: ReturnType<typeof createMemFileSystem>['spies'];
   let mockAppConfig: AppConfig;
   let cache: FileGitHubApiCache;
 
@@ -76,7 +76,7 @@ describe('FileGitHubApiCache', () => {
     mock.restore();
 
     // Setup mock file system
-    const { mockFileSystem: fsInstance, fileSystemMocks: fsMocks } = createMockFileSystem();
+    const { fs: fsInstance, spies: fsMocks } = createMemFileSystem();
     mockFileSystem = fsInstance;
     fileSystemMocks = fsMocks;
 
@@ -346,6 +346,7 @@ describe('FileGitHubApiCache', () => {
 
     it('should delete file when it exists', async () => {
       fileSystemMocks.exists.mockResolvedValue(true);
+      fileSystemMocks.rm.mockResolvedValue(undefined); // Prevent ENOENT from MemFS
       await cache.delete('test-key');
       expect(fileSystemMocks.exists).toHaveBeenCalled();
       expect(fileSystemMocks.rm).toHaveBeenCalled();

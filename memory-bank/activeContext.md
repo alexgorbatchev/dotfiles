@@ -3,11 +3,11 @@
 This document captures the current work focus, recent changes, next steps, and active considerations for the dotfiles project.
 
 ## Current Work Focus
-
-- **Configuration System Migration:** The primary focus is the migration from the current `.env`-based configuration system to a structured `config.yaml` file. This is a significant architectural change aimed at improving support for platform-specific configurations and enhancing overall maintainability. The detailed plan for this migration is documented in [`docs/config-migration-plan.md`](docs/config-migration-plan.md).
+- **Testing Helper Refactoring:** The testing helpers for the file system have been refactored. The `createMockFileSystem` has been deprecated in favor of the new `createMemFileSystem` helper, which provides a more robust and flexible way to test file system interactions.
 
 ## Recent Changes
 
+*   **Testing Helper Refactoring:** Refactored the `createMemFileSystem` testing helper to provide a more robust and flexible way to test file system interactions. This new helper replaces the deprecated `createMockFileSystem`.
 *   **Configuration Migration Planning:** Completed an intensive planning and design phase for migrating the application's configuration from `.env` files to a single, structured `config.yaml`.
 *   **Meta-Comment Rule:** Added a new rule to `.roo/rules/rules.md` to explicitly forbid meta-comments.
 *   **Global `--config` Option and Test Refactoring:** Implemented the global `--config <path>` option and refactored tests for better isolation.
@@ -22,6 +22,7 @@ This document captures the current work focus, recent changes, next steps, and a
 *   **Standardized CLI Output with `clientLogger`:** Refactored all `console.*` calls to use the `clientLogger` for consistent, controllable output.
 *   **Refactored Type Definitions and Added JSDoc:** Moved shared types into the `src/types/` directory and added comprehensive JSDoc documentation.
 *   **Refactored `ToolConfig` to Discriminated Union:** Improved type safety by refactoring `ToolConfig` to a discriminated union based on `installationMethod`.
+*   **Improved CLI Logging System:** Implemented global verbosity control with `--verbose` and `--quiet` flags.
 *   **Improved CLI Logging System:** Implemented global verbosity control with `--verbose` and `--quiet` flags.
 
 ## Active Decisions and Considerations

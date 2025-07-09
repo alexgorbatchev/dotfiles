@@ -53,7 +53,7 @@ import { createClientLogger } from '@modules/logger';
 import type { GeneratedArtifactsManifest } from '@types';
 import path from 'node:path';
 import type { Stats } from 'node:fs';
-import { createMockAppConfig, createMockFileSystem, createMockClientLogger } from '@testing-helpers';
+import { createMockAppConfig, createMemFileSystem, createMockClientLogger } from '@testing-helpers';
 
 describe('CleanupCommand', () => {
   let mockAppConfig: AppConfig;
@@ -92,7 +92,7 @@ describe('CleanupCommand', () => {
     });
 
     // Create mock file system with custom behavior for this test suite
-    const { mockFileSystem: fs } = createMockFileSystem({
+    const { fs } = createMemFileSystem({
       exists: mock(async (_: string) => true),
       readFile: mock(async () => JSON.stringify(mockManifest)),
       lstat: mock(async (filePath: string) => {

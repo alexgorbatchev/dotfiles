@@ -238,7 +238,13 @@ export class FileGitHubApiCache implements IGitHubApiCache {
           const entry = JSON.parse(content) as CacheEntry<unknown>;
 
           if (this.isExpired(entry)) {
-            await this.fileSystem.rm(filePath);
+            await this.fileSystem.rm(filePath).catch((err) => {
+              log(
+                'clearExpired: Error removing expired file %s: %s',
+                filePath,
+                (err as Error).message,
+              );
+            });
             expiredCount++;
           }
         } catch (err) {
