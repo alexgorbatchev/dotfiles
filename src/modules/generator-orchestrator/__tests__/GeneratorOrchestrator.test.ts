@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-orchestrator/__tests__/GeneratorOrchestrator.test.ts
+ * @file src/modules/generator-orchestrator/__tests__/GeneratorOrchestrator.test.ts
  * @description Unit tests for the GeneratorOrchestrator class.
  *
  * ## Development Plan

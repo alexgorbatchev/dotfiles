@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-orchestrator/IGeneratorOrchestrator.ts
+ * @file src/modules/generator-orchestrator/IGeneratorOrchestrator.ts
  * @description Interface for the GeneratorOrchestrator module.
  *
  * ## Development Plan

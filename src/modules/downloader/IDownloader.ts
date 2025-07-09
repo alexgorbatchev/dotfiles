@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/IDownloader.ts
+ * @file src/modules/downloader/IDownloader.ts
  * @description Defines interfaces for the downloader service and its options.
  *
  * @developmentPlan

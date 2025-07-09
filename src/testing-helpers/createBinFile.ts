@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/createBinFile.ts
+ * @file src/testing-helpers/createBinFile.ts
  * @description Helper function to create executable binary files for testing.
  *
  * ### Overview

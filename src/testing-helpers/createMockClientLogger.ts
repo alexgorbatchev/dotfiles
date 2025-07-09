@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/createMockClientLogger.ts
+ * @file src/testing-helpers/createMockClientLogger.ts
  * @description Shared testing helper for creating a mock ConsolaInstance (client logger).
  */
 

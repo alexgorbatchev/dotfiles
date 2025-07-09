@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-symlink/SymlinkGenerator.ts
+ * @file src/modules/generator-symlink/SymlinkGenerator.ts
  * @description Implementation of the symlink generator service.
  *
  * ## Development Plan

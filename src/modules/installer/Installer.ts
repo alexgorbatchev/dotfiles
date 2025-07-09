@@ -1,12 +1,12 @@
 /**
- * @file generator/src/modules/installer/Installer.ts
+ * @file src/modules/installer/Installer.ts
  * @description Implementation of the tool installer module.
  *
  * ## Development Plan
  *
  * ### Mandatory Pre-read:
- * - `generator/src/types.ts` (for ToolConfig, InstallParams types)
- * - `generator/src/modules/installer/IInstaller.ts` (for IInstaller interface)
+ * - `src/types.ts` (for ToolConfig, InstallParams types)
+ * - `src/modules/installer/IInstaller.ts` (for IInstaller interface)
  * - `.clinerules` (for file structure, naming, and content guidelines)
  *
  * ### Tasks:

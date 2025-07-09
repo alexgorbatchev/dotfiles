@@ -1,15 +1,15 @@
 /**
- * @file generator/src/modules/config-loader/__tests__/yamlConfigLoader.test.ts
+ * @file src/modules/config-loader/__tests__/yamlConfigLoader.test.ts
  * @description Unit tests for the YamlConfigLoader.
  *
  * ## Development Plan
  *
  * ### Mandatory Pre-read:
- * - `generator/src/modules/config-loader/YamlConfigLoader.ts`
- * - `generator/src/config/default-config.yaml`
- * - `generator/src/types/config.yaml.types.ts`
- * - `generator/src/modules/config/config.yaml.schema.ts`
- * - `generator/src/types/platform.types.ts`
+ * - `src/modules/config-loader/YamlConfigLoader.ts`
+ * - `src/config/default-config.yaml`
+ * - `src/types/config.yaml.types.ts`
+ * - `src/modules/config/config.yaml.schema.ts`
+ * - `src/types/platform.types.ts`
  *
  * ### Tasks:
  * - [x] Import necessary modules and types.

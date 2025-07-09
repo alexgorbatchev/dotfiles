@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/index.ts
+ * @file src/modules/downloader/index.ts
  * @description Barrel file for the Downloader module.
  *
  * This module provides interfaces and classes for downloading files,

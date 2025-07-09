@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/__tests__/Downloader.test.ts
+ * @file src/modules/downloader/__tests__/Downloader.test.ts
  * @description Tests for the Downloader class.
  */
 

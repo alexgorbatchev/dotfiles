@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/version.types.ts
+ * @file src/types/version.types.ts
  * @description Types related to version management.
  *
  * ## Development Plan

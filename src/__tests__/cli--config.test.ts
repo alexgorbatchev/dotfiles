@@ -1,5 +1,5 @@
 /**
- * @file generator/src/__tests__/cli--config.test.ts
+ * @file src/__tests__/cli--config.test.ts
  * @description Tests for the CLI's global --config option.
  *
  * ## Development Plan

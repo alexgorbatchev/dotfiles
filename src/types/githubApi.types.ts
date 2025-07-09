@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/githubApi.types.ts
+ * @file src/types/githubApi.types.ts
  * @description Types related to the GitHub API.
  *
  * ## Development Plan

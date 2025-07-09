@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/versionChecker/index.ts
+ * @file src/modules/versionChecker/index.ts
  * @description Barrel file for the version checker module.
  * This module is responsible for determining if newer versions of managed tools are available.
  *

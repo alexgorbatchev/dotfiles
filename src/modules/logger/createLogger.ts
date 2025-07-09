@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/logger/createLogger.ts
+ * @file src/modules/logger/createLogger.ts
  * @description Utility for creating namespaced debug loggers.
  *
  * ## Development Plan

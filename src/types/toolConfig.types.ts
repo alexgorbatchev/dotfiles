@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/toolConfig.types.ts
+ * @file src/types/toolConfig.types.ts
  * @description Types related to tool configuration.
  *
  * ## Development Plan

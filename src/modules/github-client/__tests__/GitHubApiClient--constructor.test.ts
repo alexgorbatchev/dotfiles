@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/__tests__/GitHubApiClient--constructor.test.ts
+ * @file src/modules/github-client/__tests__/GitHubApiClient--constructor.test.ts
  * @description Tests for the GitHubApiClient class constructor and basic instantiation.
  */
 

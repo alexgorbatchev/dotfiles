@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/download.types.ts
+ * @file src/types/download.types.ts
  * @description Types related to the download system.
  *
  * ## Development Plan

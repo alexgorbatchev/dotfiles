@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-shell-init/index.ts
+ * @file src/modules/generator-shell-init/index.ts
  * @description Barrel file for the shell initialization generator module.
  *
  * ## Development Plan (for index.ts)

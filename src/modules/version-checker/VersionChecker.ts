@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/versionChecker/VersionChecker.ts
+ * @file src/modules/versionChecker/VersionChecker.ts
  * @description Implements the IVersionChecker interface for checking tool versions.
  *
  * ## Development Plan

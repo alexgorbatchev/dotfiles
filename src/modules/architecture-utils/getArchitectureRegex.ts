@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/architecture-utils/getArchitectureRegex.ts
+ * @file src/modules/architecture-utils/getArchitectureRegex.ts
  * @description Architecture detection utility for GitHub release asset matching.
  *
  * ## Development Plan

@@ -9,9 +9,8 @@
   "scripts": {
     "test": "bun run src/testing-helpers/bun-test-runner.ts",
     "posttest": "tsc --noEmit",
-    "test-watch": "BUN_CORRECT_TEST_COMMAND=1 bun test --watch",
-    "lint-do-not-use": "tsc --noEmit && eslint . --ext .ts",
-    "lint": "tsc --noEmit",
+    "test:watch": "BUN_CORRECT_TEST_COMMAND=1 bun test --watch",
+    "test:update-snapshots": "BUN_CORRECT_TEST_COMMAND=1 bun test --update-snapshots",
     "fmt": "prettier --write .",
     "compile": "bun build ./src/cli.ts --compile --minify --outfile ./dist/cli",
     "cli": "dotenv -- bun run ./src/cli.ts"
@@ -19,14 +18,14 @@
   "devDependencies": {
     "@types/bun": "^1.2.16",
     "@types/debug": "^4.1.12",
+    "@types/express": "^5.0.2",
     "@types/node": "^22.15.19",
     "@types/semver": "^7.7.0",
-    "@types/express": "^5.0.2",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.33.1",
     "eslint": "^9.28.0",
-    "prettier": "^3.5.3",
     "express": "^5.1.0",
+    "prettier": "^3.5.3",
     "strip-ansi": "^7.1.0"
   },
   "peerDependencies": {

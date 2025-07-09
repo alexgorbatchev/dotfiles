@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/extractor/ArchiveExtractor.ts
+ * @file src/modules/extractor/ArchiveExtractor.ts
  * @description Implementation of IArchiveExtractor using system commands via zx.
  */
 

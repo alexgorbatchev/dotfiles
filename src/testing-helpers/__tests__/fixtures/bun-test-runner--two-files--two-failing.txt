@@ -23,7 +23,7 @@ error: expect(received).toBe(expected)
 Expected: 2
 Received: 0
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli-install.e2e.test.ts:189:29)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli-install.e2e.test.ts:189:29)
 (fail) E2E: bun run cli install > downloaded direct binary (GitHub Release with Mock Server) > should verify the downloaded binary works via symlink [175.42ms]
 (pass) E2E: bun run cli install > downloaded tar.gz archive (GitHub Release with Mock Server) > should download archive to the correct location [0.05ms]
 (pass) E2E: bun run cli install > downloaded tar.gz archive (GitHub Release with Mock Server) > should extract binary to the correct location [0.01ms]
@@ -45,7 +45,7 @@ error: expect(received).toHaveBeenCalledWith(expected)
 
 Number of calls: 1
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
 (fail) CLI > generate command should handle errors from generateActionLogic and exit [0.90ms]
 (skip) CLI > main function should trigger process.exit when setupServices in action handler fails
 (pass) CLI > install command should call installer.install with correct parameters [0.63ms]

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/__tests__/FileGitHubApiCache.test.ts
+ * @file src/modules/github-client/__tests__/FileGitHubApiCache.test.ts
  * @description Tests for the FileGitHubApiCache class.
  *
  * ## Development Plan

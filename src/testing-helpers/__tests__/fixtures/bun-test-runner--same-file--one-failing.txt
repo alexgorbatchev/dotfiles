@@ -33,7 +33,7 @@ error: expect(received).toHaveBeenCalledWith(expected)
 
 Number of calls: 0
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
 (fail) CLI > main function should trigger process.exit when setupServices in action handler fails [1.18ms]
 (pass) CLI > install command should call installer.install with correct parameters [0.14ms]
 (pass) CLI > install command should handle tool not found error [0.16ms]

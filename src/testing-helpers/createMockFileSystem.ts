@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/fileSystemMock.ts
+ * @file src/testing-helpers/fileSystemMock.ts
  * @description Provides a test helper for creating a customizable mock IFileSystem instance.
  *
  * ## Development Plan

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/config/config.ts
+ * @file src/modules/config/config.ts
  * @description Application configuration management.
  * This module exports a pure function `createAppConfig` to generate configuration.
  *
@@ -8,7 +8,7 @@
  * ### Mandatory Pre-read:
  * - `.clinerules` (Functional Purity, Data Validation, DI)
  * - `memory-bank/techContext.md`
- * - `generator/src/types.ts` (for AppConfig type)
+ * - `src/types.ts` (for AppConfig type)
  *
  * ### Tasks:
  * - [x] Define `SystemInfo` and `ConfigEnvironment` interfaces.
@@ -74,7 +74,7 @@ export interface ConfigEnvironment {
   /**
    * Specifies the directory containing individual TypeScript tool configuration files (e.g., `mytool.config.ts`).
    * This is the older way of defining tool configurations if still supported.
-   * Defaults to `${DOTFILES_DIR}/generator/src/tools`.
+   * Defaults to `${DOTFILES_DIR}/src/tools`.
    */
   TOOL_CONFIG_DIR?: string;
   /**

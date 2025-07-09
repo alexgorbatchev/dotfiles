@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/completion.types.ts
+ * @file src/types/completion.types.ts
  * @description Types related to shell completion management.
  *
  * ## Development Plan

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/archive.types.ts
+ * @file src/types/archive.types.ts
  * @description Types related to archive extraction.
  *
  * ## Development Plan

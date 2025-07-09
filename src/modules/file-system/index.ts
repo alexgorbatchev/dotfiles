@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/file-system/index.ts
+ * @file src/modules/file-system/index.ts
  * @description Barrel file for the File System Abstraction module.
  *
  * This module will provide an interface for file system operations and

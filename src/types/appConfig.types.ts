@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/appConfig.types.ts
+ * @file src/types/appConfig.types.ts
  * @description Types related to application configuration.
  *
  * ## Development Plan
@@ -23,12 +23,12 @@
 /**
  * Defines the overall configuration structure for the application.
  * This configuration is typically loaded from environment variables (`.env` file)
- * and command-line arguments, then processed and validated by `generator/src/modules/config/config.ts`.
+ * and command-line arguments, then processed and validated by `src/modules/config/config.ts`.
  *
  * @remarks
- * When adding new properties to this interface, ensure that `generator/src/modules/config/config.ts`
+ * When adding new properties to this interface, ensure that `src/modules/config/config.ts`
  * (specifically the `EnvSchema` and the `createAppConfig` function)
- * and its tests (`generator/src/modules/config/__tests__/config.test.ts`) are updated accordingly
+ * and its tests (`src/modules/config/__tests__/config.test.ts`) are updated accordingly
  * to handle loading, validation, and default values for the new properties.
  */
 export interface AppConfig {
@@ -63,7 +63,7 @@ export interface AppConfig {
    * The directory path where individual tool configuration files (e.g., `fzf.tool.ts`) are located within the dotfiles project.
    * This was the original path for tool configurations.
    * @deprecated Prefer `toolConfigsDir` for clarity and consistency.
-   * @example /home/user/.dotfiles/generator/src/tools
+   * @example /home/user/.dotfiles/src/tools
    */
   toolConfigDir: string;
   /**

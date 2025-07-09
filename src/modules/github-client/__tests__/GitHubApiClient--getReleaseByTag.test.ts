@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/__tests__/GitHubApiClient--getReleaseByTag.test.ts
+ * @file src/modules/github-client/__tests__/GitHubApiClient--getReleaseByTag.test.ts
  * @description Tests for the GitHubApiClient's getReleaseByTag method.
  */
 

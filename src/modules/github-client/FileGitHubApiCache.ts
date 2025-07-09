@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/FileGitHubApiCache.ts
+ * @file src/modules/github-client/FileGitHubApiCache.ts
  * @description File-based implementation of the GitHub API cache.
  *
  * ## Development Plan

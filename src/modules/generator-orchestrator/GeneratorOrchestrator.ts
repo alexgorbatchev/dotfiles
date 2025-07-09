@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-orchestrator/GeneratorOrchestrator.ts
+ * @file src/modules/generator-orchestrator/GeneratorOrchestrator.ts
  * @description Implementation of the GeneratorOrchestrator module.
  *
  * ## Development Plan

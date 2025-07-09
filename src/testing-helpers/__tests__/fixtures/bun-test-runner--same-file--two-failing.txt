@@ -31,7 +31,7 @@ error: expect(received).not.toHaveBeenCalledWith(expected)
 
 Number of calls: 1
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:433:33)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:433:33)
 (fail) CLI > generate command with --dry-run should call generateActionLogic with MemFileSystem [1.61ms]
 456 |     const callArgs = loggerMocks.error.mock.calls[0] as [string, string];
 457 |     const [loggedFormatString, loggedMessage] = callArgs;
@@ -44,7 +44,7 @@ error: expect(received).toHaveBeenCalledWith(expected)
 
 Number of calls: 1
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
 (fail) CLI > generate command should handle errors from generateActionLogic and exit [0.56ms]
 (skip) CLI > main function should trigger process.exit when setupServices in action handler fails
 (pass) CLI > install command should call installer.install with correct parameters [0.46ms]

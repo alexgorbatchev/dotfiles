@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/file-system/__tests__/MemFileSystem.test.ts
+ * @file src/modules/file-system/__tests__/MemFileSystem.test.ts
  * @description Tests for the MemFileSystem implementation.
  *
  * ## Development Plan

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/IGitHubApiCache.ts
+ * @file src/modules/github-client/IGitHubApiCache.ts
  * @description Interface for GitHub API response caching.
  *
  * ## Development Plan

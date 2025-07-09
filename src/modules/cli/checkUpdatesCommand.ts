@@ -26,7 +26,7 @@
  * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 /**
- * @file generator/src/modules/cli/checkUpdatesCommand.ts
+ * @file src/modules/cli/checkUpdatesCommand.ts
  * @description CLI command for checking available updates for configured tools.
  */
 

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/__tests__/helpers/sharedGitHubApiClientTestSetup.ts
+ * @file src/modules/github-client/__tests__/helpers/sharedGitHubApiClientTestSetup.ts
  * @description Shared setup utilities for GitHubApiClient tests.
  */
 
@@ -16,7 +16,7 @@ export const createMockAppConfig = (overrides: Partial<AppConfig> = {}): AppConf
   dotfilesDir: '/test/dotfiles',
   homeDir: '/test/home/user', // Added homeDir
   generatedDir: '/test/dotfiles/.generated',
-  toolConfigDir: '/test/dotfiles/generator/src/tools', // Existing
+  toolConfigDir: '/test/dotfiles/src/tools', // Existing
   toolConfigsDir: '/test/dotfiles/configs/tools', // New default for tests
   debug: '',
   cacheEnabled: true,

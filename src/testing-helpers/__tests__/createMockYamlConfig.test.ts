@@ -1,13 +1,5 @@
-/**
- * @file generator/src/testing-helpers/__tests__/createMockYamlConfig.test.ts
- * @description Tests for the `createMockYamlConfig` testing helper.
- */
-
 import { describe, it, expect } from 'bun:test';
-import {
-  createMockYamlConfig,
-  type PartialYamlConfig,
-} from '../createMockYamlConfig';
+import { createMockYamlConfig, type PartialYamlConfig } from '../createMockYamlConfig';
 import { createMemFileSystem } from '../createMemFileSystem';
 import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
 import { stringify } from 'yaml';
@@ -27,9 +19,8 @@ describe('createMockYamlConfig', () => {
 
   it('should write the YAML string to the specified path', async () => {
     const fs = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG
-    }
-    );
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+    });
     const filePath = '/test.yaml';
     const systemInfo = { platform: 'darwin', arch: 'arm64' };
     const env = {};
@@ -41,12 +32,7 @@ describe('createMockYamlConfig', () => {
       env,
     });
     const fileContent = await fs.readFile(filePath, 'utf8');
-    const expectedConfig = await createYamlConfigFromObject(
-      fs,
-      mockConfig,
-      systemInfo,
-      env,
-    );
+    const expectedConfig = await createYamlConfigFromObject(fs, mockConfig, systemInfo, env);
     expect(fileContent).toBe(stringify(expectedConfig));
   });
 });

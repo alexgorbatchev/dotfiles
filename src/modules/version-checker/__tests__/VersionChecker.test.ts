@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/versionChecker/__tests__/VersionChecker.test.ts
+ * @file src/modules/versionChecker/__tests__/VersionChecker.test.ts
  * @description Unit tests for the VersionChecker module.
  *
  * ## Development Plan

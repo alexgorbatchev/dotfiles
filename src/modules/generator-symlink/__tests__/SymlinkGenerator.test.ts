@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-symlink/__tests__/SymlinkGenerator.test.ts
+ * @file src/modules/generator-symlink/__tests__/SymlinkGenerator.test.ts
  * @description Unit tests for the SymlinkGenerator class.
  *
  * ## Development Plan

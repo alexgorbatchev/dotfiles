@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/common.types.ts
+ * @file src/types/common.types.ts
  * @description Common types used across the project.
  */
 

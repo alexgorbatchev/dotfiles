@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/DownloadStrategy.ts
+ * @file src/modules/downloader/DownloadStrategy.ts
  * @description Defines the interface for a download strategy.
  *
  * Development Plan:

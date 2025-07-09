@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/architecture-utils/__tests__/getArchitectureRegex.test.ts
+ * @file src/modules/architecture-utils/__tests__/getArchitectureRegex.test.ts
  * @description Tests for architecture detection utilities.
  */
 

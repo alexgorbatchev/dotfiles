@@ -13,7 +13,7 @@ error: expect(received).toHaveBeenCalledWith(expected)
 
 Number of calls: 0
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
 (fail) CLI > main function should trigger process.exit when setupServices in action handler fails [1.18ms]
 # Unhandled error between tests
 -------------------------------
@@ -25,8 +25,8 @@ Number of calls: 0
 476 |     const specificTestError = new Error('SetupServices in install action failed for this specific test!');
                                     ^
 error: SetupServices in install action failed for this specific test!
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:476:31)
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:469:96)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:476:31)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:469:96)
 -------------------------------
 
 
@@ -43,7 +43,7 @@ error: expect(received).toHaveBeenCalledWith(expected)
 
 Number of calls: 0
 
-      at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
+      at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
 -------------------------------
 
 (pass) CLI > install command should call installer.install with correct parameters [0.14ms]

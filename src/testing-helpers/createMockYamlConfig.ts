@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/createMockYamlConfig.ts
+ * @file src/testing-helpers/createMockYamlConfig.ts
  * @description Shared testing helper functions for creating YamlConfig mocks.
  *
  * ## Development Plan
@@ -14,7 +14,7 @@
  *   - [x] If `filePath` is provided, write the stringified config to the file using the `fileSystem`.
  *   - [x] Return the YAML string.
  * - [x] Add JSDoc for the function.
- * - [x] Write tests for `createMockYamlConfig` in `generator/src/testing-helpers/__tests__/createMockYamlConfig.test.ts`.
+ * - [x] Write tests for `createMockYamlConfig` in `src/testing-helpers/__tests__/createMockYamlConfig.test.ts`.
  * - [x] Ensure 100% test coverage.
  * - [x] Cleanup all linting errors and warnings.
  * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
@@ -47,6 +47,12 @@ export type PartialYamlConfig = {
  * @param options.filePath - Optional. The path to write the YAML file to.
  * @param options.fileSystem - Optional. The file system to use. Defaults to `NodeFileSystem`.
  * @returns A promise that resolves with the YAML string.
+ *
+ * @testing
+ * This function is a utility for creating mock YAML configuration files in tests.
+ * It simplifies the process of generating valid YAML content from a partial
+ * config object and writing it to a mock file system, making it easier to
+ * set up test preconditions for modules that consume these configuration files.
  */
 export async function createMockYamlConfig({
   config,

@@ -10,10 +10,10 @@ function getFixtureContent(fixtureName: string): string {
 }
 
 describe('bun-test-runner', () => {
-    test('no-errors', () => {
-      const output = getFixtureContent('no-errors');
-      const results = processBunTestOutput(output);
-      expect(stripAnsi(results)).toMatchInlineSnapshot(`
+  test('no-errors', () => {
+    const output = getFixtureContent('no-errors');
+    const results = processBunTestOutput(output);
+    expect(stripAnsi(results)).toMatchInlineSnapshot(`
         "
         Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
@@ -40,12 +40,12 @@ describe('bun-test-runner', () => {
         Ran 453 tests across 36 files. [1.94s]
         "
       `);
-    });
+  });
 
-    test('no-errors--one-skipped', () => {
-      const output = getFixtureContent('no-errors--one-skipped');
-      const results = processBunTestOutput(output);
-      expect(stripAnsi(results)).toMatchInlineSnapshot(`
+  test('no-errors--one-skipped', () => {
+    const output = getFixtureContent('no-errors--one-skipped');
+    const results = processBunTestOutput(output);
+    expect(stripAnsi(results)).toMatchInlineSnapshot(`
         "
         Coverage Report (file_name:uncovered_lines):
         - src/__tests__/helpers.ts:115-116
@@ -73,12 +73,12 @@ describe('bun-test-runner', () => {
         Ran 454 tests across 36 files. [1.97s]
         "
       `);
-    });
+  });
 
-    test('same-file--one-failing', () => {
-      const output = getFixtureContent('same-file--one-failing');
-      const results = processBunTestOutput(output);
-      expect(stripAnsi(results)).toMatchInlineSnapshot(`
+  test('same-file--one-failing', () => {
+    const output = getFixtureContent('same-file--one-failing');
+    const results = processBunTestOutput(output);
+    expect(stripAnsi(results)).toMatchInlineSnapshot(`
         "src/__tests__/cli.test.ts:
         517 |     expect(loggerMocks.error).toHaveBeenCalledTimes(2);
         518 |     expect(loggerMocks.error).toHaveBeenNthCalledWith(1, 'Error during tool installation: %s', 'undefined is not an object (evaluating \\'result.success\\')');
@@ -91,7 +91,7 @@ describe('bun-test-runner', () => {
 
         Number of calls: 0
 
-              at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
+              at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
         (fail) CLI > main function should trigger process.exit when setupServices in action handler fails [1.18ms]
 
         Coverage Report (file_name:uncovered_lines):
@@ -120,12 +120,12 @@ describe('bun-test-runner', () => {
         Ran 454 tests across 36 files. [1.89s]
         "
       `);
-    });
+  });
 
-    test('same-file--two-failing', () => {
-      const output = getFixtureContent('same-file--two-failing');
-      const results = processBunTestOutput(output);
-      expect(stripAnsi(results)).toMatchInlineSnapshot(`
+  test('same-file--two-failing', () => {
+    const output = getFixtureContent('same-file--two-failing');
+    const results = processBunTestOutput(output);
+    expect(stripAnsi(results)).toMatchInlineSnapshot(`
         "src/__tests__/cli.test.ts:
         428 |     );
         429 |     const expectedArgForGenerateAllAfterDryRun = {
@@ -138,7 +138,7 @@ describe('bun-test-runner', () => {
 
         Number of calls: 1
 
-              at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:433:33)
+              at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:433:33)
         (fail) CLI > generate command with --dry-run should call generateActionLogic with MemFileSystem [1.61ms]
         456 |     const callArgs = loggerMocks.error.mock.calls[0] as [string, string];
         457 |     const [loggedFormatString, loggedMessage] = callArgs;
@@ -151,7 +151,7 @@ describe('bun-test-runner', () => {
 
         Number of calls: 1
 
-              at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
+              at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
         (fail) CLI > generate command should handle errors from generateActionLogic and exit [0.56ms]
 
         Coverage Report (file_name:uncovered_lines):
@@ -180,12 +180,12 @@ describe('bun-test-runner', () => {
         Ran 454 tests across 36 files. [1.96s]
         "
       `);
-    });
+  });
 
-    test('two-files--two-failing', () => {
-      const output = getFixtureContent('two-files--two-failing');
-      const results = processBunTestOutput(output);
-      expect(stripAnsi(results)).toMatchInlineSnapshot(`
+  test('two-files--two-failing', () => {
+    const output = getFixtureContent('two-files--two-failing');
+    const results = processBunTestOutput(output);
+    expect(stripAnsi(results)).toMatchInlineSnapshot(`
         "src/__tests__/cli-install.e2e.test.ts:
         184 |     it('should create a symlink to the downloaded binary', () => {
         185 |       expect(fs.existsSync(symlinkPath)).toBe(true);
@@ -199,7 +199,7 @@ describe('bun-test-runner', () => {
         Expected: 2
         Received: 0
 
-              at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli-install.e2e.test.ts:189:29)
+              at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli-install.e2e.test.ts:189:29)
         (fail) E2E: bun run cli install > downloaded direct binary (GitHub Release with Mock Server) > should verify the downloaded binary works via symlink [175.42ms]
         src/__tests__/cli.test.ts:
         456 |     const callArgs = loggerMocks.error.mock.calls[0] as [string, string];
@@ -213,7 +213,7 @@ describe('bun-test-runner', () => {
 
         Number of calls: 1
 
-              at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
+              at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:461:24)
         (fail) CLI > generate command should handle errors from generateActionLogic and exit [0.90ms]
 
         Coverage Report (file_name:uncovered_lines):
@@ -242,8 +242,8 @@ describe('bun-test-runner', () => {
         Ran 454 tests across 36 files. [2.03s]
         "
       `);
-    });
-    
+  });
+
   test('same-file--one-failing-with-unhandled-error', () => {
     const output = getFixtureContent('same-file--one-failing-with-unhandled-error');
     const results = processBunTestOutput(output);
@@ -260,7 +260,7 @@ describe('bun-test-runner', () => {
 
       Number of calls: 0
 
-            at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
+            at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
       (fail) CLI > main function should trigger process.exit when setupServices in action handler fails [1.18ms]
       # Unhandled error between tests
       ---
@@ -272,8 +272,8 @@ describe('bun-test-runner', () => {
       476 |     const specificTestError = new Error('SetupServices in install action failed for this specific test!');
                                           ^
       error: SetupServices in install action failed for this specific test!
-            at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:476:31)
-            at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:469:96)
+            at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:476:31)
+            at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:469:96)
       ---
       # Unhandled error between tests
       ---
@@ -288,7 +288,7 @@ describe('bun-test-runner', () => {
 
       Number of calls: 0
 
-            at <anonymous> (/Users/alex/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
+            at <anonymous> (/Users/user/.dotfiles/generator/src/__tests__/cli.test.ts:522:29)
       ---
 
       Coverage Report (file_name:uncovered_lines):
@@ -318,5 +318,4 @@ describe('bun-test-runner', () => {
       "
     `);
   });
-
 });

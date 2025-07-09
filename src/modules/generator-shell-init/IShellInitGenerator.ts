@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-shell-init/IShellInitGenerator.ts
+ * @file src/modules/generator-shell-init/IShellInitGenerator.ts
  * @description Interface for the shell initialization file generator.
  *
  * ## Development Plan (for IShellInitGenerator.ts)

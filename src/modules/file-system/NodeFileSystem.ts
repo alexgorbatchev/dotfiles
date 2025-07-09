@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/file-system/NodeFileSystem.ts
+ * @file src/modules/file-system/NodeFileSystem.ts
  * @description Concrete implementation of IFileSystem using Node.js's built-in 'fs' module.
  */
 

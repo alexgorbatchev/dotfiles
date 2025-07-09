@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-symlink/index.ts
+ * @file src/modules/generator-symlink/index.ts
  * @description Barrel file for the symlink generator module.
  *
  * ## Development Plan

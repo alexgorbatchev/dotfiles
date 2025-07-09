@@ -5,7 +5,7 @@
  *
  * ### Overall Task: Create E2E test for `bun ./src/cli.ts install`
  * - [x] **Part 1: Create E2E Test File and Directory Structure (This file)**
- *   - [x] Create `generator/src/__tests__/cli-install.e2e.test.ts`.
+ *   - [x] Create `src/__tests__/cli-install.e2e.test.ts`.
  *   - [x] Add initial imports and development plan.
  * - [x] **Part 2: Implement Test Setup, CLI Execution, and Teardown (`beforeAll`)**
  *   - [x] Use `beforeAll` to:

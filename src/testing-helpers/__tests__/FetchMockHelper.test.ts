@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/__tests__/FetchMockHelper.test.ts
+ * @file src/testing-helpers/__tests__/FetchMockHelper.test.ts
  * @description Unit tests for the FetchMockHelper class.
  *
  * ## Development Plan

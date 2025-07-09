@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/appConfigTestHelpers.ts
+ * @file src/testing-helpers/appConfigTestHelpers.ts
  * @description Shared testing helper functions for creating AppConfig mocks.
  *
  * ## Development Plan
@@ -12,7 +12,7 @@
  *   - [x] Accept `Partial<AppConfig>` overrides.
  *   - [x] Return the merged `AppConfig` object (base + overrides).
  * - [x] Add JSDoc for the function.
- * - [x] Write tests for `createMockAppConfig` in `generator/src/testing-helpers/__tests__/appConfigTestHelpers.test.ts`. (Tests were created then removed as per user instruction)
+ * - [x] Write tests for `createMockAppConfig` in `src/testing-helpers/__tests__/appConfigTestHelpers.test.ts`. (Tests were created then removed as per user instruction)
  * - [x] Ensure 100% test coverage. (N/A as tests were removed)
  * - [ ] Cleanup all linting errors and warnings.
  * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).

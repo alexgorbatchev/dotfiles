@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/versionChecker/IVersionChecker.ts
+ * @file src/modules/versionChecker/IVersionChecker.ts
  * @description Defines the interface for the version checker module.
  * This module is responsible for determining if newer versions of managed tools are available.
  *

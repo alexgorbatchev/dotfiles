@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/file-system/MemFileSystem.ts
+ * @file src/modules/file-system/MemFileSystem.ts
  * @description In-memory implementation of IFileSystem using memfs.
  *
  * ## Development Plan

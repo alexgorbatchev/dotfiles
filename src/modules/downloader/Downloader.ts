@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/Downloader.ts
+ * @file src/modules/downloader/Downloader.ts
  * @description Main downloader class that manages and uses download strategies.
  *
  * ## Development Plan

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/__tests__/NodeFetchStrategy.test.ts
+ * @file src/modules/downloader/__tests__/NodeFetchStrategy.test.ts
  * @description Tests for the NodeFetchStrategy class.
  *
  * ## Development Plan

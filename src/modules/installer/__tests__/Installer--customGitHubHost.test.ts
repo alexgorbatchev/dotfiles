@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/installer/__tests__/Installer--customGitHubHost.test.ts
+ * @file src/modules/installer/__tests__/Installer--customGitHubHost.test.ts
  * @description Tests for the Installer's handling of custom GitHub host.
  */
 

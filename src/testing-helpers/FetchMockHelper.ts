@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/FetchMockHelper.ts
+ * @file src/testing-helpers/FetchMockHelper.ts
  * @description Helper class for mocking globalThis.fetch in tests.
  *
  * ## Development Plan

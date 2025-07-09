@@ -1,5 +1,5 @@
 /**
- * @file generator/src/testing-helpers/index.ts
+ * @file src/testing-helpers/index.ts
  * @description Barrel file for the testing-helpers module.
  *
  * ### Overview

@@ -1,5 +1,5 @@
 /**
- * @file generator/src/types/manifest.types.ts
+ * @file src/types/manifest.types.ts
  * @description Types related to the generated artifacts manifest.
  *
  * ## Development Plan

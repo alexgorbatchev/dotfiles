@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/file-system/IFileSystem.ts
+ * @file src/modules/file-system/IFileSystem.ts
  * @description Interface for file system operations.
  *
  * This interface defines a contract for file system interactions, allowing

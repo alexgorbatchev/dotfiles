@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/github-client/__tests__/fixtures/cacheTestFixtures.ts
+ * @file src/modules/github-client/__tests__/fixtures/cacheTestFixtures.ts
  * @description Test fixtures for GitHub API cache tests
  */
 

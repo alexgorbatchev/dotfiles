@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/extractor/IArchiveExtractor.ts
+ * @file src/modules/extractor/IArchiveExtractor.ts
  * @description Defines the interface for an archive extraction service.
  */
 

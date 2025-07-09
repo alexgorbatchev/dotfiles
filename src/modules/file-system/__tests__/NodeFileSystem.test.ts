@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/file-system/__tests__/NodeFileSystem.test.ts
+ * @file src/modules/file-system/__tests__/NodeFileSystem.test.ts
  * @description Tests for the NodeFileSystem implementation.
  */
 

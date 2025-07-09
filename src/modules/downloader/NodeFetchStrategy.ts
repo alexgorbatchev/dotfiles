@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/downloader/NodeFetchStrategy.ts
+ * @file src/modules/downloader/NodeFetchStrategy.ts
  * @description Download strategy using Node.js's native fetch API.
  *
  * Development Plan:

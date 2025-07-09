@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-shell-init/__tests__/ShellInitGenerator.test.ts
+ * @file src/modules/generator-shell-init/__tests__/ShellInitGenerator.test.ts
  * @description Unit tests for the ShellInitGenerator class.
  *
  * ## Development Plan (for ShellInitGenerator.test.ts)

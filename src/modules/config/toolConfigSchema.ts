@@ -1,11 +1,11 @@
 /**
- * @file generator/src/modules/config/toolConfigSchema.ts
+ * @file src/modules/config/toolConfigSchema.ts
  * @description Zod schema for validating ToolConfig objects.
  *
  * ## Development Plan
  *
  * ### Mandatory Pre-read:
- * - `generator/src/types.ts` (for ToolConfig and related interface definitions)
+ * - `src/types.ts` (for ToolConfig and related interface definitions)
  *
  * ### Tasks:
  * - [x] Define `SystemInfoSchema`.

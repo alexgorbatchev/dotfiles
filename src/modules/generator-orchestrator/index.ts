@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/generator-orchestrator/index.ts
+ * @file src/modules/generator-orchestrator/index.ts
  * @description Barrel file for the GeneratorOrchestrator module.
  *
  * ## Development Plan
@@ -15,6 +15,6 @@
 
 export * from './IGeneratorOrchestrator';
 export * from './GeneratorOrchestrator';
-// GeneratedArtifactsManifest is already exported from generator/src/types.ts
+// GeneratedArtifactsManifest is already exported from src/types.ts
 // and re-exporting it here might cause confusion or circular dependency issues
 // if not handled carefully. It's better to import it directly from types.ts.

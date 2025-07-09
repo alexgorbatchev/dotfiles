@@ -8,6 +8,7 @@
  * ### Mandatory Pre-read:
  * - `docs/config-migration-plan.md`
  * - `src/modules/config/config.yaml.schema.ts`
+ * - `src/testing-helpers/createMockYamlConfig.ts`
  *
  * ### Tasks:
  * - [x] Import required dependencies.
@@ -306,6 +307,12 @@ export async function loadDefaultYamlConfigAsRecord(
  * @param systemInfo - System information for platform detection
  * @param env - Environment variables for token substitution
  * @returns A promise that resolves to the validated YAML configuration
+ * 
+ * @testing
+ * For unit and integration tests, this function is tested using a mock file system.
+ * - `createMemFileSystem`: Used to create an in-memory file system with
+ *   `default-config.yaml` and a user `config.yaml` to simulate real-world usage.
+ *   (import from `@testing-helpers`)
  */
 export async function createYamlConfigFromFileSystem(
   fileSystem: IFileSystem,
@@ -339,6 +346,12 @@ export async function createYamlConfigFromFileSystem(
  * @param systemInfo - System information for platform detection
  * @param env - Environment variables for token substitution
  * @returns A promise that resolves to the validated YAML configuration
+ * 
+ * @testing
+ * This function is primarily tested through `createMockYamlConfig`, which uses
+ * it to generate configuration objects from partial mock data.
+ * - `createMockYamlConfig`: A helper that simplifies the creation of YAML config files for tests.
+ *   (import from `@testing-helpers`)
  */
 export async function createYamlConfigFromObject(
   fileSystem: IFileSystem,

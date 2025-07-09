@@ -1,5 +1,5 @@
 /**
- * @file generator/src/modules/config/__tests__/config.test.ts
+ * @file src/modules/config/__tests__/config.test.ts
  * @description Tests for the application configuration.
  *
  * ## Development Plan
@@ -7,8 +7,8 @@
  * ### Mandatory Pre-read:
  * - `.clinerules` (for testing requirements)
  * - `memory-bank/techContext.md` (Configuration System (.env) section)
- * - `generator/src/modules/config/config.ts`
- * - `generator/src/types.ts` (for AppConfig type)
+ * - `src/modules/config/config.ts`
+ * - `src/types.ts` (for AppConfig type)
  *
  * ### Tasks:
  * - [x] Import `describe`, `it`, `expect`, `beforeEach`, `afterEach` from `bun:test`.
