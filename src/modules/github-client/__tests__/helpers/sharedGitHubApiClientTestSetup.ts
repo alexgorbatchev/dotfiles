@@ -14,6 +14,7 @@ export const createMockYamlConfig = (overrides: PartialYamlConfig = {}): YamlCon
       toolConfigsDir: '/test/dotfiles/configs/tools',
       completionsDir: '/test/dotfiles/.generated/completions',
       manifestPath: '/test/dotfiles/.generated/manifest.json',
+      binariesDir: '/test/dotfiles/.generated/binaries',
     },
     system: {
       sudoPrompt: 'Please enter your password:',

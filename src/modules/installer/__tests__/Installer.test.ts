@@ -153,7 +153,7 @@ describe('Installer', () => {
           generatedDir: testDirs.generatedDir,
         },
       },
-      { platform: 'linux', arch: 'x64', release: 'test' },
+      { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
       {}
     );
 
@@ -441,7 +441,7 @@ describe('Installer', () => {
       await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: '/home/test' },
         otherChanges: [],
       });
 
@@ -488,7 +488,7 @@ describe('Installer', () => {
           },
           github: { host: undefined },
         },
-        { platform: 'linux', arch: 'x64', release: 'test' },
+        { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
         {}
       );
       const tempInstaller = new Installer(
@@ -502,7 +502,7 @@ describe('Installer', () => {
       await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
         installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: '/home/test' },
         otherChanges: [],
       });
 
@@ -548,7 +548,7 @@ describe('Installer', () => {
           },
           github: { host: 'github.my-company.com' },
         },
-        { platform: 'linux', arch: 'x64', release: 'test' },
+        { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
         {}
       );
       const tempInstaller = new Installer(
@@ -608,7 +608,7 @@ describe('Installer', () => {
           },
           github: { host: 'api.github.com' },
         },
-        { platform: 'linux', arch: 'x64', release: 'test' },
+        { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
         {}
       ); // API host
       const tempInstaller = new Installer(
@@ -679,7 +679,7 @@ describe('Installer', () => {
       };
 
       // Simulate a platform/arch for which no asset exists
-      const systemInfo = { platform: 'sunos', arch: 'sparc', release: '5.11' };
+      const systemInfo = { platform: 'sunos', arch: 'sparc', release: '5.11', homeDir: '/home/test' };
       // @ts-ignore
       process.platform = systemInfo.platform;
       // @ts-ignore

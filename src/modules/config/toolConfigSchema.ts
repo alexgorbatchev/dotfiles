@@ -51,6 +51,7 @@ const SystemInfoSchema: z.ZodType<SystemInfo> = z.object({
   platform: z.string(),
   arch: z.string(),
   release: z.string().optional(),
+  homeDir: z.string(),
 });
 
 // Schema for ExtractResult

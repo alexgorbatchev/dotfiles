@@ -202,16 +202,59 @@ function applyPlatformOverrides(
 }
 
 /**
+ * Expands the tilde (~) character in file paths to the user's home directory.
+ * @param path - The file path that may contain a tilde.
+ * @param systemInfo - System information containing the home directory.
+ * @returns The path with the tilde expanded to the user's home directory.
+ */
+function expandHomePath(path: string, systemInfo: SystemInfo): string {
+  if (typeof path !== 'string') return path;
+  if (path.startsWith('~/') || path === '~') {
+    return path.replace(/^~(?=$|\/|\\)/, systemInfo.homeDir);
+  }
+  return path;
+}
+
+/**
+ * Recursively processes an object to expand home paths in string values.
+ * @param obj - The object to process.
+ * @param systemInfo - System information containing the home directory.
+ * @returns The object with home paths expanded.
+ */
+function expandHomePathsInObject(obj: unknown, systemInfo: SystemInfo): unknown {
+  if (typeof obj === 'string') {
+    return expandHomePath(obj, systemInfo);
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => expandHomePathsInObject(item, systemInfo));
+  }
+  
+  if (obj && typeof obj === 'object' && obj !== null) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = expandHomePathsInObject(value, systemInfo);
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
+/**
  * Substitutes tokens in the configuration with values from environment variables and other config values.
+ * Also expands home paths (~ character) in string values.
  * @param config - The configuration object to substitute tokens in.
  * @param env - Environment variables for substitution.
  * @param fullConfig - The full configuration object for reference substitution.
- * @returns The configuration with tokens substituted.
+ * @param systemInfo - System information containing the home directory.
+ * @returns The configuration with tokens substituted and home paths expanded.
  */
 function substituteTokens(
   config: Record<string, unknown>,
   env: Record<string, string | undefined>,
-  fullConfig: Record<string, unknown>
+  fullConfig: Record<string, unknown>,
+  systemInfo: SystemInfo
 ): Record<string, unknown> {
   let configStr = stringify(config);
   let previousConfigStr = '';
@@ -237,7 +280,11 @@ function substituteTokens(
     });
   }
 
-  return parse(configStr) as Record<string, unknown>;
+  // Parse the config string back to an object
+  const parsedConfig = parse(configStr) as Record<string, unknown>;
+  
+  // Expand home paths in the config
+  return expandHomePathsInObject(parsedConfig, systemInfo) as Record<string, unknown>;
 }
 
 function processConfig(
@@ -253,7 +300,8 @@ function processConfig(
   const configWithTokens = substituteTokens(
     configWithPlatformOverrides,
     env,
-    configWithPlatformOverrides
+    configWithPlatformOverrides,
+    systemInfo
   );
 
   const result = yamlConfigSchema.safeParse(configWithTokens);

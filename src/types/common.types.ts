@@ -25,6 +25,12 @@ export interface SystemInfo {
    * This property is optional as it may not always be required or available.
    */
   release?: string;
+  /**
+   * The user's home directory path.
+   * Corresponds to the value returned by `os.homedir()` in Node.js.
+   * Used for expanding tilde (~) in file paths.
+   */
+  homeDir: string;
 }
 
 /**

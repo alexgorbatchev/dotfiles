@@ -62,7 +62,14 @@ This phase focuses on incrementally migrating the entire application from the ol
     *   **[x]** `generator-shell-init`: Depends on `file-system`.
 *   **[ ] Task 3.2: Migrate Orchestrator & CLI**:
     *   **[x]** `generator-orchestrator`: Depends on all `generator-*` modules.
-    *   **[ ]** `cli`: Migrate all commands (`checkUpdates`, `cleanup`, `detectConflicts`, `generate`, `install`, `update`).
+    *   **[ ]** `cli`: Migrate all commands in the following order:
+        *   **[x]** `checkUpdatesCommand.ts`: Uses configuration for tool configs directory and GitHub API.
+        *   **[ ]** `cleanupCommand.ts`: Handles cleanup of generated files based on configuration.
+        *   **[ ]** `detectConflictsCommand.ts`: Detects conflicts in generated files.
+        *   **[ ]** `installCommand.ts`: Installs tools based on configuration.
+        *   **[ ]** `updateCommand.ts`: Updates installed tools.
+        *   **[ ]** `generateCommand.ts`: Most complex command that generates all dotfiles.
+        *   **[ ]** `src/cli.ts`: Main CLI entry point that sets up all services.
 
 ---
 

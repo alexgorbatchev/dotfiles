@@ -1,8 +1,3 @@
-/**
- * @file src/modules/architecture-utils/__tests__/getArchitectureRegex.test.ts
- * @description Tests for architecture detection utilities.
- */
-
 import { describe, it, expect } from 'bun:test';
 import {
   getArchitecturePatterns,
@@ -18,6 +13,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'darwin',
       arch: 'arm64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -42,6 +38,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'darwin',
       arch: 'x64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -66,6 +63,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -79,6 +77,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'linux',
       arch: 'aarch64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -92,6 +91,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'win32',
       arch: 'x64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -108,6 +108,7 @@ describe('getArchitecturePatterns', () => {
       const systemInfo: SystemInfo = {
         platform: 'linux',
         arch,
+        homeDir: '/home/test',
       };
 
       const patterns = getArchitecturePatterns(systemInfo);
@@ -119,6 +120,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'linux',
       arch: 'armv6l',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -134,6 +136,7 @@ describe('getArchitecturePatterns', () => {
       const systemInfo: SystemInfo = {
         platform: 'linux',
         arch,
+        homeDir: '/home/test',
       };
 
       const patterns = getArchitecturePatterns(systemInfo);
@@ -146,6 +149,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'freebsd',
       arch: 'x64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -159,6 +163,7 @@ describe('getArchitecturePatterns', () => {
     const systemInfo: SystemInfo = {
       platform: 'linux',
       arch: 'riscv64',
+      homeDir: '/home/test',
     };
 
     const patterns = getArchitecturePatterns(systemInfo);
@@ -232,6 +237,7 @@ describe('getArchitectureRegex', () => {
     const systemInfo: SystemInfo = {
       platform: 'darwin',
       arch: 'arm64',
+      homeDir: '/home/test',
     };
 
     const regex = getArchitectureRegex(systemInfo);
@@ -247,6 +253,7 @@ describe('getArchitectureRegex', () => {
     const systemInfo: SystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
+      homeDir: '/home/test',
     };
 
     const regex = getArchitectureRegex(systemInfo);
@@ -260,6 +267,7 @@ describe('getArchitectureRegex', () => {
     const systemInfo: SystemInfo = {
       platform: 'win32',
       arch: 'x64',
+      homeDir: '/home/test',
     };
 
     const regex = getArchitectureRegex(systemInfo);

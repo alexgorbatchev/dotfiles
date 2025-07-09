@@ -1,8 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import {
-  createYamlConfigFromObject,
-  getDefaultConfigPath,
-} from '@modules/config-loader';
+import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
 import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, type FileSystemSpies } from '@testing-helpers';
@@ -17,8 +14,6 @@ describe('ShimGenerator', () => {
   let fsMocks: FileSystemSpies;
   let mfs: IFileSystem;
 
-  const MOCK_TARGET_DIR = '/test/shims';
-
   beforeEach(async () => {
     const { fs, spies } = createMemFileSystem({
       initialVolumeJson: {
@@ -30,22 +25,9 @@ describe('ShimGenerator', () => {
 
     mockConfig = await createYamlConfigFromObject(
       mfs,
-      {
-        paths: {
-          targetDir: MOCK_TARGET_DIR,
-          dotfilesDir: '/test/dotfiles',
-          generatedDir: '/test/dotfiles/.generated',
-          binariesDir: '/test/dotfiles/.generated/binaries',
-          toolConfigsDir: '/test/dotfiles/generator/configs/tools',
-          completionsDir: '/test/dotfiles/.generated/completions',
-          manifestPath: '/test/dotfiles/.generated/manifest.json',
-        },
-        cli: {
-          generatorShimName: 'dotfiles-shim-generator',
-        },
-      },
-      { platform: 'linux', arch: 'x64' },
-      {},
+      {}, // Use default paths from MOCK_DEFAULT_CONFIG
+      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
+      {}
     );
 
     shimGenerator = new ShimGenerator(mfs, mockConfig);
@@ -71,23 +53,20 @@ describe('ShimGenerator', () => {
     let expectedGeneratorCliShimPathInToolShim: string;
 
     beforeEach(() => {
-      expectedShimPath = path.join(MOCK_TARGET_DIR, toolName);
+      expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
       expectedBinaryPath = path.join(
         mockConfig.paths.binariesDir,
         toolConfig.name,
         toolConfig.binaries![0]!
       );
-      expectedGeneratorCliShimPathInToolShim = path.join(
-        mockConfig.paths.targetDir,
-        'shim'
-      );
+      expectedGeneratorCliShimPathInToolShim = path.join(mockConfig.paths.targetDir, 'shim');
     });
 
     it('should generate correct shim content, write file, and return shim path', async () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig);
 
       expect(result).toEqual([expectedShimPath]);
-      expect(fsMocks.ensureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
+      expect(fsMocks.ensureDir).toHaveBeenCalledWith(mockConfig.paths.targetDir);
       expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
       expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
       const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
@@ -152,7 +131,7 @@ describe('ShimGenerator', () => {
       const result = await shimGenerator.generateForTool(toolName, toolConfig, {});
 
       expect(result).toEqual([expectedShimPath]);
-      expect(fsMocks.ensureDir).toHaveBeenCalledWith(MOCK_TARGET_DIR);
+      expect(fsMocks.ensureDir).toHaveBeenCalledWith(mockConfig.paths.targetDir);
       expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
       expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
     });
@@ -182,7 +161,7 @@ describe('ShimGenerator', () => {
     let generatedShimPath: string;
 
     beforeEach(() => {
-      generatedShimPath = path.join(MOCK_TARGET_DIR, 'shim');
+      generatedShimPath = path.join(mockConfig.paths.targetDir, 'shim');
     });
 
     it('should call generateForTool for each tool config and return all paths including generator shim', async () => {
@@ -202,16 +181,15 @@ describe('ShimGenerator', () => {
           installParams: undefined,
         },
       };
-      const expectedPathA = path.join(MOCK_TARGET_DIR, 'tool-a');
-      const expectedPathB = path.join(MOCK_TARGET_DIR, 'tool-b');
+      const expectedPathA = path.join(mockConfig.paths.targetDir, 'tool-a');
+      const expectedPathB = path.join(mockConfig.paths.targetDir, 'tool-b');
 
       const generateForToolSpy = spyOn(shimGenerator, 'generateForTool')
         .mockResolvedValueOnce([expectedPathA])
         .mockResolvedValueOnce([expectedPathB]);
-      const generateGeneratorCliShimSpy = spyOn(
-        shimGenerator,
-        'generateShim'
-      ).mockResolvedValue(generatedShimPath);
+      const generateGeneratorCliShimSpy = spyOn(shimGenerator, 'generateShim').mockResolvedValue(
+        generatedShimPath
+      );
 
       const result = await shimGenerator.generate(configs);
 
@@ -227,10 +205,9 @@ describe('ShimGenerator', () => {
 
     it('should handle empty toolConfigs object and return only generator shim path', async () => {
       const generateForToolSpy = spyOn(shimGenerator, 'generateForTool');
-      const generateGeneratorCliShimSpy = spyOn(
-        shimGenerator,
-        'generateShim'
-      ).mockResolvedValue(generatedShimPath);
+      const generateGeneratorCliShimSpy = spyOn(shimGenerator, 'generateShim').mockResolvedValue(
+        generatedShimPath
+      );
 
       const result = await shimGenerator.generate({});
       expect(result).toEqual([generatedShimPath]);
@@ -252,15 +229,14 @@ describe('ShimGenerator', () => {
         },
       };
       const options = { overwrite: true };
-      const expectedPathA = path.join(MOCK_TARGET_DIR, 'tool-a');
+      const expectedPathA = path.join(mockConfig.paths.targetDir, 'tool-a');
 
       const generateForToolSpy = spyOn(shimGenerator, 'generateForTool').mockResolvedValueOnce([
         expectedPathA,
       ]);
-      const generateGeneratorCliShimSpy = spyOn(
-        shimGenerator,
-        'generateShim'
-      ).mockResolvedValue(generatedShimPath);
+      const generateGeneratorCliShimSpy = spyOn(shimGenerator, 'generateShim').mockResolvedValue(
+        generatedShimPath
+      );
 
       const result = await shimGenerator.generate(configs, options);
 

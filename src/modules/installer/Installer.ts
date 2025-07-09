@@ -1057,6 +1057,7 @@ export class Installer implements IInstaller {
       platform: process.platform,
       arch: process.arch,
       release: os.release(),
+      homeDir: os.homedir(),
     };
   }
 }

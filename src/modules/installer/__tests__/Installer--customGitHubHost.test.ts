@@ -109,7 +109,7 @@ describe('Installer with custom GitHub host', () => {
           host: CUSTOM_GITHUB_HOST,
         },
       },
-      { platform: 'linux', arch: 'x64', release: 'test' },
+      { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
       {}
     );
 

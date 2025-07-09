@@ -35,7 +35,7 @@ describe('ShellInitGenerator', () => {
           generatedDir: path.join(DEFAULT_DOTFILES_DIR, '.generated'), // Ensure consistency
         },
       },
-      { platform: 'linux', arch: 'x64' },
+      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
       {}
     );
     generator = new ShellInitGenerator(mockFileSystem, mockAppConfig);

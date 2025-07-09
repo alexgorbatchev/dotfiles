@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import { GitHubApiClient } from '../GitHubApiClient';
 import {
-  createMockYamlConfig,
   createMockDownloader,
   createMockGitHubApiCache,
   setupMockGitHubApiClient,
-  createGitHubConfigOverride
+  createGitHubConfigOverride,
+  createMockYamlConfig,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
@@ -24,7 +24,9 @@ describe('GitHubApiClient', () => {
     });
 
     it('should initialize correctly with a token', () => {
-      const mockYamlConfig = createMockYamlConfig(createGitHubConfigOverride({ githubToken: 'test-token' }));
+      const mockYamlConfig = createMockYamlConfig(
+        createGitHubConfigOverride({ githubToken: 'test-token' })
+      );
       const mockDownloader = createMockDownloader();
       const client = new GitHubApiClient(mockYamlConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);

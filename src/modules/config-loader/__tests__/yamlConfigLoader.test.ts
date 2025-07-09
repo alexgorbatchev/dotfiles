@@ -55,7 +55,7 @@ platform:
     });
 
     const systemInfo = {
-      homedir: '/home/testuser',
+      homeDir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'linux',
       arch: 'x64',
@@ -69,7 +69,7 @@ platform:
       env
     );
 
-    expect(result.paths.dotfilesDir).toBe('~/custom-dotfiles');
+    expect(result.paths.dotfilesDir).toBe('/home/testuser/custom-dotfiles');
     expect(result.paths.targetDir).toBe('/custom/bin');
     expect(result.github.token).toBe('user-github-token');
     expect(result.logging.debug).toBe('');
@@ -86,7 +86,7 @@ platform:
 
     // Test for macOS
     const macSystemInfo = {
-      homedir: '/home/testuser',
+      homeDir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'darwin',
       arch: 'x64',
@@ -102,7 +102,7 @@ platform:
 
     // Test for Linux ARM64
     const linuxSystemInfo = {
-      homedir: '/home/testuser',
+      homeDir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'linux',
       arch: 'arm64',
@@ -125,7 +125,7 @@ platform:
     });
 
     const systemInfo = {
-      homedir: '/home/testuser',
+      homeDir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'darwin',
       arch: 'x64',
@@ -152,7 +152,7 @@ platform:
     });
 
     const systemInfo = {
-      homedir: '/home/testuser',
+      homeDir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'linux',
       arch: 'x64',
@@ -181,18 +181,17 @@ platform:
       fileSystem,
       USER_CONFIG_PATH,
       {
-        // homedir: '/home/testuser',
-        // cwd: '/home/testuser/project',
+        homeDir: '/home/testuser',
         platform: 'linux',
         arch: 'x64',
       },
       {}
     );
 
-    expect(result.paths.generatedDir).toBe('~/custom-dotfiles/.generated');
-    expect(result.paths.toolConfigsDir).toBe('~/custom-dotfiles/generator/configs/tools');
-    expect(result.paths.completionsDir).toBe('~/custom-dotfiles/.generated/completions');
-    expect(result.paths.manifestPath).toBe('~/custom-dotfiles/.generated/generated-manifest.json');
+    expect(result.paths.generatedDir).toBe('/home/testuser/custom-dotfiles/.generated');
+    expect(result.paths.toolConfigsDir).toBe('/home/testuser/custom-dotfiles/generator/configs/tools');
+    expect(result.paths.completionsDir).toBe('/home/testuser/custom-dotfiles/.generated/completions');
+    expect(result.paths.manifestPath).toBe('/home/testuser/custom-dotfiles/.generated/generated-manifest.json');
   });
 
   it('should throw an error when default config file does not exist', async () => {
@@ -216,7 +215,7 @@ github:
     });
 
     const systemInfo = {
-      homedir: '/home/testuser',
+      homeDir: '/home/testuser',
       cwd: '/home/testuser/project',
       platform: 'linux',
       arch: 'x64',

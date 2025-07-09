@@ -24,7 +24,7 @@ describe('createMockYamlConfig', () => {
       },
     });
     const filePath = '/test.yaml';
-    const systemInfo = { platform: 'darwin', arch: 'arm64' };
+    const systemInfo = { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' };
     const env = {};
     await createMockYamlConfig({
       config: mockConfig,

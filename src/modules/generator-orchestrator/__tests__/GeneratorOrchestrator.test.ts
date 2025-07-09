@@ -47,7 +47,7 @@ describe('GeneratorOrchestrator', () => {
     mockAppConfig = await createYamlConfigFromObject(
       fs,
       {},
-      { platform: 'linux', arch: 'x64' },
+      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
       {}
     );
 
