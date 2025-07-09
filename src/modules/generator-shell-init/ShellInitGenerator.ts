@@ -1,46 +1,17 @@
-/**
- * @file src/modules/generator-shell-init/ShellInitGenerator.ts
- * @description Implementation of the shell initialization file generator.
- *
- * ## Development Plan (for ShellInitGenerator.ts)
- *
- * ### Tasks:
- * - [x] Implement `ShellInitGenerator` class adhering to `IShellInitGenerator`.
- * - [x] Constructor should accept `IFileSystem` and `AppConfig`.
- * - [x] Implement the `generate` method:
- *   - [x] Update `generate` method to return `Promise<string | null>`.
- *   - [x] Determine the output path for the Zsh init file.
- *   - [x] Iterate through `toolConfigs` to gather information:
- *     - [x] Paths to add to `PATH`.
- *     - [x] Environment variables to set.
- *     - [x] Shell code snippets to include (from `ToolConfig.zshInit`).
- *     - [x] Completion paths/scripts to set up (from `ToolConfig.completions`).
- *   - [x] Construct the content of the Zsh init file.
- *   - [x] Write the generated content to the output file using `IFileSystem.writeFile()` (behavior determined by injected `IFileSystem` type).
- * - [x] Add JSDoc comments.
- * - [x] Add structured logging using `createLogger`.
- * - [x] Refactor dry run mechanism:
- *   - [x] Remove internal `dryRun` logic.
- *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
- * - [ ] Write unit tests (`__tests__/ShellInitGenerator.test.ts`).
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
- */
-
 import path from 'node:path';
-import type { AppConfig, ToolConfig, CompletionConfig, ShellType } from '@types';
+import type { ToolConfig, CompletionConfig, ShellType } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator, GenerateShellInitOptions } from './IShellInitGenerator';
 import { createLogger } from '@modules/logger';
+import type { YamlConfig } from '@modules/config';
 
 const log = createLogger('ShellInitGenerator');
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
-  private readonly appConfig: AppConfig;
+  private readonly appConfig: YamlConfig;
 
-  constructor(fileSystem: IFileSystem, appConfig: AppConfig) {
+  constructor(fileSystem: IFileSystem, appConfig: YamlConfig) {
     log('constructor: fileSystem=%o, appConfig=%o', fileSystem, appConfig);
     this.fs = fileSystem;
     this.appConfig = appConfig;
@@ -57,7 +28,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
       this.fs.constructor.name
     );
     // dryRun is removed; IFileSystem handles behavior
-    const outputPath = options?.outputPath ?? path.join(this.appConfig.zshInitDir, 'init.zsh');
+    const outputPath =
+      options?.outputPath ?? path.join(this.appConfig.paths.completionsDir, 'init.zsh');
     log('generate: outputPath=%s', outputPath);
 
     const header = [
@@ -67,7 +39,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       '# ==========================================================================',
       '',
       `# Generated on: ${new Date().toISOString()}`,
-      `# Dotfiles directory: ${this.appConfig.dotfilesDir}`,
+      `# Dotfiles directory: ${this.appConfig.paths.dotfilesDir}`,
       '',
     ];
 
@@ -77,7 +49,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     const completionSetup: string[] = [];
 
     // Add .dotfiles/.generated/bin to PATH by default
-    pathModifications.push(`export PATH="${this.appConfig.binDir}:$PATH"`);
+    pathModifications.push(`export PATH="${this.appConfig.paths.binariesDir}:$PATH"`);
 
     for (const toolName in toolConfigs) {
       const config = toolConfigs[toolName];
@@ -116,7 +88,9 @@ export class ShellInitGenerator implements IShellInitGenerator {
       content += '# === PATH Modifications ===\n';
       // Deduplicate and ensure .dotfiles/.generated/bin is first if present
       const uniquePaths = [...new Set(pathModifications)];
-      const generatedBinPathLine = uniquePaths.find((p) => p.includes(this.appConfig.binDir));
+      const generatedBinPathLine = uniquePaths.find((p) =>
+        p.includes(this.appConfig.paths.binariesDir)
+      );
       if (generatedBinPathLine) {
         content += generatedBinPathLine + '\n';
         uniquePaths.splice(uniquePaths.indexOf(generatedBinPathLine), 1);
@@ -137,7 +111,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
     if (completionSetup.length > 0) {
       content += '# === Shell Completions Setup ===\n';
       // Ensure fpath is initialized if not already
-      if (!pathModifications.some((p) => p.includes('fpath=(') || p.includes('typeset -U fpath'))) {
+      const allInitLines = [...pathModifications, ...toolSpecificInits];
+      if (!allInitLines.some((p) => p.includes('typeset -U fpath'))) {
         completionSetup.unshift('typeset -U fpath');
       }
       content += [...new Set(completionSetup)].join('\n') + '\n\n';
@@ -186,7 +161,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       if (shellConfig && shell === 'zsh') {
         // Only Zsh supported for now by this generator
         const completionDir =
-          shellConfig.targetDir ?? path.join(this.appConfig.completionsDir, shell);
+          shellConfig.targetDir ?? path.join(this.appConfig.paths.completionsDir, shell);
         // const completionName = shellConfig.name ?? `_${toolName}`; // This var is unused for now
         // const completionSourcePath = path.join(completionDir, completionName); // This var is unused for now
 

@@ -1,22 +1,5 @@
-/**
- * @file src/modules/generator-shell-init/IShellInitGenerator.ts
- * @description Interface for the shell initialization file generator.
- *
- * ## Development Plan (for IShellInitGenerator.ts)
- *
- * ### Tasks:
- * - [x] Define `GenerateShellInitOptions` interface.
- * - [x] Define `IShellInitGenerator` interface with the `generate` method.
- *   - [x] Update `generate` method return type to `Promise<string | null>`.
- * - [x] Add JSDoc comments for all interfaces and methods.
- * - [x] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests)
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateShellInitOptions`.
- * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
- */
-
-import type { AppConfig, ToolConfig } from '@types';
+import type { YamlConfig } from '@modules/config';
+import type { ToolConfig } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 
 /**
@@ -53,5 +36,5 @@ export interface IShellInitGenerator {
  * This allows for dependency injection of IFileSystem and AppConfig.
  */
 export interface IShellInitGeneratorConstructor {
-  new (fileSystem: IFileSystem, appConfig: AppConfig): IShellInitGenerator;
+  new (fileSystem: IFileSystem, appConfig: YamlConfig): IShellInitGenerator;
 }
