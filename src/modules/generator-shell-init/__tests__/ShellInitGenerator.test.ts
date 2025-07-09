@@ -29,7 +29,7 @@
  * - [x] Refactor to use `createMockFileSystem` helper.
  * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
  */
-import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
@@ -49,25 +49,8 @@ describe('ShellInitGenerator', () => {
   const DEFAULT_DOTFILES_DIR = '/test/home/.dotfiles';
 
   beforeEach(() => {
-    mockFileSystem = createMemFileSystem();
-    // Spy on methods of the MemFileSystem instance
-    let writtenFilePath: string | null = null;
-    let writtenFileContent: string | null = null;
-
-    spyOn(mockFileSystem, 'writeFile').mockImplementation(
-      async (filePath: string, content: string) => {
-        writtenFilePath = filePath;
-        writtenFileContent = content;
-        return Promise.resolve(undefined);
-      }
-    );
-    spyOn(mockFileSystem, 'ensureDir').mockResolvedValue(undefined); // ensureDir spy is fine
-    spyOn(mockFileSystem, 'readFile').mockImplementation(async (filePath: string) => {
-      if (filePath === writtenFilePath && writtenFileContent !== null) {
-        return Promise.resolve(writtenFileContent);
-      }
-      throw new Error(`ENOENT: no such file or directory, open '${filePath}'`);
-    });
+    const { fs } = createMemFileSystem();
+    mockFileSystem = fs;
     mockAppConfig = createMockAppConfig({
       dotfilesDir: DEFAULT_DOTFILES_DIR, // Keep specific for test consistency
       zshInitDir: DEFAULT_ZSH_INIT_DIR,
@@ -449,8 +432,10 @@ describe('ShellInitGenerator', () => {
   });
 
   it('should return null if writeFile fails', async () => {
-    (mockFileSystem.writeFile as any).mockRejectedValueOnce(new Error('Disk full'));
-    const resultPath = await generator.generate({});
+    const { fs, spies } = createMemFileSystem();
+    spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));
+    const generatorWithFailingWrite = new ShellInitGenerator(fs, mockAppConfig);
+    const resultPath = await generatorWithFailingWrite.generate({});
     expect(resultPath).toBeNull();
   });
 });

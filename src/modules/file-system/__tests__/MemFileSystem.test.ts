@@ -56,15 +56,14 @@ describe('MemFileSystem', () => {
     '/data/empty_dir': null,
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create a fresh volume from base JSON using the helper
-    fileSystem = createMemFileSystem(initialJsonBase);
+    const { fs } = createMemFileSystem({
+      initialVolumeJson: initialJsonBase,
+    });
+    fileSystem = fs;
     // Programmatically create the symlink to ensure it's correctly set up by memfs
-    // Accessing internal 'vol' for testing setup. This is a controlled exception.
-    const vol = (fileSystem as any).getVolume
-      ? (fileSystem as any).getVolume()
-      : (fileSystem as any).vol;
-    vol.symlinkSync('/test.txt', '/link-to-text');
+    await fileSystem.symlink('/test.txt', '/link-to-text');
   });
 
   it('should readFile correctly', async () => {

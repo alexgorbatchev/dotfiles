@@ -64,8 +64,10 @@ platform:
 `;
 
   it('should load default config when user config does not exist', async () => {
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
     });
 
     const result = await loadDefaultYamlConfigAsRecord(fileSystem) as any;
@@ -75,9 +77,11 @@ platform:
   });
 
   it('should merge default config with user config', async () => {
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+        [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+      },
     });
 
     const systemInfo = {
@@ -103,9 +107,11 @@ platform:
   });
 
   it('should apply platform-specific overrides from user config', async () => {
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      [USER_CONFIG_PATH]: MOCK_USER_CONFIG_WITH_PLATFORM,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+        [USER_CONFIG_PATH]: MOCK_USER_CONFIG_WITH_PLATFORM,
+      },
     });
 
     // Test for macOS
@@ -141,9 +147,11 @@ platform:
   });
 
   it('should not apply platform overrides if none are defined', async () => {
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+        [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+      },
     });
 
     const systemInfo = {
@@ -167,8 +175,10 @@ platform:
   });
 
   it('should substitute environment variables in config', async () => {
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
     });
 
     const systemInfo = {
@@ -190,9 +200,11 @@ platform:
   });
 
   it('should substitute config references in config', async () => {
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+        [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
+      },
     });
 
     const result = await createYamlConfigFromFileSystem(
@@ -214,7 +226,7 @@ platform:
   });
 
   it('should throw an error when default config file does not exist', async () => {
-    const fileSystem = createMemFileSystem({});
+    const { fs: fileSystem } = createMemFileSystem({});
 
     expect(
       createYamlConfigFromFileSystem(fileSystem, USER_CONFIG_PATH, {} as any, {})
@@ -226,9 +238,11 @@ platform:
 github:
   token: 12345
 `;
-    const fileSystem = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      [USER_CONFIG_PATH]: MOCK_INVALID_USER_CONFIG,
+    const { fs: fileSystem } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+        [USER_CONFIG_PATH]: MOCK_INVALID_USER_CONFIG,
+      },
     });
 
     const systemInfo = {

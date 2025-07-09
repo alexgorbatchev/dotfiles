@@ -18,8 +18,10 @@ describe('createMockYamlConfig', () => {
   };
 
   it('should write the YAML string to the specified path', async () => {
-    const fs = createMemFileSystem({
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+    const { fs } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
     });
     const filePath = '/test.yaml';
     const systemInfo = { platform: 'darwin', arch: 'arm64' };

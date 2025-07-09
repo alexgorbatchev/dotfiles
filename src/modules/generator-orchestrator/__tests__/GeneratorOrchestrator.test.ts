@@ -91,9 +91,10 @@ describe('GeneratorOrchestrator', () => {
     // We will assert directly on mockShimGenerator.generate, etc.
     // Top-level mock function variables (e.g., mockShimGenerate) are no longer declared at the top of the describe block.
 
-    mockFileSystem = createMemFileSystem();
-    mockFsReadFile = spyOn(mockFileSystem, 'readFile');
-    mockFsExists = spyOn(mockFileSystem, 'exists');
+    const { fs, spies } = createMemFileSystem();
+    mockFileSystem = fs;
+    mockFsReadFile = spies.readFile;
+    mockFsExists = spies.exists;
 
     consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
 

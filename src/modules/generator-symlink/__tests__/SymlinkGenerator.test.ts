@@ -47,7 +47,8 @@ describe('SymlinkGenerator', () => {
   const MOCK_PROJECT_ROOT = `${MOCK_HOME_DIR}/.dotfiles`;
 
   beforeEach(() => {
-    fs = createMemFileSystem();
+    const { fs: memFs } = createMemFileSystem();
+    fs = memFs;
     appConfig = createMockAppConfig({
       dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
       homeDir: MOCK_HOME_DIR, // Ensure appConfig.homeDir is the mocked home directory
