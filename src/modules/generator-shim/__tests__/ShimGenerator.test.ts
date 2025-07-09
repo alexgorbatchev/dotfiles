@@ -1,41 +1,5 @@
-/**
- * @file Tests for the ShimGenerator class.
- *
- * ## Development Plan
- *
- * - [x] **Setup Mocks:**
- *   - [x] Mock `IFileSystem` interface.
- *   - [x] Mock `AppConfig` with required properties. (Now uses `createMockAppConfig`)
- *   - [x] Mock `createLogger` to spy on log calls if necessary (or verify behavior without direct log spying).
- * - [x] **Test Suite for `ShimGenerator`:**
- *   - [x] **Constructor:**
- *     - [x] Test correct initialization.
- *   - [x] **`generateForTool` Method:**
- *     - [x] Test basic shim content generation.
- *     - [x] Test file writing and `chmod` calls (behavior determined by injected IFileSystem).
- *     - [x] Test behavior when using a mock/MemFileSystem (simulating dry run): attempts file operations, returns path.
- *     - [x] Test return value (array of shim paths).
- *     - [x] Test `overwrite: false` when shim exists (skips).
- *     - [x] Test `overwrite: true` when shim exists (overwrites).
- *     - [x] Test behavior when `shimDir` is not configured in `AppConfig`.
- *     - [x] Test behavior with different `cliToolPath` configurations.
- *     - [x] Test with tool names containing special characters (if applicable, ensure proper escaping in shim).
- *     - [x] Test when `toolConfig.binaries` is empty or undefined (fallback to toolName).
- *   - [x] **`generate` Method:**
- *     - [x] Test that `generateForTool` is called for each tool in `toolConfigs`.
- *     - [x] Test with empty `toolConfigs`.
- *     - [x] Test return value (array of all generated shim paths).
- * - [x] Ensure all tests pass.
- * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Achieve 100% test coverage for `ShimGenerator.ts`.
- * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
- * - [ ] Update the memory bank.
- */
-
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test'; // Removed mock
 import path from 'node:path';
-// IFileSystem is no longer directly used as a type annotation here
 import type { AppConfig, ToolConfig } from '@types';
 import { ShimGenerator } from '../ShimGenerator';
 import { createMockAppConfig, createMemFileSystem, type FileSystemSpies } from '@testing-helpers'; // Import createMemFileSystem and FileSystemSpies

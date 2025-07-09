@@ -1,11 +1,6 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--getLatestRelease.test.ts
- * @description Tests for the GitHubApiClient's getLatestRelease method.
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRelease } from '@types';
-import { NetworkError, RateLimitError, NotFoundError } from '../../downloader/errors';
+import { NetworkError, RateLimitError, NotFoundError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 

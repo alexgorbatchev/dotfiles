@@ -1,27 +1,4 @@
-/**
- * @file src/modules/logger/__tests__/createLogger.test.ts
- * @description Tests for the createLogger utility.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `.clinerules` (for testing requirements)
- * - `memory-bank/techContext.md`
- *
- * ### Tasks:
- * - [x] Import `describe`, `it`, `expect` from `bun:test`.
- * - [x] Import `createLogger` from `../createLogger`.
- * - [x] Import `debug`.
- * - [x] Test if `createLogger` returns a debug instance.
- * - [x] Test if the namespace is correctly formed.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import { describe, it, expect } from 'bun:test';
-// import debug from 'debug'; // Not directly used in tests, createLogger itself uses it.
 import { createLogger } from '../createLogger';
 
 describe('createLogger', () => {

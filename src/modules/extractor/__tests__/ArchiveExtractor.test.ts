@@ -1,14 +1,13 @@
-import { describe, it, expect, mock, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
+import { NodeFileSystem, type IFileSystem } from '@modules/file-system';
+import { createTestDirectories, type TestDirectories } from '@testing-helpers';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { exec as actualExecCallbackSignature } from 'node:child_process'; // Renamed for clarity
 import * as nodeFs from 'node:fs';
 import * as nodePath from 'node:path';
-import { exec as actualExecCallbackSignature } from 'node:child_process'; // Renamed for clarity
 import { promisify } from 'node:util'; // Import promisify
+import { $ } from 'zx'; // For creating test archives
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
-import { NodeFileSystem } from '@modules/file-system/NodeFileSystem';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { $ } from 'zx'; // For creating test archives
-import { createTestDirectories, type TestDirectories } from '@testing-helpers';
 
 // This is the real exec, promisified, for use INSIDE our mock's implementation when needed
 const realPromisedExecViaUtil = promisify(actualExecCallbackSignature);
@@ -340,3 +339,4 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     });
   });
 });
+

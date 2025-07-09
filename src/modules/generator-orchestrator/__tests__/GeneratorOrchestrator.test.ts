@@ -1,59 +1,11 @@
-/**
- * @file src/modules/generator-orchestrator/__tests__/GeneratorOrchestrator.test.ts
- * @description Unit tests for the GeneratorOrchestrator class.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] **Setup Mocks:**
- *   - [x] Mock `IShimGenerator`.
- *   - [x] Mock `IShellInitGenerator`.
- *   - [x] Mock `ISymlinkGenerator`.
- *   - [x] Mock `IFileSystem`.
- *   - [x] Mock `AppConfig`. (Now uses `createMockAppConfig`)
- * - [x] **Test Suite for `GeneratorOrchestrator`:**
- *   - [x] **Constructor:**
- *     - [x] Test correct initialization.
- *   - [x] **`generateAll` Method:**
- *     - [x] Test coordination: ensure sub-generators are called correctly with appropriate options.
- *     - [x] Test manifest reading:
- *       - [x] Scenario: No existing manifest.
- *       - [x] Scenario: Existing valid manifest.
- *       - [x] Scenario: Existing invalid/corrupted manifest.
- *     - [x] Test manifest updating:
- *       - [x] Ensure `lastGenerated` is updated (formerly `lastGenerationTimestamp`).
- *       - [x] Ensure `generatorVersion` is added if provided.
- *       - [x] Ensure artifact paths/details are correctly collected and stored using new return types:
- *         - [x] Shims: Use `string[]` from `shimGenerator.generate()`.
- *         - [x] Shell Init: Use `string | null` from `shellInitGenerator.generate()` for `shellInit.path`.
- *         - [x] Symlinks: Use `SymlinkOperationResult[]` from `symlinkGenerator.generate()`.
- *     - [x] Test manifest writing:
- *       - [x] Ensure `ensureDir` and `writeFile` are called with correct path and content (using the injected `IFileSystem`).
- *       - [x] Ensure manifest is pretty-printed (JSON.stringify with indent).
- *     - [x] Test behavior with `MemFileSystem` (simulating previous dry run for inspection):
- *       - [x] Sub-generators called *without* `dryRun` option.
- *       - [x] Manifest is written to the `MemFileSystem`.
- *       - [x] Returns the generated manifest.
- *     - [x] Test with empty `toolConfigs`.
- * - [x] Refactor dry run mechanism:
- *   - [x] Remove tests for `dryRun` option being passed to sub-generators.
- *   - [x] Verify manifest is always written to the provided `IFileSystem`.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Ensure 100% test coverage (passes in full suite).
- * - [x] Refactor to use `createMemFileSystem` helper.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
+import type { IFileSystem } from '@modules/file-system';
+import type { IShellInitGenerator } from '@modules/generator-shell-init';
+import type { IShimGenerator } from '@modules/generator-shim';
+import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
+import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
+import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { AppConfig, GeneratedArtifactsManifest, ToolConfig } from '@types';
-import { createMockAppConfig } from '@testing-helpers';
-import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem } from '@testing-helpers';
-import type { IShimGenerator } from '@modules/generator-shim';
-import type { IShellInitGenerator } from '@modules/generator-shell-init';
-import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator', () => {

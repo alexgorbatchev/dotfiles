@@ -1,19 +1,6 @@
-/**
- * @file src/modules/downloader/__tests__/NodeFetchStrategy.test.ts
- * @description Tests for the NodeFetchStrategy class.
- *
- * ## Development Plan
- *
- * - [x] Refactor fetch mocking to use FetchMockHelper.
- * - [x] Ensure NodeFetchStrategy is instantiated with IFileSystem (verified, no change needed).
- * - [x] Update tests for onProgress callback signature and add new test cases.
- * - [ ] Ensure all tests pass with 100% coverage.
- * - [ ] Cleanup linting errors.
- * - [ ] Update memory bank if necessary (not for this subtask).
- */
-
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import { createLogger } from '@modules/logger';
+import { createMemFileSystem, FetchMockHelper } from '@testing-helpers';
 import {
   beforeEach,
   describe,
@@ -21,7 +8,6 @@ import {
   it,
   mock
 } from 'bun:test';
-import { createMemFileSystem, FetchMockHelper } from '../../../testing-helpers';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 import {
   ClientError,

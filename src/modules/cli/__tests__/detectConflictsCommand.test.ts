@@ -1,13 +1,13 @@
 import { exitCli } from '@modules/cli/exitCli';
 import type { AppConfig } from '@modules/config';
-import * as configLoader from '@modules/config-loader/loadToolConfigs';
+import * as configLoader from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
-import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; 
-import { createMockAppConfig, createMockClientLogger, createMemFileSystem, type MockClientLogger, type FileSystemSpies } from '@testing-helpers';
-import type { GeneratedArtifactsManifest, GithubReleaseToolConfig, ManualToolConfig } from '@types'; 
-import { beforeEach, describe, expect, mock, test } from 'bun:test'; 
+import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
+import { createMemFileSystem, createMockAppConfig, createMockClientLogger, type FileSystemSpies, type MockClientLogger } from '@testing-helpers';
+import type { GeneratedArtifactsManifest, GithubReleaseToolConfig, ManualToolConfig } from '@types';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import { Command } from 'commander';
-import path from 'node:path'; 
+import path from 'node:path';
 import { detectConflictsActionLogic, registerDetectConflictsCommand } from '../detectConflictsCommand';
 
 import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance

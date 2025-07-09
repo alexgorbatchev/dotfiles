@@ -1,18 +1,11 @@
-/**
- * @file src/modules/installer/__tests__/Installer--customGitHubHost.test.ts
- * @description Tests for the Installer's handling of custom GitHub host.
- */
-
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
-// Removed unused import: path
-import { Installer } from '../Installer';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { createMemFileSystem, createMockAppConfig } from '../../../testing-helpers';
 import type { IDownloader } from '@modules/downloader';
-import type { IGitHubApiClient } from '@modules/github-client';
 import type { IArchiveExtractor } from '@modules/extractor'; // Added
-import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '@types';
-// createMockAppConfig is now imported from '../../../testing-helpers' via the line above
+import type { IFileSystem } from '@modules/file-system';
+import type { IGitHubApiClient } from '@modules/github-client';
+import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
+import type { AppConfig, ExtractResult, GitHubRelease, ToolConfig } from '@types';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { Installer } from '../Installer';
 
 describe('Installer with custom GitHub host', () => {
   // Mock data

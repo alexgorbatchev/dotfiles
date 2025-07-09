@@ -1,8 +1,3 @@
-/**
- * @file src/modules/file-system/__tests__/NodeFileSystem.test.ts
- * @description Tests for the NodeFileSystem implementation.
- */
-
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { NodeFileSystem } from '../NodeFileSystem';
 import type { IFileSystem } from '../IFileSystem';

@@ -1,44 +1,5 @@
-/**
- * @file src/modules/config/__tests__/config.test.ts
- * @description Tests for the application configuration.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `.clinerules` (for testing requirements)
- * - `memory-bank/techContext.md` (Configuration System (.env) section)
- * - `src/modules/config/config.ts`
- * - `src/types.ts` (for AppConfig type)
- *
- * ### Tasks:
- * - [x] Import `describe`, `it`, `expect`, `beforeEach`, `afterEach` from `bun:test`.
- * - [x] Import `AppConfig` type.
- * - [x] Import `join`, `resolve` from `path`.
- * - [x] Import `homedir` from `os`.
- * - [x] Test default values when .env is empty or values are missing.
- *   - [x] Test loading values from mocked process.env.
- *   - [x] Test derived paths are correctly constructed.
- *   - [x] Test boolean parsing for `CACHE_ENABLED`.
- *   - [x] Test `GITHUB_CLIENT_USER_AGENT` loading and default.
- * - [x] Add tests for tilde (`~`) expansion in path configurations.
- *   - [x] Verify `DOTFILES_DIR` with `~/...` is expanded.
- *   - [x] Verify `GENERATED_DIR` with `~` is expanded.
- *   - [x] Verify other path variables like `TOOL_CONFIGS_DIR` are expanded.
- *   - [x] Verify paths without tilde are not affected.
- *   - [x] Verify default paths are correctly resolved if tilde paths are not provided.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Ensure 100% test coverage.
- * - [x] Test `toolConfigsDir` default value and loading from env.
- * - [x] Update tests to reflect corrected `toolConfigsDir` default path.
- * - [x] Add tests for `githubHost` property and `GITHUB_HOST` environment variable.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
 import { describe, it, expect } from 'bun:test';
 import { join, resolve } from 'path';
-// homedir will be mocked or passed via SystemInfo
-// import { homedir } from 'os'; // No longer needed directly here for default homedir
-// import type { AppConfig } from '@types'; // AppConfig type is implicitly used by createAppConfig return
 import { createAppConfig, type SystemInfo, type ConfigEnvironment } from '../index'; // Updated import path
 
 describe('createAppConfig', () => {

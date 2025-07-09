@@ -1,37 +1,6 @@
 /**
  * @file src/modules/versionChecker/__tests__/VersionChecker.test.ts
  * @description Unit tests for the VersionChecker module.
- *
- * ## Development Plan
- *
- * ### Stage 1: Define Interface (IVersionChecker.ts)
- * - [x] Define `VersionComparisonStatus` enum.
- * - [x] Define `IVersionChecker` interface.
- *
- * ### Stage 2: Implement Class (VersionChecker.ts)
- * - [x] Implement `VersionChecker` class.
- *
- * ### Stage 3: Create Barrel File (index.ts)
- * - [x] Export `IVersionChecker`, `VersionComparisonStatus`, and `VersionChecker`.
- *
- * ### Stage 4: Write Tests (This file)
- * - [x] Mock `IGitHubApiClient`.
- * - [x] Test `getLatestToolVersion`:
- *   - [x] Success case (with and without 'v' prefix).
- *   - [x] GitHub client returns null release.
- *   - [x] GitHub client returns release with no tag_name.
- *   - [x] GitHub client throws error.
- * - [x] Test `checkVersionStatus`:
- *   - [x] `NEWER_AVAILABLE`.
- *   - [x] `UP_TO_DATE`.
- *   - [x] `AHEAD_OF_LATEST`.
- *   - [x] `INVALID_CURRENT_VERSION`.
- *   - [x] `INVALID_LATEST_VERSION`.
- *   - [x] Versions with 'v' prefix.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { describe, it, expect, mock, beforeEach } from 'bun:test';

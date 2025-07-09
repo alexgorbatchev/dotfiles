@@ -1,19 +1,3 @@
-/**
- * @file src/testing-helpers/__tests__/createMemFileSystem.test.ts
- * @description Unit tests for the createMemFileSystem helper.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Test: `createMemFileSystem` should create a functional `IFileSystem` instance without options.
- * - [x] Test: It should initialize the file system with the provided `initialVolumeJson`.
- * - [x] Test: It should return spies for all `IFileSystem` methods.
- * - [x] Test: The spies should be called when the `fs` methods are invoked.
- * - [x] Test: It should use a provided mock implementation for a specific method.
- * - [x] Test: It should handle a combination of mocks and spies.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import { describe, it, expect, mock } from 'bun:test';
 import { createMemFileSystem } from '../createMemFileSystem';
 

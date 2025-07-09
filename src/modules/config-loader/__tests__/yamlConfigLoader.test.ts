@@ -1,33 +1,3 @@
-/**
- * @file src/modules/config-loader/__tests__/yamlConfigLoader.test.ts
- * @description Unit tests for the YamlConfigLoader.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `src/modules/config-loader/YamlConfigLoader.ts`
- * - `src/config/default-config.yaml`
- * - `src/types/config.yaml.types.ts`
- * - `src/modules/config/config.yaml.schema.ts`
- * - `src/types/platform.types.ts`
- *
- * ### Tasks:
- * - [x] Import necessary modules and types.
- * - [x] Refactor tests to use `createMemFileSystem` for simpler mocking.
- * - [x] Refactor tests to use `createYamlConfigFromFileSystem`.
- * - [x] Remove global mock of `yamlConfigSchema.parse` and apply mocks only where needed.
- * - [x] Test scenario: Loading default config only (no user config).
- * - [x] Test scenario: Loading and merging default config with user config.
- * - [x] Test scenario: Platform-specific overrides from user config are correctly applied.
- * - [x] Test scenario: No platform-specific overrides are applied when none are defined.
- * - [x] Test scenario: Token substitution for environment variables.
- * - [x] Test scenario: Token substitution for config references.
- * - [x] Test scenario: Error handling when default config file does not exist.
- * - [x] Test scenario: Error handling when user config file does not exist (covered by `createYamlConfigFromFileSystem` behavior).
- * - [x] Test scenario: Error handling when config validation fails.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import { createMemFileSystem } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
 import {

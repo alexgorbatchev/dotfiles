@@ -1,39 +1,7 @@
-/**
- * @file src/modules/generator-shell-init/__tests__/ShellInitGenerator.test.ts
- * @description Unit tests for the ShellInitGenerator class.
- *
- * ## Development Plan (for ShellInitGenerator.test.ts)
- *
- * ### Tasks:
- * - [x] Mock `IFileSystem` and `AppConfig` for dependency injection. (AppConfig now uses `createMockAppConfig`)
- * - [x] Test content generation for various scenarios:
- *   - [x] No tool configurations.
- *   - [x] Single tool with basic PATH modification.
- *   - [x] Single tool with environment variables.
- *   - [x] Single tool with `zshInit` scripts.
- *   - [x] Single tool with Zsh completions.
- *   - [x] Multiple tools with mixed configurations.
- *   - [x] Deduplication of PATH, env vars, and completion setup lines.
- *   - [x] Correct ordering (PATH, Env Vars, Tool Inits, Completions).
- *   - [x] Verify that the correct file path is used for writing (default and custom).
- *   - [x] Test behavior when using `MemFileSystem` (simulating dry run): attempts file operations, returns path.
- *   - [x] Ensure `ensureDir` is called before `writeFile`.
- *   - [x] Test that `typeset -U fpath` is added if completions are present and fpath not already set.
- *   - [x] Test return value (`string` for path on success/dryRun, `null` on failure).
- * - [x] Aim for 100% test coverage.
- * - [x] Adhere to logging rules (no mocking logger, no asserting log output).
- * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
- * - [x] Refactor to use `createMemFileSystem` helper.
- * - [ ] Update the memory bank with the new information when all tasks are complete (part of the overall module task).
- */
-import { beforeEach, describe, expect, it } from 'bun:test';
-
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
 import type { AppConfig, ToolConfig } from '@types';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';

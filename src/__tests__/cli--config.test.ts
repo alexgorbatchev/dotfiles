@@ -1,19 +1,5 @@
-/**
- * @file src/__tests__/cli--config.test.ts
- * @description Tests for the CLI's global --config option.
- *
- * ## Development Plan
- * - [x] Move --config option tests from cli.test.ts to this file.
- * - [x] Ensure all necessary imports and mocks are correctly set up.
- * - [x] Verify tests pass in isolation.
- * - [x] Fix failing tests related to --config option.
- *   - [x] Diagnose why '--config option should not log config path if not provided, and not error' fails.
- *   - [x] Diagnose why '--config option logging occurs even if a command action subsequently fails' fails.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-import * as generateCommandModule from '@modules/cli/generateCommand';
-import * as newConfigLoaderModule from '@modules/config-loader/loadToolConfigs'; // For loadToolConfigsFromDirectorySpy
+import * as generateCommandModule from '@modules/cli';
+import * as newConfigLoaderModule from '@modules/config-loader'; // For loadToolConfigsFromDirectorySpy
 import * as clientLoggerModule from '@modules/logger';
 import { createMockClientLogger } from '@testing-helpers';
 import { beforeEach, describe, expect, mock, spyOn, test, type Mock } from 'bun:test';

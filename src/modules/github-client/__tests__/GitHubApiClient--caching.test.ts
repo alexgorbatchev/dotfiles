@@ -1,8 +1,3 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--caching.test.ts
- * @description Tests for the GitHubApiClient's caching behavior.
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRateLimit } from '@types';
 import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from './fixtures/cacheTestFixtures';

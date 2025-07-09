@@ -1,11 +1,6 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--getReleaseByTag.test.ts
- * @description Tests for the GitHubApiClient's getReleaseByTag method.
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRelease } from '@types';
-import { ClientError, RateLimitError, NotFoundError } from '../../downloader/errors';
+import { ClientError, RateLimitError, NotFoundError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 

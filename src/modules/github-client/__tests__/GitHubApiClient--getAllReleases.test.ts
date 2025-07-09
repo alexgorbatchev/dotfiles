@@ -1,11 +1,6 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--getAllReleases.test.ts
- * @description Tests for the GitHubApiClient's getAllReleases method.
- */
-
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { GitHubRelease } from '@types';
-import { RateLimitError, ServerError } from '../../downloader/errors';
+import { RateLimitError, ServerError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 

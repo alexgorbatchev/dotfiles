@@ -1,15 +1,10 @@
-/**
- * @file src/modules/downloader/__tests__/Downloader.test.ts
- * @description Tests for the Downloader class.
- */
-
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { Downloader } from '@modules/downloader';
-import type { DownloadOptions } from '../IDownloader';
+import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem } from '@testing-helpers';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { DownloadStrategy } from '../DownloadStrategy';
+import type { DownloadOptions } from '../IDownloader';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import { createMemFileSystem } from '../../../testing-helpers';
 
 // Mock DownloadStrategy
 // Define types for our mock strategies to be reassigned in beforeEach

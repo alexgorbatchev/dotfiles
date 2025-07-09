@@ -1,39 +1,17 @@
-/**
- * @file Tests for the Installer class.
- *
- * ## Development Plan
- *
- * - [x] Setup test environment with mocks for dependencies
- * - [x] Test constructor initialization
- * - [x] Test install method with different installation methods
- * - [x] Test GitHub release installation method
- * - [x] Test Homebrew installation method
- * - [x] Test curl script installation method
- * - [x] Test curl tar installation method
- * - [x] Test manual installation method
- * - [x] Test error handling
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Test URL construction logic for absolute and relative URLs in GitHub release installation.
- * - [x] Test enhanced error message for missing assets in GitHub release installation.
- * - [x] Test population of `otherChanges` in `InstallResult`.
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import type { IDownloader } from '../../downloader/IDownloader';
-import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor'; // Added
-import type { AppConfig, ToolConfig, GitHubRelease, ExtractResult } from '@types'; // Added ExtractResult
-import { Installer } from '../Installer';
+import type { IDownloader } from '@modules/downloader';
+import type { IArchiveExtractor } from '@modules/extractor'; // Added
+import type { IFileSystem } from '@modules/file-system';
+import type { IGitHubApiClient } from '@modules/github-client';
 import {
   createMemFileSystem,
   createMockAppConfig,
   createTestDirectories,
   type TestDirectories,
 } from '@testing-helpers';
+import type { AppConfig, ExtractResult, GitHubRelease, ToolConfig } from '@types'; // Added ExtractResult
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import path from 'node:path';
+import { Installer } from '../Installer';
 
 describe('Installer', () => {
   let mockFileSystem: IFileSystem;

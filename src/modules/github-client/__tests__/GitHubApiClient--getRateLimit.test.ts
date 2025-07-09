@@ -1,11 +1,6 @@
-/**
- * @file src/modules/github-client/__tests__/GitHubApiClient--getRateLimit.test.ts
- * @description Tests for the GitHubApiClient's getRateLimit method.
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRateLimit } from '@types';
-import { HttpError } from '../../downloader/errors';
+import { HttpError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import { type MockSetup, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 

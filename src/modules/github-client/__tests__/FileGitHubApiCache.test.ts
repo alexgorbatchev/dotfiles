@@ -1,70 +1,10 @@
-/**
- * @file src/modules/github-client/__tests__/FileGitHubApiCache.test.ts
- * @description Tests for the FileGitHubApiCache class.
- *
- * ## Development Plan
- *
- * - [x] **Setup Mocks:**
- *   - [x] Mock `IFileSystem` interface using `bun:test`'s `mock`.
- *   - [x] Mock `AppConfig` with required properties. (Now uses `createMockAppConfig`)
- * - [x] **Test Suite for `FileGitHubApiCache`:**
- *   - [x] **Constructor:**
- *     - [x] Test initialization with default settings.
- *     - [x] Test initialization with custom TTL.
- *     - [x] Test initialization with cache disabled.
- *   - [x] **`get<T>` Method:**
- *     - [x] Test successful retrieval of cached data.
- *     - [x] Test cache miss when file doesn't exist.
- *     - [x] Test cache miss when entry is expired.
- *     - [x] Test handling of file read errors.
- *     - [x] Test handling of invalid JSON.
- *     - [x] Test behavior when cache is disabled.
- *   - [x] **`set<T>` Method:**
- *     - [x] Test successful caching of data.
- *     - [x] Test with custom TTL.
- *     - [x] Test handling of file write errors.
- *     - [x] Test behavior when cache is disabled.
- *   - [x] **`has` Method:**
- *     - [x] Test when entry exists and is not expired.
- *     - [x] Test when entry doesn't exist.
- *     - [x] Test when entry exists but is expired.
- *     - [x] Test handling of file read errors.
- *     - [x] Test behavior when cache is disabled.
- *   - [x] **`delete` Method:**
- *     - [x] Test successful deletion of cache entry.
- *     - [x] Test when entry doesn't exist.
- *     - [x] Test handling of file delete errors.
- *     - [x] Test behavior when cache is disabled.
- *   - [x] **`clearExpired` Method:**
- *     - [x] Test successful clearing of expired entries.
- *     - [x] Test handling of directory read errors.
- *     - [x] Test handling of file read errors.
- *     - [x] Test handling of file delete errors.
- *     - [x] Test behavior when cache is disabled.
- *   - [x] **`clear` Method:**
- *     - [x] Test successful clearing of entire cache.
- *     - [x] Test when cache directory doesn't exist.
- *     - [x] Test handling of directory delete errors.
- *     - [x] Test behavior when cache is disabled.
- *   - [x] **Private Methods (Indirect Testing):**
- *     - [x] Test `getCacheFilePath` via public methods.
- *     - [x] Test `ensureCacheDir` via public methods.
- *     - [x] Test `isExpired` via public methods.
- * - [x] Ensure all tests pass.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Achieve 100% test coverage for `FileGitHubApiCache.ts`.
- * - [x] Update mockAppConfig with `generatedArtifactsManifestPath`.
- * - [ ] Update the memory bank.
- */
-
-import { mock, beforeEach, describe, expect, it } from 'bun:test';
-import { FileGitHubApiCache } from '../FileGitHubApiCache';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
 import type { AppConfig } from '@types';
-import { createMockAppConfig } from '@testing-helpers';
-import { createMemFileSystem } from '../../../testing-helpers'; // Corrected path
-import type { CacheEntry } from '../IGitHubApiCache'; // Corrected import for CacheEntry
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'path';
+import { FileGitHubApiCache } from '../FileGitHubApiCache';
+import type { CacheEntry } from '../IGitHubApiCache'; 
 
 describe('FileGitHubApiCache', () => {
   let mockFileSystem: IFileSystem;

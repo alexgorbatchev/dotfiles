@@ -1,35 +1,3 @@
-/**
- * @file src/modules/generator-symlink/__tests__/SymlinkGenerator.test.ts
- * @description Unit tests for the SymlinkGenerator class.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define `GenerateSymlinksOptions` interface (in `ISymlinkGenerator.ts`).
- * - [x] Define `ISymlinkGenerator` interface (in `ISymlinkGenerator.ts`).
- * - [x] Implement `SymlinkGenerator` class (in `SymlinkGenerator.ts`).
- *   - [x] Write tests for `SymlinkGenerator`.
- *     - [x] Test successful symlink creation and result.
- *     - [x] Test source file not found and result.
- *     - [x] Test target already exists (skip, overwrite, backup behaviors) and results.
- *     - [x] Test return value (`SymlinkOperationResult[]`).
- *   - [x] Test path expansion (~ to home directory).
- *   - [x] Test behavior when using `MemFileSystem` (simulating dry run): attempts file operations, returns appropriate status.
- *   - [x] Test with empty toolConfigs.
- *   - [x] Test with toolConfig with no symlinks.
- *   - [x] Test backup file already exists.
- *   - [x] Test target is a directory (for overwrite).
- * - [x] Create `index.ts` to export the interface and class.
- * - [x] Refactor dry run mechanism: Remove `dryRun` option from tests and adapt test logic.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Update appConfig with `generatedArtifactsManifestPath`. (Now uses `createMockAppConfig`)
- * - [x] Ensure 100% test coverage for executable code.
- * - [x] Refactor to use `createMemFileSystem` helper.
- * - [x] Update mock AppConfig to correctly set `homeDir` for tests.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
 import type { AppConfig, ToolConfig } from '@types';

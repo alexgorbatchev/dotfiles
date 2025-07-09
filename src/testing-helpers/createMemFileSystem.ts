@@ -1,28 +1,3 @@
-/**
- * @file src/testing-helpers/createMemFileSystem.ts
- * @description Provides a test helper for creating a customizable IFileSystem instance backed by an in-memory file system.
- *
- * ## Development Plan
- *
- * ### Overview
- * This file provides a helper function `createMemFileSystem` to easily create
- * `IFileSystem` instances for testing, backed by `MemFileSystem`. It allows for
- * initializing the file system with a volume and spying on or mocking individual
- * file system methods.
- *
- * ### Tasks
- * - [x] Change function signature to use an options object.
- * - [x] Add functionality to provide individual mocks for any `IFileSystem` method.
- * - [x] Define `MemFileSystemOptions` interface for the options.
- * - [x] Define `MemFileSystemReturn` to return both the `IFileSystem` instance and the spies/mocks.
- * - [x] Implement the function to create a `MemFileSystem` and wrap its methods with mocks/spies.
- * - [x] If a mock is provided, use it; otherwise, create a spy on the original `MemFileSystem` method.
- * - [x] Update JSDoc for the function and interfaces.
- * - [x] Write tests for the module.
- * - [x] Fix all errors and warnings by running lint and test.
- * - [x] Remove all commented out code and meta-comments.
- * - [x] Ensure 100% test coverage for executable code by running the tests.
- */
 import { MemFileSystem, type IFileSystem } from '@modules/file-system';
 import { mock } from 'bun:test';
 import type { DirectoryJSON } from 'memfs';
