@@ -33,9 +33,10 @@
  */
 
 import path from 'node:path';
-import type { AppConfig, ToolConfig } from '@types';
+import type { ToolConfig } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import { createLogger } from '@modules/logger';
+import type { YamlConfig } from '@modules/config';
 import type {
   GenerateSymlinksOptions,
   ISymlinkGenerator,
@@ -43,14 +44,13 @@ import type {
 } from './ISymlinkGenerator';
 
 const log = createLogger('SymlinkGenerator');
-
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
-  private readonly appConfig: AppConfig;
+  private readonly yamlConfig: YamlConfig;
 
-  constructor(fileSystem: IFileSystem, appConfig: AppConfig) {
+  constructor(fileSystem: IFileSystem, yamlConfig: YamlConfig) {
     this.fs = fileSystem;
-    this.appConfig = appConfig;
+    this.yamlConfig = yamlConfig;
     log('constructor: SymlinkGenerator initialized');
   }
 
@@ -66,8 +66,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     const results: SymlinkOperationResult[] = [];
     // dryRun is removed; IFileSystem handles behavior
     const { overwrite = false, backup = false } = options;
-    const homeDir = this.appConfig.homeDir;
-    const projectRoot = this.appConfig.dotfilesDir;
+    const homeDir = this.yamlConfig.paths.targetDir;
+    const projectRoot = this.yamlConfig.paths.dotfilesDir;
 
     log('generate: Home directory determined as: %s', homeDir);
     log('generate: Project root determined as: %s', projectRoot);

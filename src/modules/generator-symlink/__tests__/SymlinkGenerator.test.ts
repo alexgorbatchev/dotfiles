@@ -1,34 +1,46 @@
 import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem, createMockAppConfig } from '@testing-helpers';
-import type { AppConfig, ToolConfig } from '@types';
+import { createMemFileSystem } from '@testing-helpers';
+import type { ToolConfig } from '@types';
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import type { YamlConfig } from '@modules/config';
+import {
+  createYamlConfigFromObject,
+  getDefaultConfigPath,
+} from '@modules/config-loader';
+import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import path from 'node:path';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
   let fs: IFileSystem;
-  let appConfig: AppConfig;
+  let yamlConfig: YamlConfig;
   let symlinkGenerator: SymlinkGenerator;
 
   const MOCK_HOME_DIR = '/Users/testuser';
   const MOCK_PROJECT_ROOT = `${MOCK_HOME_DIR}/.dotfiles`;
 
-  beforeEach(() => {
-    const { fs: memFs } = createMemFileSystem();
-    fs = memFs;
-    appConfig = createMockAppConfig({
-      dotfilesDir: MOCK_PROJECT_ROOT, // Crucial for SymlinkGenerator
-      homeDir: MOCK_HOME_DIR, // Ensure appConfig.homeDir is the mocked home directory
+  beforeEach(async () => {
+    const { fs: memFs } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
     });
+    fs = memFs;
 
-    symlinkGenerator = new SymlinkGenerator(fs, appConfig);
-  });
+    yamlConfig = await createYamlConfigFromObject(
+      fs,
+      {
+        paths: {
+          dotfilesDir: MOCK_PROJECT_ROOT,
+          targetDir: MOCK_HOME_DIR,
+        },
+      },
+      { platform: 'linux', arch: 'x64' },
+      {},
+    );
 
-  afterEach(() => {
-    // Bun's mock.restoreAll() or specific mock.restore() might be needed
-    // if mocks persist across tests in a way that causes issues.
-    // For now, assuming Bun's test isolation handles this or individual mocks are managed.
+    symlinkGenerator = new SymlinkGenerator(fs, yamlConfig);
   });
 
   const createToolConfig = (symlinks: Array<{ source: string; target: string }>): ToolConfig => ({

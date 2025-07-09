@@ -141,7 +141,6 @@ export type YamlConfig = z.infer<typeof yamlConfigSchema>;
         match: [{ os: 'macos' }, { arch: 'arm64' }],
         config: {
           paths: {
-
             dotfilesDir: 'macos-arm64-dotfiles',
           },
         },

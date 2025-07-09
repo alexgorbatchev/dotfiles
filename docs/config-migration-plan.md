@@ -2,6 +2,11 @@
 
 This document outlines the detailed, step-by-step plan to migrate the project's configuration from a `.env` file to a structured, layered `config.yaml` system.
 
+### Mandatory Reading
+- src/modules/config-loader/default-config.yaml
+- src/testing-helpers/createMockYamlConfig.ts
+- src/modules/config-loader/__tests__/fixtures.ts
+
 ---
 
 ### **Phase 1: Foundation & Schema Design (Completed)**
@@ -44,6 +49,7 @@ This phase focuses on incrementally migrating the entire application from the ol
         *   Use `MOCK_DEFAULT_CONFIG` from `@modules/config-loader/__tests__/fixtures` for the default configuration in tests.
         *   Use the `initialVolumeJson` property of the `createMemFileSystem` function to provide the default configuration.
         *   Use the `getDefaultConfigPath` helper function from `@modules/config-loader` to get the path to the default configuration file.
+        *   Do not create single-use variables.
     *   **Validation Criteria**: A module is considered successfully migrated when:
         1.  All its code has been updated to use `YamlConfig` instead of `AppConfig`
         2.  All its tests have been updated to use `createMockYamlConfig`
@@ -52,7 +58,7 @@ This phase focuses on incrementally migrating the entire application from the ol
 *   **[ ] Task 3.1: Migrate Core Modules**: This is the ordered list of modules to be migrated.
     *   **[x]** `github-client`: Migrate `GitHubApiClient` and `FileGitHubApiCache`.
     *   **[x]** `installer`: Depends on `github-client`.
-    *   **[ ]** `generator-symlink`: Depends on `file-system`.
+    *   **[x]** `generator-symlink`: Depends on `file-system`.
     *   **[ ]** `generator-shim`: Depends on `file-system`.
     *   **[ ]** `generator-shell-init`: Depends on `file-system`.
 *   **[ ] Task 3.2: Migrate Orchestrator & CLI**:
