@@ -1,62 +1,56 @@
-import * as generateCommandModule from '@modules/cli';
-import * as newConfigLoaderModule from '@modules/config-loader'; // For loadToolConfigsFromDirectorySpy
+import * as cliModule from '@cli';
+import * as configLoaderModule from '@modules/config-loader';
 import * as clientLoggerModule from '@modules/logger';
 import { createMockClientLogger } from '@testing-helpers';
 import { beforeEach, describe, expect, mock, spyOn, test, type Mock } from 'bun:test';
 import type { ConsolaInstance } from 'consola';
-import { main as actualMain } from '../cli';
 
 // Spies and Mocks needed for these tests
 let loggerMocks: ReturnType<typeof createMockClientLogger>['loggerMocks'];
-let mockClientLogger: ConsolaInstance; // Renamed from defaultMcl to avoid conflict if used elsewhere
+let mockClientLogger: ConsolaInstance;
 let createClientLoggerSpy: Mock<typeof clientLoggerModule.createClientLogger>;
-let generateActionLogicSpy: Mock<typeof generateCommandModule.generateActionLogic>;
-let loadToolConfigsFromDirectorySpy: Mock<typeof newConfigLoaderModule.loadToolConfigsFromDirectory>;
 
 describe('CLI Global Options --config', () => {
-  beforeEach(async () => {
-    mock.restore()
+  beforeEach(() => {
+    mock.restore();
 
-    // Initialize spies relevant to these tests
     const { mockClientLogger: mcl, loggerMocks: lm } = createMockClientLogger();
     mockClientLogger = mcl;
     loggerMocks = lm;
 
-    createClientLoggerSpy = spyOn(clientLoggerModule, 'createClientLogger').mockImplementation(
-      () => 
-        mockClientLogger
-    );
+    createClientLoggerSpy = spyOn(clientLoggerModule, 'createClientLogger').mockReturnValue(mockClientLogger);
+    spyOn(configLoaderModule, 'loadToolConfigsFromDirectory').mockResolvedValue({});
 
-    generateActionLogicSpy = spyOn(generateCommandModule, 'generateActionLogic');
-    loadToolConfigsFromDirectorySpy = spyOn(newConfigLoaderModule, 'loadToolConfigsFromDirectory');
-    loadToolConfigsFromDirectorySpy.mockResolvedValue({}); // Default mock
+    // Since we are not testing the services themselves, we can mock setupServices
+    // to return a minimal object.
+    spyOn(cliModule, 'setupServices').mockResolvedValue({
+      appConfig: { toolConfigsDir: '/fake/dir' },
+      fs: { constructor: { name: 'MockFS' } },
+      generatorOrchestrator: { generateAll: mock(async () => ({})) },
+    } as any);
   });
 
   test('--config option should be parsed and logged if provided', async () => {
     const testConfigPath = './my-test-config.yaml';
     const testArgv = ['node', 'cli.ts', '--config', testConfigPath, 'generate'];
 
-    generateActionLogicSpy.mockResolvedValue({} as any);
+    await cliModule.main(testArgv);
 
-    await actualMain(testArgv); // No longer pass testProgram
+    // The hook logger and the command logger
+    expect(createClientLoggerSpy).toHaveBeenCalledTimes(3);
 
-    expect(createClientLoggerSpy).toHaveBeenCalledTimes(2); // Hook + generate action
-
-    const hookLoggerInstance = createClientLoggerSpy.mock.results[0]?.value as ConsolaInstance | undefined;
-    expect(hookLoggerInstance).toBeDefined();
+    // Check that the hook logger was called with the correct message
     expect(loggerMocks.info).toHaveBeenCalledWith(`Config file path: ${testConfigPath}`);
   });
 
   test('--config option should not log config path if not provided, and not error', async () => {
     const testArgv = ['node', 'cli.ts', 'generate']; // No --config
-    generateActionLogicSpy.mockResolvedValue({} as any);
-    loadToolConfigsFromDirectorySpy.mockResolvedValue({});
 
+    await cliModule.main(testArgv);
 
-    await actualMain(testArgv); // No longer pass testProgram
+    // Only the command logger should be created
+    expect(createClientLoggerSpy).toHaveBeenCalledTimes(1);
 
-    expect(createClientLoggerSpy).toHaveBeenCalledTimes(1); // Only by generate action
-    
     const infoCalls = loggerMocks.info.mock.calls;
     const configLogFound = infoCalls.some(call => call[0]?.toString().startsWith('Config file path:'));
     expect(configLogFound).toBe(false);

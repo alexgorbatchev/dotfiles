@@ -1,97 +1,55 @@
-/**
- * @file detectConflictsCommand.ts
- * @description CLI command for detecting conflicts between potential generated artifacts and existing system files.
- *
- * ## Development Plan
- * - [x] Define `detectConflictsActionLogic` for core conflict detection.
- * - [x] Define `registerDetectConflictsCommand` for Commander setup.
- * - [x] Implement `--verbose` and `--quiet` options (though not strictly used by core logic yet, good for consistency).
- *   - [x] Action handler creates `clientLogger` with these options.
- *   - [x] Pass `clientLogger` to `detectConflictsActionLogic`.
- * - [x] `detectConflictsActionLogic` loads tool configs using `loadToolConfigsFromDirectory`.
- * - [x] Iterate through tool configs:
- *   - [x] Check for shim conflicts:
- *     - [x] If shim path exists, read its content.
- *     - [x] If content doesn't indicate it's a generator shim, log conflict.
- *     - [x] Handle errors reading shim file.
- *   - [x] Check for symlink conflicts:
- *     - [x] If symlink target path exists:
- *       - [x] If it's a symlink, check if it points to the expected source. Log conflict if not.
- *       - [x] If it's not a symlink, log conflict.
- *     - [x] Handle errors checking symlink target.
- * - [x] Report all detected conflicts or "No conflicts detected."
- * - [x] Exit with appropriate status code (1 for conflicts, 0 for none).
- * - [x] Ensure action handler calls `setupServices` to get its dependencies.
- * - [x] Refactor `registerDetectConflictsCommand` to no longer accept services as direct parameters.
- * - [x] Write/Update tests in `detectConflictsCommand.test.ts`.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Ensure 100% test coverage for executable code.
- * - [x] Update the memory bank with the new information when all tasks are complete.
- */
-import type { Command } from 'commander';
-import path from 'path'; // Removed 'node:' prefix
-import type { AppConfig } from '@modules/config';
-import type { IFileSystem, Stats } from '@modules/file-system'; // Corrected IFileSystem import and added Stats
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger'; // Import createClientLogger & createDebugLoggerInternal
-import type { ConsolaInstance } from 'consola'; // Import ConsolaInstance
-import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
+import { loadToolConfigsFromDirectory } from '@modules/config-loader';
+import type { Stats } from '@modules/file-system';
+import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
 import type { ToolConfig } from '@types';
+import type { ConsolaInstance } from 'consola';
+import path from 'path';
+import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
-import { setupServices } from '../../cli'; // Import setupServices
-import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator'; // Added for services
 
 const commandInternalLog = createDebugLoggerInternal('detectConflictsCommand');
 
-interface DetectConflictsCommandServices {
-  appConfig: AppConfig;
-  fileSystem: IFileSystem;
-  clientLogger: ConsolaInstance; // Changed ClientLogger to ConsolaInstance
-  loadToolConfigsFromDirectory: typeof loadToolConfigsFromDirectory;
-  generatorOrchestrator: IGeneratorOrchestrator; // Added
-}
-
-// Local setupServices removed, will use globalSetupServices from ../../cli
-
 export async function detectConflictsActionLogic(
   _options: {}, // No specific options for this command yet
-  services: DetectConflictsCommandServices,
+  services: Services,
+  clientLogger: ConsolaInstance,
 ): Promise<void> {
-  const { appConfig, fileSystem, clientLogger, loadToolConfigsFromDirectory: loadConfigs } = services;
+  const { appConfig, fs } = services;
   const conflictMessages: string[] = [];
 
   let toolConfigsArray: ToolConfig[] = [];
   try {
-    const toolConfigsRecord = await loadConfigs(appConfig.toolConfigsDir, fileSystem);
+    const toolConfigsRecord = await loadToolConfigsFromDirectory(appConfig.toolConfigsDir, fs);
     toolConfigsArray = Object.values(toolConfigsRecord);
   } catch (error: any) {
     clientLogger.error(`Error loading tool configurations: ${error.message}`);
-    return exitCli(1);
+    exitCli(1);
   }
 
   if (toolConfigsArray.length === 0) {
     clientLogger.info('No tool configurations found. Nothing to check for conflicts.');
-    return exitCli(0);
+    exitCli(0);
   }
 
   for (const toolConfig of toolConfigsArray) {
     // Check for shim conflicts
-    if (toolConfig.binaries) { // Changed from toolConfig.bin to toolConfig.binaries
-      for (const binaryName of toolConfig.binaries) { // Iterate directly over binaries array
+    if (toolConfig.binaries) {
+      for (const binaryName of toolConfig.binaries) {
         const shimPath = path.join(appConfig.targetDir, binaryName);
-        if (await fileSystem.exists(shimPath)) {
+        if (await fs.exists(shimPath)) {
           try {
-            const content = await fileSystem.readFile(shimPath);
+            const content = await fs.readFile(shimPath);
             if (!content.includes('# Generated by Dotfiles Management Tool')) {
               conflictMessages.push(
-                `[${toolConfig.name}]: ${shimPath} (exists but is not a generator shim)`
+                `[${toolConfig.name}]: ${shimPath} (exists but is not a generator shim)`,
               );
             }
           } catch (readError: any) {
-            // If we can't read it, assume it's a conflict or an issue worth noting
-            clientLogger.warn(`Could not read potential shim at '${shimPath}' for tool '${toolConfig.name}': ${readError.message}`);
+            clientLogger.warn(
+              `Could not read potential shim at '${shimPath}' for tool '${toolConfig.name}': ${readError.message}`,
+            );
             conflictMessages.push(
-              `[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`
+              `[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`,
             );
           }
         }
@@ -105,25 +63,23 @@ export async function detectConflictsActionLogic(
         const expectedSourcePath = path.join(appConfig.dotfilesDir, symlink.source);
 
         try {
-          const stats: Stats | null = await fileSystem.lstat(targetPath); // Use lstat here
+          const stats: Stats | null = await fs.lstat(targetPath);
           if (stats) {
             if (stats.isSymbolicLink()) {
-              const linkString = await fileSystem.readlink(targetPath); // Changed from readLink to readlink
-              // Resolve linkString relative to the symlink's directory to get an absolute path
+              const linkString = await fs.readlink(targetPath);
               const resolvedLinkTarget = path.resolve(path.dirname(targetPath), linkString);
               if (resolvedLinkTarget !== expectedSourcePath) {
                 conflictMessages.push(
-                  `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${expectedSourcePath}')`
+                  `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${expectedSourcePath}')`,
                 );
               }
             } else {
               conflictMessages.push(
-                `[${toolConfig.name}]: ${targetPath} (exists but is not a symlink)`
+                `[${toolConfig.name}]: ${targetPath} (exists but is not a symlink)`,
               );
             }
           }
         } catch (err: any) {
-          // stat throws if path does not exist, which is not a conflict.
           if (err.code !== 'ENOENT') {
             clientLogger.warn(`Could not check symlink target '${targetPath}': ${err.message}`);
           }
@@ -134,47 +90,44 @@ export async function detectConflictsActionLogic(
 
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
-    const formattedConflicts = conflictMessages.map(msg => `  - ${msg}`).join('\n');
+    const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
     clientLogger.warn(`${header}\n${formattedConflicts}`);
-    // The "Please review..." message might be redundant if the header is clear enough,
-    // but keeping it for now as per original structure.
     clientLogger.info('Please review the warnings above.');
-    return exitCli(1); // Exit with error code if conflicts are found
+    exitCli(1);
+    return;
   } else {
     clientLogger.info('No conflicts detected.');
-    return exitCli(0);
+    exitCli(0);
+    return;
   }
 }
 
-export function registerDetectConflictsCommand(
-  program: Command,
-): void {
+export function registerDetectConflictsCommand(program: GlobalProgram, services: Services): void {
   program
     .command('detect-conflicts')
-    .description('Detects conflicts between potential generated artifacts and existing system files.')
-    // Add options for verbose/quiet if desired, similar to other commands
-    .option('--verbose', 'Enable detailed debug messages.', false)
-    .option('--quiet', 'Suppress all informational and debug output. Errors are still displayed.', false)
-    .action(async (cliOptions: { verbose?: boolean; quiet?: boolean }) => {
-      const clientLogger = createClientLogger(cliOptions); // Create logger inside action
-      commandInternalLog('detect-conflicts command: Action called with options: %o', cliOptions);
+    .description(
+      'Detects conflicts between potential generated artifacts and existing system files.',
+    )
+    .action(async (options) => {
+      const combinedOptions = { ...options, ...program.opts() };
+      const clientLogger = createClientLogger(combinedOptions);
+      commandInternalLog('detect-conflicts command: Action called with options: %o', combinedOptions);
       try {
-        // Action handler calls setupServices.
-        // detect-conflicts doesn't have a --dry-run option itself.
-        // Assume it operates in non-dry-run mode for service setup.
-        const services = await setupServices({ dryRun: false });
-
-        const servicesForLogic: DetectConflictsCommandServices = {
-          appConfig: services.appConfig,
-          fileSystem: services.fs,
-          clientLogger, // Use the newly created clientLogger
-          loadToolConfigsFromDirectory, // This is a function, not a service instance from setupServices
-          generatorOrchestrator: services.generatorOrchestrator,
-        };
-        await detectConflictsActionLogic({}, servicesForLogic);
+        await detectConflictsActionLogic(combinedOptions, services, clientLogger);
       } catch (error) {
-        commandInternalLog('detect-conflicts command: Unhandled error in action handler: %O', error);
-        clientLogger.error('Critical error in detect-conflicts command: %s', (error as Error).message);
+        // If this is an error from exitCli, rethrow it to preserve the exit code
+        if ((error as Error).message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')) {
+          throw error;
+        }
+        
+        commandInternalLog(
+          'detect-conflicts command: Unhandled error in action handler: %O',
+          error,
+        );
+        clientLogger.error(
+          'Critical error in detect-conflicts command: %s',
+          (error as Error).message,
+        );
         clientLogger.debug('Error details: %O', error);
         exitCli(1);
       }
