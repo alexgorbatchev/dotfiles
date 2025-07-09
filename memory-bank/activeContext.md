@@ -3,10 +3,12 @@
 This document captures the current work focus, recent changes, next steps, and active considerations for the dotfiles project.
 
 ## Current Work Focus
-- **Testing Helper Refactoring:** The testing helpers for the file system have been refactored. The `createMockFileSystem` has been deprecated in favor of the new `createMemFileSystem` helper, which provides a more robust and flexible way to test file system interactions.
+- **Error Handling and Test Refactoring:** Improved error handling in the `Downloader` module to provide more descriptive error messages for non-`Error` exceptions. Refactored several test files, including those for the `Installer` and `ArchiveExtractor`, to use the new `createTestDirectories` helper, standardizing test setup and reducing boilerplate.
 
 ## Recent Changes
 
+*   **Downloader Error Handling:** Improved the `Downloader` class to catch and re-throw non-`Error` objects with more descriptive and readable error messages.
+*   **Test Refactoring with `createTestDirectories`:** Replaced manual directory creation and cleanup logic in `ArchiveExtractor.test.ts` and `Installer.test.ts` with the standardized `createTestDirectories` helper.
 *   **Testing Helper Refactoring:** Refactored the `createMemFileSystem` testing helper to provide a more robust and flexible way to test file system interactions. This new helper replaces the deprecated `createMockFileSystem`.
 *   **Configuration Migration Planning:** Completed an intensive planning and design phase for migrating the application's configuration from `.env` files to a single, structured `config.yaml`.
 *   **Meta-Comment Rule:** Added a new rule to `.roo/rules/rules.md` to explicitly forbid meta-comments.

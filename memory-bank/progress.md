@@ -115,6 +115,7 @@ The project is currently focused on refactoring the `src` directory into a modul
 
 12. **Follow up actions**:
   * [x] Replace all usage of `createMockFileSystem` with `createMemFileSystem` in tests.
+  * [x] Refactor tests to use `createTestDirectories` helper.
 
 ## Known Issues
 
