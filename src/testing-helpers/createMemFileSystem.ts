@@ -1,6 +1,7 @@
 import { MemFileSystem, type IFileSystem } from '@modules/file-system';
 import { mock } from 'bun:test';
 import type { DirectoryJSON } from 'memfs';
+import path from 'path';
 
 /**
  * Generic type for a mocked function.
@@ -14,6 +15,7 @@ type MockFn<T extends (...args: any[]) => any> = ReturnType<typeof mock<T>>;
  */
 export interface MemFileSystemOptions {
   initialVolumeJson?: DirectoryJSON;
+  initialSymlinks?: Record<string, string>;
   ensureDir?: IFileSystem['ensureDir'];
   chmod?: IFileSystem['chmod'];
   exists?: IFileSystem['exists'];
@@ -35,9 +37,10 @@ export interface MemFileSystemOptions {
  * Type for the collection of spies/mocks on the file system methods.
  */
 export type FileSystemSpies = {
-  [K in keyof Omit<Required<MemFileSystemOptions>, 'initialVolumeJson'>]: MockFn<
-    IFileSystem[K]
-  >;
+  [K in keyof Omit<
+    Required<MemFileSystemOptions>,
+    'initialVolumeJson' | 'initialSymlinks'
+  >]: MockFn<IFileSystem[K]>;
 };
 
 /**
@@ -56,13 +59,12 @@ export interface MemFileSystemReturn {
  *
  * @param options - Optional. An object to configure the file system.
  * @param options.initialVolumeJson - Optional JSON object (memfs DirectoryJSON) to initialize the file system volume.
+ * @param options.initialSymlinks - Optional record of symlinks to create, where keys are targets and values are sources.
  * @param options... - Optional mock implementations for any `IFileSystem` method.
  * @returns An object containing the `fs` instance and the `spies`.
  */
-export function createMemFileSystem(
-  options: MemFileSystemOptions = {},
-): MemFileSystemReturn {
-  const { initialVolumeJson, ...mocks } = options;
+export function createMemFileSystem(options: MemFileSystemOptions = {}): MemFileSystemReturn {
+  const { initialVolumeJson, initialSymlinks, ...mocks } = options;
   const memFs = new MemFileSystem(initialVolumeJson);
 
   const spies: FileSystemSpies = {
@@ -84,6 +86,17 @@ export function createMemFileSystem(
   };
 
   const fs: IFileSystem = { ...spies };
+
+  // Initialize symlinks if provided
+  if (initialSymlinks) {
+    // Process each symlink entry
+    for (const [target, source] of Object.entries(initialSymlinks)) {
+      // Ensure the target directory exists
+      spies.ensureDir(path.dirname(source));
+      // Create the symlink
+      spies.symlink(target, source);
+    }
+  }
 
   return {
     fs,
