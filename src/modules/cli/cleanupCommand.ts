@@ -17,7 +17,7 @@ async function cleanupActionLogic(
   services: Services,
   clientLogger: ConsolaInstance,
 ) {
-  const { appConfig, fs } = services;
+  const { yamlConfig, fs } = services;
   const { dryRun } = options;
 
   try {
@@ -29,14 +29,14 @@ async function cleanupActionLogic(
     let manifest: GeneratedArtifactsManifest | null = null;
 
     try {
-      log(`execute: attempting to read manifest from ${appConfig.manifestPath}`);
-      if (await fs.exists(appConfig.manifestPath)) {
-        const manifestContent = await fs.readFile(appConfig.manifestPath, 'utf-8');
+      log(`execute: attempting to read manifest from ${yamlConfig.paths.manifestPath}`);
+      if (await fs.exists(yamlConfig.paths.manifestPath)) {
+        const manifestContent = await fs.readFile(yamlConfig.paths.manifestPath, 'utf-8');
         manifest = JSON.parse(manifestContent) as GeneratedArtifactsManifest;
         log('execute: manifest file read and parsed successfully');
       } else {
         log('execute: manifest file does not exist');
-        clientLogger.warn(`Manifest file not found at ${appConfig.manifestPath}.`);
+        clientLogger.warn(`Manifest file not found at ${yamlConfig.paths.manifestPath}.`);
       }
     } catch (error) {
       log(`execute: error reading or parsing manifest file: ${String(error)}`);
@@ -132,30 +132,30 @@ async function cleanupActionLogic(
 
     // Delete the entire .generated directory
     try {
-      log(`execute: attempting to delete generated directory: ${appConfig.generatedDir}`);
-      if (await fs.exists(appConfig.generatedDir)) {
+      log(`execute: attempting to delete generated directory: ${yamlConfig.paths.generatedDir}`);
+      if (await fs.exists(yamlConfig.paths.generatedDir)) {
         if (!dryRun) {
-          await fs.rm(appConfig.generatedDir, { recursive: true, force: true });
+          await fs.rm(yamlConfig.paths.generatedDir, { recursive: true, force: true });
           clientLogger.info(
-            `Successfully deleted generated directory: ${appConfig.generatedDir}`,
+            `Successfully deleted generated directory: ${yamlConfig.paths.generatedDir}`,
           );
-          log(`execute: deleted generated directory ${appConfig.generatedDir}`);
+          log(`execute: deleted generated directory ${yamlConfig.paths.generatedDir}`);
         } else {
-          clientLogger.info(`Would delete generated directory: ${appConfig.generatedDir}`);
+          clientLogger.info(`Would delete generated directory: ${yamlConfig.paths.generatedDir}`);
           log(
-            `execute: would delete generated directory ${appConfig.generatedDir} (dry run)`,
+            `execute: would delete generated directory ${yamlConfig.paths.generatedDir} (dry run)`,
           );
         }
       } else {
-        clientLogger.info(`Generated directory not found, skipping: ${appConfig.generatedDir}`);
-        log(`execute: generated directory not found ${appConfig.generatedDir}`);
+        clientLogger.info(`Generated directory not found, skipping: ${yamlConfig.paths.generatedDir}`);
+        log(`execute: generated directory not found ${yamlConfig.paths.generatedDir}`);
       }
     } catch (error) {
       clientLogger.error(
-        `Error deleting generated directory ${appConfig.generatedDir}: ${String(error)}`,
+        `Error deleting generated directory ${yamlConfig.paths.generatedDir}: ${String(error)}`,
       );
       log(
-        `execute: error deleting generated directory ${appConfig.generatedDir}: ${String(
+        `execute: error deleting generated directory ${yamlConfig.paths.generatedDir}: ${String(
           error,
         )}`,
       );

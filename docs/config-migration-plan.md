@@ -64,7 +64,7 @@ This phase focuses on incrementally migrating the entire application from the ol
     *   **[x]** `generator-orchestrator`: Depends on all `generator-*` modules.
     *   **[ ]** `cli`: Migrate all commands in the following order:
         *   **[x]** `checkUpdatesCommand.ts`: Uses configuration for tool configs directory and GitHub API.
-        *   **[ ]** `cleanupCommand.ts`: Handles cleanup of generated files based on configuration.
+        *   **[x]** `cleanupCommand.ts`: Handles cleanup of generated files based on configuration.
         *   **[ ]** `detectConflictsCommand.ts`: Detects conflicts in generated files.
         *   **[ ]** `installCommand.ts`: Installs tools based on configuration.
         *   **[ ]** `updateCommand.ts`: Updates installed tools.

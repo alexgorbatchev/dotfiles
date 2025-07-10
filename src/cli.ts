@@ -11,8 +11,10 @@ import {
 import {
   createAppConfig,
   type AppConfig,
+  type YamlConfig,
   type SystemInfo as ConfigModuleSystemInfo,
 } from '@modules/config';
+import { createYamlConfigFromFileSystem } from '@modules/config-loader';
 import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
 import {
@@ -44,6 +46,7 @@ import path from 'node:path';
 const internalLog = createLogger('cli');
 export interface Services {
   appConfig: AppConfig;
+  yamlConfig: YamlConfig;
   fs: IFileSystem;
   downloader: IDownloader;
   githubApiCache: IGitHubApiCache;
@@ -146,9 +149,21 @@ export async function setupServices(
   const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig);
   const versionChecker = new VersionChecker(githubApiClient);
 
+  // Initialize yamlConfig
+  const systemInfoForYamlConfig = {
+    platform: process.platform,
+    arch: process.arch,
+    homeDir: os.homedir(),
+  };
+  
+  const configPath = path.join(appConfig.dotfilesDir, 'config.yaml');
+  internalLog('setupServices: Loading YAML config from %s', configPath);
+  const yamlConfig = await createYamlConfigFromFileSystem(fs, configPath, systemInfoForYamlConfig, env);
+  
   internalLog('setupServices: Services initialized.');
   return {
     appConfig,
+    yamlConfig,
     fs,
     downloader,
     githubApiCache,
