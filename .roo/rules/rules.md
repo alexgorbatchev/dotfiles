@@ -54,6 +54,7 @@ At the top of every file I must include a comprehensive plan consisting of inten
 - Zod schemas must be stored in the same directory as the module they are associated with and used to infer types for the data.
 
 ## Code Quality
+- Line length is 120 characters.
 - **Comments:**
   - Never leave meta-comments.
   - Never comment out code, remove it instead.
