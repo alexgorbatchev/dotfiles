@@ -338,9 +338,7 @@ export async function loadDefaultYamlConfigAsRecord(
         error instanceof Error ? error.message : String(error)
       }`,
     );
-    if (process.env.NODE_ENV === 'test') {
-      throw error;
-    }
+    throw error;
   }
 
   return defaultConfig;

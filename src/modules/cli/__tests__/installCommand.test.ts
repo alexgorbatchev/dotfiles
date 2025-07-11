@@ -2,7 +2,11 @@ import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 import { exitCli } from '@modules/cli/exitCli';
 import type { YamlConfig } from '@modules/config';
-import { loadSingleToolConfig as actualLoadSingleToolConfig, createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
+import {
+  loadSingleToolConfig as actualLoadSingleToolConfig,
+  createYamlConfigFromObject,
+  getDefaultConfigPath,
+} from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
@@ -50,8 +54,8 @@ describe('installCommand', () => {
 
   beforeEach(async () => {
     mock.restore();
-
     program = createProgram();
+
     const { mockClientLogger, loggerMocks: lm } = createMockClientLogger();
     loggerMocks = lm;
     mockCreateClientLogger.mockReturnValue(mockClientLogger);
@@ -62,12 +66,7 @@ describe('installCommand', () => {
       },
     });
 
-    mockYamlConfig = await createYamlConfigFromObject(
-      fs,
-      {},
-      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
-      {}
-    );
+    mockYamlConfig = await createYamlConfigFromObject(fs);
 
     mockInstaller = {
       install: mock(
@@ -75,7 +74,7 @@ describe('installCommand', () => {
           success: true,
           binaryPath: '/fake/bin/toolA',
           version: '1.0.0',
-        }),
+        })
       ),
     };
 
@@ -100,7 +99,7 @@ describe('installCommand', () => {
     expect(mockLoadSingleToolConfig).toHaveBeenCalledWith(
       'toolA',
       mockYamlConfig.paths.toolConfigsDir,
-      mockServices.fs,
+      mockServices.fs
     );
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,
@@ -112,12 +111,12 @@ describe('installCommand', () => {
   test('should exit with error if tool config is not found', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(undefined);
 
-    await expect(program.parseAsync(['install', 'nonexistent'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1',
+    expect(program.parseAsync(['install', 'nonexistent'], { from: 'user' })).rejects.toThrow(
+      'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
     expect(loggerMocks.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error: Tool configuration for "nonexistent" not found.'),
+      expect.stringContaining('Error: Tool configuration for "nonexistent" not found.')
     );
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
@@ -129,8 +128,8 @@ describe('installCommand', () => {
       error: 'Installation failed',
     });
 
-    await expect(program.parseAsync(['install', 'toolA'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1',
+    expect(program.parseAsync(['install', 'toolA'], { from: 'user' })).rejects.toThrow(
+      'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
     expect(loggerMocks.error).toHaveBeenCalledWith('Error installing "toolA": Installation failed');

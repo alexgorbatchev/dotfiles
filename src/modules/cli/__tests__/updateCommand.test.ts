@@ -1,6 +1,6 @@
 import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
-import { exitCli } from '@modules/cli/exitCli';
+import { exitCli } from '@modules/cli';
 import type { YamlConfig } from '@modules/config';
 import {
   createYamlConfigFromObject,
@@ -19,7 +19,7 @@ import {
 } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
-import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
+import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { registerUpdateCommand } from '../updateCommand';
 
 const mockActualLoadSingleToolConfig = mock(loadSingleToolConfig);
@@ -42,7 +42,7 @@ mock.module('@modules/logger', () => ({
 describe('updateCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
-  let mockFileSystem: Partial<IFileSystem>;
+  let mockFileSystem: IFileSystem;
   let mockGitHubApiClient: Partial<IGitHubApiClient>;
   let mockInstallerService: Partial<IInstaller>;
   let mockVersionChecker: Partial<IVersionChecker>;
@@ -91,12 +91,7 @@ describe('updateCommand', () => {
 
     mockFileSystem = fs;
 
-    mockYamlConfig = await createYamlConfigFromObject(
-      mockFileSystem as IFileSystem,
-      {},
-      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
-      {}
-    );
+    mockYamlConfig = await createYamlConfigFromObject(fs);
 
     mockGitHubApiClient = {
       getLatestRelease: mock(
