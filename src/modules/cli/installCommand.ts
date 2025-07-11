@@ -1,15 +1,9 @@
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
-import { createLogger as createDebugLoggerInternal, createClientLogger } from '@modules/logger';
+import { createLogger, createClientLogger } from '@modules/logger';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
-const commandInternalLog = createDebugLoggerInternal('installCommand');
-
-export interface InstallCommandOptions {
-  force: boolean;
-  verbose: boolean;
-  quiet: boolean;
-}
+const commandInternalLog = createLogger('installCommand');
 
 export function registerInstallCommand(
   program: GlobalProgram,
@@ -28,21 +22,21 @@ export function registerInstallCommand(
       const clientLogger = createClientLogger(combinedOptions);
       commandInternalLog('install command: Action called for tool "%s" with options: %o', toolName, combinedOptions);
 
-      const { appConfig, fs, installer } = services;
+      const { yamlConfig, fs, installer } = services;
 
       try {
         commandInternalLog(
           'Loading tool config for "%s" from directory: %s using FS: %s',
           toolName,
-          appConfig.toolConfigsDir,
+          yamlConfig.paths.toolConfigsDir,
           fs.constructor.name,
         );
-        const toolConfig = await loadSingleToolConfig(toolName, appConfig.toolConfigsDir, fs);
+        const toolConfig = await loadSingleToolConfig(toolName, yamlConfig.paths.toolConfigsDir, fs);
         commandInternalLog('Loaded tool config for "%s": %o', toolName, toolConfig ? toolConfig.name : 'Not found');
 
         if (!toolConfig) {
           let errorMessage = `Error: Tool configuration for "${toolName}" not found.\n`;
-          errorMessage += `Expected tool configuration file: ${appConfig.toolConfigsDir}/${toolName}.tool.ts\n`;
+          errorMessage += `Expected tool configuration file: ${yamlConfig.paths.toolConfigsDir}/${toolName}.tool.ts\n`;
           errorMessage += 'No specific tool configuration was found for the requested tool.';
           clientLogger.error(errorMessage);
           exitCli(1);
