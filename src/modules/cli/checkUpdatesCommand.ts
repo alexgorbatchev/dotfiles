@@ -18,7 +18,7 @@ export async function checkUpdatesActionLogic(
   clientLogger: ConsolaInstance,
   services: Services,
 ): Promise<void> {
-  const { appConfig, fs, versionChecker, githubApiClient } = services;
+  const { yamlConfig, fs, versionChecker, githubApiClient } = services;
 
   clientLogger.debug(
     'Check-updates command action logic started. Tool: %s',
@@ -30,19 +30,19 @@ export async function checkUpdatesActionLogic(
 
   try {
     if (toolName) {
-      const config = await loadSingleToolConfig(toolName, appConfig.toolConfigsDir, fs);
+      const config = await loadSingleToolConfig(toolName, yamlConfig.paths.toolConfigsDir, fs);
       if (config) {
         toolConfigs[toolName] = config;
       } else {
         specificToolNotFound = true;
         clientLogger.error(
-          `Tool configuration for "${toolName}" not found in ${appConfig.toolConfigsDir}.`,
+          `Tool configuration for "${toolName}" not found in ${yamlConfig.paths.toolConfigsDir}.`,
         );
       }
     } else {
-      toolConfigs = await loadToolConfigsFromDirectory(appConfig.toolConfigsDir, fs);
+      toolConfigs = await loadToolConfigsFromDirectory(yamlConfig.paths.toolConfigsDir, fs);
       if (Object.keys(toolConfigs).length === 0) {
-        clientLogger.info(`No tool configurations found in ${appConfig.toolConfigsDir}.`);
+        clientLogger.info(`No tool configurations found in ${yamlConfig.paths.toolConfigsDir}.`);
         return;
       }
     }

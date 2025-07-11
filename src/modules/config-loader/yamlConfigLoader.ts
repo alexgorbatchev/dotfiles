@@ -403,9 +403,9 @@ export async function createYamlConfigFromFileSystem(
  */
 export async function createYamlConfigFromObject(
   fileSystem: IFileSystem,
-  userConfig: Record<string, unknown>,
-  systemInfo: SystemInfo,
-  env: Record<string, string | undefined>
+  userConfig: Record<string, unknown> = {},
+  systemInfo: SystemInfo =  { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
+  env: Record<string, string | undefined> = {}
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   return processConfig(defaultConfig, userConfig, systemInfo, env);
