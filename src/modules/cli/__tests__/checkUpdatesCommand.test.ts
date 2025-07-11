@@ -12,7 +12,6 @@ import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 
-// Mock dependencies
 mock.module('@modules/config-loader', () => ({
   loadToolConfigsFromDirectory: mock(async () => ({})),
   loadSingleToolConfig: mock(async () => undefined),
@@ -30,6 +29,8 @@ describe('checkUpdatesCommand', () => {
   let loggerMocks: LoggerMocks;
 
   beforeEach(() => {
+    mock.restore();
+
     program = createProgram();
 
     const mockAppConfig: Partial<AppConfig> = {
@@ -74,21 +75,12 @@ describe('checkUpdatesCommand', () => {
       fs: mockFileSystem as IFileSystem,
       versionChecker: mockVersionChecker as IVersionChecker,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
-      downloader: {} as any,
-      githubApiCache: {} as any,
-      shimGenerator: {} as any,
-      shellInitGenerator: {} as any,
-      symlinkGenerator: {} as any,
-      generatorOrchestrator: {} as any,
-      installer: {} as any,
-      archiveExtractor: {} as any,
-    };
+    } as Services;
 
     registerCheckUpdatesCommand(program, mockServices);
   });
 
   afterEach(() => {
-    mock.restore();
   });
 
   const fzfToolConfig: GithubReleaseToolConfig = {

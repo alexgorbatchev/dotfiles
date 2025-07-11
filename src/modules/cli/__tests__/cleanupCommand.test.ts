@@ -11,7 +11,6 @@ import {
 } from '@testing-helpers';
 import type { GeneratedArtifactsManifest } from '@types';
 import { beforeEach, describe, expect, it, mock, type Mock as BunMock } from 'bun:test';
-import type { Stats } from 'node:fs';
 import path from 'node:path';
 import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
 import { registerCleanupCommand } from '../cleanupCommand';

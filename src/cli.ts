@@ -12,7 +12,7 @@ import {
   createAppConfig,
   type AppConfig,
   type YamlConfig,
-  type SystemInfo as ConfigModuleSystemInfo,
+  type SystemInfo,
 } from '@modules/config';
 import { createYamlConfigFromFileSystem } from '@modules/config-loader';
 import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
@@ -65,7 +65,7 @@ export async function setupServices(
 ): Promise<Services> {
   internalLog('setupServices: Initializing services... options: %o', options);
   const { dryRun = false, env = process.env } = options;
-  const systemInfoForConfig: ConfigModuleSystemInfo = {
+  const systemInfoForConfig: SystemInfo = {
     homedir: os.homedir(),
     cwd: process.cwd(),
   };
