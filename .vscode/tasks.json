@@ -5,7 +5,7 @@
       "label": "Bun: watch test",
       "type": "shell",
       "command": "bun",
-      "args": [ "run", "test:watch", "${file}" ],
+      "args": ["run", "test:task", "--watch", "${file}"],
       "group": {
         "kind": "test",
         "isDefault": true
@@ -20,10 +20,27 @@
     },
 
     {
+      "label": "Bun: run test",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "test:task", "${file}"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Bun: update test snapshots",
       "type": "shell",
       "command": "bun",
-      "args": [ "run", "test:update-snapshots", "${file}" ],
+      "args": ["run", "test:task", "--update-snapshots", "${file}"],
       "group": {
         "kind": "test",
         "isDefault": true
