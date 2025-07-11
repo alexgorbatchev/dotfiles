@@ -1,20 +1,28 @@
+import type { GlobalProgram, Services } from '@cli';
+import { createProgram } from '@cli';
 import { exitCli } from '@modules/cli/exitCli';
-import type { AppConfig } from '@modules/config';
-import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
+import type { YamlConfig } from '@modules/config';
+import {
+  createYamlConfigFromObject,
+  getDefaultConfigPath,
+  loadSingleToolConfig,
+} from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import { VersionComparisonStatus, type IVersionChecker } from '@modules/version-checker';
-import { createMockClientLogger, type CreateMockClientLoggerResult } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  createMockClientLogger,
+  type CreateMockClientLoggerResult,
+} from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
 import { registerUpdateCommand } from '../updateCommand';
-import type { GlobalProgram, Services } from '@cli';
-import { createProgram } from '@cli';
 
-// --- Mocking Core Dependencies ---
-const mockActualLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
+const mockActualLoadSingleToolConfig = mock(loadSingleToolConfig);
 mock.module('@modules/config-loader/loadToolConfigs', () => ({
   loadSingleToolConfig: mockActualLoadSingleToolConfig,
   loadToolConfigsFromDirectory: mock(async () => ({})),
@@ -30,17 +38,15 @@ mock.module('@modules/logger', () => ({
   createClientLogger: mockCreateClientLogger,
   createLogger: mock(() => mock(() => {})),
 }));
-// --- End Mocking Core Dependencies ---
 
 describe('updateCommand', () => {
   let program: GlobalProgram;
-  let mockAppConfig: Partial<AppConfig>;
+  let mockYamlConfig: YamlConfig;
   let mockFileSystem: Partial<IFileSystem>;
   let mockGitHubApiClient: Partial<IGitHubApiClient>;
   let mockInstallerService: Partial<IInstaller>;
   let mockVersionChecker: Partial<IVersionChecker>;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
-  let mockServices: Services;
 
   const fzfToolConfig: GithubReleaseToolConfig = {
     name: 'fzf',
@@ -71,23 +77,30 @@ describe('updateCommand', () => {
     body: 'Release body',
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    mock.restore();
+
     program = createProgram();
 
-    mockAppConfig = {
-      toolConfigsDir: '/fake/tools',
-      binDir: '/fake/bin',
-    };
-
-    mockFileSystem = {
+    const { fs } = createMemFileSystem({
+      initialVolumeJson: {
+        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+      },
       exists: mock(async () => true),
-      readFile: mock(async () => JSON.stringify({})),
-    };
+    });
+
+    mockFileSystem = fs;
+
+    mockYamlConfig = await createYamlConfigFromObject(
+      mockFileSystem as IFileSystem,
+      {},
+      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
+      {}
+    );
 
     mockGitHubApiClient = {
       getLatestRelease: mock(
-        async (_owner: string, _repo: string): Promise<GitHubRelease | null> =>
-          latestGitHubRelease,
+        async (_owner: string, _repo: string): Promise<GitHubRelease | null> => latestGitHubRelease
       ),
     };
 
@@ -95,9 +108,9 @@ describe('updateCommand', () => {
       install: mock(
         async (toolName: string, tc: ToolConfig, _opts?: any): Promise<InstallResult> => ({
           success: true,
-          binaryPath: `${mockAppConfig.binDir}/${toolName}`,
+          binaryPath: `${mockYamlConfig.paths.binariesDir}/${toolName}`,
           version: tc.version || 'installed-version',
-        }),
+        })
       ),
     };
 
@@ -115,20 +128,13 @@ describe('updateCommand', () => {
       throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
     });
 
-    mockServices = {
-      appConfig: mockAppConfig as AppConfig,
+    registerUpdateCommand(program, {
+      yamlConfig: mockYamlConfig,
       fs: mockFileSystem as IFileSystem,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
       installer: mockInstallerService as IInstaller,
       versionChecker: mockVersionChecker as IVersionChecker,
-    } as Services;
-
-    registerUpdateCommand(program, mockServices);
-  });
-
-  afterEach(() => {
-    mock.restore();
-    process.exitCode = 0;
+    } as Services);
   });
 
   test('tool is up-to-date', async () => {
@@ -138,14 +144,14 @@ describe('updateCommand', () => {
       tag_name: 'v0.40.0',
     });
     (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.UP_TO_DATE,
+      VersionComparisonStatus.UP_TO_DATE
     );
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     expect(loggerMocks.info).toHaveBeenCalledWith('Checking for updates for "fzf"...');
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      'fzf (version 0.40.0) is already up to date. Latest: 0.40.0.',
+      'fzf (version 0.40.0) is already up to date. Latest: 0.40.0.'
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -154,7 +160,7 @@ describe('updateCommand', () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
     (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.NEWER_AVAILABLE,
+      VersionComparisonStatus.NEWER_AVAILABLE
     );
     (mockInstallerService.install as any).mockResolvedValue({ success: true, version: '0.41.0' });
 
@@ -165,7 +171,7 @@ describe('updateCommand', () => {
     expect(mockInstallerService.install).toHaveBeenCalledWith(
       'fzf',
       expect.objectContaining({ name: 'fzf', version: '0.41.0' }),
-      { force: true },
+      { force: true }
     );
     expect(loggerMocks.success).toHaveBeenCalledWith('fzf updated successfully to 0.41.0.');
   });
@@ -174,7 +180,7 @@ describe('updateCommand', () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
     (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.NEWER_AVAILABLE,
+      VersionComparisonStatus.NEWER_AVAILABLE
     );
     (mockInstallerService.install as any).mockResolvedValue({
       success: false,
@@ -182,10 +188,12 @@ describe('updateCommand', () => {
     });
 
     await expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1',
+      'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    expect(loggerMocks.error).toHaveBeenCalledWith('Failed to update fzf: Install failed miserably');
+    expect(loggerMocks.error).toHaveBeenCalledWith(
+      'Failed to update fzf: Install failed miserably'
+    );
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 
@@ -193,11 +201,11 @@ describe('updateCommand', () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(undefined);
 
     await expect(program.parseAsync(['update', 'nonexistent'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1',
+      'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
     expect(loggerMocks.error).toHaveBeenCalledWith(
-      'Tool configuration for "nonexistent" not found in /fake/tools.',
+      `Tool configuration for "nonexistent" not found in ${mockYamlConfig.paths.toolConfigsDir}.`
     );
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
@@ -209,23 +217,21 @@ describe('updateCommand', () => {
 
     expect(loggerMocks.info).toHaveBeenCalledWith('Checking for updates for "manualtool"...');
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      'Update not yet supported for installation method: "manual" for tool "manualtool".',
+      'Update not yet supported for installation method: "manual" for tool "manualtool".'
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
   test('GitHub API error when fetching latest release', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(
-      new Error('GitHub API Down'),
-    );
+    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(new Error('GitHub API Down'));
 
     const exitCliCallsBefore = (mockExitCli as any).mock.calls.length;
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
     const exitCliCallsAfter = (mockExitCli as any).mock.calls.length;
 
     expect(loggerMocks.error).toHaveBeenCalledWith(
-      'Error fetching latest release for fzf from junegunn/fzf: GitHub API Down',
+      'Error fetching latest release for fzf from junegunn/fzf: GitHub API Down'
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
     expect(exitCliCallsAfter).toBe(exitCliCallsBefore);
@@ -242,7 +248,7 @@ describe('updateCommand', () => {
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      "Tool \"fzf\" is configured to 'latest'. Current latest is 0.50.0. To install this specific version, re-install or use update with a specific version target (not yet supported).",
+      'Tool "fzf" is configured to \'latest\'. Current latest is 0.50.0. To install this specific version, re-install or use update with a specific version target (not yet supported).'
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });

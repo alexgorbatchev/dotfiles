@@ -1,11 +1,11 @@
-import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
-import { VersionComparisonStatus } from '@modules/version-checker/IVersionChecker';
+import { loadSingleToolConfig } from '@modules/config-loader';
+import { createClientLogger, createLogger } from '@modules/logger';
+import { VersionComparisonStatus } from '@modules/version-checker';
 import type { GithubReleaseToolConfig, ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
-const commandInternalLog = createDebugLoggerInternal('updateCommand');
+const log = createLogger('updateCommand');
 
 export interface UpdateCommandOptions {
   yes?: boolean;
@@ -24,23 +24,26 @@ export function registerUpdateCommand(
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
       const clientLogger = createClientLogger(combinedOptions);
-      commandInternalLog('update command: Action called for tool "%s" with options: %o', toolName, combinedOptions);
+      log('update command: Action called for tool "%s" with options: %o', toolName, combinedOptions);
 
-      const { appConfig, fs, githubApiClient, installer, versionChecker } = services;
+      const { yamlConfig, fs, githubApiClient, installer, versionChecker } = services;
 
       try {
+        log('execute: starting update process for tool=%s', toolName);
         let toolConfig: ToolConfig | undefined;
         try {
-          toolConfig = await loadSingleToolConfig(toolName, appConfig.toolConfigsDir, fs);
+          toolConfig = await loadSingleToolConfig(toolName, yamlConfig.paths.toolConfigsDir, fs);
+          log('execute: loaded tool config for tool=%s', toolName);
         } catch (error) {
+          log('execute: error loading tool config for tool=%s, error=%s', toolName, (error as Error).message);
           clientLogger.error(`Error loading configuration for tool "${toolName}": ${(error as Error).message}`);
           clientLogger.debug('Error details: %O', error);
           exitCli(1);
-          return; // Should be unreachable
         }
 
         if (!toolConfig) {
-          clientLogger.error(`Tool configuration for "${toolName}" not found in ${appConfig.toolConfigsDir}.`);
+          log('execute: tool config not found for tool=%s', toolName);
+          clientLogger.error(`Tool configuration for "${toolName}" not found in ${yamlConfig.paths.toolConfigsDir}.`);
           exitCli(1);
         }
 
@@ -96,7 +99,6 @@ export function registerUpdateCommand(
             } else {
               clientLogger.error(`Failed to update ${toolName}: ${installResult.error}`);
               exitCli(1);
-              return; // Should be unreachable
             }
           } else if (status === VersionComparisonStatus.UP_TO_DATE) {
             clientLogger.info(`${toolName} (version ${configuredVersion}) is already up to date. Latest: ${latestVersion}.`);
@@ -107,7 +109,7 @@ export function registerUpdateCommand(
           clientLogger.info(`Update not yet supported for installation method: "${toolConfig.installationMethod}" for tool "${toolName}".`);
         }
       } catch (error) {
-        commandInternalLog('update command: Unhandled error in action handler: %O', error);
+        log('update command: Unhandled error in action handler: %O', error);
         if (error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')) {
           throw error;
         } else {

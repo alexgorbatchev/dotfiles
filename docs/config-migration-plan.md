@@ -67,7 +67,7 @@ This phase focuses on incrementally migrating the entire application from the ol
         *   **[x]** `cleanupCommand.ts`: Handles cleanup of generated files based on configuration.
         *   **[x]** `detectConflictsCommand.ts`: Detects conflicts in generated files.
         *   **[x]** `installCommand.ts`: Installs tools based on configuration.
-        *   **[ ]** `updateCommand.ts`: Updates installed tools.
+        *   **[x]** `updateCommand.ts`: Updates installed tools.
         *   **[ ]** `generateCommand.ts`: Most complex command that generates all dotfiles.
         *   **[ ]** `src/cli.ts`: Main CLI entry point that sets up all services.
 
