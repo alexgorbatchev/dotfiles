@@ -68,7 +68,7 @@ This phase focuses on incrementally migrating the entire application from the ol
         *   **[x]** `detectConflictsCommand.ts`: Detects conflicts in generated files.
         *   **[x]** `installCommand.ts`: Installs tools based on configuration.
         *   **[x]** `updateCommand.ts`: Updates installed tools.
-        *   **[ ]** `generateCommand.ts`: Most complex command that generates all dotfiles.
+        *   **[x]** `generateCommand.ts`: Most complex command that generates all dotfiles.
         *   **[ ]** `src/cli.ts`: Main CLI entry point that sets up all services.
 
 ---

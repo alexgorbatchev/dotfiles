@@ -1,10 +1,10 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
+import { createClientLogger, createLogger } from '@modules/logger';
 import type { ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
-const commandInternalLog = createDebugLoggerInternal('generateCommand');
+const log = createLogger('generateCommand');
 
 export interface GenerateCommandOptions {
   dryRun: boolean;
@@ -27,21 +27,21 @@ export function registerGenerateCommand(
         verbose: combinedOptions.verbose,
       });
 
-      commandInternalLog('generate command: Action called with options: %o', combinedOptions);
+      log('generate command: Action called with options: %o', combinedOptions);
 
-      const { appConfig, fs, generatorOrchestrator } = services;
+      const { yamlConfig, fs, generatorOrchestrator } = services;
 
       try {
-        commandInternalLog(
+        log(
           'Loading tool configs from directory: %s using FS: %s',
-          appConfig.toolConfigsDir,
+          yamlConfig.paths.toolConfigsDir,
           fs.constructor.name,
         );
-        const toolConfigs = await loadToolConfigsFromDirectory(appConfig.toolConfigsDir, fs);
-        commandInternalLog('Loaded %d tool configs.', Object.keys(toolConfigs).length);
+        const toolConfigs = await loadToolConfigsFromDirectory(yamlConfig.paths.toolConfigsDir, fs);
+        log('Loaded %d tool configs.', Object.keys(toolConfigs).length);
         clientLogger.debug('Loaded tool configs: %o', Object.keys(toolConfigs));
 
-        commandInternalLog(
+        log(
           'Calling generatorOrchestrator.generateAll. Dry run is %s, FileSystem is %s',
           combinedOptions.dryRun,
           fs.constructor.name,
@@ -53,13 +53,13 @@ export function registerGenerateCommand(
         );
 
         const manifest = await generatorOrchestrator.generateAll(toolConfigs, {});
-        commandInternalLog('Artifacts generated successfully. Manifest: %o', manifest);
+        log('Artifacts generated successfully. Manifest: %o', manifest);
         clientLogger.debug('Raw generated manifest: %o', manifest);
 
         clientLogger.info('Artifact generation complete.');
 
         const numShims = manifest.shims?.length ?? 0;
-        clientLogger.info(`Generated ${numShims} shims in ${appConfig.targetDir}`);
+        clientLogger.info(`Generated ${numShims} shims in ${yamlConfig.paths.targetDir}`);
         if (numShims > 0) {
           clientLogger.info('Generated shims by tool:');
           Object.values(toolConfigs).forEach((toolConfigValue) => {
@@ -109,7 +109,7 @@ export function registerGenerateCommand(
           clientLogger.info('Dry run complete. No changes were made.');
         }
       } catch (error) {
-        commandInternalLog('generate command: Unhandled error in action handler: %O', error);
+        log('generate command: Unhandled error in action handler: %O', error);
         clientLogger.error('Critical error in generate command: %s', (error as Error).message);
         clientLogger.debug('Error details: %O', error);
         exitCli(1);

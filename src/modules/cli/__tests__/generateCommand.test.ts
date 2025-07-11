@@ -1,20 +1,22 @@
+import type { GlobalProgram, Services } from '@cli';
+import { createProgram } from '@cli';
 import { exitCli } from '@modules/cli/exitCli';
-import type { AppConfig } from '@modules/config';
-import { loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory } from '@modules/config-loader';
+import type { YamlConfig } from '@modules/config';
+import {
+  loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
+  createYamlConfigFromObject,
+} from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import {
   createMemFileSystem,
-  createMockAppConfig,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
 } from '@testing-helpers';
-import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
+import type { GeneratedArtifactsManifest, SystemInfo, ToolConfig } from '@types';
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { GlobalProgram, Services } from '@cli';
 import { registerGenerateCommand } from '../generateCommand';
-import { createProgram } from '@cli';
 
 // Mock dependencies
 mock.module('@modules/cli/exitCli', () => ({
@@ -27,6 +29,8 @@ const mockLoadToolConfigsFromDirectory = mock(actualLoadToolConfigsFromDirectory
 mock.module('@modules/config-loader', () => ({
   loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
   loadSingleToolConfig: mock(async () => ({})),
+  getDefaultConfigPath: mock(() => '/test/default-config.yaml'),
+  createYamlConfigFromObject: mock(async (_fs, config, _systemInfo, _env) => config),
 }));
 
 const mockCreateClientLogger = mock(actualCreateClientLogger);
@@ -37,9 +41,8 @@ mock.module('@modules/logger', () => ({
 
 describe('generateCommand', () => {
   let program: GlobalProgram;
-  let mockAppConfig: AppConfig;
+  let mockYamlConfig: YamlConfig;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
-  let mockServices: Services;
   let memFs: IFileSystem;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
 
@@ -63,21 +66,30 @@ describe('generateCommand', () => {
     lastGenerated: new Date().toISOString(),
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore();
 
     program = createProgram();
 
-    mockAppConfig = createMockAppConfig({
-      toolConfigsDir: '/test/tools',
-      generatedDir: '/test/generated',
-      targetDir: '/test/target',
-      homeDir: '/test/home',
-      dotfilesDir: '/test/dotfiles',
-    });
-
     const fsHelperReturn = createMemFileSystem();
     memFs = fsHelperReturn.fs;
+
+    mockYamlConfig = await createYamlConfigFromObject(
+      memFs,
+      {
+        paths: {
+          dotfilesDir: '/test/dotfiles',
+          targetDir: '/test/target',
+          generatedDir: '/test/generated',
+          toolConfigsDir: '/test/tools',
+          completionsDir: '/test/completions',
+          manifestPath: '/test/generated/manifest.json',
+          binariesDir: '/test/generated/bin',
+        },
+      },
+      { platform: 'linux', arch: 'x64', homeDir: '/test/home' } as SystemInfo,
+      {}
+    );
 
     const loggerHelperReturn = createMockClientLogger();
     loggerMocks = loggerHelperReturn.loggerMocks;
@@ -87,13 +99,11 @@ describe('generateCommand', () => {
       generateAll: mock(async () => mockManifest),
     };
 
-    mockServices = {
-      appConfig: mockAppConfig,
+    registerGenerateCommand(program, {
+      yamlConfig: mockYamlConfig,
       fs: memFs,
       generatorOrchestrator: mockGeneratorOrchestrator,
-    } as Services;
-
-    registerGenerateCommand(program, mockServices);
+    } as Services);
   });
 
   test('should successfully generate artifacts', async () => {
@@ -101,16 +111,16 @@ describe('generateCommand', () => {
 
     await program.parseAsync(['generate'], { from: 'user' });
 
-    expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(mockAppConfig.toolConfigsDir, memFs);
-    expect(mockGeneratorOrchestrator.generateAll).toHaveBeenCalledWith(
-      { toolA: toolAConfig },
-      {},
+    expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
+      mockYamlConfig.paths.toolConfigsDir,
+      memFs
     );
+    expect(mockGeneratorOrchestrator.generateAll).toHaveBeenCalledWith({ toolA: toolAConfig }, {});
 
     expect(loggerMocks.info).toHaveBeenCalledWith('Artifact generation complete.');
     expect(loggerMocks.info).toHaveBeenCalledWith('Generated 1 shims in /test/target');
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      'Shell init file generated at: /test/generated/init.sh',
+      'Shell init file generated at: /test/generated/init.sh'
     );
     expect(loggerMocks.info).toHaveBeenCalledWith('Processed 1 symlink operations.');
   });
@@ -121,12 +131,12 @@ describe('generateCommand', () => {
     (mockGeneratorOrchestrator.generateAll as any).mockRejectedValue(generationError);
 
     await expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1',
+      'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
     expect(loggerMocks.error).toHaveBeenCalledWith(
       'Critical error in generate command: %s',
-      generationError.message,
+      generationError.message
     );
     expect(exitCli).toHaveBeenCalledWith(1);
   });
