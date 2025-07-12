@@ -6,9 +6,9 @@ describe('GitHubApiClient with custom host', () => {
   let mocks: MockSetup;
   const customHost = 'https://github.example.com';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Setup with custom GitHub host
-    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubHost: customHost }));
+    mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubHost: customHost }));
   });
 
   it('should use the custom host for API requests', async () => {

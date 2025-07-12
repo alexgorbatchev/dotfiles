@@ -1,7 +1,13 @@
 import type { YamlConfig } from '@modules/config';
 import {
-  ClientError, ForbiddenError, HttpError,
-  NetworkError, NotFoundError, RateLimitError, ServerError, type IDownloader
+  ClientError,
+  ForbiddenError,
+  HttpError,
+  NetworkError,
+  NotFoundError,
+  RateLimitError,
+  ServerError,
+  type IDownloader,
 } from '@modules/downloader';
 import { createLogger } from '@modules/logger';
 import type { GitHubRateLimit, GitHubRelease } from '@types';
@@ -96,7 +102,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
     // If a token is used, include a hash of it in the key
     // This ensures cache invalidation when the token changes
-    if (this.githubToken) {
+    if (this.githubToken && typeof this.githubToken === 'string' && this.githubToken.length > 0) {
       const tokenHash = crypto
         .createHash('sha256')
         .update(this.githubToken)

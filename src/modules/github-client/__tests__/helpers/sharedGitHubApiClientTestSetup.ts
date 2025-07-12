@@ -1,79 +1,19 @@
 import { mock } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
-import type { PartialYamlConfig } from '@testing-helpers';
+import { createMemFileSystem, type PartialYamlConfig } from '@testing-helpers';
 import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
 import type { IGitHubApiCache } from '../../IGitHubApiCache';
+import { createYamlConfigFromObject, getDefaultConfigPath } from '../../../config-loader';
+import { MOCK_DEFAULT_CONFIG } from '../../../config-loader/__tests__/fixtures';
 
-export const createMockYamlConfig = (overrides: PartialYamlConfig = {}): YamlConfig => {
-  const defaultConfig: YamlConfig = {
-    paths: {
-      homeDir: '/test/home',
-      dotfilesDir: '/test/dotfiles',
-      targetDir: '/usr/bin',
-      generatedDir: '/test/dotfiles/.generated',
-      toolConfigsDir: '/test/dotfiles/configs/tools',
-      completionsDir: '/test/dotfiles/.generated/completions',
-      manifestPath: '/test/dotfiles/.generated/manifest.json',
-      binariesDir: '/test/dotfiles/.generated/binaries',
-    },
-    system: {
-      sudoPrompt: 'Please enter your password:',
-    },
-    logging: {
-      debug: '',
-    },
-    updates: {
-      checkOnRun: true,
-      checkInterval: 86400000, // 24 hours
-    },
-    github: {
-      token: '', // Empty string instead of undefined
-      host: 'https://api.github.com',
-      userAgent: 'dotfiles-generator-test/1.0.0',
-      cache: {
-        enabled: true,
-        ttl: 3600000, // 1 hour
-      },
-    },
-    downloader: {
-      timeout: 30000,
-      retryCount: 3,
-      retryDelay: 1000,
-      cache: {
-        enabled: true,
-      },
-    },
-  };
-
-  // Deep merge the overrides with the default config
-  return {
-    ...defaultConfig,
-    ...overrides,
-    // Handle nested objects if they exist in overrides
-    paths: { ...defaultConfig.paths, ...(overrides.paths || {}) },
-    system: { ...defaultConfig.system, ...(overrides.system || {}) },
-    logging: { ...defaultConfig.logging, ...(overrides.logging || {}) },
-    updates: { ...defaultConfig.updates, ...(overrides.updates || {}) },
-    github: {
-      ...defaultConfig.github,
-      ...(overrides.github || {}),
-      // Handle nested cache object
-      cache: {
-        ...defaultConfig.github.cache,
-        ...(overrides.github?.cache || {})
-      }
-    },
-    downloader: {
-      ...defaultConfig.downloader,
-      ...(overrides.downloader || {}),
-      // Handle nested cache object
-      cache: {
-        ...defaultConfig.downloader.cache,
-        ...(overrides.downloader?.cache || {})
-      }
-    },
-  };
+export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
+  const memFs = await createMemFileSystem({
+    initialVolumeJson: {
+      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
+    }
+  });
+  return createYamlConfigFromObject(memFs.fs, overrides);
 };
 
 export const createMockDownloader = (): IDownloader & {
@@ -121,8 +61,8 @@ export interface MockSetup {
   apiClient: GitHubApiClient;
 }
 
-export const setupMockGitHubApiClient = (configOverrides: PartialYamlConfig = {}): MockSetup => {
-  const mockYamlConfig = createMockYamlConfig(configOverrides);
+export const setupMockGitHubApiClient = async (configOverrides: PartialYamlConfig = {}): Promise<MockSetup> => {
+  const mockYamlConfig = await createMockYamlConfigForGitHubApi(configOverrides);
   const mockDownloader = createMockDownloader();
   const mockCache = createMockGitHubApiCache();
 

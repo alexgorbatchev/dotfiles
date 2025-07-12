@@ -11,9 +11,9 @@ import {
 describe('GitHubApiClient', () => {
   let mocks: MockSetup;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Explicitly disable API cache for these non-caching tests
-    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
+    mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
   describe('getReleaseByTag', () => {

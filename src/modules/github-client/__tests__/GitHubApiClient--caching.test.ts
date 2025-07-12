@@ -11,9 +11,9 @@ describe('GitHubApiClient', () => {
   describe('caching', () => {
     let mocks: MockSetup;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       // Default setup for most caching tests, cache enabled.
-      mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: true }));
+      mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: true, githubToken: '' }));
     });
 
     it('should return cached data for getLatestRelease when available', async () => {
@@ -23,7 +23,7 @@ describe('GitHubApiClient', () => {
 
       expect(release).toEqual(FIXTURE_RELEASE);
       expect(mocks.mockCache.get).toHaveBeenCalledWith(
-        'GET:/repos/test-owner/test-repo/releases/latest'
+        expect.stringMatching(/^GET:\/repos\/test-owner\/test-repo\/releases\/latest$/)
       );
       expect(mocks.mockDownloader.download).not.toHaveBeenCalled();
     });
@@ -48,7 +48,7 @@ describe('GitHubApiClient', () => {
 
     it('should not use cache for getLatestRelease when disabled in config', async () => {
       // Specific setup for this test: cache disabled
-      const localMocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
+      const localMocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
 
       localMocks.mockDownloader.download.mockResolvedValue(
         Buffer.from(JSON.stringify(FIXTURE_RELEASE))
@@ -118,7 +118,7 @@ describe('GitHubApiClient', () => {
 
     it('should use custom TTL from AppConfig when caching', async () => {
       const customTtl = 7200000; // 2 hours
-      const localMocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheTtl: customTtl }));
+      const localMocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheTtl: customTtl }));
 
       localMocks.mockDownloader.download.mockResolvedValue(
         Buffer.from(JSON.stringify(FIXTURE_RELEASE))
@@ -219,7 +219,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should include token hash in cache key when token is provided', async () => {
-      const mocksWithToken = setupMockGitHubApiClient(createGitHubConfigOverride({ githubToken: 'test-token' }));
+      const mocksWithToken = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubToken: 'test-token' }));
       // mocks (without token) is from the outer beforeEach
 
       mocksWithToken.mockDownloader.download.mockResolvedValue(

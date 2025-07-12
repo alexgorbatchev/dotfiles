@@ -25,11 +25,11 @@ const createMockRelease = (id: number, tagName: string, prerelease = false): Git
 describe('GitHubApiClient', () => {
   let mocks: MockSetup;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore();
 
     // Explicitly disable API cache for these non-caching tests
-    mocks = setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
+    mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
   });
 
   describe('getAllReleases', () => {

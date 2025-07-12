@@ -15,7 +15,6 @@ import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
 import {
   MemFileSystem,
   NodeFileSystem,
-  type DirectoryJSON,
   type IFileSystem,
 } from '@modules/file-system';
 import {

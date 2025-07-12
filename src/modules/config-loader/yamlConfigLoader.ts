@@ -1,27 +1,3 @@
-/**
- * @file YamlConfigLoader.ts
- * @description Implements a layered YAML configuration loader that reads from default-config.yaml
- * and merges with user's config.yaml.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `docs/config-migration-plan.md`
- * - `src/modules/config/config.yaml.schema.ts`
- * - `src/testing-helpers/createMockYamlConfig.ts`
- *
- * ### Tasks:
- * - [x] Import required dependencies.
- * - [x] Implement `createYamlConfigFromFileSystem` to load and process config from files.
- * - [x] Implement `createYamlConfigFromObject` to process config from objects.
- * - [x] Implement helper functions for token substitution, deep merging, and platform-specific overrides.
- * - [x] Write tests for all exported functions.
- * - [x] Fix all errors and warnings by running lint and test.
- * - [x] Remove all commented out code and meta-comments.
- * - [x] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import { yamlConfigSchema, type YamlConfig } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
 import { createClientLogger, createLogger } from '@modules/logger';
@@ -30,7 +6,6 @@ import { join } from 'path';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
-import { fi } from 'zod/locales';
 
 const log = createLogger('YamlConfigLoader');
 const clientLogger = createClientLogger();
