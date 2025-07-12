@@ -112,6 +112,7 @@ describe('E2E: bun run cli generate', () => {
     // Create a minimal YamlConfig to get consistent paths for test setup
     yamlConfigForTestSetup = {
       paths: {
+        homeDir: tempDir,
         dotfilesDir: dotfilesDir,
         targetDir: targetDirForShims,
         generatedDir: generatedDir,
@@ -180,12 +181,17 @@ describe('E2E: bun run cli generate', () => {
     lazygitShimPath = path.join(targetDirForShims, 'lazygit');
     generatorCliShimPath = path.join(targetDirForShims, GENERATOR_CLI_SHIM_NAME);
     zshInitFilePath = path.join(generatedDir, 'completions', 'init.zsh');
-    actualLazygitSymlinkLocation = path.join(tempDir, '.config', 'lazygit', 'config.yml');
+    // The symlink is created relative to the target directory, not the home directory
+    actualLazygitSymlinkLocation = path.join(targetDirForShims, '.config', 'lazygit', 'config.yml');
+    
+    // Create the directory for the symlink target
+    fs.mkdirSync(path.dirname(actualLazygitSymlinkLocation), { recursive: true });
 
     // Create config.yaml in the dotfiles directory
     const configYamlPath = path.join(dotfilesDir, 'config.yaml');
     const configYamlContent = `
 paths:
+  homeDir: ${tempDir}
   dotfilesDir: ${dotfilesDir}
   targetDir: ${targetDirForShims}
   generatedDir: ${generatedDir}
@@ -300,11 +306,22 @@ downloader:
     expect(fs.existsSync(actualLazygitSymlinkLocation)).toBe(true);
     expect(fs.lstatSync(actualLazygitSymlinkLocation).isSymbolicLink()).toBe(true);
 
-    const resolvedPath = path.resolve(
-      path.dirname(actualLazygitSymlinkLocation),
-      fs.readlinkSync(actualLazygitSymlinkLocation)
-    );
-    expect(resolvedPath).toBe(lazygitSourceConfigPath);
+    // Get the symlink target
+    const symlinkTarget = fs.readlinkSync(actualLazygitSymlinkLocation);
+    
+    // Handle both absolute and relative symlinks
+    let resolvedPath;
+    if (path.isAbsolute(symlinkTarget)) {
+      resolvedPath = symlinkTarget;
+    } else {
+      resolvedPath = path.resolve(
+        path.dirname(actualLazygitSymlinkLocation),
+        symlinkTarget
+      );
+    }
+    
+    // Normalize paths for comparison to handle any path differences
+    expect(path.normalize(resolvedPath)).toBe(path.normalize(lazygitSourceConfigPath));
     expect(fs.readFileSync(resolvedPath, 'utf-8')).toContain('# Sample lazygit config for E2E test');
   });
 

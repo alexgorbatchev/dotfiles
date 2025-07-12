@@ -89,7 +89,7 @@ describe('E2E: bun run cli install', () => {
         binariesDir,
         binDir
       } = directories);
-
+      
       // Create mock binary file
       localMockBinaryFilePath = createBinFile(
         path.join(tempDir, mockAssetFileName),
@@ -120,6 +120,41 @@ describe('E2E: bun run cli install', () => {
       // Setup paths for verification
       expectedInstalledBinaryPath = path.join(binariesDir, mockToolName, mockAssetFileName);
       symlinkPath = path.join(binDir, mockToolName);
+
+      // Create config.yaml in the dotfiles directory
+      const configYamlPath = path.join(directories.dotfilesDir, 'config.yaml');
+      const configYamlContent = `
+paths:
+  homeDir: ${tempDir}
+  dotfilesDir: ${directories.dotfilesDir}
+  targetDir: ${directories.binDir}
+  generatedDir: ${directories.generatedDir}
+  toolConfigsDir: ${directories.toolConfigsDir}
+  completionsDir: ${path.join(directories.generatedDir, 'completions')}
+  manifestPath: ${path.join(directories.generatedDir, 'manifest.json')}
+  binariesDir: ${directories.binariesDir}
+system:
+  sudoPrompt: 'Enter password:'
+logging:
+  debug: ''
+updates:
+  checkOnRun: false
+  checkInterval: 86400
+github:
+  token: ''
+  host: '${mockServer.baseUrl}'
+  userAgent: 'test-agent'
+  cache:
+    enabled: false
+    ttl: 86400000
+downloader:
+  timeout: 300000
+  retryCount: 3
+  retryDelay: 1000
+  cache:
+    enabled: false
+`;
+      fs.writeFileSync(configYamlPath, configYamlContent);
 
       // Create tool config from fixture
       createToolConfig({
@@ -197,7 +232,7 @@ describe('E2E: bun run cli install', () => {
         binariesDir,
         binDir
       } = directories);
-
+      
       // Create binary file in the archive source directory
       createBinFile(
         path.join(directories.getDir('temp-archive-source'), mockArchiveToolName),
@@ -236,6 +271,41 @@ describe('E2E: bun run cli install', () => {
         mockArchiveToolName
       );
       symlinkPath = path.join(binDir, mockArchiveToolName);
+
+      // Create config.yaml in the dotfiles directory
+      const configYamlPath = path.join(directories.dotfilesDir, 'config.yaml');
+      const configYamlContent = `
+paths:
+  homeDir: ${tempDir}
+  dotfilesDir: ${directories.dotfilesDir}
+  targetDir: ${directories.binDir}
+  generatedDir: ${directories.generatedDir}
+  toolConfigsDir: ${directories.toolConfigsDir}
+  completionsDir: ${path.join(directories.generatedDir, 'completions')}
+  manifestPath: ${path.join(directories.generatedDir, 'manifest.json')}
+  binariesDir: ${directories.binariesDir}
+system:
+  sudoPrompt: 'Enter password:'
+logging:
+  debug: ''
+updates:
+  checkOnRun: false
+  checkInterval: 86400
+github:
+  token: ''
+  host: '${mockServer.baseUrl}'
+  userAgent: 'test-agent'
+  cache:
+    enabled: false
+    ttl: 86400000
+downloader:
+  timeout: 300000
+  retryCount: 3
+  retryDelay: 1000
+  cache:
+    enabled: false
+`;
+      fs.writeFileSync(configYamlPath, configYamlContent);
 
       // Create tool config from fixture
       createToolConfig({
