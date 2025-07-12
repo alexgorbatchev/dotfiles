@@ -1,6 +1,3 @@
-/**
- * @fileoverview Mock tool configuration for direct binary GitHub release tests.
- */
 import { type GithubReleaseToolConfig } from '@types';
 
 const config: GithubReleaseToolConfig = {

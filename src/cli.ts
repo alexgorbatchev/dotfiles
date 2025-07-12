@@ -9,7 +9,7 @@ import {
   registerUpdateCommand,
 } from '@modules/cli';
 import { type YamlConfig } from '@modules/config';
-import { createYamlConfigFromFileSystem } from '@modules/config-loader';
+import { loadYamlConfig } from '@modules/config-loader';
 import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
 import {
@@ -55,11 +55,17 @@ export interface Services {
   versionChecker: IVersionChecker;
 }
 
+export type SetupServicesOptions = {
+ dryRun?: boolean; 
+ cwd: string; 
+ env?: NodeJS.ProcessEnv ;
+}
+
 export async function setupServices(
-  options: { dryRun?: boolean; env?: NodeJS.ProcessEnv } = {}
+  options: SetupServicesOptions
 ): Promise<Services> {
   internalLog('setupServices: Initializing services... options: %o', options);
-  const { dryRun = false, env = process.env } = options;
+  const { dryRun = false, env = process.env, cwd } = options;
 
   // Initialize filesystem first
   let fs: IFileSystem;
@@ -78,23 +84,16 @@ export async function setupServices(
     homeDir: os.homedir(),
   };
 
-  // Default config path is in the dotfiles directory
-  const dotfilesDir = env['DOTFILES_DIR'] || path.join(os.homedir(), '.dotfiles');
-  const configPath = path.join(dotfilesDir, 'config.yaml');
-  internalLog('setupServices: Loading YAML config from %s', configPath);
-  const yamlConfig = await createYamlConfigFromFileSystem(
-    fs,
-    configPath,
-    systemInfo,
-    env
-  );
+  const userConfigPath = path.join(cwd, 'config.yaml');
+  const yamlConfig = await loadYamlConfig(fs,  userConfigPath, systemInfo, env);  ;
+
+  console.log('yamlConfig', yamlConfig);
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
     internalLog('setupServices: Loading tool configs into MemFileSystem for dry run.');
     const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
     const nodeFs = new NodeFileSystem();
-    const toolFilesJson: DirectoryJSON = {};
 
     try {
       if (await nodeFs.exists(realToolConfigsDir)) {
@@ -103,12 +102,14 @@ export async function setupServices(
           realToolConfigsDir
         );
         const filesInDir = await nodeFs.readdir(realToolConfigsDir);
+
         for (const fileName of filesInDir) {
           if (fileName.endsWith('.tool.ts')) {
             const filePath = path.join(realToolConfigsDir, fileName);
             try {
               const content = await nodeFs.readFile(filePath, 'utf8');
-              toolFilesJson[filePath] = content;
+              await fs.ensureDir(realToolConfigsDir);
+              await fs.writeFile(filePath, content);
               internalLog('setupServices: Added tool config %s to MemFileSystem.', filePath);
             } catch (readError) {
               internalLog(
@@ -126,17 +127,14 @@ export async function setupServices(
           realToolConfigsDir
         );
       }
-    } catch (dirError) {
+    } catch (err) {
       internalLog(
         'setupServices: Error accessing tool configs directory %s for dry run: %O',
         realToolConfigsDir,
-        dirError
+        err
       );
       // Optionally, decide whether to throw or continue.
     }
-
-    // Create a new MemFileSystem with the tool configs
-    fs = new MemFileSystem(toolFilesJson);
   }
 
   // Initialize services with yamlConfig
@@ -229,7 +227,10 @@ export async function main(argv: string[]) {
   program.parseOptions(argv);
   const options = program.opts() as { dryRun?: boolean };
 
-  const services = await setupServices({ dryRun: options.dryRun });
+  const services = await setupServices({ 
+    dryRun: options.dryRun,
+    cwd: process.cwd(),
+  });
 
   registerAllCommands(program, services);
   await program.parseAsync(argv);

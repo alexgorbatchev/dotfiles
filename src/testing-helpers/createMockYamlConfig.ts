@@ -23,7 +23,7 @@ export type PartialYamlConfig = {
  * @param options - Options for file path and file system.
  * @param options.filePath - Optional. The path to write the YAML file to.
  * @param options.fileSystem - Optional. The file system to use. Defaults to `NodeFileSystem`.
- * @returns A promise that resolves with the YAML string.
+ * @returns A promise that resolves with the `YamlConfig` object.
  *
  * @testing
  * This function is a utility for creating mock YAML configuration files in tests.
@@ -43,8 +43,9 @@ export async function createMockYamlConfig({
   fileSystem: IFileSystem;
   systemInfo: SystemInfo;
   env: Record<string, string | undefined>;
-}): Promise<void> {
+}): Promise<YamlConfig> {
   const fullConfig = await createYamlConfigFromObject(fileSystem, config, systemInfo, env);
   const yamlString = stringify(fullConfig);
   await fileSystem.writeFile(filePath, yamlString, 'utf8');
+  return fullConfig;
 }

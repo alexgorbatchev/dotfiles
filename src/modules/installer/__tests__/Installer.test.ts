@@ -18,7 +18,7 @@ describe('Installer', () => {
   let mockArchiveExtractor: IArchiveExtractor;
   let mockAppConfig: YamlConfig;
   let installer: Installer;
-  let fileSystemMocks: ReturnType<typeof createMemFileSystem>['spies'];
+  let fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
   let testDirs: TestDirectories;
 
   // Mock functions for non-filesystem dependencies
@@ -103,7 +103,7 @@ describe('Installer', () => {
     mockFileSystem = fs;
     fileSystemMocks = spies;
 
-    MOCK_BINARY_PATH = path.join(testDirs.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
+    MOCK_BINARY_PATH = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
     // Reset process.platform and process.arch before each test
     // @ts-ignore
@@ -149,11 +149,10 @@ describe('Installer', () => {
       mockFileSystem,
       {
         paths: {
-          dotfilesDir: testDirs.dotfilesDir,
-          generatedDir: testDirs.generatedDir,
+          ...testDirs.paths,
         },
       },
-      { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
+      { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
       {}
     );
 
@@ -203,7 +202,7 @@ describe('Installer', () => {
       await installer.install(MOCK_TOOL_NAME, toolConfig);
 
       expect(fileSystemMocks.ensureDir).toHaveBeenCalledWith(
-        path.join(testDirs.binariesDir, MOCK_TOOL_NAME)
+        path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME)
       );
     });
 
@@ -258,7 +257,7 @@ describe('Installer', () => {
         success: false,
         error: 'Test error',
         otherChanges: expect.arrayContaining([
-          `Ensured installation directory exists: ${path.join(testDirs.binariesDir, MOCK_TOOL_NAME)}`,
+          `Ensured installation directory exists: ${path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME)}`,
         ]),
       });
 
@@ -294,7 +293,7 @@ describe('Installer', () => {
       expect(afterInstallHook).toHaveBeenCalledTimes(1);
       expect(result.otherChanges).toEqual(
         expect.arrayContaining([
-          `Ensured installation directory exists: ${path.join(testDirs.binariesDir, MOCK_TOOL_NAME)}`,
+          `Ensured installation directory exists: ${path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME)}`,
           `Executing beforeInstall hook for ${MOCK_TOOL_NAME}.`,
           `Finished executing beforeInstall hook for ${MOCK_TOOL_NAME}.`,
           // otherChanges from installFromGitHubRelease will be [] due to mockResolvedValue
@@ -323,12 +322,16 @@ describe('Installer', () => {
       const initialOtherChanges = ['Initial change'];
       const context = {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: initialOtherChanges,
       };
 
-      await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, context);
+      // Mock chmod and symlink to avoid errors on non-existent files from mock downloader
+      fileSystemMocks.chmod.mockResolvedValue(undefined);
+      fileSystemMocks.symlink.mockResolvedValue(undefined);
+
+      const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, context);
 
       expect(mockGetLatestRelease).toHaveBeenCalledWith('owner', 'repo');
       expect(mockDownload).toHaveBeenCalledWith(
@@ -337,18 +340,7 @@ describe('Installer', () => {
           destinationPath: expect.stringContaining('test-tool-linux-amd64'),
         })
       );
-      // Mock chmod and symlink to avoid errors on non-existent files from mock downloader
-      fileSystemMocks.chmod.mockResolvedValue(undefined);
-      fileSystemMocks.symlink.mockResolvedValue(undefined);
-
-      const installFromGitHubReleaseSpy = spyOn(
-        installer,
-        'installFromGitHubRelease'
-      ).mockResolvedValue({ success: true, binaryPath: MOCK_BINARY_PATH, otherChanges: [] });
-
-      await installer.install(MOCK_TOOL_NAME, toolConfig);
-
-      expect(installFromGitHubReleaseSpy).toHaveBeenCalled();
+      expect(result.success).toBe(true);
     });
 
     it('should handle invalid repository format', async () => {
@@ -364,7 +356,7 @@ describe('Installer', () => {
 
       const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: [],
       });
@@ -388,7 +380,7 @@ describe('Installer', () => {
       const initialOtherChanges = ['Initial change for missing asset test'];
       const context = {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: initialOtherChanges,
       };
@@ -440,7 +432,7 @@ describe('Installer', () => {
 
       await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: '/home/test' },
         otherChanges: [],
       });
@@ -483,12 +475,11 @@ describe('Installer', () => {
         mockFileSystem,
         {
           paths: {
-            dotfilesDir: testDirs.dotfilesDir,
-            generatedDir: testDirs.generatedDir,
+            ...testDirs.paths,
           },
           github: { host: undefined },
         },
-        { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
+        { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
         {}
       );
       const tempInstaller = new Installer(
@@ -501,8 +492,8 @@ describe('Installer', () => {
 
       await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: '/home/test' },
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
         otherChanges: [],
       });
 
@@ -543,12 +534,11 @@ describe('Installer', () => {
         mockFileSystem,
         {
           paths: {
-            dotfilesDir: testDirs.dotfilesDir,
-            generatedDir: testDirs.generatedDir,
+            ...testDirs.paths,
           },
           github: { host: 'github.my-company.com' },
         },
-        { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
+        { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
         {}
       );
       const tempInstaller = new Installer(
@@ -561,7 +551,7 @@ describe('Installer', () => {
 
       await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: [],
       });
@@ -603,12 +593,11 @@ describe('Installer', () => {
         mockFileSystem,
         {
           paths: {
-            dotfilesDir: testDirs.dotfilesDir,
-            generatedDir: testDirs.generatedDir,
+            ...testDirs.paths,
           },
           github: { host: 'api.github.com' },
         },
-        { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
+        { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
         {}
       ); // API host
       const tempInstaller = new Installer(
@@ -621,7 +610,7 @@ describe('Installer', () => {
 
       await tempInstaller.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: [],
       });
@@ -650,7 +639,7 @@ describe('Installer', () => {
 
       const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: [],
       });
@@ -687,7 +676,7 @@ describe('Installer', () => {
 
       const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo,
         otherChanges: [],
       });
@@ -715,7 +704,7 @@ describe('Installer', () => {
 
       const result = await installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         systemInfo: { platform: 'linux', arch: 'x64', release: '' },
         otherChanges: [],
       });
@@ -745,7 +734,7 @@ describe('Installer', () => {
 
       const result = await installer.installFromBrew(MOCK_TOOL_NAME, toolConfig, {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         otherChanges: [],
       });
 
@@ -781,7 +770,7 @@ describe('Installer', () => {
         },
       };
 
-      const installDir = path.join(testDirs.binariesDir, MOCK_TOOL_NAME);
+      const installDir = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME);
       const scriptPath = path.join(installDir, `${MOCK_TOOL_NAME}-install.sh`);
       const assumedBinaryPath = path.join('/usr/local/bin', MOCK_TOOL_NAME);
 
@@ -813,17 +802,17 @@ describe('Installer', () => {
       expect(result.otherChanges).toEqual(
         expect.arrayContaining([
           `Downloaded installation script from https://example.com/install.sh to ${path.join(
-            testDirs.binariesDir,
+            testDirs.paths.binariesDir,
             MOCK_TOOL_NAME,
             `${MOCK_TOOL_NAME}-install.sh`
           )}.`,
           `Set executable permission (0755) on script: ${path.join(
-            testDirs.binariesDir,
+            testDirs.paths.binariesDir,
             MOCK_TOOL_NAME,
             `${MOCK_TOOL_NAME}-install.sh`
           )}`,
           `Executing installation script ${path.join(
-            testDirs.binariesDir,
+            testDirs.paths.binariesDir,
             MOCK_TOOL_NAME,
             `${MOCK_TOOL_NAME}-install.sh`
           )} using bash.`,
@@ -850,12 +839,12 @@ describe('Installer', () => {
 
       // Setup mockExists for the path of the binary within the extracted directory
       const expectedExtractedBinaryPath = path.join(
-        testDirs.binariesDir,
+        testDirs.paths.binariesDir,
         MOCK_TOOL_NAME,
         'extracted',
         'bin/tool' // This comes from toolConfig.installParams.extractPath
       );
-      const installDir = path.join(testDirs.binariesDir, MOCK_TOOL_NAME);
+      const installDir = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME);
       const extractDir = path.join(installDir, 'extracted');
       (fileSystemMocks.exists as ReturnType<typeof mock>).mockImplementation(async (p) => {
         return p === expectedExtractedBinaryPath || p === extractDir;
@@ -896,7 +885,7 @@ describe('Installer', () => {
       const tarballPath = path.join(installDir, `${MOCK_TOOL_NAME}.tar.gz`);
       const extractedBinaryPath = path.join(extractDir, 'bin/tool');
       const finalBinaryDestPath = path.join(installDir, 'bin/tool-renamed');
-      const symlinkPath = path.join(testDirs.binDir, MOCK_TOOL_NAME);
+      const symlinkPath = path.join(testDirs.paths.targetDir, MOCK_TOOL_NAME);
 
       expect(result.otherChanges).toEqual(
         expect.arrayContaining([
@@ -931,7 +920,7 @@ describe('Installer', () => {
       };
       const context = {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         otherChanges: ['Initial manual change'],
       };
 
@@ -963,7 +952,7 @@ describe('Installer', () => {
       };
       const context = {
         toolName: MOCK_TOOL_NAME,
-        installDir: path.join(testDirs.binariesDir, MOCK_TOOL_NAME),
+        installDir: path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME),
         otherChanges: ['Initial manual error change'],
       };
       const result = await installer.installManually(MOCK_TOOL_NAME, toolConfig, context);

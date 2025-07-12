@@ -8,6 +8,7 @@ import type { IGitHubApiCache } from '../../IGitHubApiCache';
 export const createMockYamlConfig = (overrides: PartialYamlConfig = {}): YamlConfig => {
   const defaultConfig: YamlConfig = {
     paths: {
+      homeDir: '/test/home',
       dotfilesDir: '/test/dotfiles',
       targetDir: '/usr/bin',
       generatedDir: '/test/dotfiles/.generated',

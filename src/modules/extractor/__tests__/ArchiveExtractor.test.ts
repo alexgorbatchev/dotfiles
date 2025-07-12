@@ -41,7 +41,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     // Create a single root for all tests in this suite
     testTempRoot = createTestDirectories({
       testName: 'archive-extractor-real-fs',
-    }).tempDir;
+    }).paths.homeDir;
   });
 
   afterAll(() => {
@@ -101,7 +101,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
         }
       });
       const filePathWithoutExtension = nodePath.join(
-        testDirs.tempDir,
+        testDirs.paths.homeDir,
         'mysterious_archive_is_tar_gz'
       );
       // Create a dummy file for the 'file' command to operate on
@@ -119,7 +119,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
         if (typeof opts === 'function') cb = opts;
         cb(null, { stdout: 'application/octet-stream', stderr: '' });
       });
-      const dummyFilePath = nodePath.join(testDirs.tempDir, 'archive.unknown');
+      const dummyFilePath = nodePath.join(testDirs.paths.homeDir, 'archive.unknown');
       nodeFs.writeFileSync(dummyFilePath, 'dummy data'); // file command needs a real file
       expect(extractor.detectFormat(dummyFilePath)).rejects.toThrow(
         `Unsupported or undetectable archive format for: ${dummyFilePath}`
@@ -148,16 +148,15 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       fileContent: string,
       subDir?: string
     ) => {
-      const sourceDir = nodePath.join(testDirs.tempDir, 'source-tar');
-      const fileToArchivePath = subDir
-        ? nodePath.join(subDir, fileNameInArchive)
-        : fileNameInArchive;
-      const fullPathToFileInSource = nodePath.join(sourceDir, fileToArchivePath);
-      const archiveFullPath = nodePath.join(testDirs.tempDir, archiveName);
+    const sourceDir = nodePath.join(testDirs.paths.homeDir, 'source-tar');
+    const fileToArchivePath = subDir
+      ? nodePath.join(subDir, fileNameInArchive)
+      : fileNameInArchive;
+    const fullPathToFileInSource = nodePath.join(sourceDir, fileToArchivePath);
+    const archiveFullPath = nodePath.join(testDirs.paths.homeDir, archiveName);
 
-      nodeFs.mkdirSync(nodePath.dirname(fullPathToFileInSource), { recursive: true });
-      nodeFs.writeFileSync(fullPathToFileInSource, fileContent);
-
+    nodeFs.mkdirSync(nodePath.dirname(fullPathToFileInSource), { recursive: true });
+    nodeFs.writeFileSync(fullPathToFileInSource, fileContent);
       // Use actual child_process.exec (via zxDollarReal for convenience in test setup)
       await $`tar -czf ${archiveFullPath} -C ${sourceDir} ${fileToArchivePath}`;
       return archiveFullPath;
@@ -170,16 +169,15 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       fileContent: string,
       subDir?: string
     ) => {
-      const sourceDir = nodePath.join(testDirs.tempDir, 'source-zip');
-      const fileToArchivePath = subDir
-        ? nodePath.join(subDir, fileNameInArchive)
-        : fileNameInArchive;
-      const fullPathToFileInSource = nodePath.join(sourceDir, fileToArchivePath);
-      const archiveFullPath = nodePath.join(testDirs.tempDir, archiveName);
+    const sourceDir = nodePath.join(testDirs.paths.homeDir, 'source-zip');
+    const fileToArchivePath = subDir
+      ? nodePath.join(subDir, fileNameInArchive)
+      : fileNameInArchive;
+    const fullPathToFileInSource = nodePath.join(sourceDir, fileToArchivePath);
+    const archiveFullPath = nodePath.join(testDirs.paths.homeDir, archiveName);
 
-      nodeFs.mkdirSync(nodePath.dirname(fullPathToFileInSource), { recursive: true });
-      nodeFs.writeFileSync(fullPathToFileInSource, fileContent);
-
+    nodeFs.mkdirSync(nodePath.dirname(fullPathToFileInSource), { recursive: true });
+    nodeFs.writeFileSync(fullPathToFileInSource, fileContent);
       if (subDir) {
         await $`cd ${sourceDir} && zip -r ${archiveFullPath} ${subDir}`;
       } else {
@@ -216,7 +214,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       const fileContent = 'Hello from tar.gz!';
       const realArchivePath = await createTestTarGzUtil(archiveName, fileName, fileContent);
 
-      const outputDir = nodePath.join(testDirs.tempDir, 'output-tar');
+      const outputDir = nodePath.join(testDirs.paths.homeDir, 'output-tar');
       nodeFs.mkdirSync(outputDir);
 
       await extractor.extract(realArchivePath, { targetDir: outputDir });
@@ -247,7 +245,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       const fileContent = 'Strip me!';
       const subDir = 'dir1/dir2';
       const realArchivePath = await createTestTarGzUtil(archiveName, fileName, fileContent, subDir);
-      const outputDir = nodePath.join(testDirs.tempDir, 'output-strip');
+      const outputDir = nodePath.join(testDirs.paths.homeDir, 'output-strip');
       nodeFs.mkdirSync(outputDir);
 
       await extractor.extract(realArchivePath, { targetDir: outputDir, stripComponents: 2 });
@@ -278,7 +276,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       const fileName = 'testfile.txt';
       const fileContent = 'Hello from zip!';
       const realArchivePath = await createTestZipUtil(archiveName, fileName, fileContent);
-      const outputDir = nodePath.join(testDirs.tempDir, 'output-zip');
+      const outputDir = nodePath.join(testDirs.paths.homeDir, 'output-zip');
       nodeFs.mkdirSync(outputDir);
 
       await extractor.extract(realArchivePath, { targetDir: outputDir, format: 'zip' });
@@ -306,7 +304,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       const archiveName = 'cleanup-success.tar.gz';
       const fileName = 'cleanup.txt';
       const realArchivePath = await createTestTarGzUtil(archiveName, fileName, 'cleanup');
-      const outputDir = nodePath.join(testDirs.tempDir, 'output_cleanup_success');
+      const outputDir = nodePath.join(testDirs.paths.homeDir, 'output_cleanup_success');
       nodeFs.mkdirSync(outputDir);
 
       await extractor.extract(realArchivePath, { targetDir: outputDir });
@@ -333,7 +331,7 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       const archiveName = 'cleanup-fail.tar.gz';
       const fileName = 'fail.txt';
       const realArchivePath = await createTestTarGzUtil(archiveName, fileName, 'I will fail.');
-      const outputDir = nodePath.join(testDirs.tempDir, 'output_cleanup_fail');
+      const outputDir = nodePath.join(testDirs.paths.homeDir, 'output_cleanup_fail');
       nodeFs.mkdirSync(outputDir);
 
       expect(extractor.extract(realArchivePath, { targetDir: outputDir })).rejects.toThrow(

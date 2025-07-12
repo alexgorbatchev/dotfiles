@@ -1,32 +1,4 @@
-/**
- * @file generator/configs/tools/fzf.tool.ts
- * @description Tool configuration for fzf (fuzzy finder).
- * This configuration adheres to the new guidelines for porting tool configurations,
- * prioritizing structured ToolConfig fields and avoiding embedding plugin manager logic.
- *
- * ## Development Plan
- *
- * ### Tasks:
- * - [x] Research fzf installation and configuration from user's dotfiles ([`zshrc`](zshrc), [`02-configs/fzf/init.zsh`](02-configs/fzf/init.zsh)).
- * - [x] Rewrite `ToolConfig` for `fzf` to align with "Porting Tool Configurations" guidelines:
- *   - [x] Set `name: 'fzf'`, `binaries: ['fzf']`, `version: 'latest'`.
- *   - [x] Set `installationMethod: 'github-release'`.
- *   - [x] Set `installParams.repo: 'junegunn/fzf'`.
- *   - [x] Set `FZF_DEFAULT_OPTS` and unset `FZF_PREVIEW`, `FZF_PREVIEW_WINDOW` within `zshInit` script.
- *   - [x] Configure `completions` object (specifically `completions.zsh`) to reference `shell/completion.zsh` from the fzf distribution.
- *   - [x] Rewrite `zshInit` as a single multi-line template string, wrapped in an array to satisfy `ToolConfig` type.
- *   - [x] Ensure `zshInit` only contains fzf-specific initializations:
- *     - [x] Sourcing of `shell/key-bindings.zsh` from its conventional installed location.
- *     - [x] User's custom 'fzf-jump-to-dir' Zsh function and associated `zle` setup.
- *     - [x] Keybinding for `fzf-jump-to-dir` using `zvm_after_init_commands` or direct `bindkey`.
- *   - [x] Remove all `zinit` loading commands from `zshInit`.
- *   - [x] Verify `updateCheck` configuration is sensible (retained existing: `{ enabled: true }`).
- * - [ ] Cleanup all linting errors and warnings. (Will be addressed by `bun lint` execution)
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan). (This rewrite is a cleanup)
- * - [ ] Ensure 100% test coverage for executable code. (N/A for `.tool.ts` files per `techContext.md`)
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-import type { ToolConfig } from '@types'; // Path relative to original fixture location
+import type { ToolConfig } from '@types'; 
 
 const fzfToolConfig: ToolConfig = {
   name: 'fzf',

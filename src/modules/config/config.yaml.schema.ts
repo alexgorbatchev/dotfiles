@@ -95,6 +95,7 @@ export const yamlConfigSchema = baseYamlConfigSchemaRequired.extend({
   platform: z.array(platformOverrideSchema).optional(),
 });
 
+export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
 export type YamlConfig = z.infer<typeof yamlConfigSchema>;
 
 {
@@ -104,6 +105,7 @@ export type YamlConfig = z.infer<typeof yamlConfigSchema>;
 
   check = {
     paths: {
+      homeDir: '',
       dotfilesDir: 'test',
       targetDir: '',
       generatedDir: '',

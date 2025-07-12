@@ -30,6 +30,7 @@ import { join } from 'path';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
+import { fi } from 'zod/locales';
 
 const log = createLogger('YamlConfigLoader');
 const clientLogger = createClientLogger();
@@ -212,11 +213,11 @@ function expandHomePathsInObject(target: unknown, homeDir: string): unknown {
   if (typeof target === 'string') {
     return expandHomePath(homeDir, target);
   }
-  
+
   if (Array.isArray(target)) {
-    return target.map(item => expandHomePathsInObject(item, homeDir));
+    return target.map((item) => expandHomePathsInObject(item, homeDir));
   }
-  
+
   if (typeof target === 'object' && target) {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(target)) {
@@ -224,7 +225,7 @@ function expandHomePathsInObject(target: unknown, homeDir: string): unknown {
     }
     return result;
   }
-  
+
   return target;
 }
 
@@ -269,7 +270,7 @@ function substituteTokens(
 
   // Parse the config string back to an object
   const parsedConfig = parse(configStr) as Record<string, unknown>;
-  
+
   // Expand home paths in the config
   return expandHomePathsInObject(parsedConfig, systemInfo.homeDir) as Record<string, unknown>;
 }
@@ -304,6 +305,15 @@ function processConfig(
 
 export const getDefaultConfigPath = (): string => join(__dirname, 'default-config.yaml');
 
+export async function getDefaultConfig(
+  fileSystem: IFileSystem,
+  systemInfo: SystemInfo,
+  env: Record<string, string | undefined>
+): Promise<YamlConfig> {
+  const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
+  return processConfig(defaultConfig, {}, systemInfo, env);
+}
+
 /**
  * Loads the default YAML configuration file from the filesystem and returns it as a raw object.
  *
@@ -311,7 +321,7 @@ export const getDefaultConfigPath = (): string => join(__dirname, 'default-confi
  * @returns A promise that resolves to the raw YAML object.
  */
 export async function loadDefaultYamlConfigAsRecord(
-  fileSystem: IFileSystem,
+  fileSystem: IFileSystem
 ): Promise<Record<string, unknown>> {
   const finalDefaultConfigPath = getDefaultConfigPath();
   let defaultConfig = {};
@@ -323,7 +333,7 @@ export async function loadDefaultYamlConfigAsRecord(
     clientLogger.error(
       `Default config file not found or invalid: ${
         error instanceof Error ? error.message : String(error)
-      }`,
+      }`
     );
     throw error;
   }
@@ -340,18 +350,18 @@ export async function loadDefaultYamlConfigAsRecord(
  * @param systemInfo - System information for platform detection
  * @param env - Environment variables for token substitution
  * @returns A promise that resolves to the validated YAML configuration
- * 
+ *
  * @testing
  * For unit and integration tests, this function is tested using a mock file system.
  * - `createMemFileSystem`: Used to create an in-memory file system with
  *   `default-config.yaml` and a user `config.yaml` to simulate real-world usage.
  *   (import from `@testing-helpers`)
  */
-export async function createYamlConfigFromFileSystem(
+export async function loadYamlConfig(
   fileSystem: IFileSystem,
   userConfigPath: string,
   systemInfo: SystemInfo,
-  env: Record<string, string | undefined>,
+  env: Record<string, string | undefined>
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   let userConfig = {};
@@ -363,7 +373,7 @@ export async function createYamlConfigFromFileSystem(
     clientLogger.error(
       `User config file not found or invalid: ${
         error instanceof Error ? error.message : String(error)
-      }`,
+      }`
     );
   }
 
@@ -379,7 +389,7 @@ export async function createYamlConfigFromFileSystem(
  * @param systemInfo - System information for platform detection
  * @param env - Environment variables for token substitution
  * @returns A promise that resolves to the validated YAML configuration
- * 
+ *
  * @testing
  * This function is primarily tested through `createMockYamlConfig`, which uses
  * it to generate configuration objects from partial mock data.
@@ -389,7 +399,7 @@ export async function createYamlConfigFromFileSystem(
 export async function createYamlConfigFromObject(
   fileSystem: IFileSystem,
   userConfig: Record<string, unknown> = {},
-  systemInfo: SystemInfo =  { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
+  systemInfo: SystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
   env: Record<string, string | undefined> = {}
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);

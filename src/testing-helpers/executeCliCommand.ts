@@ -11,11 +11,9 @@ export interface CliCommandOptions {
   /** CLI command and arguments */
   command: string[];
   /** Environment variables */
-  env: Record<string, string>;
+  env?: Record<string, string>;
   /** Optional current working directory */
   cwd?: string;
-  /** Optional additional environment variables */
-  additionalEnv?: Record<string, string>;
   /** Optional home directory */
   homeDir?: string;
   /** Optional custom command to use instead of the CLI entry point */
@@ -41,12 +39,11 @@ export interface CliCommandResult {
  * @returns Result of the command execution
  */
 export function executeCliCommand(options: CliCommandOptions): CliCommandResult {
-  const { command, env, additionalEnv = {}, cwd, homeDir, customCmd } = options;
+  const { command, env={}, cwd, homeDir, customCmd } = options;
 
   // Prepare environment variables
   const execEnv: Record<string, string> = {
     ...env,
-    ...additionalEnv,
     PATH: process.env['PATH'] || '',
   };
 

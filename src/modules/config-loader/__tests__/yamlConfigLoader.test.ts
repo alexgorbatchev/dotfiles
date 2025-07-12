@@ -1,7 +1,7 @@
 import { createMemFileSystem } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
 import {
-  createYamlConfigFromFileSystem,
+  loadYamlConfig,
   getDefaultConfigPath,
   loadDefaultYamlConfigAsRecord,
 } from '../yamlConfigLoader';
@@ -54,7 +54,7 @@ platform:
       },
     });
 
-    const result = await createYamlConfigFromFileSystem(
+    const result = await loadYamlConfig(
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -81,7 +81,7 @@ platform:
     });
 
     // Test for macOS
-    const macResult = await createYamlConfigFromFileSystem(
+    const macResult = await loadYamlConfig(
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -94,7 +94,7 @@ platform:
     expect(macResult.paths.targetDir).toBe('/opt/homebrew/bin');
     expect(macResult.platform).toBeUndefined();
 
-    const linuxResult = await createYamlConfigFromFileSystem(
+    const linuxResult = await loadYamlConfig(
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -115,7 +115,7 @@ platform:
       },
     });
 
-    const result = await createYamlConfigFromFileSystem(
+    const result = await loadYamlConfig(
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -138,7 +138,7 @@ platform:
       },
     });
 
-    const result = await createYamlConfigFromFileSystem(
+    const result = await loadYamlConfig(
       fileSystem,
       USER_CONFIG_PATH, // non-existent
       {
@@ -160,7 +160,7 @@ platform:
       },
     });
 
-    const result = await createYamlConfigFromFileSystem(
+    const result = await loadYamlConfig(
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -187,7 +187,7 @@ platform:
     const { fs: fileSystem } = await createMemFileSystem({});
 
     expect(
-      createYamlConfigFromFileSystem(fileSystem, USER_CONFIG_PATH, {} as any, {})
+      loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})
     ).rejects.toThrow();
   });
 
@@ -204,7 +204,7 @@ github:
     });
 
     expect(
-      createYamlConfigFromFileSystem(
+      loadYamlConfig(
         fileSystem,
         USER_CONFIG_PATH,
         {

@@ -7,39 +7,36 @@ import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import { createMemFileSystem, createTestDirectories, type TestDirectories } from '@testing-helpers';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock, type Mock } from 'bun:test';
 import { Installer } from '../Installer';
 
 describe('Installer with custom GitHub host', () => {
-  // Mock data
-  const MOCK_TOOL_NAME = 'test-tool';
-  const MOCK_REPO = 'owner/repo';
-  const MOCK_VERSION = '1.0.0';
-  const CUSTOM_GITHUB_HOST = 'https://github.example.com';
+  const toolName = 'test-tool';
+  const toolVersion = '1.0.0';
+  const githubRepo = 'owner/repo';
+  const githubHost = 'https://github.example.com';
 
-  // Mock functions and objects
   let mockFileSystem: IFileSystem;
   let mockDownloader: IDownloader;
   let mockGitHubApiClient: IGitHubApiClient;
   let mockArchiveExtractor: IArchiveExtractor;
   let mockAppConfig: YamlConfig;
   let installer: Installer;
-  let testDirs: TestDirectories;
+  let directories: TestDirectories;
 
-  // Mock function references
-  let mockDownload: ReturnType<typeof mock>;
-  let mockGetLatestRelease: ReturnType<typeof mock>;
-  let mockExtract: ReturnType<typeof mock>;
+  let mockDownload: Mock<any>;
+  let mockGetLatestRelease: Mock<any>;
+  let mockExtract: Mock<any>;
 
   beforeEach(async () => {
-    testDirs = createTestDirectories({ testName: 'installer-custom-host-tests' });
-    // Setup mock file system
-    const { fs: fsInstance } = await createMemFileSystem({
+    directories = createTestDirectories({ testName: 'installer-custom-host-tests' });
+
+    const { fs } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
-    mockFileSystem = fsInstance;
+    mockFileSystem = fs;
 
     // Setup mock downloader
     mockDownload = mock(() => Promise.resolve());
@@ -51,8 +48,8 @@ describe('Installer with custom GitHub host', () => {
     mockGetLatestRelease = mock(() =>
       Promise.resolve({
         id: 123,
-        tag_name: MOCK_VERSION,
-        name: `Release ${MOCK_VERSION}`,
+        tag_name: toolVersion,
+        name: `Release ${toolVersion}`,
         draft: false,
         prerelease: false,
         created_at: '2023-01-01T00:00:00Z',
@@ -93,7 +90,7 @@ describe('Installer with custom GitHub host', () => {
     );
     mockArchiveExtractor = {
       extract: mockExtract,
-      detectFormat: mock(async () => 'tar.gz' as const), // Added 'as const'
+      detectFormat: mock(async () => 'tar.gz' as const), 
       isSupported: mock(() => true),
     };
 
@@ -102,11 +99,10 @@ describe('Installer with custom GitHub host', () => {
       mockFileSystem,
       {
         paths: {
-          dotfilesDir: testDirs.dotfilesDir,
-          generatedDir: testDirs.generatedDir,
+          ...directories.paths,
         },
         github: {
-          host: CUSTOM_GITHUB_HOST,
+          host: githubHost,
         },
       },
       { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
@@ -126,23 +122,23 @@ describe('Installer with custom GitHub host', () => {
   it('should modify GitHub download URLs when using a custom GitHub host', async () => {
     // Create a tool config for testing
     const toolConfig: ToolConfig = {
-      name: MOCK_TOOL_NAME,
-      binaries: [MOCK_TOOL_NAME],
-      version: MOCK_VERSION,
+      name: toolName,
+      binaries: [toolName],
+      version: toolVersion,
       installationMethod: 'github-release',
       installParams: {
-        repo: MOCK_REPO,
+        repo: githubRepo,
         version: 'latest',
         assetPattern: 'test-tool-linux-amd64',
       },
     };
 
     // Call the install method
-    await installer.install(MOCK_TOOL_NAME, toolConfig);
+    await installer.install(toolName, toolConfig);
 
     // Verify that the download URL was modified to use the custom host
     expect(mockDownload).toHaveBeenCalledWith(
-      expect.stringContaining(new URL(CUSTOM_GITHUB_HOST).host),
+      expect.stringContaining(new URL(githubHost).host),
       expect.anything()
     );
 
@@ -158,8 +154,8 @@ describe('Installer with custom GitHub host', () => {
     const mockGetLatestReleaseWithDifferentUrl = mock(() =>
       Promise.resolve({
         id: 456,
-        tag_name: MOCK_VERSION,
-        name: `Release ${MOCK_VERSION}`,
+        tag_name: toolVersion,
+        name: `Release ${toolVersion}`,
         draft: false,
         prerelease: false,
         created_at: '2023-01-01T00:00:00Z',
@@ -200,18 +196,18 @@ describe('Installer with custom GitHub host', () => {
     );
 
     const toolConfig: ToolConfig = {
-      name: MOCK_TOOL_NAME,
-      binaries: [MOCK_TOOL_NAME],
-      version: MOCK_VERSION,
+      name: toolName,
+      binaries: [toolName],
+      version: toolVersion,
       installationMethod: 'github-release',
       installParams: {
-        repo: MOCK_REPO,
+        repo: githubRepo,
         version: 'latest',
         assetPattern: 'test-tool-linux-amd64',
       },
     };
 
-    await installerWithDifferentUrl.install(MOCK_TOOL_NAME, toolConfig);
+    await installerWithDifferentUrl.install(toolName, toolConfig);
 
     // Verify that the download URL was used as-is (not modified)
     expect(mockDownload).toHaveBeenCalledWith(
