@@ -13,7 +13,7 @@ import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
-  type MockedFileSystem,
+  type MemFileSystemReturn,
 } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -42,7 +42,7 @@ describe('installCommand', () => {
   let mockInstaller: IInstaller;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
   let mockYamlConfig: YamlConfig;
-  let mockFileSystem: MockedFileSystem;
+  let mockFs: MemFileSystemReturn;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -59,14 +59,13 @@ describe('installCommand', () => {
     loggerMocks = lm;
     mockCreateClientLogger.mockReturnValue(mockClientLogger);
 
-    const { fs } = createMemFileSystem({
+    mockFs = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
 
-    mockFileSystem = fs;
-    mockYamlConfig = await createYamlConfigFromObject(fs);
+    mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);
 
     mockInstaller = {
       install: mock(
@@ -80,7 +79,7 @@ describe('installCommand', () => {
 
     mockServices = {
       yamlConfig: mockYamlConfig,
-      fs: mockFileSystem.asIFileSystem,
+      fs: mockFs.fs.asIFileSystem,
       installer: mockInstaller,
     } as Services;
 

@@ -9,7 +9,7 @@ import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
-  type MockedFileSystem,
+  type MemFileSystemReturn,
 } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -38,7 +38,7 @@ describe('generateCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
-  let memFs: MockedFileSystem;
+  let mockFs: MemFileSystemReturn;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
 
   const toolAConfig: ToolConfig = {
@@ -51,16 +51,15 @@ describe('generateCommand', () => {
   beforeEach(async () => {
     program = createProgram();
 
-    const { fs, addFiles } = createMemFileSystem({
+    mockFs = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
-    memFs = fs;
 
-    mockYamlConfig = await createYamlConfigFromObject(memFs);
+    mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);
 
-    addFiles({
+    mockFs.addFiles({
       [`${mockYamlConfig.paths.toolConfigsDir}/toolA.yaml`]: yaml.stringify(toolAConfig)
     });
 
@@ -97,7 +96,7 @@ describe('generateCommand', () => {
 
     registerGenerateCommand(program, {
       yamlConfig: mockYamlConfig,
-      fs: memFs.asIFileSystem,
+      fs: mockFs.fs.asIFileSystem,
       generatorOrchestrator: mockGeneratorOrchestrator,
     } as Services);
   });

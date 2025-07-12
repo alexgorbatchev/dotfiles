@@ -15,7 +15,7 @@ import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
-  type MockedFileSystem,
+  type MemFileSystemReturn,
 } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -43,7 +43,7 @@ const mockCreateLogger = mock(() => mock(() => {}));
 describe('updateCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
-  let mockFileSystem: MockedFileSystem;
+  let mockFs: MemFileSystemReturn;
   let mockGitHubApiClient: Partial<IGitHubApiClient>;
   let mockInstallerService: Partial<IInstaller>;
   let mockVersionChecker: Partial<IVersionChecker>;
@@ -81,16 +81,14 @@ describe('updateCommand', () => {
   beforeEach(async () => {
     program = createProgram();
 
-    const { fs } = createMemFileSystem({
+    mockFs = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
       exists: mock(async () => true),
     });
 
-    mockFileSystem = fs;
-
-    mockYamlConfig = await createYamlConfigFromObject(fs);
+    mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);
 
     mockGitHubApiClient = {
       getLatestRelease: mock(
@@ -139,7 +137,7 @@ describe('updateCommand', () => {
 
     registerUpdateCommand(program, {
       yamlConfig: mockYamlConfig,
-      fs: mockFileSystem.asIFileSystem,
+      fs: mockFs.fs.asIFileSystem,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
       installer: mockInstallerService as IInstaller,
       versionChecker: mockVersionChecker as IVersionChecker,

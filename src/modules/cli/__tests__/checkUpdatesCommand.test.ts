@@ -78,13 +78,13 @@ describe('checkUpdatesCommand', () => {
       createLogger: mockCreateLogger,
     }));
 
-    const { fs } = createMemFileSystem({
+    const mockFs = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
 
-    mockYamlConfig = await createYamlConfigFromObject(fs);
+    mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);
 
     const mockVersionChecker: Partial<IVersionChecker> = {
       checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
@@ -114,7 +114,7 @@ describe('checkUpdatesCommand', () => {
 
     mockServices = {
       yamlConfig: mockYamlConfig,
-      fs: fs.asIFileSystem,
+      fs: mockFs.fs.asIFileSystem,
       versionChecker: mockVersionChecker as IVersionChecker,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
     } as Services;
@@ -137,19 +137,20 @@ describe('checkUpdatesCommand', () => {
     expect(loggerMocks.log).toHaveBeenCalledWith('fzf (0.40.0) is up to date. Latest: 0.40.0');
   });
 
+  afterEach(() => {
+    clearMockRegistry();
+  });
+
+  afterAll(() => {
+    mockModules.restoreAll();
+  });
+
   test('should report an update is available', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockServices.githubApiClient.getLatestRelease as any).mockResolvedValue({
       tag_name: 'v0.41.0',
     });
-  
-    afterEach(() => {
-      clearMockRegistry();
-    });
-  
-    afterAll(() => {
-      mockModules.restoreAll();
-    });
+    
     (mockServices.versionChecker.checkVersionStatus as any).mockResolvedValue(
       VersionComparisonStatus.NEWER_AVAILABLE
     );
