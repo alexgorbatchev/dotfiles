@@ -3,13 +3,13 @@ import { createProgram } from '@cli';
 import { exitCli } from '@modules/cli/exitCli';
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
-import type { IFileSystem } from '@modules/file-system';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
+  type MockedFileSystem,
 } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -38,7 +38,7 @@ describe('generateCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
-  let memFs: IFileSystem;
+  let memFs: MockedFileSystem;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
 
   const toolAConfig: ToolConfig = {
@@ -51,20 +51,18 @@ describe('generateCommand', () => {
   beforeEach(async () => {
     program = createProgram();
 
-    const fsHelperReturn = createMemFileSystem({
+    const { fs, addFiles } = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
-    memFs = fsHelperReturn.fs;
+    memFs = fs;
 
     mockYamlConfig = await createYamlConfigFromObject(memFs);
 
-    await memFs.ensureDir(mockYamlConfig.paths.toolConfigsDir);
-    await memFs.writeFile(
-      `${mockYamlConfig.paths.toolConfigsDir}/toolA.yaml`,
-      yaml.stringify(toolAConfig)
-    );
+    addFiles({
+      [`${mockYamlConfig.paths.toolConfigsDir}/toolA.yaml`]: yaml.stringify(toolAConfig)
+    });
 
     const mockManifest: GeneratedArtifactsManifest = {
       shims: ['/test/target/toolA-bin'],
@@ -99,7 +97,7 @@ describe('generateCommand', () => {
 
     registerGenerateCommand(program, {
       yamlConfig: mockYamlConfig,
-      fs: memFs,
+      fs: memFs.asIFileSystem,
       generatorOrchestrator: mockGeneratorOrchestrator,
     } as Services);
   });

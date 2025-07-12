@@ -1,8 +1,8 @@
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
 import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
-import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem } from '@testing-helpers';
+import type { MockedFileSystem } from '@testing-helpers/createMemFileSystem';
 import type { ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
@@ -10,7 +10,7 @@ import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
-  let fs: IFileSystem;
+  let fs: MockedFileSystem;
   let yamlConfig: YamlConfig;
   let symlinkGenerator: SymlinkGenerator;
 

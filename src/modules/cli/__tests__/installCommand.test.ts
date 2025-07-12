@@ -7,13 +7,13 @@ import {
   createYamlConfigFromObject,
   getDefaultConfigPath,
 } from '@modules/config-loader';
-import type { IFileSystem } from '@modules/file-system';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
+  type MockedFileSystem,
 } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -42,6 +42,7 @@ describe('installCommand', () => {
   let mockInstaller: IInstaller;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
   let mockYamlConfig: YamlConfig;
+  let mockFileSystem: MockedFileSystem;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -64,6 +65,7 @@ describe('installCommand', () => {
       },
     });
 
+    mockFileSystem = fs;
     mockYamlConfig = await createYamlConfigFromObject(fs);
 
     mockInstaller = {
@@ -78,7 +80,7 @@ describe('installCommand', () => {
 
     mockServices = {
       yamlConfig: mockYamlConfig,
-      fs: {} as IFileSystem,
+      fs: mockFileSystem.asIFileSystem,
       installer: mockInstaller,
     } as Services;
 

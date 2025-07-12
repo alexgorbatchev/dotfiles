@@ -7,7 +7,6 @@ import {
   getDefaultConfigPath,
   loadSingleToolConfig,
 } from '@modules/config-loader';
-import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
@@ -16,6 +15,7 @@ import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
+  type MockedFileSystem,
 } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -43,7 +43,7 @@ const mockCreateLogger = mock(() => mock(() => {}));
 describe('updateCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
-  let mockFileSystem: IFileSystem;
+  let mockFileSystem: MockedFileSystem;
   let mockGitHubApiClient: Partial<IGitHubApiClient>;
   let mockInstallerService: Partial<IInstaller>;
   let mockVersionChecker: Partial<IVersionChecker>;
@@ -139,7 +139,7 @@ describe('updateCommand', () => {
 
     registerUpdateCommand(program, {
       yamlConfig: mockYamlConfig,
-      fs: mockFileSystem as IFileSystem,
+      fs: mockFileSystem.asIFileSystem,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
       installer: mockInstallerService as IInstaller,
       versionChecker: mockVersionChecker as IVersionChecker,

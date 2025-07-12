@@ -114,7 +114,7 @@ describe('checkUpdatesCommand', () => {
 
     mockServices = {
       yamlConfig: mockYamlConfig,
-      fs: fs,
+      fs: fs.asIFileSystem,
       versionChecker: mockVersionChecker as IVersionChecker,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
     } as Services;

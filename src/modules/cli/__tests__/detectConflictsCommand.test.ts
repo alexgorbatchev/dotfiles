@@ -7,13 +7,13 @@ import {
   createYamlConfigFromObject,
   getDefaultConfigPath,
 } from '@modules/config-loader';
-import type { IFileSystem } from '@modules/file-system';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
   type FileSystemSpies,
+  type MockedFileSystem,
 } from '@testing-helpers';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -46,7 +46,7 @@ describe('detectConflictsCommand', () => {
   let mockYamlConfig: YamlConfig;
   let fileSystemSpies: FileSystemSpies;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
-  let memFs: IFileSystem;
+  let memFs: MockedFileSystem;
 
   const toolAConfig: ManualToolConfig = {
     name: 'toolA',
@@ -90,14 +90,14 @@ describe('detectConflictsCommand', () => {
 
     program = createProgram();
 
-    const fsHelperReturn = createMemFileSystem({
+    const { fs, spies } = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
 
-    memFs = fsHelperReturn.fs;
-    fileSystemSpies = fsHelperReturn.spies;
+    memFs = fs;
+    fileSystemSpies = spies;
 
     mockYamlConfig = await createYamlConfigFromObject(
       memFs,
@@ -112,7 +112,7 @@ describe('detectConflictsCommand', () => {
 
     registerDetectConflictsCommand(program, {
       yamlConfig: mockYamlConfig,
-      fs: memFs,
+      fs: memFs.asIFileSystem,
     } as Services);
   });
 
@@ -134,7 +134,7 @@ describe('detectConflictsCommand', () => {
 
       expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
         mockYamlConfig.paths.toolConfigsDir,
-        memFs
+        memFs.asIFileSystem
       );
       expect(loggerMocks.info).toHaveBeenCalledWith(
         'No tool configurations found. Nothing to check for conflicts.'
@@ -147,7 +147,7 @@ describe('detectConflictsCommand', () => {
     });
   
     afterAll(() => {
-      mockModules.restore();
+      mockModules.restoreAll();
     });
 
     test('Error during loadToolConfigsFromDirectory - should log error and exit 1', async () => {
