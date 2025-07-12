@@ -34,39 +34,35 @@ platform:
 `;
 
   it('should load default config when user config does not exist', async () => {
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
 
-    const result = await loadDefaultYamlConfigAsRecord(fileSystem) as any;
+    const result = (await loadDefaultYamlConfigAsRecord(fileSystem)) as any;
 
     expect(result.paths?.toolConfigsDir).toBe('${paths.dotfilesDir}/generator/configs/tools');
     expect(result.github?.token).toBe('${GITHUB_TOKEN}');
   });
 
   it('should merge default config with user config', async () => {
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
       },
     });
 
-    const systemInfo = {
-      homeDir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'x64',
-    } as const;
-    const env = { GITHUB_TOKEN: 'test-token' };
-
     const result = await createYamlConfigFromFileSystem(
       fileSystem,
       USER_CONFIG_PATH,
-      systemInfo,
-      env
+      {
+        homeDir: '/home/testuser',
+        platform: 'linux',
+        arch: 'x64',
+      },
+      { GITHUB_TOKEN: 'test-token' }
     );
 
     expect(result.paths.dotfilesDir).toBe('/home/testuser/custom-dotfiles');
@@ -77,7 +73,7 @@ platform:
   });
 
   it('should apply platform-specific overrides from user config', async () => {
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG_WITH_PLATFORM,
@@ -85,58 +81,49 @@ platform:
     });
 
     // Test for macOS
-    const macSystemInfo = {
-      homeDir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'darwin',
-      arch: 'x64',
-    } as const;
     const macResult = await createYamlConfigFromFileSystem(
       fileSystem,
       USER_CONFIG_PATH,
-      macSystemInfo,
+      {
+        homeDir: '/home/testuser',
+        platform: 'darwin',
+        arch: 'x64',
+      },
       {}
     );
     expect(macResult.paths.targetDir).toBe('/opt/homebrew/bin');
     expect(macResult.platform).toBeUndefined();
 
-    // Test for Linux ARM64
-    const linuxSystemInfo = {
-      homeDir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'arm64',
-    } as const;
     const linuxResult = await createYamlConfigFromFileSystem(
       fileSystem,
       USER_CONFIG_PATH,
-      linuxSystemInfo,
+      {
+        homeDir: '/home/testuser',
+        platform: 'linux',
+        arch: 'arm64',
+      },
       {}
     );
     expect(linuxResult.downloader.timeout).toBe(600000);
   });
 
   it('should not apply platform overrides if none are defined', async () => {
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
       },
     });
 
-    const systemInfo = {
-      homeDir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'darwin',
-      arch: 'x64',
-    } as const;
-    const env = { GITHUB_TOKEN: 'test-token' };
-
     const result = await createYamlConfigFromFileSystem(
       fileSystem,
       USER_CONFIG_PATH,
-      systemInfo,
-      env
+      {
+        homeDir: '/home/testuser',
+        platform: 'darwin',
+        arch: 'x64',
+      },
+      { GITHUB_TOKEN: 'test-token' }
     );
 
     // It should use the value from the merged user/default config, not an override
@@ -145,32 +132,28 @@ platform:
   });
 
   it('should substitute environment variables in config', async () => {
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
     });
 
-    const systemInfo = {
-      homeDir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'x64',
-    } as const;
-    const env = { GITHUB_TOKEN: 'env-github-token' };
-
     const result = await createYamlConfigFromFileSystem(
       fileSystem,
       USER_CONFIG_PATH, // non-existent
-      systemInfo,
-      env
+      {
+        homeDir: '/home/testuser',
+        platform: 'linux',
+        arch: 'x64',
+      },
+      { GITHUB_TOKEN: 'env-github-token' }
     );
 
     expect(result.github.token).toBe('env-github-token');
   });
 
   it('should substitute config references in config', async () => {
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
@@ -189,13 +172,19 @@ platform:
     );
 
     expect(result.paths.generatedDir).toBe('/home/testuser/custom-dotfiles/.generated');
-    expect(result.paths.toolConfigsDir).toBe('/home/testuser/custom-dotfiles/generator/configs/tools');
-    expect(result.paths.completionsDir).toBe('/home/testuser/custom-dotfiles/.generated/completions');
-    expect(result.paths.manifestPath).toBe('/home/testuser/custom-dotfiles/.generated/generated-manifest.json');
+    expect(result.paths.toolConfigsDir).toBe(
+      '/home/testuser/custom-dotfiles/generator/configs/tools'
+    );
+    expect(result.paths.completionsDir).toBe(
+      '/home/testuser/custom-dotfiles/.generated/completions'
+    );
+    expect(result.paths.manifestPath).toBe(
+      '/home/testuser/custom-dotfiles/.generated/generated-manifest.json'
+    );
   });
 
   it('should throw an error when default config file does not exist', async () => {
-    const { fs: fileSystem } = createMemFileSystem({});
+    const { fs: fileSystem } = await createMemFileSystem({});
 
     expect(
       createYamlConfigFromFileSystem(fileSystem, USER_CONFIG_PATH, {} as any, {})
@@ -207,23 +196,24 @@ platform:
 github:
   token: 12345
 `;
-    const { fs: fileSystem } = createMemFileSystem({
+    const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_INVALID_USER_CONFIG,
       },
     });
 
-    const systemInfo = {
-      homeDir: '/home/testuser',
-      cwd: '/home/testuser/project',
-      platform: 'linux',
-      arch: 'x64',
-    } as const;
-    const env = {};
-
     expect(
-      createYamlConfigFromFileSystem(fileSystem, USER_CONFIG_PATH, systemInfo, env)
+      createYamlConfigFromFileSystem(
+        fileSystem,
+        USER_CONFIG_PATH,
+        {
+          homeDir: '/home/testuser',
+          platform: 'linux',
+          arch: 'x64',
+        },
+        {}
+      )
     ).rejects.toThrow(/YAML configuration is invalid/);
   });
 });

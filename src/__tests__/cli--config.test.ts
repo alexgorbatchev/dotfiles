@@ -1,6 +1,7 @@
 import * as cliModule from '@cli';
 import * as configLoaderModule from '@modules/config-loader';
 import * as clientLoggerModule from '@modules/logger';
+import * as generateCommandModule from '@modules/cli/generateCommand';
 import { createMockClientLogger } from '@testing-helpers';
 import { beforeEach, describe, expect, mock, spyOn, test, type Mock } from 'bun:test';
 import type { ConsolaInstance } from 'consola';
@@ -21,10 +22,20 @@ describe('CLI Global Options --config', () => {
     createClientLoggerSpy = spyOn(clientLoggerModule, 'createClientLogger').mockReturnValue(mockClientLogger);
     spyOn(configLoaderModule, 'loadToolConfigsFromDirectory').mockResolvedValue({});
 
+    // Mock the registerGenerateCommand to prevent it from executing and exiting
+    spyOn(generateCommandModule, 'registerGenerateCommand').mockImplementation((program) => {
+      program
+        .command('generate')
+        .description('Mocked generate command')
+        .action(() => {
+          // Do nothing, just a stub
+        });
+    });
+
     // Since we are not testing the services themselves, we can mock setupServices
     // to return a minimal object.
     spyOn(cliModule, 'setupServices').mockResolvedValue({
-      appConfig: { toolConfigsDir: '/fake/dir' },
+      yamlConfig: { paths: { toolConfigsDir: '/fake/dir' } },
       fs: { constructor: { name: 'MockFS' } },
       generatorOrchestrator: { generateAll: mock(async () => ({})) },
     } as any);
@@ -36,7 +47,7 @@ describe('CLI Global Options --config', () => {
 
     await cliModule.main(testArgv);
 
-    // The hook logger and the command logger
+    // The hook logger and additional loggers from our changes
     expect(createClientLoggerSpy).toHaveBeenCalledTimes(3);
 
     // Check that the hook logger was called with the correct message
@@ -48,7 +59,7 @@ describe('CLI Global Options --config', () => {
 
     await cliModule.main(testArgv);
 
-    // Only the command logger should be created
+    // Only the main command logger should be created
     expect(createClientLoggerSpy).toHaveBeenCalledTimes(1);
 
     const infoCalls = loggerMocks.info.mock.calls;

@@ -1,23 +1,23 @@
-import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem } from '@testing-helpers';
 import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'path';
 import { FileGitHubApiCache } from '../FileGitHubApiCache';
 import type { CacheEntry } from '../IGitHubApiCache';
-import { createMockYamlConfig, createGitHubConfigOverride } from './helpers/sharedGitHubApiClientTestSetup';
+import { createGitHubConfigOverride, createMockYamlConfig } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('FileGitHubApiCache', () => {
   let mockFileSystem: IFileSystem;
-  let fileSystemMocks: ReturnType<typeof createMemFileSystem>['spies'];
+  let fileSystemMocks: MemFileSystemReturn['spies'];
   let mockYamlConfig: YamlConfig;
   let cache: FileGitHubApiCache;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore();
 
     // Setup mock file system
-    const { fs: fsInstance, spies: fsMocks } = createMemFileSystem();
+    const { fs: fsInstance, spies: fsMocks } = await createMemFileSystem();
     mockFileSystem = fsInstance;
     fileSystemMocks = fsMocks;
 

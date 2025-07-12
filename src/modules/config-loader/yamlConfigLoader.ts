@@ -29,6 +29,7 @@ import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo }
 import { join } from 'path';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
+import { expandHomePath } from '@utils';
 
 const log = createLogger('YamlConfigLoader');
 const clientLogger = createClientLogger();
@@ -202,43 +203,29 @@ function applyPlatformOverrides(
 }
 
 /**
- * Expands the tilde (~) character in file paths to the user's home directory.
- * @param path - The file path that may contain a tilde.
- * @param systemInfo - System information containing the home directory.
- * @returns The path with the tilde expanded to the user's home directory.
- */
-function expandHomePath(path: string, systemInfo: SystemInfo): string {
-  if (typeof path !== 'string') return path;
-  if (path.startsWith('~/') || path === '~') {
-    return path.replace(/^~(?=$|\/|\\)/, systemInfo.homeDir);
-  }
-  return path;
-}
-
-/**
  * Recursively processes an object to expand home paths in string values.
- * @param obj - The object to process.
+ * @param target - The object to process.
  * @param systemInfo - System information containing the home directory.
  * @returns The object with home paths expanded.
  */
-function expandHomePathsInObject(obj: unknown, systemInfo: SystemInfo): unknown {
-  if (typeof obj === 'string') {
-    return expandHomePath(obj, systemInfo);
+function expandHomePathsInObject(target: unknown, homeDir: string): unknown {
+  if (typeof target === 'string') {
+    return expandHomePath(homeDir, target);
   }
   
-  if (Array.isArray(obj)) {
-    return obj.map(item => expandHomePathsInObject(item, systemInfo));
+  if (Array.isArray(target)) {
+    return target.map(item => expandHomePathsInObject(item, homeDir));
   }
   
-  if (obj && typeof obj === 'object' && obj !== null) {
+  if (typeof target === 'object' && target) {
     const result: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      result[key] = expandHomePathsInObject(value, systemInfo);
+    for (const [key, value] of Object.entries(target)) {
+      result[key] = expandHomePathsInObject(value, homeDir);
     }
     return result;
   }
   
-  return obj;
+  return target;
 }
 
 /**
@@ -284,7 +271,7 @@ function substituteTokens(
   const parsedConfig = parse(configStr) as Record<string, unknown>;
   
   // Expand home paths in the config
-  return expandHomePathsInObject(parsedConfig, systemInfo) as Record<string, unknown>;
+  return expandHomePathsInObject(parsedConfig, systemInfo.homeDir) as Record<string, unknown>;
 }
 
 function processConfig(

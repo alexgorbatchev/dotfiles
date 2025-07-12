@@ -3,8 +3,9 @@
 # Environment variables from process.env (e.g., ${VAR_NAME}) and other config values (e.g., ${paths.dotfilesDir}) can be used for substitution.
 
 paths:
+  homeDir: ${HOME} 
   # Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`.
-  dotfilesDir: ~/.dotfiles # Corresponds to DOTFILES_DIR
+  dotfilesDir: ${paths.homeDir}/.dotfiles # Corresponds to DOTFILES_DIR
   # Sets the target directory where executable shims for tools will be placed. Defaults to `/usr/local/bin`.
   targetDir: /usr/local/bin # Corresponds to TARGET_DIR
   # Defines the directory where all generated files will be stored. Defaults to `${paths.dotfilesDir}/.generated`.

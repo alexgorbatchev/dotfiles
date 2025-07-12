@@ -13,7 +13,7 @@ describe('MemFileSystem', () => {
 
   beforeEach(async () => {
     // Create a fresh volume from base JSON using the helper
-    const { fs } = createMemFileSystem({
+    const { fs } = await createMemFileSystem({
       initialVolumeJson: initialJsonBase,
     });
     fileSystem = fs;

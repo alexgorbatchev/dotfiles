@@ -51,7 +51,7 @@ describe('generateCommand', () => {
   beforeEach(async () => {
     program = createProgram();
 
-    mockFs = createMemFileSystem({
+    mockFs = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

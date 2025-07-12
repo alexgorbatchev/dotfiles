@@ -34,7 +34,7 @@ describe('Installer with custom GitHub host', () => {
   beforeEach(async () => {
     testDirs = createTestDirectories({ testName: 'installer-custom-host-tests' });
     // Setup mock file system
-    const { fs: fsInstance } = createMemFileSystem({
+    const { fs: fsInstance } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

@@ -17,8 +17,8 @@ let nonErrorStringThrowingStrategy: DownloadStrategy;
 let fileSystem: IFileSystem;
 
 describe('Downloader', () => {
-  beforeEach(() => {
-    const { fs: fsInstance } = createMemFileSystem();
+  beforeEach(async () => {
+    const { fs: fsInstance } = await createMemFileSystem();
     fileSystem = fsInstance;
     // Re-initialize mocks before each test to reset their state (e.g., call counts)
     mockStrategy1 = {

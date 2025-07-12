@@ -15,7 +15,7 @@ describe('ShimGenerator', () => {
   let mfs: IFileSystem;
 
   beforeEach(async () => {
-    const { fs, spies } = createMemFileSystem({
+    const { fs, spies } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

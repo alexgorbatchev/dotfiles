@@ -59,7 +59,7 @@ describe('installCommand', () => {
     loggerMocks = lm;
     mockCreateClientLogger.mockReturnValue(mockClientLogger);
 
-    mockFs = createMemFileSystem({
+    mockFs = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

@@ -41,7 +41,11 @@
  * - [x] `it('should execute fzf shim, run mock fzf, and output version')`
  */
 
-import { type ConfigEnvironment, createAppConfig } from '@modules/config';
+import { type ConfigEnvironment, type YamlConfig } from '@modules/config';
+import { createMemFileSystem } from '@testing-helpers';
+
+// Define the generator CLI shim name as a constant
+const GENERATOR_CLI_SHIM_NAME = 'shim';
 import { beforeAll, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -62,7 +66,7 @@ describe('E2E: bun run cli generate', () => {
   let binariesDirForVerification: string; // AppConfig.binariesDir (where actual binaries are expected by shims)
   let lazygitSourceConfigPath: string; // Source for the lazygit config symlink
   let envVarsForCli: ConfigEnvironment;
-  let appConfigForTestSetup: ReturnType<typeof createAppConfig>; // To get consistent paths
+  let yamlConfigForTestSetup: YamlConfig; // To get consistent paths
 
   // For CLI results and manifest, populated in beforeAll
   let cliExitCode: number | null;
@@ -75,7 +79,7 @@ describe('E2E: bun run cli generate', () => {
   let actualLazygitSymlinkLocation: string; // Where the lazygit symlink is created
   let manifestPathFromEnv: string; // Path to the manifest file as defined in env
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Create test directories
     const directories = createTestDirectories({
       testName: 'dotfiles-e2e-cli-generate',
@@ -96,21 +100,54 @@ describe('E2E: bun run cli generate', () => {
       binariesDir: binariesDirForVerification
     } = directories);
     
-    // Create a minimal AppConfig to get consistent paths for test setup
-    appConfigForTestSetup = createAppConfig(
-      { homedir: tempDir, cwd: tempDir },
-      { DOTFILES_DIR: dotfilesDir }
-    );
-    
     // Set up target directory for shims
     targetDirForShims = directories.getDir('bin');
-    
     
     // Set up lazygit config path
     lazygitSourceConfigPath = path.join(directories.getDir('lazygit'), 'config.yml');
     
     // Setup environment variables
     manifestPathFromEnv = path.join(generatedDir, 'generated-manifest.json');
+    
+    // Create a minimal YamlConfig to get consistent paths for test setup
+    yamlConfigForTestSetup = {
+      paths: {
+        dotfilesDir: dotfilesDir,
+        targetDir: targetDirForShims,
+        generatedDir: generatedDir,
+        toolConfigsDir: toolConfigsDir,
+        completionsDir: path.join(generatedDir, 'completions'),
+        manifestPath: manifestPathFromEnv,
+        binariesDir: directories.binariesDir
+      },
+      system: {
+        sudoPrompt: 'Enter password:'
+      },
+      logging: {
+        debug: ''
+      },
+      updates: {
+        checkOnRun: false,
+        checkInterval: 86400
+      },
+      github: {
+        token: '',
+        host: 'https://api.github.com',
+        userAgent: 'test-agent',
+        cache: {
+          enabled: false,
+          ttl: 86400000
+        }
+      },
+      downloader: {
+        timeout: 300000,
+        retryCount: 3,
+        retryDelay: 1000,
+        cache: {
+          enabled: false
+        }
+      }
+    };
     envVarsForCli = setupEnvironmentVariables({
       directories,
       additionalEnv: {
@@ -141,9 +178,47 @@ describe('E2E: bun run cli generate', () => {
     // Define artifact paths
     fzfShimPath = path.join(targetDirForShims, 'fzf');
     lazygitShimPath = path.join(targetDirForShims, 'lazygit');
-    generatorCliShimPath = path.join(targetDirForShims, appConfigForTestSetup.generatorCliShimName);
-    zshInitFilePath = path.join(directories.getDir('zsh'), 'init.zsh');
+    generatorCliShimPath = path.join(targetDirForShims, GENERATOR_CLI_SHIM_NAME);
+    zshInitFilePath = path.join(generatedDir, 'completions', 'init.zsh');
     actualLazygitSymlinkLocation = path.join(tempDir, '.config', 'lazygit', 'config.yml');
+
+    // Create config.yaml in the dotfiles directory
+    const configYamlPath = path.join(dotfilesDir, 'config.yaml');
+    const configYamlContent = `
+paths:
+  dotfilesDir: ${dotfilesDir}
+  targetDir: ${targetDirForShims}
+  generatedDir: ${generatedDir}
+  toolConfigsDir: ${toolConfigsDir}
+  completionsDir: ${path.join(generatedDir, 'completions')}
+  manifestPath: ${manifestPathFromEnv}
+  binariesDir: ${directories.binariesDir}
+system:
+  sudoPrompt: 'Enter password:'
+logging:
+  debug: ''
+updates:
+  checkOnRun: false
+  checkInterval: 86400
+github:
+  token: ''
+  host: 'https://api.github.com'
+  userAgent: 'test-agent'
+  cache:
+    enabled: false
+    ttl: 86400000
+downloader:
+  timeout: 300000
+  retryCount: 3
+  retryDelay: 1000
+  cache:
+    enabled: false
+`;
+    
+    // Create directories for lazygit symlink target
+    const lazygitConfigDir = path.join(tempDir, '.config', 'lazygit');
+    fs.mkdirSync(lazygitConfigDir, { recursive: true });
+    fs.writeFileSync(configYamlPath, configYamlContent);
 
     // Execute CLI command using helper function
     const result = executeCliCommand({
@@ -152,6 +227,12 @@ describe('E2E: bun run cli generate', () => {
       additionalEnv: {
         PATH: `${targetDirForShims}:${process.env['PATH']}`,
         HOME: tempDir,
+        DOTFILES_DIR: dotfilesDir,
+        GENERATED_DIR: generatedDir,
+        TOOL_CONFIGS_DIR: toolConfigsDir,
+        TARGET_DIR: targetDirForShims,
+        GENERATED_ARTIFACTS_MANIFEST_PATH: manifestPathFromEnv,
+        DEBUG: '',
       },
       homeDir: tempDir,
     });
@@ -184,7 +265,7 @@ describe('E2E: bun run cli generate', () => {
     // TOOL_EXECUTABLE will be in appConfig.binariesDir/fzf/fzf (derived from generatedDir)
     expect(fzfContent).toContain(`TOOL_EXECUTABLE="${path.join(binariesDirForVerification, 'fzf', 'fzf')}"`);
     expect(fzfContent).toContain(
-      `GENERATOR_CLI_SHIM_NAME="${path.join(targetDirForShims, appConfigForTestSetup.generatorCliShimName)}"`
+      `GENERATOR_CLI_SHIM_NAME="${path.join(targetDirForShims, GENERATOR_CLI_SHIM_NAME)}"`
     );
     expect(fzfContent).toContain(
       `"\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet`
@@ -196,7 +277,7 @@ describe('E2E: bun run cli generate', () => {
     expect(lazygitContent).toContain('TOOL_NAME="lazygit"');
     expect(lazygitContent).toContain(`TOOL_EXECUTABLE="${path.join(binariesDirForVerification, 'lazygit', 'lazygit')}"`);
     expect(lazygitContent).toContain(
-      `GENERATOR_CLI_SHIM_NAME="${path.join(targetDirForShims, appConfigForTestSetup.generatorCliShimName)}"`
+      `GENERATOR_CLI_SHIM_NAME="${path.join(targetDirForShims, GENERATOR_CLI_SHIM_NAME)}"`
     );
     expect(lazygitContent).toContain(
       `"\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet`

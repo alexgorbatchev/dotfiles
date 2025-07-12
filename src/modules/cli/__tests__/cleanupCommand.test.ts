@@ -55,7 +55,7 @@ describe('cleanupCommand', () => {
       createLogger: mockCreateLogger,
     }));
 
-    const { fs, addFiles, addSymlinks } = createMemFileSystem({
+    const { fs, addFiles, addSymlinks } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

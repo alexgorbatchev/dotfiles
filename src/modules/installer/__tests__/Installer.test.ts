@@ -95,7 +95,7 @@ describe('Installer', () => {
 
   beforeEach(async () => {
     testDirs = createTestDirectories({ testName: 'installer-tests' });
-    const { fs, spies } = createMemFileSystem({
+    const { fs, spies } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

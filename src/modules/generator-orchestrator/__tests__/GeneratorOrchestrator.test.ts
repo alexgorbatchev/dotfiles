@@ -36,7 +36,7 @@ describe('GeneratorOrchestrator', () => {
       generate: mock(async () => Promise.resolve([] as SymlinkOperationResult[])),
     };
 
-    const { fs, spies } = createMemFileSystem({
+    const { fs, spies } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

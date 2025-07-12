@@ -1,7 +1,8 @@
 
   export const MOCK_DEFAULT_CONFIG = `
 paths:
-  dotfilesDir: ~/.dotfiles
+  homeDir: /home/testuser
+  dotfilesDir: \${paths.homeDir}/.dotfiles
   targetDir: /usr/local/bin
   generatedDir: \${paths.dotfilesDir}/.generated
   toolConfigsDir: \${paths.dotfilesDir}/generator/configs/tools

@@ -1,6 +1,6 @@
 import type { IFileSystem } from '@modules/file-system';
 import { createLogger } from '@modules/logger';
-import { createMemFileSystem, FetchMockHelper } from '@testing-helpers';
+import { createMemFileSystem, FetchMockHelper, type MemFileSystemReturn } from '@testing-helpers';
 import {
   beforeEach,
   describe,
@@ -23,7 +23,7 @@ createLogger('NodeFetchStrategy.test');
 
 describe('NodeFetchStrategy', () => {
   let mockFileSystem: IFileSystem;
-  let fileSystemMocks: ReturnType<typeof createMemFileSystem>['spies'];
+  let fileSystemMocks: MemFileSystemReturn['spies'];
   let strategy: NodeFetchStrategy;
   const fetchMockHelper = new FetchMockHelper();
 
@@ -31,15 +31,14 @@ describe('NodeFetchStrategy', () => {
   const mockFileData = 'This is mock file data.';
   const mockFileBuffer = Buffer.from(mockFileData);
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore();
 
     fetchMockHelper.setup();
 
-    const { fs: fsInstance, spies: fsMocks } = createMemFileSystem();
+    const { fs: fsInstance, spies: fsMocks } = await createMemFileSystem();
     mockFileSystem = fsInstance;
     fileSystemMocks = fsMocks;
-
     strategy = new NodeFetchStrategy(mockFileSystem);
   });
 

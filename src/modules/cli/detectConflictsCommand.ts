@@ -59,17 +59,10 @@ export async function detectConflictsActionLogic(
     // Check for symlink conflicts
     if (toolConfig.symlinks) {
       for (const symlink of toolConfig.symlinks) {
-        // Extract home directory from dotfiles directory path
-        // Typically dotfilesDir is something like /Users/username/.dotfiles
-        const dotfilesPath = yamlConfig.paths.dotfilesDir;
-        
-        // Match the test's expectation: remove the last two parts of the path
-        // This handles the case where dotfilesDir is '/Users/testuser/.dotfiles'
-        // and we need to get '/Users/testuser'
-        const homeDir = dotfilesPath.split('/').slice(0, -2).join('/');
-        
-        const targetPath = path.join(homeDir, symlink.target);
-        const expectedSourcePath = path.join(yamlConfig.paths.dotfilesDir, symlink.source);
+        const targetPath = path.join(yamlConfig.paths.homeDir, symlink.target);
+        const sourcePath = path.join(yamlConfig.paths.dotfilesDir, symlink.source);
+
+        commandInternalLog(`Checking symlink: ${targetPath} -> ${sourcePath}`);
 
         try {
           const stats: Stats | null = await fs.lstat(targetPath);
@@ -77,9 +70,9 @@ export async function detectConflictsActionLogic(
             if (stats.isSymbolicLink()) {
               const linkString = await fs.readlink(targetPath);
               const resolvedLinkTarget = path.resolve(path.dirname(targetPath), linkString);
-              if (resolvedLinkTarget !== expectedSourcePath) {
+              if (resolvedLinkTarget !== sourcePath) {
                 conflictMessages.push(
-                  `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${expectedSourcePath}')`,
+                  `[${toolConfig.name}]: ${targetPath} (points to '${linkString}', expected '${sourcePath}')`,
                 );
               }
             } else {

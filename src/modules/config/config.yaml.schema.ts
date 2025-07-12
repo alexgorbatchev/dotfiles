@@ -4,6 +4,7 @@
 import { z } from 'zod';
 
 const pathsConfigSchema = z.object({
+  homeDir: z.string(),
   dotfilesDir: z.string(),
   targetDir: z.string(),
   generatedDir: z.string(),

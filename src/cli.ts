@@ -210,6 +210,10 @@ export type GlobalProgram = ReturnType<typeof createProgram>;
 export async function main(argv: string[]) {
   const program = createProgram();
 
+  // Create a default client logger for the main CLI
+  const mainLogger = createClientLogger();
+  mainLogger.debug('CLI starting with arguments:', argv);
+
   program.on('option:config', function (this: Command, configValue: string | undefined) {
     if (configValue) {
       const globalOpts = this.opts() as { verbose?: boolean; quiet?: boolean };

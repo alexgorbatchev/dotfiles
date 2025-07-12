@@ -685,7 +685,12 @@ interface BaseToolConfigProperties {
   version: string;
   /** An array of Zsh initialization script snippets, added via `c.zsh()`. */
   zshInit?: string[];
-  /** An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths. */
+  /**
+   * An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths where
+   * `source` is real file and `target` is the symlink.
+   * 
+   * Analogous to `ln -s source target`.
+   */
   symlinks?: { source: string; target: string }[];
   /** Shell completion configurations, defined by `c.completions()`. */
   completions?: CompletionConfig;

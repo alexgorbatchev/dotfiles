@@ -19,7 +19,7 @@ describe('ShellInitGenerator', () => {
   const DEFAULT_DOTFILES_DIR = '/test/home/.dotfiles';
 
   beforeEach(async () => {
-    const { fs } = createMemFileSystem({
+    const { fs } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
@@ -411,7 +411,7 @@ describe('ShellInitGenerator', () => {
   });
 
   it('should return null if writeFile fails', async () => {
-    const { fs, spies } = createMemFileSystem();
+    const { fs, spies } = await createMemFileSystem();
     spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));
     const generatorWithFailingWrite = new ShellInitGenerator(fs, mockAppConfig);
     const resultPath = await generatorWithFailingWrite.generate({});

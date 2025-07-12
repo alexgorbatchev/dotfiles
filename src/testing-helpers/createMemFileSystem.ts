@@ -11,6 +11,7 @@ import path from 'path';
 export interface MemFileSystemOptions {
   initialVolumeJson?: DirectoryJSON;
   initialSymlinks?: Record<string, string>;
+
   ensureDir?: IFileSystem['ensureDir'];
   chmod?: IFileSystem['chmod'];
   exists?: IFileSystem['exists'];
@@ -63,7 +64,15 @@ export interface MemFileSystemReturn {
 
   /**
    * Adds symlinks to the file system.
+   * 
    * @param symlinks - A record of symlink targets and their sources.
+   * 
+   * @example
+   * ```typescript
+   * // ln -s [realFile:source] [symlinkPath:target]
+   * memFs.addSymlinks({
+   *   'symlinkPath': 'realFile',
+   * });
    */
   addSymlinks: (symlinks: Record<string, string>) => Promise<void>;
 }
@@ -78,7 +87,7 @@ export interface MemFileSystemReturn {
  * @param options... - Optional mock implementations for any `IFileSystem` method.
  * @returns An object containing the `fs` instance and the `spies`.
  */
-export function createMemFileSystem(options: MemFileSystemOptions = {}): MemFileSystemReturn {
+export async function createMemFileSystem(options: MemFileSystemOptions = {}): Promise<MemFileSystemReturn> {
   const { initialVolumeJson, initialSymlinks, ...mocks } = options;
   const memFs = new MemFileSystem(initialVolumeJson);
 
@@ -102,27 +111,29 @@ export function createMemFileSystem(options: MemFileSystemOptions = {}): MemFile
 
   const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem };
 
-  if (initialSymlinks) {
-    for (const [target, source] of Object.entries(initialSymlinks)) {
-      spies.ensureDir(path.dirname(source));
-      spies.symlink(target, source);
+  const addSymlinks = async (symlinks: Record<string, string>) => {
+    // ln -s [realFile:source] [symlinkPath:target]
+    for (const [target, source] of Object.entries(symlinks)) {
+      await spies.ensureDir(path.dirname(source));
+      await spies.symlink(target, source);
     }
+  };
+
+  const addFiles = async (files: Record<string, string>) => {
+    for (const [filePath, contents] of Object.entries(files)) {
+      await spies.ensureDir(path.dirname(filePath));
+      await spies.writeFile(filePath, contents);
+    }
+  };
+
+  if (initialSymlinks) {
+    await addSymlinks(initialSymlinks);
   }
 
   return {
     fs,
     spies,
-    addFiles: async (files: Record<string, string>) => {
-      for (const [filePath, contents] of Object.entries(files)) {
-        await spies.ensureDir(path.dirname(filePath));
-        await spies.writeFile(filePath, contents);
-      }
-    },
-    addSymlinks: async (symlinks: Record<string, string>) => {
-      for (const [target, source] of Object.entries(symlinks)) {
-        await spies.ensureDir(path.dirname(source));
-        await spies.symlink(target, source);
-      }
-    }
+    addFiles,
+    addSymlinks
   };
 }

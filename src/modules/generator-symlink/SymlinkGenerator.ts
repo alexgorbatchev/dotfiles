@@ -1,37 +1,3 @@
-/**
- * @file src/modules/generator-symlink/SymlinkGenerator.ts
- * @description Implementation of the symlink generator service.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define `GenerateSymlinksOptions` interface (in `ISymlinkGenerator.ts`).
- * - [x] Define `ISymlinkGenerator` interface (in `ISymlinkGenerator.ts`).
- * - [x] Implement `SymlinkGenerator` class.
- *   - [x] Constructor accepts `IFileSystem` and `AppConfig`.
- *   - [x] Implement `generate` method:
- *     - [x] Update return type to `Promise<SymlinkOperationResult[]>`.
- *     - [x] Collect and return `SymlinkOperationResult` for each operation.
- *     - [x] Get home directory and project root from `AppConfig`.
- *     - [x] Fix homeDir resolution to use `appConfig.homeDir`.
- *     - [x] Iterate through `toolConfigs` and their `symlinks`.
- *     - [x] Resolve absolute source and target paths.
- *     - [x] Handle `~` expansion in target paths.
- *     - [x] Check source existence.
- *     - [x] Handle target existence (skip, overwrite, backup).
- *     - [x] Ensure target directory exists (behavior determined by injected `IFileSystem` type).
- *     - [x] Create symlink (behavior determined by injected `IFileSystem` type).
- * - [x] Write tests for `SymlinkGenerator` (in `__tests__/SymlinkGenerator.test.ts`).
- * - [x] Create `index.ts` to export the interface and class.
- * - [x] Refactor dry run mechanism:
- *   - [x] Remove internal `dryRun` logic.
- *   - [x] Rely on injected `IFileSystem` for dry/real run behavior.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import path from 'node:path';
 import type { ToolConfig } from '@types';
 import type { IFileSystem } from '@modules/file-system';
@@ -42,6 +8,7 @@ import type {
   ISymlinkGenerator,
   SymlinkOperationResult,
 } from './ISymlinkGenerator';
+import { expandHomePath } from '../../utils';
 
 const log = createLogger('SymlinkGenerator');
 export class SymlinkGenerator implements ISymlinkGenerator {
@@ -64,13 +31,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       this.fs.constructor.name
     );
     const results: SymlinkOperationResult[] = [];
-    // dryRun is removed; IFileSystem handles behavior
     const { overwrite = false, backup = false } = options;
-    const homeDir = this.yamlConfig.paths.targetDir;
-    const projectRoot = this.yamlConfig.paths.dotfilesDir;
-
-    log('generate: Home directory determined as: %s', homeDir);
-    log('generate: Project root determined as: %s', projectRoot);
+    const homeDir = this.yamlConfig.paths.homeDir;
+    const dotfilesDir = this.yamlConfig.paths.dotfilesDir;
 
     for (const toolName in toolConfigs) {
       const toolConfig = toolConfigs[toolName];
@@ -87,14 +50,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       for (const symlinkConfig of toolConfig.symlinks) {
         const sourceRelPath = symlinkConfig.source;
         const targetRelPath = symlinkConfig.target;
-
-        const sourceAbsPath = path.resolve(projectRoot, sourceRelPath);
-        let targetAbsPath = targetRelPath.startsWith('~')
-          ? path.join(homeDir, targetRelPath.substring(1))
-          : path.join(homeDir, targetRelPath);
+        const sourceAbsPath = path.resolve(dotfilesDir, sourceRelPath);
+        let targetAbsPath = expandHomePath(homeDir, targetRelPath);
 
         if (!path.isAbsolute(targetAbsPath)) {
-          targetAbsPath = path.resolve(homeDir, targetRelPath);
+          targetAbsPath = path.resolve(this.yamlConfig.paths.targetDir, targetRelPath);
         }
 
         log(

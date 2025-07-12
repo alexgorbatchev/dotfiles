@@ -3,7 +3,7 @@ import { createMemFileSystem } from '../createMemFileSystem';
 
 describe('createMemFileSystem', () => {
   it('should create a functional IFileSystem instance without any options', async () => {
-    const { fs } = createMemFileSystem();
+    const { fs } = await createMemFileSystem();
     const testPath = '/test-dir';
 
     await fs.mkdir(testPath);
@@ -13,7 +13,7 @@ describe('createMemFileSystem', () => {
   });
 
   it('should initialize the file system with the provided initialVolumeJson', async () => {
-    const { fs } = createMemFileSystem({
+    const { fs } = await createMemFileSystem({
       initialVolumeJson: {
         '/home/user/file.txt': 'hello world',
         '/home/user/another-dir': null,
@@ -28,7 +28,7 @@ describe('createMemFileSystem', () => {
   });
 
   it('should return spies that are connected to the underlying MemFileSystem methods', async () => {
-    const { fs, spies } = createMemFileSystem();
+    const { fs, spies } = await createMemFileSystem();
     const filePath = '/test.txt';
     const fileContent = 'content';
 
@@ -46,7 +46,7 @@ describe('createMemFileSystem', () => {
   it('should use a provided mock implementation for a specific method', async () => {
     const readFileMock = mock(async (_path: string) => 'mocked content');
 
-    const { fs, spies } = createMemFileSystem({
+    const { fs, spies } = await createMemFileSystem({
       readFile: readFileMock,
     });
 
@@ -59,7 +59,7 @@ describe('createMemFileSystem', () => {
 
   it('should handle a combination of mocks and spies correctly', async () => {
     const writeFileMock = mock(async () => {});
-    const { fs, spies } = createMemFileSystem({
+    const { fs, spies } = await createMemFileSystem({
       initialVolumeJson: {
         '/existing.txt': 'exists',
       },
@@ -83,7 +83,7 @@ describe('createMemFileSystem', () => {
     const targetLink = '/target/link.txt';
     
     // Create the file system with initialSymlinks
-    const { fs, spies } = createMemFileSystem({
+    const { fs, spies } = await createMemFileSystem({
       initialVolumeJson: {
         [sourceFile]: 'source content',
       },

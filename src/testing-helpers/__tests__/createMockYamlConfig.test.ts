@@ -18,7 +18,7 @@ describe('createMockYamlConfig', () => {
   };
 
   it('should write the YAML string to the specified path', async () => {
-    const { fs } = createMemFileSystem({
+    const { fs } = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },

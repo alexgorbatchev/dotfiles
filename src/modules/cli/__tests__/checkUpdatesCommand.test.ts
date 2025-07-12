@@ -78,7 +78,7 @@ describe('checkUpdatesCommand', () => {
       createLogger: mockCreateLogger,
     }));
 
-    const mockFs = createMemFileSystem({
+    const mockFs = await createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
       },
