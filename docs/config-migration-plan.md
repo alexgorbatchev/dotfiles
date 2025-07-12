@@ -60,16 +60,16 @@ This phase focuses on incrementally migrating the entire application from the ol
     *   **[x]** `generator-symlink`: Depends on `file-system`.
     *   **[x]** `generator-shim`: Depends on `file-system`.
     *   **[x]** `generator-shell-init`: Depends on `file-system`.
-*   **[ ] Task 3.2: Migrate Orchestrator & CLI**:
+*   **[x] Task 3.2: Migrate Orchestrator & CLI**:
     *   **[x]** `generator-orchestrator`: Depends on all `generator-*` modules.
-    *   **[ ]** `cli`: Migrate all commands in the following order:
+    *   **[x]** `cli`: Migrate all commands in the following order:
         *   **[x]** `checkUpdatesCommand.ts`: Uses configuration for tool configs directory and GitHub API.
         *   **[x]** `cleanupCommand.ts`: Handles cleanup of generated files based on configuration.
         *   **[x]** `detectConflictsCommand.ts`: Detects conflicts in generated files.
         *   **[x]** `installCommand.ts`: Installs tools based on configuration.
         *   **[x]** `updateCommand.ts`: Updates installed tools.
         *   **[x]** `generateCommand.ts`: Most complex command that generates all dotfiles.
-        *   **[ ]** `src/cli.ts`: Main CLI entry point that sets up all services.
+        *   **[x]** `src/cli.ts`: Main CLI entry point that sets up all services.
 
 ---
 
@@ -97,7 +97,7 @@ This is the final phase, to be executed only after all modules and the CLI have 
 
 *   **[x] Phase 1: Foundation & Schema Design**
 *   **[x] Phase 2: New Configuration Loader**
-*   **[ ] Phase 3: Application-wide Migration to `YamlConfig`**
+*   **[x] Phase 3: Application-wide Migration to `YamlConfig`**
 *   **[ ] Phase 4: Finalization & Cleanup**
     *   **[ ] Task 4.1: Remove Old System**
     *   **[ ] Task 4.2: Documentation Updates**

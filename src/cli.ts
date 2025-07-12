@@ -8,12 +8,7 @@ import {
   registerInstallCommand,
   registerUpdateCommand,
 } from '@modules/cli';
-import {
-  createAppConfig,
-  type AppConfig,
-  type YamlConfig,
-  type SystemInfo,
-} from '@modules/config';
+import { type YamlConfig } from '@modules/config';
 import { createYamlConfigFromFileSystem } from '@modules/config-loader';
 import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
@@ -42,10 +37,10 @@ import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
+import type { SystemInfo } from '@types';
 
 const internalLog = createLogger('cli');
 export interface Services {
-  appConfig: AppConfig;
   yamlConfig: YamlConfig;
   fs: IFileSystem;
   downloader: IDownloader;
@@ -61,28 +56,51 @@ export interface Services {
 }
 
 export async function setupServices(
-  options: { dryRun?: boolean; env?: NodeJS.ProcessEnv } = {},
+  options: { dryRun?: boolean; env?: NodeJS.ProcessEnv } = {}
 ): Promise<Services> {
   internalLog('setupServices: Initializing services... options: %o', options);
   const { dryRun = false, env = process.env } = options;
-  const systemInfoForConfig: SystemInfo = {
-    homedir: os.homedir(),
-    cwd: process.cwd(),
-  };
-  const appConfig = createAppConfig(systemInfoForConfig, env as any);
-  let fs: IFileSystem;
 
+  // Initialize filesystem first
+  let fs: IFileSystem;
   if (dryRun) {
-    internalLog('setupServices: Dry run enabled. Initializing MemFileSystem with tool configs.');
-    const realToolConfigsDir = appConfig.toolConfigsDir;
+    internalLog('setupServices: Dry run enabled. Initializing MemFileSystem.');
+    fs = new MemFileSystem({});
+  } else {
+    fs = new NodeFileSystem();
+  }
+
+  internalLog('setupServices: Using IFileSystem implementation: %s', fs.constructor.name);
+
+  const systemInfo: SystemInfo = {
+    platform: process.platform,
+    arch: process.arch,
+    homeDir: os.homedir(),
+  };
+
+  // Default config path is in the dotfiles directory
+  const dotfilesDir = env['DOTFILES_DIR'] || path.join(os.homedir(), '.dotfiles');
+  const configPath = path.join(dotfilesDir, 'config.yaml');
+  internalLog('setupServices: Loading YAML config from %s', configPath);
+  const yamlConfig = await createYamlConfigFromFileSystem(
+    fs,
+    configPath,
+    systemInfo,
+    env
+  );
+
+  // If dry run, load tool configs into memory filesystem
+  if (dryRun) {
+    internalLog('setupServices: Loading tool configs into MemFileSystem for dry run.');
+    const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
     const nodeFs = new NodeFileSystem();
-    const toolFilesJson: DirectoryJSON = {}; // DirectoryJSON is now imported
+    const toolFilesJson: DirectoryJSON = {};
 
     try {
       if (await nodeFs.exists(realToolConfigsDir)) {
         internalLog(
           'setupServices: Reading tool configs from actual directory: %s',
-          realToolConfigsDir,
+          realToolConfigsDir
         );
         const filesInDir = await nodeFs.readdir(realToolConfigsDir);
         for (const fileName of filesInDir) {
@@ -96,7 +114,7 @@ export async function setupServices(
               internalLog(
                 'setupServices: Error reading tool file %s for dry run: %O',
                 filePath,
-                readError,
+                readError
               );
               // Optionally, decide whether to throw or continue. For now, logging and continuing.
             }
@@ -105,64 +123,47 @@ export async function setupServices(
       } else {
         internalLog(
           'setupServices: Tool configs directory %s does not exist on the real file system.',
-          realToolConfigsDir,
+          realToolConfigsDir
         );
       }
     } catch (dirError) {
       internalLog(
         'setupServices: Error accessing tool configs directory %s for dry run: %O',
         realToolConfigsDir,
-        dirError,
+        dirError
       );
       // Optionally, decide whether to throw or continue.
     }
+
+    // Create a new MemFileSystem with the tool configs
     fs = new MemFileSystem(toolFilesJson);
-  } else {
-    fs = new NodeFileSystem();
   }
 
-  internalLog('setupServices: Using IFileSystem implementation: %s', fs.constructor.name);
+  // Initialize services with yamlConfig
   const downloader = new Downloader(fs);
   downloader.registerStrategy(new NodeFetchStrategy(fs));
 
-  // Corrected FileGitHubApiCache instantiation
-  const githubApiCache = new FileGitHubApiCache(fs, appConfig);
+  const githubApiCache = new FileGitHubApiCache(fs, yamlConfig);
+  const githubApiClient = new GitHubApiClient(yamlConfig, downloader, githubApiCache);
 
-  // Corrected GitHubApiClient instantiation
-  const githubApiClient = new GitHubApiClient(appConfig, downloader, githubApiCache);
+  const shimGenerator = new ShimGenerator(fs, yamlConfig);
+  const shellInitGenerator = new ShellInitGenerator(fs, yamlConfig);
+  const symlinkGenerator = new SymlinkGenerator(fs, yamlConfig);
 
-  // Corrected Generator instantiations
-  const shimGenerator = new ShimGenerator(fs, appConfig);
-  const shellInitGenerator = new ShellInitGenerator(fs, appConfig);
-  const symlinkGenerator = new SymlinkGenerator(fs, appConfig);
-
-  // Corrected GeneratorOrchestrator instantiation
   const generatorOrchestrator = new GeneratorOrchestrator(
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
     fs,
-    appConfig,
+    yamlConfig
   );
 
   const archiveExtractor = new ArchiveExtractor(fs);
-  const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, appConfig);
+  const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, yamlConfig);
   const versionChecker = new VersionChecker(githubApiClient);
 
-  // Initialize yamlConfig
-  const systemInfoForYamlConfig = {
-    platform: process.platform,
-    arch: process.arch,
-    homeDir: os.homedir(),
-  };
-  
-  const configPath = path.join(appConfig.dotfilesDir, 'config.yaml');
-  internalLog('setupServices: Loading YAML config from %s', configPath);
-  const yamlConfig = await createYamlConfigFromFileSystem(fs, configPath, systemInfoForYamlConfig, env);
-  
   internalLog('setupServices: Services initialized.');
   return {
-    appConfig,
     yamlConfig,
     fs,
     downloader,
@@ -189,7 +190,7 @@ export function createProgram() {
     .option(
       '--quiet',
       'Suppress all informational and debug output. Errors are still displayed.',
-      false,
+      false
     );
 
   return program;
