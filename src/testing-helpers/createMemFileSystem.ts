@@ -1,12 +1,7 @@
 import { MemFileSystem, type IFileSystem } from '@modules/file-system';
-import { mock } from 'bun:test';
+import { mock, type Mock } from 'bun:test';
 import type { DirectoryJSON } from 'memfs';
 import path from 'path';
-
-/**
- * Generic type for a mocked function.
- */
-type MockFn<T extends (...args: any[]) => any> = ReturnType<typeof mock<T>>;
 
 /**
  * Options for creating a customizable in-memory file system.
@@ -40,7 +35,14 @@ export type FileSystemSpies = {
   [K in keyof Omit<
     Required<MemFileSystemOptions>,
     'initialVolumeJson' | 'initialSymlinks'
-  >]: MockFn<IFileSystem[K]>;
+  >]: Mock<IFileSystem[K]>;
+};
+
+/**
+ * Type for the collection of spies/mocks on the file system methods.
+ */
+export type MockedFileSystem = IFileSystem & { asIFileSystem: IFileSystem } & {
+  [K in keyof IFileSystem as IFileSystem[K] extends (...args: any[]) => any ? K : never]: Mock<IFileSystem[K]>;
 };
 
 /**
@@ -48,9 +50,22 @@ export type FileSystemSpies = {
  */
 export interface MemFileSystemReturn {
   /** The fully assembled mock/spy IFileSystem instance. */
-  fs: IFileSystem;
+  fs: MockedFileSystem;
+
   /** An object containing the individual spies or mocks for each method. */
   spies: FileSystemSpies;
+
+  /**
+   * Adds files to the file system.
+   * @param files - A record of file paths and their contents.
+   */
+  addFiles: (files: Record<string, string>) => Promise<void>;
+
+  /**
+   * Adds symlinks to the file system.
+   * @param symlinks - A record of symlink targets and their sources.
+   */
+  addSymlinks: (symlinks: Record<string, string>) => Promise<void>;
 }
 
 /**
@@ -85,15 +100,11 @@ export function createMemFileSystem(options: MemFileSystemOptions = {}): MemFile
     rmdir: mock(mocks.rmdir ?? memFs.rmdir.bind(memFs)),
   };
 
-  const fs: IFileSystem = { ...spies };
+  const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem };
 
-  // Initialize symlinks if provided
   if (initialSymlinks) {
-    // Process each symlink entry
     for (const [target, source] of Object.entries(initialSymlinks)) {
-      // Ensure the target directory exists
       spies.ensureDir(path.dirname(source));
-      // Create the symlink
       spies.symlink(target, source);
     }
   }
@@ -101,5 +112,17 @@ export function createMemFileSystem(options: MemFileSystemOptions = {}): MemFile
   return {
     fs,
     spies,
+    addFiles: async (files: Record<string, string>) => {
+      for (const [filePath, contents] of Object.entries(files)) {
+        await spies.ensureDir(path.dirname(filePath));
+        await spies.writeFile(filePath, contents);
+      }
+    },
+    addSymlinks: async (symlinks: Record<string, string>) => {
+      for (const [target, source] of Object.entries(symlinks)) {
+        await spies.ensureDir(path.dirname(source));
+        await spies.symlink(target, source);
+      }
+    }
   };
 }
