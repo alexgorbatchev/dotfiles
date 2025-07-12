@@ -2,92 +2,98 @@ import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 import { type YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
-import type { IFileSystem } from '@modules/file-system';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import {
   createMemFileSystem,
   createMockClientLogger,
   type CreateMockClientLoggerResult,
+  type MockedFileSystem,
 } from '@testing-helpers';
 import type { GeneratedArtifactsManifest } from '@types';
-import { beforeEach, describe, expect, it, mock, type Mock as BunMock } from 'bun:test';
-import path from 'node:path';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
 import { registerCleanupCommand } from '../cleanupCommand';
 
-mock.module('@modules/cli/exitCli', () => ({
-  exitCli: mock((code: number) => {
-    throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
-  }),
-}));
+setupTestCleanup();
+
+const mockModules = createModuleMocker();
+
+const mockExitCli = mock((code: number) => {
+  throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
+});
 
 const mockCreateClientLogger = mock(actualCreateClientLogger);
-mock.module('@modules/logger', () => ({
-  createClientLogger: mockCreateClientLogger,
-  createLogger: mock(() => mock(() => {})),
-}));
+const mockCreateLogger = mock(() => mock(() => {}));
 
 describe('cleanupCommand', () => {
+  afterEach(() => {
+    clearMockRegistry();
+  });
+
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
-  let mockFileSystem: IFileSystem;
+  let mockFs: MockedFileSystem;
   let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
-
-  const MOCK_GENERATED_DIR = '/test/.generated';
-  const MOCK_MANIFEST_PATH = path.join(MOCK_GENERATED_DIR, 'manifest.json');
-  const MOCK_SHIM_1 = '/usr/bin/shim1';
-  const MOCK_SHIM_2 = path.join(MOCK_GENERATED_DIR, 'bin', 'shim2');
-  const MOCK_SHELL_INIT = path.join(MOCK_GENERATED_DIR, 'zsh', 'init.zsh');
-  const MOCK_SYMLINK_TARGET_1 = '/home/user/.config/tool/config.yml';
-  const MOCK_SYMLINK_SOURCE_1 = '/test/dotfiles/tool/config.yml';
-
-  const mockManifest: GeneratedArtifactsManifest = {
-    shims: [MOCK_SHIM_1, MOCK_SHIM_2],
-    shellInit: { path: MOCK_SHELL_INIT },
-    symlinks: [
-      {
-        sourcePath: MOCK_SYMLINK_SOURCE_1,
-        targetPath: MOCK_SYMLINK_TARGET_1,
-        status: 'created',
-      },
-    ],
-    lastGenerated: new Date().toISOString(),
-  };
+  let mockShim1 = '';
+  let mockShim2 = '';
+  let mockShellInit = '';
+  let mockSymlinkTarget = '';
+  let mockSymlinkSource = '';
+  const runCommand = (args: string[]) => program.parseAsync(['cleanup', ...args], { from: 'user' });
 
   beforeEach(async () => {
     mock.restore();
     program = createProgram();
 
-    const { fs } = createMemFileSystem({
+    await mockModules.mock('@modules/cli/exitCli', () => ({
+      exitCli: mockExitCli,
+    }));
+
+    await mockModules.mock('@modules/logger', () => ({
+      createClientLogger: mockCreateClientLogger,
+      createLogger: mockCreateLogger,
+    }));
+
+    const { fs, addFiles, addSymlinks } = createMemFileSystem({
       initialVolumeJson: {
         [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-        [MOCK_MANIFEST_PATH]: JSON.stringify(mockManifest),
-        [MOCK_SYMLINK_SOURCE_1]: 'content',
       },
-      initialSymlinks: {
-        [MOCK_SYMLINK_SOURCE_1]: MOCK_SYMLINK_TARGET_1,
-      },
-      exists: mock(async () => true),
     });
 
-    mockFileSystem = fs;
+    mockYamlConfig = await createYamlConfigFromObject(fs);
 
-    mockYamlConfig = await createYamlConfigFromObject(
-      fs,
-      {
-        paths: {
-          dotfilesDir: '/test/dotfiles',
-          targetDir: '/home/user',
-          generatedDir: MOCK_GENERATED_DIR,
-          toolConfigsDir: '/test/tool-configs',
-          completionsDir: '/test/completions',
-          manifestPath: MOCK_MANIFEST_PATH,
-          binariesDir: '/test/bin',
+    mockFs = fs;
+    mockShim1 = '/usr/bin/shim1';
+    mockShim2 = `${mockYamlConfig.paths.generatedDir}/bin/shim2`;
+    mockShellInit = `${mockYamlConfig.paths.generatedDir}/zsh/init.zsh`;
+    mockSymlinkSource = `${mockYamlConfig.paths.dotfilesDir}/tool/config.yml`;
+    mockSymlinkTarget = `${mockYamlConfig.paths.targetDir}/.config/tool/config.yml`;
+
+    const mockManifest: GeneratedArtifactsManifest = {
+      shims: [mockShim1, mockShim2],
+      shellInit: { path: mockShellInit },
+      symlinks: [
+        {
+          sourcePath: mockSymlinkSource,
+          targetPath: mockSymlinkTarget,
+          status: 'created',
         },
-      },
-      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
-      {}
-    );
+      ],
+      lastGenerated: new Date().toISOString(),
+    };
+
+    addFiles({
+      [mockYamlConfig.paths.manifestPath]: JSON.stringify(mockManifest),
+      [mockSymlinkSource]: 'content',
+      [mockShim1]: 'content',
+      [mockShim2]: 'content',
+      [mockShellInit]: 'content',
+    });
+
+    addSymlinks({
+      [mockSymlinkSource]: mockSymlinkTarget,
+    });
 
     const { mockClientLogger, loggerMocks: lm } = createMockClientLogger();
     loggerMocks = lm;
@@ -95,78 +101,77 @@ describe('cleanupCommand', () => {
 
     registerCleanupCommand(program, {
       yamlConfig: mockYamlConfig,
-      fs: mockFileSystem,
+      fs: mockFs.asIFileSystem,
     } as Services);
   });
 
-  const runCommand = (args: string[]) => program.parseAsync(['cleanup', ...args], { from: 'user' });
+  afterEach(() => {
+    clearMockRegistry();
+  });
 
-  it.only('should successfully cleanup with existing manifest and artifacts', async () => {
+  afterAll(() => {
+    mockModules.restoreAll();
+  });
+
+  it('should successfully cleanup with existing manifest and artifacts', async () => {
     await runCommand([]);
 
-    expect(mockFileSystem.readFile).toHaveBeenCalledWith(MOCK_MANIFEST_PATH, 'utf-8');
-    expect(mockFileSystem.rm as BunMock<any>).toHaveBeenCalledWith(MOCK_SHIM_1, { force: true });
-    expect(mockFileSystem.rm as BunMock<any>).toHaveBeenCalledWith(MOCK_SHIM_2, { force: true });
-    expect(mockFileSystem.rm as BunMock<any>).toHaveBeenCalledWith(MOCK_SHELL_INIT, {
-      force: true,
-    });
-    expect(mockFileSystem.rm as BunMock<any>).toHaveBeenCalledWith(MOCK_SYMLINK_TARGET_1, {
-      force: true,
-    });
-    expect(mockFileSystem.rm as BunMock<any>).toHaveBeenCalledWith(MOCK_GENERATED_DIR, {
+    expect(mockFs.readFile).toHaveBeenCalledWith(mockYamlConfig.paths.manifestPath, 'utf-8');
+    expect(mockFs.rm).toHaveBeenCalledWith(mockShim1, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockShim2, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockShellInit, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockSymlinkTarget, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockYamlConfig.paths.generatedDir, {
       recursive: true,
       force: true,
     });
 
     expect(loggerMocks.info).toHaveBeenCalledWith('Starting cleanup...');
     expect(loggerMocks.info).toHaveBeenCalledWith('Deleting shims...');
-    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted shim: ${MOCK_SHIM_1}`);
-    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted shim: ${MOCK_SHIM_2}`);
+    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted shim: ${mockShim1}`);
+    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted shim: ${mockShim2}`);
     expect(loggerMocks.info).toHaveBeenCalledWith('Deleting shell init file...');
-    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted shell init: ${MOCK_SHELL_INIT}`);
+    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted shell init: ${mockShellInit}`);
     expect(loggerMocks.info).toHaveBeenCalledWith('Deleting symlinks...');
-    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted symlink: ${MOCK_SYMLINK_TARGET_1}`);
+    expect(loggerMocks.info).toHaveBeenCalledWith(`  Deleted symlink: ${mockSymlinkTarget}`);
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      `Successfully deleted generated directory: ${MOCK_GENERATED_DIR}`
+      `Successfully deleted generated directory: ${mockYamlConfig.paths.generatedDir}`
     );
     expect(loggerMocks.info).toHaveBeenCalledWith('Cleanup complete.');
   });
 
   it('should cleanup generated directory if manifest file does not exist', async () => {
-    (mockFileSystem.exists as BunMock<any>).mockImplementation(
-      async (p: string) => p !== MOCK_MANIFEST_PATH
-    );
+    mockFs.exists.mockImplementation(async (p: string) => p !== mockYamlConfig.paths.manifestPath);
+    mockFs.readFile.mockClear();
 
     await runCommand([]);
 
-    expect(mockFileSystem.readFile).not.toHaveBeenCalled();
-    expect(mockFileSystem.rm as BunMock<any>).not.toHaveBeenCalledWith(MOCK_SHIM_1, {
-      force: true,
-    });
-    expect(mockFileSystem.rm as BunMock<any>).toHaveBeenCalledWith(MOCK_GENERATED_DIR, {
+    expect(mockFs.readFile).not.toHaveBeenCalled();
+    expect(mockFs.rm).not.toHaveBeenCalledWith(mockShim1, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockYamlConfig.paths.generatedDir, {
       recursive: true,
       force: true,
     });
     expect(loggerMocks.warn).toHaveBeenCalledWith(
-      `Manifest file not found at ${MOCK_MANIFEST_PATH}.`
+      `Manifest file not found at ${mockYamlConfig.paths.manifestPath}.`
     );
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      `Successfully deleted generated directory: ${MOCK_GENERATED_DIR}`
+      `Successfully deleted generated directory: ${mockYamlConfig.paths.generatedDir}`
     );
   });
 
   it('should not delete any files in dry run mode', async () => {
     await runCommand(['--dry-run']);
 
-    expect(mockFileSystem.readFile).toHaveBeenCalledWith(MOCK_MANIFEST_PATH, 'utf-8');
-    expect(mockFileSystem.rm).not.toHaveBeenCalled();
+    expect(mockFs.readFile).toHaveBeenCalledWith(mockYamlConfig.paths.manifestPath, 'utf-8');
+    expect(mockFs.rm).not.toHaveBeenCalled();
 
     expect(loggerMocks.info).toHaveBeenCalledWith(
       'Starting dry run cleanup (no files will be removed)...'
     );
-    expect(loggerMocks.info).toHaveBeenCalledWith(`  Would delete shim: ${MOCK_SHIM_1}`);
+    expect(loggerMocks.info).toHaveBeenCalledWith(`  Would delete shim: ${mockShim1}`);
     expect(loggerMocks.info).toHaveBeenCalledWith(
-      `Would delete generated directory: ${MOCK_GENERATED_DIR}`
+      `Would delete generated directory: ${mockYamlConfig.paths.generatedDir}`
     );
     expect(loggerMocks.info).toHaveBeenCalledWith('Dry run cleanup complete.');
   });

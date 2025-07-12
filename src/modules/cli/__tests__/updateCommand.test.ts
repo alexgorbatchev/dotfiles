@@ -18,26 +18,27 @@ import {
   type CreateMockClientLoggerResult,
 } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { registerUpdateCommand } from '../updateCommand';
+import {
+  createModuleMocker,
+  setupTestCleanup,
+  clearMockRegistry
+} from '@rageltd/bun-test-utils';
+
+// Setup cleanup once per file
+setupTestCleanup();
+
+const mockModules = createModuleMocker();
 
 const mockActualLoadSingleToolConfig = mock(loadSingleToolConfig);
-mock.module('@modules/config-loader/loadToolConfigs', () => ({
-  loadSingleToolConfig: mockActualLoadSingleToolConfig,
-  loadToolConfigsFromDirectory: mock(async () => ({})),
-}));
+const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
 
 const mockExitCli = mock(exitCli);
-mock.module('@modules/cli/exitCli', () => ({
-  exitCli: mockExitCli,
-}));
 
 const mockCreateClientLogger = mock(actualCreateClientLogger);
-mock.module('@modules/logger', () => ({
-  createClientLogger: mockCreateClientLogger,
-  createLogger: mock(() => mock(() => {})),
-}));
+const mockCreateLogger = mock(() => mock(() => {}));
 
 describe('updateCommand', () => {
   let program: GlobalProgram;
@@ -78,8 +79,6 @@ describe('updateCommand', () => {
   };
 
   beforeEach(async () => {
-    mock.restore();
-
     program = createProgram();
 
     const { fs } = createMemFileSystem({
@@ -123,6 +122,21 @@ describe('updateCommand', () => {
       throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
     });
 
+    // Set up mocks
+    await mockModules.mock('@modules/config-loader/loadToolConfigs', () => ({
+      loadSingleToolConfig: mockActualLoadSingleToolConfig,
+      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+    }));
+
+    await mockModules.mock('@modules/cli/exitCli', () => ({
+      exitCli: mockExitCli,
+    }));
+
+    await mockModules.mock('@modules/logger', () => ({
+      createClientLogger: mockCreateClientLogger,
+      createLogger: mockCreateLogger,
+    }));
+
     registerUpdateCommand(program, {
       yamlConfig: mockYamlConfig,
       fs: mockFileSystem as IFileSystem,
@@ -130,6 +144,14 @@ describe('updateCommand', () => {
       installer: mockInstallerService as IInstaller,
       versionChecker: mockVersionChecker as IVersionChecker,
     } as Services);
+  });
+
+  afterEach(() => {
+    clearMockRegistry();
+  });
+
+  afterAll(() => {
+    mockModules.restoreAll();
   });
 
   test('tool is up-to-date', async () => {

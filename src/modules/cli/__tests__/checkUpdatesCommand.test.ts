@@ -14,25 +14,23 @@ import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import { createMemFileSystem, createMockClientLogger, type LoggerMocks } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+
+// Set up test cleanup
+setupTestCleanup();
+
+// Create module mocker
+const mockModules = createModuleMocker();
 
 let mockYamlConfig: YamlConfig;
 
 const mockLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
 const mockLoadToolConfigsFromDirectory = mock(actualLoadToolConfigsFromDirectory);
-mock.module('@modules/config-loader', () => ({
-  loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
-  loadSingleToolConfig: mockLoadSingleToolConfig,
-  createYamlConfigFromObject,
-  getDefaultConfigPath: mock(() => '/test/default-config.yaml'),
-}));
-
 const mockCreateClientLogger = mock(actualCreateClientLogger);
-mock.module('@modules/logger', () => ({
-  createClientLogger: mockCreateClientLogger,
-  createLogger: mock(() => mock(() => {})),
-}));
+const mockGetDefaultConfigPath = mock(() => '/test/default-config.yaml');
+const mockCreateLogger = mock(() => mock(() => {}));
 
 const fzfToolConfig: GithubReleaseToolConfig = {
   name: 'fzf',
@@ -66,6 +64,19 @@ describe('checkUpdatesCommand', () => {
   beforeEach(async () => {
     mock.restore();
     program = createProgram();
+
+    // Set up mocks
+    await mockModules.mock('@modules/config-loader', () => ({
+      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      loadSingleToolConfig: mockLoadSingleToolConfig,
+      createYamlConfigFromObject,
+      getDefaultConfigPath: mockGetDefaultConfigPath,
+    }));
+
+    await mockModules.mock('@modules/logger', () => ({
+      createClientLogger: mockCreateClientLogger,
+      createLogger: mockCreateLogger,
+    }));
 
     const { fs } = createMemFileSystem({
       initialVolumeJson: {
@@ -130,6 +141,14 @@ describe('checkUpdatesCommand', () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockServices.githubApiClient.getLatestRelease as any).mockResolvedValue({
       tag_name: 'v0.41.0',
+    });
+  
+    afterEach(() => {
+      clearMockRegistry();
+    });
+  
+    afterAll(() => {
+      mockModules.restoreAll();
     });
     (mockServices.versionChecker.checkVersionStatus as any).mockResolvedValue(
       VersionComparisonStatus.NEWER_AVAILABLE

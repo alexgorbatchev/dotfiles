@@ -1,39 +1,69 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { NodeFileSystem } from '../NodeFileSystem';
 import type { IFileSystem } from '../IFileSystem';
 import { promises as fsPromises, constants as fsConstants } from 'node:fs';
 import type { Stats } from 'node:fs';
+import {
+  createModuleMocker,
+  setupTestCleanup,
+  clearMockRegistry
+} from '@rageltd/bun-test-utils';
 
-// Mock the 'node:fs' module
-// We need to mock specific functions from fsPromises and fsConstants
-mock.module('node:fs', () => ({
-  promises: {
-    readFile: mock(async () => 'mocked file content'),
-    writeFile: mock(async () => undefined),
-    access: mock(async () => undefined), // Default to success (exists)
-    mkdir: mock(async () => undefined),
-    readdir: mock(async () => ['file1.txt', 'dir1']),
-    rm: mock(async () => undefined),
-    rmdir: mock(async () => undefined),
-    stat: mock(async () => ({ isDirectory: () => false, isFile: () => true }) as Stats),
-    symlink: mock(async () => undefined),
-    readlink: mock(async () => 'mocked/target/path'),
-    chmod: mock(async () => undefined),
-    copyFile: mock(async () => undefined),
-    rename: mock(async () => undefined),
-  },
-  constants: {
-    F_OK: 0, // Actual value doesn't matter much for mock, just needs to be defined
-  },
-}));
+// Setup cleanup once per file
+setupTestCleanup();
+
+const mockModules = createModuleMocker();
+
+// Create mocks for fs functions
+const mockReadFile = mock(async () => 'mocked file content');
+const mockWriteFile = mock(async () => undefined);
+const mockAccess = mock(async () => undefined); // Default to success (exists)
+const mockMkdir = mock(async () => undefined);
+const mockReaddir = mock(async () => ['file1.txt', 'dir1']);
+const mockRm = mock(async () => undefined);
+const mockRmdir = mock(async () => undefined);
+const mockStat = mock(async () => ({ isDirectory: () => false, isFile: () => true }) as Stats);
+const mockSymlink = mock(async () => undefined);
+const mockReadlink = mock(async () => 'mocked/target/path');
+const mockChmod = mock(async () => undefined);
+const mockCopyFile = mock(async () => undefined);
+const mockRename = mock(async () => undefined);
 
 describe('NodeFileSystem', () => {
   let fileSystem: IFileSystem;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Setup mock for node:fs module
+    await mockModules.mock('node:fs', () => ({
+      promises: {
+        readFile: mockReadFile,
+        writeFile: mockWriteFile,
+        access: mockAccess,
+        mkdir: mockMkdir,
+        readdir: mockReaddir,
+        rm: mockRm,
+        rmdir: mockRmdir,
+        stat: mockStat,
+        symlink: mockSymlink,
+        readlink: mockReadlink,
+        chmod: mockChmod,
+        copyFile: mockCopyFile,
+        rename: mockRename,
+      },
+      constants: {
+        F_OK: 0, // Actual value doesn't matter much for mock, just needs to be defined
+      },
+    }));
+    
     fileSystem = new NodeFileSystem();
-    // Reset mocks before each test if they have persistent state (not typical for simple fs mocks)
-    // For fsPromises functions, Bun's auto-mocking or explicit mock.module handles reset.
+  });
+
+  afterEach(() => {
+    clearMockRegistry();
+  });
+
+  afterAll(() => {
+    mockModules.restoreAll();
   });
 
   it('should call fsPromises.readFile for readFile', async () => {

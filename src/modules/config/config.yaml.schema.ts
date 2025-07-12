@@ -1,7 +1,7 @@
 /**
  * @file Defines the Zod schema for validating the `config.yaml` file.
  */
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 const pathsConfigSchema = z.object({
   dotfilesDir: z.string(),

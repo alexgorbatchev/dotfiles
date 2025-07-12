@@ -12,22 +12,27 @@ import {
   type CreateMockClientLoggerResult,
 } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import yaml from 'yaml';
 import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { registerGenerateCommand } from '../generateCommand';
+import {
+  createModuleMocker,
+  setupTestCleanup,
+  clearMockRegistry
+} from '@rageltd/bun-test-utils';
 
-mock.module('@modules/cli/exitCli', () => ({
-  exitCli: mock((code: number) => {
-    throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
-  }),
-}));
+// Setup cleanup once per file
+setupTestCleanup();
+
+const mockModules = createModuleMocker();
+
+const mockExitCli = mock((code: number) => {
+  throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
+});
 
 const mockCreateClientLogger = mock(actualCreateClientLogger);
-mock.module('@modules/logger', () => ({
-  createClientLogger: mockCreateClientLogger,
-  createLogger: mock(() => mock(() => {})),
-}));
+const mockCreateLogger = mock(() => mock(() => {}));
 
 describe('generateCommand', () => {
   let program: GlobalProgram;
@@ -44,8 +49,6 @@ describe('generateCommand', () => {
   } as ToolConfig;
 
   beforeEach(async () => {
-    mock.restore();
-
     program = createProgram();
 
     const fsHelperReturn = createMemFileSystem({
@@ -84,11 +87,29 @@ describe('generateCommand', () => {
       generateAll: mock(async () => mockManifest),
     };
 
+    // Set up mocks
+    await mockModules.mock('@modules/cli/exitCli', () => ({
+      exitCli: mockExitCli,
+    }));
+    
+    await mockModules.mock('@modules/logger', () => ({
+      createClientLogger: mockCreateClientLogger,
+      createLogger: mockCreateLogger,
+    }));
+
     registerGenerateCommand(program, {
       yamlConfig: mockYamlConfig,
       fs: memFs,
       generatorOrchestrator: mockGeneratorOrchestrator,
     } as Services);
+  });
+
+  afterEach(() => {
+    clearMockRegistry();
+  });
+
+  afterAll(() => {
+    mockModules.restoreAll();
   });
 
   test('should successfully generate artifacts', async () => {

@@ -16,9 +16,16 @@ import {
   type FileSystemSpies,
 } from '@testing-helpers';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { registerDetectConflictsCommand } from '../detectConflictsCommand';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+
+// Set up test cleanup
+setupTestCleanup();
+
+// Create module mocker
+const mockModules = createModuleMocker();
 
 // Mock function factories - these create fresh mocks each time they're called
 const createMockExitCli = () =>
@@ -61,21 +68,22 @@ describe('detectConflictsCommand', () => {
 
   beforeEach(async () => {
     mock.restore();
+    clearMockRegistry();
 
     mockExitCli = createMockExitCli();
     mockLoadToolConfigsFromDirectory = createMockLoadToolConfigsFromDirectory();
     mockCreateClientLogger = createMockCreateClientLogger();
 
-    mock.module('@modules/cli/exitCli', () => ({
+    await mockModules.mock('@modules/cli/exitCli', () => ({
       exitCli: mockExitCli,
     }));
 
-    mock.module('@modules/config-loader', () => ({
+    await mockModules.mock('@modules/config-loader', () => ({
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
       loadSingleToolConfig: mock(async () => ({})),
     }));
 
-    mock.module('@modules/logger', () => ({
+    await mockModules.mock('@modules/logger', () => ({
       createClientLogger: mockCreateClientLogger,
       createLogger: mock(() => mock(() => {})),
     }));
@@ -132,6 +140,14 @@ describe('detectConflictsCommand', () => {
         'No tool configurations found. Nothing to check for conflicts.'
       );
       expect(exitCli).toHaveBeenCalledWith(0);
+    });
+  
+    afterEach(() => {
+      clearMockRegistry();
+    });
+  
+    afterAll(() => {
+      mockModules.restore();
     });
 
     test('Error during loadToolConfigsFromDirectory - should log error and exit 1', async () => {

@@ -16,26 +16,25 @@ import {
   type CreateMockClientLoggerResult,
 } from '@testing-helpers';
 import type { ToolConfig } from '@types';
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
 import { registerInstallCommand } from '../installCommand';
+import {
+  createModuleMocker,
+  setupTestCleanup,
+  clearMockRegistry
+} from '@rageltd/bun-test-utils';
+
+// Setup cleanup once per file
+setupTestCleanup();
+
+const mockModules = createModuleMocker();
 
 const mockExitCli = mock(exitCli);
-mock.module('@modules/cli/exitCli', () => ({
-  exitCli: mockExitCli,
-}));
-
 const mockLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
-mock.module('@modules/config-loader', () => ({
-  loadSingleToolConfig: mockLoadSingleToolConfig,
-  loadToolConfigsFromDirectory: mock(async () => ({})),
-}));
-
+const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
 const mockCreateClientLogger = mock(actualCreateClientLogger);
-mock.module('@modules/logger', () => ({
-  createClientLogger: mockCreateClientLogger,
-  createLogger: mock(() => mock(() => {})),
-}));
+const mockCreateLogger = mock(() => mock(() => {}));
 
 describe('installCommand', () => {
   let program: GlobalProgram;
@@ -53,7 +52,6 @@ describe('installCommand', () => {
   };
 
   beforeEach(async () => {
-    mock.restore();
     program = createProgram();
 
     const { mockClientLogger, loggerMocks: lm } = createMockClientLogger();
@@ -88,7 +86,30 @@ describe('installCommand', () => {
       throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
     });
 
+    // Set up mocks
+    await mockModules.mock('@modules/cli/exitCli', () => ({
+      exitCli: mockExitCli,
+    }));
+
+    await mockModules.mock('@modules/config-loader', () => ({
+      loadSingleToolConfig: mockLoadSingleToolConfig,
+      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+    }));
+
+    await mockModules.mock('@modules/logger', () => ({
+      createClientLogger: mockCreateClientLogger,
+      createLogger: mockCreateLogger,
+    }));
+
     registerInstallCommand(program, mockServices);
+  });
+
+  afterEach(() => {
+    clearMockRegistry();
+  });
+
+  afterAll(() => {
+    mockModules.restoreAll();
   });
 
   test('should successfully install a tool', async () => {

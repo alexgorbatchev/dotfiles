@@ -28,7 +28,7 @@ import { createClientLogger, createLogger } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
 import { join } from 'path';
 import { parse, stringify } from 'yaml';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 const log = createLogger('YamlConfigLoader');
 const clientLogger = createClientLogger();

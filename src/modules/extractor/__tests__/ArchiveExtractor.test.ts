@@ -8,6 +8,14 @@ import { promisify } from 'node:util'; // Import promisify
 import { $ } from 'zx'; // For creating test archives
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
+import {
+  createModuleMocker,
+  setupTestCleanup,
+  clearMockRegistry
+} from '@rageltd/bun-test-utils';
+
+// Setup cleanup once per file
+setupTestCleanup();
 
 // This is the real exec, promisified, for use INSIDE our mock's implementation when needed
 const realPromisedExecViaUtil = promisify(actualExecCallbackSignature);
@@ -21,11 +29,7 @@ const mockExecCallback = mock((command: string, optionsOrCallback: any, callback
   cb(null, { stdout: `Mocked stdout for ${command}`, stderr: 'Mocked stderr' });
 });
 
-mock.module('node:child_process', () => {
-  return {
-    exec: mockExecCallback, // ArchiveExtractor will get this via its import
-  };
-});
+const mockModules = createModuleMocker();
 
 describe('ArchiveExtractor (with NodeFS)', () => {
   let nodeFsInstance: IFileSystem;
@@ -45,11 +49,10 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     if (nodeFs.existsSync(testTempRoot)) {
       nodeFs.rmSync(testTempRoot, { recursive: true, force: true });
     }
+    mockModules.restoreAll();
   });
 
-  beforeEach(() => {
-    mock.restore();
-
+  beforeEach(async () => {
     // Create a fresh subdirectory for each test
     const testName = `test-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     testDirs = createTestDirectories({
@@ -66,10 +69,15 @@ describe('ArchiveExtractor (with NodeFS)', () => {
         cb(null, { stdout: `stdout for ${command}`, stderr: '' });
       }
     );
+    
+    await mockModules.mock('node:child_process', () => ({
+      exec: mockExecCallback, // ArchiveExtractor will get this via its import
+    }));
   });
 
   afterEach(() => {
     // No per-test cleanup needed as afterAll handles the root
+    clearMockRegistry();
   });
 
   // --- detectFormat Tests ---
