@@ -29,18 +29,15 @@ When performing technical discovery on an external library, I must clone the lib
   - **References:** This section must include a list of references to external resources that were used to analyze the module.
 
 ## Development Plan
-At the top of every file I must include a comprehensive plan consisting of intended usage and technical requirements. The plan must be broken down into small, meaningful tasks (e.g., implementing a specific piece of functionality, testing a key scenario, integrating a component, rather than trivial steps like defining individual imports or type aliases unless they represent a complex definition effort) that can be completed in a single session. I must keep development plan up to date.
-  - **Task Completion Protocol:** Tasks within the development plan **must** be checked off (`[x]`) as progress is made.
-  - **Mandatory Checklist Protocol for `code` and `debug` Modes:**
-    - **Review and Update:** For *every file created or modified*, the active `code` or `debug` mode **must** meticulously review the development plan comment block at the top of that file.
-    - **Mark Completed Tasks:** All tasks within that checklist that were completed as part of the current subtask **must** be marked as complete (e.g., by changing `[ ]` to `[x]`).
-    - **Confirm in Completion:** The mode **must** explicitly state in its `attempt_completion` result: "Reviewed and updated development plan checklists for all modified files: [list of files]."
-    - **Memory Bank Task Exception:** The final task in any development plan, typically "Update the memory bank with the new information when all tasks are complete", **must not** be checked off by `code` or `debug` modes. This task is reserved for the Orchestrator, to be marked complete only after a dedicated Memory Bank update task has been successfully executed.
-  - When technical discovery and analysis is necessary, that task must be performed first as described above and links to relevant files must be included in the plan in the "Mandatory pre-read" section. Additionally, here is the list of required tasks for each file:
-  - Write tests for the module.
-  - Fix all errors and warnings by running lint and test.
-  - Remove all commented out code and meta-comments.
-  - Ensure 100% test coverage for executable code by running the tests. (Note: Files consisting purely of type definitions or declarative configurations may not require dedicated unit test files if their correctness is primarily verified by the TypeScript compiler and through tests of the code that utilizes or processes them. Project-specific decisions on which such files are exempt from dedicated tests should be documented in the Memory Bank, e.g., in `techContext.md`.)
+At the top of every file you create include a comprehensive plan consisting of intended usage and technical requirements.
+The plan must be broken down into small, meaningful tasks (e.g., implementing a specific piece of functionality, testing a key scenario, integrating a component, rather than trivial steps like defining individual imports or type aliases) that can be completed in a single session. You must keep development plan up to date. Do not add development plan to files in test folder or existing files.
+
+- **Task Completion Protocol:** Tasks within the development plan **must** be checked off (`[x]`) as progress is made.
+- **Mandatory Checklist Protocol for `code` and `debug` Modes:**
+  - **Review and Update:** For *every file created or modified*, the active `code` or `debug` mode **must** meticulously review the development plan comment block at the top of that file.
+  - **Mark Completed Tasks:** All tasks within that checklist that were completed as part of the current subtask **must** be marked as complete (e.g., by changing `[ ]` to `[x]`).
+  - **Confirm in Completion:** The mode **must** explicitly state in its `attempt_completion` result: "Reviewed and updated development plan checklists for all modified files: [list of files]."
+  - **Memory Bank Task Exception:** The final task in any development plan, typically "Update the memory bank with the new information when all tasks are complete", **must not** be checked off by `code` or `debug` modes. This task is reserved for the Orchestrator, to be marked complete only after a dedicated Memory Bank update task has been successfully executed.
 
 ## Development Workflow
 - Employ a Test-Driven Development (TDD) approach: write a failing test, then write the minimum code to make the test pass, and then refactor.
