@@ -1,5 +1,4 @@
 export * from './FetchMockHelper';
-export * from './createMockAppConfig';
 export * from './createMemFileSystem';
 export * from './createMockClientLogger';
 export * from './createTempDir';
