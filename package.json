@@ -12,7 +12,7 @@
     "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
     "fmt": "prettier --write .",
     "compile": "bun build ./src/cli.ts --compile --minify --outfile ./dist/cli",
-    "cli": "dotenv -- bun run ./src/cli.ts"
+    "cli": "bun run ./src/cli.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.16",
@@ -34,12 +34,11 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.2.22",
     "@commander-js/extra-typings": "^14.0.0",
     "commander": "^14.0.0",
     "consola": "^3.4.2",
     "debug": "^4.4.1",
-    "dotenv": "^16.5.0",
-    "dotenv-cli": "^8.0.0",
     "memfs": "^4.17.2",
     "semver": "^7.7.2",
     "yaml": "^2.8.0",
