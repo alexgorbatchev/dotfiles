@@ -84,7 +84,7 @@ export async function setupServices(
   };
 
   const userConfigPath = path.join(cwd, 'config.yaml');
-  const yamlConfig = await loadYamlConfig(fs,  userConfigPath, systemInfo, env);  ;
+  const yamlConfig = await loadYamlConfig(fs,  userConfigPath, systemInfo, env);
 
   console.log('yamlConfig', yamlConfig);
 

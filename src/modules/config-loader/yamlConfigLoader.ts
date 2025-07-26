@@ -256,7 +256,7 @@ function processConfig(
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
 ): YamlConfig {
-  log('load: systemInfo=%o', systemInfo);
+  log('processConfig: defaultConfig=%o, userConfig=%o, systemInfo=%o', defaultConfig, userConfig, systemInfo);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(mergedConfig, systemInfo);
@@ -343,6 +343,7 @@ export async function loadYamlConfig(
 
   try {
     const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
+    console.log('userConfigContent', userConfigContent);
     userConfig = parse(userConfigContent) || {};
   } catch (error) {
     clientLogger.error(

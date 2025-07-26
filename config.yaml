@@ -1,9 +1,3 @@
-targetDir: ~/.dotfiles/generator/.generated/bin
-dotfilesDir: ~/.dotfiles/generator
-generatedDir: ~/.dotfiles/generator/.generated
-toolConfigsDir: ~/.dotfiles/generator/actual-tool-configs
-generatedArtifactsManifestPath: ~/.dotfiles/generator/.generated/generated-manifest.json
-debug: ""
-cacheEnabled: true
-githubApiCacheEnabled: true
-checkUpdatesOnRun: false
+paths:
+  generatedDir: ${paths.dotfilesDir}/generator/.generated 
+  targetDir: ${paths.generatedDir}/bin
