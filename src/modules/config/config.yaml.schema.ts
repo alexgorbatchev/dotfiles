@@ -12,43 +12,43 @@ const pathsConfigSchema = z.object({
   completionsDir: z.string(),
   manifestPath: z.string(),
   binariesDir: z.string(),
-});
+}).strict();
 
 const systemConfigSchema = z.object({
   sudoPrompt: z.string(),
-});
+}).strict();
 
 const loggingConfigSchema = z.object({
   debug: z.string(),
-});
+}).strict();
 
 const updatesConfigSchema = z.object({
   checkOnRun: z.boolean(),
   checkInterval: z.number(),
-});
+}).strict();
 
 const gitHubCacheConfigSchema = z.object({
   enabled: z.boolean(),
   ttl: z.number(),
-});
+}).strict();
 
 const gitHubConfigSchema = z.object({
   token: z.string(),
   host: z.string(),
   userAgent: z.string(),
   cache: gitHubCacheConfigSchema,
-});
+}).strict();
 
 const downloaderCacheConfigSchema = z.object({
   enabled: z.boolean(),
-});
+}).strict();
 
 const downloaderConfigSchema = z.object({
   timeout: z.number(),
   retryCount: z.number(),
   retryDelay: z.number(),
   cache: downloaderCacheConfigSchema,
-});
+}).strict();
 
 const OS_VALUES = ['macos', 'linux', 'windows'] as const;
 const ARCH_VALUES = ['x86_64', 'arm64'] as const;
@@ -57,11 +57,11 @@ const platformMatchSchema = z.union([
   z.object({
     os: z.enum(OS_VALUES),
     arch: z.enum(ARCH_VALUES).optional(),
-  }),
+  }).strict(),
   z.object({
     os: z.enum(OS_VALUES).optional(),
     arch: z.enum(ARCH_VALUES),
-  }),
+  }).strict(),
 ]);
 
 const baseYamlConfigSchemaRequired =
@@ -72,7 +72,7 @@ const baseYamlConfigSchemaRequired =
     updates: updatesConfigSchema.required(),
     github: gitHubConfigSchema.required(),
     downloader: downloaderConfigSchema.required(),
-  });
+  }).strict();
 
 const baseYamlConfigSchemaPartial =
   z.object({
@@ -82,18 +82,18 @@ const baseYamlConfigSchemaPartial =
     updates: updatesConfigSchema.partial().optional(),
     github: gitHubConfigSchema.partial().optional(),
     downloader: downloaderConfigSchema.partial().optional(),
-  });
+  }).strict();
 
 const platformOverrideSchema = z.object({
   match: z.array(platformMatchSchema).nonempty(),
   get config() {
     return baseYamlConfigSchemaPartial.partial();
   },
-});
+}).strict();
 
 export const yamlConfigSchema = baseYamlConfigSchemaRequired.extend({
   platform: z.array(platformOverrideSchema).optional(),
-});
+}).strict();
 
 export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
 export type YamlConfig = z.infer<typeof yamlConfigSchema>;
