@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "bun run src/testing-helpers/bun-test-runner.ts",
-    "posttest": "tsc --noEmit",
+    "posttest": "bun lint",
+    "lint": "tsc --noEmit",
     "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
     "fmt": "prettier --write .",
     "compile": "bun build ./src/cli.ts --compile --minify --outfile ./dist/cli",
