@@ -21,7 +21,6 @@ describe('E2E: bun run cli generate', () => {
     // Paths for generated artifacts
     let fzfShimPath: string;
     let lazygitShimPath: string;
-    let generatorCliShimPath: string;
     let zshInitFilePath: string;
     let lazygitSourceConfigPath: string;
     let cliExitCode: number | null;
@@ -36,8 +35,7 @@ describe('E2E: bun run cli generate', () => {
       // Define paths for generated artifacts
       fzfShimPath = path.join(testDir.paths.targetDir, 'fzf');
       lazygitShimPath = path.join(testDir.paths.targetDir, 'lazygit');
-      generatorCliShimPath = path.join(testDir.paths.targetDir, 'shim');
-      zshInitFilePath = path.join(testDir.paths.generatedDir, 'completions', 'init.zsh');
+      zshInitFilePath = path.join(testDir.paths.completionsDir, 'init.zsh');
       lazygitSourceConfigPath = path.join(
         testDir.paths.dotfilesDir,
         '02-configs',
@@ -97,9 +95,8 @@ describe('E2E: bun run cli generate', () => {
     it('should generate the correct shim files for fzf and lazygit', async () => {
       expect(await fs.exists(fzfShimPath)).toBe(true);
       expect(await fs.exists(lazygitShimPath)).toBe(true);
-      expect(await fs.exists(generatorCliShimPath)).toBe(true);
 
-      for (const shimP of [fzfShimPath, lazygitShimPath, generatorCliShimPath]) {
+      for (const shimP of [fzfShimPath, lazygitShimPath]) {
         const stat = await fs.stat(shimP);
         expect(stat.mode & 0o100).toBeGreaterThan(0); // Check executable
       }
@@ -128,6 +125,7 @@ describe('E2E: bun run cli generate', () => {
 
     describe('manifest file', () => {
       let parsedManifest: any;
+
       beforeAll(async () => {
         parsedManifest = JSON.parse(await fs.readFile(testDir.paths.manifestPath));
         expect(parsedManifest).not.toBeNull();
@@ -162,7 +160,6 @@ describe('E2E: bun run cli generate', () => {
     let fzfShimPath: string;
     let localArchiveFilePath: string;
     let manifestPath: string;
-    let shimResult: { stdout: string; stderr: string; exitCode: number | null };
 
     const mockToolName = 'fzf';
     const mockToolVersion = '0.54.0'; // from fzf.tool.ts fixture
@@ -245,29 +242,28 @@ describe('E2E: bun run cli generate', () => {
 
       expect(generateResult.stderr).toEqual('');
       expect(generateResult.exitCode).toEqual(0);
-
-      // 6. Execute the shim
-      shimResult = executeCliCommand({
-        command: ['--version'],
-        cwd: directories.paths.homeDir,
-        homeDir: directories.paths.homeDir,
-        customCmd: [fzfShimPath],
-        env: {},
-      });
     });
 
     afterAll(async () => {
       await mockServer.close();
     });
 
-    it('should attempt to execute the shim', () => {
-      // The test environment doesn't have the actual CLI executable, so we expect an error
-      expect(shimResult.stderr).toContain('No such file or directory');
-    });
+    it('should automatically install and execute the tool when it is not present', async () => {
+      const shimResult = executeCliCommand({
+        command: ['--version'],
+        cwd: directories.paths.homeDir,
+        homeDir: directories.paths.homeDir,
+        customCmd: [fzfShimPath],
+        env: {},
+      });
 
-    it('should report failure when the tool is not found', () => {
-      expect(shimResult.stdout).toContain('Failed to install');
-      expect(shimResult.exitCode).not.toBe(0);
+      console.log(await fs.readFile(fzfShimPath, 'utf8'));
+      console.log(shimResult.stdout);
+      console.log(shimResult.stderr);
+
+      expect(shimResult.stderr).toBe('');
+      expect(shimResult.stdout).toContain(`Mock fzf v${mockToolVersion}`);
+      expect(shimResult.exitCode).toBe(0);
     });
   });
 });

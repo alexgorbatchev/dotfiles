@@ -2,7 +2,6 @@ import { yamlConfigSchema, type YamlConfig, type YamlConfigPartial } from '@modu
 import { type IFileSystem } from '@modules/file-system';
 import { createClientLogger, createLogger } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
-import { join } from 'path';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
@@ -196,6 +195,7 @@ function substituteTokens(
   fullConfig: Record<string, unknown>,
   systemInfo: SystemInfo
 ): Record<string, unknown> {
+  const finalEnv = deepMerge( env, { HOME: systemInfo.homeDir } );
   let configStr = stringify(config);
   let previousConfigStr = '';
 
@@ -216,7 +216,7 @@ function substituteTokens(
         return typeof value === 'string' ? value : match;
       }
 
-      return env[varName] !== undefined ? env[varName]! : match;
+      return finalEnv[varName] !== undefined ? finalEnv[varName] : match;
     });
   }
 
@@ -345,8 +345,10 @@ export async function createYamlConfigFromObject(
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   const userConfigClone = deepMerge({} as YamlConfigPartial, userConfig);
+
   if (userConfigClone.userConfigPath === undefined) {
     userConfigClone.userConfigPath = '/path/to/config.yaml';
   }
+
   return processConfig(defaultConfig, userConfigClone, systemInfo, env);
 }

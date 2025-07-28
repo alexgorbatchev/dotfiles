@@ -33,10 +33,10 @@ import {
 import { Installer, type IInstaller } from '@modules/installer';
 import { createClientLogger, createLogger } from '@modules/logger';
 import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
+import type { SystemInfo } from '@types';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
-import type { SystemInfo } from '@types';
 
 const internalLog = createLogger('cli');
 export interface Services {
@@ -54,17 +54,16 @@ export interface Services {
   versionChecker: IVersionChecker;
 }
 
-export type SetupServicesOptions = {
- dryRun?: boolean; 
+type SetupServicesOptions = GlobalProgramOptions & {
  cwd: string; 
- env?: NodeJS.ProcessEnv ;
+ env: NodeJS.ProcessEnv;
 }
 
 export async function setupServices(
   options: SetupServicesOptions
 ): Promise<Services> {
-  internalLog('setupServices: Initializing services... options: %o', options);
-  const { dryRun = false, env = process.env, cwd } = options;
+  internalLog('setupServices: options=%o', options);
+  const { dryRun, env, config } = options;
 
   // Initialize filesystem first
   let fs: IFileSystem;
@@ -83,10 +82,10 @@ export async function setupServices(
     homeDir: os.homedir(),
   };
 
-  const userConfigPath = path.join(cwd, 'config.yaml');
+  const userConfigPath = config.length === 0 ? path.resolve(options.cwd, 'config.yaml') : config;
   const yamlConfig = await loadYamlConfig(fs,  userConfigPath, systemInfo, env);
 
-  console.log('yamlConfig', yamlConfig);
+  // console.log('yamlConfig', yamlConfig);
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
@@ -203,32 +202,20 @@ export function registerAllCommands(program: GlobalProgram, services: Services) 
 }
 
 export type GlobalProgram = ReturnType<typeof createProgram>;
+export type GlobalProgramOptions = ReturnType<GlobalProgram['opts']>;
 
 export async function main(argv: string[]) {
   const program = createProgram();
-
-  // Create a default client logger for the main CLI
   const mainLogger = createClientLogger();
+
   mainLogger.debug('CLI starting with arguments:', argv);
 
-  program.on('option:config', function (this: Command, configValue: string | undefined) {
-    if (configValue) {
-      const globalOpts = this.opts() as { verbose?: boolean; quiet?: boolean };
-      const hookLogger = createClientLogger({
-        verbose: globalOpts.verbose,
-        quiet: globalOpts.quiet,
-      });
-      hookLogger.info(`Config file path: ${configValue}`);
-    }
-  });
-
-  // Parse initial options to determine dry-run status for service setup
   program.parseOptions(argv);
-  const options = program.opts() as { dryRun?: boolean };
 
   const services = await setupServices({ 
-    dryRun: options.dryRun,
+    ...program.opts(),
     cwd: process.cwd(),
+    env: process.env,
   });
 
   registerAllCommands(program, services);

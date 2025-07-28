@@ -1,10 +1,6 @@
 import { createMemFileSystem } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
-import {
-  loadYamlConfig,
-  loadDefaultYamlConfigAsRecord,
-} from '../yamlConfigLoader';
-import { MOCK_DEFAULT_CONFIG } from './fixtures';
+import { loadYamlConfig, loadDefaultYamlConfigAsRecord } from '../yamlConfigLoader';
 
 describe('yamlConfigLoader', () => {
   const USER_CONFIG_PATH = '/test/config.yaml';
@@ -33,8 +29,7 @@ describe('yamlConfigLoader', () => {
   `;
 
   it('should load default config when user config does not exist', async () => {
-    const { fs: fileSystem } = await createMemFileSystem(
-    );
+    const { fs: fileSystem } = await createMemFileSystem();
 
     const result = (await loadDefaultYamlConfigAsRecord(fileSystem)) as any;
 
@@ -133,7 +128,7 @@ describe('yamlConfigLoader', () => {
 
     const result = await loadYamlConfig(
       fileSystem,
-      USER_CONFIG_PATH, 
+      USER_CONFIG_PATH,
       {
         homeDir: '/home/testuser',
         platform: 'linux',
@@ -146,12 +141,11 @@ describe('yamlConfigLoader', () => {
   });
 
   it('exists if user config file does not exist', async () => {
-    const { fs: fileSystem } = await createMemFileSystem(
-    );
+    const { fs: fileSystem } = await createMemFileSystem();
 
-    expect(
-      loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})
-    ).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
+    expect(loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow(
+      /MOCK_EXIT_CLI_CALLED_WITH_1/
+    );
   });
 
   it('should substitute config references in config', async () => {
@@ -187,9 +181,7 @@ describe('yamlConfigLoader', () => {
   it('should throw an error when default config file does not exist', async () => {
     const { fs: fileSystem } = await createMemFileSystem({});
 
-    expect(
-      loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})
-    ).rejects.toThrow();
+    expect(loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow();
   });
 
   it('should handle validation errors from yamlConfigSchema', async () => {
