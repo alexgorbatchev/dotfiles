@@ -1,7 +1,5 @@
-/**
- * @file Defines the Zod schema for validating the `config.yaml` file.
- */
 import { z } from 'zod';
+import type { PartialDeep } from 'type-fest';
 
 const pathsConfigSchema = z.object({
   homeDir: z.string(),
@@ -10,8 +8,8 @@ const pathsConfigSchema = z.object({
   generatedDir: z.string(),
   toolConfigsDir: z.string(),
   completionsDir: z.string(),
-  manifestPath: z.string(),
   binariesDir: z.string(),
+  manifestPath: z.string(),
 }).strict();
 
 const systemConfigSchema = z.object({
@@ -92,11 +90,13 @@ const platformOverrideSchema = z.object({
 }).strict();
 
 export const yamlConfigSchema = baseYamlConfigSchemaRequired.extend({
+  userConfigPath: z.string(),
   platform: z.array(platformOverrideSchema).optional(),
 }).strict();
 
 export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
 export type YamlConfig = z.infer<typeof yamlConfigSchema>;
+export type YamlConfigPartial = PartialDeep<YamlConfig>;
 
 {
   // This is a type assertion to ensure that the schema is correct. DO NOT REMOVE.
@@ -104,6 +104,8 @@ export type YamlConfig = z.infer<typeof yamlConfigSchema>;
   let check: YamlConfig;
 
   check = {
+    userConfigPath: '',
+
     paths: {
       homeDir: '',
       dotfilesDir: 'test',

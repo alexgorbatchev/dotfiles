@@ -5,7 +5,7 @@ import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 
-const GENERATOR_CLI_SHIM_NAME = 'shim';
+const GENERATOR_CLI_SHIM_NAME = 'dotfiles-generator-shim';
 
 const log = createLogger('ShimGenerator');
 
@@ -102,13 +102,12 @@ export class ShimGenerator implements IShimGenerator {
 
 TOOL_NAME="${toolName}"
 TOOL_EXECUTABLE="${expectedToolBinaryPath}"
-GENERATOR_CLI_SHIM_NAME="${this.config.paths.targetDir}/${GENERATOR_CLI_SHIM_NAME}"
+GENERATOR_CLI_SHIM_NAME="/Users/alex/.dotfiles/generator/dist/cli"
 
 if [ -x "$TOOL_EXECUTABLE" ]; then
-exec "$TOOL_EXECUTABLE" "$@"
   exec "$TOOL_EXECUTABLE" "$@"
 else
-  "\${GENERATOR_CLI_SHIM_NAME}" install "\${TOOL_NAME}" --quiet
+  "\${GENERATOR_CLI_SHIM_NAME}" --config "${this.config.userConfigPath}" --quiet install "\${TOOL_NAME}"
   # Re-check after installation attempt
   if [ -x "$TOOL_EXECUTABLE" ]; then
     exec "$TOOL_EXECUTABLE" "$@"

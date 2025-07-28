@@ -1,4 +1,4 @@
-import { yamlConfigSchema, type YamlConfig } from '@modules/config';
+import { yamlConfigSchema, type YamlConfig, type YamlConfigPartial } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
 import { createClientLogger, createLogger } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
@@ -6,6 +6,7 @@ import { join } from 'path';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
+import { exitCli } from '../cli';
 
 const log = createLogger('YamlConfigLoader');
 const clientLogger = createClientLogger();
@@ -341,13 +342,18 @@ export async function loadYamlConfig(
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   let userConfig = {};
 
+  if (!await fileSystem.exists(userConfigPath)) {
+    clientLogger.error(`Config file not found: ${userConfigPath}`);
+    exitCli(1);
+  }
+
   try {
     const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
-    console.log('userConfigContent', userConfigContent);
     userConfig = parse(userConfigContent) || {};
+    (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
     clientLogger.error(
-      `User config file not found or invalid: ${
+      `Config file invalid: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
@@ -374,10 +380,14 @@ export async function loadYamlConfig(
  */
 export async function createYamlConfigFromObject(
   fileSystem: IFileSystem,
-  userConfig: Record<string, unknown> = {},
+  userConfig: YamlConfigPartial = {},
   systemInfo: SystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
   env: Record<string, string | undefined> = {}
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
-  return processConfig(defaultConfig, userConfig, systemInfo, env);
+  const userConfigClone = deepMerge({} as YamlConfigPartial, userConfig);
+  if (userConfigClone.userConfigPath === undefined) {
+    userConfigClone.userConfigPath = '/path/to/config.yaml';
+  }
+  return processConfig(defaultConfig, userConfigClone, systemInfo, env);
 }
