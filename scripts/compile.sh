@@ -5,7 +5,9 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR/.."
 
-OUTFILE="$(realpath "$(pwd)/dist/dotfiles-generator")"
+OUTFILE="$(pwd)/dist/dotfiles-generator"
+
+mkdir -p "$(dirname "$OUTFILE")"
 
 bun build \
   ./src/cli.ts \

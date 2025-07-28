@@ -46,7 +46,7 @@ const gitHubCacheConfigSchema = z.object({
 
 const gitHubConfigSchema = z.object({
   /** GitHub Personal Access Token (PAT) for accessing the GitHub API. */
-  token: z.string().default("${GITHUB_TOKEN}"),
+  token: z.string().default(""),
   /** Custom GitHub API host URL. Defaults to "https://api.github.com". */
   host: z.string().default("https://api.github.com"),
   /** Custom User-Agent string for requests made by the GitHub API client. Defaults to "dotfiles-generator". */
