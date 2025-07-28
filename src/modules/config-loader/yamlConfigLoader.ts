@@ -87,30 +87,6 @@ function deepMerge<T extends Record<string, unknown>>(
 }
 
 /**
- * Deep merges a source object into a target object, modifying the target in place.
- * @param target - The target object to merge into (modified in place).
- * @param source - The source object to merge from.
- */
-function deepMergeInto(target: Record<string, unknown>, source: Record<string, unknown>): void {
-  for (const key in source) {
-    if (source[key] === undefined) continue;
-
-    if (
-      source[key] &&
-      typeof source[key] === 'object' &&
-      !Array.isArray(source[key]) &&
-      target[key] &&
-      typeof target[key] === 'object' &&
-      !Array.isArray(target[key])
-    ) {
-      deepMergeInto(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
-    } else {
-      target[key] = source[key];
-    }
-  }
-}
-
-/**
  * Applies platform-specific overrides based on the current OS and architecture.
  * @param config - The configuration object to apply overrides to.
  * @param systemInfo - System information for platform detection.
@@ -131,7 +107,7 @@ function applyPlatformOverrides(
 
   log('applyPlatformOverrides: platform=%s, arch=%s', currentPlatform, currentArch);
 
-  const result = { ...config };
+  let result: Record<string, unknown> = deepMerge({}, config );
 
   for (const platformOverride of platformOverrides) {
     if (
@@ -171,7 +147,7 @@ function applyPlatformOverrides(
 
     if (matches) {
       log('Applying platform override: %o', platformOverride.config);
-      deepMergeInto(result, platformOverride.config);
+      result = deepMerge(result, platformOverride.config);
     }
   }
 
