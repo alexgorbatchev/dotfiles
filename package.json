@@ -12,7 +12,7 @@
     "lint": "tsc --noEmit",
     "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
     "fmt": "prettier --write .",
-    "compile": "bun build ./src/cli.ts --compile --minify --outfile ./dist/cli",
+    "compile": "scripts/compile.sh",
     "cli": "bun run ./src/cli.ts"
   },
   "devDependencies": {
