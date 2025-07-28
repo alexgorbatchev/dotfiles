@@ -3,18 +3,13 @@ import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { SystemInfo } from '@types';
 import { stringify } from 'yaml';
+import type { PartialDeep } from 'type-fest';
 
 /**
  * Represents a deep partial version of `YamlConfig`, where all properties and sub-properties are optional.
  * This is useful for representing user-provided configuration fragments that will be merged with a default configuration.
  */
-export type PartialYamlConfig = {
-  [P in keyof YamlConfig]?: YamlConfig[P] extends unknown[]
-    ? PartialYamlConfig[]
-    : YamlConfig[P] extends object
-    ? Partial<YamlConfig[P]>
-    : YamlConfig[P];
-};
+export type PartialYamlConfig = PartialDeep<YamlConfig> ;
 
 /**
  * Options for {@link createMockYamlConfig}.

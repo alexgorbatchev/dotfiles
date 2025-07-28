@@ -1,7 +1,7 @@
 import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 import { type YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
+import { createYamlConfigFromObject, } from '@modules/config-loader';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import {
@@ -12,7 +12,6 @@ import {
 } from '@testing-helpers';
 import type { GeneratedArtifactsManifest } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
 import { registerCleanupCommand } from '../cleanupCommand';
 
 setupTestCleanup();
@@ -56,9 +55,6 @@ describe('cleanupCommand', () => {
     }));
 
     const { fs, addFiles, addSymlinks } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
 
     mockYamlConfig = await createYamlConfigFromObject(fs);

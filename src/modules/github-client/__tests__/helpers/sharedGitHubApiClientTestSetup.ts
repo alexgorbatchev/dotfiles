@@ -4,15 +4,10 @@ import { createMemFileSystem, type PartialYamlConfig } from '@testing-helpers';
 import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
 import type { IGitHubApiCache } from '../../IGitHubApiCache';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '../../../config-loader';
-import { MOCK_DEFAULT_CONFIG } from '../../../config-loader/__tests__/fixtures';
+import { createYamlConfigFromObject, } from '../../../config-loader';
 
 export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
-  const memFs = await createMemFileSystem({
-    initialVolumeJson: {
-      [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-    }
-  });
+  const memFs = await createMemFileSystem();
   return createYamlConfigFromObject(memFs.fs, overrides);
 };
 

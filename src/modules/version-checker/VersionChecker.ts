@@ -1,31 +1,6 @@
 /**
  * @file src/modules/versionChecker/VersionChecker.ts
  * @description Implements the IVersionChecker interface for checking tool versions.
- *
- * ## Development Plan
- *
- * ### Stage 1: Define Interface (IVersionChecker.ts)
- * - [x] Define `VersionComparisonStatus` enum.
- * - [x] Define `IVersionChecker` interface.
- *
- * ### Stage 2: Implement Class (This file)
- * - [x] Import necessary modules (`semver`, `IGitHubApiClient`, `createLogger`, local interface/enum).
- * - [x] Define `VersionChecker` class implementing `IVersionChecker`.
- * - [x] Implement constructor accepting `IGitHubApiClient`.
- * - [x] Implement `getLatestToolVersion` method:
- *   - [x] Use `githubClient` to fetch latest release.
- *   - [x] Extract and clean `tag_name`.
- *   - [x] Add logging.
- *   - [x] Handle errors.
- * - [x] Implement `checkVersionStatus` method:
- *   - [x] Validate input versions using `semver.valid`.
- *   - [x] Compare versions using `semver.gt`, `semver.eq`.
- *   - [x] Add logging.
- * - [ ] Write tests for the module (covered in VersionChecker.test.ts).
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 import { valid, gt, eq } from 'semver';

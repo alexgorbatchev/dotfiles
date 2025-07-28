@@ -1,6 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import { createYamlConfigFromObject, } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem } from '@testing-helpers';
 import type { ToolConfig } from '@types';
@@ -20,9 +19,6 @@ describe('ShellInitGenerator', () => {
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
     mockFileSystem = fs;
     mockAppConfig = await createYamlConfigFromObject(

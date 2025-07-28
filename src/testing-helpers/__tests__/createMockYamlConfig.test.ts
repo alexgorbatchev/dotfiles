@@ -1,9 +1,8 @@
-import { describe, it, expect } from 'bun:test';
-import { createMockYamlConfig, type PartialYamlConfig } from '../createMockYamlConfig';
-import { createMemFileSystem } from '../createMemFileSystem';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
+import { createYamlConfigFromObject, } from '@modules/config-loader';
+import { describe, expect, it } from 'bun:test';
 import { stringify } from 'yaml';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import { createMemFileSystem } from '../createMemFileSystem';
+import { createMockYamlConfig, type PartialYamlConfig } from '../createMockYamlConfig';
 
 describe('createMockYamlConfig', () => {
   const mockConfig: PartialYamlConfig = {
@@ -18,11 +17,7 @@ describe('createMockYamlConfig', () => {
   };
 
   it('should write the YAML string to the specified path', async () => {
-    const { fs } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
-    });
+    const { fs } = await createMemFileSystem();
     const filePath = '/test.yaml';
     const systemInfo = { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' };
     const env = {};

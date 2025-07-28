@@ -5,18 +5,16 @@ import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
   createYamlConfigFromObject,
-  getDefaultConfigPath,
 } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import type { IGitHubApiClient } from '@modules/github-client';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { createMemFileSystem, createMockClientLogger, type LoggerMocks } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 
 // Set up test cleanup
 setupTestCleanup();
@@ -79,9 +77,6 @@ describe('checkUpdatesCommand', () => {
     }));
 
     const mockFs = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
 
     mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);

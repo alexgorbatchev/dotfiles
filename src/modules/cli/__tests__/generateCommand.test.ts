@@ -2,7 +2,7 @@ import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 import { exitCli } from '@modules/cli/exitCli';
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
+import { createYamlConfigFromObject, } from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import {
@@ -14,7 +14,6 @@ import {
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import yaml from 'yaml';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { registerGenerateCommand } from '../generateCommand';
 import {
   createModuleMocker,
@@ -52,9 +51,6 @@ describe('generateCommand', () => {
     program = createProgram();
 
     mockFs = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
 
     mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);

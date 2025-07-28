@@ -1,6 +1,5 @@
 import { type YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
@@ -29,13 +28,8 @@ describe('Installer with custom GitHub host', () => {
   let mockExtract: Mock<any>;
 
   beforeEach(async () => {
-    directories = createTestDirectories({ testName: 'installer-custom-host-tests' });
-
-    const { fs } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
-    });
+    const { fs } = await createMemFileSystem();
+    directories = await createTestDirectories(fs, { testName: 'installer-custom-host-tests' });
     mockFileSystem = fs;
 
     // Setup mock downloader
@@ -90,7 +84,7 @@ describe('Installer with custom GitHub host', () => {
     );
     mockArchiveExtractor = {
       extract: mockExtract,
-      detectFormat: mock(async () => 'tar.gz' as const), 
+      detectFormat: mock(async () => 'tar.gz' as const),
       isSupported: mock(() => true),
     };
 

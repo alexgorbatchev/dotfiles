@@ -1,6 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import { createYamlConfigFromObject, } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, type FileSystemSpies } from '@testing-helpers';
 import type { ToolConfig } from '@types';
@@ -16,9 +15,6 @@ describe('ShimGenerator', () => {
 
   beforeEach(async () => {
     const { fs, spies } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
     mfs = fs;
     fsMocks = spies;

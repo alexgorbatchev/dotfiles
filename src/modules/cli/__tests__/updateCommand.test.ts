@@ -4,7 +4,6 @@ import { exitCli } from '@modules/cli';
 import type { YamlConfig } from '@modules/config';
 import {
   createYamlConfigFromObject,
-  getDefaultConfigPath,
   loadSingleToolConfig,
 } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
@@ -19,7 +18,6 @@ import {
 } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { registerUpdateCommand } from '../updateCommand';
 import {
   createModuleMocker,
@@ -82,9 +80,6 @@ describe('updateCommand', () => {
     program = createProgram();
 
     mockFs = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
       exists: mock(async () => true),
     });
 

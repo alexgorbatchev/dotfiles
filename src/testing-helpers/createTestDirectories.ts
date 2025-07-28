@@ -1,11 +1,7 @@
-/**
- * @fileoverview Helper functions for creating test directory structures.
- */
-
-import * as fs from 'node:fs';
 import * as path from 'path';
-import { createTempDir } from './createTempDir';
-import type { YamlConfigPaths } from '../modules/config';
+import { type YamlConfigPaths } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import { getDefaultConfig } from '../modules/config-loader';
 
 type InternalYamlConfigPaths = Omit<YamlConfigPaths, 'manifestPath'>;
 
@@ -14,11 +10,14 @@ type InternalYamlConfigPaths = Omit<YamlConfigPaths, 'manifestPath'>;
  */
 export interface TestDirectoryOptions {
   /** Name for the temporary directory */
-  testName: string;
+  testName?: string;
   /** Optional map of additional directories to create (key: directory identifier, value: path relative to base directory) */
   additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalYamlConfigPaths }>;
   /** Optional array of tool-specific directories to create in binaries directory */
   toolDirs?: string[];
+
+  /** Paths to create from `YamlConfig.paths` */
+  paths?: InternalYamlConfigPaths;
 }
 
 /**
@@ -40,37 +39,43 @@ export interface TestDirectories {
 }
 
 /**
- * Creates a standard directory structure for E2E tests
+ * Creates a temporary directory for tests.
+ * 
+ * @param name - The name of the temporary directory
+ * @returns The path to the created temporary directory
+ */
+async function createTempDir(fs: IFileSystem, name: string) {
+  const tempDir = path.join(__dirname, '../tmp', name);
+  if (await fs.exists(tempDir)) {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+  await fs.ensureDir(tempDir);
+  return tempDir;
+}
+
+/**
+ * Creates a standard directory structure for the test environment based on `YamlConfig.paths`.
  *
  * @param options - Options for creating test directories
  * @returns Object containing paths to created directories
  */
-export function createTestDirectories(options: TestDirectoryOptions): TestDirectories {
-  const homeDir = createTempDir(options.testName);
-  const dotfilesDir = path.join(homeDir, 'my-dotfiles-repo');
-  const generatedDir = path.join(dotfilesDir, '.generated');
-  const toolConfigsDir = path.join(dotfilesDir, 'actual-tool-configs');
-  const binariesDir = path.join(generatedDir, 'binaries');
-  const targetDir = path.join(generatedDir, 'bin');
-  const completionsDir = path.join(generatedDir, 'completions');
+export async function createTestDirectories(fs: IFileSystem, options: TestDirectoryOptions): Promise<TestDirectories> {
+  const homeDir = await createTempDir(fs, 'createTestDirectories'+(options.testName !== undefined ? `--${options.testName}` : ''));
+  const defaultConfig = await getDefaultConfig(fs, { homeDir } as any, { HOME: homeDir });
+  const paths = { ...(defaultConfig).paths, ...(options.paths || {}) };
 
-  fs.mkdirSync(dotfilesDir, { recursive: true });
-  fs.mkdirSync(generatedDir, { recursive: true });
-  fs.mkdirSync(toolConfigsDir, { recursive: true });
-  fs.mkdirSync(binariesDir, { recursive: true });
-  fs.mkdirSync(targetDir, { recursive: true });
-  fs.mkdirSync(completionsDir, { recursive: true });
+  await fs.ensureDir(paths.homeDir);
+  await fs.ensureDir(paths.dotfilesDir);
+  await fs.ensureDir(paths.generatedDir);
+  await fs.ensureDir(paths.toolConfigsDir);
+  await fs.ensureDir(paths.binariesDir);
+  await fs.ensureDir(paths.targetDir);
+  await fs.ensureDir(paths.completionsDir);
 
   const result: TestDirectories = {
     paths: {
-      homeDir,
-      dotfilesDir,
-      generatedDir,
-      toolConfigsDir,
-      binariesDir,
-      targetDir,
-      completionsDir,
-      manifestPath: path.join(generatedDir, 'manifest.json'),
+      ...paths,
+      manifestPath: path.join(paths.generatedDir, 'manifest.json'),
     },
 
     additionalDirs: {},
@@ -89,11 +94,11 @@ export function createTestDirectories(options: TestDirectoryOptions): TestDirect
 
   // Create additional directories if needed
   if (options.additionalDirs) {
-    for (const [key, dirInfo] of Object.entries(options.additionalDirs)) {
+    for await (const [key, dirInfo] of Object.entries(options.additionalDirs)) {
       const relativeTo = dirInfo.relativeTo;
       const baseDir= relativeTo && result.paths[relativeTo] || homeDir;
       const fullPath = path.join(baseDir, dirInfo.path);
-      fs.mkdirSync(fullPath, { recursive: true });
+      await fs.ensureDir(fullPath);
       result.additionalDirs[key] = fullPath;
     }
   }
@@ -101,7 +106,7 @@ export function createTestDirectories(options: TestDirectoryOptions): TestDirect
   // Create tool-specific directories in binaries directory if needed
   if (options.toolDirs && options.toolDirs.length > 0) {
     for (const toolDir of options.toolDirs) {
-      fs.mkdirSync(path.join(binariesDir, toolDir), { recursive: true });
+      await fs.ensureDir(path.join(paths.binariesDir, toolDir));
     }
   }
 

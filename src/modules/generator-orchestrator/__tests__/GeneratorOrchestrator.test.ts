@@ -1,6 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
+import { createYamlConfigFromObject, } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator } from '@modules/generator-shell-init';
 import type { IShimGenerator } from '@modules/generator-shim';
@@ -37,9 +36,6 @@ describe('GeneratorOrchestrator', () => {
     };
 
     const { fs, spies } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
     mockFileSystem = fs;
     mockFsReadFile = spies.readFile;

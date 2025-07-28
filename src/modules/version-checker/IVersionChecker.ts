@@ -1,20 +1,7 @@
 /**
- * @file src/modules/versionChecker/IVersionChecker.ts
+ * @file src/modules/version-checker/IVersionChecker.ts
  * @description Defines the interface for the version checker module.
  * This module is responsible for determining if newer versions of managed tools are available.
- *
- * ## Development Plan
- *
- * ### Stage 1: Define Interface (This file)
- * - [x] Define `VersionComparisonStatus` enum.
- * - [x] Define `IVersionChecker` interface with methods:
- *   - `getLatestToolVersion(owner: string, repo: string): Promise<string | null>`
- *   - `checkVersionStatus(currentVersion: string, latestVersion: string): Promise<VersionComparisonStatus>`
- * - [ ] Write tests for the module (covered in VersionChecker.test.ts).
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code (N/A for interface file).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
  */
 
 /**

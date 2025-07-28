@@ -2,7 +2,6 @@ import { createMemFileSystem } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
 import {
   loadYamlConfig,
-  getDefaultConfigPath,
   loadDefaultYamlConfigAsRecord,
 } from '../yamlConfigLoader';
 import { MOCK_DEFAULT_CONFIG } from './fixtures';
@@ -34,11 +33,8 @@ describe('yamlConfigLoader', () => {
   `;
 
   it('should load default config when user config does not exist', async () => {
-    const { fs: fileSystem } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
-    });
+    const { fs: fileSystem } = await createMemFileSystem(
+    );
 
     const result = (await loadDefaultYamlConfigAsRecord(fileSystem)) as any;
 
@@ -49,7 +45,6 @@ describe('yamlConfigLoader', () => {
   it('should merge default config with user config', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
       },
     });
@@ -75,7 +70,6 @@ describe('yamlConfigLoader', () => {
   it('should apply platform-specific overrides from user config', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG_WITH_PLATFORM,
       },
     });
@@ -110,7 +104,6 @@ describe('yamlConfigLoader', () => {
   it('should not apply platform overrides if none are defined', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
       },
     });
@@ -134,7 +127,6 @@ describe('yamlConfigLoader', () => {
   it('should substitute environment variables in config', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: '',
       },
     });
@@ -154,11 +146,8 @@ describe('yamlConfigLoader', () => {
   });
 
   it('exists if user config file does not exist', async () => {
-    const { fs: fileSystem } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
-    });
+    const { fs: fileSystem } = await createMemFileSystem(
+    );
 
     expect(
       loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})
@@ -168,7 +157,6 @@ describe('yamlConfigLoader', () => {
   it('should substitute config references in config', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_USER_CONFIG,
       },
     });
@@ -192,7 +180,7 @@ describe('yamlConfigLoader', () => {
       '/home/testuser/custom-dotfiles/.generated/completions'
     );
     expect(result.paths.manifestPath).toBe(
-      '/home/testuser/custom-dotfiles/.generated/generated-manifest.json'
+      '/home/testuser/custom-dotfiles/.generated/manifest.json'
     );
   });
 
@@ -212,7 +200,6 @@ describe('yamlConfigLoader', () => {
 
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
         [USER_CONFIG_PATH]: MOCK_INVALID_USER_CONFIG,
       },
     });

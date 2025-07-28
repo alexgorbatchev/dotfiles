@@ -255,8 +255,6 @@ function processConfig(
   return result.data;
 }
 
-export const getDefaultConfigPath = (): string => join(__dirname, 'default-config.yaml');
-
 export async function getDefaultConfig(
   fileSystem: IFileSystem,
   systemInfo: SystemInfo,
@@ -273,24 +271,9 @@ export async function getDefaultConfig(
  * @returns A promise that resolves to the raw YAML object.
  */
 export async function loadDefaultYamlConfigAsRecord(
-  fileSystem: IFileSystem
+  _fileSystem: IFileSystem
 ): Promise<Record<string, unknown>> {
-  const finalDefaultConfigPath = getDefaultConfigPath();
-  let defaultConfig = {};
-
-  try {
-    const defaultConfigContent = await fileSystem.readFile(finalDefaultConfigPath, 'utf-8');
-    defaultConfig = parse(defaultConfigContent);
-  } catch (error) {
-    clientLogger.error(
-      `Default config file not found or invalid: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    throw error;
-  }
-
-  return defaultConfig;
+  return yamlConfigSchema.parse({});
 }
 
 /**

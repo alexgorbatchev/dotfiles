@@ -6,10 +6,10 @@ const pathsConfigSchema = z.object({
   homeDir: z.string().default("${HOME}"),
   /** Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`. */
   dotfilesDir: z.string().default("${HOME}/.dotfiles"),
-  /** Sets the target directory where executable shims for tools will be placed. Defaults to `/usr/local/bin`. */
-  targetDir: z.string().default("/usr/local/bin"),
   /** Defines the directory where all generated files will be stored. Defaults to `${paths.dotfilesDir}/.generated`. */
   generatedDir: z.string().default("${paths.dotfilesDir}/.generated"),
+  /** Sets the target directory where executable shims for tools will be placed. Defaults to `${paths.generatedDir}/usr-local-bin`. */
+  targetDir: z.string().default("${paths.generatedDir}/usr-local-bin"),
   /** Specifies the directory containing `*.tool.ts` tool configuration files. Defaults to `${paths.dotfilesDir}/generator/configs/tools`. */
   toolConfigsDir: z.string().default("${paths.dotfilesDir}/generator/configs/tools"),
   /** Specifies the base directory where shell completion files should be installed. Defaults to `${paths.generatedDir}/completions`. */

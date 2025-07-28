@@ -15,7 +15,7 @@ import { NodeFileSystem } from '@modules/file-system';
 
 describe('E2E: bun run cli generate', () => {
   describe('generating shims, shell init, and symlinks', () => {
-    let directories: TestDirectories;
+    let testDir: TestDirectories;
     let fs: NodeFileSystem;
 
     // Paths for generated artifacts
@@ -29,17 +29,17 @@ describe('E2E: bun run cli generate', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      directories = createTestDirectories({
+      testDir = await createTestDirectories(fs,{
         testName: 'cli-generate-e2e',
       });
 
       // Define paths for generated artifacts
-      fzfShimPath = path.join(directories.paths.targetDir, 'fzf');
-      lazygitShimPath = path.join(directories.paths.targetDir, 'lazygit');
-      generatorCliShimPath = path.join(directories.paths.targetDir, 'shim');
-      zshInitFilePath = path.join(directories.paths.generatedDir, 'completions', 'init.zsh');
+      fzfShimPath = path.join(testDir.paths.targetDir, 'fzf');
+      lazygitShimPath = path.join(testDir.paths.targetDir, 'lazygit');
+      generatorCliShimPath = path.join(testDir.paths.targetDir, 'shim');
+      zshInitFilePath = path.join(testDir.paths.generatedDir, 'completions', 'init.zsh');
       lazygitSourceConfigPath = path.join(
-        directories.paths.dotfilesDir,
+        testDir.paths.dotfilesDir,
         '02-configs',
         'lazygit',
         'config.yml'
@@ -50,26 +50,26 @@ describe('E2E: bun run cli generate', () => {
 
       await createMockYamlConfig({
         config: {
-          paths: directories.paths,
+          paths: testDir.paths,
         },
-        filePath: path.join(directories.paths.dotfilesDir, 'config.yaml'),
+        filePath: path.join(testDir.paths.dotfilesDir, 'config.yaml'),
         fileSystem: fs,
         systemInfo: {
           platform: 'linux',
           arch: 'x64',
-          homeDir: directories.paths.homeDir,
+          homeDir: testDir.paths.homeDir,
         },
         env: {},
       });
 
       // Create tool configs
       createToolConfig({
-        toolConfigsDir: directories.paths.toolConfigsDir,
+        toolConfigsDir: testDir.paths.toolConfigsDir,
         name: 'fzf',
         fixturePath: path.resolve(__dirname, 'fixtures', 'fzf.tool.ts'),
       });
       createToolConfig({
-        toolConfigsDir: directories.paths.toolConfigsDir,
+        toolConfigsDir: testDir.paths.toolConfigsDir,
         name: 'lazygit',
         fixturePath: path.resolve(__dirname, 'fixtures', 'lazygit.tool.ts'),
       });
@@ -77,8 +77,8 @@ describe('E2E: bun run cli generate', () => {
       // Execute CLI command
       const result = executeCliCommand({
         command: ['generate'],
-        cwd: directories.paths.dotfilesDir,
-        homeDir: directories.paths.homeDir,
+        cwd: testDir.paths.dotfilesDir,
+        homeDir: testDir.paths.homeDir,
       });
 
       cliExitCode = result.exitCode;
@@ -91,7 +91,7 @@ describe('E2E: bun run cli generate', () => {
     });
 
     it('creates manifest file', async () => {
-      expect(await fs.exists(directories.paths.manifestPath)).toBe(true);
+      expect(await fs.exists(testDir.paths.manifestPath)).toBe(true);
     });
 
     it('should generate the correct shim files for fzf and lazygit', async () => {
@@ -107,13 +107,13 @@ describe('E2E: bun run cli generate', () => {
       const fzfContent = await fs.readFile(fzfShimPath);
       expect(fzfContent).toContain('TOOL_NAME="fzf"');
       expect(fzfContent).toContain(
-        `TOOL_EXECUTABLE="${path.join(directories.paths.binariesDir, 'fzf', 'fzf')}"`
+        `TOOL_EXECUTABLE="${path.join(testDir.paths.binariesDir, 'fzf', 'fzf')}"`
       );
 
       const lazygitContent = await fs.readFile(lazygitShimPath);
       expect(lazygitContent).toContain('TOOL_NAME="lazygit"');
       expect(lazygitContent).toContain(
-        `TOOL_EXECUTABLE="${path.join(directories.paths.binariesDir, 'lazygit', 'lazygit')}"`
+        `TOOL_EXECUTABLE="${path.join(testDir.paths.binariesDir, 'lazygit', 'lazygit')}"`
       );
     });
 
@@ -129,7 +129,7 @@ describe('E2E: bun run cli generate', () => {
     describe('manifest file', () => {
       let parsedManifest: any;
       beforeAll(async () => {
-        parsedManifest = JSON.parse(await fs.readFile(directories.paths.manifestPath));
+        parsedManifest = JSON.parse(await fs.readFile(testDir.paths.manifestPath));
         expect(parsedManifest).not.toBeNull();
       });
 
@@ -170,7 +170,7 @@ describe('E2E: bun run cli generate', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      directories = createTestDirectories({
+      directories = await createTestDirectories(fs,{
         testName: 'cli-generate-shim-execution',
         additionalDirs: {
           'temp-archive-source': { path: 'temp-archive-source' },

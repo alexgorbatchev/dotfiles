@@ -1,11 +1,10 @@
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
-import { createYamlConfigFromObject, getDefaultConfigPath } from '@modules/config-loader';
+import type { YamlConfig } from '@modules/config';
+import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import { createMemFileSystem, createTestDirectories, type TestDirectories } from '@testing-helpers';
-import type { YamlConfig } from '@modules/config';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
@@ -94,12 +93,8 @@ describe('Installer', () => {
   };
 
   beforeEach(async () => {
-    testDirs = createTestDirectories({ testName: 'installer-tests' });
-    const { fs, spies } = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
-    });
+    const { fs, spies } = await createMemFileSystem();
+    testDirs = await createTestDirectories(fs,{ testName: 'installer-tests' });
     mockFileSystem = fs;
     fileSystemMocks = spies;
 
@@ -887,7 +882,7 @@ describe('Installer', () => {
       const finalBinaryDestPath = path.join(installDir, 'bin/tool-renamed');
       const symlinkPath = path.join(testDirs.paths.targetDir, MOCK_TOOL_NAME);
 
-      expect(result.otherChanges).toEqual(
+      expect(result.otherChanges).toMatchObject(
         expect.arrayContaining([
           ...initialOtherChanges,
           `Downloaded tarball from https://example.com/archive.tar.gz to ${tarballPath}.`,

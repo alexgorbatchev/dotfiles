@@ -5,7 +5,6 @@ import type { YamlConfig } from '@modules/config';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   createYamlConfigFromObject,
-  getDefaultConfigPath,
 } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
@@ -17,7 +16,6 @@ import {
 } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { MOCK_DEFAULT_CONFIG } from '../../config-loader/__tests__/fixtures';
 import { registerInstallCommand } from '../installCommand';
 import {
   createModuleMocker,
@@ -60,9 +58,6 @@ describe('installCommand', () => {
     mockCreateClientLogger.mockReturnValue(mockClientLogger);
 
     mockFs = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
 
     mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);

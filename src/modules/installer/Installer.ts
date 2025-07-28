@@ -574,7 +574,12 @@ export class Installer implements IInstaller {
       }
 
       // Create a symlink in the bin directory
-      const binDir = path.join(this.appConfig.paths.generatedDir, 'bin');
+      const binDir = this.appConfig.paths.targetDir;
+      log(
+        'installFromGitHubRelease: Symlink directories. configured targetDir="%s", used binDir="%s"',
+        this.appConfig.paths.targetDir,
+        binDir
+      );
       await this.fs.ensureDir(binDir);
       const symlinkPath = path.join(binDir, toolName);
 
@@ -795,7 +800,7 @@ export class Installer implements IInstaller {
     _options?: InstallOptions
   ): Promise<InstallResult> {
     log('installFromCurlTar: toolName=%s', toolName);
-    const otherChanges: string[] = context.otherChanges || [];
+    const otherChanges: string[] = [...(context.otherChanges || [])];
 
     if (!toolConfig.installParams || !('url' in toolConfig.installParams)) {
       return {
@@ -957,7 +962,7 @@ export class Installer implements IInstaller {
       }
 
       // Create a symlink in the bin directory
-      const binDirForCurl = path.join(this.appConfig.paths.generatedDir, 'bin'); // Renamed to avoid conflict
+      const binDirForCurl = this.appConfig.paths.targetDir; // Renamed to avoid conflict
       await this.fs.ensureDir(binDirForCurl);
       const symlinkPathForCurl = path.join(binDirForCurl, toolName); // Renamed
 

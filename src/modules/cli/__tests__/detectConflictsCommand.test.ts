@@ -5,9 +5,7 @@ import { type YamlConfig } from '@modules/config';
 import {
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
   createYamlConfigFromObject,
-  getDefaultConfigPath,
 } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG } from '@modules/config-loader/__tests__/fixtures';
 import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import {
@@ -83,11 +81,7 @@ describe('detectConflictsCommand', () => {
     }));
 
     program = createProgram();
-
     mockFs = await createMemFileSystem({
-      initialVolumeJson: {
-        [getDefaultConfigPath()]: MOCK_DEFAULT_CONFIG,
-      },
     });
 
     mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);

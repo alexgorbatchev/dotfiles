@@ -29,7 +29,7 @@ describe('E2E: bun run cli install', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      directories = createTestDirectories({ testName: 'cli-install-direct-binary-mock' });
+      directories = await createTestDirectories(fs,{ testName: 'cli-install-direct-binary-mock' });
       symlinkPath = path.join(directories.paths.targetDir, mockToolName);
       expectedInstalledBinaryPath = path.join(
         directories.paths.binariesDir,
@@ -126,7 +126,7 @@ describe('E2E: bun run cli install', () => {
     let symlinkPath: string;
     let localArchiveFilePath: string;
     let expectedExtractedBinaryPath: string;
-    let directories: TestDirectories;
+    let testDirs: TestDirectories;
     let fs: NodeFileSystem;
     let mockServer: MockGitHubServerResult;
 
@@ -136,27 +136,27 @@ describe('E2E: bun run cli install', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      directories = createTestDirectories({
+      testDirs = await createTestDirectories(fs,{
         testName: 'cli-install-archive-mock',
         additionalDirs: {
           'temp-archive-source': { path: 'temp-archive-source' },
         },
       });
-      symlinkPath = path.join(directories.paths.targetDir, mockArchiveToolName);
+      symlinkPath = path.join(testDirs.paths.targetDir, mockArchiveToolName);
       expectedExtractedBinaryPath = path.join(
-        directories.paths.binariesDir,
+        testDirs.paths.binariesDir,
         mockArchiveToolName,
         mockArchiveToolName
       );
 
       await createFile(
         fs,
-        path.join(directories.getDir('temp-archive-source'), mockArchiveToolName),
+        path.join(testDirs.getDir('temp-archive-source'), mockArchiveToolName),
         `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`
       );
 
-      localArchiveFilePath = path.join(directories.paths.homeDir, mockArchiveFileName);
-      await $`tar -czf ${localArchiveFilePath} -C ${directories.getDir('temp-archive-source')} ${mockArchiveToolName}`.quiet();
+      localArchiveFilePath = path.join(testDirs.paths.homeDir, mockArchiveFileName);
+      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} ${mockArchiveToolName}`.quiet();
 
       mockServer = await createMockGitHubServer({
         apiPaths: [
@@ -184,24 +184,35 @@ describe('E2E: bun run cli install', () => {
 
       await createMockYamlConfig({
         config: {
-          paths: directories.paths,
+          paths: testDirs.paths,
+          updates: {
+            checkOnRun: false,
+          },
+          downloader: {
+            cache: {
+              enabled: false,
+            }
+          },
           github: {
             host: mockServer.baseUrl,
+            cache: {
+              enabled: false,
+            },
           },
         },
-        filePath: path.join(directories.paths.dotfilesDir, 'config.yaml'),
+        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
         fileSystem: fs,
         systemInfo: {
           platform: 'linux',
           arch: 'x64',
-          homeDir: directories.paths.homeDir,
+          homeDir: testDirs.paths.homeDir,
         },
         env: {},
       });
 
       // Create tool config from fixture
       createToolConfig({
-        toolConfigsDir: directories.paths.toolConfigsDir,
+        toolConfigsDir: testDirs.paths.toolConfigsDir,
         name: mockArchiveToolName,
         fixturePath: path.resolve(__dirname, 'fixtures', 'archive-tool.tool.ts'),
       });
@@ -209,16 +220,12 @@ describe('E2E: bun run cli install', () => {
       // Execute CLI command
       const result = executeCliCommand({
         command: ['install', mockArchiveToolName],
-        env: {
-          GITHUB_HOST: mockServer.baseUrl,
-          CACHE_ENABLED: 'false',
-          GITHUB_API_CACHE_ENABLED: 'false',
-          CHECK_UPDATES_ON_RUN: 'false',
-        },
-        cwd: directories.paths.dotfilesDir,
-        homeDir: directories.paths.homeDir,
+        cwd: testDirs.paths.dotfilesDir,
+        homeDir: testDirs.paths.homeDir,
       });
 
+      console.log(result.stdout);
+      console.log(symlinkPath);
       expect(result.stderr).toEqual('');
       expect(result.exitCode).toEqual(0);
     });
@@ -230,7 +237,7 @@ describe('E2E: bun run cli install', () => {
     it('should download archive to the correct location', async () => {
       expect(
         await fs.exists(
-          path.join(directories.paths.binariesDir, mockArchiveToolName, mockArchiveFileName)
+          path.join(testDirs.paths.binariesDir, mockArchiveToolName, mockArchiveFileName)
         )
       ).toBe(true);
     });
@@ -250,7 +257,7 @@ describe('E2E: bun run cli install', () => {
     it('should verify extracted binary works via symlink', () => {
       const proc = Bun.spawnSync([symlinkPath], {
         stdout: 'pipe',
-        env: { HOME: directories.paths.homeDir },
+        env: { HOME: testDirs.paths.homeDir },
       });
       expect(proc.exitCode).toBe(0);
     });
