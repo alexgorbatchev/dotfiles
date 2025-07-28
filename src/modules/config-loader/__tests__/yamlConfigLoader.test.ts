@@ -1,6 +1,6 @@
 import { createMemFileSystem } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
-import { loadYamlConfig, loadDefaultYamlConfigAsRecord } from '../yamlConfigLoader';
+import { loadYamlConfig } from '../yamlConfigLoader';
 
 describe('yamlConfigLoader', () => {
   const USER_CONFIG_PATH = '/test/config.yaml';
@@ -27,15 +27,6 @@ describe('yamlConfigLoader', () => {
           downloader:
             timeout: 600000
   `;
-
-  it('should load default config when user config does not exist', async () => {
-    const { fs: fileSystem } = await createMemFileSystem();
-
-    const result = (await loadDefaultYamlConfigAsRecord(fileSystem)) as any;
-
-    expect(result.paths?.toolConfigsDir).toBe('${paths.dotfilesDir}/generator/configs/tools');
-    expect(result.github?.token).toBe('${GITHUB_TOKEN}');
-  });
 
   it('should merge default config with user config', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
@@ -122,7 +113,10 @@ describe('yamlConfigLoader', () => {
   it('should substitute environment variables in config', async () => {
     const { fs: fileSystem } = await createMemFileSystem({
       initialVolumeJson: {
-        [USER_CONFIG_PATH]: '',
+        [USER_CONFIG_PATH]: `
+          github:
+            token: \${GITHUB_TOKEN}
+        `,
       },
     });
 

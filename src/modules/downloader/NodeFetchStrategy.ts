@@ -1,41 +1,6 @@
-/**
- * @file src/modules/downloader/NodeFetchStrategy.ts
- * @description Download strategy using Node.js's native fetch API.
- *
- * Development Plan:
- *
- * [x] Implement basic fetch and retry logic.
- * [x] Handle successful download to buffer or file.
- * [x] Add progress reporting.
- * [x] Implement `onProgress` callback handling in `download` method.
- * [x] Import custom error classes.
- * [x] Throw NetworkError for connection issues or pre-response errors.
- * [x] If response not ok:
- *   [x] Read response body as text for error details.
- *   [x] Convert response headers to a Record.
- *   [x] Throw NotFoundError for 404.
- *   [x] Throw RateLimitError for 403 (with rate limit headers) or 429.
- *     [x] Extract resetTimestamp from X-RateLimit-Reset or Retry-After.
- *   [x] Throw ForbiddenError for 403 (without rate limit headers).
- *   [x] Throw ClientError for other 4xx.
- *   [x] Throw ServerError for 5xx.
- *   [x] Throw HttpError for other non-ok statuses.
- * [x] Ensure originalError is included in NetworkError where applicable.
- * [x] Refactor to use IFileSystem for file writing. (Verified)
- * [x] Update development plan at the top of the file. (This is the update for DI verification)
- * [x] Write tests for the module. (Initial tests created in NodeFetchStrategy.test.ts, to be updated for DI)
- * [ ] Cleanup all linting errors and warnings.
- * [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * [ ] Ensure 100% test coverage for executable code (pending test run and linting).
- * [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions } from './IDownloader';
-import type { IFileSystem } from '@modules/file-system/IFileSystem'; // Corrected import
-// Removed: import { createWriteStream } from 'memfs';
-// Removed: import { pipeline } from 'node:stream/promises';
-// Removed: import { Readable } from 'node:stream';
+import type { IFileSystem } from '@modules/file-system/IFileSystem'; 
 import {
   NetworkError,
   HttpError,

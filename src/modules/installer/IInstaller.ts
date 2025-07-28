@@ -67,10 +67,6 @@ export interface InstallResult {
    */
   info?: Record<string, any>;
 
-  /**
-   * Path to the symlink created in the bin directory (e.g., appConfig.binDir)
-   */
-  symlinkPath?: string;
 
   /**
    * Array of strings describing other user-facing changes made.

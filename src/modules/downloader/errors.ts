@@ -1,23 +1,3 @@
-/**
- * Development Plan:
- *
- * [x] Define DownloaderError (base class)
- * [x] Define NetworkError
- * [x] Define HttpError (base for HTTP errors)
- * [x] Define NotFoundError (404)
- * [x] Define ForbiddenError (403)
- * [x] Define RateLimitError (429 or 403 with rate limit headers)
- * [x] Define ClientError (other 4xx)
- * [x] Define ServerError (5xx)
- * [x] Export all error classes
- * [ ] Add JSDoc comments for all classes and properties
- * [ ] Write tests for the module. (N/A - Error classes are typically tested via usage in other modules)
- * [ ] Cleanup all linting errors and warnings.
- * [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * [ ] Ensure 100% test coverage for executable code. (N/A)
- * [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import { createLogger } from '@modules/logger';
 
 const log = createLogger('downloader/errors');

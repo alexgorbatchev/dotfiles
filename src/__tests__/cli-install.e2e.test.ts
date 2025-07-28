@@ -15,7 +15,6 @@ import { NodeFileSystem } from '@modules/file-system';
 
 describe('E2E: bun run cli install', () => {
   describe('downloaded direct binary (GitHub Release with Mock Server)', () => {
-    let symlinkPath: string;
     let localMockBinaryFilePath: string;
     let expectedInstalledBinaryPath: string;
     let testDirs: TestDirectories;
@@ -30,7 +29,6 @@ describe('E2E: bun run cli install', () => {
     beforeAll(async () => {
       fs = new NodeFileSystem();
       testDirs = await createTestDirectories(fs,{ testName: 'cli-install-direct-binary-mock' });
-      symlinkPath = path.join(testDirs.paths.targetDir, mockToolName);
       expectedInstalledBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockToolName,
@@ -109,21 +107,13 @@ describe('E2E: bun run cli install', () => {
       expect((await fs.stat(expectedInstalledBinaryPath)).mode & 0o100).toBeGreaterThan(0);
     });
 
-    it('should create a symlink to the downloaded binary', async () => {
-      expect(await fs.exists(symlinkPath)).toBe(true);
-    });
-
-    it('should verify the downloaded binary works via symlink', () => {
-      const proc = Bun.spawnSync([symlinkPath], {
-        stdout: 'pipe',
-        env: { HOME: testDirs.paths.homeDir },
-      });
-      expect(proc.exitCode).toBe(0);
+    it('should verify the downloaded file content',async () => {
+      const binaryContent = await fs.readFile(expectedInstalledBinaryPath, 'utf8');
+      expect(binaryContent).toEqual(mockBinaryContent);
     });
   });
 
   describe('downloaded tar.gz archive (GitHub Release with Mock Server)', () => {
-    let symlinkPath: string;
     let localArchiveFilePath: string;
     let expectedExtractedBinaryPath: string;
     let testDirs: TestDirectories;
@@ -133,6 +123,7 @@ describe('E2E: bun run cli install', () => {
     const mockArchiveToolName = 'archive-tool';
     const mockArchiveToolVersion = '1.0.0';
     const mockArchiveFileName = `${mockArchiveToolName}-v${mockArchiveToolVersion}-linux-amd64.tar.gz`;
+    const mockBinaryContent = `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`;
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
@@ -142,7 +133,6 @@ describe('E2E: bun run cli install', () => {
           'temp-archive-source': { path: 'temp-archive-source' },
         },
       });
-      symlinkPath = path.join(testDirs.paths.targetDir, mockArchiveToolName);
       expectedExtractedBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockArchiveToolName,
@@ -152,7 +142,7 @@ describe('E2E: bun run cli install', () => {
       await createFile(
         fs,
         path.join(testDirs.getDir('temp-archive-source'), mockArchiveToolName),
-        `#!/bin/sh\necho "Archive Tool v${mockArchiveToolVersion}"`
+        mockBinaryContent,
       );
 
       localArchiveFilePath = path.join(testDirs.paths.homeDir, mockArchiveFileName);
@@ -246,16 +236,9 @@ describe('E2E: bun run cli install', () => {
       expect((await fs.stat(expectedExtractedBinaryPath)).mode & 0o100).toBeGreaterThan(0);
     });
 
-    it('should create symlink to extracted binary', async () => {
-      expect(await fs.exists(symlinkPath)).toBe(true);
-    });
-
-    it('should verify extracted binary works via symlink', () => {
-      const proc = Bun.spawnSync([symlinkPath], {
-        stdout: 'pipe',
-        env: { HOME: testDirs.paths.homeDir },
-      });
-      expect(proc.exitCode).toBe(0);
+    it('should verify the downloaded file content',async () => {
+      const binaryContent = await fs.readFile(expectedExtractedBinaryPath, 'utf8');
+      expect(binaryContent).toEqual(mockBinaryContent);
     });
   });
 });

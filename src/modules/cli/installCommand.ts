@@ -66,9 +66,6 @@ export function registerInstallCommand(
           if (result.version) {
             clientLogger.info(`Version: ${result.version}`);
           }
-          if (result.symlinkPath) {
-            clientLogger.info(`Symlink created: ${result.symlinkPath}`);
-          }
         } else {
           commandInternalLog(
             'Failed to install tool %s: %s',

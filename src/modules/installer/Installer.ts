@@ -1,38 +1,6 @@
-/**
- * @file src/modules/installer/Installer.ts
- * @description Implementation of the tool installer module.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `src/types.ts` (for ToolConfig, InstallParams types)
- * - `src/modules/installer/IInstaller.ts` (for IInstaller interface)
- * - `.clinerules` (for file structure, naming, and content guidelines)
- *
- * ### Tasks:
- * - [x] Implement `Installer` class with constructor accepting dependencies.
- * - [x] Implement `install` method.
- * - [x] Implement GitHub release installation method.
- * - [x] Implement Homebrew installation method.
- * - [x] Implement script installation method.
- * - [x] Add proper error handling and logging.
- * - [x] Write tests for the module.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Update GitHub release installation to use configurable `githubHost` from AppConfig.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Implement archive extraction.
- * - [x] Ensure 100% test coverage for executable code.
- * - [x] Fix GitHub release URL construction to correctly handle absolute `browser_download_url` and custom `githubHost`.
- * - [x] Enhance error message in `installFromGitHubRelease` to list available assets.
- * - [x] Populate `symlinkPath` in `InstallResult`.
- * - [x] Populate `otherChanges` array in `InstallResult` with detailed installation steps.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import path from 'node:path';
 import os from 'node:os';
 import { createLogger } from '@modules/logger';
-// import { createLogger } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
@@ -573,31 +541,10 @@ export class Installer implements IInstaller {
         otherChanges.push(`Cleaned up downloaded archive: ${downloadPath}`);
       }
 
-      // Create a symlink in the bin directory
-      const binDir = this.appConfig.paths.targetDir;
-      log(
-        'installFromGitHubRelease: Symlink directories. configured targetDir="%s", used binDir="%s"',
-        this.appConfig.paths.targetDir,
-        binDir
-      );
-      await this.fs.ensureDir(binDir);
-      const symlinkPath = path.join(binDir, toolName);
-
-      // Remove existing symlink if it exists
-      if (await this.fs.exists(symlinkPath)) {
-        await this.fs.rm(symlinkPath);
-        otherChanges.push(`Removed existing symlink at: ${symlinkPath}`);
-      }
-
-      log('installFromGitHubRelease: Creating symlink from %s to %s', finalBinaryPath, symlinkPath);
-      await this.fs.symlink(finalBinaryPath, symlinkPath);
-      otherChanges.push(`Created symlink: ${symlinkPath} -> ${finalBinaryPath}`);
-
       return {
         success: true,
         binaryPath: finalBinaryPath,
         version: release.tag_name,
-        symlinkPath,
         info: {
           releaseUrl: release.html_url,
           publishedAt: release.published_at,
@@ -961,29 +908,9 @@ export class Installer implements IInstaller {
         otherChanges.push(`Cleaned up downloaded tarball: ${tarballPath}`);
       }
 
-      // Create a symlink in the bin directory
-      const binDirForCurl = this.appConfig.paths.targetDir; // Renamed to avoid conflict
-      await this.fs.ensureDir(binDirForCurl);
-      const symlinkPathForCurl = path.join(binDirForCurl, toolName); // Renamed
-
-      // Remove existing symlink if it exists
-      if (await this.fs.exists(symlinkPathForCurl)) {
-        await this.fs.rm(symlinkPathForCurl);
-        otherChanges.push(`Removed existing symlink at: ${symlinkPathForCurl}`);
-      }
-
-      log(
-        'installFromCurlTar: Creating symlink from %s to %s',
-        finalBinaryPathCurl,
-        symlinkPathForCurl
-      );
-      await this.fs.symlink(finalBinaryPathCurl, symlinkPathForCurl);
-      otherChanges.push(`Created symlink: ${symlinkPathForCurl} -> ${finalBinaryPathCurl}`);
-
       return {
         success: true,
         binaryPath: finalBinaryPathCurl,
-        symlinkPath: symlinkPathForCurl,
         info: {
           tarballUrl: url,
         },
