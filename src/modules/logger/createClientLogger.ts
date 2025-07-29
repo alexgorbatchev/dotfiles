@@ -1,24 +1,3 @@
-/**
- * @fileoverview Provides a client logger utility using the @node-cli/logger package.
- *
- * ## Development Plan
- *
- * ### Intended Usage:
- * This module is intended to be used by the CLI to provide a consistent logging experience.
- * It allows for configuring the logger's verbosity and quietness.
- *
- * ### Technical Requirements:
- * - Export a function `createClientLogger` that accepts options for `quiet` and `verbose`.
- *
- * - The logger should be silent if `options.quiet` is true or `process.env.NODE_ENV === 'test'`.
- * - The logger should use `debug` level for verbose output and `info` for regular output.
- *
- * ### Tasks:
- * [x] Define the `createClientLogger` function signature and options type.
- * [x] Implement the logic to configure the logger based on options and `NODE_ENV`.
- * [x] Cleanup all linting errors and warnings.
- * [x] Cleanup all comments that are no longer relevant (leaving development plan).
- */
 import { createConsola, LogLevels, type LogLevel } from 'consola';
 
 export interface CreateClientLoggerOptions {

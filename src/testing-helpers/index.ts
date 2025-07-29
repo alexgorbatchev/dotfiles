@@ -7,3 +7,4 @@ export * from './executeCliCommand';
 export * from './createToolConfig';
 export * from './createFile';
 export * from './createMockYamlConfig';
+export * from './TestLogger';

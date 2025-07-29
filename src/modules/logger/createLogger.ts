@@ -1,24 +1,3 @@
-/**
- * @file src/modules/logger/createLogger.ts
- * @description Utility for creating namespaced debug loggers.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `.clinerules` (for file structure, naming, logging requirements)
- * - `memory-bank/techContext.md` (for `debug` module usage)
- *
- * ### Tasks:
- * - [x] Define `createLogger` function.
- * - [x] Import `debug`.
- * - [x] Implement namespacing with "[project-name]:" prefix (using "dot" as project-name for now as per examples).
- * - [ ] Write tests for `createLogger`.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import debug from 'debug';
 
 // The project name for logging, can be configured or derived if needed.
