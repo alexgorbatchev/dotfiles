@@ -1,25 +1,4 @@
 /**
- * @file src/types/githubApi.types.ts
- * @description Types related to the GitHub API.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define types for the GitHub API.
- * - [x] Add JSDoc comments to all types and properties.
- * - [ ] Ensure all necessary imports are present.
- * - [ ] Ensure all types are exported.
- * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .roorules)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-// ============================================
-// GitHub API Types
-// ============================================
-
-/**
  * Represents the rate limit information returned by the GitHub API.
  * This helps in understanding the current API usage status and when limits reset.
  * @see https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting

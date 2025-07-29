@@ -1,25 +1,4 @@
 /**
- * @file src/types/completion.types.ts
- * @description Types related to shell completion management.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define types for completion management.
- * - [x] Add JSDoc comments to all types and properties.
- * - [ ] Ensure all necessary imports are present.
- * - [ ] Ensure all types are exported.
- * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .roorules)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-// ============================================
-// Completion Management Types
-// ============================================
-
-/**
  * Defines the types of shells for which command-line completions can be configured and installed.
  */
 export type ShellType =

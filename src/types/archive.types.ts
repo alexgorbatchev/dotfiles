@@ -1,25 +1,4 @@
 /**
- * @file src/types/archive.types.ts
- * @description Types related to archive extraction.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define types for archive extraction.
- * - [x] Add JSDoc comments to all types and properties.
- * - [ ] Ensure all necessary imports are present.
- * - [ ] Ensure all types are exported.
- * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .roorules)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-// ============================================
-// Archive Extraction Types
-// ============================================
-
-/**
  * Defines the set of supported archive formats that the system can handle.
  * This type is used to specify the format of an archive for extraction
  * or to indicate a detected format.

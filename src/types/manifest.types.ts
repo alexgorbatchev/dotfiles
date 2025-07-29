@@ -1,26 +1,5 @@
-/**
- * @file src/types/manifest.types.ts
- * @description Types related to the generated artifacts manifest.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define types for manifests.
- * - [x] Add JSDoc comments to all types and properties.
- * - [ ] Ensure all necessary imports are present.
- * - [ ] Ensure all types are exported.
- * - [ ] (No dedicated tests needed for this file as it only contains type definitions - correctness verified by TSC and consuming code's tests, as per techContext.md and .roorules)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { SymlinkOperationResult } from '@modules/generator-symlink/ISymlinkGenerator';
 import type { ShellType } from './completion.types';
-
-// ============================================
-// Manifest Types
-// ============================================
 
 /**
  * Represents a single entry in the main tool manifest file (`manifest.json`).

@@ -1,17 +1,3 @@
-/**
- * @file Defines types and enums for platform and architecture targeting.
- *
- * ## Development Plan
- *
- * - [x] Define Platform enum with bitwise values.
- * - [x] Define Architecture enum with bitwise values.
- * - [ ] Define helper types/functions for platform operations (if needed).
- * - [ ] Write tests for the module.
- * - [ ] Fix all errors and warnings.
- * - [x] Remove all commented out code and meta-comments.
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
 import { createLogger } from '@modules/logger/createLogger';
 
 const log = createLogger('platform.types');

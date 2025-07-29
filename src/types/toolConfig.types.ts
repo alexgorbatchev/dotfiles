@@ -1,19 +1,3 @@
-/**
- * @file src/types/toolConfig.types.ts
- * @description Types related to tool configuration.
- *
- * ## Development Plan
- *
- * - [x] Define all core types for tool configuration (ToolConfig, InstallParams, hooks, etc.).
- * - [x] Add JSDoc comments to all exported types and interfaces.
- * - [x] Refactor ToolConfig to be a discriminated union based on installationMethod.
- * - [x] Ensure platform-specific configuration types are robust.
- * - [x] Remove all commented out code and meta-comments.
- * - [ ] Write tests for the module (Covered by tests of consuming modules like toolConfigBuilder and configLoader).
- * - [ ] Fix all errors and warnings.
- * - [ ] Ensure 100% test coverage for executable code (N/A for type definitions).
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
 import type { CompletionConfig } from './completion.types';

@@ -1,9 +1,4 @@
 /**
- * @file src/types/common.types.ts
- * @description Common types used across the project.
- */
-
-/**
  * Represents essential system information used for architecture detection and compatibility checks.
  * This information is typically derived from the operating system's properties.
  * It is used as input, for example, to `getArchitectureRegex` for testability via Dependency Injection.
