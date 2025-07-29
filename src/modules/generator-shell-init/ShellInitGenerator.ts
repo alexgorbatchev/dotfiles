@@ -2,17 +2,17 @@ import path from 'node:path';
 import type { ToolConfig, CompletionConfig, ShellType } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator, GenerateShellInitOptions } from './IShellInitGenerator';
-import { createLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import type { YamlConfig } from '@modules/config';
-
-const log = createLogger('ShellInitGenerator');
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
   private readonly appConfig: YamlConfig;
+  private readonly logger: TsLogger;
 
-  constructor(fileSystem: IFileSystem, appConfig: YamlConfig) {
-    log('constructor: fileSystem=%o, appConfig=%o', fileSystem, appConfig);
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, appConfig: YamlConfig) {
+    this.logger = parentLogger.getSubLogger({ name: 'ShellInitGenerator' });
+    this.logger.debug('constructor: fileSystem=%o, appConfig=%o', fileSystem, appConfig);
     this.fs = fileSystem;
     this.appConfig = appConfig;
   }
@@ -21,7 +21,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
   ): Promise<string | null> {
-    log(
+    this.logger.debug(
       'generate: toolConfigs=%o, options=%o, FileSystem: %s',
       toolConfigs,
       options,
@@ -30,7 +30,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     // dryRun is removed; IFileSystem handles behavior
     const outputPath =
       options?.outputPath ?? path.join(this.appConfig.paths.completionsDir, 'init.zsh');
-    log('generate: outputPath=%s', outputPath);
+    this.logger.debug('generate: outputPath=%s', outputPath);
 
     const header = [
       '# ==========================================================================',
@@ -53,10 +53,10 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
     for (const toolName in toolConfigs) {
       const config = toolConfigs[toolName];
-      log('generate: processing tool=%s, config=%o', toolName, config);
+      this.logger.debug('generate: processing tool=%s, config=%o', toolName, config);
 
       if (!config) {
-        log('generate: skipping undefined config for toolName=%s', toolName);
+        this.logger.debug('generate: skipping undefined config for toolName=%s', toolName);
         continue;
       }
       if (config.zshInit && config.zshInit.length > 0) {
@@ -122,7 +122,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     try {
-      log(
+      this.logger.debug(
         'generate: Writing to %s using %s with content:\n%s',
         outputPath,
         this.fs.constructor.name,
@@ -130,14 +130,14 @@ export class ShellInitGenerator implements IShellInitGenerator {
       );
       await this.fs.ensureDir(path.dirname(outputPath));
       await this.fs.writeFile(outputPath, content);
-      log(
+      this.logger.debug(
         'generate: Successfully wrote Zsh init file to %s using %s',
         outputPath,
         this.fs.constructor.name
       );
       return outputPath;
     } catch (error: any) {
-      log(
+      this.logger.debug(
         'generate: ERROR: Failed to write Zsh init file to %s using %s. Error: %s',
         outputPath,
         this.fs.constructor.name,
@@ -153,7 +153,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     completionSetupLines: string[],
     currentPathModifications: string[]
   ): void {
-    log('processCompletions: toolName=%s, completions=%o', toolName, completions);
+    this.logger.debug('processCompletions: toolName=%s, completions=%o', toolName, completions);
     const processShellCompletion = (
       shell: ShellType,
       shellConfig?: { source: string; name?: string; targetDir?: string }
@@ -179,7 +179,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
         // Sourcing might be needed if the file itself contains `compdef` or similar.
         // For now, we assume standard fpath behavior. If `shellConfig.source` implies a script to be sourced,
         // it should be part of `zshInit` instead.
-        log('processCompletions: Added %s to fpath for tool %s', completionDir, toolName);
+        this.logger.debug('processCompletions: Added %s to fpath for tool %s', completionDir, toolName);
       }
     };
 

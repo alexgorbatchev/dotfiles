@@ -1,6 +1,10 @@
 import { mock } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
-import { createMemFileSystem, type PartialYamlConfig } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  type PartialYamlConfig,
+  TestLogger,
+} from '@testing-helpers';
 import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
 import type { IGitHubApiCache } from '../../IGitHubApiCache';
@@ -8,7 +12,8 @@ import { createYamlConfigFromObject, } from '../../../config-loader';
 
 export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
   const memFs = await createMemFileSystem();
-  return createYamlConfigFromObject(memFs.fs, overrides);
+  const logger = new TestLogger();
+  return createYamlConfigFromObject(logger, memFs.fs, overrides);
 };
 
 export const createMockDownloader = (): IDownloader & {
@@ -54,24 +59,25 @@ export interface MockSetup {
     clear: ReturnType<typeof mock<IGitHubApiCache['clear']>>;
   };
   apiClient: GitHubApiClient;
+  logger: TestLogger;
 }
 
-export const setupMockGitHubApiClient = async (configOverrides: PartialYamlConfig = {}): Promise<MockSetup> => {
+export const setupMockGitHubApiClient = async (
+  configOverrides: PartialYamlConfig = {},
+): Promise<MockSetup> => {
   const mockYamlConfig = await createMockYamlConfigForGitHubApi(configOverrides);
   const mockDownloader = createMockDownloader();
   const mockCache = createMockGitHubApiCache();
+  const logger = new TestLogger();
 
-  const apiClient = new GitHubApiClient(
-    mockYamlConfig,
-    mockDownloader,
-    mockCache
-  );
+  const apiClient = new GitHubApiClient(logger, mockYamlConfig, mockDownloader, mockCache);
 
   return {
     mockYamlConfig,
     mockDownloader,
     mockCache,
     apiClient,
+    logger,
   };
 };
 

@@ -10,16 +10,16 @@ import {
   ClientError,
   ServerError,
 } from './errors';
-import { createLogger } from '@modules/logger';
-
-const log = createLogger('NodeFetchStrategy');
+import type { TsLogger } from '@modules/logger';
 
 export class NodeFetchStrategy implements DownloadStrategy {
   public readonly name = 'node-fetch';
+  private readonly logger: TsLogger;
   private readonly fileSystem: IFileSystem;
 
-  constructor(fileSystem: IFileSystem) {
-    log('constructor: fileSystem=%o', fileSystem ? 'provided' : 'undefined');
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
+    this.logger = parentLogger.getSubLogger({ name: 'NodeFetchStrategy' });
+    this.logger.debug('constructor: fileSystem=%o', fileSystem ? 'provided' : 'undefined');
     this.fileSystem = fileSystem;
   }
 
@@ -82,12 +82,12 @@ export class NodeFetchStrategy implements DownloadStrategy {
 
         if (timeout) {
           timeoutId = setTimeout(() => {
-            log('Download timeout for %s', url);
+            this.logger.debug('Download timeout for %s', url);
             controller.abort();
           }, timeout);
         }
 
-        log('Attempt %d: Downloading %s', attempt + 1, url);
+        this.logger.debug('Attempt %d: Downloading %s', attempt + 1, url);
         const response = await fetch(url, {
           headers,
           signal: controller.signal,
@@ -102,13 +102,13 @@ export class NodeFetchStrategy implements DownloadStrategy {
           try {
             responseBody = await response.text();
           } catch (e) {
-            log('Failed to read response body for error: %s, error: %o', url, e);
+            this.logger.debug('Failed to read response body for error: %s, error: %o', url, e);
           }
           const responseHeaders = this.getResponseHeaders(response.headers);
           const statusCode = response.status;
           const statusText = response.statusText;
 
-          log(
+          this.logger.debug(
             'Download failed: url=%s, statusCode=%d, statusText=%s, responseBody=%s',
             url,
             statusCode,
@@ -117,7 +117,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
           );
 
           if (statusCode === 404) {
-            throw new NotFoundError(url, responseBody, responseHeaders);
+            throw new NotFoundError(this.logger, url, responseBody, responseHeaders);
           }
 
           const resetTimestamp = this.parseRateLimitReset(response.headers);
@@ -125,6 +125,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
           if (statusCode === 403) {
             if (resetTimestamp) {
               throw new RateLimitError(
+                this.logger,
                 'Forbidden: Rate limit likely exceeded',
                 url,
                 statusCode,
@@ -134,11 +135,12 @@ export class NodeFetchStrategy implements DownloadStrategy {
                 resetTimestamp
               );
             }
-            throw new ForbiddenError(url, responseBody, responseHeaders);
+            throw new ForbiddenError(this.logger, url, responseBody, responseHeaders);
           }
 
           if (statusCode === 429) {
             throw new RateLimitError(
+              this.logger,
               'Too Many Requests',
               url,
               statusCode,
@@ -150,15 +152,16 @@ export class NodeFetchStrategy implements DownloadStrategy {
           }
 
           if (statusCode >= 400 && statusCode < 500) {
-            throw new ClientError(url, statusCode, statusText, responseBody, responseHeaders);
+            throw new ClientError(this.logger, url, statusCode, statusText, responseBody, responseHeaders);
           }
 
           if (statusCode >= 500 && statusCode < 600) {
-            throw new ServerError(url, statusCode, statusText, responseBody, responseHeaders);
+            throw new ServerError(this.logger, url, statusCode, statusText, responseBody, responseHeaders);
           }
 
           // Fallback HttpError
           throw new HttpError(
+            this.logger,
             `HTTP error ${statusCode}`,
             url,
             statusCode,
@@ -189,7 +192,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
         if (!reader) {
           // This case should ideally be caught by response.ok or fetch error,
           // but as a safeguard:
-          throw new NetworkError('Response body is not readable.', url);
+          throw new NetworkError(this.logger, 'Response body is not readable.', url);
         }
 
         while (true) {
@@ -205,22 +208,22 @@ export class NodeFetchStrategy implements DownloadStrategy {
         }
 
         const resultBuffer = Buffer.concat(chunks);
-        log('Download successful for %s, size: %d bytes', url, resultBuffer.length);
+        this.logger.debug('Download successful for %s, size: %d bytes', url, resultBuffer.length);
 
         if (destinationPath) {
-          log('Saving to destination: %s', destinationPath);
+          this.logger.debug('Saving to destination: %s', destinationPath);
           // Use IFileSystem to write the buffer
           await this.fileSystem.writeFile(destinationPath, resultBuffer);
-          log('Successfully wrote to %s using IFileSystem', destinationPath);
+          this.logger.debug('Successfully wrote to %s using IFileSystem', destinationPath);
           return;
         } else {
           return resultBuffer;
         }
       } catch (error: any) {
-        log('Error during download attempt %d for %s: %o', attempt + 1, url, error);
+        this.logger.debug('Error during download attempt %d for %s: %o', attempt + 1, url, error);
         if (attempt < retryCount) {
           attempt++;
-          log(
+          this.logger.debug(
             'Retrying download for %s, attempt %d/%d after %dms',
             url,
             attempt + 1,
@@ -242,12 +245,16 @@ export class NodeFetchStrategy implements DownloadStrategy {
           } else if (error instanceof Error) {
             message = error.message;
           }
-          throw new NetworkError(message, url, error instanceof Error ? error : undefined);
+          throw new NetworkError(this.logger, message, url, error instanceof Error ? error : undefined);
         }
       }
     }
     // Fallback, should ideally not be reached if retryCount >= 0
-    log('Exhausted retries for %s', url);
-    throw new NetworkError(`Download failed for ${url} after ${retryCount} retries.`, url);
+    this.logger.debug('Exhausted retries for %s', url);
+    throw new NetworkError(
+      this.logger,
+      `Download failed for ${url} after ${retryCount} retries.`,
+      url,
+    );
   }
 }

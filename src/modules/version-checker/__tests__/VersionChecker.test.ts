@@ -1,13 +1,9 @@
-/**
- * @file src/modules/versionChecker/__tests__/VersionChecker.test.ts
- * @description Unit tests for the VersionChecker module.
- */
-
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { VersionChecker } from '../VersionChecker.ts';
+import type { GitHubRelease, IGitHubApiClient } from '@modules/github-client';
+import { GitHubApiClientError } from '@modules/github-client';
+import { TestLogger } from '@testing-helpers';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { VersionComparisonStatus } from '../IVersionChecker.ts';
-import type { IGitHubApiClient, GitHubRelease } from '@modules/github-client/index.ts';
-import { GitHubApiClientError } from '@modules/github-client/index.ts';
+import { VersionChecker } from '../VersionChecker.ts';
 
 // Mock IGitHubApiClient
 class MockGitHubApiClient implements IGitHubApiClient {
@@ -16,14 +12,14 @@ class MockGitHubApiClient implements IGitHubApiClient {
     // as resolving with a generic GitHubRelease might hide issues.
     // Tests should explicitly mockResolvedValueOnce or mockRejectedValueOnce.
     throw new Error(
-      `MockGitHubApiClient.getLatestRelease was called for ${owner}/${repo} but not mocked for this specific test case.`
+      `MockGitHubApiClient.getLatestRelease was called for ${owner}/${repo} but not mocked for this specific test case.`,
     );
   });
 
   getReleaseByTag = mock(
     async (_owner: string, _repo: string, _tag: string): Promise<GitHubRelease | null> => {
       return null;
-    }
+    },
   );
 
   getAllReleases = mock(async (_owner: string, _repo: string): Promise<GitHubRelease[]> => {
@@ -47,19 +43,21 @@ class MockGitHubApiClient implements IGitHubApiClient {
       // depending on typical usage. For VersionChecker, this method isn't directly used,
       // so throwing an error if called without a specific mock is safer.
       throw new Error(
-        `MockGitHubApiClient.getReleaseByConstraint was called for ${owner}/${repo} with constraint ${constraint} but not mocked for this specific test case.`
+        `MockGitHubApiClient.getReleaseByConstraint was called for ${owner}/${repo} with constraint ${constraint} but not mocked for this specific test case.`,
       );
-    }
+    },
   );
 }
 
 describe('VersionChecker', () => {
   let mockGithubClient: MockGitHubApiClient;
   let versionChecker: VersionChecker;
+  let logger: TestLogger;
 
   beforeEach(() => {
+    logger = new TestLogger();
     mockGithubClient = new MockGitHubApiClient();
-    versionChecker = new VersionChecker(mockGithubClient);
+    versionChecker = new VersionChecker(logger, mockGithubClient);
   });
 
   describe('getLatestToolVersion', () => {

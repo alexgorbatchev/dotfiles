@@ -1,14 +1,22 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   getArchitecturePatterns,
   createArchitectureRegex,
   getArchitectureRegex,
   matchesArchitecture,
-  type ArchitectureRegex
-} from '../getArchitectureRegex'; 
-import type { SystemInfo, ArchitecturePatterns, } from '@types'; // Updated import path
+  type ArchitectureRegex,
+} from '../getArchitectureRegex';
+import type { SystemInfo, ArchitecturePatterns } from '@types'; // Updated import path
+import { TestLogger } from '@testing-helpers';
+import { type TsLogger } from '@modules/logger';
 
 describe('getArchitecturePatterns', () => {
+  let logger: TsLogger;
+
+  beforeEach(() => {
+    logger = new TestLogger();
+  });
+
   it('should generate correct patterns for macOS ARM64', () => {
     const systemInfo: SystemInfo = {
       platform: 'darwin',
@@ -16,7 +24,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual([
       'apple',
@@ -41,7 +49,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual([
       'apple',
@@ -66,7 +74,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual(['linux']);
     expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
@@ -80,7 +88,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual(['linux']);
     expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'arm', 'aarch']);
@@ -94,7 +102,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual(['windows', 'win32', 'win64', 'pc-windows-gnu']);
     expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
@@ -111,7 +119,7 @@ describe('getArchitecturePatterns', () => {
         homeDir: '/home/test',
       };
 
-      const patterns = getArchitecturePatterns(systemInfo);
+      const patterns = getArchitecturePatterns(logger, systemInfo);
       expect(patterns.cpu).toEqual(['i386', 'i486', 'i686', 'i786', 'x86', 'ia32']);
     });
   });
@@ -123,7 +131,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.cpu).toEqual(['armv6l', 'armv6', 'arm6']);
     expect(patterns.variants).toContain('eabihf');
@@ -139,7 +147,7 @@ describe('getArchitecturePatterns', () => {
         homeDir: '/home/test',
       };
 
-      const patterns = getArchitecturePatterns(systemInfo);
+      const patterns = getArchitecturePatterns(logger, systemInfo);
       expect(patterns.cpu).toEqual(['armv7l', 'armv8l', 'armv7', 'armv8', 'arm7', 'arm8']);
       expect(patterns.variants).toContain('eabihf');
     });
@@ -152,7 +160,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual(['freebsd']);
     expect(patterns.cpu).toEqual(['amd64', 'x86_64', 'x64', 'x86-64']);
@@ -166,7 +174,7 @@ describe('getArchitecturePatterns', () => {
       homeDir: '/home/test',
     };
 
-    const patterns = getArchitecturePatterns(systemInfo);
+    const patterns = getArchitecturePatterns(logger, systemInfo);
 
     expect(patterns.system).toEqual(['linux']);
     expect(patterns.cpu).toEqual(['riscv64']);
@@ -175,6 +183,11 @@ describe('getArchitecturePatterns', () => {
 });
 
 describe('createArchitectureRegex', () => {
+  let logger: TsLogger;
+
+  beforeEach(() => {
+    logger = new TestLogger();
+  });
   it('should create proper regex patterns from architecture patterns', () => {
     const patterns: ArchitecturePatterns = {
       system: ['darwin', 'macos'],
@@ -182,7 +195,7 @@ describe('createArchitectureRegex', () => {
       variants: ['darwin'],
     };
 
-    const regex = createArchitectureRegex(patterns);
+    const regex = createArchitectureRegex(logger, patterns);
 
     expect(regex.systemPattern).toBe('(darwin|macos)');
     expect(regex.cpuPattern).toBe('(arm64|aarch64)');
@@ -196,7 +209,7 @@ describe('createArchitectureRegex', () => {
       variants: [],
     };
 
-    const regex = createArchitectureRegex(patterns);
+    const regex = createArchitectureRegex(logger, patterns);
 
     expect(regex.systemPattern).toBe('');
     expect(regex.cpuPattern).toBe('');
@@ -210,7 +223,7 @@ describe('createArchitectureRegex', () => {
       variants: ['gnu'],
     };
 
-    const regex = createArchitectureRegex(patterns);
+    const regex = createArchitectureRegex(logger, patterns);
 
     expect(regex.systemPattern).toBe('(x86-64|pc-windows-gnu)');
     expect(regex.cpuPattern).toBe('(amd64)');
@@ -224,7 +237,7 @@ describe('createArchitectureRegex', () => {
       variants: ['test(variant)'],
     };
 
-    const regex = createArchitectureRegex(patterns);
+    const regex = createArchitectureRegex(logger, patterns);
 
     expect(regex.systemPattern).toBe('(test\\.system|test\\+system)');
     expect(regex.cpuPattern).toBe('(test\\*cpu)');
@@ -233,6 +246,11 @@ describe('createArchitectureRegex', () => {
 });
 
 describe('getArchitectureRegex', () => {
+  let logger: TsLogger;
+
+  beforeEach(() => {
+    logger = new TestLogger();
+  });
   it('should combine pattern generation and regex creation', () => {
     const systemInfo: SystemInfo = {
       platform: 'darwin',
@@ -240,7 +258,7 @@ describe('getArchitectureRegex', () => {
       homeDir: '/home/test',
     };
 
-    const regex = getArchitectureRegex(systemInfo);
+    const regex = getArchitectureRegex(logger, systemInfo);
 
     expect(regex.systemPattern).toBe(
       '(apple|darwin|apple-darwin|dmg|mac|macos|mac-os|osx|os-x|os64x)'
@@ -256,7 +274,7 @@ describe('getArchitectureRegex', () => {
       homeDir: '/home/test',
     };
 
-    const regex = getArchitectureRegex(systemInfo);
+    const regex = getArchitectureRegex(logger, systemInfo);
 
     expect(regex.systemPattern).toBe('(linux)');
     expect(regex.cpuPattern).toBe('(amd64|x86_64|x64|x86-64)');
@@ -270,7 +288,7 @@ describe('getArchitectureRegex', () => {
       homeDir: '/home/test',
     };
 
-    const regex = getArchitectureRegex(systemInfo);
+    const regex = getArchitectureRegex(logger, systemInfo);
 
     expect(regex.systemPattern).toBe('(windows|win32|win64|pc-windows-gnu)');
     expect(regex.cpuPattern).toBe('(amd64|x86_64|x64|x86-64)');
@@ -279,6 +297,11 @@ describe('getArchitectureRegex', () => {
 });
 
 describe('matchesArchitecture', () => {
+  let logger: TsLogger;
+
+  beforeEach(() => {
+    logger = new TestLogger();
+  });
   const darwinArm64Regex: ArchitectureRegex = {
     systemPattern: '(apple|darwin|macos)',
     cpuPattern: '(arm64|aarch64)',
@@ -302,7 +325,7 @@ describe('matchesArchitecture', () => {
     ];
 
     testCases.forEach(({ asset, expected }) => {
-      expect(matchesArchitecture(asset, darwinArm64Regex)).toBe(expected);
+      expect(matchesArchitecture(logger, asset, darwinArm64Regex)).toBe(expected);
     });
   });
 
@@ -317,7 +340,7 @@ describe('matchesArchitecture', () => {
     ];
 
     testCases.forEach(({ asset, expected }) => {
-      expect(matchesArchitecture(asset, linuxX64Regex)).toBe(expected);
+      expect(matchesArchitecture(logger, asset, linuxX64Regex)).toBe(expected);
     });
   });
 
@@ -329,7 +352,7 @@ describe('matchesArchitecture', () => {
     ];
 
     testCases.forEach((asset) => {
-      expect(matchesArchitecture(asset, darwinArm64Regex)).toBe(true);
+      expect(matchesArchitecture(logger, asset, darwinArm64Regex)).toBe(true);
     });
   });
 
@@ -340,7 +363,7 @@ describe('matchesArchitecture', () => {
       variantPattern: '',
     };
 
-    expect(matchesArchitecture('any-asset-name.tar.gz', emptyRegex)).toBe(true);
+    expect(matchesArchitecture(logger, 'any-asset-name.tar.gz', emptyRegex)).toBe(true);
   });
 
   it('should handle partial matches correctly', () => {
@@ -350,8 +373,12 @@ describe('matchesArchitecture', () => {
       variantPattern: '',
     };
 
-    expect(matchesArchitecture('tool-linux-anything.tar.gz', partialRegex)).toBe(true);
-    expect(matchesArchitecture('tool-windows-anything.exe', partialRegex)).toBe(false);
+    expect(matchesArchitecture(logger, 'tool-linux-anything.tar.gz', partialRegex)).toBe(
+      true,
+    );
+    expect(matchesArchitecture(logger, 'tool-windows-anything.exe', partialRegex)).toBe(
+      false,
+    );
   });
 
   it('should handle complex asset names', () => {
@@ -362,8 +389,8 @@ describe('matchesArchitecture', () => {
       'fd-v8.2.1-aarch64-apple-darwin.tar.gz',
     ];
 
-    expect(matchesArchitecture(complexAssets[0]!, linuxX64Regex)).toBe(true);
-    expect(matchesArchitecture(complexAssets[1]!, darwinArm64Regex)).toBe(false); // x86_64, not arm64
-    expect(matchesArchitecture(complexAssets[3]!, darwinArm64Regex)).toBe(true);
+    expect(matchesArchitecture(logger, complexAssets[0]!, linuxX64Regex)).toBe(true);
+    expect(matchesArchitecture(logger, complexAssets[1]!, darwinArm64Regex)).toBe(false); // x86_64, not arm64
+    expect(matchesArchitecture(logger, complexAssets[3]!, darwinArm64Regex)).toBe(true);
   });
 });

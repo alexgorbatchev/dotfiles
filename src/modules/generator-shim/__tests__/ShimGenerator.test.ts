@@ -1,6 +1,6 @@
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject } from '@modules/config-loader';
-import { createMemFileSystem, type FileSystemSpies } from '@testing-helpers';
+import { createMemFileSystem, type FileSystemSpies, TestLogger } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
@@ -12,19 +12,21 @@ describe('ShimGenerator', () => {
   let mockConfig: YamlConfig;
   let shimGenerator: ShimGenerator;
   let fsMocks: FileSystemSpies;
+  let logger: TestLogger;
 
   beforeEach(async () => {
     const { fs, spies } = await createMemFileSystem({});
     fsMocks = spies;
+    logger = new TestLogger();
 
     mockConfig = await createYamlConfigFromObject(
+      logger,
       fs,
       {}, 
       { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
       {}
     );
-
-    shimGenerator = new ShimGenerator(fs, mockConfig);
+    shimGenerator = new ShimGenerator(logger, fs, mockConfig);
   });
 
   describe('constructor', () => {

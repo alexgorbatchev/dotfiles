@@ -1,6 +1,7 @@
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
 import type { SystemInfo } from '@types';
 import { stringify } from 'yaml';
 import type { PartialDeep } from 'type-fest';
@@ -28,6 +29,10 @@ export type CreateMockYamlConfigOptions = {
    */
   fileSystem: IFileSystem;
   /**
+   * The logger to use.
+   */
+  logger: TsLogger;
+  /**
    * System information.
    */
   systemInfo: SystemInfo;
@@ -53,10 +58,11 @@ export async function createMockYamlConfig({
   config,
   filePath,
   fileSystem,
+  logger,
   systemInfo,
   env,
 }: CreateMockYamlConfigOptions): Promise<YamlConfig> {
-  const fullConfig = await createYamlConfigFromObject(fileSystem, config, systemInfo, env);
+  const fullConfig = await createYamlConfigFromObject(logger, fileSystem, config, systemInfo, env);
   const yamlString = stringify(fullConfig);
   await fileSystem.writeFile(filePath, yamlString, 'utf8');
   return fullConfig;

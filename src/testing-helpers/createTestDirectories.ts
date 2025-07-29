@@ -1,6 +1,7 @@
 import * as path from 'path';
 import { type YamlConfigPaths } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
 import { getDefaultConfig } from '../modules/config-loader';
 
 type InternalYamlConfigPaths = Omit<YamlConfigPaths, 'manifestPath'>;
@@ -59,9 +60,9 @@ async function createTempDir(fs: IFileSystem, name: string) {
  * @param options - Options for creating test directories
  * @returns Object containing paths to created directories
  */
-export async function createTestDirectories(fs: IFileSystem, options: TestDirectoryOptions): Promise<TestDirectories> {
+export async function createTestDirectories(logger: TsLogger, fs: IFileSystem, options: TestDirectoryOptions): Promise<TestDirectories> {
   const homeDir = await createTempDir(fs, 'createTestDirectories'+(options.testName !== undefined ? `--${options.testName}` : ''));
-  const defaultConfig = await getDefaultConfig(fs, { homeDir } as any, { HOME: homeDir });
+  const defaultConfig = await getDefaultConfig(logger, fs, { homeDir } as any, { HOME: homeDir });
   const paths = { ...(defaultConfig).paths, ...(options.paths || {}) };
 
   await fs.ensureDir(paths.homeDir);

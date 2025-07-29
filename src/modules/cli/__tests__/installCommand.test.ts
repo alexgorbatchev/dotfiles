@@ -7,12 +7,10 @@ import {
   createYamlConfigFromObject,
 } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
-import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
 import {
   createMemFileSystem,
-  createMockClientLogger,
-  type CreateMockClientLoggerResult,
   type MemFileSystemReturn,
+  TestLogger,
 } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -31,16 +29,14 @@ const mockModules = createModuleMocker();
 const mockExitCli = mock(exitCli);
 const mockLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
 const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
-const mockCreateClientLogger = mock(actualCreateClientLogger);
-const mockCreateLogger = mock(() => mock(() => {}));
 
 describe('installCommand', () => {
   let program: GlobalProgram;
   let mockServices: Services;
   let mockInstaller: IInstaller;
-  let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
   let mockYamlConfig: YamlConfig;
   let mockFs: MemFileSystemReturn;
+  let testLogger: TestLogger;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -52,15 +48,12 @@ describe('installCommand', () => {
 
   beforeEach(async () => {
     program = createProgram();
-
-    const { mockClientLogger, loggerMocks: lm } = createMockClientLogger();
-    loggerMocks = lm;
-    mockCreateClientLogger.mockReturnValue(mockClientLogger);
+    testLogger = new TestLogger();
 
     mockFs = await createMemFileSystem({
     });
 
-    mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);
+    mockYamlConfig = await createYamlConfigFromObject(testLogger, mockFs.fs);
 
     mockInstaller = {
       install: mock(
@@ -92,12 +85,7 @@ describe('installCommand', () => {
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
     }));
 
-    await mockModules.mock('@modules/logger', () => ({
-      createClientLogger: mockCreateClientLogger,
-      createLogger: mockCreateLogger,
-    }));
-
-    registerInstallCommand(program, mockServices);
+    registerInstallCommand(testLogger, program, mockServices);
   });
 
   afterEach(() => {
@@ -114,6 +102,7 @@ describe('installCommand', () => {
     await program.parseAsync(['install', 'toolA'], { from: 'user' });
 
     expect(mockLoadSingleToolConfig).toHaveBeenCalledWith(
+      expect.any(Object),
       'toolA',
       mockYamlConfig.paths.toolConfigsDir,
       mockServices.fs
@@ -122,7 +111,11 @@ describe('installCommand', () => {
       force: false,
       verbose: false,
     });
-    expect(loggerMocks.info).toHaveBeenCalledWith('Tool "toolA" installed successfully.');
+    const logs = testLogger.getLogs(['*'], ['registerInstallCommand']);
+    expect(logs.some(log => {
+      const message = log[0] as unknown as string;
+      return typeof message === 'string' && message.includes('Tool "toolA" installed successfully.');
+    })).toBe(true);
   });
 
   test('should exit with error if tool config is not found', async () => {
@@ -132,9 +125,11 @@ describe('installCommand', () => {
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    expect(loggerMocks.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error: Tool configuration for "nonexistent" not found.')
-    );
+    const logs = testLogger.getLogs(['*'], ['registerInstallCommand']);
+    expect(logs.some(log => {
+      const message = log[0] as unknown as string;
+      return typeof message === 'string' && message.includes('Error: Tool configuration for "nonexistent" not found.');
+    })).toBe(true);
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 
@@ -149,7 +144,11 @@ describe('installCommand', () => {
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    expect(loggerMocks.error).toHaveBeenCalledWith('Error installing "toolA": Installation failed');
+    const logs = testLogger.getLogs(['*'], ['registerInstallCommand']);
+    expect(logs.some(log => {
+      const message = log[0] as unknown as string;
+      return typeof message === 'string' && message.includes('Error installing "toolA": Installation failed');
+    })).toBe(true);
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 

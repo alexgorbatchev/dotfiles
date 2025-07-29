@@ -4,13 +4,21 @@ import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
-import { createMemFileSystem, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import { Installer } from '../Installer';
 
+import type { ILogObj } from 'tslog';
+
 describe('Installer', () => {
+  let logger: TestLogger<ILogObj>;
   let mockFileSystem: IFileSystem;
   let mockDownloader: IDownloader;
   let mockGitHubApiClient: IGitHubApiClient;
@@ -90,8 +98,9 @@ describe('Installer', () => {
   };
 
   beforeEach(async () => {
+    logger = new TestLogger();
     const { fs, spies } = await createMemFileSystem();
-    testDirs = await createTestDirectories(fs, { testName: 'installer-tests' });
+    testDirs = await createTestDirectories(logger, fs, { testName: 'installer-tests' });
     mockFileSystem = fs;
     fileSystemMocks = spies;
 
@@ -131,6 +140,7 @@ describe('Installer', () => {
 
     // Setup mock app config
     mockAppConfig = await createYamlConfigFromObject(
+      logger,
       mockFileSystem,
       {
         paths: {
@@ -143,11 +153,12 @@ describe('Installer', () => {
 
     // Create installer instance
     installer = new Installer(
+      logger,
       mockFileSystem,
       mockDownloader,
       mockGitHubApiClient,
       mockArchiveExtractor,
-      mockAppConfig
+      mockAppConfig,
     );
   });
 
@@ -436,6 +447,7 @@ describe('Installer', () => {
 
       // Ensure appConfig.github.host is undefined or not api.github.com
       const testAppConfig = await createYamlConfigFromObject(
+        logger,
         mockFileSystem,
         {
           paths: {
@@ -447,11 +459,12 @@ describe('Installer', () => {
         {}
       );
       const tempInstaller = new Installer(
+        logger,
         mockFileSystem,
         mockDownloader,
         mockGitHubApiClient,
         mockArchiveExtractor,
-        testAppConfig
+        testAppConfig,
       );
 
       await tempInstaller.installFromGitHubRelease(mockToolName, toolConfig, {
@@ -500,6 +513,7 @@ describe('Installer', () => {
       });
 
       const testAppConfig = await createYamlConfigFromObject(
+        logger,
         mockFileSystem,
         {
           paths: {
@@ -511,11 +525,12 @@ describe('Installer', () => {
         {}
       );
       const tempInstaller = new Installer(
+        logger,
         mockFileSystem,
         mockDownloader,
         mockGitHubApiClient,
         mockArchiveExtractor,
-        testAppConfig
+        testAppConfig,
       );
 
       await tempInstaller.installFromGitHubRelease(mockToolName, toolConfig, {
@@ -559,6 +574,7 @@ describe('Installer', () => {
       });
 
       const testAppConfig = await createYamlConfigFromObject(
+        logger,
         mockFileSystem,
         {
           paths: {
@@ -570,11 +586,12 @@ describe('Installer', () => {
         {}
       ); // API host
       const tempInstaller = new Installer(
+        logger,
         mockFileSystem,
         mockDownloader,
         mockGitHubApiClient,
         mockArchiveExtractor,
-        testAppConfig
+        testAppConfig,
       );
 
       await tempInstaller.installFromGitHubRelease(mockToolName, toolConfig, {

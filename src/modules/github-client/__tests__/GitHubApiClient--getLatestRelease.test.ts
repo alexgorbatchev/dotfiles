@@ -48,7 +48,7 @@ describe('GitHubApiClient', () => {
     it('should return null if the release is not found (404)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(url, new Error('Original 404 from downloader'))
+        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader')),
       );
 
       const release = await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
@@ -60,14 +60,15 @@ describe('GitHubApiClient', () => {
       const resetTimestamp = Date.now() + 3600 * 1000;
       mocks.mockDownloader.download.mockRejectedValue(
         new RateLimitError(
+          mocks.logger,
           'API rate limit exceeded',
           url,
           403,
           'Forbidden',
           'Rate limit details', // responseBody
           {}, // headers
-          resetTimestamp
-        )
+          resetTimestamp,
+        ),
       );
 
       expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
@@ -89,7 +90,9 @@ describe('GitHubApiClient', () => {
 
     it('should throw a GitHubApiClientError for other failures (NetworkError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
-      mocks.mockDownloader.download.mockRejectedValue(new NetworkError('Connection lost', url));
+      mocks.mockDownloader.download.mockRejectedValue(
+        new NetworkError(mocks.logger, 'Connection lost', url),
+      );
 
       expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
         GitHubApiClientError

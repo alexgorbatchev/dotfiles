@@ -1,33 +1,31 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader';
 import type { Stats } from '@modules/file-system';
-import { createClientLogger, createLogger as createDebugLoggerInternal } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import type { ToolConfig } from '@types';
-import type { ConsolaInstance } from 'consola';
 import path from 'path';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
-const commandInternalLog = createDebugLoggerInternal('detectConflictsCommand');
-
 export async function detectConflictsActionLogic(
+  parentLogger: TsLogger,
   _options: {}, // No specific options for this command yet
   services: Services,
-  clientLogger: ConsolaInstance,
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'detectConflictsActionLogic' });
   const { yamlConfig, fs } = services;
   const conflictMessages: string[] = [];
 
   let toolConfigsArray: ToolConfig[] = [];
   try {
-    const toolConfigsRecord = await loadToolConfigsFromDirectory(yamlConfig.paths.toolConfigsDir, fs);
+    const toolConfigsRecord = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
     toolConfigsArray = Object.values(toolConfigsRecord);
   } catch (error: any) {
-    clientLogger.error(`Error loading tool configurations: ${error.message}`);
+    logger.error(`Error loading tool configurations: ${error.message}`);
     exitCli(1);
   }
 
   if (toolConfigsArray.length === 0) {
-    clientLogger.info('No tool configurations found. Nothing to check for conflicts.');
+    logger.info('No tool configurations found. Nothing to check for conflicts.');
     exitCli(0);
   }
 
@@ -45,7 +43,7 @@ export async function detectConflictsActionLogic(
               );
             }
           } catch (readError: any) {
-            clientLogger.warn(
+            logger.warn(
               `Could not read potential shim at '${shimPath}' for tool '${toolConfig.name}': ${readError.message}`,
             );
             conflictMessages.push(
@@ -62,7 +60,7 @@ export async function detectConflictsActionLogic(
         const targetPath = path.join(yamlConfig.paths.homeDir, symlink.target);
         const sourcePath = path.join(yamlConfig.paths.dotfilesDir, symlink.source);
 
-        commandInternalLog(`Checking symlink: ${targetPath} -> ${sourcePath}`);
+        logger.debug(`Checking symlink: ${targetPath} -> ${sourcePath}`);
 
         try {
           const stats: Stats | null = await fs.lstat(targetPath);
@@ -83,7 +81,7 @@ export async function detectConflictsActionLogic(
           }
         } catch (err: any) {
           if (err.code !== 'ENOENT') {
-            clientLogger.warn(`Could not check symlink target '${targetPath}': ${err.message}`);
+            logger.warn(`Could not check symlink target '${targetPath}': ${err.message}`);
           }
         }
       }
@@ -93,18 +91,23 @@ export async function detectConflictsActionLogic(
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
-    clientLogger.warn(`${header}\n${formattedConflicts}`);
-    clientLogger.info('Please review the warnings above.');
+    logger.warn(`${header}\n${formattedConflicts}`);
+    logger.info('Please review the warnings above.');
     exitCli(1);
     return;
   } else {
-    clientLogger.info('No conflicts detected.');
+    logger.info('No conflicts detected.');
     exitCli(0);
     return;
   }
 }
 
-export function registerDetectConflictsCommand(program: GlobalProgram, services: Services): void {
+export function registerDetectConflictsCommand(
+  parentLogger: TsLogger,
+  program: GlobalProgram,
+  services: Services,
+): void {
+  const logger = parentLogger.getSubLogger({ name: 'registerDetectConflictsCommand' });
   program
     .command('detect-conflicts')
     .description(
@@ -112,25 +115,24 @@ export function registerDetectConflictsCommand(program: GlobalProgram, services:
     )
     .action(async (options) => {
       const combinedOptions = { ...options, ...program.opts() };
-      const clientLogger = createClientLogger(combinedOptions);
-      commandInternalLog('detect-conflicts command: Action called with options: %o', combinedOptions);
+      logger.debug('detect-conflicts command: Action called with options: %o', combinedOptions);
       try {
-        await detectConflictsActionLogic(combinedOptions, services, clientLogger);
+        await detectConflictsActionLogic(logger, combinedOptions, services);
       } catch (error) {
         // If this is an error from exitCli, rethrow it to preserve the exit code
         if ((error as Error).message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')) {
           throw error;
         }
-        
-        commandInternalLog(
+
+        logger.fatal(
           'detect-conflicts command: Unhandled error in action handler: %O',
           error,
         );
-        clientLogger.error(
+        logger.error(
           'Critical error in detect-conflicts command: %s',
           (error as Error).message,
         );
-        clientLogger.debug('Error details: %O', error);
+        logger.debug('Error details: %O', error);
         exitCli(1);
       }
     });

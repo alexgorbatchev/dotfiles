@@ -24,10 +24,8 @@
  * - [x] Update the memory bank with the new information when all tasks are complete.
  */
 
-import type { SystemInfo, ArchitecturePatterns, } from '@types';
-import { createLogger } from '@modules/logger';
-
-const log = createLogger('getArchitectureRegex');
+import type { SystemInfo, ArchitecturePatterns } from '@types';
+import { type TsLogger } from '@modules/logger';
 
 /**
  * Represents a set of regular expression patterns derived from {@link ArchitecturePatterns}.
@@ -62,8 +60,12 @@ export interface ArchitectureRegex {
  * @param systemInfo - System information from os module
  * @returns Architecture patterns for matching GitHub release assets
  */
-export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePatterns {
-  log('getArchitecturePatterns: platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
+export function getArchitecturePatterns(
+  parentLogger: TsLogger,
+  systemInfo: SystemInfo,
+): ArchitecturePatterns {
+  const logger = parentLogger.getSubLogger({ name: 'getArchitecturePatterns' });
+  logger.debug('platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
 
   const patterns: ArchitecturePatterns = {
     system: [],
@@ -145,11 +147,11 @@ export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePat
       break;
   }
 
-  log(
-    'getArchitecturePatterns: generated patterns system=%j, cpu=%j, variants=%j',
+  logger.debug(
+    'generated patterns system=%j, cpu=%j, variants=%j',
     patterns.system,
     patterns.cpu,
-    patterns.variants
+    patterns.variants,
   );
 
   return patterns;
@@ -162,8 +164,12 @@ export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePat
  * @param patterns - Architecture patterns from getArchitecturePatterns
  * @returns Combined regex patterns for asset matching
  */
-export function createArchitectureRegex(patterns: ArchitecturePatterns): ArchitectureRegex {
-  log('createArchitectureRegex: creating regex from patterns');
+export function createArchitectureRegex(
+  parentLogger: TsLogger,
+  patterns: ArchitecturePatterns,
+): ArchitectureRegex {
+  const logger = parentLogger.getSubLogger({ name: 'createArchitectureRegex' });
+  logger.debug('creating regex from patterns');
 
   // Escape special regex characters in pattern strings
   const escapeRegex = (str: string): string => {
@@ -185,11 +191,11 @@ export function createArchitectureRegex(patterns: ArchitecturePatterns): Archite
     variantPattern,
   };
 
-  log(
-    'createArchitectureRegex: generated regex patterns system=%s, cpu=%s, variants=%s',
+  logger.debug(
+    'generated regex patterns system=%s, cpu=%s, variants=%s',
     result.systemPattern,
     result.cpuPattern,
-    result.variantPattern
+    result.variantPattern,
   );
 
   return result;
@@ -202,13 +208,17 @@ export function createArchitectureRegex(patterns: ArchitecturePatterns): Archite
  * @param systemInfo - System information from os module
  * @returns Combined regex patterns for GitHub release asset matching
  */
-export function getArchitectureRegex(systemInfo: SystemInfo): ArchitectureRegex {
-  log('getArchitectureRegex: platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
+export function getArchitectureRegex(
+  parentLogger: TsLogger,
+  systemInfo: SystemInfo,
+): ArchitectureRegex {
+  const logger = parentLogger.getSubLogger({ name: 'getArchitectureRegex' });
+  logger.debug('platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
 
-  const patterns = getArchitecturePatterns(systemInfo);
-  const regex = createArchitectureRegex(patterns);
+  const patterns = getArchitecturePatterns(logger, systemInfo);
+  const regex = createArchitectureRegex(logger, patterns);
 
-  log('getArchitectureRegex: completed architecture detection');
+  logger.debug('completed architecture detection');
   return regex;
 }
 
@@ -221,10 +231,12 @@ export function getArchitectureRegex(systemInfo: SystemInfo): ArchitectureRegex 
  * @returns True if the asset matches the current architecture
  */
 export function matchesArchitecture(
+  parentLogger: TsLogger,
   assetName: string,
-  architectureRegex: ArchitectureRegex
+  architectureRegex: ArchitectureRegex,
 ): boolean {
-  log('matchesArchitecture: checking asset=%s', assetName);
+  const logger = parentLogger.getSubLogger({ name: 'matchesArchitecture' });
+  logger.debug('checking asset=%s', assetName);
 
   const lowerAssetName = assetName.toLowerCase();
 
@@ -240,12 +252,12 @@ export function matchesArchitecture(
 
   const matches = systemMatch && cpuMatch;
 
-  log(
-    'matchesArchitecture: asset=%s, systemMatch=%s, cpuMatch=%s, result=%s',
+  logger.debug(
+    'asset=%s, systemMatch=%s, cpuMatch=%s, result=%s',
     assetName,
     systemMatch,
     cpuMatch,
-    matches
+    matches,
   );
 
   return matches;

@@ -24,20 +24,18 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { Architecture, Platform } from '../../../types/platform.types';
-import { createLogger } from '../../logger/createLogger'; // Adjusted path
-
-const log = createLogger('ToolConfigBuilderPlatformTests');
+import { TestLogger } from '@testing-helpers';
 
 describe('ToolConfigBuilder - Platform Support', () => {
   let builder: ToolConfigBuilder;
+  let logger: TestLogger;
 
   beforeEach(() => {
-    log('beforeEach: creating new ToolConfigBuilder instance');
-    builder = new ToolConfigBuilder('test-tool');
+    logger = new TestLogger();
+    builder = new ToolConfigBuilder(logger, 'test-tool');
   });
 
   it('should create a configuration for a single platform', () => {
-    log('test: should create a configuration for a single platform');
     builder.platform(Platform.Linux, (pb) => {
       pb.bin('linux-app');
     });
@@ -53,7 +51,6 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should apply various platform-specific settings using a valid install method', () => {
-    log('test: should apply various platform-specific settings');
     builder.platform(Platform.Windows, (pb) => {
       pb.bin('win-app.exe');
       // Use a valid install method, e.g., manual, and put other details in hooks if necessary
@@ -78,7 +75,6 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should create configurations for multiple platforms via separate calls', () => {
-    log('test: should create configurations for multiple platforms via separate calls');
     builder.platform(Platform.Linux, (pb) => {
       pb.bin('linux-bin');
     });
@@ -100,7 +96,6 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should create a configuration for multiple platforms via a single call with bitwise OR', () => {
-    log('test: should create a configuration for multiple platforms via a single call with bitwise OR');
     builder.platform(Platform.Linux | Platform.MacOS, (pb) => { // Changed to bitwise OR and MacOS
       pb.bin('multi-platform-bin');
     });
@@ -115,7 +110,6 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should create a configuration with platform and architecture combinations using correct builder methods', () => {
-    log('test: should create a configuration with platform and architecture combinations');
     // Generic Linux config (optional, could be empty or have common settings)
     builder.platform(Platform.Linux, (pb) => {
         pb.version('linux-common'); // Example common setting
@@ -154,7 +148,6 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should correctly build with global and platform-specific settings', () => {
-    log('test: should correctly build with global and platform-specific settings');
     builder.version('1.0.0'); // Global
 
     // Platform MacOS, specific for Arm64

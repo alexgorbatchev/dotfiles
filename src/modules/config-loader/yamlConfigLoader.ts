@@ -1,14 +1,12 @@
 import { yamlConfigSchema, type YamlConfig, type YamlConfigPartial } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
-import { createClientLogger, createLogger } from '@modules/logger';
+import { type TsLogger } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
 import { exitCli } from '../cli';
 
-const log = createLogger('YamlConfigLoader');
-const clientLogger = createClientLogger();
 
 /**
  * Detects the current operating system
@@ -92,9 +90,11 @@ function deepMerge<T extends Record<string, unknown>>(
  * @returns The configuration with platform-specific overrides applied.
  */
 function applyPlatformOverrides(
+  parentLogger: TsLogger,
   config: Record<string, unknown>,
   systemInfo: SystemInfo
 ): Record<string, unknown> {
+  const logger = parentLogger.getSubLogger({ name: 'applyPlatformOverrides' });
   const platformOverrides = (config['platform'] as PlatformOverride[]) || [];
 
   if (!Array.isArray(platformOverrides)) {
@@ -104,7 +104,7 @@ function applyPlatformOverrides(
   const currentPlatform = detectOS(systemInfo.platform);
   const currentArch = detectArch(systemInfo.arch);
 
-  log('applyPlatformOverrides: platform=%s, arch=%s', currentPlatform, currentArch);
+  logger.debug('applyPlatformOverrides: platform=%s, arch=%s', currentPlatform, currentArch);
 
   let result: Record<string, unknown> = deepMerge({}, config );
 
@@ -145,7 +145,7 @@ function applyPlatformOverrides(
     });
 
     if (matches) {
-      log('Applying platform override: %o', platformOverride.config);
+      logger.debug('Applying platform override: %o', platformOverride.config);
       result = deepMerge(result, platformOverride.config);
     }
   }
@@ -228,15 +228,17 @@ function substituteTokens(
 }
 
 function processConfig(
+  parentLogger: TsLogger,
   defaultConfig: Record<string, unknown>,
   userConfig: Record<string, unknown>,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
 ): YamlConfig {
-  log('processConfig: defaultConfig=%o, userConfig=%o, systemInfo=%o', defaultConfig, userConfig, systemInfo);
+  const logger = parentLogger.getSubLogger({ name: 'processConfig' });
+  logger.debug('processConfig: defaultConfig=%o, userConfig=%o, systemInfo=%o', defaultConfig, userConfig, systemInfo);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
-  const configWithPlatformOverrides = applyPlatformOverrides(mergedConfig, systemInfo);
+  const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
   const configWithTokens = substituteTokens(
     configWithPlatformOverrides,
     env,
@@ -248,7 +250,7 @@ function processConfig(
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
-    clientLogger.error('YAML config validation error:\n%s', pretty);
+    logger.error('YAML config validation error:\n%s', pretty);
     throw new Error(`YAML configuration is invalid.\n${pretty}`);
   }
 
@@ -256,12 +258,13 @@ function processConfig(
 }
 
 export async function getDefaultConfig(
+  parentLogger: TsLogger,
   fileSystem: IFileSystem,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
-  return processConfig(defaultConfig, {}, systemInfo, env);
+  return processConfig(parentLogger, defaultConfig, {}, systemInfo, env);
 }
 
 /**
@@ -293,16 +296,18 @@ export async function loadDefaultYamlConfigAsRecord(
  *   (import from `@testing-helpers`)
  */
 export async function loadYamlConfig(
+  parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfigPath: string,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
 ): Promise<YamlConfig> {
+  const logger = parentLogger.getSubLogger({ name: 'loadYamlConfig' });
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   let userConfig = {};
 
   if (!await fileSystem.exists(userConfigPath)) {
-    clientLogger.error(`Config file not found: ${userConfigPath}`);
+    logger.error(`Config file not found: ${userConfigPath}`);
     exitCli(1);
   }
 
@@ -311,14 +316,14 @@ export async function loadYamlConfig(
     userConfig = parse(userConfigContent) || {};
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
-    clientLogger.error(
+    logger.error(
       `Config file invalid: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
   }
 
-  return processConfig(defaultConfig, userConfig, systemInfo, env);
+  return processConfig(parentLogger, defaultConfig, userConfig, systemInfo, env);
 }
 
 /**
@@ -338,6 +343,7 @@ export async function loadYamlConfig(
  *   (import from `@testing-helpers`)
  */
 export async function createYamlConfigFromObject(
+  parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfig: YamlConfigPartial = {},
   systemInfo: SystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
@@ -350,5 +356,5 @@ export async function createYamlConfigFromObject(
     userConfigClone.userConfigPath = '/path/to/config.yaml';
   }
 
-  return processConfig(defaultConfig, userConfigClone, systemInfo, env);
+  return processConfig(parentLogger, defaultConfig, userConfigClone, systemInfo, env);
 }

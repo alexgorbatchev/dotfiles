@@ -1,44 +1,29 @@
 import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
-import { exitCli } from '@modules/cli/exitCli';
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, } from '@modules/config-loader';
+import {
+  createYamlConfigFromObject,
+  loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
+} from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
-import { createClientLogger as actualCreateClientLogger } from '@modules/logger';
-import {
-  createMemFileSystem,
-  createMockClientLogger,
-  type CreateMockClientLoggerResult,
-  type MemFileSystemReturn,
-} from '@testing-helpers';
+import { TestLogger } from '@testing-helpers';
+import { createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
+import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import yaml from 'yaml';
 import { registerGenerateCommand } from '../generateCommand';
-import {
-  createModuleMocker,
-  setupTestCleanup,
-  clearMockRegistry
-} from '@rageltd/bun-test-utils';
 
-// Setup cleanup once per file
 setupTestCleanup();
-
-const mockModules = createModuleMocker();
-
-const mockExitCli = mock((code: number) => {
-  throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
-});
-
-const mockCreateClientLogger = mock(actualCreateClientLogger);
-const mockCreateLogger = mock(() => mock(() => {}));
 
 describe('generateCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
-  let loggerMocks: CreateMockClientLoggerResult['loggerMocks'];
+  let logger: TestLogger;
   let mockFs: MemFileSystemReturn;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
+  const mockModules = createModuleMocker();
+  const createMockLoadToolConfigsFromDirectory = () => mock(actualLoadToolConfigsFromDirectory);
+  let mockLoadToolConfigsFromDirectory: ReturnType<typeof createMockLoadToolConfigsFromDirectory>;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -49,15 +34,18 @@ describe('generateCommand', () => {
 
   beforeEach(async () => {
     program = createProgram();
+    logger = new TestLogger();
+    mockFs = await createMemFileSystem({});
+    mockYamlConfig = await createYamlConfigFromObject(logger, mockFs.fs);
 
-    mockFs = await createMemFileSystem({
-    });
+    mockLoadToolConfigsFromDirectory = createMockLoadToolConfigsFromDirectory();
+    mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
 
-    mockYamlConfig = await createYamlConfigFromObject(mockFs.fs);
-
-    mockFs.addFiles({
-      [`${mockYamlConfig.paths.toolConfigsDir}/toolA.yaml`]: yaml.stringify(toolAConfig)
-    });
+    await mockModules.mock('@modules/config-loader', () => ({
+      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      loadSingleToolConfig: mock(async () => ({})),
+      createYamlConfigFromObject,
+    }));
 
     const mockManifest: GeneratedArtifactsManifest = {
       shims: ['/test/target/toolA-bin'],
@@ -72,25 +60,11 @@ describe('generateCommand', () => {
       lastGenerated: new Date().toISOString(),
     };
 
-    const loggerHelperReturn = createMockClientLogger();
-    loggerMocks = loggerHelperReturn.loggerMocks;
-    mockCreateClientLogger.mockReturnValue(loggerHelperReturn.mockClientLogger);
-
     mockGeneratorOrchestrator = {
       generateAll: mock(async () => mockManifest),
     };
 
-    // Set up mocks
-    await mockModules.mock('@modules/cli/exitCli', () => ({
-      exitCli: mockExitCli,
-    }));
-    
-    await mockModules.mock('@modules/logger', () => ({
-      createClientLogger: mockCreateClientLogger,
-      createLogger: mockCreateLogger,
-    }));
-
-    registerGenerateCommand(program, {
+    registerGenerateCommand(logger, program, {
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
       generatorOrchestrator: mockGeneratorOrchestrator,
@@ -98,7 +72,7 @@ describe('generateCommand', () => {
   });
 
   afterEach(() => {
-    clearMockRegistry();
+    mockModules.restoreAll();
   });
 
   afterAll(() => {
@@ -108,28 +82,34 @@ describe('generateCommand', () => {
   test('should successfully generate artifacts', async () => {
     await program.parseAsync(['generate'], { from: 'user' });
 
-    expect(loggerMocks.info).toHaveBeenCalledWith('Artifact generation complete.');
-    expect(loggerMocks.info).toHaveBeenCalledWith(
-      `Generated 1 shims in ${mockYamlConfig.paths.targetDir}`
+    expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
+      expect.any(Object),
+      mockYamlConfig.paths.toolConfigsDir,
+      mockFs.fs.asIFileSystem
     );
-    expect(loggerMocks.info).toHaveBeenCalledWith(
-      `Shell init file generated at: ${mockYamlConfig.paths.generatedDir}/init.sh`
+
+    logger.expect(
+      ['INFO'],
+      ['registerGenerateCommand'],
+      [
+        'Artifact generation complete.',
+        `Generated 1 shims in ${mockYamlConfig.paths.targetDir}`,
+        'Generated shims by tool:',
+        `  - toolA -> toolA-bin`,
+        `Shell init file generated at: ${mockYamlConfig.paths.generatedDir}/init.sh`,
+        'Processed 1 symlink operations.',
+      ]
     );
-    expect(loggerMocks.info).toHaveBeenCalledWith('Processed 1 symlink operations.');
   });
 
   test('should handle errors during artifact generation', async () => {
     const generationError = new Error('Generation failed');
     (mockGeneratorOrchestrator.generateAll as any).mockRejectedValue(generationError);
 
-    await expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow(
+    expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    expect(loggerMocks.error).toHaveBeenCalledWith(
-      'Critical error in generate command: %s',
-      generationError.message
-    );
-    expect(exitCli).toHaveBeenCalledWith(1);
+    logger.expect(['ERROR'], ['registerGenerateCommand'], [/Critical error in generate command/]);
   });
 });

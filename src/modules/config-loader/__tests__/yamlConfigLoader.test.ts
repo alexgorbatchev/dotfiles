@@ -1,4 +1,4 @@
-import { createMemFileSystem } from '@testing-helpers';
+import { createMemFileSystem, TestLogger } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
 import { loadYamlConfig } from '../yamlConfigLoader';
 
@@ -35,7 +35,9 @@ describe('yamlConfigLoader', () => {
       },
     });
 
+    const logger = new TestLogger();
     const result = await loadYamlConfig(
+      logger,
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -61,7 +63,9 @@ describe('yamlConfigLoader', () => {
     });
 
     // Test for macOS
+    const logger = new TestLogger();
     const macResult = await loadYamlConfig(
+      logger,
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -75,6 +79,7 @@ describe('yamlConfigLoader', () => {
     expect(macResult.platform).toBeUndefined();
 
     const linuxResult = await loadYamlConfig(
+      logger,
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -94,7 +99,9 @@ describe('yamlConfigLoader', () => {
       },
     });
 
+    const logger = new TestLogger();
     const result = await loadYamlConfig(
+      logger,
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -120,7 +127,9 @@ describe('yamlConfigLoader', () => {
       },
     });
 
+    const logger = new TestLogger();
     const result = await loadYamlConfig(
+      logger,
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -137,7 +146,8 @@ describe('yamlConfigLoader', () => {
   it('exists if user config file does not exist', async () => {
     const { fs: fileSystem } = await createMemFileSystem();
 
-    expect(loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow(
+    const logger = new TestLogger();
+    expect(loadYamlConfig(logger, fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow(
       /MOCK_EXIT_CLI_CALLED_WITH_1/
     );
   });
@@ -149,7 +159,9 @@ describe('yamlConfigLoader', () => {
       },
     });
 
+    const logger = new TestLogger();
     const result = await loadYamlConfig(
+      logger,
       fileSystem,
       USER_CONFIG_PATH,
       {
@@ -175,7 +187,8 @@ describe('yamlConfigLoader', () => {
   it('should throw an error when default config file does not exist', async () => {
     const { fs: fileSystem } = await createMemFileSystem({});
 
-    expect(loadYamlConfig(fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow();
+    const logger = new TestLogger();
+    expect(loadYamlConfig(logger, fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow();
   });
 
   it('should handle validation errors from yamlConfigSchema', async () => {
@@ -190,8 +203,10 @@ describe('yamlConfigLoader', () => {
       },
     });
 
+    const logger = new TestLogger();
     expect(
       loadYamlConfig(
+        logger,
         fileSystem,
         USER_CONFIG_PATH,
         {

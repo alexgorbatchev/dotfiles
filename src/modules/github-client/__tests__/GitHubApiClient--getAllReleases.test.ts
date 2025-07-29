@@ -122,14 +122,15 @@ describe('GitHubApiClient', () => {
       const resetTimestamp = Date.now() + 600 * 1000;
       mocks.mockDownloader.download.mockRejectedValue(
         new RateLimitError(
+          mocks.logger,
           'Rate limited on getAllReleases',
           url,
           403,
           'Forbidden',
           {}, // responseBody
           {}, // headers
-          resetTimestamp
-        )
+          resetTimestamp,
+        ),
       );
 
       expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
@@ -152,7 +153,7 @@ describe('GitHubApiClient', () => {
     it('should throw a GitHubApiClientError for other failures (ServerError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
       mocks.mockDownloader.download.mockRejectedValue(
-        new ServerError(url, 503, 'Service Unavailable')
+        new ServerError(mocks.logger, url, 503, 'Service Unavailable'),
       );
 
       expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(

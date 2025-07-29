@@ -1,6 +1,3 @@
-import { createLogger } from '@modules/logger/createLogger';
-
-const log = createLogger('platform.types');
 
 /**
 * Enum representing different operating system platforms.
@@ -34,7 +31,6 @@ export enum Architecture {
  * @returns True if the platform is included, false otherwise.
  */
 export function hasPlatform(targetPlatforms: Platform, platform: Platform): boolean {
-  log('hasPlatform: targetPlatforms=%s, platform=%s', targetPlatforms, platform);
   if (platform === Platform.None) {
     return targetPlatforms === Platform.None;
   }
@@ -51,7 +47,6 @@ export function hasArchitecture(
   targetArchitectures: Architecture,
   architecture: Architecture,
 ): boolean {
-  log('hasArchitecture: targetArchitectures=%s, architecture=%s', targetArchitectures, architecture);
   if (architecture === Architecture.None) {
     return targetArchitectures === Architecture.None;
   }

@@ -4,7 +4,7 @@ import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator } from '@modules/generator-shell-init';
 import type { IShimGenerator } from '@modules/generator-shim';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
-import { createMemFileSystem } from '@testing-helpers';
+import { createMemFileSystem, TestLogger } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
@@ -17,12 +17,14 @@ describe('GeneratorOrchestrator', () => {
   let mockFileSystem: IFileSystem;
   let mockAppConfig: YamlConfig;
   let orchestrator: GeneratorOrchestrator;
+  let logger: TestLogger;
 
   let mockFsReadFile: ReturnType<typeof spyOn>;
   let mockFsExists: ReturnType<typeof spyOn>;
 
   beforeEach(async () => {
     mock.restore();
+    logger = new TestLogger();
 
     mockShimGenerator = {
       generate: mock(async () => Promise.resolve([] as string[])),
@@ -41,13 +43,16 @@ describe('GeneratorOrchestrator', () => {
     mockFsReadFile = spies.readFile;
     mockFsExists = spies.exists;
     mockAppConfig = await createYamlConfigFromObject(
+      logger,
       fs,
       {},
       { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
       {}
     );
 
+    logger = new TestLogger();
     orchestrator = new GeneratorOrchestrator(
+      logger,
       mockShimGenerator,
       mockShellInitGenerator,
       mockSymlinkGenerator,

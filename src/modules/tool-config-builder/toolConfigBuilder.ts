@@ -16,7 +16,7 @@
  * - [ ] Update the memory bank.
  */
 
-import { createClientLogger } from '@modules/logger';
+import { type TsLogger } from '@modules/logger';
 import type {
   Architecture,
   AsyncInstallHook,
@@ -36,7 +36,7 @@ import type {
 } from '@types';
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
-  private clientLogger = createClientLogger({});
+  private logger: TsLogger;
   private toolName: string;
   private binaries: string[] = [];
   private versionNum: string = 'latest';
@@ -50,7 +50,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
   private isPlatformScope: boolean;
 
-  constructor(toolName: string, isPlatformScope = false) {
+  constructor(parentLogger: TsLogger, toolName: string, isPlatformScope = false) {
+    this.logger = parentLogger.getSubLogger({ name: 'ToolConfigBuilder' });
     this.toolName = toolName;
     this.isPlatformScope = isPlatformScope;
   }
@@ -86,7 +87,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     if (this.currentInstallParams) {
       this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
     } else {
-      this.clientLogger.warn(
+      this.logger.warn(
         `[ToolConfigBuilder] hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
       );
     }
@@ -124,7 +125,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       configureFn = configureCallback;
     }
 
-    const platformBuilder = new ToolConfigBuilder(this.toolName, true);
+    const platformBuilder = new ToolConfigBuilder(this.logger, this.toolName, true);
     configureFn(platformBuilder);
     const platformConfig = platformBuilder.build();
 

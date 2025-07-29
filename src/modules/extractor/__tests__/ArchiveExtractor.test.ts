@@ -1,4 +1,5 @@
 import { NodeFileSystem, type IFileSystem } from '@modules/file-system';
+import { TestLogger } from '@testing-helpers';
 import { createTestDirectories, type TestDirectories } from '@testing-helpers';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { exec as actualExecCallbackSignature } from 'node:child_process'; // Renamed for clarity
@@ -31,11 +32,13 @@ describe('ArchiveExtractor (with NodeFS)', () => {
   let extractor: IArchiveExtractor;
   let testDirs: TestDirectories;
   let nodeFs: IFileSystem;
+  let logger: TestLogger;
 
   beforeAll(async () => {
-    nodeFs = new NodeFileSystem();  
+    nodeFs = new NodeFileSystem();
     // Create a single root for all tests in this suite
-    testDirs = await createTestDirectories(nodeFs, { testName: 'archive-extractor-real-fs', });
+    const logger = new TestLogger();
+    testDirs = await createTestDirectories(logger, nodeFs, { testName: 'archive-extractor-real-fs' });
   });
 
   afterAll(() => {
@@ -43,9 +46,10 @@ describe('ArchiveExtractor (with NodeFS)', () => {
   });
 
   beforeEach(async () => {
+    logger = new TestLogger();
     // Create a fresh subdirectory for each test
     nodeFsInstance = new NodeFileSystem();
-    extractor = new ArchiveExtractor(nodeFsInstance);
+    extractor = new ArchiveExtractor(logger, nodeFsInstance);
 
     // Default mock implementation for exec (simulates success)
     mockExecCallback.mockImplementation(

@@ -5,6 +5,7 @@ import {
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
+  TestLogger,
   type MockGitHubServerResult,
   type TestDirectories,
 } from '@testing-helpers';
@@ -28,7 +29,8 @@ describe('E2E: bun run cli install', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      testDirs = await createTestDirectories(fs,{ testName: 'cli-install-direct-binary-mock' });
+      const logger = new TestLogger();
+      testDirs = await createTestDirectories(logger, fs,{ testName: 'cli-install-direct-binary-mock' });
       expectedInstalledBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockToolName,
@@ -70,6 +72,7 @@ describe('E2E: bun run cli install', () => {
           },
         },
         filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        logger,
         fileSystem: fs,
         systemInfo: {
           platform: 'linux',
@@ -127,7 +130,8 @@ describe('E2E: bun run cli install', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      testDirs = await createTestDirectories(fs,{
+      const logger = new TestLogger();
+      testDirs = await createTestDirectories(logger, fs, {
         testName: 'cli-install-archive-mock',
         additionalDirs: {
           'temp-archive-source': { path: 'temp-archive-source' },
@@ -192,6 +196,7 @@ describe('E2E: bun run cli install', () => {
         },
         filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
         fileSystem: fs,
+        logger,
         systemInfo: {
           platform: 'linux',
           arch: 'x64',

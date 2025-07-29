@@ -2,10 +2,8 @@ import path from 'path';
 import crypto from 'crypto';
 import type { YamlConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
 import type { CacheEntry, IGitHubApiCache } from './IGitHubApiCache';
-import { createLogger } from '@modules/logger';
-
-const log = createLogger('FileGitHubApiCache');
 
 /**
  * File-based implementation of the GitHub API cache.
@@ -16,23 +14,26 @@ export class FileGitHubApiCache implements IGitHubApiCache {
   private readonly fileSystem: IFileSystem;
   private readonly defaultTtlMs: number;
   private readonly enabled: boolean;
+  private readonly logger: TsLogger;
 
   /**
    * Creates a new FileGitHubApiCache instance.
+   * @param parentLogger The logger instance
    * @param fileSystem The file system implementation to use
    * @param config Application configuration
    */
-  constructor(fileSystem: IFileSystem, config: YamlConfig) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: YamlConfig) {
+    this.logger = parentLogger.getSubLogger({ name: 'FileGitHubApiCache' });
     this.fileSystem = fileSystem;
     this.cacheDir = path.join(config.paths.generatedDir, 'cache', 'github-api');
     this.defaultTtlMs = config.github.cache.ttl;
     this.enabled = config.github.cache.enabled;
 
-    log(
+    this.logger.debug(
       'constructor: Cache directory: %s, TTL: %d ms, Enabled: %s',
       this.cacheDir,
       this.defaultTtlMs,
-      this.enabled
+      this.enabled,
     );
   }
 
@@ -43,8 +44,9 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @returns A promise that resolves with the cached data, or null if not found or expired
    */
   async get<T>(key: string): Promise<T | null> {
+    const logger = this.logger.getSubLogger({ name: 'get' });
     if (!this.enabled) {
-      log('get: Cache disabled, returning null for key: %s', key);
+      logger.debug('Cache disabled, returning null for key: %s', key);
       return null;
     }
 
@@ -52,7 +54,7 @@ export class FileGitHubApiCache implements IGitHubApiCache {
       const filePath = this.getCacheFilePath(key);
 
       if (!(await this.fileSystem.exists(filePath))) {
-        log('get: Cache miss - file does not exist for key: %s', key);
+        logger.debug('Cache miss - file does not exist for key: %s', key);
         return null;
       }
 
@@ -60,24 +62,24 @@ export class FileGitHubApiCache implements IGitHubApiCache {
       const entry = JSON.parse(content) as CacheEntry<T>;
 
       if (this.isExpired(entry)) {
-        log(
-          'get: Cache entry expired for key: %s, expiry: %s',
+        logger.debug(
+          'Cache entry expired for key: %s, expiry: %s',
           key,
-          new Date(entry.expiresAt).toISOString()
+          new Date(entry.expiresAt).toISOString(),
         );
-        await this.delete(key).catch((err) => {
-          log('get: Error deleting expired entry: %s', err.message);
+        await this.delete(key).catch(err => {
+          logger.debug('Error deleting expired entry: %s', err.message);
         });
         return null;
       }
 
-      log('get: Cache hit for key: %s', key);
+      logger.debug('Cache hit for key: %s', key);
       return entry.data;
     } catch (error) {
-      log(
-        'get: Error retrieving cache entry for key: %s, error: %s',
+      logger.debug(
+        'Error retrieving cache entry for key: %s, error: %s',
         key,
-        (error as Error).message
+        (error as Error).message,
       );
       return null;
     }
@@ -92,8 +94,9 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @returns A promise that resolves when the data has been cached
    */
   async set<T>(key: string, data: T, ttlMs?: number): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'set' });
     if (!this.enabled) {
-      log('set: Cache disabled, skipping set for key: %s', key);
+      logger.debug('Cache disabled, skipping set for key: %s', key);
       return;
     }
 
@@ -113,13 +116,13 @@ export class FileGitHubApiCache implements IGitHubApiCache {
       const filePath = this.getCacheFilePath(key);
       await this.fileSystem.writeFile(filePath, JSON.stringify(entry, null, 2), 'utf8');
 
-      log(
-        'set: Cached data for key: %s, expires: %s',
+      logger.debug(
+        'Cached data for key: %s, expires: %s',
         key,
-        new Date(entry.expiresAt).toISOString()
+        new Date(entry.expiresAt).toISOString(),
       );
     } catch (error) {
-      log('set: Error caching data for key: %s, error: %s', key, (error as Error).message);
+      logger.debug('Error caching data for key: %s, error: %s', key, (error as Error).message);
       throw new Error(`Failed to cache data: ${(error as Error).message}`);
     }
   }
@@ -130,8 +133,9 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @returns A promise that resolves with true if the key exists and is not expired, false otherwise
    */
   async has(key: string): Promise<boolean> {
+    const logger = this.logger.getSubLogger({ name: 'has' });
     if (!this.enabled) {
-      log('has: Cache disabled, returning false for key: %s', key);
+      logger.debug('Cache disabled, returning false for key: %s', key);
       return false;
     }
 
@@ -139,7 +143,7 @@ export class FileGitHubApiCache implements IGitHubApiCache {
       const filePath = this.getCacheFilePath(key);
 
       if (!(await this.fileSystem.exists(filePath))) {
-        log('has: Cache entry does not exist for key: %s', key);
+        logger.debug('Cache entry does not exist for key: %s', key);
         return false;
       }
 
@@ -147,14 +151,14 @@ export class FileGitHubApiCache implements IGitHubApiCache {
       const entry = JSON.parse(content) as CacheEntry<unknown>;
 
       if (this.isExpired(entry)) {
-        log('has: Cache entry expired for key: %s', key);
+        logger.debug('Cache entry expired for key: %s', key);
         return false;
       }
 
-      log('has: Valid cache entry exists for key: %s', key);
+      logger.debug('Valid cache entry exists for key: %s', key);
       return true;
     } catch (error) {
-      log('has: Error checking cache for key: %s, error: %s', key, (error as Error).message);
+      logger.debug('Error checking cache for key: %s, error: %s', key, (error as Error).message);
       return false;
     }
   }
@@ -165,8 +169,9 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @returns A promise that resolves when the item has been removed
    */
   async delete(key: string): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'delete' });
     if (!this.enabled) {
-      log('delete: Cache disabled, skipping delete for key: %s', key);
+      logger.debug('Cache disabled, skipping delete for key: %s', key);
       return;
     }
 
@@ -175,15 +180,15 @@ export class FileGitHubApiCache implements IGitHubApiCache {
 
       if (await this.fileSystem.exists(filePath)) {
         await this.fileSystem.rm(filePath);
-        log('delete: Removed cache entry for key: %s', key);
+        logger.debug('Removed cache entry for key: %s', key);
       } else {
-        log('delete: No cache entry to delete for key: %s', key);
+        logger.debug('No cache entry to delete for key: %s', key);
       }
     } catch (error) {
-      log(
-        'delete: Error deleting cache entry for key: %s, error: %s',
+      logger.debug(
+        'Error deleting cache entry for key: %s, error: %s',
         key,
-        (error as Error).message
+        (error as Error).message,
       );
       throw new Error(`Failed to delete cache entry: ${(error as Error).message}`);
     }
@@ -194,8 +199,9 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @returns A promise that resolves when all expired entries have been removed
    */
   async clearExpired(): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'clearExpired' });
     if (!this.enabled) {
-      log('clearExpired: Cache disabled, skipping clearExpired');
+      logger.debug('Cache disabled, skipping clearExpired');
       return;
     }
 
@@ -215,9 +221,9 @@ export class FileGitHubApiCache implements IGitHubApiCache {
           const entry = JSON.parse(content) as CacheEntry<unknown>;
 
           if (this.isExpired(entry)) {
-            await this.fileSystem.rm(filePath).catch((err) => {
-              log(
-                'clearExpired: Error removing expired file %s: %s',
+            await this.fileSystem.rm(filePath).catch(err => {
+              logger.debug(
+                'Error removing expired file %s: %s',
                 filePath,
                 (err as Error).message,
               );
@@ -226,10 +232,10 @@ export class FileGitHubApiCache implements IGitHubApiCache {
           }
         } catch (err) {
           // If we can't read or parse a file, consider it corrupted and remove it
-          log(
-            'clearExpired: Error processing file %s: %s, removing it',
+          logger.debug(
+            'Error processing file %s: %s, removing it',
             file,
-            (err as Error).message
+            (err as Error).message,
           );
           await this.fileSystem.rm(filePath).catch(() => {
             // Ignore errors when trying to remove already problematic files
@@ -238,9 +244,12 @@ export class FileGitHubApiCache implements IGitHubApiCache {
         }
       }
 
-      log('clearExpired: Removed %d expired cache entries', expiredCount);
+      logger.debug('Removed %d expired cache entries', expiredCount);
     } catch (error) {
-      log('clearExpired: Error clearing expired cache entries: %s', (error as Error).message);
+      logger.debug(
+        'Error clearing expired cache entries: %s',
+        (error as Error).message,
+      );
       throw new Error(`Failed to clear expired cache entries: ${(error as Error).message}`);
     }
   }
@@ -250,22 +259,23 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @returns A promise that resolves when the cache has been cleared
    */
   async clear(): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'clear' });
     if (!this.enabled) {
-      log('clear: Cache disabled, skipping clear');
+      logger.debug('Cache disabled, skipping clear');
       return;
     }
 
     try {
       if (await this.fileSystem.exists(this.cacheDir)) {
         await this.fileSystem.rm(this.cacheDir, { recursive: true, force: true });
-        log('clear: Removed entire cache directory');
+        logger.debug('Removed entire cache directory');
       } else {
-        log('clear: Cache directory does not exist, nothing to clear');
+        logger.debug('Cache directory does not exist, nothing to clear');
       }
       // Always ensure the cache directory exists after attempting to clear
       await this.ensureCacheDir();
     } catch (error) {
-      log('clear: Error clearing cache: %s', (error as Error).message);
+      logger.debug('Error clearing cache: %s', (error as Error).message);
       throw new Error(`Failed to clear cache: ${(error as Error).message}`);
     }
   }
@@ -288,10 +298,11 @@ export class FileGitHubApiCache implements IGitHubApiCache {
    * @private
    */
   private async ensureCacheDir(): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'ensureCacheDir' });
     try {
       await this.fileSystem.ensureDir(this.cacheDir);
     } catch (error) {
-      log('ensureCacheDir: Error ensuring cache directory exists: %s', (error as Error).message);
+      logger.debug('Error ensuring cache directory exists: %s', (error as Error).message);
       throw new Error(`Failed to create cache directory: ${(error as Error).message}`);
     }
   }

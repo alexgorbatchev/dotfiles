@@ -10,9 +10,7 @@ import { basename, extname, join } from 'node:path';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
 import type { IFileSystem } from '@modules/file-system';
-import { createLogger } from '@modules/logger';
-
-const log = createLogger('ArchiveExtractor');
+import { type TsLogger } from '@modules/logger';
 
 /**
  * Implements the IArchiveExtractor interface using system commands.
@@ -26,10 +24,12 @@ const log = createLogger('ArchiveExtractor');
  * command.
  */
 export class ArchiveExtractor implements IArchiveExtractor {
-  private fs: IFileSystem;
+  private readonly fs: IFileSystem;
+  private readonly logger: TsLogger;
 
-  constructor(fileSystem: IFileSystem) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
     this.fs = fileSystem;
+    this.logger = parentLogger.getSubLogger({ name: 'ArchiveExtractor' });
   }
 
   // Promisify exec for use with async/await
@@ -44,8 +44,9 @@ export class ArchiveExtractor implements IArchiveExtractor {
   private async executeShellCommand(
     command: string
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
     try {
-      log('Executing shell command: %s', command);
+      logger.debug('Executing shell command: %s', command);
       const { stdout, stderr } = await this.promisedExec(command);
       return { stdout, stderr, exitCode: 0 };
     } catch (error: any) {
@@ -57,12 +58,13 @@ export class ArchiveExtractor implements IArchiveExtractor {
       execError.stderr = error.stderr || '';
       execError.exitCode = typeof error.code === 'number' ? error.code : 1;
       execError.originalError = error; // Keep original error if needed
-      log('executeShellCommand error: %o', execError);
+      logger.debug('executeShellCommand error: %o', execError);
       throw execError;
     }
   }
 
   public async detectFormat(filePath: string): Promise<ArchiveFormat> {
+    const logger = this.logger.getSubLogger({ name: 'detectFormat' });
     const fileName = basename(filePath).toLowerCase();
     if (fileName.endsWith('.tar.gz') || fileName.endsWith('.tgz')) return 'tar.gz';
     if (fileName.endsWith('.tar.bz2') || fileName.endsWith('.tbz2') || fileName.endsWith('.tbz'))
@@ -95,7 +97,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       if (output.includes('x-rpm')) return 'rpm';
       if (output.includes('x-apple-diskimage')) return 'dmg';
     } catch (error) {
-      log('detectFormat: "file" command failed during fallback. Error: %o', error);
+      logger.debug('"file" command failed during fallback. Error: %o', error);
     }
 
     throw new Error(`Unsupported or undetectable archive format for: ${filePath}`);
@@ -114,6 +116,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   }
 
   public async extract(archivePath: string, options: ExtractOptions = {}): Promise<ExtractResult> {
+    const logger = this.logger.getSubLogger({ name: 'extract' });
     const {
       format: explicitFormat,
       stripComponents = 0,
@@ -122,7 +125,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       detectExecutables = true,
     } = options;
 
-    log('extract: archivePath=%s, options=%o', archivePath, options);
+    logger.debug('archivePath=%s, options=%o', archivePath, options);
 
     const format = explicitFormat || (await this.detectFormat(archivePath));
 
@@ -178,8 +181,8 @@ export class ArchiveExtractor implements IArchiveExtractor {
           // If needed, would require extracting to a subdir and then moving.
           // For now, we ignore stripComponents for zip or require user to handle.
           if (stripComponents > 0) {
-            log(
-              'extract: --strip-components is not directly supported for zip, files will be extracted with full paths into target.'
+            logger.debug(
+              '--strip-components is not directly supported for zip, files will be extracted with full paths into target.'
             );
             // A more complex solution would be to extract to a temporary unique dir inside tempExtractDir,
             // then list contents, find the common base (if stripComponents=1 and it's a single dir), and move.
@@ -224,13 +227,13 @@ export class ArchiveExtractor implements IArchiveExtractor {
       // now needs tempExtractDir to exist *after* this method returns successfully,
       // we only clean up here on error within this method's scope.
       // The Installer is responsible for cleanup on successful return.
-      log(
+      logger.debug(
         'Error during extract process, cleaning up temp dir: %s. Error: %o',
         tempExtractDir,
         error
       );
       await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
-        log('Error during cleanup of temp dir after an error: %o', cleanupErr);
+        logger.debug('Error during cleanup of temp dir after an error: %o', cleanupErr);
       });
       throw error; // Re-throw the original error
     }
@@ -238,6 +241,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   }
 
   private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {
+    const logger = this.logger.getSubLogger({ name: 'detectAndSetExecutables' });
     const executables: string[] = [];
     // This is a simplified check. `file` command is more robust.
     // For `zx`, we'd need to ensure `file` command is available or use Node.js based checks.
@@ -254,14 +258,14 @@ export class ArchiveExtractor implements IArchiveExtractor {
           if (ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext)) {
             // Check if it's already executable (owner execute bit)
             if (!(stat.mode & 0o100)) {
-              log('detectAndSetExecutables: Setting +x for %s', filePath);
+              logger.debug('Setting +x for %s', filePath);
               await this.fs.chmod(filePath, stat.mode | 0o100); // Add owner execute
             }
             executables.push(file);
           }
         }
       } catch (err) {
-        log('detectAndSetExecutables: Error stating or chmoding file %s: %o', filePath, err);
+        logger.debug('Error stating or chmoding file %s: %o', filePath, err);
       }
     }
     return executables;

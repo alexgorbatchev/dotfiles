@@ -1,20 +1,25 @@
 import type { YamlConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
+import { TestLogger, createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'path';
 import { FileGitHubApiCache } from '../FileGitHubApiCache';
 import type { CacheEntry } from '../IGitHubApiCache';
-import { createGitHubConfigOverride, createMockYamlConfigForGitHubApi } from './helpers/sharedGitHubApiClientTestSetup';
+import {
+  createGitHubConfigOverride,
+  createMockYamlConfigForGitHubApi,
+} from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('FileGitHubApiCache', () => {
   let mockFileSystem: IFileSystem;
   let fileSystemMocks: MemFileSystemReturn['spies'];
   let mockYamlConfig: YamlConfig;
   let cache: FileGitHubApiCache;
+  let logger: TestLogger;
 
   beforeEach(async () => {
     mock.restore();
+    logger = new TestLogger();
 
     // Setup mock file system
     const { fs: fsInstance, spies: fsMocks } = await createMemFileSystem();
@@ -22,15 +27,17 @@ describe('FileGitHubApiCache', () => {
     fileSystemMocks = fsMocks;
 
     // Create mock yaml config using the helper from sharedGitHubApiClientTestSetup
-    mockYamlConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({
-      // Specific overrides for these tests if needed, otherwise defaults are fine.
-      // For FileGitHubApiCache, the githubApiCache... properties are important.
-      githubApiCacheEnabled: true,
-      githubApiCacheTtl: 3600000, // 1 hour, can be default from helper too
-    }));
+    mockYamlConfig = await createMockYamlConfigForGitHubApi(
+      createGitHubConfigOverride({
+        // Specific overrides for these tests if needed, otherwise defaults are fine.
+        // For FileGitHubApiCache, the githubApiCache... properties are important.
+        githubApiCacheEnabled: true,
+        githubApiCacheTtl: 3600000, // 1 hour, can be default from helper too
+      }),
+    );
 
     // Create cache instance
-    cache = new FileGitHubApiCache(mockFileSystem, mockYamlConfig);
+    cache = new FileGitHubApiCache(logger, mockFileSystem, mockYamlConfig);
   });
 
   describe('constructor', () => {
@@ -39,22 +46,28 @@ describe('FileGitHubApiCache', () => {
     });
 
     it('should initialize with custom TTL', async () => {
-      const customConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheTtl: 7200000 })); // 2 hours
-      const customCache = new FileGitHubApiCache(mockFileSystem, customConfig);
+      const customConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheTtl: 7200000 }),
+      ); // 2 hours
+      const customCache = new FileGitHubApiCache(logger, mockFileSystem, customConfig);
       expect(customCache).toBeInstanceOf(FileGitHubApiCache);
     });
 
     it('should initialize with cache disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       expect(disabledCache).toBeInstanceOf(FileGitHubApiCache);
     });
   });
 
   describe('get', () => {
     it('should return null when cache is disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       const result = await disabledCache.get('test-key');
       expect(result).toBeNull();
       expect(fileSystemMocks.exists).not.toHaveBeenCalled();
@@ -128,8 +141,10 @@ describe('FileGitHubApiCache', () => {
 
   describe('set', () => {
     it('should not cache data when cache is disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       await disabledCache.set('test-key', { foo: 'bar' });
       expect(fileSystemMocks.ensureDir).not.toHaveBeenCalled();
       expect(fileSystemMocks.writeFile).not.toHaveBeenCalled();
@@ -156,7 +171,7 @@ describe('FileGitHubApiCache', () => {
 
       // Verify TTL is from mockAppConfig
       expect(parsedContent.expiresAt - parsedContent.timestamp).toBe(
-        mockYamlConfig.github?.cache?.ttl ?? 3600000 // Provide default if undefined
+        mockYamlConfig.github?.cache?.ttl ?? 3600000, // Provide default if undefined
       );
     });
 
@@ -188,7 +203,9 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.ensureDir.mockResolvedValue(undefined);
       fileSystemMocks.writeFile.mockRejectedValue(new Error('Write error'));
 
-      expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
+      await expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow(
+        'Failed to cache data',
+      );
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.writeFile).toHaveBeenCalled();
     });
@@ -196,7 +213,9 @@ describe('FileGitHubApiCache', () => {
     it('should handle directory creation errors', async () => {
       fileSystemMocks.ensureDir.mockRejectedValue(new Error('Directory creation error'));
 
-      expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow('Failed to cache data');
+      await expect(cache.set('test-key', { foo: 'bar' })).rejects.toThrow(
+        'Failed to cache data',
+      );
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.writeFile).not.toHaveBeenCalled();
     });
@@ -204,8 +223,10 @@ describe('FileGitHubApiCache', () => {
 
   describe('has', () => {
     it('should return false when cache is disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       const result = await disabledCache.has('test-key');
       expect(result).toBe(false);
       expect(fileSystemMocks.exists).not.toHaveBeenCalled();
@@ -274,8 +295,10 @@ describe('FileGitHubApiCache', () => {
 
   describe('delete', () => {
     it('should not attempt deletion when cache is disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       await disabledCache.delete('test-key');
       expect(fileSystemMocks.exists).not.toHaveBeenCalled();
       expect(fileSystemMocks.rm).not.toHaveBeenCalled();
@@ -300,7 +323,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.exists.mockResolvedValue(true);
       fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
-      expect(cache.delete('test-key')).rejects.toThrow('Failed to delete cache entry');
+      await expect(cache.delete('test-key')).rejects.toThrow('Failed to delete cache entry');
       expect(fileSystemMocks.exists).toHaveBeenCalled();
       expect(fileSystemMocks.rm).toHaveBeenCalled();
     });
@@ -308,8 +331,10 @@ describe('FileGitHubApiCache', () => {
 
   describe('clearExpired', () => {
     it('should not attempt clearing when cache is disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       await disabledCache.clearExpired();
       expect(fileSystemMocks.ensureDir).not.toHaveBeenCalled();
       expect(fileSystemMocks.readdir).not.toHaveBeenCalled();
@@ -360,7 +385,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.ensureDir.mockResolvedValue(undefined);
       fileSystemMocks.readdir.mockRejectedValue(new Error('Directory read error'));
 
-      expect(cache.clearExpired()).rejects.toThrow('Failed to clear expired cache entries');
+      await expect(cache.clearExpired()).rejects.toThrow('Failed to clear expired cache entries');
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.readdir).toHaveBeenCalled();
     });
@@ -404,8 +429,10 @@ describe('FileGitHubApiCache', () => {
 
   describe('clear', () => {
     it('should not attempt clearing when cache is disabled', async () => {
-      const disabledConfig = await createMockYamlConfigForGitHubApi(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
-      const disabledCache = new FileGitHubApiCache(mockFileSystem, disabledConfig);
+      const disabledConfig = await createMockYamlConfigForGitHubApi(
+        createGitHubConfigOverride({ githubApiCacheEnabled: false }),
+      );
+      const disabledCache = new FileGitHubApiCache(logger, mockFileSystem, disabledConfig);
       await disabledCache.clear();
       expect(fileSystemMocks.exists).not.toHaveBeenCalled();
       expect(fileSystemMocks.rm).not.toHaveBeenCalled();
@@ -434,7 +461,7 @@ describe('FileGitHubApiCache', () => {
       fileSystemMocks.exists.mockResolvedValue(true);
       fileSystemMocks.rm.mockRejectedValue(new Error('Delete error'));
 
-      expect(cache.clear()).rejects.toThrow('Failed to clear cache');
+      await expect(cache.clear()).rejects.toThrow('Failed to clear cache');
       expect(fileSystemMocks.exists).toHaveBeenCalled();
       expect(fileSystemMocks.rm).toHaveBeenCalled();
     });

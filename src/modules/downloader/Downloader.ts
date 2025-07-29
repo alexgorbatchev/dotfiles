@@ -2,17 +2,20 @@ import type { IDownloader, DownloadOptions } from './IDownloader';
 import type { DownloadStrategy } from './DownloadStrategy';
 import { NodeFetchStrategy } from './NodeFetchStrategy';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { TsLogger } from '@modules/logger';
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];
   private fs: IFileSystem;
+  private logger: TsLogger;
 
-  constructor(fileSystem: IFileSystem, strategies?: DownloadStrategy[]) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, strategies?: DownloadStrategy[]) {
+    this.logger = parentLogger.getSubLogger({ name: 'Downloader' });
     this.fs = fileSystem;
     if (typeof strategies !== 'undefined') {
       this.strategies = strategies;
     } else {
-      this.strategies.push(new NodeFetchStrategy(this.fs));
+      this.strategies.push(new NodeFetchStrategy(this.logger, this.fs));
     }
   }
 

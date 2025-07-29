@@ -63,7 +63,7 @@ describe('GitHubApiClient', () => {
     it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {
       const url = 'https://api.github.com/rate_limit';
       mocks.mockDownloader.download.mockRejectedValue(
-        new HttpError('API unavailable', url, 500, 'Internal Server Error')
+        new HttpError(mocks.logger, 'API unavailable', url, 500, 'Internal Server Error'),
       );
 
       expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);

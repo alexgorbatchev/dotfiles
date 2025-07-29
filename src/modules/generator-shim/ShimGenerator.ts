@@ -1,12 +1,11 @@
 import path from 'node:path';
-import { createLogger } from '@modules/logger';
+import { type TsLogger } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 import { getCliBinPath } from '../../utils';
 
-const log = createLogger('ShimGenerator');
 
 /**
  * Generates executable shims for tools.
@@ -21,9 +20,12 @@ const log = createLogger('ShimGenerator');
 export class ShimGenerator implements IShimGenerator {
   private readonly fs: IFileSystem;
   private readonly config: YamlConfig;
+  private readonly logger: TsLogger;
 
-  constructor(fileSystem: IFileSystem, config: YamlConfig) {
-    log('constructor: fileSystem=%o, config=%o', fileSystem, config);
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: YamlConfig) {
+    const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
+    this.logger = logger;
+    logger.debug('constructor: fileSystem=%o, config=%o', fileSystem, config);
     this.fs = fileSystem;
     this.config = config;
   }
@@ -32,7 +34,7 @@ export class ShimGenerator implements IShimGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShimsOptions
   ): Promise<string[]> {
-    log('generate: toolConfigs=%o, options=%o', toolConfigs, options);
+    this.logger.debug('generate: toolConfigs=%o, options=%o', toolConfigs, options);
     const generatedShimPaths: string[] = [];
 
     for (const toolName in toolConfigs) {
@@ -42,7 +44,7 @@ export class ShimGenerator implements IShimGenerator {
           const shimPaths = await this.generateForTool(toolName, toolConfig, options);
           generatedShimPaths.push(...shimPaths);
         } else {
-          log('generate: toolConfig for %s is undefined. Skipping.', toolName);
+          this.logger.debug('generate: toolConfig for %s is undefined. Skipping.', toolName);
         }
       }
     }
@@ -54,7 +56,7 @@ export class ShimGenerator implements IShimGenerator {
     toolConfig: ToolConfig,
     options?: GenerateShimsOptions
   ): Promise<string[]> {
-    log(
+    this.logger.debug(
       'generateForTool: toolName=%s, toolConfig=%o, options=%o, FileSystem: %s',
       toolName,
       toolConfig,
@@ -67,10 +69,10 @@ export class ShimGenerator implements IShimGenerator {
     const shimDir = this.config.paths.targetDir;
     const shimFilePath = path.join(shimDir, toolName);
 
-    log('generateForTool: shimFilePath=%s', shimFilePath);
+    this.logger.debug('generateForTool: shimFilePath=%s', shimFilePath);
 
     if (!overwrite && (await this.fs.exists(shimFilePath))) {
-      log(
+      this.logger.debug(
         'generateForTool: Shim already exists at %s and overwrite is false. Skipping.',
         shimFilePath
       );
@@ -89,7 +91,7 @@ export class ShimGenerator implements IShimGenerator {
       primaryBinaryName
     );
 
-    log('generateForTool: toolBinPath=%s', toolBinPath);
+    this.logger.debug('generateForTool: toolBinPath=%s', toolBinPath);
 
     const shimContent = `#!/usr/bin/env bash
 # Shim for ${toolName}
@@ -117,23 +119,23 @@ else
   fi
 fi
 `;
-    log('generateForTool: shimContent=\n%s', shimContent);
+    this.logger.debug('generateForTool: shimContent=\n%s', shimContent);
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
-    log(
+    this.logger.debug(
       'generateForTool: Writing shim file to %s using %s',
       shimFilePath,
       this.fs.constructor.name
     );
     await this.fs.ensureDir(path.dirname(shimFilePath));
     await this.fs.writeFile(shimFilePath, shimContent);
-    log(
+    this.logger.debug(
       'generateForTool: Making shim executable: chmod +x %s using %s',
       shimFilePath,
       this.fs.constructor.name
     );
     await this.fs.chmod(shimFilePath, 0o755); // rwxr-xr-x
-    log(
+    this.logger.debug(
       'generateForTool: Shim for %s generated successfully at %s (using %s).',
       toolName,
       shimFilePath,

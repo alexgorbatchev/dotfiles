@@ -1,7 +1,7 @@
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject, } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem } from '@testing-helpers';
+import { TestLogger, createMemFileSystem } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
@@ -12,16 +12,18 @@ describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;
   let mockAppConfig: YamlConfig;
   let generator: IShellInitGenerator;
+  let logger: TestLogger;
 
   const DEFAULT_COMPLETIONS_DIR = '/test/home/.dotfiles/.generated/completions';
   const DEFAULT_BIN_DIR = '/test/home/.dotfiles/.generated/bin';
   const DEFAULT_DOTFILES_DIR = '/test/home/.dotfiles';
 
   beforeEach(async () => {
-    const { fs } = await createMemFileSystem({
-    });
+    const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
+    logger = new TestLogger();
     mockAppConfig = await createYamlConfigFromObject(
+      logger,
       fs,
       {
         paths: {
@@ -34,7 +36,7 @@ describe('ShellInitGenerator', () => {
       { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
       {}
     );
-    generator = new ShellInitGenerator(mockFileSystem, mockAppConfig);
+    generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
   });
 
   const getExpectedHeader = (dotfilesDir: string) => [
@@ -405,11 +407,11 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('export TOOL_A_VAR="set"');
     expect(content).toContain('export TOOL_C_VAR="active"');
   });
-
   it('should return null if writeFile fails', async () => {
     const { fs, spies } = await createMemFileSystem();
     spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));
-    const generatorWithFailingWrite = new ShellInitGenerator(fs, mockAppConfig);
+    const logger = new TestLogger();
+    const generatorWithFailingWrite = new ShellInitGenerator(logger, fs, mockAppConfig);
     const resultPath = await generatorWithFailingWrite.generate({});
     expect(resultPath).toBeNull();
   });

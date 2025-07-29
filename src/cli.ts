@@ -31,14 +31,13 @@ import {
   type IGitHubApiClient,
 } from '@modules/github-client';
 import { Installer, type IInstaller } from '@modules/installer';
-import { createClientLogger, createLogger } from '@modules/logger';
+import { type TsLogger, createTsLogger } from '@modules/logger';
 import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
 
-const internalLog = createLogger('cli');
 export interface Services {
   yamlConfig: YamlConfig;
   fs: IFileSystem;
@@ -60,21 +59,23 @@ type SetupServicesOptions = GlobalProgramOptions & {
 }
 
 export async function setupServices(
+  parentLogger: TsLogger,
   options: SetupServicesOptions
 ): Promise<Services> {
-  internalLog('setupServices: options=%o', options);
+  const logger = parentLogger.getSubLogger({ name: 'setupServices' });
+  logger.trace('options=%o', options);
   const { dryRun, env, config } = options;
 
   // Initialize filesystem first
   let fs: IFileSystem;
   if (dryRun) {
-    internalLog('setupServices: Dry run enabled. Initializing MemFileSystem.');
+    logger.trace('Dry run enabled. Initializing MemFileSystem.');
     fs = new MemFileSystem({});
   } else {
     fs = new NodeFileSystem();
   }
 
-  internalLog('setupServices: Using IFileSystem implementation: %s', fs.constructor.name);
+  logger.trace('Using IFileSystem implementation: %s', fs.constructor.name);
 
   const systemInfo: SystemInfo = {
     platform: process.platform,
@@ -83,22 +84,19 @@ export async function setupServices(
   };
 
   const userConfigPath = config.length === 0 ? path.resolve(options.cwd, 'config.yaml') : config;
-  const yamlConfig = await loadYamlConfig(fs,  userConfigPath, systemInfo, env);
+  const yamlConfig = await loadYamlConfig(logger, fs, userConfigPath, systemInfo, env);
 
   // console.log('yamlConfig', yamlConfig);
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    internalLog('setupServices: Loading tool configs into MemFileSystem for dry run.');
+    logger.trace('Loading tool configs into MemFileSystem for dry run.');
     const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
     const nodeFs = new NodeFileSystem();
 
     try {
       if (await nodeFs.exists(realToolConfigsDir)) {
-        internalLog(
-          'setupServices: Reading tool configs from actual directory: %s',
-          realToolConfigsDir
-        );
+        logger.trace('Reading tool configs from actual directory: %s', realToolConfigsDir);
         const filesInDir = await nodeFs.readdir(realToolConfigsDir);
 
         for (const fileName of filesInDir) {
@@ -108,45 +106,38 @@ export async function setupServices(
               const content = await nodeFs.readFile(filePath, 'utf8');
               await fs.ensureDir(realToolConfigsDir);
               await fs.writeFile(filePath, content);
-              internalLog('setupServices: Added tool config %s to MemFileSystem.', filePath);
+              logger.trace('Added tool config %s to MemFileSystem.', filePath);
             } catch (readError) {
-              internalLog(
-                'setupServices: Error reading tool file %s for dry run: %O',
-                filePath,
-                readError
-              );
+              logger.warn('Error reading tool file %s for dry run: %O', filePath, readError);
               // Optionally, decide whether to throw or continue. For now, logging and continuing.
             }
           }
         }
       } else {
-        internalLog(
-          'setupServices: Tool configs directory %s does not exist on the real file system.',
+        logger.warn(
+          'Tool configs directory %s does not exist on the real file system.',
           realToolConfigsDir
         );
       }
     } catch (err) {
-      internalLog(
-        'setupServices: Error accessing tool configs directory %s for dry run: %O',
-        realToolConfigsDir,
-        err
-      );
+      logger.error('Error accessing tool configs directory %s for dry run: %O', realToolConfigsDir, err);
       // Optionally, decide whether to throw or continue.
     }
   }
 
   // Initialize services with yamlConfig
-  const downloader = new Downloader(fs);
-  downloader.registerStrategy(new NodeFetchStrategy(fs));
+  const downloader = new Downloader(parentLogger, fs);
+  downloader.registerStrategy(new NodeFetchStrategy(parentLogger, fs));
 
-  const githubApiCache = new FileGitHubApiCache(fs, yamlConfig);
-  const githubApiClient = new GitHubApiClient(yamlConfig, downloader, githubApiCache);
+  const githubApiCache = new FileGitHubApiCache(parentLogger, fs, yamlConfig);
+  const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
 
-  const shimGenerator = new ShimGenerator(fs, yamlConfig);
-  const shellInitGenerator = new ShellInitGenerator(fs, yamlConfig);
-  const symlinkGenerator = new SymlinkGenerator(fs, yamlConfig);
+  const shimGenerator = new ShimGenerator(parentLogger, fs, yamlConfig);
+  const shellInitGenerator = new ShellInitGenerator(parentLogger, fs, yamlConfig);
+  const symlinkGenerator = new SymlinkGenerator(parentLogger, fs, yamlConfig);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
+    parentLogger,
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
@@ -154,11 +145,18 @@ export async function setupServices(
     yamlConfig
   );
 
-  const archiveExtractor = new ArchiveExtractor(fs);
-  const installer = new Installer(fs, downloader, githubApiClient, archiveExtractor, yamlConfig);
-  const versionChecker = new VersionChecker(githubApiClient);
+  const archiveExtractor = new ArchiveExtractor(parentLogger, fs);
+  const installer = new Installer(
+    logger,
+    fs,
+    downloader,
+    githubApiClient,
+    archiveExtractor,
+    yamlConfig,
+  );
+  const versionChecker = new VersionChecker(logger, githubApiClient);
 
-  internalLog('setupServices: Services initialized.');
+  logger.trace('Services initialized.');
   return {
     yamlConfig,
     fs,
@@ -192,40 +190,42 @@ export function createProgram() {
   return program;
 }
 
-export function registerAllCommands(program: GlobalProgram, services: Services) {
-  registerInstallCommand(program, services);
-  registerGenerateCommand(program, services);
-  registerCleanupCommand(program, services);
-  registerCheckUpdatesCommand(program, services);
-  registerUpdateCommand(program, services);
-  registerDetectConflictsCommand(program, services);
+export function registerAllCommands(parentLogger: TsLogger, program: GlobalProgram, services: Services) {
+  const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
+  registerInstallCommand(logger, program, services);
+  registerGenerateCommand(logger, program, services);
+  registerCleanupCommand(logger, program, services);
+  registerCheckUpdatesCommand(logger, program, services);
+  registerUpdateCommand(logger, program, services);
+  registerDetectConflictsCommand(logger, program, services);
 }
 
 export type GlobalProgram = ReturnType<typeof createProgram>;
 export type GlobalProgramOptions = ReturnType<GlobalProgram['opts']>;
 
-export async function main(argv: string[]) {
+export async function main(parentLogger: TsLogger, argv: string[]) {
+  const logger = parentLogger.getSubLogger({ name: 'main' });
   const program = createProgram();
-  const mainLogger = createClientLogger();
 
-  mainLogger.debug('CLI starting with arguments:', argv);
+  logger.trace('CLI starting with arguments:', argv);
 
   program.parseOptions(argv);
 
-  const services = await setupServices({ 
+  const services = await setupServices(logger, {
     ...program.opts(),
     cwd: process.cwd(),
     env: process.env,
   });
 
-  registerAllCommands(program, services);
+  registerAllCommands(logger, program, services);
   await program.parseAsync(argv);
 }
 
 // Only run main if the script is executed directly
 if (import.meta.main) {
-  main(process.argv).catch((error) => {
-    internalLog('main: Top-level unhandled error in main().catch(): %O', error);
+  const rootLogger = createTsLogger('cli');
+  main(rootLogger, process.argv).catch((error) => {
+    rootLogger.fatal('Top-level unhandled error in main().catch(): %O', error);
     process.exit(1);
   });
 }

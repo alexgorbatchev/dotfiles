@@ -19,14 +19,20 @@
  * - Update the memory bank.
  */
 
-import { expect, test, describe, spyOn, mock } from 'bun:test';
+import { expect, test, describe, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
-import * as clientLoggerModule from '@modules/logger';
+import { TestLogger } from '@testing-helpers';
 
 describe('ToolConfigBuilder', () => {
+  let logger: TestLogger;
+
+  beforeEach(() => {
+    logger = new TestLogger();
+  });
+
   test('constructor initializes with default values', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     expect((builder as any).toolName).toBe('test-tool');
     expect((builder as any).versionNum).toBe('latest');
     expect((builder as any).binaries).toEqual([]);
@@ -38,23 +44,23 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('bin method sets binaries correctly', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     expect((builder as any).binaries).toEqual(['test-bin']);
 
-    const builder2 = new ToolConfigBuilder('test-tool');
+    const builder2 = new ToolConfigBuilder(logger, 'test-tool');
     builder2.bin(['bin1', 'bin2']);
     expect((builder2 as any).binaries).toEqual(['bin1', 'bin2']);
   });
 
   test('version method sets version correctly', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.version('1.2.3');
     expect((builder as any).versionNum).toBe('1.2.3');
   });
 
   test('install method sets installation method and params correctly', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin(['test-bin']); // Add bin to make build valid
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     builder.install('github-release', installParams);
@@ -67,7 +73,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('hooks method sets hooks correctly on installParams', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin(['test-bin']); // Add bin to make build valid
     const mockHook: AsyncInstallHook = async () => {};
     const hooks = { beforeInstall: mockHook };
@@ -83,34 +89,25 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('hooks method does not set hooks and warns if install was not called first', () => {
-    const mockWarn = mock(() => {});
-    const mockCreateClientLogger = spyOn(clientLoggerModule, 'createClientLogger').mockReturnValue({
-      info: mock(() => {}),
-      warn: mockWarn,
-      error: mock(() => {}),
-      debug: mock(() => {}),
-      success: mock(() => {}),
-    } as any);
-
-    const builder = new ToolConfigBuilder('test-tool');
+    const testLogger = new TestLogger();
+    const builder = new ToolConfigBuilder(testLogger, 'test-tool');
     const mockHook: AsyncInstallHook = async () => {};
     const hooksData = { beforeInstall: mockHook };
     builder.hooks(hooksData); // Call hooks without install
 
     // Check internal state directly
     expect((builder as any).currentInstallParams?.hooks).toBeUndefined();
-    // Check that warn was called
-    expect(mockWarn).toHaveBeenCalledTimes(1);
-    expect(mockWarn).toHaveBeenCalledWith(
-      `[ToolConfigBuilder] hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.`
+    
+    // Use TestLogger.expect() to verify the warning was logged
+    testLogger.expect(
+      ['WARN'],
+      ['ToolConfigBuilder'],
+      ['hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.']
     );
-
-    // Restore mocks
-    mockCreateClientLogger.mockRestore();
   });
 
   test('zsh method adds zsh code correctly to zshInit', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.zsh('alias ll="ls -l"');
     builder.zsh('export PATH="$HOME/bin:$PATH"');
     // build() is valid here as zshInit is provided
@@ -118,7 +115,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('symlink method adds symlinks correctly', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.symlink('configs/.mytoolrc', '~/.mytoolrc');
     builder.symlink('configs/another.conf', '~/.config/another.conf');
     // build() is valid here as symlinks are provided
@@ -129,14 +126,14 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('completions method sets completion configuration correctly', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     const completionConfig = { zsh: { source: 'completion.zsh' } };
     builder.completions(completionConfig);
     expect((builder as any).completionSettings).toEqual(completionConfig);
   });
 
   test('build method returns correct ToolConfig object for github-release', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     const mockHook: AsyncInstallHook = async () => {};
     const hooks = { afterInstall: mockHook };
@@ -168,7 +165,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns NoInstallToolConfig if binaries are specified but no installation method', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin(['test-bin']);
     const config = builder.build();
     expect(config.name).toBe('test-tool');
@@ -183,7 +180,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns NoInstallToolConfig if only zshInit is present', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.zsh('alias tt="test-tool"');
     const config = builder.build();
     expect(config.installationMethod).toBe('none'); // Should be 'none'
@@ -193,7 +190,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns NoInstallToolConfig if only symlinks are present', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.symlink('a', 'b');
     const config = builder.build();
     expect(config.installationMethod).toBe('none'); // Should be 'none'
@@ -203,14 +200,14 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method throws error if nothing is configured', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     expect(() => builder.build()).toThrow(
       'Tool "test-tool" must define at least binaries, zshInit, symlinks, or platformConfigs.'
     );
   });
 
   test('build method returns NoInstallToolConfig with binaries if set, but no install method', () => {
-    const builder = new ToolConfigBuilder('test-tool');
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin(['my-binary']);
     const config = builder.build();
     expect(config.installationMethod).toBe('none'); // Should be 'none'

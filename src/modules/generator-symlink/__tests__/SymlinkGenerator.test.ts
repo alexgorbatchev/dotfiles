@@ -1,7 +1,12 @@
 import type { YamlConfig } from '@modules/config';
 import { createYamlConfigFromObject } from '@modules/config-loader';
 import { MOCK_DEFAULT_CONFIG_OBJ } from '@modules/config-loader/__tests__/fixtures';
-import { createMemFileSystem, createTestDirectories, type MemFileSystemReturn } from '@testing-helpers';
+import {
+  TestLogger,
+  createMemFileSystem,
+  createTestDirectories,
+  type MemFileSystemReturn,
+} from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
@@ -12,14 +17,16 @@ describe('SymlinkGenerator', () => {
   let mockFs: MemFileSystemReturn;
   let yamlConfig: YamlConfig;
   let symlinkGenerator: SymlinkGenerator;
+  let logger: TestLogger;
 
   beforeEach(async () => {
     mock.restore();
+    logger = new TestLogger();
     mockFs = await createMemFileSystem();
-    yamlConfig = await createYamlConfigFromObject(mockFs.fs, MOCK_DEFAULT_CONFIG_OBJ);
-    symlinkGenerator = new SymlinkGenerator(mockFs.fs, yamlConfig);
+    yamlConfig = await createYamlConfigFromObject(logger, mockFs.fs, MOCK_DEFAULT_CONFIG_OBJ, { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' }, {});
+    symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, yamlConfig);
 
-    await createTestDirectories(mockFs.fs, { paths: yamlConfig.paths });
+    await createTestDirectories(logger, mockFs.fs, { paths: yamlConfig.paths });
   });
 
   const createToolConfig = (symlinks: Array<{ source: string; target: string }>): ToolConfig => ({

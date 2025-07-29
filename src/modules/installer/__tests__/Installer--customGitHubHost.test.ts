@@ -4,7 +4,12 @@ import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
-import { createMemFileSystem, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  createTestDirectories,
+  TestLogger,
+  type TestDirectories,
+} from '@testing-helpers';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, type Mock } from 'bun:test';
 import { Installer } from '../Installer';
@@ -22,6 +27,7 @@ describe('Installer with custom GitHub host', () => {
   let mockAppConfig: YamlConfig;
   let installer: Installer;
   let directories: TestDirectories;
+  let logger: TestLogger;
 
   let mockDownload: Mock<any>;
   let mockGetLatestRelease: Mock<any>;
@@ -29,7 +35,8 @@ describe('Installer with custom GitHub host', () => {
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem();
-    directories = await createTestDirectories(fs, { testName: 'installer-custom-host-tests' });
+    logger = new TestLogger();
+    directories = await createTestDirectories(logger, fs, { testName: 'installer-custom-host-tests' });
     mockFileSystem = fs;
 
     // Setup mock downloader
@@ -90,6 +97,7 @@ describe('Installer with custom GitHub host', () => {
 
     // Setup mock AppConfig with custom GitHub host
     mockAppConfig = await createYamlConfigFromObject(
+      logger,
       mockFileSystem,
       {
         paths: {
@@ -105,11 +113,12 @@ describe('Installer with custom GitHub host', () => {
 
     // Create installer instance
     installer = new Installer(
+      new TestLogger(),
       mockFileSystem,
       mockDownloader,
       mockGitHubApiClient,
       mockArchiveExtractor,
-      mockAppConfig
+      mockAppConfig,
     );
   });
 
@@ -179,34 +188,34 @@ describe('Installer with custom GitHub host', () => {
         Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })
       ),
     };
+// Create a new installer with the different mock
+const installerWithDifferentUrl = new Installer(
+  new TestLogger(),
+  mockFileSystem,
+  mockDownloader,
+  mockGitHubApiClientWithDifferentUrl,
+  mockArchiveExtractor,
+  mockAppConfig
+);
 
-    // Create a new installer with the different mock
-    const installerWithDifferentUrl = new Installer(
-      mockFileSystem,
-      mockDownloader,
-      mockGitHubApiClientWithDifferentUrl,
-      mockArchiveExtractor,
-      mockAppConfig
-    );
+const toolConfig: ToolConfig = {
+  name: toolName,
+  binaries: [toolName],
+  version: toolVersion,
+  installationMethod: 'github-release',
+  installParams: {
+    repo: githubRepo,
+    version: 'latest',
+    assetPattern: 'test-tool-linux-amd64',
+  },
+};
 
-    const toolConfig: ToolConfig = {
-      name: toolName,
-      binaries: [toolName],
-      version: toolVersion,
-      installationMethod: 'github-release',
-      installParams: {
-        repo: githubRepo,
-        version: 'latest',
-        assetPattern: 'test-tool-linux-amd64',
-      },
-    };
+await installerWithDifferentUrl.install(toolName, toolConfig);
 
-    await installerWithDifferentUrl.install(toolName, toolConfig);
-
-    // Verify that the download URL was used as-is (not modified)
-    expect(mockDownload).toHaveBeenCalledWith(
-      'https://some-other-site.com/downloads/test-tool-linux-amd64', // Expectation updated
-      expect.anything()
-    );
-  });
+// Verify that the download URL was used as-is (not modified)
+expect(mockDownload).toHaveBeenCalledWith(
+  'https://some-other-site.com/downloads/test-tool-linux-amd64', // Expectation updated
+  expect.anything()
+);
+});
 });

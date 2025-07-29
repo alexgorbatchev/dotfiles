@@ -51,7 +51,10 @@ describe('GitHubApiClient', () => {
 
     it("should return null if constraint is 'latest' and getLatestRelease fails with NotFoundError from downloader", async () => {
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError('https://api.github.com/repos/test-owner/test-repo/releases/latest')
+        new NotFoundError(
+          mocks.logger,
+          'https://api.github.com/repos/test-owner/test-repo/releases/latest',
+        ),
       );
       const release = await mocks.apiClient.getReleaseByConstraint(
         'test-owner',

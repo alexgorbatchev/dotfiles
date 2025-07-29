@@ -5,6 +5,7 @@ import {
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
+  TestLogger,
   type MockGitHubServerResult,
   type TestDirectories,
 } from '@testing-helpers';
@@ -30,7 +31,8 @@ describe('E2E: bun run cli generate', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      testDirs = await createTestDirectories(fs,{
+      const logger = new TestLogger();
+      testDirs = await createTestDirectories(logger, fs,{
         testName: 'cli-generate-e2e',
       });
 
@@ -54,6 +56,7 @@ describe('E2E: bun run cli generate', () => {
         },
         filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
         fileSystem: fs,
+        logger,
         systemInfo: {
           platform: 'linux',
           arch: 'x64',
@@ -215,7 +218,8 @@ describe('E2E: bun run cli generate', () => {
 
     beforeAll(async () => {
       fs = new NodeFileSystem();
-      testDirs = await createTestDirectories(fs,{
+      const logger = new TestLogger();
+      testDirs = await createTestDirectories(logger, fs,{
         testName: 'cli-generate-shim-execution',
         additionalDirs: {
           'temp-archive-source': { path: 'temp-archive-source' },
@@ -270,6 +274,7 @@ describe('E2E: bun run cli generate', () => {
         },
         filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
         fileSystem: fs,
+        logger,
         systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir },
         env: {},
       });

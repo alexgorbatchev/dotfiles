@@ -2,6 +2,7 @@ import { createYamlConfigFromObject, } from '@modules/config-loader';
 import { describe, expect, it } from 'bun:test';
 import { stringify } from 'yaml';
 import { createMemFileSystem } from '../createMemFileSystem';
+import { TestLogger } from '../TestLogger';
 import { createMockYamlConfig, type PartialYamlConfig } from '../createMockYamlConfig';
 
 describe('createMockYamlConfig', () => {
@@ -18,6 +19,7 @@ describe('createMockYamlConfig', () => {
 
   it('should write the YAML string to the specified path', async () => {
     const { fs } = await createMemFileSystem();
+    const logger = new TestLogger();
     const filePath = '/test.yaml';
     const systemInfo = { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' };
     const env = {};
@@ -25,11 +27,12 @@ describe('createMockYamlConfig', () => {
       config: mockConfig,
       filePath,
       fileSystem: fs,
+      logger,
       systemInfo,
       env,
     });
     const fileContent = await fs.readFile(filePath, 'utf8');
-    const expectedConfig = await createYamlConfigFromObject(fs, mockConfig, systemInfo, env);
+    const expectedConfig = await createYamlConfigFromObject(logger, fs, mockConfig, systemInfo, env);
     expect(fileContent).toBe(stringify(expectedConfig));
   });
 });

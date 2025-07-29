@@ -60,7 +60,7 @@ describe('GitHubApiClient', () => {
       const url =
         'https://api.github.com/repos/test-owner/test-repo/releases/tags/non-existent-tag';
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(url, new Error('Original 404 from downloader'))
+        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader')),
       );
       const release = await mocks.apiClient.getReleaseByTag(
         'test-owner',
@@ -75,14 +75,15 @@ describe('GitHubApiClient', () => {
       const resetTimestamp = Date.now() + 1800 * 1000;
       mocks.mockDownloader.download.mockRejectedValue(
         new RateLimitError(
+          mocks.logger,
           'Rate limited',
           url,
           429,
           'Too Many Requests',
           undefined, // responseBody
           {}, // headers
-          resetTimestamp
-        )
+          resetTimestamp,
+        ),
       );
 
       expect(
@@ -104,7 +105,9 @@ describe('GitHubApiClient', () => {
 
     it('should throw a GitHubApiClientError for other failures (ClientError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0';
-      mocks.mockDownloader.download.mockRejectedValue(new ClientError(url, 400, 'Bad Request'));
+      mocks.mockDownloader.download.mockRejectedValue(
+        new ClientError(mocks.logger, url, 400, 'Bad Request'),
+      );
 
       expect(
         mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0')
