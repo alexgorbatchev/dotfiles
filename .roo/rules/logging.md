@@ -11,7 +11,7 @@ import { Logger } from 'tslog';
 const logger = new Logger();
 ```
 
-A sublogger must be created for each class, method and function:
+A sublogger must be created for each class, method and function. `logger: Logger` must always be the first argument.
 
 ```typescript
 class MyClass {
@@ -44,36 +44,35 @@ beforeEach(() => {
 });
 
 it('...', () => {
-  const logs = logger.getLogs(['TRACE'], ['TestTarget', 'myMethod']);
+  // method signatures
+  // printLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): void 
+  // getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] 
+  // expect(levels: LogLevel[], path: string[], matchers: (string | RegExp)[]): void
 
-  /*
-  `logs` content is [ 
-    {
-      "0": "message1",
-      "1": "message2",
-      "2": {
-        toolName: "...",
-        toolConfig: [Object ...],
-        options: undefined,
-      },
-      _meta: {
-        logLevelName: "TRACE",
-        name: "myMethod",
-        parentNames: [ "TestTarget" ],
-        ...
-      },
-    }
-  ];
-  */
-
-  // Use `printLogs` to print the logs to console FOR DEBUGGING PURPOSES ONLY.
-  // `printLogs` must be always removed from tests before completing the task.
-  logger.printLogs(['TRACE'], ['TestTarget', 'myMethod']);
+  // will pass if all matchers are found exactly once in same order
+  logger.expect(['TRACE'], ['TestTarget', 'myMethod'], ['message 1', /message 2/]);
 });
 ```
 
 ## Log Levels
 
 The project must support the following log levels:
-  - `TRACE`, `DEBUG`: These messages are must be used for internal tracing and debugging. They are not user facing and may include objects.
+  - `TRACE`: These messages are must be used for internal tracing and debugging. They are not user facing and may include objects.
   - `INFO`, `WARN`, `ERROR`, `FATAL`: Printed to `stderr` and `stdout` and are user facing. Log messages at these levels must be human readable and must never include objects.
+
+
+## createLogger and createClientLogger migration
+
+To migrate from `createLogger` and `createClientLogger` to `tslog`, follow these steps:
+
+1. Remove `createLogger` and `createClientLogger` imports.
+2. Remove variables that are created using `createLogger` and `createClientLogger`.
+3. Add `import { type TsLogger, createTsLogger } from '@modules/logger'`
+4. Add `parentLogger: TsLogger` as the first argument to the class, method or function.
+5. Create a sublogger: `const logger = parentLogger.getSubLogger({ name: '...' });` where `name` is the name of the class, method or function.
+6. `createLogger` must be replaced with `logger.debug()`;
+7. `createClientLogger` must be replaced with `logger.info()`, `logger.warn()`, `logger.error()` or `logger.fatal()`.
+8. Update tests to use `TestLogger` from `@testing-helpers` and `logger.getLogs()` to get logs for testing. Use `bun run test {file}` to run tests.
+9. Do not leave any new comments.
+10. Do not make any other changes to the code.
+11. When tests are passing, the task is complete.

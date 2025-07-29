@@ -80,7 +80,7 @@ describe('TestLogger', () => {
     });
 
     it('should print logs to the console', () => {
-      const logger = new TestLogger({name: 'TestLogger'});
+      const logger = new TestLogger({ name: 'TestLogger' });
       logger.info('info message');
       logger.warn('warn message');
 
@@ -88,7 +88,9 @@ describe('TestLogger', () => {
 
       logger.printLogs(['INFO'], ['TestLogger']);
       expect(consoleSpy).toHaveBeenCalledTimes(1);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify ({ '0': 'info message' } )));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(JSON.stringify({ '0': 'info message' }))
+      );
 
       consoleSpy.mockClear();
 
@@ -96,6 +98,85 @@ describe('TestLogger', () => {
       expect(consoleSpy).toHaveBeenCalledTimes(2);
 
       consoleSpy.mockRestore();
+    });
+
+    describe('with matcher', () => {
+      it('should filter logs by a string matcher', () => {
+        const logger = new TestLogger();
+        logger.info('info message 1');
+        logger.info('info message 2');
+
+        const logs = logger.getLogs(['INFO'], [], 'message 1');
+        expect(logs).toHaveLength(1);
+        expect(logs[0]?.[0]).toMatch('info message 1');
+      });
+
+      it('should filter logs by a regex matcher', () => {
+        const logger = new TestLogger();
+        logger.info('info message 1');
+        logger.info('info message 2');
+
+        const logs = logger.getLogs(['INFO'], [], /message 2/);
+        expect(logs).toHaveLength(1);
+        expect(logs[0]?.[0]).toMatch('info message 2');
+      });
+
+      it('should return no logs if matcher does not match', () => {
+        const logger = new TestLogger();
+        logger.info('info message 1');
+
+        const logs = logger.getLogs(['INFO'], [], 'no match');
+        expect(logs).toHaveLength(0);
+      });
+
+      it('should not match if the log argument is not a string', () => {
+        const logger = new TestLogger();
+        logger.info({ message: 'info message 1' });
+
+        const logs = logger.getLogs(['INFO'], [], 'info message 1');
+        expect(logs).toHaveLength(0);
+      });
+
+      it('should print filtered logs to the console', () => {
+        const logger = new TestLogger({ name: 'TestLogger' });
+        logger.info('info message 1');
+        logger.info('info message 2');
+
+        const consoleSpy = spyOn(console, 'log').mockImplementation(() => {});
+
+        logger.printLogs(['INFO'], ['TestLogger'], 'message 1');
+        expect(consoleSpy).toHaveBeenCalledTimes(1);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining(JSON.stringify({ '0': 'info message 1' }))
+        );
+
+        consoleSpy.mockRestore();
+      });
+    });
+  });
+
+  describe('expect', () => {
+    it('should match each log with the corresponding matcher', () => {
+      const logger = new TestLogger();
+      logger.info('info message 1');
+      logger.info('info message 2');
+
+      logger.expect(['INFO'], [], ['info message 1', 'info message 2']);
+    });
+
+    it.failing('should fail if the number of logs does not match the number of matchers', () => {
+      const logger = new TestLogger();
+      logger.info('info message 1');
+
+      logger.expect(['INFO'], [], ['message 1', 'message 2']);
+    });
+
+    it.failing('should fail if a log does not match the corresponding matcher', () => {
+      const logger = new TestLogger();
+      logger.info('info message 1');
+      logger.info('info message 2');
+
+      logger.expect(['INFO'], [], ['info message 1', 'unmatched']);
     });
   });
 });
