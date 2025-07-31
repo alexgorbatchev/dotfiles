@@ -119,8 +119,8 @@ export async function setupServices(
           realToolConfigsDir
         );
       }
-    } catch (err) {
-      logger.error('Error accessing tool configs directory %s for dry run: %O', realToolConfigsDir, err);
+    } catch (error) {
+      logger.error('Error accessing tool configs directory %s for dry run: %O', realToolConfigsDir, error);
       // Optionally, decide whether to throw or continue.
     }
   }

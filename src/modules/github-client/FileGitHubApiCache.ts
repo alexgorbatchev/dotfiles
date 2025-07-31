@@ -67,8 +67,8 @@ export class FileGitHubApiCache implements IGitHubApiCache {
           key,
           new Date(entry.expiresAt).toISOString(),
         );
-        await this.delete(key).catch(err => {
-          logger.debug('Error deleting expired entry: %s', err.message);
+        await this.delete(key).catch(error => {
+          logger.debug('Error deleting expired entry: %s', error.message);
         });
         return null;
       }
@@ -221,21 +221,21 @@ export class FileGitHubApiCache implements IGitHubApiCache {
           const entry = JSON.parse(content) as CacheEntry<unknown>;
 
           if (this.isExpired(entry)) {
-            await this.fileSystem.rm(filePath).catch(err => {
+            await this.fileSystem.rm(filePath).catch(error => {
               logger.debug(
                 'Error removing expired file %s: %s',
                 filePath,
-                (err as Error).message,
+                (error as Error).message,
               );
             });
             expiredCount++;
           }
-        } catch (err) {
+        } catch (error) {
           // If we can't read or parse a file, consider it corrupted and remove it
           logger.debug(
             'Error processing file %s: %s, removing it',
             file,
-            (err as Error).message,
+            (error as Error).message,
           );
           await this.fileSystem.rm(filePath).catch(() => {
             // Ignore errors when trying to remove already problematic files

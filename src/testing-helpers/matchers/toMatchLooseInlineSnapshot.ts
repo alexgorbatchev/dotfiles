@@ -67,10 +67,10 @@ expect.extend({
             ? `Expected string not to match pattern, but it did.\nPattern:\n${fullRegex}`
             : `Expected string to match pattern, but it didn’t.\nPattern:\n${fullRegex}\n\nReceived:\n${received}`,
       };
-    } catch (err) {
+    } catch (error) {
       return {
         pass: false,
-        message: () => `Invalid regex: ${(err as Error).message}\n\nPattern:\n${fullRegex}`,
+        message: () => `Invalid regex: ${(error as Error).message}\n\nPattern:\n${fullRegex}`,
       };
     }
   },

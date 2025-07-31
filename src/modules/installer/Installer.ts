@@ -831,85 +831,85 @@ export class Installer implements IInstaller {
       }
 
       // Find the binary in the extracted directory
-      let finalBinaryPathCurl: string; // Renamed to avoid conflict
+      let finalBinaryPath: string;
       // extractPathInArchive is from toolConfig.installParams.extractPath (renamed for clarity)
       const extractPathInArchive = params.extractPath as string | undefined; // Explicitly type
       if (extractPathInArchive) {
-        finalBinaryPathCurl = path.join(extractDir, extractPathInArchive);
+        finalBinaryPath = path.join(extractDir, extractPathInArchive);
       } else if (extractResult.executables && extractResult.executables.length > 0) {
         const exeMatchingToolName = extractResult.executables.find(
           (exe) => path.basename(exe) === toolName
         );
 
         if (exeMatchingToolName) {
-          finalBinaryPathCurl = path.join(extractDir, exeMatchingToolName);
+          finalBinaryPath = path.join(extractDir, exeMatchingToolName);
         } else {
-          finalBinaryPathCurl = path.join(extractDir, extractResult.executables[0] as string);
+          finalBinaryPath = path.join(extractDir, extractResult.executables[0] as string);
         }
-        logger.debug('installFromCurlTar: Found executable in archive: %s', finalBinaryPathCurl);
+        logger.debug('installFromCurlTar: Found executable in archive: %s', finalBinaryPath);
       } else if (extractResult.extractedFiles && extractResult.extractedFiles.length === 1) {
-        finalBinaryPathCurl = path.join(extractDir, extractResult.extractedFiles[0] as string);
+        finalBinaryPath = path.join(extractDir, extractResult.extractedFiles[0] as string);
         logger.debug(
           'installFromCurlTar: Assuming single extracted file is binary: %s',
-          finalBinaryPathCurl,
+          finalBinaryPath,
         );
       } else {
         const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
         if (potentialBinary) {
-          finalBinaryPathCurl = path.join(extractDir, potentialBinary);
+          finalBinaryPath = path.join(extractDir, potentialBinary);
           logger.debug(
             'installFromCurlTar: Fallback, found potential binary: %s',
-            finalBinaryPathCurl,
+            finalBinaryPath,
           );
         } else {
           logger.debug(
             'installFromCurlTar: Could not determine binary path in extracted archive. Defaulting to toolName in extractDir.',
           );
-          finalBinaryPathCurl = path.join(extractDir, toolName);
+          finalBinaryPath = path.join(extractDir, toolName);
         }
       }
-      otherChanges.push(`Determined binary path after extraction: ${finalBinaryPathCurl}`);
+      otherChanges.push(`Determined binary path after extraction: ${finalBinaryPath}`);
 
-      if (!(await this.fs.exists(finalBinaryPathCurl))) {
+      if (!(await this.fs.exists(finalBinaryPath))) {
         return {
           success: false,
-          error: `Binary not found at expected path after extraction: ${finalBinaryPathCurl}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
+          error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
           otherChanges,
         };
       }
 
       // Make the binary executable (still in extractDir at this point)
-      logger.debug('installFromCurlTar: Making binary executable: %s', finalBinaryPathCurl);
-      await this.fs.chmod(finalBinaryPathCurl, 0o755);
-      otherChanges.push(`Set executable permission (0755) on: ${finalBinaryPathCurl}`);
+      logger.debug('installFromCurlTar: Making binary executable: %s', finalBinaryPath);
+      await this.fs.chmod(finalBinaryPath, 0o755);
+      otherChanges.push(`Set executable permission (0755) on: ${finalBinaryPath}`);
 
       // Determine the final destination path for the binary, directly in context.installDir
-      const finalFileNameCurl = moveBinaryTo || path.basename(finalBinaryPathCurl);
-      const actualFinalBinaryDestPathCurl = path.join(context.installDir, finalFileNameCurl);
+      const finalFileName = moveBinaryTo || path.basename(finalBinaryPath);
+      const actualFinalBinaryDestPath = path.join(context.installDir, finalFileName);
 
-      if (finalBinaryPathCurl !== actualFinalBinaryDestPathCurl) {
+      if (finalBinaryPath !== actualFinalBinaryDestPath) {
         logger.debug(
           'installFromCurlTar: Moving binary from %s to %s',
-          finalBinaryPathCurl,
-          actualFinalBinaryDestPathCurl,
+          finalBinaryPath,
+          actualFinalBinaryDestPath,
         );
-        await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPathCurl)); // Ensure parent dir of final destination exists
+        await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
 
         // Copy the file from extractDir to its final place in installDir
-        await this.fs.copyFile(finalBinaryPathCurl, actualFinalBinaryDestPathCurl);
+        await this.fs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
         otherChanges.push(
-          `Copied binary from ${finalBinaryPathCurl} to ${actualFinalBinaryDestPathCurl}.`
+          `Copied binary from ${finalBinaryPath} to ${actualFinalBinaryDestPath}.`
         );
         // Ensure the copied file is executable
-        await this.fs.chmod(actualFinalBinaryDestPathCurl, 0o755);
-        otherChanges.push(`Set executable permission (0755) on: ${actualFinalBinaryDestPathCurl}`);
+        await this.fs.chmod(actualFinalBinaryDestPath, 0o755);
+        otherChanges.push(`Set executable permission (0755) on: ${actualFinalBinaryDestPath}`);
 
-        // Update finalBinaryPathCurl to the new location
-        finalBinaryPathCurl = actualFinalBinaryDestPathCurl;
+        // Update finalBinaryPath to the new location
+        finalBinaryPath = actualFinalBinaryDestPath;
       } else {
         logger.debug(
           'installFromCurlTar: Binary already at final destination: %s',
-          finalBinaryPathCurl,
+          finalBinaryPath,
         );
       }
 
@@ -917,15 +917,15 @@ export class Installer implements IInstaller {
       if (
         context.extractDir &&
         (await this.fs.exists(context.extractDir)) &&
-        finalBinaryPathCurl.startsWith(context.installDir) &&
-        !finalBinaryPathCurl.startsWith(context.extractDir)
+        finalBinaryPath.startsWith(context.installDir) &&
+        !finalBinaryPath.startsWith(context.extractDir)
       ) {
         logger.debug('installFromCurlTar: Cleaning up extractDir: %s', context.extractDir);
         await this.fs.rm(context.extractDir, { recursive: true, force: true });
         otherChanges.push(`Cleaned up temporary extraction directory: ${context.extractDir}`);
       } else if (
         // Clean up downloaded tarball if it was extracted and binary moved
-        tarballPath !== finalBinaryPathCurl &&
+        tarballPath !== finalBinaryPath &&
         (await this.fs.exists(tarballPath))
       ) {
         logger.debug('installFromCurlTar: Cleaning up downloaded tarball: %s', tarballPath);
@@ -935,7 +935,7 @@ export class Installer implements IInstaller {
 
       return {
         success: true,
-        binaryPath: finalBinaryPathCurl,
+        binaryPath: finalBinaryPath,
         info: {
           tarballUrl: url,
         },

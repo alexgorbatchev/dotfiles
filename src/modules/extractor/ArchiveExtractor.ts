@@ -264,8 +264,8 @@ export class ArchiveExtractor implements IArchiveExtractor {
             executables.push(file);
           }
         }
-      } catch (err) {
-        logger.debug('Error stating or chmoding file %s: %o', filePath, err);
+      } catch (error) {
+        logger.debug('Error stating or chmoding file %s: %o', filePath, error);
       }
     }
     return executables;

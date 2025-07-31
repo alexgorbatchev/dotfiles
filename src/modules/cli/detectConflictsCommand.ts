@@ -79,9 +79,9 @@ export async function detectConflictsActionLogic(
               );
             }
           }
-        } catch (err: any) {
-          if (err.code !== 'ENOENT') {
-            logger.warn(`Could not check symlink target '${targetPath}': ${err.message}`);
+        } catch (error: any) {
+          if (error.code !== 'ENOENT') {
+            logger.warn(`Could not check symlink target '${targetPath}': ${error.message}`);
           }
         }
       }

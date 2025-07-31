@@ -211,8 +211,8 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch(err => {
-    console.error("Unhandled error in main:", err);
+  main().catch(error => {
+    console.error("Unhandled error in main:", error);
     process.exit(1);
   });
 }
