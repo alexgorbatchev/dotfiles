@@ -23,6 +23,7 @@ import { expect, test, describe, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
 import { TestLogger } from '@testing-helpers';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 
 describe('ToolConfigBuilder', () => {
   let logger: TestLogger;
@@ -102,7 +103,7 @@ describe('ToolConfigBuilder', () => {
     testLogger.expect(
       ['WARN'],
       ['ToolConfigBuilder'],
-      ['hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.']
+      ['Configuration field "hooks" ignored: hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.']
     );
   });
 
@@ -202,7 +203,7 @@ describe('ToolConfigBuilder', () => {
   test('build method throws error if nothing is configured', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     expect(() => builder.build()).toThrow(
-      'Tool "test-tool" must define at least binaries, zshInit, symlinks, or platformConfigs.'
+      'Required configuration missing: tool definition. Example: Tool "test-tool" must define at least binaries, zshInit, symlinks, or platformConfigs'
     );
   });
 
@@ -213,5 +214,55 @@ describe('ToolConfigBuilder', () => {
     expect(config.installationMethod).toBe('none'); // Should be 'none'
     expect(config.installParams).toBeUndefined();
     expect(config.binaries).toEqual(['my-binary']);
+  });
+
+  test('build method should log error when invalid installation method is set', () => {
+    const testLogger = new TestLogger();
+    const builder = new ToolConfigBuilder(testLogger, 'test-tool');
+    builder.bin(['test-binary']);
+    // Manually set an invalid installation method to test the switch default case
+    (builder as any).currentInstallationMethod = 'invalid-method';
+    (builder as any).currentInstallParams = { repo: 'test/repo' };
+
+    let thrownError: Error | null = null;
+    try {
+      builder.build();
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    expect(thrownError).toBeInstanceOf(Error);
+    expect(thrownError!.message).toContain('Invalid installationMethod');
+
+    testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
+      ErrorTemplates.config.invalid(
+        'installationMethod',
+        'invalid-method',
+        'github-release | brew | curl-script | curl-tar | manual'
+      )
+    ]);
+  });
+
+  test('build method should log error when no configuration is provided', () => {
+    const testLogger = new TestLogger();
+    const builder = new ToolConfigBuilder(testLogger, 'empty-tool');
+    // Don't set any configuration - this should trigger the "nothing configured" error
+
+    let thrownError: Error | null = null;
+    try {
+      builder.build();
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    expect(thrownError).toBeInstanceOf(Error);
+    expect(thrownError!.message).toContain('Required configuration missing: tool definition');
+
+    testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
+      ErrorTemplates.config.required(
+        'tool definition',
+        'Tool "empty-tool" must define at least binaries, zshInit, symlinks, or platformConfigs'
+      )
+    ]);
   });
 });

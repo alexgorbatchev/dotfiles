@@ -135,7 +135,7 @@ describe('cleanupCommand', () => {
       ['registerCleanupCommand', 'cleanupActionLogic'],
       [
         'Starting cleanup...',
-        `Manifest file not found at ${mockYamlConfig.paths.manifestPath}.`,
+        `Manifest file not found: ${mockYamlConfig.paths.manifestPath}`,
         `Successfully deleted generated directory: ${mockYamlConfig.paths.generatedDir}`,
         'Cleanup complete.',
       ],

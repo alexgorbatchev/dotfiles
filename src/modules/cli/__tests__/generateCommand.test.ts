@@ -6,6 +6,7 @@ import {
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
 } from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import { TestLogger } from '@testing-helpers';
 import { createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
@@ -110,6 +111,6 @@ describe('generateCommand', () => {
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    logger.expect(['ERROR'], ['registerGenerateCommand'], [/Critical error in generate command/]);
+    logger.expect(['ERROR'], ['registerGenerateCommand'], [ErrorTemplates.command.executionFailed('generate', 1, 'Generation failed')]);
   });
 });

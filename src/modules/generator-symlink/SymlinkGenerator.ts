@@ -9,6 +9,7 @@ import type {
   SymlinkOperationResult,
 } from './ISymlinkGenerator';
 import { expandHomePath } from '@utils';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
@@ -73,9 +74,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         if (!(await this.fs.exists(sourceAbsPath))) {
           currentStatus = 'skipped_source_missing';
           logger.warn(
-            'Source file "%s" for tool "%s" does not exist. Skipping symlink.',
-            sourceAbsPath,
-            toolName,
+            WarningTemplates.fs.notFound('Source file', sourceAbsPath)
           );
           results.push({
             sourcePath: sourceAbsPath,
@@ -120,9 +119,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             try {
               if (await this.fs.exists(backupPath)) {
                 logger.warn(
-                  'Backup path "%s" already exists. Deleting it before new backup using %s.',
-                  backupPath,
-                  this.fs.constructor.name,
+                  WarningTemplates.fs.overwriting(backupPath)
                 );
                 await this.fs.rm(backupPath, { recursive: true, force: true });
               }
@@ -136,8 +133,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               );
             } catch (e: any) {
               currentStatus = 'failed';
-              currentError = `Backup failed for "${targetAbsPath}": ${e.message}`;
-              logger.error(currentError);
+              const errorMsg = ErrorTemplates.fs.writeFailed(`backup of ${targetAbsPath}`, e.message);
+              currentError = errorMsg;
+              logger.error(errorMsg);
             }
           }
 
@@ -162,8 +160,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               // Status remains 'updated_target' or 'backed_up'
             } catch (e: any) {
               currentStatus = 'failed';
-              currentError = `Delete for overwrite failed for "${targetAbsPath}": ${e.message}`;
-              logger.error(currentError);
+              const errorMsg = ErrorTemplates.fs.deleteFailed(targetAbsPath, e.message);
+              currentError = errorMsg;
+              logger.error(errorMsg);
             }
           }
         } // End if (targetExists && overwrite)
@@ -189,8 +188,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           await this.fs.ensureDir(targetDir);
         } catch (e: any) {
           currentStatus = 'failed';
-          currentError = `Ensure dir failed for "${targetDir}": ${e.message}`;
-          logger.error(currentError);
+          const errorMsg = ErrorTemplates.fs.directoryCreateFailed(targetDir, e.message);
+          currentError = errorMsg;
+          logger.error(errorMsg);
         }
 
         if (currentStatus !== 'failed') {
@@ -212,10 +212,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             // currentStatus is already 'created', 'updated_target', or 'backed_up'
           } catch (e: any) {
             currentStatus = 'failed';
-            currentError = `Symlink creation failed for "${targetAbsPath}" from "${sourceAbsPath}": ${
-              (e as Error).message
-            }`;
-            logger.error(currentError);
+            const errorMsg = ErrorTemplates.fs.symlinkFailed(sourceAbsPath, targetAbsPath, (e as Error).message);
+            currentError = errorMsg;
+            logger.error(errorMsg);
           }
         }
         results.push({

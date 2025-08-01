@@ -4,6 +4,7 @@ import { VersionComparisonStatus } from '@modules/version-checker';
 import type { GithubReleaseToolConfig, ToolConfig } from '@types';
 import type { GlobalProgram, Services } from '../../cli';
 import { exitCli } from './exitCli';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 export interface CheckUpdatesCommandOptions {
   verbose?: boolean;
@@ -33,9 +34,7 @@ export async function checkUpdatesActionLogic(
         toolConfigs[toolName] = config;
       } else {
         specificToolNotFound = true;
-        logger.error(
-          `Tool configuration for "${toolName}" not found in ${yamlConfig.paths.toolConfigsDir}.`,
-        );
+        logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
       }
     } else {
       toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
@@ -45,7 +44,7 @@ export async function checkUpdatesActionLogic(
       }
     }
   } catch (error) {
-    logger.error('Error loading tool configurations: %s', (error as Error).message);
+    logger.error(ErrorTemplates.config.loadFailed('tool configurations', (error as Error).message));
     logger.debug('Configuration loading error details: %O', error);
     exitCli(1);
     return;
@@ -64,14 +63,14 @@ export async function checkUpdatesActionLogic(
       const ghConfig = config as GithubReleaseToolConfig;
       if (!ghConfig.installParams.repo) {
         logger.warn(
-          `Tool "${config.name}" is 'github-release' but missing 'repo' in installParams. Skipping.`,
+          WarningTemplates.config.ignored('repo', `Tool "${config.name}" is 'github-release' but missing 'repo' parameter`)
         );
         continue;
       }
       const [owner, repoName] = ghConfig.installParams.repo.split('/');
       if (!owner || !repoName) {
         logger.warn(
-          `Invalid 'repo' format for "${config.name}": ${ghConfig.installParams.repo}. Expected 'owner/repo'. Skipping.`,
+          WarningTemplates.config.invalid('repo format', ghConfig.installParams.repo, 'owner/repo')
         );
         continue;
       }
@@ -80,7 +79,7 @@ export async function checkUpdatesActionLogic(
         const latestRelease = await githubApiClient.getLatestRelease(owner, repoName);
         if (!latestRelease || !latestRelease.tag_name) {
           logger.warn(
-            `Could not fetch latest release information for ${config.name} from GitHub.`,
+            WarningTemplates.service.github.notFound('release', `${config.name} latest release`)
           );
           continue;
         }
@@ -115,14 +114,12 @@ export async function checkUpdatesActionLogic(
             );
           } else {
             logger.warn(
-              `Could not determine update status for ${config.name} (${currentVersionToCompare}) against latest ${latestVersion}. Status: ${status}`,
+              WarningTemplates.tool.versionComparisonFailed(config.name, currentVersionToCompare, latestVersion)
             );
           }
         }
       } catch (error) {
-        logger.error(
-          `Error checking GitHub updates for ${config.name}: ${(error as Error).message}`,
-        );
+        logger.error(ErrorTemplates.service.github.apiFailed('get latest release', 0, (error as Error).message));
         logger.debug('GitHub API error details for %s: %O', config.name, error);
       }
     } else {
@@ -157,7 +154,7 @@ export function registerCheckUpdatesCommand(
         await checkUpdatesActionLogic(logger, toolName, services);
       } catch (error) {
         logger.debug('check-updates command: Unhandled error in action handler: %O', error);
-        logger.error('Failed to execute command: %s', (error as Error).message);
+        logger.error(ErrorTemplates.command.executionFailed('check-updates', 1, (error as Error).message));
         logger.debug('Error details: %O', error);
         exitCli(1);
       }

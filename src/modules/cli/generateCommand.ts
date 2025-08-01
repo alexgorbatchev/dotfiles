@@ -1,5 +1,6 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import { type TsLogger } from '@modules/logger';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import type { ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
@@ -89,7 +90,7 @@ export function registerGenerateCommand(
             logger.info('Dry run complete. No changes were made.');
           }
         } catch (error) {
-          logger.error('Critical error in generate command: %s', (error as Error).message);
+          logger.error(ErrorTemplates.command.executionFailed('generate', 1, (error as Error).message));
           logger.debug('Error details: %O', error);
           exitCli(1);
         }

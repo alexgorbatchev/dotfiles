@@ -8,6 +8,7 @@ import {
 } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { IInstaller, InstallResult } from '@modules/installer';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import { VersionComparisonStatus, type IVersionChecker } from '@modules/version-checker';
 import {
   TestLogger,
@@ -192,7 +193,7 @@ describe('updateCommand', () => {
     );
 
     logger.expect(['ERROR'], ['updateCommand'], [
-      'Failed to update fzf: Install failed miserably',
+      ErrorTemplates.tool.updateFailed('fzf', 'Install failed miserably'),
     ]);
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
@@ -205,7 +206,7 @@ describe('updateCommand', () => {
     );
 
     logger.expect(['ERROR'], ['updateCommand'], [
-      `Tool configuration for "nonexistent" not found in ${mockYamlConfig.paths.toolConfigsDir}.`,
+      ErrorTemplates.tool.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
     ]);
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
@@ -231,7 +232,7 @@ describe('updateCommand', () => {
     const exitCliCallsAfter = (mockExitCli as any).mock.calls.length;
 
     logger.expect(['ERROR'], ['updateCommand'], [
-      'Error fetching latest release for fzf from junegunn/fzf: GitHub API Down',
+      ErrorTemplates.service.github.apiFailed('get latest release', 0, 'GitHub API Down'),
     ]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
     expect(exitCliCallsAfter).toBe(exitCliCallsBefore);

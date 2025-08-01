@@ -1,5 +1,6 @@
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
 import { type TsLogger } from '@modules/logger';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
@@ -34,10 +35,7 @@ export function registerInstallCommand(
         logger.debug('Loaded tool config for "%s": %o', toolName, toolConfig ? toolConfig.name : 'Not found');
 
         if (!toolConfig) {
-          let errorMessage = `Error: Tool configuration for "${toolName}" not found.\n`;
-          errorMessage += `Expected tool configuration file: ${yamlConfig.paths.toolConfigsDir}/${toolName}.tool.ts\n`;
-          errorMessage += 'No specific tool configuration was found for the requested tool.';
-          logger.error(errorMessage);
+          logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           exitCli(1);
         }
 
@@ -70,12 +68,12 @@ export function registerInstallCommand(
             toolName,
             result.error,
           );
-          logger.error(`Error installing "${toolName}": ${result.error}`);
+          logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
           exitCli(1);
         }
       } catch (error) {
         logger.debug('Error during tool installation: %O', error);
-        logger.error('Error during tool installation: %s', (error as Error).message);
+        logger.error(ErrorTemplates.command.executionFailed('install', 1, (error as Error).message));
         logger.debug('Error details: %O', error);
         exitCli(1);
       }

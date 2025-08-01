@@ -7,6 +7,7 @@ import {
   createYamlConfigFromObject,
 } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import {
   createMemFileSystem,
   type MemFileSystemReturn,
@@ -111,11 +112,9 @@ describe('installCommand', () => {
       force: false,
       verbose: false,
     });
-    const logs = testLogger.getLogs(['*'], ['registerInstallCommand']);
-    expect(logs.some(log => {
-      const message = log[0] as unknown as string;
-      return typeof message === 'string' && message.includes('Tool "toolA" installed successfully.');
-    })).toBe(true);
+    testLogger.expect(['INFO'], ['registerInstallCommand'], [
+      'Tool "toolA" installed successfully.',
+    ]);
   });
 
   test('should exit with error if tool config is not found', async () => {
@@ -125,11 +124,9 @@ describe('installCommand', () => {
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    const logs = testLogger.getLogs(['*'], ['registerInstallCommand']);
-    expect(logs.some(log => {
-      const message = log[0] as unknown as string;
-      return typeof message === 'string' && message.includes('Error: Tool configuration for "nonexistent" not found.');
-    })).toBe(true);
+    testLogger.expect(['ERROR'], ['registerInstallCommand'], [
+      ErrorTemplates.tool.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
+    ]);
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 
@@ -144,11 +141,9 @@ describe('installCommand', () => {
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    const logs = testLogger.getLogs(['*'], ['registerInstallCommand']);
-    expect(logs.some(log => {
-      const message = log[0] as unknown as string;
-      return typeof message === 'string' && message.includes('Error installing "toolA": Installation failed');
-    })).toBe(true);
+    testLogger.expect(['ERROR'], ['registerInstallCommand'], [
+      ErrorTemplates.tool.installFailed('unknown', 'toolA', 'Installation failed'),
+    ]);
     expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 

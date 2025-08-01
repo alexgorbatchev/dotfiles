@@ -2,6 +2,7 @@ import { exitCli } from '@modules/cli/exitCli';
 import { type TsLogger } from '@modules/logger';
 import type { GeneratedArtifactsManifest } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 export interface CleanupCommandOptions {
   dryRun: boolean;
@@ -34,12 +35,12 @@ async function cleanupActionLogic(
         logger.debug('execute: manifest file read and parsed successfully');
       } else {
         logger.debug('execute: manifest file does not exist');
-        logger.warn(`Manifest file not found at ${yamlConfig.paths.manifestPath}.`);
+        logger.warn(WarningTemplates.fs.notFound('Manifest file', yamlConfig.paths.manifestPath));
       }
     } catch (error) {
       logger.debug(`execute: error reading or parsing manifest file: ${String(error)}`);
-      logger.error(`Error reading manifest file: ${String(error)}`);
-      logger.warn('Proceeding to delete generated directory despite manifest error.');
+      logger.error(ErrorTemplates.fs.readFailed('manifest file', String(error)));
+      logger.warn(WarningTemplates.config.ignored('manifest file', 'proceeding to delete generated directory despite manifest error'));
     }
 
     if (manifest) {
@@ -58,11 +59,11 @@ async function cleanupActionLogic(
                 logger.debug(`execute: would delete shim ${shimPath} (dry run)`);
               }
             } else {
-              logger.warn(`  Shim not found, skipping: ${shimPath}`);
+              logger.warn(WarningTemplates.fs.notFound('Shim', shimPath));
               logger.debug(`execute: shim not found ${shimPath}`);
             }
           } catch (error) {
-            logger.error(`  Error deleting shim ${shimPath}: ${String(error)}`);
+            logger.error(ErrorTemplates.fs.deleteFailed(shimPath, String(error)));
             logger.debug(`execute: error deleting shim ${shimPath}: ${String(error)}`);
           }
         }
@@ -82,13 +83,11 @@ async function cleanupActionLogic(
               logger.debug(`execute: would delete shell init ${manifest.shellInit.path} (dry run)`);
             }
           } else {
-            logger.warn(`  Shell init file not found, skipping: ${manifest.shellInit.path}`);
+            logger.warn(WarningTemplates.fs.notFound('Shell init file', manifest.shellInit.path));
             logger.debug(`execute: shell init file not found ${manifest.shellInit.path}`);
           }
         } catch (error) {
-          logger.error(
-            `  Error deleting shell init ${manifest.shellInit.path}: ${String(error)}`,
-          );
+          logger.error(ErrorTemplates.fs.deleteFailed(manifest.shellInit.path, String(error)));
           logger.debug(
             `execute: error deleting shell init ${manifest.shellInit.path}: ${String(error)}`,
           );
@@ -111,11 +110,11 @@ async function cleanupActionLogic(
                 logger.debug(`execute: would delete symlink ${symlinkOp.targetPath} (dry run)`);
               }
             } else {
-              logger.warn(`  Symlink target not found, skipping: ${symlinkOp.targetPath}`);
+              logger.warn(WarningTemplates.fs.notFound('Symlink target', symlinkOp.targetPath));
               logger.debug(`execute: symlink target not found ${symlinkOp.targetPath}`);
             }
           } catch (error) {
-            logger.error(`  Error deleting symlink ${symlinkOp.targetPath}: ${String(error)}`);
+            logger.error(ErrorTemplates.fs.deleteFailed(symlinkOp.targetPath, String(error)));
             logger.debug(
               `execute: error deleting symlink ${symlinkOp.targetPath}: ${String(error)}`,
             );
@@ -147,9 +146,7 @@ async function cleanupActionLogic(
         logger.debug(`execute: generated directory not found ${yamlConfig.paths.generatedDir}`);
       }
     } catch (error) {
-      logger.error(
-        `Error deleting generated directory ${yamlConfig.paths.generatedDir}: ${String(error)}`,
-      );
+      logger.error(ErrorTemplates.fs.deleteFailed(yamlConfig.paths.generatedDir, String(error)));
       logger.debug(
         `execute: error deleting generated directory ${yamlConfig.paths.generatedDir}: ${String(
           error,
@@ -160,7 +157,7 @@ async function cleanupActionLogic(
     logger.info(dryRun ? 'Dry run cleanup complete.' : 'Cleanup complete.');
     logger.debug('execute: cleanup process finished, dryRun=%s', dryRun);
   } catch (error) {
-    logger.error('Critical error in cleanup command: %s', (error as Error).message);
+    logger.error(ErrorTemplates.command.executionFailed('cleanup', 1, (error as Error).message));
     logger.debug('Error details: %O', error);
     exitCli(1);
   }

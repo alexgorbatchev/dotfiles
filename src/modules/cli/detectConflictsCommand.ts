@@ -1,6 +1,7 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader';
 import type { Stats } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 import type { ToolConfig } from '@types';
 import path from 'path';
 import { type GlobalProgram, type Services } from '../../cli';
@@ -20,7 +21,7 @@ export async function detectConflictsActionLogic(
     const toolConfigsRecord = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
     toolConfigsArray = Object.values(toolConfigsRecord);
   } catch (error: any) {
-    logger.error(`Error loading tool configurations: ${error.message}`);
+    logger.error(ErrorTemplates.config.loadFailed('tool configurations', error.message));
     exitCli(1);
   }
 
@@ -43,9 +44,7 @@ export async function detectConflictsActionLogic(
               );
             }
           } catch (readError: any) {
-            logger.warn(
-              `Could not read potential shim at '${shimPath}' for tool '${toolConfig.name}': ${readError.message}`,
-            );
+            logger.warn(WarningTemplates.fs.readFailed(shimPath, readError.message));
             conflictMessages.push(
               `[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`,
             );
@@ -81,7 +80,7 @@ export async function detectConflictsActionLogic(
           }
         } catch (error: any) {
           if (error.code !== 'ENOENT') {
-            logger.warn(`Could not check symlink target '${targetPath}': ${error.message}`);
+            logger.warn(WarningTemplates.fs.readFailed(targetPath, error.message));
           }
         }
       }
@@ -91,7 +90,7 @@ export async function detectConflictsActionLogic(
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
-    logger.warn(`${header}\n${formattedConflicts}`);
+    logger.warn(WarningTemplates.tool.conflictsDetected(header, formattedConflicts));
     logger.info('Please review the warnings above.');
     exitCli(1);
     return;
@@ -124,14 +123,9 @@ export function registerDetectConflictsCommand(
           throw error;
         }
 
-        logger.fatal(
-          'detect-conflicts command: Unhandled error in action handler: %O',
-          error,
-        );
-        logger.error(
-          'Critical error in detect-conflicts command: %s',
-          (error as Error).message,
-        );
+        logger.fatal(ErrorTemplates.command.executionFailed('detect-conflicts', 1, 'Unhandled error in action handler'));
+        logger.debug('Fatal error details: %O', error);
+        logger.error(ErrorTemplates.command.executionFailed('detect-conflicts', 1, (error as Error).message));
         logger.debug('Error details: %O', error);
         exitCli(1);
       }

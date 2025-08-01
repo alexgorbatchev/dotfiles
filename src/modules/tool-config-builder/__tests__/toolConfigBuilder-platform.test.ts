@@ -25,6 +25,7 @@ import { describe, it, expect, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { Architecture, Platform } from '../../../types/platform.types';
 import { TestLogger } from '@testing-helpers';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 
 describe('ToolConfigBuilder - Platform Support', () => {
   let builder: ToolConfigBuilder;
@@ -166,4 +167,28 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(darwinArmConfig!.config.installationMethod).toBe('github-release');
     expect(darwinArmConfig!.config.binaries).toEqual(['darwin-arm64-app']);
   });
+
+  it('should log error when platform() called with architecture but no configure callback', () => {
+    const testLogger = new TestLogger();
+    const testBuilder = new ToolConfigBuilder(testLogger, 'test-tool');
+    
+    let thrownError: Error | null = null;
+    try {
+      // Call platform with architecture but explicitly pass undefined as callback
+      (testBuilder ).platform(Platform.Linux, Architecture.X86_64, undefined);
+    } catch (error) {
+      thrownError = error as Error;
+    }
+
+    expect(thrownError).toBeInstanceOf(Error);
+    expect(thrownError!.message).toContain('Required configuration missing: configure callback');
+
+    testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
+      ErrorTemplates.config.required(
+        'configure callback',
+        'platform() called for tool "test-tool" with architectures but without a configure callback'
+      )
+    ]);
+  });
+
 });

@@ -1,5 +1,6 @@
 import { loadSingleToolConfig } from '@modules/config-loader';
 import type { TsLogger } from '@modules/logger';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { GithubReleaseToolConfig, ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
@@ -50,20 +51,14 @@ export function registerUpdateCommand(
             toolName,
             (error as Error).message,
           );
-          logger.error(
-            `Error loading configuration for tool "${toolName}": ${
-              (error as Error).message
-            }`,
-          );
+          logger.error(ErrorTemplates.config.loadFailed(`tool "${toolName}"`, (error as Error).message));
           logger.debug('Error details: %O', error);
           exitCli(1);
         }
 
         if (!toolConfig) {
           actionLogger.debug('tool config not found for tool=%s', toolName);
-          logger.error(
-            `Tool configuration for "${toolName}" not found in ${yamlConfig.paths.toolConfigsDir}.`,
-          );
+          logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           exitCli(1);
         }
 
@@ -73,7 +68,7 @@ export function registerUpdateCommand(
           const ghConfig = toolConfig as GithubReleaseToolConfig;
           if (!ghConfig.installParams?.repo) {
             logger.warn(
-              `Tool "${toolName}" is 'github-release' but missing 'repo' in installParams. Cannot update.`,
+              WarningTemplates.config.ignored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
             );
             return;
           }
@@ -81,7 +76,7 @@ export function registerUpdateCommand(
           const [owner, repo] = ghConfig.installParams.repo.split('/');
           if (!owner || !repo) {
             logger.warn(
-              `Invalid 'repo' format for "${toolName}": ${ghConfig.installParams.repo}. Expected 'owner/repo'. Cannot update.`,
+              WarningTemplates.config.invalid('repo format', ghConfig.installParams.repo, 'owner/repo')
             );
             return;
           }
@@ -90,18 +85,14 @@ export function registerUpdateCommand(
           try {
             latestRelease = await githubApiClient.getLatestRelease(owner, repo);
           } catch (networkError) {
-            logger.error(
-              `Error fetching latest release for ${toolName} from ${owner}/${repo}: ${
-                (networkError as Error).message
-              }`,
-            );
+            logger.error(ErrorTemplates.service.github.apiFailed('get latest release', 0, (networkError as Error).message));
             logger.debug('Error details: %O', networkError);
             return;
           }
 
           if (!latestRelease) {
             logger.warn(
-              `Could not fetch latest release for "${toolName}" from ${owner}/${repo}.`,
+              WarningTemplates.service.github.notFound('release', `${toolName} from ${owner}/${repo}`)
             );
             return;
           }
@@ -147,9 +138,7 @@ export function registerUpdateCommand(
                 `Manifest update for ${toolName} to version ${latestVersion} would occur here.`,
               );
             } else {
-              logger.error(
-                `Failed to update ${toolName}: ${installResult.error}`,
-              );
+              logger.error(ErrorTemplates.tool.updateFailed(toolName, installResult.error || 'Unknown error'));
               exitCli(1);
             }
           } else if (status === VersionComparisonStatus.UP_TO_DATE) {
@@ -162,7 +151,7 @@ export function registerUpdateCommand(
             status === VersionComparisonStatus.INVALID_LATEST_VERSION
           ) {
             logger.warn(
-              `${toolName} (version ${configuredVersion}) status is ${status} compared to latest (${latestVersion}). No action taken.`,
+              WarningTemplates.tool.versionComparisonFailed(toolName, configuredVersion, latestVersion)
             );
           }
         } else {
@@ -178,10 +167,7 @@ export function registerUpdateCommand(
         ) {
           throw error;
         } else {
-          logger.error(
-            'Critical error in update command: %s',
-            (error as Error).message,
-          );
+          logger.error(ErrorTemplates.command.executionFailed('update', 1, (error as Error).message));
           logger.debug('Error details: %O', error);
         }
         if (

@@ -37,6 +37,7 @@ import type { SystemInfo } from '@types';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 export interface Services {
   yamlConfig: YamlConfig;
@@ -107,20 +108,18 @@ export async function setupServices(
               await fs.ensureDir(realToolConfigsDir);
               await fs.writeFile(filePath, content);
               logger.trace('Added tool config %s to MemFileSystem.', filePath);
-            } catch (readError) {
-              logger.warn('Error reading tool file %s for dry run: %O', filePath, readError);
+            } catch (readError: any) {
+              logger.warn(WarningTemplates.fs.readFailed(filePath, readError.message));
+              logger.debug('Tool file read error details: %O', readError);
               // Optionally, decide whether to throw or continue. For now, logging and continuing.
             }
           }
         }
       } else {
-        logger.warn(
-          'Tool configs directory %s does not exist on the real file system.',
-          realToolConfigsDir
-        );
+        logger.warn(WarningTemplates.fs.notFound('Tool configs directory', realToolConfigsDir));
       }
     } catch (error) {
-      logger.error('Error accessing tool configs directory %s for dry run: %O', realToolConfigsDir, error);
+      logger.error(ErrorTemplates.fs.accessDenied('accessing', realToolConfigsDir));
       // Optionally, decide whether to throw or continue.
     }
   }

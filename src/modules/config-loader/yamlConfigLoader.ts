@@ -6,6 +6,7 @@ import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
 import { exitCli } from '../cli';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 
 
 /**
@@ -250,7 +251,7 @@ function processConfig(
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
-    logger.error('YAML config validation error:\n%s', pretty);
+    logger.error(ErrorTemplates.config.validationFailed([pretty]));
     throw new Error(`YAML configuration is invalid.\n${pretty}`);
   }
 
@@ -307,7 +308,7 @@ export async function loadYamlConfig(
   let userConfig = {};
 
   if (!await fileSystem.exists(userConfigPath)) {
-    logger.error(`Config file not found: ${userConfigPath}`);
+    logger.error(ErrorTemplates.fs.notFound('Config file', userConfigPath));
     exitCli(1);
   }
 
@@ -316,11 +317,7 @@ export async function loadYamlConfig(
     userConfig = parse(userConfigContent) || {};
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
-    logger.error(
-      `Config file invalid: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
+    logger.error(ErrorTemplates.config.parseError(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)));
   }
 
   return processConfig(parentLogger, defaultConfig, userConfig, systemInfo, env);

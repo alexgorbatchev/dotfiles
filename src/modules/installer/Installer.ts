@@ -13,6 +13,7 @@ import type {
   ExtractResult,
 } from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 
 
 /**
@@ -154,7 +155,7 @@ export class Installer implements IInstaller {
 
       return result;
     } catch (error) {
-      logger.error('install: Error installing tool %s: %O', toolName, error);
+      logger.error(ErrorTemplates.tool.installFailed('install', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -382,8 +383,8 @@ export class Installer implements IInstaller {
           downloadUrl,
         );
       } catch (e) {
-        logger.error(
-          'installFromGitHubRelease: Error constructing download URL. Raw: "%s", Configured Host: "%s", Error: %s',
+        logger.error(ErrorTemplates.service.network.invalidUrl(rawBrowserDownloadUrl));
+        logger.debug('Download URL construction error details: Raw: "%s", Configured Host: "%s", Error: %s',
           rawBrowserDownloadUrl,
           customHost || '(public GitHub)',
           (e as Error).message,
@@ -569,7 +570,7 @@ export class Installer implements IInstaller {
         otherChanges,
       };
     } catch (error) {
-      logger.error('installFromGitHubRelease: Error: %O', error);
+      logger.error(ErrorTemplates.tool.installFailed('github-release', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -662,7 +663,7 @@ export class Installer implements IInstaller {
         otherChanges,
       };
     } catch (error) {
-      logger.error('installFromBrew: Error: %O', error);
+      logger.error(ErrorTemplates.tool.installFailed('brew', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -746,7 +747,7 @@ export class Installer implements IInstaller {
         otherChanges,
       };
     } catch (error) {
-      logger.error('installFromCurlScript: Error: %O', error);
+      logger.error(ErrorTemplates.tool.installFailed('curl-script', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -942,7 +943,7 @@ export class Installer implements IInstaller {
         otherChanges,
       };
     } catch (error) {
-      logger.error('installFromCurlTar: Error: %O', error);
+      logger.error(ErrorTemplates.tool.installFailed('curl-tar', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -998,7 +999,7 @@ export class Installer implements IInstaller {
         };
       }
     } catch (error) {
-      logger.error('installManually: Error: %O', error);
+      logger.error(ErrorTemplates.tool.installFailed('manual', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

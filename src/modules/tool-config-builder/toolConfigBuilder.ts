@@ -34,6 +34,7 @@ import type {
   ToolConfigUpdateCheck,
   Platform,
 } from '@types';
+import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
@@ -88,7 +89,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
     } else {
       this.logger.warn(
-        `[ToolConfigBuilder] hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
+        WarningTemplates.config.ignored(
+          'hooks',
+          `hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
+        )
       );
     }
     return this;
@@ -118,9 +122,12 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     } else {
       targetArchitectures = architecturesOrConfigure;
       if (typeof configureCallback !== 'function') {
-        throw new Error(
-          `[ToolConfigBuilder] platform() called for tool "${this.toolName}" with architectures but without a configure callback.`
+        const missingCallbackError = ErrorTemplates.config.required(
+          'configure callback',
+          `platform() called for tool "${this.toolName}" with architectures but without a configure callback`
         );
+        this.logger.error(missingCallbackError);
+        throw new Error(missingCallbackError);
       }
       configureFn = configureCallback;
     }
@@ -211,9 +218,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
             installParams: this.currentInstallParams as ManualInstallParams,
           };
         default:
-          throw new Error(
-            `Tool "${name}" has unknown installationMethod: ${this.currentInstallationMethod}`
+          const invalidMethodError = ErrorTemplates.config.invalid(
+            'installationMethod',
+            this.currentInstallationMethod!,
+            'github-release | brew | curl-script | curl-tar | manual'
           );
+          this.logger.error(invalidMethodError);
+          throw new Error(invalidMethodError);
       }
     }
 
@@ -225,9 +236,12 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       !symlinks &&
       (!platformConfigs || platformConfigs.length === 0)
     ) {
-      throw new Error(
-        `Tool "${name}" must define at least binaries, zshInit, symlinks, or platformConfigs.`
+      const requiredConfigError = ErrorTemplates.config.required(
+        'tool definition',
+        `Tool "${name}" must define at least binaries, zshInit, symlinks, or platformConfigs`
       );
+      this.logger.error(requiredConfigError);
+      throw new Error(requiredConfigError);
     }
 
     return {

@@ -429,7 +429,7 @@ describe('SymlinkGenerator', () => {
         sourcePath: sourceFullPath,
         targetPath: path.join(yamlConfig.paths.targetDir, '.file.txt'),
         status: 'failed',
-        error: expect.stringContaining('Symlink creation failed'),
+        error: expect.stringContaining('Failed to create symlink'),
       },
     ]);
   });
