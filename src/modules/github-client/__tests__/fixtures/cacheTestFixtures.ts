@@ -1,8 +1,3 @@
-/**
- * @file src/modules/github-client/__tests__/fixtures/cacheTestFixtures.ts
- * @description Test fixtures for GitHub API cache tests
- */
-
 import type { GitHubRelease, GitHubReleaseAsset } from '@types';
 
 /**

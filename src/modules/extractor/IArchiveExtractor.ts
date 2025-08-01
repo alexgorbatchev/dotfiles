@@ -1,8 +1,3 @@
-/**
- * @file src/modules/extractor/IArchiveExtractor.ts
- * @description Defines the interface for an archive extraction service.
- */
-
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
 
 /**

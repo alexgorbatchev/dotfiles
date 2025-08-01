@@ -1,34 +1,3 @@
-/**
- * @file src/testing-helpers/FetchMockHelper.ts
- * @description Helper class for mocking globalThis.fetch in tests.
- *
- * ## Development Plan
- *
- * ### Overview
- * This class provides a convenient way to spy on and mock `globalThis.fetch`
- * using `bun:test`'s `spyOn`. It simplifies common mocking scenarios
- * like returning specific responses, JSON, text, or simulating network errors.
- *
- * ### Tasks
- * - [x] Define `FetchMockHelper` class structure.
- * - [x] Implement constructor.
- * - [x] Implement `setup()` method to spy on `globalThis.fetch`.
- * - [x] Implement `reset()` method to reset the spy.
- * - [x] Implement `restore()` method to restore the original fetch.
- * - [x] Implement `mockResponseOnce()` method for one-off responses (success and error).
- * - [x] Implement `mockJsonResponseOnce()` method.
- * - [x] Implement `mockTextResponseOnce()` method.
- * - [x] Implement `mockErrorOnce()` method.
- * - [x] Implement `mockImplementation()` method for persistent mocks.
- * - [x] Implement `getSpy()` method to access the underlying spy.
- * - [x] Add JSDoc comments for the class and public methods.
- * - [x] Address TODO in `reset()` method (decided to keep no-op for non-breaking change).
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Write tests for the module (in `FetchMockHelper.test.ts`).
- * - [x] Ensure 100% test coverage for executable code.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
 import { spyOn } from 'bun:test';
 
 /**

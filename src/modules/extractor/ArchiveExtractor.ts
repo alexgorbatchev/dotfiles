@@ -1,8 +1,3 @@
-/**
- * @file src/modules/extractor/ArchiveExtractor.ts
- * @description Implementation of IArchiveExtractor using system commands via zx.
- */
-
 import { exec as execCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 // Fully remove zx imports now

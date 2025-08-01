@@ -1,12 +1,3 @@
-/**
- * @file src/modules/github-client/index.ts
- * @description Barrel file for the GitHub API Client module.
- *
- * This module provides an interface and implementation for interacting
- * with the GitHub API, specifically for fetching release information.
- * It also includes a caching system for GitHub API responses.
- */
-
 export * from './IGitHubApiClient';
 export * from './GitHubApiClient';
 export * from './GitHubApiClientError';

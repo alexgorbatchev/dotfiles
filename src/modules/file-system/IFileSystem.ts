@@ -1,12 +1,3 @@
-/**
- * @file src/modules/file-system/IFileSystem.ts
- * @description Interface for file system operations.
- *
- * This interface defines a contract for file system interactions, allowing
- * for different implementations (e.g., real file system, virtual file system for tests).
- * All methods should be asynchronous and return Promises.
- */
-
 import type { Stats as NodeStats } from 'fs'; // Changed from 'node:fs', aliased to avoid conflict if re-exporting
 
 export type { NodeStats as Stats }; // Re-exporting Stats for consumers

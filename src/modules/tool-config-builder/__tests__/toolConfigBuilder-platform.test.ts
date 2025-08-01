@@ -1,26 +1,3 @@
-/**
- * @fileoverview Tests for the platform support in ToolConfigBuilder.
- *
- * @description
- * This file contains unit tests for the `platform()` method and related
- * functionalities of the `ToolConfigBuilder` class, ensuring that
- * platform-specific configurations are correctly handled.
- *
- * ## Development Plan:
- * - [x] Create test file `toolConfigBuilder-platform.test.ts`.
- * - [x] Test case: Create a configuration for a single platform.
- * - [x] Test case: Apply platform-specific settings (bin, install, etc.).
- * - [x] Test case: Create a configuration for multiple platforms (separate `platform()` calls).
- * - [x] Test case: Create a configuration for multiple platforms (single `platform()` call with array).
- * - [x] Test case: Create a configuration with platform and architecture combinations.
- * - [x] Test case: Ensure `build()` method correctly incorporates platform-specific configurations. (Covered by checking `platformConfigs` after build)
- * - [x] Write tests for the module. (This is the overall goal, achieved by completing individual test cases)
- * - [x] Fix all errors and warnings.
- * - [x] Remove all commented out code and meta-comments.
- * - [x] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { Architecture, Platform } from '../../../types/platform.types';

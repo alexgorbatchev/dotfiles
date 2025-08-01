@@ -1,7 +1,3 @@
-/**
- * @fileoverview Helper functions for executing CLI commands in tests.
- */
-
 import * as path from 'path';
 
 /**

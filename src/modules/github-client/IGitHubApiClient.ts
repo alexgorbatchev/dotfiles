@@ -1,32 +1,3 @@
-/**
- * @file IGitHubApiClient.ts
- * @description Defines the interface for the GitHub API client.
- *
- * ## Development Plan
- *
- * - [x] Define `GitHubRateLimit`, `GitHubReleaseAsset`, `GitHubRelease` types (or ensure importable from `../../types.ts`)
- * - [x] Define `IGitHubApiClient` interface:
- *   - [x] `getLatestRelease(owner: string, repo: string): Promise<GitHubRelease>`
- *   - [x] `getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease>`
- *   - [x] `getAllReleases(owner: string, repo: string, options?: { perPage?: number; includePrerelease?: boolean }): Promise<GitHubRelease[]>`
- *   - [x] `getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null>`
- *   - [x] `getRateLimit(): Promise<GitHubRateLimit>`
- * - [x] Implement `GitHubApiClient.ts` that implements `IGitHubApiClient`.
- * - [x] Write tests for `GitHubApiClient.ts` using `bun:test`'s `mock` (not `fetch-mock`).
- *   - [x] Test `getLatestRelease`
- *   - [x] Test `getReleaseByTag`
- *   - [x] Test `getAllReleases` (including pagination and prerelease options)
- *   - [x] Test `getReleaseByConstraint` (various constraint types, 'latest' for now)
- *   - [x] Test `getRateLimit`
- *   - [x] Test API error handling (404, 403, etc.)
- *   - [x] Test rate limit parsing and error handling.
- *   - [ ] Implement caching for API responses (optional, consider for future enhancement if not in initial scope).
- *   - [x] Update `getLatestRelease` and `getReleaseByTag` to return `null` on 404.
- *   - [x] Cleanup all linting errors and warnings.
- *   - [x] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { GitHubRateLimit, GitHubRelease } from '@types';
 
 /**

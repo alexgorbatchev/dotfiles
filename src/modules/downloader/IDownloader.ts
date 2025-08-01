@@ -1,11 +1,3 @@
-/**
- * @file src/modules/downloader/IDownloader.ts
- * @description Defines interfaces for the downloader service and its options.
- *
- * @developmentPlan
- * - [x] Add `onProgress` callback to `DownloadOptions` for progress reporting.
- */
-
 export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | null) => void;
 
 /**

@@ -1,24 +1,3 @@
-/**
- * @file src/modules/generator-symlink/ISymlinkGenerator.ts
- * @description Interface for the symlink generator service.
- *
- * ## Development Plan
- *
- * ### Tasks
- * - [x] Define `GenerateSymlinksOptions` interface.
- * - [x] Define `ISymlinkGenerator` interface.
- *   - [x] Define `SymlinkOperationResult` type.
- *   - [x] Update `generate` method return type to `Promise<SymlinkOperationResult[]>`.
- * - [x] Implement `SymlinkGenerator` class (in `SymlinkGenerator.ts`).
- * - [x] Write tests for `SymlinkGenerator` (in `__tests__/SymlinkGenerator.test.ts`).
- * - [x] Create `index.ts` to export the interface and class.
- * - [x] Refactor dry run mechanism: Remove `dryRun` from `GenerateSymlinksOptions`.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { ToolConfig } from '@types';
 
 /**

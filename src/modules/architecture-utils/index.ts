@@ -1,10 +1,3 @@
-/**
- * @file src/modules/architecture-utils/index.ts
- * @description Barrel file for architecture-related utilities.
- *
- * This file exports the public API of the architecture-utils module.
- */
-
 export {
   getArchitecturePatterns,
   createArchitectureRegex,

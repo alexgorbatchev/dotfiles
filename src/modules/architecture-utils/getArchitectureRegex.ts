@@ -1,29 +1,3 @@
-/**
- * @file src/modules/architecture-utils/getArchitectureRegex.ts
- * @description Architecture detection utility for GitHub release asset matching.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `zinit/zinit-install.zsh` (`.zi::get-architecture` function analysis)
- * - `memory-bank/techContext.md` (Zinit functionality discovery process)
- * - `.clinerules` (for file structure, testing, and functional purity requirements)
- *
- * ### Tasks:
- * - [x] Implement `getArchitecturePatterns` function for generating platform-specific patterns.
- * - [x] Implement `getArchitectureRegex` function for creating combined regex patterns.
- * - [x] Handle macOS (Darwin) platform detection and Rosetta emulation support.
- * - [x] Handle Linux platform detection with GNU/musl variants.
- * - [x] Handle Windows platform detection (MINGW/MSYS/Cygwin).
- * - [x] Handle CPU architecture mapping (ARM64, x86_64, etc.).
- * - [x] Support common GitHub release asset naming conventions.
- * - [x] Write tests for the architecture detection functions.
- * - [x] Cleanup all linting errors and warnings.
- * - [x] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [x] Ensure 100% test coverage for executable code.
- * - [x] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { SystemInfo, ArchitecturePatterns } from '@types';
 import { type TsLogger } from '@modules/logger';
 

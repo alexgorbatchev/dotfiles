@@ -1,10 +1,4 @@
 /**
- * @file src/modules/version-checker/IVersionChecker.ts
- * @description Defines the interface for the version checker module.
- * This module is responsible for determining if newer versions of managed tools are available.
- */
-
-/**
  * Represents the result of comparing two semantic versions.
  */
 export enum VersionComparisonStatus {

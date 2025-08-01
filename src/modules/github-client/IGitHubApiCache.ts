@@ -1,23 +1,4 @@
 /**
- * @file src/modules/github-client/IGitHubApiCache.ts
- * @description Interface for GitHub API response caching.
- *
- * ## Development Plan
- *
- * - [x] Define `CacheEntry<T>` interface with data, timestamp, expiresAt, and optional tokenHash fields
- * - [x] Define `IGitHubApiCache` interface with the following methods:
- *   - [x] `get<T>(key: string): Promise<T | null>` - Get a cached response if available and not expired
- *   - [x] `set<T>(key: string, data: T, ttlMs?: number): Promise<void>` - Store data in the cache
- *   - [x] `has(key: string): Promise<boolean>` - Check if a key exists and is not expired
- *   - [x] `delete(key: string): Promise<void>` - Remove an item from the cache
- *   - [x] `clearExpired(): Promise<void>` - Clear all expired entries
- *   - [x] `clear(): Promise<void>` - Clear the entire cache
- * - [x] Add JSDoc comments for all interfaces and methods
- * - [x] Cleanup all linting errors and warnings
- * - [ ] Update the memory bank with the new information when all tasks are complete
- */
-
-/**
  * Represents a cached API response entry with metadata.
  * @template T The type of data being cached
  */

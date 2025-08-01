@@ -1,20 +1,3 @@
-/**
- * @file src/modules/downloader/DownloadStrategy.ts
- * @description Defines the interface for a download strategy.
- *
- * Development Plan:
- * - [x] Define the DownloadStrategy interface.
- * - [x] Specify `name` property for strategy identification.
- * - [x] Specify `isAvailable` method for checking strategy usability.
- * - [x] Specify `download` method for performing the download.
- * - [x] Update `download` method options to include `onProgress` from `DownloadOptions` for progress reporting.
- * - [ ] Write tests for the module. (N/A - Interface file, covered by implementers)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code. (N/A - Interface file)
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { DownloadOptions } from './IDownloader';
 
 /**

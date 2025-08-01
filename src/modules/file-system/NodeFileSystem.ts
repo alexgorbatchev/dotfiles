@@ -1,8 +1,3 @@
-/**
- * @file src/modules/file-system/NodeFileSystem.ts
- * @description Concrete implementation of IFileSystem using Node.js's built-in 'fs' module.
- */
-
 import { promises as fsPromises, constants as fsConstants } from 'node:fs';
 import type { Stats } from 'node:fs';
 import type { IFileSystem } from './IFileSystem';

@@ -1,7 +1,3 @@
-/**
- * @fileoverview Helper functions for mocking GitHub API server in tests.
- */
-
 import * as fs from 'node:fs';
 import * as path from 'path';
 import express from 'express';

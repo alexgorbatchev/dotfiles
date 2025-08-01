@@ -1,26 +1,3 @@
-/**
- * @file src/modules/installer/IInstaller.ts
- * @description Interface for the tool installer module.
- *
- * ## Development Plan
- *
- * ### Mandatory Pre-read:
- * - `src/types.ts` (for ToolConfig, InstallParams types)
- * - `.clinerules` (for file structure, naming, and content guidelines)
- *
- * ### Tasks:
- * - [x] Define `InstallOptions` interface.
- * - [x] Define `InstallResult` interface.
- *   - [x] Add `symlinkPath` to `InstallResult`.
- *   - [x] Add `otherChanges` to `InstallResult`.
- * - [x] Define `IInstaller` interface with `install` method.
- * - [ ] Write tests for the module.
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code.
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
 import type { ToolConfig } from '@types';
 
 /**

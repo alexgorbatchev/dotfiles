@@ -1,21 +1,3 @@
-/**
- * Development Plan:
- *
- * Implement the ToolConfigBuilder class based on the interface defined in techContext.md.
- * This class will be used by individual tool configuration files to define how a tool is installed and configured.
- *
- * Tasks:
- * - [x] Implement the ToolConfigBuilder class with methods: bin, version, install, hooks, zsh, symlink, platform, completions.
- * - [x] Ensure each method returns 'this' for chaining.
- * - [x] Store the configuration details internally within the class instance.
- * - [x] Add JSDoc comments for each method.
- * - [x] Write tests for the ToolConfigBuilder.
- * - [x] Cleanup linting errors and warnings.
- * - [x] Ensure 100% test coverage.
- * - [x] Remove all commented out code and meta-comments.
- * - [ ] Update the memory bank.
- */
-
 import { type TsLogger } from '@modules/logger';
 import type {
   Architecture,

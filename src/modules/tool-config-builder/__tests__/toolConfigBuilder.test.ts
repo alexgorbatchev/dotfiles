@@ -1,24 +1,3 @@
-/**
- * Development Plan:
- *
- * Write tests for the ToolConfigBuilder class.
- *
- * Tasks:
- * - Test the constructor initializes the config with default values.
- * - Test the 'bin' method correctly sets the binaries.
- * - Test the 'version' method correctly sets the version.
- * - Test the 'install' method correctly sets the installation method and parameters.
- * - [x] Test the 'hooks' method correctly sets the hooks on installParams.
- * - Test the 'zsh' method correctly adds Zsh code to zshInit.
- * - Test the 'symlink' method correctly adds symlinks.
- * - Test the 'completions' method correctly sets completion configuration.
- * - Test the 'build' method returns the correct ToolConfig object.
- * - Test the 'build' method throws errors for missing required fields (name, installationMethod if binaries are present).
- * - [x] Cleanup linting errors and warnings.
- * - [x] Ensure 100% test coverage.
- * - Update the memory bank.
- */
-
 import { expect, test, describe, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';

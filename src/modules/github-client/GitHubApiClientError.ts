@@ -1,18 +1,4 @@
 /**
- * @file Defines the GitHubApiClientError class for handling errors from the GitHub API client.
- *
- * ## Development Plan
- *
- * - [x] Define GitHubApiClientError class extending Error.
- * - [x] Add constructor to accept message and optional originalError/statusCode.
- * - [ ] Write tests for the module. (N/A - Simple error class, tested via GitHubApiClient.test.ts)
- * - [ ] Cleanup all linting errors and warnings.
- * - [ ] Cleanup all comments that are no longer relevant (leaving development plan).
- * - [ ] Ensure 100% test coverage for executable code. (N/A)
- * - [ ] Update the memory bank with the new information when all tasks are complete.
- */
-
-/**
  * Custom error class for errors originating from the GitHub API client.
  */
 export class GitHubApiClientError extends Error {
