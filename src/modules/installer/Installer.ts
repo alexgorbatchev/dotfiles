@@ -11,6 +11,11 @@ import type {
   GitHubReleaseAsset,
   SystemInfo,
   ExtractResult,
+  BrewToolConfig,
+  CurlTarToolConfig,
+  ManualToolConfig,
+  GithubReleaseToolConfig,
+  CurlScriptToolConfig,
 } from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
@@ -169,7 +174,7 @@ export class Installer implements IInstaller {
    */
   public async installFromGitHubRelease(
     toolName: string,
-    toolConfig: ToolConfig,
+    toolConfig: GithubReleaseToolConfig,
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
@@ -584,7 +589,7 @@ export class Installer implements IInstaller {
    */
   public async installFromBrew(
     toolName: string,
-    toolConfig: ToolConfig,
+    toolConfig: BrewToolConfig,
     context: any, // context now includes otherChanges
     options?: InstallOptions,
   ): Promise<InstallResult> {
@@ -600,8 +605,7 @@ export class Installer implements IInstaller {
       };
     }
 
-    // Type assertion to access BrewInstallParams properties
-    const params = toolConfig.installParams as any;
+    const params = toolConfig.installParams;
     const formula = params.formula || toolName;
     const isCask = params.cask || false;
     const tap = params.tap;
@@ -677,7 +681,7 @@ export class Installer implements IInstaller {
    */
   public async installFromCurlScript(
     toolName: string,
-    toolConfig: ToolConfig,
+    toolConfig: CurlScriptToolConfig,
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
@@ -761,7 +765,7 @@ export class Installer implements IInstaller {
    */
   public async installFromCurlTar(
     toolName: string,
-    toolConfig: ToolConfig,
+    toolConfig: CurlTarToolConfig,
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
@@ -777,8 +781,7 @@ export class Installer implements IInstaller {
       };
     }
 
-    // Type assertion to access CurlTarInstallParams properties
-    const params = toolConfig.installParams as any;
+    const params = toolConfig.installParams;
     const url = params.url;
     // extractPath is now handled as extractPathInArchive below
     const moveBinaryTo = params.moveBinaryTo;
@@ -957,7 +960,7 @@ export class Installer implements IInstaller {
    */
   public async installManually(
     toolName: string,
-    toolConfig: ToolConfig,
+    toolConfig: ManualToolConfig,
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
@@ -973,8 +976,7 @@ export class Installer implements IInstaller {
       };
     }
 
-    // Type assertion to access ManualInstallParams properties
-    const params = toolConfig.installParams as any;
+    const params = toolConfig.installParams;
     const binaryPath = params.binaryPath as string;
     otherChanges.push(`Manual installation: expecting binary at ${binaryPath}.`);
 

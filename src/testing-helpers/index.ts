@@ -1,6 +1,5 @@
 export * from './FetchMockHelper';
 export * from './createMemFileSystem';
-export * from './createMockClientLogger';
 export * from './createMockGitHubServer';
 export * from './createTestDirectories';
 export * from './executeCliCommand';

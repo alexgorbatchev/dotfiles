@@ -34,30 +34,30 @@ describe('ToolConfigBuilder', () => {
 
   test('constructor initializes with default values', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    expect((builder as any).toolName).toBe('test-tool');
-    expect((builder as any).versionNum).toBe('latest');
-    expect((builder as any).binaries).toEqual([]);
-    expect((builder as any).zshScripts).toEqual([]);
-    expect((builder as any).symlinkPairs).toEqual([]);
-    expect((builder as any).currentInstallationMethod).toBeUndefined();
-    expect((builder as any).currentInstallParams).toBeUndefined();
-    expect((builder as any).completionSettings).toBeUndefined();
+    expect(builder.toolName).toBe('test-tool');
+    expect(builder.versionNum).toBe('latest');
+    expect(builder.binaries).toEqual([]);
+    expect(builder.zshScripts).toEqual([]);
+    expect(builder.symlinkPairs).toEqual([]);
+    expect(builder.currentInstallationMethod).toBeUndefined();
+    expect(builder.currentInstallParams).toBeUndefined();
+    expect(builder.completionSettings).toBeUndefined();
   });
 
   test('bin method sets binaries correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
-    expect((builder as any).binaries).toEqual(['test-bin']);
+    expect(builder.binaries).toEqual(['test-bin']);
 
     const builder2 = new ToolConfigBuilder(logger, 'test-tool');
     builder2.bin(['bin1', 'bin2']);
-    expect((builder2 as any).binaries).toEqual(['bin1', 'bin2']);
+    expect(builder2.binaries).toEqual(['bin1', 'bin2']);
   });
 
   test('version method sets version correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.version('1.2.3');
-    expect((builder as any).versionNum).toBe('1.2.3');
+    expect(builder.versionNum).toBe('1.2.3');
   });
 
   test('install method sets installation method and params correctly', () => {
@@ -97,7 +97,7 @@ describe('ToolConfigBuilder', () => {
     builder.hooks(hooksData); // Call hooks without install
 
     // Check internal state directly
-    expect((builder as any).currentInstallParams?.hooks).toBeUndefined();
+    expect(builder.currentInstallParams?.hooks).toBeUndefined();
     
     // Use TestLogger.expect() to verify the warning was logged
     testLogger.expect(
@@ -130,7 +130,7 @@ describe('ToolConfigBuilder', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     const completionConfig = { zsh: { source: 'completion.zsh' } };
     builder.completions(completionConfig);
-    expect((builder as any).completionSettings).toEqual(completionConfig);
+    expect(builder.completionSettings).toEqual(completionConfig);
   });
 
   test('build method returns correct ToolConfig object for github-release', () => {
@@ -222,7 +222,7 @@ describe('ToolConfigBuilder', () => {
     builder.bin(['test-binary']);
     // Manually set an invalid installation method to test the switch default case
     (builder as any).currentInstallationMethod = 'invalid-method';
-    (builder as any).currentInstallParams = { repo: 'test/repo' };
+    builder.currentInstallParams = { repo: 'test/repo' };
 
     let thrownError: Error | null = null;
     try {

@@ -21,11 +21,16 @@ import type {
   Architecture,
   AsyncInstallHook,
   BrewInstallParams,
+  BrewToolConfig,
   CompletionConfig,
   CurlScriptInstallParams,
+  CurlScriptToolConfig,
   CurlTarInstallParams,
+  CurlTarToolConfig,
   GithubReleaseInstallParams,
+  GithubReleaseToolConfig,
   ManualInstallParams,
+  ManualToolConfig,
   PlatformConfigEntry,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
@@ -38,14 +43,14 @@ import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
-  private toolName: string;
-  private binaries: string[] = [];
-  private versionNum: string = 'latest';
-  private currentInstallationMethod?: ToolConfigInstallationMethod;
-  private currentInstallParams?: ToolConfigInstallParams;
-  private zshScripts: string[] = [];
-  private symlinkPairs: { source: string; target: string }[] = [];
-  private completionSettings?: CompletionConfig;
+  public toolName: string;
+  public binaries: string[] = [];
+  public versionNum: string = 'latest';
+  public currentInstallationMethod?: ToolConfigInstallationMethod;
+  public currentInstallParams?: ToolConfigInstallParams;
+  public zshScripts: string[] = [];
+  public symlinkPairs: { source: string; target: string }[] = [];
+  public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
@@ -191,32 +196,32 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           return {
             ...base,
             installationMethod: 'github-release',
-            installParams: this.currentInstallParams as GithubReleaseInstallParams,
-          };
+            installParams: this.currentInstallParams,
+          } as GithubReleaseToolConfig;
         case 'brew':
           return {
             ...base,
             installationMethod: 'brew',
-            installParams: this.currentInstallParams as BrewInstallParams,
-          };
+            installParams: this.currentInstallParams,
+          } as BrewToolConfig;
         case 'curl-script':
           return {
             ...base,
             installationMethod: 'curl-script',
-            installParams: this.currentInstallParams as CurlScriptInstallParams,
-          };
+            installParams: this.currentInstallParams,
+          } as CurlScriptToolConfig;
         case 'curl-tar':
           return {
             ...base,
             installationMethod: 'curl-tar',
-            installParams: this.currentInstallParams as CurlTarInstallParams,
-          };
+            installParams: this.currentInstallParams,
+          } as CurlTarToolConfig;
         case 'manual':
           return {
             ...base,
             installationMethod: 'manual',
-            installParams: this.currentInstallParams as ManualInstallParams,
-          };
+            installParams: this.currentInstallParams,
+          } as ManualToolConfig;
         default:
           const invalidMethodError = ErrorTemplates.config.invalid(
             'installationMethod',

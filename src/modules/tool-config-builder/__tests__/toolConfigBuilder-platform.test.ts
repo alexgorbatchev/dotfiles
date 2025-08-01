@@ -26,6 +26,7 @@ import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { Architecture, Platform } from '../../../types/platform.types';
 import { TestLogger } from '@testing-helpers';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import type { ManualInstallParams } from '@types';
 
 describe('ToolConfigBuilder - Platform Support', () => {
   let builder: ToolConfigBuilder;
@@ -71,7 +72,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(platformConfig!.platforms).toBe(Platform.Windows);
     expect(platformConfig!.config.binaries).toEqual(['win-app.exe']);
     expect(platformConfig!.config.installationMethod).toBe('manual');
-    expect((platformConfig!.config.installParams as any)?.binaryPath).toBe('win-app.exe');
+    expect((platformConfig!.config.installParams as ManualInstallParams)?.binaryPath).toBe('win-app.exe');
     expect(platformConfig!.config.version).toBe('1.0.0-win');
   });
 

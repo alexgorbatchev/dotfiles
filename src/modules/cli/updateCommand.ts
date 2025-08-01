@@ -2,7 +2,7 @@ import { loadSingleToolConfig } from '@modules/config-loader';
 import type { TsLogger } from '@modules/logger';
 import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 import { VersionComparisonStatus } from '@modules/version-checker';
-import type { GithubReleaseToolConfig, ToolConfig } from '@types';
+import type { ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
@@ -65,18 +65,17 @@ export function registerUpdateCommand(
         logger.info(`Checking for updates for "${toolName}"...`);
 
         if (toolConfig.installationMethod === 'github-release') {
-          const ghConfig = toolConfig as GithubReleaseToolConfig;
-          if (!ghConfig.installParams?.repo) {
+          if (!toolConfig.installParams?.repo) {
             logger.warn(
               WarningTemplates.config.ignored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
             );
             return;
           }
 
-          const [owner, repo] = ghConfig.installParams.repo.split('/');
+          const [owner, repo] = toolConfig.installParams.repo.split('/');
           if (!owner || !repo) {
             logger.warn(
-              WarningTemplates.config.invalid('repo format', ghConfig.installParams.repo, 'owner/repo')
+              WarningTemplates.config.invalid('repo format', toolConfig.installParams.repo, 'owner/repo')
             );
             return;
           }

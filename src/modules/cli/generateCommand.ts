@@ -1,7 +1,6 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import { type TsLogger } from '@modules/logger';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
-import type { ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
@@ -43,8 +42,7 @@ export function registerGenerateCommand(
           logger.info(`Generated ${numShims} shims in ${yamlConfig.paths.targetDir}`);
           if (numShims > 0) {
             logger.info('Generated shims by tool:');
-            Object.values(toolConfigs).forEach((toolConfigValue) => {
-              const toolConfig = toolConfigValue as ToolConfig;
+            Object.values(toolConfigs).forEach((toolConfig) => {
               if (toolConfig.binaries && toolConfig.binaries.length > 0) {
                 if (toolConfig.binaries.length === 1 && toolConfig.binaries[0] === toolConfig.name) {
                   logger.info(`  - ${toolConfig.name}`);
