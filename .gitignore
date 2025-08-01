@@ -28,3 +28,7 @@ _.log
 
 tmp
 .qdrant
+
+.roo
+.claude
+CLAUDE.md

@@ -1,3 +1,11 @@
+---
+root: false
+targets: ["*"]
+description: 'rules'
+globs:
+  - '**/*'
+---
+
 # Key Requirements
 
 ## Technical Discovery and Analysis

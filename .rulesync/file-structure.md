@@ -1,3 +1,11 @@
+---
+root: false
+targets: ["*"]
+description: 'file-structure'
+globs:
+  - '**/*'
+---
+
 # File Structure
 
 - **File Naming Conventions:** File names should be `camelCase.ts` or `PascalCase.ts` and are named according to the primary thing they export (e.g., a class, function, or a significant, standalone type).

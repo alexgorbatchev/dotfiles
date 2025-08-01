@@ -1,3 +1,11 @@
+---
+root: false
+targets: ["*"]
+description: 'logging'
+globs:
+  - '**/*'
+---
+
 # Structured Logging
 
 - The project uses `tslog` for structured logging.
@@ -44,11 +52,6 @@ beforeEach(() => {
 });
 
 it('...', () => {
-  // method signatures
-  // printLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): void 
-  // getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] 
-  // expect(levels: LogLevel[], path: string[], matchers: (string | RegExp)[]): void
-
   // will pass if all matchers are found exactly once in same order
   logger.expect(['TRACE'], ['TestTarget', 'myMethod'], ['message 1', /message 2/]);
 });
@@ -65,6 +68,7 @@ The project must support the following log levels:
 
 To migrate from `createLogger` and `createClientLogger` to `tslog`, follow these steps:
 
+0. DO NOT ADD a logger if the file does not already have one.
 1. Remove `createLogger` and `createClientLogger` imports.
 2. Remove variables that are created using `createLogger` and `createClientLogger`.
 3. Add `import { type TsLogger, createTsLogger } from '@modules/logger'`

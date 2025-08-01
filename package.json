@@ -13,9 +13,12 @@
     "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
     "fmt": "prettier --write .",
     "compile": "scripts/compile.sh",
-    "cli": "bun run ./src/cli.ts"
+    "cli": "bun run ./src/cli.ts",
+    "agent-rules": "scripts/agent-rules.sh",
+    "postinstall": "bun agent-rules"
   },
   "devDependencies": {
+    "@rageltd/bun-test-utils": "^2.0.0",
     "@types/bun": "^1.2.16",
     "@types/debug": "^4.1.12",
     "@types/express": "^5.0.2",
@@ -27,9 +30,9 @@
     "eslint": "^9.28.0",
     "express": "^5.1.0",
     "prettier": "^3.5.3",
+    "rulesync": "^0.53.0",
     "strip-ansi": "^7.1.0",
-    "typescript-language-server": "^4.3.4",
-    "@rageltd/bun-test-utils": "^2.0.0"
+    "typescript-language-server": "^4.3.4"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
