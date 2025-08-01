@@ -2,6 +2,24 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Bun: run file",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "${file}"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+
+    {
       "label": "Bun: watch test",
       "type": "shell",
       "command": "bun",

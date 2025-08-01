@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run Bun CLI Command",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "test",
+        "${file}"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

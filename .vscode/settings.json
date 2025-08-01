@@ -1,3 +1,15 @@
 {
-  "editor.formatOnSave": false
+  "editor.formatOnSave": false,
+
+  "files.exclude": {
+    "**/.roo": true,
+    "**/.claude": true,
+    "**/CLAUDE.md": true,
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true
+  }
 }
