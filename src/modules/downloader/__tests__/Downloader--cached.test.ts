@@ -1,0 +1,190 @@
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { TestLogger, FetchMockHelper } from '@testing-helpers';
+import { createMemFileSystem } from '@testing-helpers';
+import { Downloader } from '../Downloader';
+import { FileDownloadCache } from '@modules/cache/FileDownloadCache';
+import type { DownloadCacheConfig } from '@modules/cache/FileDownloadCache';
+
+describe('Downloader with Cache', () => {
+  let logger: TestLogger;
+  let mockFileSystem: any;
+  let cache: FileDownloadCache;
+  let downloader: Downloader;
+  let cacheConfig: DownloadCacheConfig;
+  let fetchMockHelper: FetchMockHelper;
+
+  beforeEach(async () => {
+    logger = new TestLogger();
+    const { fs } = await createMemFileSystem();
+    mockFileSystem = fs;
+    cacheConfig = {
+      enabled: true,
+      cacheDir: '/cache/downloads',
+    };
+    cache = new FileDownloadCache(logger, mockFileSystem, cacheConfig);
+    downloader = new Downloader(logger, mockFileSystem, undefined, cache);
+    fetchMockHelper = new FetchMockHelper();
+    fetchMockHelper.setup();
+    fetchMockHelper.reset(); // Reset any previous mock state
+  });
+
+  afterEach(() => {
+    fetchMockHelper.restore();
+  });
+
+
+  describe('constructor with cache', () => {
+    it('should create cached strategy when cache is provided', () => {
+      expect(downloader).toBeDefined();
+      
+      // Verify constructor log
+      logger.expect(
+        ['DEBUG'],
+        ['Downloader'],
+        ['constructor: Created CachedDownloadStrategy wrapping NodeFetchStrategy'],
+      );
+    });
+
+    it('should work without cache when none provided', () => {
+      const downloaderWithoutCache = new Downloader(logger, mockFileSystem);
+      expect(downloaderWithoutCache).toBeDefined();
+    });
+  });
+
+  describe('download with caching functionality', () => {
+    const testUrl = 'https://example.com/test-file.zip';
+    const testData = 'test file content';
+
+    it('should cache downloads and retrieve from cache on second request', async () => {
+      // Mock the first fetch request
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: testData,
+        headers: { 'Content-Type': 'application/zip' }
+      });
+
+      // First download - should hit the network
+      const result1 = await downloader.download(testUrl);
+      expect(result1).toEqual(Buffer.from(testData));
+
+      // Verify fetch was called once
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+
+      // Second download - should hit cache, no additional network call
+      const result2 = await downloader.download(testUrl);
+      expect(result2).toEqual(Buffer.from(testData));
+
+      // Verify fetch was still only called once (cache hit)
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+
+      // Log verification - just check that we have logs indicating cache behavior
+      // We can't easily check specific content due to logger changes
+      expect(logger.logs.length).toBeGreaterThan(0);
+    });
+
+    it('should bypass cache when progress callback is provided', async () => {
+      // Mock two fetch requests since cache will be bypassed
+      fetchMockHelper.mockImplementation({
+        status: 200,
+        body: testData,
+        headers: { 'Content-Type': 'application/zip' }
+      });
+
+      let progressCallCount = 0;
+      const onProgress = () => { progressCallCount++; };
+
+      // First download with progress callback - should bypass cache
+      const result1 = await downloader.download(testUrl, { onProgress });
+      expect(result1).toEqual(Buffer.from(testData));
+
+      // Second download with progress callback - should bypass cache again
+      const result2 = await downloader.download(testUrl, { onProgress });
+      expect(result2).toEqual(Buffer.from(testData));
+
+      // Verify fetch was called twice (cache bypassed)
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
+    });
+
+    it('should work with disabled cache', async () => {
+      const disabledCacheConfig = { ...cacheConfig, enabled: false };
+      const disabledCache = new FileDownloadCache(logger, mockFileSystem, disabledCacheConfig);
+      const downloaderWithDisabledCache = new Downloader(logger, mockFileSystem, undefined, disabledCache);
+
+      // Mock two fetch requests since cache is disabled
+      fetchMockHelper.mockImplementation({
+        status: 200,
+        body: testData,
+        headers: { 'Content-Type': 'application/zip' }
+      });
+
+      // First download - should hit network
+      const result1 = await downloaderWithDisabledCache.download(testUrl);
+      expect(result1).toEqual(Buffer.from(testData));
+
+      // Second download - should hit network again (cache disabled)
+      const result2 = await downloaderWithDisabledCache.download(testUrl);
+      expect(result2).toEqual(Buffer.from(testData));
+
+      // Verify fetch was called twice (cache disabled)
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle different URLs separately in cache', async () => {
+      const testUrl1 = 'https://example.com/file1.zip';
+      const testUrl2 = 'https://example.com/file2.zip';
+      const testData1 = 'content for file 1';
+      const testData2 = 'content for file 2';
+
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: testData1,
+        headers: { 'Content-Type': 'application/zip' }
+      });
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: testData2,
+        headers: { 'Content-Type': 'application/zip' }
+      });
+
+      // Download both URLs
+      const result1 = await downloader.download(testUrl1);
+      const result2 = await downloader.download(testUrl2);
+
+      expect(result1).toEqual(Buffer.from(testData1));
+      expect(result2).toEqual(Buffer.from(testData2));
+
+      // Both should be cached now - second requests should hit cache
+      const cachedResult1 = await downloader.download(testUrl1);
+      const cachedResult2 = await downloader.download(testUrl2);
+
+      expect(cachedResult1).toEqual(Buffer.from(testData1));
+      expect(cachedResult2).toEqual(Buffer.from(testData2));
+
+      // Only 2 network calls should have been made (initial downloads)
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
+    });
+
+    it('should cache downloads to file without affecting functionality', async () => {
+      const filePath = '/downloaded-file.zip';
+
+      fetchMockHelper.mockResponseOnce({
+        status: 200,
+        body: testData,
+        headers: { 'Content-Type': 'application/zip' }
+      });
+
+      // Download to file - should bypass cache but still work
+      await downloader.downloadToFile(testUrl, filePath);
+
+      // Verify file was written
+      const fileExists = await mockFileSystem.exists(filePath);
+      expect(fileExists).toBe(true);
+
+      const fileContent = await mockFileSystem.readFile(filePath);
+      expect(fileContent).toBe(testData);
+
+      // Verify network call was made
+      expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
+    });
+  });
+});

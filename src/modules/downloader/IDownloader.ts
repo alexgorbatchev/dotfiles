@@ -38,14 +38,18 @@ export interface DownloadOptions {
  */
 export interface IDownloader {
   /**
-   * Downloads a file from the given URL.
-   * If `options.destinationPath` is provided, the file is saved to that path,
-   * and the promise resolves with void. Otherwise, it resolves with a Buffer
-   * containing the downloaded file content.
-   *
-   * @param url The URL to download the file from.
-   * @param options Options for the download.
-   * @returns A promise that resolves with a Buffer if no destinationPath is set, or void if it is.
+   * Registers a new download strategy with the downloader service.
+   * Registered strategies can then be used for subsequent download operations.
+   * @param strategy The DownloadStrategy to register.
+   */
+  registerStrategy(strategy: import('./DownloadStrategy').DownloadStrategy): void;
+
+  /**
+   * Downloads a file from the given URL and returns its content as a Buffer.
+   * The service will attempt to use the best available registered strategy.
+   * @param url The URL of the file to download.
+   * @param options Optional DownloadOptions to customize the download.
+   * @returns A promise that resolves with a Buffer containing the downloaded file's content.
    * @throws {DownloaderError} If a generic download error occurs.
    * @throws {NetworkError} If a network-level error occurs.
    * @throws {HttpError} If a generic HTTP error occurs.
@@ -56,4 +60,14 @@ export interface IDownloader {
    * @throws {ServerError} If a server-side HTTP error occurs (5xx).
    */
   download(url: string, options?: DownloadOptions): Promise<Buffer | void>;
+
+  /**
+   * Downloads a file from the given URL and saves it directly to the specified file path.
+   * The service will attempt to use the best available registered strategy.
+   * @param url The URL of the file to download.
+   * @param filePath The local path where the downloaded file should be saved.
+   * @param options Optional DownloadOptions to customize the download.
+   * @returns A promise that resolves when the file has been successfully downloaded and saved.
+   */
+  downloadToFile(url: string, filePath: string, options?: DownloadOptions): Promise<void>;
 }

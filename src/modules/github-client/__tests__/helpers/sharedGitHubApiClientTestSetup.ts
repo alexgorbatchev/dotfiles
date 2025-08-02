@@ -20,10 +20,12 @@ export const createMockDownloader = (): IDownloader & {
   download: ReturnType<typeof mock<IDownloader['download']>>;
 } => {
   const mockDownloadFn = mock<IDownloader['download']>(async () => Buffer.from(''));
+  const mockRegisterStrategy = mock<IDownloader['registerStrategy']>(() => {});
+  const mockDownloadToFile = mock<IDownloader['downloadToFile']>(async () => {});
   return {
     download: mockDownloadFn,
-    // Add other IDownloader methods if they exist and need mocking,
-    // though GitHubApiClient only uses 'download'.
+    registerStrategy: mockRegisterStrategy,
+    downloadToFile: mockDownloadToFile,
   };
 };
 

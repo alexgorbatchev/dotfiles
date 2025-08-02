@@ -57,6 +57,8 @@ const gitHubConfigSchema = z.object({
 const downloaderCacheConfigSchema = z.object({
   /** Enables or disables caching for downloaded tool assets. Defaults to true. */
   enabled: z.boolean().default(true),
+  /** Time-to-live (TTL) in milliseconds for download cache entries. Defaults to 86400000 (24 hours). */
+  ttl: z.number().default(86400000),
 }).strict();
 
 const downloaderConfigSchema = z.object({
@@ -163,6 +165,7 @@ export type YamlConfigPartial = PartialDeep<YamlConfig>;
       retryDelay: 0,
       cache: {
         enabled: false,
+        ttl: 0,
       },
     },
     platform: [

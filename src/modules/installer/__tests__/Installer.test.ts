@@ -109,6 +109,8 @@ describe('Installer', () => {
     mockDownload = mock(() => Promise.resolve());
     mockDownloader = {
       download: mockDownload,
+      registerStrategy: mock(() => {}),
+      downloadToFile: mock(() => Promise.resolve()),
     };
 
     // Setup mock GitHub API client

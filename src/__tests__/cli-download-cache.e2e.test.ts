@@ -1,0 +1,257 @@
+import {
+  createFile,
+  createMockGitHubServer,
+  createMockYamlConfig,
+  createTestDirectories,
+  createToolConfig,
+  executeCliCommand,
+  TestLogger,
+  type MockGitHubServerResult,
+  type TestDirectories,
+} from '@testing-helpers';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import * as path from 'node:path';
+import { NodeFileSystem } from '@modules/file-system';
+
+describe('E2E: Download Cache', () => {
+  describe('cache validation with repeated installs', () => {
+    let testDirs: TestDirectories;
+    let fs: NodeFileSystem;
+    let mockServer: MockGitHubServerResult;
+
+    const mockToolName = 'cached-binary-tool';
+    const mockToolVersion = '1.0.0';
+    const mockAssetFileName = `${mockToolName}-v${mockToolVersion}-linux-amd64`;
+    const mockBinaryContent = `#!/bin/sh\necho "Cached Binary Tool v${mockToolVersion}"`;
+
+    beforeAll(async () => {
+      fs = new NodeFileSystem();
+      const logger = new TestLogger();
+      testDirs = await createTestDirectories(logger, fs, { testName: 'cli-download-cache' });
+
+      const localMockBinaryFilePath = await createFile(
+        fs,
+        path.join(testDirs.paths.homeDir, mockAssetFileName),
+        mockBinaryContent,
+        true
+      );
+
+      // Mock server that tracks download requests
+      mockServer = await createMockGitHubServer({
+        apiPaths: [
+          {
+            path: `/repos/mock-owner/cached-binary-repo/releases/tags/v${mockToolVersion}`,
+            response: {
+              tag_name: `v${mockToolVersion}`,
+              assets: [
+                {
+                  name: mockAssetFileName,
+                  browser_download_url: `/${mockAssetFileName}`,
+                  size: mockBinaryContent.length,
+                  content_type: 'application/octet-stream',
+                },
+              ],
+            },
+          },
+          {
+            path: `/repos/mock-owner/cached-binary-repo/releases/latest`,
+            response: {
+              tag_name: `v${mockToolVersion}`,
+              assets: [
+                {
+                  name: mockAssetFileName,
+                  browser_download_url: `/${mockAssetFileName}`,
+                  size: mockBinaryContent.length,
+                  content_type: 'application/octet-stream',
+                },
+              ],
+            },
+          },
+        ],
+        binaryPaths: [
+          {
+            path: `/${mockAssetFileName}`,
+            filePath: localMockBinaryFilePath,
+          },
+        ],
+      });
+
+      // Create config with cache enabled
+      await createMockYamlConfig({
+        config: {
+          paths: testDirs.paths,
+          github: {
+            host: mockServer.baseUrl,
+          },
+          downloader: {
+            timeout: 30000,
+            retryCount: 1,
+            retryDelay: 1000,
+            cache: {
+              enabled: true,
+              ttl: 60000, // 1 minute for testing
+            },
+          },
+        },
+        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        fileSystem: fs,
+        logger: new TestLogger(),
+        systemInfo: {
+          platform: 'linux',
+          arch: 'amd64',
+          homeDir: testDirs.paths.homeDir,
+        },
+        env: {},
+      });
+
+      createToolConfig({
+        toolConfigsDir: testDirs.paths.toolConfigsDir,
+        name: mockToolName,
+        fixturePath: path.resolve(__dirname, 'fixtures', 'cached-binary-tool.tool.ts'),
+      });
+    });
+
+    afterAll(async () => {
+      await mockServer.close();
+    });
+
+    it('should create cache directory and cache files during install', async () => {
+      const cacheDir = path.join(testDirs.paths.generatedDir, 'cache', 'downloads');
+
+      // Ensure cache dir doesn't exist initially
+      if (await fs.exists(cacheDir)) {
+        await fs.rm(cacheDir, { recursive: true, force: true });
+      }
+
+      // Remove any existing binary to force fresh install
+      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockAssetFileName);
+      if (await fs.exists(binaryPath)) {
+        await fs.rm(binaryPath, { force: true });
+      }
+
+      // Install tool - should create cache
+      const result = executeCliCommand({
+        command: ['install', mockToolName],
+        cwd: testDirs.paths.dotfilesDir,
+        homeDir: testDirs.paths.homeDir,
+      });
+
+
+      expect(result.exitCode).toEqual(0);
+
+      // Verify binary was installed
+      expect(await fs.exists(binaryPath)).toBe(true);
+
+      // Verify cache directory was created
+      expect(await fs.exists(cacheDir)).toBe(true);
+
+      // Verify cache structure was created (metadata and binaries directories)
+      const metadataDir = path.join(cacheDir, 'metadata');
+      const binariesDir = path.join(cacheDir, 'binaries');
+      expect(await fs.exists(metadataDir)).toBe(true);
+      expect(await fs.exists(binariesDir)).toBe(true);
+
+      // Verify metadata files were created
+      const metadataFiles = await fs.readdir(metadataDir);
+      expect(metadataFiles.length).toBeGreaterThan(0);
+
+      // Metadata files should be JSON files
+      const jsonMetadataFiles = metadataFiles.filter(file => file.endsWith('.json'));
+      expect(jsonMetadataFiles.length).toBeGreaterThan(0);
+
+      // Verify binary files were created
+      const binaryFiles = await fs.readdir(binariesDir);
+      expect(binaryFiles.length).toBeGreaterThan(0);
+    });
+
+    it('should have valid cache files with correct structure', async () => {
+      const cacheDir = path.join(testDirs.paths.generatedDir, 'cache', 'downloads');
+      expect(await fs.exists(cacheDir)).toBe(true);
+
+      const metadataDir = path.join(cacheDir, 'metadata');
+      const binariesDir = path.join(cacheDir, 'binaries');
+
+      const metadataFiles = await fs.readdir(metadataDir);
+      expect(metadataFiles.length).toBeGreaterThan(0);
+
+      // Check first metadata file structure
+      const firstMetadataFile = metadataFiles.find(file => file.endsWith('.json'));
+      expect(firstMetadataFile).toBeDefined();
+
+      if (firstMetadataFile) {
+        const metadataContent = await fs.readFile(path.join(metadataDir, firstMetadataFile), 'utf8');
+        const cacheEntry = JSON.parse(metadataContent);
+
+        // Verify cache entry structure for the new FileDownloadCache
+        expect(cacheEntry).toHaveProperty('url');
+        expect(cacheEntry).toHaveProperty('size');
+        expect(cacheEntry).toHaveProperty('binaryFilePath');
+        expect(cacheEntry).toHaveProperty('contentHash');
+        expect(cacheEntry).toHaveProperty('timestamp');
+        expect(cacheEntry).toHaveProperty('expiresAt');
+        
+        expect(typeof cacheEntry.url).toBe('string');
+        expect(typeof cacheEntry.size).toBe('number');
+        expect(typeof cacheEntry.binaryFilePath).toBe('string');
+        expect(typeof cacheEntry.contentHash).toBe('string');
+        expect(typeof cacheEntry.timestamp).toBe('number');
+        expect(typeof cacheEntry.expiresAt).toBe('number');
+        expect(cacheEntry.expiresAt).toBeGreaterThan(cacheEntry.timestamp);
+
+        // Verify the binary file exists
+        const binaryPath = path.join(binariesDir, cacheEntry.binaryFilePath);
+        expect(await fs.exists(binaryPath)).toBe(true);
+      }
+    });
+
+    it('should work when cache is disabled', async () => {
+      // Create config with cache DISABLED
+      await createMockYamlConfig({
+        config: {
+          paths: testDirs.paths,
+          github: {
+            host: mockServer.baseUrl,
+          },
+          downloader: {
+            timeout: 30000,
+            retryCount: 1,
+            retryDelay: 1000,
+            cache: {
+              enabled: false, // Disabled!
+              ttl: 60000,
+            },
+          },
+        },
+        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        fileSystem: fs,
+        logger: new TestLogger(),
+        systemInfo: {
+          platform: 'linux',
+          arch: 'amd64',
+          homeDir: testDirs.paths.homeDir,
+        },
+        env: {},
+      });
+
+      // Remove binary to force fresh install
+      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockAssetFileName);
+      if (await fs.exists(binaryPath)) {
+        await fs.rm(binaryPath, { force: true });
+      }
+
+      // Install with cache disabled
+      const result = executeCliCommand({
+        command: ['install', mockToolName],
+        cwd: testDirs.paths.dotfilesDir,
+        homeDir: testDirs.paths.homeDir,
+      });
+
+      expect(result.exitCode).toEqual(0);
+
+      // Verify binary was installed
+      expect(await fs.exists(binaryPath)).toBe(true);
+      const content = await fs.readFile(binaryPath, 'utf8');
+      expect(content).toEqual(mockBinaryContent);
+    });
+  });
+});

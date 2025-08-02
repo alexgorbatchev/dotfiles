@@ -17,10 +17,6 @@ setupTestCleanup();
 const mockModules = createModuleMocker();
 
 describe('cleanupCommand', () => {
-  afterEach(() => {
-    clearMockRegistry();
-  });
-
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
   let mockFs: MockedFileSystem;

@@ -37,6 +37,7 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
     retryDelay: 1000,
     cache: {
       enabled: true,
+      ttl: 86400000,
     },
   },
 };

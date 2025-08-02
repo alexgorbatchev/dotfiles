@@ -10,7 +10,8 @@ import {
 } from '@modules/cli';
 import { type YamlConfig } from '@modules/config';
 import { loadYamlConfig } from '@modules/config-loader';
-import { Downloader, NodeFetchStrategy, type IDownloader } from '@modules/downloader';
+import { FileDownloadCache, type IDownloadCache } from '@modules/cache';
+import { Downloader, type IDownloader } from '@modules/downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
 import {
   MemFileSystem,
@@ -42,6 +43,7 @@ import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates
 export interface Services {
   yamlConfig: YamlConfig;
   fs: IFileSystem;
+  downloadCache: IDownloadCache | undefined;
   downloader: IDownloader;
   githubApiCache: IGitHubApiCache;
   githubApiClient: IGitHubApiClient;
@@ -124,9 +126,25 @@ export async function setupServices(
     }
   }
 
+  // Initialize download cache if enabled
+  let downloadCache: IDownloadCache | undefined;
+  if (yamlConfig.downloader.cache.enabled) {
+    const cacheDir = path.join(yamlConfig.paths.generatedDir, 'cache', 'downloads');
+    downloadCache = new FileDownloadCache(
+      parentLogger,
+      fs,
+      {
+        enabled: true,
+        cacheDir,
+      }
+    );
+    parentLogger.info('Download cache enabled: %s (TTL: %d ms)', cacheDir, yamlConfig.downloader.cache.ttl);
+  } else {
+    parentLogger.info('Download cache disabled');
+  }
+
   // Initialize services with yamlConfig
-  const downloader = new Downloader(parentLogger, fs);
-  downloader.registerStrategy(new NodeFetchStrategy(parentLogger, fs));
+  const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
 
   const githubApiCache = new FileGitHubApiCache(parentLogger, fs, yamlConfig);
   const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
@@ -159,6 +177,7 @@ export async function setupServices(
   return {
     yamlConfig,
     fs,
+    downloadCache,
     downloader,
     githubApiCache,
     githubApiClient,
