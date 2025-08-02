@@ -1,5 +1,10 @@
 import { describe, it, expect, spyOn } from 'bun:test';
-import { TestLogger } from '../TestLogger';
+import { TestLogger, type LogLevel } from '../TestLogger';
+import { type ILogObjMeta } from 'tslog';
+
+interface TestLoggerWithPrivates {
+  getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[];
+}
 
 describe('TestLogger', () => {
   describe('getLogs', () => {
@@ -9,15 +14,15 @@ describe('TestLogger', () => {
       logger.warn('warn message');
       logger.error('error message');
 
-      const infoLogs = logger.getLogs(['INFO'], []);
+      const infoLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], []);
       expect(infoLogs).toHaveLength(1);
       expect(infoLogs[0]?.[0]).toMatch('info message');
 
-      const warnLogs = logger.getLogs(['WARN'], []);
+      const warnLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['WARN'], []);
       expect(warnLogs).toHaveLength(1);
       expect(warnLogs[0]?.[0]).toMatch('warn message');
 
-      const errorLogs = logger.getLogs(['ERROR'], []);
+      const errorLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['ERROR'], []);
       expect(errorLogs).toHaveLength(1);
       expect(errorLogs[0]?.[0]).toMatch('error message');
     });
@@ -31,15 +36,15 @@ describe('TestLogger', () => {
       subLogger.info('sub message');
       subSubLogger.info('sub-sub message');
 
-      const rootLogs = logger.getLogs(['INFO'], []);
+      const rootLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], []);
       expect(rootLogs).toHaveLength(1);
       expect(rootLogs[0]?.[0]).toMatch('root message');
 
-      const subLogs = logger.getLogs(['INFO'], ['Sub']);
+      const subLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], ['Sub']);
       expect(subLogs).toHaveLength(1);
       expect(subLogs[0]?.[0]).toMatch('sub message');
 
-      const subSubLogs = logger.getLogs(['INFO'], ['Sub', 'SubSub']);
+      const subSubLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], ['Sub', 'SubSub']);
       expect(subSubLogs).toHaveLength(1);
       expect(subSubLogs[0]?.[0]).toMatch('sub-sub message');
     });
@@ -53,11 +58,11 @@ describe('TestLogger', () => {
       subLogger.info('sub info');
       subLogger.warn('sub warn');
 
-      const rootInfoLogs = logger.getLogs(['INFO'], []);
+      const rootInfoLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], []);
       expect(rootInfoLogs).toHaveLength(1);
       expect(rootInfoLogs[0]?.[0]).toMatch('root info');
 
-      const subWarnLogs = logger.getLogs(['WARN'], ['Sub']);
+      const subWarnLogs = (logger as unknown as TestLoggerWithPrivates).getLogs(['WARN'], ['Sub']);
       expect(subWarnLogs).toHaveLength(1);
       expect(subWarnLogs[0]?.[0]).toMatch('sub warn');
     });
@@ -67,7 +72,7 @@ describe('TestLogger', () => {
       logger.info('info message');
       logger.warn('warn message');
 
-      const logs = logger.getLogs(['*'], []);
+      const logs = (logger as unknown as TestLoggerWithPrivates).getLogs(['*'], []);
       expect(logs).toHaveLength(2);
     });
 
@@ -75,7 +80,7 @@ describe('TestLogger', () => {
       const logger = new TestLogger();
       logger.info('info message');
 
-      const logs = logger.getLogs(['WARN'], []);
+      const logs = (logger as unknown as TestLoggerWithPrivates).getLogs(['WARN'], []);
       expect(logs).toHaveLength(0);
     });
 
@@ -106,7 +111,7 @@ describe('TestLogger', () => {
         logger.info('info message 1');
         logger.info('info message 2');
 
-        const logs = logger.getLogs(['INFO'], [], 'message 1');
+        const logs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], [], 'message 1');
         expect(logs).toHaveLength(1);
         expect(logs[0]?.[0]).toMatch('info message 1');
       });
@@ -116,7 +121,7 @@ describe('TestLogger', () => {
         logger.info('info message 1');
         logger.info('info message 2');
 
-        const logs = logger.getLogs(['INFO'], [], /message 2/);
+        const logs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], [], /message 2/);
         expect(logs).toHaveLength(1);
         expect(logs[0]?.[0]).toMatch('info message 2');
       });
@@ -125,7 +130,7 @@ describe('TestLogger', () => {
         const logger = new TestLogger();
         logger.info('info message 1');
 
-        const logs = logger.getLogs(['INFO'], [], 'no match');
+        const logs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], [], 'no match');
         expect(logs).toHaveLength(0);
       });
 
@@ -133,7 +138,7 @@ describe('TestLogger', () => {
         const logger = new TestLogger();
         logger.info({ message: 'info message 1' });
 
-        const logs = logger.getLogs(['INFO'], [], 'info message 1');
+        const logs = (logger as unknown as TestLoggerWithPrivates).getLogs(['INFO'], [], 'info message 1');
         expect(logs).toHaveLength(0);
       });
 
