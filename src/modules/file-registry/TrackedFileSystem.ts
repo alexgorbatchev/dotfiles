@@ -41,11 +41,6 @@ export class TrackedFileSystem implements IFileSystem {
     this.registry = registry;
     this.context = context;
 
-    // Log when processing starts for a specific tool (but only for actual tools, not system operations)
-    if (context.toolName !== 'system') {
-      this.logger.info(SuccessTemplates.tool.processing(context.toolName, context.fileType));
-    }
-    
     this.logger.debug('Created tracked filesystem for tool: %s', context.toolName);
   }
 

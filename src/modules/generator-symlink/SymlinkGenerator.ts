@@ -125,7 +125,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             try {
               if (await toolFs.exists(backupPath)) {
                 logger.warn(
-                  WarningTemplates.fs.overwriting(backupPath)
+                  WarningTemplates.fs.overwriting(toolName, backupPath)
                 );
                 await toolFs.rm(backupPath, { recursive: true, force: true });
               }

@@ -1,0 +1,168 @@
+import type { TsLogger } from '@modules/logger';
+import type { IFileSystem } from '@modules/file-system';
+import type { AsyncInstallHook, InstallHookContext } from '@types';
+import { TrackedFileSystem } from '@modules/file-registry';
+import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+
+/**
+ * Enhanced context for installation hooks with additional utilities
+ * This extends the standard InstallHookContext with extra development conveniences
+ */
+export interface EnhancedInstallHookContext extends InstallHookContext {
+  /** File system instance for performing file operations */
+  fileSystem: IFileSystem;
+  /** Logger instance for structured logging */
+  logger: TsLogger;
+  /** List to add status/change messages to */
+  otherChanges: string[];
+  /** Binary path (available in afterInstall hook) */
+  binaryPath?: string;
+  /** Version of the installed tool (available in afterInstall hook) */
+  version?: string;
+}
+
+/**
+ * Options for hook execution
+ */
+export interface HookExecutionOptions {
+  /** Timeout in milliseconds for hook execution (default: 60000ms) */
+  timeoutMs?: number;
+  /** Whether to continue installation if hook fails (default: false) */
+  continueOnError?: boolean;
+}
+
+/**
+ * Result of hook execution
+ */
+export interface HookExecutionResult {
+  /** Whether the hook executed successfully */
+  success: boolean;
+  /** Error message if hook failed */
+  error?: string;
+  /** Duration of hook execution in milliseconds */
+  durationMs: number;
+  /** Whether hook was skipped due to timeout or other reason */
+  skipped: boolean;
+}
+
+/**
+ * Executes installation hooks with proper error handling, timeouts, and tracking
+ */
+export class HookExecutor {
+  private readonly logger: TsLogger;
+  private readonly defaultTimeoutMs = 60000; // 1 minute default
+
+  constructor(parentLogger: TsLogger) {
+    this.logger = parentLogger.getSubLogger({ name: 'HookExecutor' });
+  }
+
+  /**
+   * Execute a single hook with error handling and timeout
+   */
+  async executeHook(
+    hookName: string,
+    hook: AsyncInstallHook,
+    context: EnhancedInstallHookContext,
+    options: HookExecutionOptions = {}
+  ): Promise<HookExecutionResult> {
+    const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
+    const startTime = Date.now();
+
+    this.logger.debug('Executing %s hook with %dms timeout', hookName, timeoutMs);
+
+    try {
+      // Create a promise that resolves when the hook completes
+      const hookPromise = hook(context);
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(ErrorTemplates.command.timeout(hookName, timeoutMs)));
+        }, timeoutMs);
+      });
+
+      // Race the hook against the timeout
+      await Promise.race([hookPromise, timeoutPromise]);
+
+      const durationMs = Date.now() - startTime;
+      this.logger.debug('Hook %s completed successfully in %dms', hookName, durationMs);
+
+      return {
+        success: true,
+        durationMs,
+        skipped: false,
+      };
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      this.logger.error(
+        ErrorTemplates.tool.installFailed(`${hookName} hook`, context.toolName, errorMessage)
+      );
+
+      if (continueOnError) {
+        this.logger.debug('Continuing installation despite %s hook failure', hookName);
+        context.otherChanges.push(`Warning: ${hookName} hook failed but installation continued: ${errorMessage}`);
+        
+        return {
+          success: false,
+          error: errorMessage,
+          durationMs,
+          skipped: false,
+        };
+      } else {
+        return {
+          success: false,
+          error: errorMessage,
+          durationMs,
+          skipped: false,
+        };
+      }
+    }
+  }
+
+  /**
+   * Create enhanced context for hook execution with proper filesystem tracking
+   */
+  createEnhancedContext(
+    baseContext: InstallHookContext,
+    fileSystem: IFileSystem,
+    logger: TsLogger,
+    otherChanges: string[]
+  ): EnhancedInstallHookContext {
+    // Create a tool-specific TrackedFileSystem if we have one
+    const enhancedFileSystem = fileSystem instanceof TrackedFileSystem 
+      ? fileSystem.withToolName(baseContext.toolName)
+      : fileSystem;
+
+    return {
+      ...baseContext,
+      fileSystem: enhancedFileSystem,
+      logger: logger.getSubLogger({ name: `Hook-${baseContext.toolName}` }),
+      otherChanges,
+    };
+  }
+
+  /**
+   * Execute multiple hooks in sequence with proper logging and error handling
+   */
+  async executeHooks(
+    hooks: Array<{ name: string; hook: AsyncInstallHook; options?: HookExecutionOptions }>,
+    context: EnhancedInstallHookContext
+  ): Promise<HookExecutionResult[]> {
+    const results: HookExecutionResult[] = [];
+
+    for (const { name, hook, options } of hooks) {
+      const result = await this.executeHook(name, hook, context, options);
+      results.push(result);
+
+      // If hook failed and we're not continuing on error, stop execution
+      if (!result.success && !options?.continueOnError) {
+        this.logger.debug('Stopping hook execution due to failure in %s hook', name);
+        break;
+      }
+    }
+
+    return results;
+  }
+}

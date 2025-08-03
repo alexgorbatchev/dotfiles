@@ -272,10 +272,11 @@ describe('Installer', () => {
         expect.arrayContaining([
           `Ensured installation directory exists: ${path.join(testDirs.paths.binariesDir, mockToolName)}`,
           `Executing beforeInstall hook for ${mockToolName}.`,
-          `Finished executing beforeInstall hook for ${mockToolName}.`,
+          // Just check it contains the timing info
+          expect.stringContaining(`Finished executing beforeInstall hook for ${mockToolName} in `),
           // otherChanges from installFromGitHubRelease will be [] due to mockResolvedValue
           `Executing afterInstall hook for ${mockToolName}.`,
-          `Finished executing afterInstall hook for ${mockToolName}.`,
+          expect.stringContaining(`Finished executing afterInstall hook for ${mockToolName} in `),
         ])
       );
 

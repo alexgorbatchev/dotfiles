@@ -171,8 +171,8 @@ export const WarningTemplates = {
       `Invalid ${field}: "${value}" (expected ${expected})`,
   },
   fs: {
-    overwriting: (path: string) => 
-      `Overwriting existing file: ${path}`,
+    overwriting: (toolName: string, path: string) => 
+      `[${toolName}] Overwriting existing file: ${path}`,
     permissionsFixed: (path: string, newPermissions: string) => 
       `Fixed permissions on ${path} to ${newPermissions}`,
     readFailed: (path: string, reason: string) => 

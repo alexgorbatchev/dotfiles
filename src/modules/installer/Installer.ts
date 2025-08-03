@@ -21,6 +21,7 @@ import type {
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
+import { HookExecutor } from './HookExecutor';
 
 
 /**
@@ -59,6 +60,7 @@ export class Installer implements IInstaller {
   private readonly githubApiClient: IGitHubApiClient;
   private readonly archiveExtractor: IArchiveExtractor;
   private readonly appConfig: YamlConfig;
+  private readonly hookExecutor: HookExecutor;
 
   constructor(
     parentLogger: TsLogger,
@@ -82,6 +84,7 @@ export class Installer implements IInstaller {
     this.githubApiClient = githubApiClient;
     this.archiveExtractor = archiveExtractor;
     this.appConfig = appConfig;
+    this.hookExecutor = new HookExecutor(parentLogger);
   }
 
   /**
@@ -122,8 +125,26 @@ export class Installer implements IInstaller {
       if (toolConfig.installParams?.hooks?.beforeInstall) {
         logger.debug('install: Running beforeInstall hook');
         otherChanges.push(`Executing beforeInstall hook for ${toolName}.`);
-        await toolConfig.installParams.hooks.beforeInstall(context);
-        otherChanges.push(`Finished executing beforeInstall hook for ${toolName}.`);
+        
+        const enhancedContext = this.hookExecutor.createEnhancedContext(
+          context, toolFs, logger, otherChanges
+        );
+        
+        const result = await this.hookExecutor.executeHook(
+          'beforeInstall',
+          toolConfig.installParams.hooks.beforeInstall,
+          enhancedContext
+        );
+        
+        if (!result.success) {
+          return {
+            success: false,
+            error: `beforeInstall hook failed: ${result.error}`,
+            otherChanges,
+          };
+        }
+        
+        otherChanges.push(`Finished executing beforeInstall hook for ${toolName} in ${result.durationMs}ms.`);
       }
 
       // Install based on the installation method
@@ -156,8 +177,30 @@ export class Installer implements IInstaller {
       if (toolConfig.installParams?.hooks?.afterInstall) {
         logger.debug('install: Running afterInstall hook');
         otherChanges.push(`Executing afterInstall hook for ${toolName}.`);
-        await toolConfig.installParams.hooks.afterInstall(context);
-        otherChanges.push(`Finished executing afterInstall hook for ${toolName}.`);
+        
+        // Update context with final result information
+        const finalContext = {
+          ...context,
+          binaryPath: result.binaryPath,
+          version: result.version,
+        };
+        
+        const enhancedContext = this.hookExecutor.createEnhancedContext(
+          finalContext, toolFs, logger, otherChanges
+        );
+        
+        const hookResult = await this.hookExecutor.executeHook(
+          'afterInstall',
+          toolConfig.installParams.hooks.afterInstall,
+          enhancedContext,
+          { continueOnError: true } // Don't fail installation if afterInstall hook fails
+        );
+        
+        if (hookResult.success) {
+          otherChanges.push(`Finished executing afterInstall hook for ${toolName} in ${hookResult.durationMs}ms.`);
+        } else {
+          otherChanges.push(`afterInstall hook failed for ${toolName}: ${hookResult.error}`);
+        }
       }
 
       // Ensure otherChanges from the specific install method are merged if not already handled by passing context
@@ -433,8 +476,26 @@ export class Installer implements IInstaller {
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug('installFromGitHubRelease: Running afterDownload hook');
         otherChanges.push(`Executing afterDownload hook for ${toolName}.`);
-        await toolConfig.installParams.hooks.afterDownload(context);
-        otherChanges.push(`Finished executing afterDownload hook for ${toolName}.`);
+        
+        const enhancedContext = this.hookExecutor.createEnhancedContext(
+          context, this.fs, logger, otherChanges
+        );
+        
+        const hookResult = await this.hookExecutor.executeHook(
+          'afterDownload',
+          toolConfig.installParams.hooks.afterDownload,
+          enhancedContext
+        );
+        
+        if (!hookResult.success) {
+          return {
+            success: false,
+            error: `afterDownload hook failed: ${hookResult.error}`,
+            otherChanges,
+          };
+        }
+        
+        otherChanges.push(`Finished executing afterDownload hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Handle extraction if needed
@@ -470,8 +531,26 @@ export class Installer implements IInstaller {
         if (toolConfig.installParams?.hooks?.afterExtract) {
           logger.debug('installFromGitHubRelease: Running afterExtract hook');
           otherChanges.push(`Executing afterExtract hook for ${toolName}.`);
-          await toolConfig.installParams.hooks.afterExtract(context);
-          otherChanges.push(`Finished executing afterExtract hook for ${toolName}.`);
+          
+          const enhancedContext = this.hookExecutor.createEnhancedContext(
+            context, this.fs, logger, otherChanges
+          );
+          
+          const hookResult = await this.hookExecutor.executeHook(
+            'afterExtract',
+            toolConfig.installParams.hooks.afterExtract,
+            enhancedContext
+          );
+          
+          if (!hookResult.success) {
+            return {
+              success: false,
+              error: `afterExtract hook failed: ${hookResult.error}`,
+              otherChanges,
+            };
+          }
+          
+          otherChanges.push(`Finished executing afterExtract hook for ${toolName} in ${hookResult.durationMs}ms.`);
         }
 
         // Find the binary in the extracted directory
@@ -758,8 +837,26 @@ export class Installer implements IInstaller {
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug('installFromCurlScript: Running afterDownload hook');
         otherChanges.push(`Executing afterDownload hook for ${toolName}.`);
-        await toolConfig.installParams.hooks.afterDownload(context);
-        otherChanges.push(`Finished executing afterDownload hook for ${toolName}.`);
+        
+        const enhancedContext = this.hookExecutor.createEnhancedContext(
+          context, this.fs, logger, otherChanges
+        );
+        
+        const hookResult = await this.hookExecutor.executeHook(
+          'afterDownload',
+          toolConfig.installParams.hooks.afterDownload,
+          enhancedContext
+        );
+        
+        if (!hookResult.success) {
+          return {
+            success: false,
+            error: `afterDownload hook failed: ${hookResult.error}`,
+            otherChanges,
+          };
+        }
+        
+        otherChanges.push(`Finished executing afterDownload hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Execute the script
@@ -849,8 +946,26 @@ export class Installer implements IInstaller {
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug('installFromCurlTar: Running afterDownload hook');
         otherChanges.push(`Executing afterDownload hook for ${toolName}.`);
-        await toolConfig.installParams.hooks.afterDownload(context);
-        otherChanges.push(`Finished executing afterDownload hook for ${toolName}.`);
+        
+        const enhancedContext = this.hookExecutor.createEnhancedContext(
+          context, this.fs, logger, otherChanges
+        );
+        
+        const hookResult = await this.hookExecutor.executeHook(
+          'afterDownload',
+          toolConfig.installParams.hooks.afterDownload,
+          enhancedContext
+        );
+        
+        if (!hookResult.success) {
+          return {
+            success: false,
+            error: `afterDownload hook failed: ${hookResult.error}`,
+            otherChanges,
+          };
+        }
+        
+        otherChanges.push(`Finished executing afterDownload hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Extract the tarball
@@ -877,8 +992,26 @@ export class Installer implements IInstaller {
       if (toolConfig.installParams?.hooks?.afterExtract) {
         logger.debug('installFromCurlTar: Running afterExtract hook');
         otherChanges.push(`Executing afterExtract hook for ${toolName}.`);
-        await toolConfig.installParams.hooks.afterExtract(context);
-        otherChanges.push(`Finished executing afterExtract hook for ${toolName}.`);
+        
+        const enhancedContext = this.hookExecutor.createEnhancedContext(
+          context, this.fs, logger, otherChanges
+        );
+        
+        const hookResult = await this.hookExecutor.executeHook(
+          'afterExtract',
+          toolConfig.installParams.hooks.afterExtract,
+          enhancedContext
+        );
+        
+        if (!hookResult.success) {
+          return {
+            success: false,
+            error: `afterExtract hook failed: ${hookResult.error}`,
+            otherChanges,
+          };
+        }
+        
+        otherChanges.push(`Finished executing afterExtract hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Find the binary in the extracted directory
