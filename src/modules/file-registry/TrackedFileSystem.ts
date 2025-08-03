@@ -78,6 +78,14 @@ export class TrackedFileSystem implements IFileSystem {
     return new TrackedFileSystem(this.logger, this.fs, this.registry, newContext);
   }
 
+  /**
+   * Creates a new TrackedFileSystem for a specific tool.
+   * This is used to attribute filesystem operations to the correct tool.
+   */
+  withToolName(toolName: string): TrackedFileSystem {
+    return this.withContext({ toolName });
+  }
+
   async readFile(filePath: string, encoding?: BufferEncoding): Promise<string> {
     // Read operations are not tracked since they don't modify the filesystem
     return this.fs.readFile(filePath, encoding);
@@ -108,9 +116,9 @@ export class TrackedFileSystem implements IFileSystem {
 
     // Log user-facing filesystem changes
     if (operationType === 'create') {
-      this.logger.info(SuccessTemplates.fs.created(filePath));
+      this.logger.info(SuccessTemplates.fs.created(this.context.toolName, filePath));
     } else {
-      this.logger.info(SuccessTemplates.fs.updated(filePath));
+      this.logger.info(SuccessTemplates.fs.updated(this.context.toolName, filePath));
     }
   }
 
@@ -139,7 +147,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.copied(src, dest));
+    this.logger.info(SuccessTemplates.fs.copied(this.context.toolName, src, dest));
   }
 
   async rename(oldPath: string, newPath: string): Promise<void> {
@@ -177,7 +185,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.moved(oldPath, newPath));
+    this.logger.info(SuccessTemplates.fs.moved(this.context.toolName, oldPath, newPath));
   }
 
   async symlink(target: string, linkPath: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
@@ -196,7 +204,7 @@ export class TrackedFileSystem implements IFileSystem {
       metadata: this.context.metadata,
     });
 
-    this.logger.info(SuccessTemplates.fs.symlinkCreated(linkPath, target));
+    this.logger.info(SuccessTemplates.fs.symlinkCreated(this.context.toolName, linkPath, target));
   }
 
   async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
@@ -217,9 +225,9 @@ export class TrackedFileSystem implements IFileSystem {
     await this.fs.rm(filePath, options);
 
     if (options?.recursive) {
-      this.logger.info(SuccessTemplates.fs.removedDirectory(filePath));
+      this.logger.info(SuccessTemplates.fs.removedDirectory(this.context.toolName, filePath));
     } else {
-      this.logger.info(SuccessTemplates.fs.removed(filePath));
+      this.logger.info(SuccessTemplates.fs.removed(this.context.toolName, filePath));
     }
   }
 
@@ -246,7 +254,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.permissionsChanged(filePath, mode));
+    this.logger.info(SuccessTemplates.fs.permissionsChanged(this.context.toolName, filePath, mode));
   }
 
   // Non-modifying operations - these don't need tracking
@@ -288,7 +296,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: { ...this.context.metadata, isDirectory: true },
       });
 
-      this.logger.info(SuccessTemplates.fs.directoryCreated(dirPath));
+      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, dirPath));
     }
   }
 
@@ -328,7 +336,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: { ...this.context.metadata, isDirectory: true },
       });
 
-      this.logger.info(SuccessTemplates.fs.directoryCreated(dirPath));
+      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, dirPath));
     }
   }
 

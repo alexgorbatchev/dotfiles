@@ -4,6 +4,7 @@ import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
+import { TrackedFileSystem } from '@modules/file-registry';
 import { getCliBinPath } from '../../utils';
 
 
@@ -56,12 +57,17 @@ export class ShimGenerator implements IShimGenerator {
     toolConfig: ToolConfig,
     options?: GenerateShimsOptions
   ): Promise<string[]> {
+    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+    const toolFs = this.fs instanceof TrackedFileSystem 
+      ? this.fs.withToolName(toolName)
+      : this.fs;
+
     this.logger.debug(
       'generateForTool: toolName=%s, toolConfig=%o, options=%o, FileSystem: %s',
       toolName,
       toolConfig,
       options,
-      this.fs.constructor.name
+      toolFs.constructor.name
     );
 
     // dryRun is removed; IFileSystem handles behavior
@@ -71,7 +77,7 @@ export class ShimGenerator implements IShimGenerator {
 
     this.logger.debug('generateForTool: shimFilePath=%s', shimFilePath);
 
-    if (!overwrite && (await this.fs.exists(shimFilePath))) {
+    if (!overwrite && (await toolFs.exists(shimFilePath))) {
       this.logger.debug(
         'generateForTool: Shim already exists at %s and overwrite is false. Skipping.',
         shimFilePath
@@ -125,21 +131,21 @@ fi
     this.logger.debug(
       'generateForTool: Writing shim file to %s using %s',
       shimFilePath,
-      this.fs.constructor.name
+      toolFs.constructor.name
     );
-    await this.fs.ensureDir(path.dirname(shimFilePath));
-    await this.fs.writeFile(shimFilePath, shimContent);
+    await toolFs.ensureDir(path.dirname(shimFilePath));
+    await toolFs.writeFile(shimFilePath, shimContent);
     this.logger.debug(
       'generateForTool: Making shim executable: chmod +x %s using %s',
       shimFilePath,
-      this.fs.constructor.name
+      toolFs.constructor.name
     );
-    await this.fs.chmod(shimFilePath, 0o755); // rwxr-xr-x
+    await toolFs.chmod(shimFilePath, 0o755); // rwxr-xr-x
     this.logger.debug(
       'generateForTool: Shim for %s generated successfully at %s (using %s).',
       toolName,
       shimFilePath,
-      this.fs.constructor.name
+      toolFs.constructor.name
     );
     return [shimFilePath];
   }

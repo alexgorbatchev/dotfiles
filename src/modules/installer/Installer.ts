@@ -6,6 +6,7 @@ import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { YamlConfig } from '@modules/config';
+import { TrackedFileSystem } from '@modules/file-registry';
 import type {
   ToolConfig,
   GitHubReleaseAsset,
@@ -19,6 +20,7 @@ import type {
 } from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 
 
 /**
@@ -92,13 +94,19 @@ export class Installer implements IInstaller {
   ): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
     logger.debug('install: toolName=%s, toolConfig=%o, options=%o', toolName, toolConfig, options);
+    
+    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+    const toolFs = this.fs instanceof TrackedFileSystem 
+      ? this.fs.withToolName(toolName)
+      : this.fs;
+    
     const otherChanges: string[] = [];
 
     try {
       // Create installation directory if it doesn't exist
       const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
       const installDir = path.join(binariesDir, toolName);
-      await this.fs.ensureDir(installDir);
+      await toolFs.ensureDir(installDir);
       otherChanges.push(`Ensured installation directory exists: ${installDir}`);
       logger.debug('install: Created installation directory: %s', installDir);
 
@@ -178,6 +186,7 @@ export class Installer implements IInstaller {
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
+
     const logger = this.logger.getSubLogger({ name: 'installFromGitHubRelease' });
     logger.debug('installFromGitHubRelease: toolName=%s', toolName);
     const otherChanges: string[] = context.otherChanges || [];
@@ -403,9 +412,18 @@ export class Installer implements IInstaller {
 
       logger.debug('installFromGitHubRelease: Downloading asset: %s', downloadUrl);
       const downloadPath = path.join(context.installDir, asset.name);
-      await this.downloader.download(downloadUrl, {
-        destinationPath: downloadPath,
-      });
+      
+      const showProgress = shouldShowProgress(_options?.quiet);
+      const progressBar = new ProgressBar(asset.name, { enabled: showProgress });
+      
+      try {
+        await this.downloader.download(downloadUrl, {
+          destinationPath: downloadPath,
+          onProgress: progressBar.createCallback(),
+        });
+      } finally {
+        progressBar.finish();
+      }
       otherChanges.push(`Downloaded asset from ${downloadUrl} to ${downloadPath}.`);
 
       // Update context with download path
@@ -593,6 +611,7 @@ export class Installer implements IInstaller {
     context: any, // context now includes otherChanges
     options?: InstallOptions,
   ): Promise<InstallResult> {
+
     const logger = this.logger.getSubLogger({ name: 'installFromBrew' });
     logger.debug('installFromBrew: toolName=%s', toolName);
     const otherChanges: string[] = context.otherChanges || [];
@@ -685,6 +704,11 @@ export class Installer implements IInstaller {
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
+    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+    const toolFs = this.fs instanceof TrackedFileSystem 
+      ? this.fs.withToolName(toolName)
+      : this.fs;
+
     const logger = this.logger.getSubLogger({ name: 'installFromCurlScript' });
     logger.debug('installFromCurlScript: toolName=%s', toolName);
     const otherChanges: string[] = context.otherChanges || [];
@@ -709,13 +733,22 @@ export class Installer implements IInstaller {
       // Download the script
       logger.debug('installFromCurlScript: Downloading script from %s', url);
       const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
-      await this.downloader.download(url, {
-        destinationPath: scriptPath,
-      });
+      
+      const showProgress = shouldShowProgress(_options?.quiet);
+      const progressBar = new ProgressBar(`${toolName}-install.sh`, { enabled: showProgress });
+      
+      try {
+        await this.downloader.download(url, {
+          destinationPath: scriptPath,
+          onProgress: progressBar.createCallback(),
+        });
+      } finally {
+        progressBar.finish();
+      }
       otherChanges.push(`Downloaded installation script from ${url} to ${scriptPath}.`);
 
       // Make the script executable
-      await this.fs.chmod(scriptPath, 0o755);
+      await toolFs.chmod(scriptPath, 0o755);
       otherChanges.push(`Set executable permission (0755) on script: ${scriptPath}`);
 
       // Update context with download path
@@ -769,6 +802,11 @@ export class Installer implements IInstaller {
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
+    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+    const toolFs = this.fs instanceof TrackedFileSystem 
+      ? this.fs.withToolName(toolName)
+      : this.fs;
+
     const logger = this.logger.getSubLogger({ name: 'installFromCurlTar' });
     logger.debug('installFromCurlTar: toolName=%s', toolName);
     const otherChanges: string[] = [...(context.otherChanges || [])];
@@ -790,9 +828,18 @@ export class Installer implements IInstaller {
       // Download the tarball
       logger.debug('installFromCurlTar: Downloading tarball from %s', url);
       const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`); // Assuming .tar.gz, adjust if needed
-      await this.downloader.download(url, {
-        destinationPath: tarballPath,
-      });
+      
+      const showProgress = shouldShowProgress(_options?.quiet);
+      const progressBar = new ProgressBar(`${toolName}.tar.gz`, { enabled: showProgress });
+      
+      try {
+        await this.downloader.download(url, {
+          destinationPath: tarballPath,
+          onProgress: progressBar.createCallback(),
+        });
+      } finally {
+        progressBar.finish();
+      }
       otherChanges.push(`Downloaded tarball from ${url} to ${tarballPath}.`);
 
       // Update context with download path
@@ -810,7 +857,7 @@ export class Installer implements IInstaller {
       logger.debug('installFromCurlTar: Extracting tarball');
       otherChanges.push(`Starting extraction of tarball: ${tarballPath}`);
       const extractDir = path.join(context.installDir, 'extracted');
-      await this.fs.ensureDir(extractDir);
+      await toolFs.ensureDir(extractDir);
       otherChanges.push(`Ensured extraction directory exists: ${extractDir}`);
 
       const extractResult: ExtractResult = await this.archiveExtractor.extract(tarballPath, {
@@ -874,7 +921,7 @@ export class Installer implements IInstaller {
       }
       otherChanges.push(`Determined binary path after extraction: ${finalBinaryPath}`);
 
-      if (!(await this.fs.exists(finalBinaryPath))) {
+      if (!(await toolFs.exists(finalBinaryPath))) {
         return {
           success: false,
           error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
@@ -884,7 +931,7 @@ export class Installer implements IInstaller {
 
       // Make the binary executable (still in extractDir at this point)
       logger.debug('installFromCurlTar: Making binary executable: %s', finalBinaryPath);
-      await this.fs.chmod(finalBinaryPath, 0o755);
+      await toolFs.chmod(finalBinaryPath, 0o755);
       otherChanges.push(`Set executable permission (0755) on: ${finalBinaryPath}`);
 
       // Determine the final destination path for the binary, directly in context.installDir
@@ -897,15 +944,15 @@ export class Installer implements IInstaller {
           finalBinaryPath,
           actualFinalBinaryDestPath,
         );
-        await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
+        await toolFs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
 
         // Copy the file from extractDir to its final place in installDir
-        await this.fs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
+        await toolFs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
         otherChanges.push(
           `Copied binary from ${finalBinaryPath} to ${actualFinalBinaryDestPath}.`
         );
         // Ensure the copied file is executable
-        await this.fs.chmod(actualFinalBinaryDestPath, 0o755);
+        await toolFs.chmod(actualFinalBinaryDestPath, 0o755);
         otherChanges.push(`Set executable permission (0755) on: ${actualFinalBinaryDestPath}`);
 
         // Update finalBinaryPath to the new location
@@ -920,20 +967,20 @@ export class Installer implements IInstaller {
       // Clean up the temporary extraction directory as we've moved the binary
       if (
         context.extractDir &&
-        (await this.fs.exists(context.extractDir)) &&
+        (await toolFs.exists(context.extractDir)) &&
         finalBinaryPath.startsWith(context.installDir) &&
         !finalBinaryPath.startsWith(context.extractDir)
       ) {
         logger.debug('installFromCurlTar: Cleaning up extractDir: %s', context.extractDir);
-        await this.fs.rm(context.extractDir, { recursive: true, force: true });
+        await toolFs.rm(context.extractDir, { recursive: true, force: true });
         otherChanges.push(`Cleaned up temporary extraction directory: ${context.extractDir}`);
       } else if (
         // Clean up downloaded tarball if it was extracted and binary moved
         tarballPath !== finalBinaryPath &&
-        (await this.fs.exists(tarballPath))
+        (await toolFs.exists(tarballPath))
       ) {
         logger.debug('installFromCurlTar: Cleaning up downloaded tarball: %s', tarballPath);
-        await this.fs.rm(tarballPath);
+        await toolFs.rm(tarballPath);
         otherChanges.push(`Cleaned up downloaded tarball: ${tarballPath}`);
       }
 
@@ -964,6 +1011,11 @@ export class Installer implements IInstaller {
     context: any, // context now includes otherChanges
     _options?: InstallOptions,
   ): Promise<InstallResult> {
+    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+    const toolFs = this.fs instanceof TrackedFileSystem 
+      ? this.fs.withToolName(toolName)
+      : this.fs;
+
     const logger = this.logger.getSubLogger({ name: 'installManually' });
     logger.debug('installManually: toolName=%s', toolName);
     const otherChanges: string[] = context.otherChanges || [];
@@ -982,7 +1034,7 @@ export class Installer implements IInstaller {
 
     try {
       // Check if the binary exists
-      if (await this.fs.exists(binaryPath)) {
+      if (await toolFs.exists(binaryPath)) {
         otherChanges.push(`Binary found at specified path: ${binaryPath}.`);
         return {
           success: true,

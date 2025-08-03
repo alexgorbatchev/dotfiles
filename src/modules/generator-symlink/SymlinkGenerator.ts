@@ -8,6 +8,7 @@ import type {
   ISymlinkGenerator,
   SymlinkOperationResult,
 } from './ISymlinkGenerator';
+import { TrackedFileSystem } from '@modules/file-registry';
 import { expandHomePath } from '@utils';
 import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
@@ -39,6 +40,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     const dotfilesDir = this.yamlConfig.paths.dotfilesDir;
 
     for (const toolName in toolConfigs) {
+      // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+      const toolFs = this.fs instanceof TrackedFileSystem 
+        ? this.fs.withToolName(toolName)
+        : this.fs;
+
       const toolConfig = toolConfigs[toolName];
       if (!toolConfig) {
         logger.debug('Tool config for "%s" is undefined. Skipping.', toolName);
@@ -71,7 +77,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         let currentStatus: SymlinkOperationResult['status'] = 'created'; // Optimistic default
         let currentError: string | undefined;
 
-        if (!(await this.fs.exists(sourceAbsPath))) {
+        if (!(await toolFs.exists(sourceAbsPath))) {
           currentStatus = 'skipped_source_missing';
           logger.warn(
             WarningTemplates.fs.notFound('Source file', sourceAbsPath)
@@ -84,9 +90,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           continue;
         }
 
-        const targetExists = await this.fs.exists(targetAbsPath);
+        const targetExists = await toolFs.exists(targetAbsPath);
         const targetIsDir = targetExists
-          ? (await this.fs.stat(targetAbsPath)).isDirectory()
+          ? (await toolFs.stat(targetAbsPath)).isDirectory()
           : false;
 
         if (targetExists) {
@@ -113,23 +119,23 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               'Backup option enabled. Attempting to rename "%s" to "%s" using %s.',
               targetAbsPath,
               backupPath,
-              this.fs.constructor.name,
+              toolFs.constructor.name,
             );
             // Backup behavior determined by IFileSystem
             try {
-              if (await this.fs.exists(backupPath)) {
+              if (await toolFs.exists(backupPath)) {
                 logger.warn(
                   WarningTemplates.fs.overwriting(backupPath)
                 );
-                await this.fs.rm(backupPath, { recursive: true, force: true });
+                await toolFs.rm(backupPath, { recursive: true, force: true });
               }
-              await this.fs.rename(targetAbsPath, backupPath);
+              await toolFs.rename(targetAbsPath, backupPath);
               currentStatus = 'backed_up';
               logger.debug(
                 'Successfully backed up "%s" to "%s" using %s.',
                 targetAbsPath,
                 backupPath,
-                this.fs.constructor.name,
+                toolFs.constructor.name,
               );
             } catch (e: any) {
               currentStatus = 'failed';
@@ -143,19 +149,19 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             logger.debug(
               'Overwrite enabled. Attempting to delete "%s" using %s.',
               targetAbsPath,
-              this.fs.constructor.name,
+              toolFs.constructor.name,
             );
             // Deletion behavior determined by IFileSystem
             try {
               if (targetIsDir) {
-                await this.fs.rm(targetAbsPath, { recursive: true, force: true });
+                await toolFs.rm(targetAbsPath, { recursive: true, force: true });
               } else {
-                await this.fs.rm(targetAbsPath, { force: true });
+                await toolFs.rm(targetAbsPath, { force: true });
               }
               logger.debug(
                 'Successfully deleted "%s" for overwrite using %s.',
                 targetAbsPath,
-                this.fs.constructor.name,
+                toolFs.constructor.name,
               );
               // Status remains 'updated_target' or 'backed_up'
             } catch (e: any) {
@@ -181,11 +187,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         logger.debug(
           'Ensuring target directory "%s" exists using %s.',
           targetDir,
-          this.fs.constructor.name,
+          toolFs.constructor.name,
         );
         // ensureDir behavior determined by IFileSystem
         try {
-          await this.fs.ensureDir(targetDir);
+          await toolFs.ensureDir(targetDir);
         } catch (e: any) {
           currentStatus = 'failed';
           const errorMsg = ErrorTemplates.fs.directoryCreateFailed(targetDir, e.message);
@@ -198,16 +204,16 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             'Attempting to create symlink from "%s" to "%s" using %s.',
             sourceAbsPath,
             targetAbsPath,
-            this.fs.constructor.name,
+            toolFs.constructor.name,
           );
           // Symlink creation behavior determined by IFileSystem
           try {
-            await this.fs.symlink(sourceAbsPath, targetAbsPath);
+            await toolFs.symlink(sourceAbsPath, targetAbsPath);
             logger.debug(
               'Successfully created symlink from "%s" to "%s" using %s.',
               sourceAbsPath,
               targetAbsPath,
-              this.fs.constructor.name,
+              toolFs.constructor.name,
             );
             // currentStatus is already 'created', 'updated_target', or 'backed_up'
           } catch (e: any) {

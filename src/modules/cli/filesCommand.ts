@@ -107,7 +107,7 @@ async function filesActionLogic(
       logger.info(`\n${toolName} (${toolOperations.length} operations):`);
       
       for (const operation of toolOperations) {
-        const timestamp = new Date(operation.createdAt).toISOString();
+        const timestamp = new Date(operation.createdAt).toLocaleString();
         const sizeText = operation.sizeBytes ? ` (${operation.sizeBytes} bytes)` : '';
         
         logger.info(`  ${operation.operationType.toUpperCase()}: ${operation.filePath}`);
