@@ -86,7 +86,7 @@ describe('installCommand', () => {
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
     }));
 
-    registerInstallCommand(testLogger, program, mockServices);
+    registerInstallCommand(testLogger, program, async () => mockServices);
   });
 
   afterEach(() => {

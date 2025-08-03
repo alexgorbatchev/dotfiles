@@ -118,13 +118,13 @@ describe('updateCommand', () => {
       exitCli: mockExitCli,
     }));
 
-    registerUpdateCommand(logger, program, {
+    registerUpdateCommand(logger, program, async () => ({
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
       installer: mockInstallerService as IInstaller,
       versionChecker: mockVersionChecker as IVersionChecker,
-    } as Services);
+    } as Services));
   });
 
   afterEach(() => {

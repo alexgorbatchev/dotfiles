@@ -104,7 +104,7 @@ export async function detectConflictsActionLogic(
 export function registerDetectConflictsCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  services: Services,
+  servicesFactory: () => Promise<Services>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerDetectConflictsCommand' });
   program
@@ -116,6 +116,7 @@ export function registerDetectConflictsCommand(
       const combinedOptions = { ...options, ...program.opts() };
       logger.debug('detect-conflicts command: Action called with options: %o', combinedOptions);
       try {
+        const services = await servicesFactory();
         await detectConflictsActionLogic(logger, combinedOptions, services);
       } catch (error) {
         // If this is an error from exitCli, rethrow it to preserve the exit code

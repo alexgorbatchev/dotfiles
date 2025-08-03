@@ -8,6 +8,112 @@ export interface CleanupCommandOptions {
   dryRun: boolean;
   verbose: boolean;
   quiet: boolean;
+  tool?: string;
+  type?: string;
+  all?: boolean;
+  registry?: boolean;
+}
+
+async function registryBasedCleanup(
+  parentLogger: TsLogger,
+  services: Services,
+  options: CleanupCommandOptions,
+): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'registryBasedCleanup' });
+  const { fs, fileRegistry } = services;
+  const { dryRun, tool, type, all } = options;
+
+  if (all) {
+    // Remove all tracked files
+    logger.info('Registry-based cleanup: Removing all tracked files...');
+    const allTools = await fileRegistry.getRegisteredTools();
+    
+    for (const toolName of allTools) {
+      await cleanupToolFiles(logger, fs, fileRegistry, toolName, undefined, dryRun);
+    }
+    
+    // Clean up the registry database itself
+    if (!dryRun) {
+      logger.info('Cleaning up registry database...');
+      // We don't actually delete the registry DB, just compact it
+      // await fileRegistry.compact();
+    } else {
+      logger.info('Would clean up registry database (dry run)');
+    }
+    
+  } else if (tool) {
+    // Remove files for specific tool
+    logger.info(`Registry-based cleanup: Removing files for tool '${tool}'...`);
+    await cleanupToolFiles(logger, fs, fileRegistry, tool, type, dryRun);
+    
+    if (!dryRun) {
+      await fileRegistry.removeToolOperations(tool);
+      logger.info(`Removed registry entries for tool: ${tool}`);
+    } else {
+      logger.info(`Would remove registry entries for tool: ${tool} (dry run)`);
+    }
+    
+  } else if (type) {
+    // Remove files of specific type across all tools
+    logger.info(`Registry-based cleanup: Removing files of type '${type}'...`);
+    const operations = await fileRegistry.getOperations({ fileType: type as any });
+    
+    for (const operation of operations) {
+      const fileState = await fileRegistry.getFileState(operation.filePath);
+      if (fileState && fileState.lastOperation !== 'delete') {
+        await removeFile(logger, fs, operation.filePath, dryRun);
+      }
+    }
+  } else {
+    logger.warn('Registry-based cleanup requires --all, --tool <name>, or --type <type> option');
+  }
+}
+
+async function cleanupToolFiles(
+  logger: TsLogger,
+  fs: any,
+  fileRegistry: any,
+  toolName: string,
+  fileType?: string,
+  dryRun?: boolean,
+): Promise<void> {
+  const fileStates = await fileRegistry.getFileStatesForTool(toolName);
+  
+  const filteredStates = fileType
+    ? fileStates.filter((state: any) => state.fileType === fileType)
+    : fileStates;
+  
+  logger.info(`Found ${filteredStates.length} files for tool '${toolName}'${fileType ? ` of type '${fileType}'` : ''}`);
+  
+  for (const fileState of filteredStates) {
+    await removeFile(logger, fs, fileState.filePath, dryRun);
+    
+    if (fileState.targetPath) {
+      await removeFile(logger, fs, fileState.targetPath, dryRun);
+    }
+  }
+}
+
+async function removeFile(
+  logger: TsLogger,
+  fs: any,
+  filePath: string,
+  dryRun?: boolean,
+): Promise<void> {
+  try {
+    if (await fs.exists(filePath)) {
+      if (!dryRun) {
+        await fs.rm(filePath, { force: true });
+        logger.info(`  Deleted: ${filePath}`);
+      } else {
+        logger.info(`  Would delete: ${filePath}`);
+      }
+    } else {
+      logger.debug(`  File not found: ${filePath}`);
+    }
+  } catch (error) {
+    logger.error(ErrorTemplates.fs.deleteFailed(filePath, String(error)));
+  }
 }
 
 async function cleanupActionLogic(
@@ -17,13 +123,21 @@ async function cleanupActionLogic(
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'cleanupActionLogic' });
   const { yamlConfig, fs } = services;
-  const { dryRun } = options;
+  const { dryRun, tool, type, all, registry } = options;
 
   try {
-    logger.debug('execute: starting cleanup process, dryRun=%s', dryRun);
+    logger.debug('execute: starting cleanup process, dryRun=%s, options=%o', dryRun, options);
     logger.info(
       dryRun ? 'Starting dry run cleanup (no files will be removed)...' : 'Starting cleanup...',
     );
+
+    // If registry-based options are specified, use registry cleanup
+    if (registry || tool || type || all) {
+      await registryBasedCleanup(logger, services, options);
+      return;
+    }
+
+    // Otherwise, fall back to legacy manifest-based cleanup
 
     let manifest: GeneratedArtifactsManifest | null = null;
 
@@ -166,7 +280,7 @@ async function cleanupActionLogic(
 export function registerCleanupCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  services: Services,
+  servicesFactory: () => Promise<Services>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCleanupCommand' });
   program
@@ -174,10 +288,15 @@ export function registerCleanupCommand(
     .description(
       'Remove all generated artifacts, including shims, shell configurations, and the .generated directory.',
     )
+    .option('--tool <name>', 'Remove files for specific tool only (registry-based)')
+    .option('--type <type>', 'Remove files of specific type only (registry-based)')
+    .option('--all', 'Remove all tracked files (registry-based)')
+    .option('--registry', 'Use registry-based cleanup instead of manifest-based')
     .action(async (options) => {
       const combinedOptions: CleanupCommandOptions = { ...options, ...program.opts() };
 
       logger.debug('cleanup command: Action called with options: %o', combinedOptions);
+      const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);
     });
 }

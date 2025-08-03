@@ -133,7 +133,7 @@ export async function checkUpdatesActionLogic(
 export function registerCheckUpdatesCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  services: Services,
+  servicesFactory: () => Promise<Services>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
   program
@@ -150,6 +150,7 @@ export function registerCheckUpdatesCommand(
         combinedOptions,
       );
       try {
+        const services = await servicesFactory();
         await checkUpdatesActionLogic(logger, toolName, services);
       } catch (error) {
         logger.debug('check-updates command: Unhandled error in action handler: %O', error);

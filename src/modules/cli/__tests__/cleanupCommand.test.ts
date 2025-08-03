@@ -69,10 +69,10 @@ describe('cleanupCommand', () => {
       [mockSymlinkSource]: mockSymlinkTarget,
     });
 
-    registerCleanupCommand(logger, program, {
+    registerCleanupCommand(logger, program, async () => ({
       yamlConfig: mockYamlConfig,
       fs: mockFs.asIFileSystem,
-    } as Services);
+    } as Services));
   });
 
   afterEach(() => {

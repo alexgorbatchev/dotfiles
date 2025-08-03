@@ -5,3 +5,4 @@ export * from './detectConflictsCommand';
 export * from './installCommand';
 export * from './cleanupCommand';
 export * from './checkUpdatesCommand';
+export * from './filesCommand';

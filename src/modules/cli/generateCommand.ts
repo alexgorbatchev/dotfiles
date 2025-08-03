@@ -13,7 +13,7 @@ export interface GenerateCommandOptions {
 export function registerGenerateCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  services: Services,
+  servicesFactory: () => Promise<Services>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerGenerateCommand' });
   program
@@ -21,6 +21,7 @@ export function registerGenerateCommand(
       .description('Generates shims, shell init files, and symlinks based on tool configurations.')
       .action(async (options) => {
         const combinedOptions = { ...options, ...program.opts() };
+        const services = await servicesFactory();
         const { yamlConfig, fs, generatorOrchestrator } = services;
   
         logger.debug('Action called with options: %o', combinedOptions);

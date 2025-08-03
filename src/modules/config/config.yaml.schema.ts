@@ -71,8 +71,8 @@ const downloaderConfigSchema = z.object({
   cache: downloaderCacheConfigSchema.default(downloaderCacheConfigSchema.parse({})),
 }).strict();
 
-const OS_VALUES = ['macos', 'linux', 'windows'] as const;
-const ARCH_VALUES = ['x86_64', 'arm64'] as const;
+export const OS_VALUES = ['macos', 'linux', 'windows'] as const;
+export const ARCH_VALUES = ['x86_64', 'arm64'] as const;
 
 const platformMatchSchema = z.union([
   z.object({

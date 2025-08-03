@@ -102,7 +102,7 @@ describe('checkUpdatesCommand', () => {
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
     } as Services;
 
-    registerCheckUpdatesCommand(logger, program, mockServices);
+    registerCheckUpdatesCommand(logger, program, async () => mockServices);
   });
 
   afterEach(() => {

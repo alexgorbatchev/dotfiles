@@ -199,6 +199,9 @@ export const SuccessTemplates = {
       `Tool "${toolName}" updated from v${fromVersion} to v${toVersion}`,
     removed: (toolName: string) => 
       `Tool "${toolName}" removed successfully`,
+    processing: (toolName: string, operation: string) => `Processing ${toolName} (${operation})`,
+    processingComplete: (toolName: string, operation: string, duration?: number) => 
+      `Completed ${toolName} (${operation})${duration ? ` in ${duration}ms` : ''}`,
   },
   config: {
     loaded: (configPath: string, toolCount: number) => 
@@ -209,5 +212,21 @@ export const SuccessTemplates = {
   operation: {
     completed: (operation: string, duration: number, itemCount?: number) => 
       `${operation} completed in ${duration}ms${itemCount ? ` (${itemCount} items)` : ''}`,
+  },
+  fs: {
+    created: (path: string) => `Created: ${path}`,
+    updated: (path: string) => `Updated: ${path}`,
+    removed: (path: string) => `Removed: ${path}`,
+    removedDirectory: (path: string) => `Removed directory: ${path}`,
+    moved: (oldPath: string, newPath: string) => `Moved: ${oldPath} → ${newPath}`,
+    copied: (srcPath: string, destPath: string) => `Copied: ${srcPath} → ${destPath}`,
+    symlinkCreated: (linkPath: string, targetPath: string) => `Created symlink: ${linkPath} → ${targetPath}`,
+    permissionsChanged: (path: string, mode: string | number) => `Changed permissions: ${path} (${mode})`,
+    directoryCreated: (path: string) => `Created directory: ${path}`,
+  },
+  registry: {
+    initialized: (path: string) => `File tracking initialized: ${path}`,
+    operationsTracked: (count: number, toolName: string) => `Tracked ${count} file operations for ${toolName}`,
+    summaryStats: (totalFiles: number, totalTools: number) => `Registry contains ${totalFiles} files across ${totalTools} tools`,
   },
 } as const;

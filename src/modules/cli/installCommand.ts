@@ -7,7 +7,7 @@ import { exitCli } from './exitCli';
 export function registerInstallCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  services: Services,
+  servicesFactory: () => Promise<Services>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerInstallCommand' });
   program
@@ -22,6 +22,7 @@ export function registerInstallCommand(
       const combinedOptions = { ...options, ...program.opts() };
       logger.debug('install command: Action called for tool "%s" with options: %o', toolName, combinedOptions);
 
+      const services = await servicesFactory();
       const { yamlConfig, fs, installer } = services;
 
       try {

@@ -13,6 +13,11 @@ export interface InstallOptions {
    * Whether to show verbose output during installation
    */
   verbose?: boolean;
+
+  /**
+   * Whether to suppress progress indicators and non-essential output
+   */
+  quiet?: boolean;
 }
 
 /**

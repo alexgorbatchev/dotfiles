@@ -65,11 +65,11 @@ describe('generateCommand', () => {
       generateAll: mock(async () => mockManifest),
     };
 
-    registerGenerateCommand(logger, program, {
+    registerGenerateCommand(logger, program, async () => ({
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
       generatorOrchestrator: mockGeneratorOrchestrator,
-    } as Services);
+    } as Services));
   });
 
   afterEach(() => {

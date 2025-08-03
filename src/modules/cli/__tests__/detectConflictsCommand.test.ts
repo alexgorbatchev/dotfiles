@@ -78,10 +78,10 @@ describe('detectConflictsCommand', () => {
 
     mockYamlConfig = await createYamlConfigFromObject(logger, mockFs.fs);
 
-    registerDetectConflictsCommand(logger, program, {
+    registerDetectConflictsCommand(logger, program, async () => ({
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
-    } as Services);
+    } as Services));
   });
 
   afterEach(() => {

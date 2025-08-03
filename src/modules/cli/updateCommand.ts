@@ -15,7 +15,7 @@ export interface UpdateCommandOptions {
 export function registerUpdateCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  services: Services,
+  servicesFactory: () => Promise<Services>,
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'updateCommand' });
   program
@@ -31,6 +31,7 @@ export function registerUpdateCommand(
         combinedOptions,
       );
 
+      const services = await servicesFactory();
       const { yamlConfig, fs, githubApiClient, installer, versionChecker } =
         services;
 

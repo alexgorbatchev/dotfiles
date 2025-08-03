@@ -4,11 +4,12 @@ import {
   registerCheckUpdatesCommand,
   registerCleanupCommand,
   registerDetectConflictsCommand,
+  registerFilesCommand,
   registerGenerateCommand,
   registerInstallCommand,
   registerUpdateCommand,
 } from '@modules/cli';
-import { type YamlConfig } from '@modules/config';
+import { type YamlConfig, OS_VALUES, ARCH_VALUES } from '@modules/config';
 import { loadYamlConfig } from '@modules/config-loader';
 import { FileCache, type ICache } from '@modules/cache';
 import { Downloader, type IDownloader } from '@modules/downloader';
@@ -31,16 +32,18 @@ import {
 } from '@modules/github-client';
 import { Installer, type IInstaller } from '@modules/installer';
 import { type TsLogger, createTsLogger, getLogLevelFromFlags } from '@modules/logger';
+import { SqliteFileRegistry, type IFileRegistry, TrackedFileSystem } from '@modules/file-registry';
 import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
-import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, WarningTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
 
 export interface Services {
   yamlConfig: YamlConfig;
   fs: IFileSystem;
+  fileRegistry: IFileRegistry;
   downloadCache: ICache | undefined;
   downloader: IDownloader;
   githubApiCache: ICache;
@@ -79,10 +82,17 @@ export async function setupServices(
   logger.trace('Using IFileSystem implementation: %s', fs.constructor.name);
 
   const systemInfo: SystemInfo = {
-    platform: process.platform,
-    arch: process.arch,
+    platform: options.platform || process.platform,
+    arch: options.arch || process.arch,
     homeDir: os.homedir(),
   };
+
+  if (options.platform) {
+    logger.warn(`Platform overridden to: ${options.platform}`);
+  }
+  if (options.arch) {
+    logger.warn(`Architecture overridden to: ${options.arch}`);
+  }
 
   const userConfigPath = config.length === 0 ? path.resolve(options.cwd, 'config.yaml') : config;
   const yamlConfig = await loadYamlConfig(logger, fs, userConfigPath, systemInfo, env);
@@ -143,6 +153,11 @@ export async function setupServices(
     parentLogger.info('Download cache disabled');
   }
 
+  // Initialize file registry
+  const registryPath = path.join(yamlConfig.paths.generatedDir, 'registry.db');
+  const fileRegistry = new SqliteFileRegistry(parentLogger, registryPath);
+  parentLogger.debug(SuccessTemplates.registry.initialized(registryPath));
+
   // Initialize services with yamlConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
 
@@ -155,9 +170,29 @@ export async function setupServices(
   });
   const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
 
-  const shimGenerator = new ShimGenerator(parentLogger, fs, yamlConfig);
-  const shellInitGenerator = new ShellInitGenerator(parentLogger, fs, yamlConfig);
-  const symlinkGenerator = new SymlinkGenerator(parentLogger, fs, yamlConfig);
+  // Create tracked filesystem instances for each generator
+  const shimTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'shim')
+  );
+  const shellInitTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'init')
+  );
+  const symlinkTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'symlink')
+  );
+
+  const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, yamlConfig);
+  const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, yamlConfig);
+  const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, yamlConfig);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     parentLogger,
@@ -168,10 +203,18 @@ export async function setupServices(
     yamlConfig
   );
 
+  // Create tracked filesystem for installer binary operations  
+  const installerTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'binary')
+  );
+
   const archiveExtractor = new ArchiveExtractor(parentLogger, fs);
   const installer = new Installer(
     logger,
-    fs,
+    installerTrackedFs,
     downloader,
     githubApiClient,
     archiveExtractor,
@@ -183,6 +226,7 @@ export async function setupServices(
   return {
     yamlConfig,
     fs,
+    fileRegistry,
     downloadCache,
     downloader,
     githubApiCache,
@@ -209,19 +253,26 @@ export function createProgram() {
       '--quiet',
       'Suppress all informational and debug output. Errors are still displayed.',
       false
-    );
+    )
+    .option('--platform <platform>', `Override the detected platform (${OS_VALUES.join(', ')})`)
+    .option('--arch <arch>', `Override the detected architecture (${ARCH_VALUES.join(', ')})`);
 
   return program;
 }
 
-export function registerAllCommands(parentLogger: TsLogger, program: GlobalProgram, services: Services) {
+export function registerAllCommands(
+  parentLogger: TsLogger, 
+  program: GlobalProgram, 
+  servicesFactory: () => Promise<Services>
+) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
-  registerInstallCommand(logger, program, services);
-  registerGenerateCommand(logger, program, services);
-  registerCleanupCommand(logger, program, services);
-  registerCheckUpdatesCommand(logger, program, services);
-  registerUpdateCommand(logger, program, services);
-  registerDetectConflictsCommand(logger, program, services);
+  registerInstallCommand(logger, program, servicesFactory);
+  registerGenerateCommand(logger, program, servicesFactory);
+  registerCleanupCommand(logger, program, servicesFactory);
+  registerCheckUpdatesCommand(logger, program, servicesFactory);
+  registerUpdateCommand(logger, program, servicesFactory);
+  registerDetectConflictsCommand(logger, program, servicesFactory);
+  registerFilesCommand(logger, program, servicesFactory);
 }
 
 export type GlobalProgram = ReturnType<typeof createProgram>;
@@ -241,13 +292,16 @@ export async function main(argv: string[]) {
 
   logger.trace('CLI starting with arguments:', argv);
 
-  const services = await setupServices(logger, {
-    ...options,
-    cwd: process.cwd(),
-    env: process.env,
-  });
+  // Create a factory function that will initialize services only when needed
+  const servicesFactory = async () => {
+    return await setupServices(logger, {
+      ...options,
+      cwd: process.cwd(),
+      env: process.env,
+    });
+  };
 
-  registerAllCommands(logger, program, services);
+  registerAllCommands(logger, program, servicesFactory);
   await program.parseAsync(argv);
 }
 
