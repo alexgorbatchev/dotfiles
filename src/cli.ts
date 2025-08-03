@@ -30,7 +30,7 @@ import {
   type IGitHubApiClient,
 } from '@modules/github-client';
 import { Installer, type IInstaller } from '@modules/installer';
-import { type TsLogger, createTsLogger } from '@modules/logger';
+import { type TsLogger, createTsLogger, getLogLevelFromFlags } from '@modules/logger';
 import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
 import { Command } from 'commander';
@@ -227,16 +227,22 @@ export function registerAllCommands(parentLogger: TsLogger, program: GlobalProgr
 export type GlobalProgram = ReturnType<typeof createProgram>;
 export type GlobalProgramOptions = ReturnType<GlobalProgram['opts']>;
 
-export async function main(parentLogger: TsLogger, argv: string[]) {
-  const logger = parentLogger.getSubLogger({ name: 'main' });
+export async function main(argv: string[]) {
   const program = createProgram();
+  
+  // Parse options first to get quiet/verbose flags
+  program.parseOptions(argv);
+  const options = program.opts();
+  
+  // Create logger with appropriate level based on CLI flags
+  const logLevel = getLogLevelFromFlags(options.quiet, options.verbose);
+  const rootLogger = createTsLogger({ name: 'cli', minLevel: logLevel });
+  const logger = rootLogger.getSubLogger({ name: 'main' });
 
   logger.trace('CLI starting with arguments:', argv);
 
-  program.parseOptions(argv);
-
   const services = await setupServices(logger, {
-    ...program.opts(),
+    ...options,
     cwd: process.cwd(),
     env: process.env,
   });
@@ -247,9 +253,10 @@ export async function main(parentLogger: TsLogger, argv: string[]) {
 
 // Only run main if the script is executed directly
 if (import.meta.main) {
-  const rootLogger = createTsLogger('cli');
-  main(rootLogger, process.argv).catch((error) => {
-    rootLogger.fatal('Top-level unhandled error in main().catch(): %O', error);
+  main(process.argv).catch((error) => {
+    // Create a basic logger for fatal errors only, since we don't have parsed options yet
+    const fatalLogger = createTsLogger({ name: 'cli', minLevel: 5 }); // FATAL level only
+    fatalLogger.fatal('Top-level unhandled error in main().catch(): %O', error);
     process.exit(1);
   });
 }
