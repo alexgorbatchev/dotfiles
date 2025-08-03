@@ -14,7 +14,7 @@ import type { GitHubRateLimit, GitHubRelease } from '@types';
 import crypto from 'crypto';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
-import type { IGitHubApiCache } from './IGitHubApiCache';
+import type { ICache } from '@modules/cache';
 import type { IGitHubApiClient } from './IGitHubApiClient';
 
 /**
@@ -54,7 +54,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   private readonly githubToken?: string;
   private readonly downloader: IDownloader;
   private readonly userAgent: string;
-  private readonly cache?: IGitHubApiCache;
+  private readonly cache?: ICache;
   private readonly cacheEnabled: boolean;
   private readonly cacheTtlMs: number;
   private readonly logger: TsLogger;
@@ -63,7 +63,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     parentLogger: TsLogger,
     config: YamlConfig,
     downloader: IDownloader,
-    cache?: IGitHubApiCache,
+    cache?: ICache,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GitHubApiClient' });
     this.baseUrl = config.github.host;

@@ -10,7 +10,7 @@ import {
 } from '@modules/cli';
 import { type YamlConfig } from '@modules/config';
 import { loadYamlConfig } from '@modules/config-loader';
-import { FileDownloadCache, type IDownloadCache } from '@modules/cache';
+import { FileCache, type ICache } from '@modules/cache';
 import { Downloader, type IDownloader } from '@modules/downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
 import {
@@ -26,9 +26,7 @@ import { ShellInitGenerator, type IShellInitGenerator } from '@modules/generator
 import { ShimGenerator, type IShimGenerator } from '@modules/generator-shim';
 import { SymlinkGenerator, type ISymlinkGenerator } from '@modules/generator-symlink';
 import {
-  FileGitHubApiCache,
   GitHubApiClient,
-  type IGitHubApiCache,
   type IGitHubApiClient,
 } from '@modules/github-client';
 import { Installer, type IInstaller } from '@modules/installer';
@@ -43,9 +41,9 @@ import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates
 export interface Services {
   yamlConfig: YamlConfig;
   fs: IFileSystem;
-  downloadCache: IDownloadCache | undefined;
+  downloadCache: ICache | undefined;
   downloader: IDownloader;
-  githubApiCache: IGitHubApiCache;
+  githubApiCache: ICache;
   githubApiClient: IGitHubApiClient;
   shimGenerator: IShimGenerator;
   shellInitGenerator: IShellInitGenerator;
@@ -127,15 +125,17 @@ export async function setupServices(
   }
 
   // Initialize download cache if enabled
-  let downloadCache: IDownloadCache | undefined;
+  let downloadCache: ICache | undefined;
   if (yamlConfig.downloader.cache.enabled) {
     const cacheDir = path.join(yamlConfig.paths.generatedDir, 'cache', 'downloads');
-    downloadCache = new FileDownloadCache(
+    downloadCache = new FileCache(
       parentLogger,
       fs,
       {
         enabled: true,
+        defaultTtl: yamlConfig.downloader.cache.ttl,
         cacheDir,
+        storageStrategy: 'binary',
       }
     );
     parentLogger.info('Download cache enabled: %s (TTL: %d ms)', cacheDir, yamlConfig.downloader.cache.ttl);
@@ -146,7 +146,13 @@ export async function setupServices(
   // Initialize services with yamlConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
 
-  const githubApiCache = new FileGitHubApiCache(parentLogger, fs, yamlConfig);
+  // Initialize GitHub API cache using generic FileCache with JSON strategy
+  const githubApiCache = new FileCache(parentLogger, fs, {
+    enabled: yamlConfig.github.cache.enabled,
+    defaultTtl: yamlConfig.github.cache.ttl,
+    cacheDir: path.join(yamlConfig.paths.generatedDir, 'cache', 'github-api'),
+    storageStrategy: 'json',
+  });
   const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
 
   const shimGenerator = new ShimGenerator(parentLogger, fs, yamlConfig);

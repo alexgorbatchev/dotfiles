@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { TestLogger, FetchMockHelper } from '@testing-helpers';
 import { createMemFileSystem } from '@testing-helpers';
 import { Downloader } from '../Downloader';
-import { FileDownloadCache } from '@modules/cache/FileDownloadCache';
-import type { DownloadCacheConfig } from '@modules/cache/FileDownloadCache';
+import { FileCache } from '@modules/cache/FileCache';
+import type { CacheConfig } from '@modules/cache/ICache';
 
 describe('Downloader with Cache', () => {
   let logger: TestLogger;
   let mockFileSystem: any;
-  let cache: FileDownloadCache;
+  let cache: FileCache;
   let downloader: Downloader;
-  let cacheConfig: DownloadCacheConfig;
+  let cacheConfig: CacheConfig;
   let fetchMockHelper: FetchMockHelper;
 
   beforeEach(async () => {
@@ -19,9 +19,11 @@ describe('Downloader with Cache', () => {
     mockFileSystem = fs;
     cacheConfig = {
       enabled: true,
+      defaultTtl: 60000,
       cacheDir: '/cache/downloads',
+      storageStrategy: 'binary',
     };
-    cache = new FileDownloadCache(logger, mockFileSystem, cacheConfig);
+    cache = new FileCache(logger, mockFileSystem, cacheConfig);
     downloader = new Downloader(logger, mockFileSystem, undefined, cache);
     fetchMockHelper = new FetchMockHelper();
     fetchMockHelper.setup();
@@ -107,7 +109,7 @@ describe('Downloader with Cache', () => {
 
     it('should work with disabled cache', async () => {
       const disabledCacheConfig = { ...cacheConfig, enabled: false };
-      const disabledCache = new FileDownloadCache(logger, mockFileSystem, disabledCacheConfig);
+      const disabledCache = new FileCache(logger, mockFileSystem, disabledCacheConfig);
       const downloaderWithDisabledCache = new Downloader(logger, mockFileSystem, undefined, disabledCache);
 
       // Mock two fetch requests since cache is disabled

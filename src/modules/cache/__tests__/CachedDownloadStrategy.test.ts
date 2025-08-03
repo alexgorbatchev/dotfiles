@@ -3,7 +3,7 @@ import { TestLogger, createMemFileSystem } from '@testing-helpers';
 import { CachedDownloadStrategy } from '@modules/downloader/CachedDownloadStrategy';
 import type { DownloadStrategy } from '@modules/downloader/DownloadStrategy';
 import type { DownloadOptions } from '@modules/downloader/IDownloader';
-import type { IDownloadCache } from '../IDownloadCache';
+import type { ICache } from '../ICache';
 import type { IFileSystem } from '@modules/file-system';
 
 class MockDownloadStrategy implements DownloadStrategy {
@@ -37,14 +37,14 @@ class MockDownloadStrategy implements DownloadStrategy {
   }
 }
 
-class MockDownloadCache implements IDownloadCache {
-  public storage = new Map<string, Buffer>();
+class MockCache implements ICache {
+  public storage = new Map<string, any>();
   public getCalls: string[] = [];
-  public setCalls: Array<{ key: string; data: Buffer; ttl: number; metadata: { url: string; contentType?: string } }> = [];
+  public setCalls: Array<{ key: string; data: any; ttl?: number; metadata?: Record<string, unknown> }> = [];
   public shouldFailGet = false;
   public shouldFailSet = false;
 
-  async get(key: string): Promise<Buffer | null> {
+  async get<T>(key: string): Promise<T | null> {
     this.getCalls.push(key);
     if (this.shouldFailGet) {
       throw new Error('Cache get failed');
@@ -52,7 +52,7 @@ class MockDownloadCache implements IDownloadCache {
     return this.storage.get(key) || null;
   }
 
-  async set(key: string, data: Buffer, ttlMs: number, metadata: { url: string; contentType?: string }): Promise<void> {
+  async set<T>(key: string, data: T, ttlMs?: number, metadata?: Record<string, unknown>): Promise<void> {
     this.setCalls.push({ key, data, ttl: ttlMs, metadata });
     if (this.shouldFailSet) {
       throw new Error('Cache set failed');
@@ -87,14 +87,14 @@ class MockDownloadCache implements IDownloadCache {
 
 describe('CachedDownloadStrategy', () => {
   let logger: TestLogger;
-  let mockCache: MockDownloadCache;
+  let mockCache: MockCache;
   let mockStrategy: MockDownloadStrategy;
   let mockFileSystem: IFileSystem;
   let cachedStrategy: CachedDownloadStrategy;
 
   beforeEach(async () => {
     logger = new TestLogger();
-    mockCache = new MockDownloadCache();
+    mockCache = new MockCache();
     mockStrategy = new MockDownloadStrategy();
     const { fs } = await createMemFileSystem();
     mockFileSystem = fs;
@@ -168,9 +168,9 @@ describe('CachedDownloadStrategy', () => {
       
       // Mock get to return cached data
       const originalGet = mockCache.get;
-      mockCache.get = async (key: string): Promise<Buffer | null> => {
+      mockCache.get = async <T>(key: string): Promise<T | null> => {
         mockCache.getCalls.push(key);
-        return cachedData;
+        return cachedData as T;
       };
       
       const result = await cachedStrategy.download('https://example.com/file.txt') as Buffer;

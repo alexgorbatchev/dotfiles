@@ -1,3 +1,3 @@
-export type { IDownloadCache, DownloadCacheEntry } from './IDownloadCache';
-export { FileDownloadCache } from './FileDownloadCache';
+export type { ICache, CacheEntry, CacheConfig } from './ICache';
+export { FileCache } from './FileCache';
 export { DownloadCacheUtils } from './DownloadCacheUtils';

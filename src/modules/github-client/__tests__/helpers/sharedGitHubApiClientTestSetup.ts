@@ -7,7 +7,7 @@ import {
 } from '@testing-helpers';
 import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
-import type { IGitHubApiCache } from '../../IGitHubApiCache';
+import type { ICache } from '@modules/cache';
 import { createYamlConfigFromObject, } from '../../../config-loader';
 
 export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
@@ -29,13 +29,13 @@ export const createMockDownloader = (): IDownloader & {
   };
 };
 
-export const createMockGitHubApiCache = (): IGitHubApiCache & {
-  get: ReturnType<typeof mock<IGitHubApiCache['get']>>;
-  set: ReturnType<typeof mock<IGitHubApiCache['set']>>;
-  has: ReturnType<typeof mock<IGitHubApiCache['has']>>;
-  delete: ReturnType<typeof mock<IGitHubApiCache['delete']>>;
-  clearExpired: ReturnType<typeof mock<IGitHubApiCache['clearExpired']>>;
-  clear: ReturnType<typeof mock<IGitHubApiCache['clear']>>;
+export const createMockGitHubApiCache = (): ICache & {
+  get: ReturnType<typeof mock<ICache['get']>>;
+  set: ReturnType<typeof mock<ICache['set']>>;
+  has: ReturnType<typeof mock<ICache['has']>>;
+  delete: ReturnType<typeof mock<ICache['delete']>>;
+  clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
+  clear: ReturnType<typeof mock<ICache['clear']>>;
 } => {
   return {
     get: mock(async () => null), // Default to cache miss
@@ -52,13 +52,13 @@ export interface MockSetup {
   mockDownloader: IDownloader & {
     download: ReturnType<typeof mock<IDownloader['download']>>;
   };
-  mockCache: IGitHubApiCache & {
-    get: ReturnType<typeof mock<IGitHubApiCache['get']>>;
-    set: ReturnType<typeof mock<IGitHubApiCache['set']>>;
-    has: ReturnType<typeof mock<IGitHubApiCache['has']>>;
-    delete: ReturnType<typeof mock<IGitHubApiCache['delete']>>;
-    clearExpired: ReturnType<typeof mock<IGitHubApiCache['clearExpired']>>;
-    clear: ReturnType<typeof mock<IGitHubApiCache['clear']>>;
+  mockCache: ICache & {
+    get: ReturnType<typeof mock<ICache['get']>>;
+    set: ReturnType<typeof mock<ICache['set']>>;
+    has: ReturnType<typeof mock<ICache['has']>>;
+    delete: ReturnType<typeof mock<ICache['delete']>>;
+    clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
+    clear: ReturnType<typeof mock<ICache['clear']>>;
   };
   apiClient: GitHubApiClient;
   logger: TestLogger;

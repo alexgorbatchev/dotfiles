@@ -1,6 +1,6 @@
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions } from './IDownloader';
-import type { IDownloadCache } from '@modules/cache/IDownloadCache';
+import type { ICache } from '@modules/cache/ICache';
 import { DownloadCacheUtils } from '@modules/cache/DownloadCacheUtils';
 import type { TsLogger } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system';
@@ -11,7 +11,7 @@ import type { IFileSystem } from '@modules/file-system';
  */
 export class CachedDownloadStrategy implements DownloadStrategy {
   public readonly name: string;
-  private readonly cache: IDownloadCache;
+  private readonly cache: ICache;
   private readonly underlyingStrategy: DownloadStrategy;
   private readonly logger: TsLogger;
   private readonly cacheTtl: number;
@@ -21,14 +21,14 @@ export class CachedDownloadStrategy implements DownloadStrategy {
    * Creates a new CachedDownloadStrategy.
    * @param parentLogger The logger instance
    * @param fileSystem The file system implementation to use
-   * @param cache The download cache implementation to use
+   * @param cache The cache implementation to use (should be configured with 'binary' strategy)
    * @param underlyingStrategy The strategy to use when cache misses occur
    * @param cacheTtl TTL for cached downloads in milliseconds
    */
   constructor(
     parentLogger: TsLogger,
     fileSystem: IFileSystem,
-    cache: IDownloadCache,
+    cache: ICache,
     underlyingStrategy: DownloadStrategy,
     cacheTtl: number = 24 * 60 * 60 * 1000, // Default 24 hours
   ) {
@@ -75,7 +75,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     
     try {
       // Check cache first
-      const cachedBuffer = await this.cache.get(cacheKey);
+      const cachedBuffer = await this.cache.get<Buffer>(cacheKey);
       if (cachedBuffer) {
         logger.debug('Cache hit for URL: %s', url);
         

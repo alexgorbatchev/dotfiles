@@ -3,7 +3,7 @@ import type { DownloadStrategy } from './DownloadStrategy';
 import { NodeFetchStrategy } from './NodeFetchStrategy';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import type { IDownloadCache } from '@modules/cache/IDownloadCache';
+import type { ICache } from '@modules/cache/ICache';
 import type { TsLogger } from '@modules/logger';
 
 export class Downloader implements IDownloader {
@@ -15,7 +15,7 @@ export class Downloader implements IDownloader {
     parentLogger: TsLogger,
     fileSystem: IFileSystem,
     strategies?: DownloadStrategy[],
-    cache?: IDownloadCache,
+    cache?: ICache,
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Downloader' });
     this.fs = fileSystem;

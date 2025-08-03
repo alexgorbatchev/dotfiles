@@ -1,5 +1,5 @@
 /**
- * Represents a cached API response entry with metadata.
+ * Represents a cached entry with metadata.
  * @template T The type of data being cached
  */
 export interface CacheEntry<T> {
@@ -19,20 +19,43 @@ export interface CacheEntry<T> {
   expiresAt: number;
 
   /**
-   * Optional hash of the authentication token used for the request
-   * This allows invalidating cache entries when the token changes
+   * Optional metadata associated with the cache entry
    */
-  tokenHash?: string;
+  metadata?: Record<string, unknown>;
 }
 
 /**
- * Interface for GitHub API response caching.
- * Implementations should handle storing and retrieving cached API responses
- * with proper TTL (time-to-live) handling.
+ * Configuration for the cache.
  */
-export interface IGitHubApiCache {
+export interface CacheConfig {
   /**
-   * Retrieves a cached response if available and not expired.
+   * Whether caching is enabled
+   */
+  enabled: boolean;
+
+  /**
+   * Default TTL in milliseconds
+   */
+  defaultTtl: number;
+
+  /**
+   * Cache storage directory
+   */
+  cacheDir: string;
+
+  /**
+   * Storage strategy for different data types
+   */
+  storageStrategy: 'json' | 'binary';
+}
+
+/**
+ * Interface for a generic cache system that can handle both JSON data (like API responses)
+ * and binary data (like downloaded files) efficiently using different storage strategies.
+ */
+export interface ICache {
+  /**
+   * Retrieves cached data if available and not expired.
    * @template T The type of data to retrieve
    * @param key The cache key
    * @returns A promise that resolves with the cached data, or null if not found or expired
@@ -40,14 +63,15 @@ export interface IGitHubApiCache {
   get<T>(key: string): Promise<T | null>;
 
   /**
-   * Stores data in the cache with an optional TTL.
+   * Stores data in the cache with TTL and optional metadata.
    * @template T The type of data to store
    * @param key The cache key
    * @param data The data to cache
-   * @param ttlMs Optional TTL in milliseconds (overrides default TTL)
+   * @param ttlMs TTL in milliseconds (uses default if not specified)
+   * @param metadata Optional metadata to store with the cache entry
    * @returns A promise that resolves when the data has been cached
    */
-  set<T>(key: string, data: T, ttlMs?: number): Promise<void>;
+  set<T>(key: string, data: T, ttlMs?: number, metadata?: Record<string, unknown>): Promise<void>;
 
   /**
    * Checks if a key exists in the cache and is not expired.
