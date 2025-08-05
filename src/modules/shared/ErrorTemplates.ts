@@ -914,7 +914,6 @@ export const SuccessTemplates = {
     initialized: (component: string): SafeLogMessage => createSafeLogMessage(`${component} initialized`),
     // General configuration and loading messages
     toolConfigsForDryRun: (): SafeLogMessage => createSafeLogMessage('tool configs for dry run'),
-    additionalChange: (): SafeLogMessage => createSafeLogMessage('additional change'),
     generatedShimsByTool: (): SafeLogMessage => createSafeLogMessage('Generated shims by tool'),
     // CLI-specific messages
     cliStarted: (): SafeLogMessage => createSafeLogMessage('CLI starting with arguments'),

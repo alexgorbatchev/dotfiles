@@ -47,10 +47,6 @@ export function registerInstallCommand(
 
         if (result.success) {
           // Installation successful, logging result
-          if (combinedOptions.verbose && result.otherChanges && result.otherChanges.length > 0) {
-            // Additional changes logged by installer
-            result.otherChanges.forEach((change) => logger.debug(SuccessTemplates.general.additionalChange(), change));
-          }
           logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
           // Additional debug info handled by installer
         } else {

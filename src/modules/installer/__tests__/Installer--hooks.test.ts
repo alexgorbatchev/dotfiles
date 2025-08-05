@@ -107,7 +107,6 @@ describe('Installer - Enhanced Hooks', () => {
         expect(context.toolName).toBe(mockToolName);
         expect(context.fileSystem).toBeDefined();
         expect(context.logger).toBeDefined();
-        expect(context.otherChanges).toBeDefined();
         expect(context.installDir).toContain(mockToolName);
       });
 
@@ -131,10 +130,6 @@ describe('Installer - Enhanced Hooks', () => {
       }
       expect(result.success).toBe(true);
       expect(beforeInstallHook).toHaveBeenCalledTimes(1);
-      expect(result.otherChanges?.some(change => 
-        change.includes(`Finished executing beforeInstall hook for ${mockToolName} in`) && 
-        change.includes('ms.')
-      )).toBe(true);
     });
 
     it('should fail installation if beforeInstall hook fails', async () => {
@@ -209,7 +204,6 @@ describe('Installer - Enhanced Hooks', () => {
         expect(context.version).toBe(mockToolVersion);
         expect(context.fileSystem).toBeDefined();
         expect(context.logger).toBeDefined();
-        expect(context.otherChanges).toBeDefined();
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -229,10 +223,6 @@ describe('Installer - Enhanced Hooks', () => {
 
       expect(result.success).toBe(true);
       expect(afterInstallHook).toHaveBeenCalledTimes(1);
-      expect(result.otherChanges?.some(change => 
-        change.includes(`Finished executing afterInstall hook for ${mockToolName} in`) && 
-        change.includes('ms.')
-      )).toBe(true);
     });
 
     it('should continue installation if afterInstall hook fails (continueOnError=true)', async () => {
@@ -258,9 +248,6 @@ describe('Installer - Enhanced Hooks', () => {
 
       // Installation should still succeed despite afterInstall hook failure
       expect(result.success).toBe(true);
-      expect(result.otherChanges?.some(change => 
-        change.includes(`afterInstall hook failed for ${mockToolName}: ${errorMessage}`)
-      )).toBe(true);
     });
   });
 
@@ -291,10 +278,6 @@ describe('Installer - Enhanced Hooks', () => {
 
       expect(result.success).toBe(true);
       expect(afterDownloadHook).toHaveBeenCalledTimes(1);
-      expect(result.otherChanges?.some(change => 
-        change.includes(`Finished executing afterDownload hook for ${mockToolName} in`) && 
-        change.includes('ms.')
-      )).toBe(true);
     });
 
     it('should fail installation if afterDownload hook fails', async () => {
@@ -353,10 +336,6 @@ describe('Installer - Enhanced Hooks', () => {
 
       expect(result.success).toBe(true);
       expect(afterExtractHook).toHaveBeenCalledTimes(1);
-      expect(result.otherChanges?.some(change => 
-        change.includes(`Finished executing afterExtract hook for ${mockToolName} in`) && 
-        change.includes('ms.')
-      )).toBe(true);
     });
 
     it('should fail installation if afterExtract hook fails', async () => {
@@ -481,7 +460,6 @@ describe('Installer - Enhanced Hooks', () => {
         // Simulate hook performing filesystem operations
         await context.fileSystem.writeFile('/test/hook-file.txt', 'hook content');
         await context.fileSystem.chmod('/test/hook-file.txt', 0o755);
-        context.otherChanges.push('Hook created and configured test file');
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -503,7 +481,6 @@ describe('Installer - Enhanced Hooks', () => {
       expect(capturedFileSystem).toBeDefined();
       expect(capturedFileSystem.writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
       expect(capturedFileSystem.chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
-      expect(result.otherChanges).toContain('Hook created and configured test file');
     });
   });
 });

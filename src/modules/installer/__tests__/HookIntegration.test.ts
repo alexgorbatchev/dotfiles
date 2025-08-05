@@ -168,8 +168,6 @@ describe('Hook Integration Tests', () => {
               }
               
               context.logger.info(testLogMessage('Configuration setup completed'));
-              context.otherChanges.push('Created default configuration file');
-              context.otherChanges.push('Set executable permissions on binary');
             }) as any,
           },
         },
@@ -180,7 +178,6 @@ describe('Hook Integration Tests', () => {
       // Debug: check installation result
       if (!result.success) {
         console.error('Installation failed:', result.error);
-        console.error('Other changes:', result.otherChanges);
       }
       
       expect(result.success).toBe(true);
@@ -198,8 +195,6 @@ describe('Hook Integration Tests', () => {
       expect(configContent).toContain('Default configuration for example-tool');
       expect(configContent).toContain('install_dir: /app/generated/binaries/example-tool');
 
-      expect(result.otherChanges).toContain('Created default configuration file');
-      expect(result.otherChanges).toContain('Set executable permissions on binary');
     });
 
     it('should handle post-extraction binary organization hook', async () => {
@@ -226,7 +221,6 @@ describe('Hook Integration Tests', () => {
                 const destPath = path.join(binDir, executable);
                 await context.fileSystem.copyFile(srcPath, destPath);
                 await context.fileSystem.chmod(destPath, 0o755);
-                context.otherChanges.push(`Organized ${executable} into bin directory`);
               }
               
               // Copy documentation files
@@ -244,7 +238,6 @@ describe('Hook Integration Tests', () => {
                   await context.fileSystem.copyFile(srcPath, destPath);
                 }
                 
-                context.otherChanges.push('Organized documentation files');
               }
               
               context.logger.info(testLogMessage('Binary organization completed'));
@@ -275,8 +268,6 @@ describe('Hook Integration Tests', () => {
       expect(await memFs.fs.exists(readmeFile)).toBe(true);
       expect(await memFs.fs.exists(licenseFile)).toBe(true);
 
-      expect(result.otherChanges).toContain('Organized tool into bin directory');
-      expect(result.otherChanges).toContain('Organized documentation files');
     });
 
     it('should handle build/compile hook that processes source code', async () => {
@@ -315,8 +306,6 @@ describe('Hook Integration Tests', () => {
                 const libPath = path.join(libDir, 'libsource-tool.so');
                 await context.fileSystem.writeFile(libPath, 'compiled library content');
                 
-                context.otherChanges.push('Compiled source code successfully');
-                context.otherChanges.push('Created shared library');
                 
                 context.logger.info(testLogMessage('Compilation completed successfully'));
               } else {
@@ -351,8 +340,6 @@ describe('Hook Integration Tests', () => {
       // Verify shared library was created
       expect(await memFs.fs.exists(libFile)).toBe(true);
 
-      expect(result.otherChanges).toContain('Compiled source code successfully');
-      expect(result.otherChanges).toContain('Created shared library');
     });
 
     it('should handle hook failure gracefully with detailed error information', async () => {
@@ -417,10 +404,7 @@ describe('Hook Integration Tests', () => {
       // Check if logger has proper context (logger structure may vary)
       expect(capturedLogger.settings?.name || capturedLogger._name || capturedLogger.name).toMatch(/Hook.*logging-test-tool/);
       
-      // Verify hook execution completed (check through otherChanges)
-      expect(result.otherChanges?.some(change => 
-        change.includes('Finished executing afterInstall hook for logging-test-tool')
-      )).toBe(true);
+      // Verify hook execution completed
     });
   });
 });

@@ -50,10 +50,6 @@ export interface InstallResult {
   info?: Record<string, any>;
 
 
-  /**
-   * Array of strings describing other user-facing changes made.
-   */
-  otherChanges?: string[];
 }
 
 /**

@@ -13,8 +13,6 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   fileSystem: IFileSystem;
   /** Logger instance for structured logging */
   logger: TsLogger;
-  /** List to add status/change messages to */
-  otherChanges: string[];
   /** Binary path (available in afterInstall hook) */
   binaryPath?: string;
   /** Version of the installed tool (available in afterInstall hook) */
@@ -102,7 +100,6 @@ export class HookExecutor {
 
       if (continueOnError) {
         this.logger.debug(DebugTemplates.hookExecutor.continuingDespiteFailure(), hookName);
-        context.otherChanges.push(`Warning: ${hookName} hook failed but installation continued: ${errorMessage}`);
         
         return {
           success: false,
@@ -127,8 +124,7 @@ export class HookExecutor {
   createEnhancedContext(
     baseContext: InstallHookContext,
     fileSystem: IFileSystem,
-    logger: TsLogger,
-    otherChanges: string[]
+    logger: TsLogger
   ): EnhancedInstallHookContext {
     // Create a tool-specific TrackedFileSystem if we have one
     const enhancedFileSystem = fileSystem instanceof TrackedFileSystem 
@@ -139,7 +135,6 @@ export class HookExecutor {
       ...baseContext,
       fileSystem: enhancedFileSystem,
       logger: logger.getSubLogger({ name: `Hook-${baseContext.toolName}` }),
-      otherChanges,
     };
   }
 

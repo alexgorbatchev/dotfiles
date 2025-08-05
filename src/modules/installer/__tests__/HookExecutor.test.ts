@@ -46,12 +46,10 @@ describe('HookExecutor', () => {
         // These properties are added by the enhanced context but typed as InstallHookContext
         expect((ctx as any).fileSystem).toBeDefined();
         expect((ctx as any).logger).toBeDefined();
-        expect((ctx as any).otherChanges).toBeDefined();
       });
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
@@ -69,9 +67,8 @@ describe('HookExecutor', () => {
         throw new Error(errorMessage);
       });
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
@@ -88,9 +85,8 @@ describe('HookExecutor', () => {
         await new Promise(resolve => setTimeout(resolve, 200));
       });
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const options: HookExecutionOptions = { timeoutMs: 50 };
@@ -107,9 +103,8 @@ describe('HookExecutor', () => {
         throw new Error(errorMessage);
       });
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const options: HookExecutionOptions = { continueOnError: true };
@@ -117,15 +112,13 @@ describe('HookExecutor', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe(errorMessage);
-      expect(otherChanges).toContain(`Warning: testHook hook failed but installation continued: ${errorMessage}`);
     });
 
     it('should use default timeout when not specified', async () => {
       const mockHook = mock(async () => {});
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       // Spy on the internal setTimeout to verify default timeout is used
@@ -146,22 +139,19 @@ describe('HookExecutor', () => {
     };
 
     it('should create enhanced context with regular filesystem', () => {
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       expect(enhancedContext.toolName).toBe(baseContext.toolName);
       expect(enhancedContext.installDir).toBe(baseContext.installDir);
       expect(enhancedContext.fileSystem).toBe(memFs.fs);
       expect(enhancedContext.logger).toBeDefined();
-      expect(enhancedContext.otherChanges).toBe(otherChanges);
     });
 
     it('should create enhanced context with TrackedFileSystem and create tool-specific instance', () => {
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, mockTrackedFileSystem, logger, otherChanges
+        baseContext, mockTrackedFileSystem, logger
       );
 
       expect(enhancedContext.fileSystem).toBe(mockTrackedFileSystem);
@@ -169,9 +159,8 @@ describe('HookExecutor', () => {
     });
 
     it('should create sublogger with correct name', () => {
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       // Verify logger is a sublogger (should have the expected name in logs)
@@ -197,9 +186,8 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
@@ -222,9 +210,8 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
@@ -248,9 +235,8 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
@@ -275,9 +261,8 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
@@ -300,9 +285,8 @@ describe('HookExecutor', () => {
     it('should log debug messages during hook execution', async () => {
       const mockHook = mock(async () => {});
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
@@ -323,9 +307,8 @@ describe('HookExecutor', () => {
       const errorMessage = 'Test hook error';
       const mockHook = mock(async () => { throw new Error(errorMessage); });
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
@@ -340,9 +323,8 @@ describe('HookExecutor', () => {
     it('should handle non-Error exceptions', async () => {
       const mockHook = mock(async () => { throw 'String error'; });
 
-      const otherChanges: string[] = [];
       const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger, otherChanges
+        baseContext, memFs.fs, logger
       );
 
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);

@@ -32,8 +32,7 @@ import { HookExecutor } from './HookExecutor';
  * The installer determines the installation method from the `ToolConfig` and delegates
  * to the appropriate private method (e.g., `installFromGitHubRelease`).
  *
- * It is responsible for populating the `InstallResult` object with rich details,
- * including the final `symlinkPath` and a log of all filesystem changes in `otherChanges`.
+ * It is responsible for populating the `InstallResult` object with rich details.
  *
  * ### GitHub Asset Selection
  * For `github-release` installations, the asset selection follows this order of precedence:
@@ -103,14 +102,11 @@ export class Installer implements IInstaller {
       ? this.fs.withToolName(toolName)
       : this.fs;
     
-    const otherChanges: string[] = [];
-
     try {
       // Create installation directory if it doesn't exist
       const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
       const installDir = path.join(binariesDir, toolName);
       await toolFs.ensureDir(installDir);
-      otherChanges.push(`Ensured installation directory exists: ${installDir}`);
       logger.debug(DebugTemplates.command.directoryCreated(), installDir);
 
       // Create context for installation hooks
@@ -118,16 +114,14 @@ export class Installer implements IInstaller {
         toolName,
         installDir,
         systemInfo: this.getSystemInfo(),
-        otherChanges, // Pass otherChanges to hooks and methods
       };
 
       // Run beforeInstall hook if defined
       if (toolConfig.installParams?.hooks?.beforeInstall) {
         logger.debug(DebugTemplates.command.hookExecution('beforeInstall'));
-        otherChanges.push(`Executing beforeInstall hook for ${toolName}.`);
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, toolFs, logger, otherChanges
+          context, toolFs, logger
         );
         
         const result = await this.hookExecutor.executeHook(
@@ -140,11 +134,9 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `beforeInstall hook failed: ${result.error}`,
-            otherChanges,
           };
         }
         
-        otherChanges.push(`Finished executing beforeInstall hook for ${toolName} in ${result.durationMs}ms.`);
       }
 
       // Install based on the installation method
@@ -169,14 +161,12 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `Unsupported installation method: ${toolConfig.installationMethod}`,
-            otherChanges,
           };
       }
 
       // Run afterInstall hook if defined
       if (toolConfig.installParams?.hooks?.afterInstall) {
         logger.debug(DebugTemplates.command.hookExecution('afterInstall'));
-        otherChanges.push(`Executing afterInstall hook for ${toolName}.`);
         
         // Update context with final result information
         const finalContext = {
@@ -186,28 +176,18 @@ export class Installer implements IInstaller {
         };
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          finalContext, toolFs, logger, otherChanges
+          finalContext, toolFs, logger
         );
         
-        const hookResult = await this.hookExecutor.executeHook(
+        await this.hookExecutor.executeHook(
           'afterInstall',
           toolConfig.installParams.hooks.afterInstall,
           enhancedContext,
           { continueOnError: true } // Don't fail installation if afterInstall hook fails
         );
         
-        if (hookResult.success) {
-          otherChanges.push(`Finished executing afterInstall hook for ${toolName} in ${hookResult.durationMs}ms.`);
-        } else {
-          otherChanges.push(`afterInstall hook failed for ${toolName}: ${hookResult.error}`);
-        }
       }
 
-      // Ensure otherChanges from the specific install method are merged if not already handled by passing context
-      if (result.otherChanges && result.otherChanges !== otherChanges) {
-        otherChanges.push(...result.otherChanges);
-      }
-      result.otherChanges = otherChanges; // Assign the accumulated changes
 
       return result;
     } catch (error) {
@@ -215,7 +195,6 @@ export class Installer implements IInstaller {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        otherChanges,
       };
     }
   }
@@ -226,19 +205,17 @@ export class Installer implements IInstaller {
   public async installFromGitHubRelease(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    context: any, // context now includes otherChanges
+    context: any,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
 
     const logger = this.logger.getSubLogger({ name: 'installFromGitHubRelease' });
     logger.debug(DebugTemplates.command.methodStarted(), toolName);
-    const otherChanges: string[] = context.otherChanges || [];
 
     if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
       return {
         success: false,
         error: 'GitHub repository not specified in installParams',
-        otherChanges,
       };
     }
 
@@ -259,7 +236,6 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `Invalid GitHub repository format: ${repo}. Expected format: owner/repo`,
-            otherChanges,
           };
         }
         release = await this.githubApiClient.getLatestRelease(owner, repoName);
@@ -274,7 +250,6 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `Invalid GitHub repository format: ${repo}. Expected format: owner/repo`,
-            otherChanges,
           };
         }
         release = await this.githubApiClient.getReleaseByTag(owner, repoName, version);
@@ -284,26 +259,18 @@ export class Installer implements IInstaller {
         return {
           success: false,
           error: `Failed to fetch release information for ${repo || toolName}`,
-          otherChanges,
-        };
+          };
       }
-      otherChanges.push(
-        `Fetched release information for ${repo || toolName} (version: ${release.tag_name}).`
-      );
 
       // Select the appropriate asset
       let asset: GitHubReleaseAsset | undefined;
       if (params.assetSelector) {
         logger.debug(DebugTemplates.command.assetSelectorCustom());
         asset = params.assetSelector(release.assets, context.systemInfo);
-        otherChanges.push(`Selected asset using custom selector function.`);
       } else if (assetPattern) {
         logger.debug(DebugTemplates.command.assetPatternMatch(), assetPattern);
         const regex = new RegExp(assetPattern || '');
         asset = release.assets.find((a) => regex.test(a.name));
-        if (asset) {
-          otherChanges.push(`Selected asset "${asset.name}" matching pattern "${assetPattern}".`);
-        }
       } else {
         // Try to find an asset that matches the current platform and architecture
         logger.debug(DebugTemplates.command.assetPlatformMatch());
@@ -332,11 +299,6 @@ export class Installer implements IInstaller {
             archPatterns.some((archPattern) => name.includes(archPattern))
           );
         });
-        if (asset) {
-          otherChanges.push(
-            `Selected asset "${asset.name}" for platform "${platform}" and architecture "${arch}".`
-          );
-        }
       }
 
       if (!asset) {
@@ -360,10 +322,8 @@ export class Installer implements IInstaller {
         return {
           success: false,
           error: errorLines.join('\n'),
-          otherChanges,
-        };
+          };
       }
-      otherChanges.push(`Identified asset for download: ${asset.name}`);
 
       // Download the asset
       let downloadUrl: string;
@@ -427,7 +387,6 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `Invalid asset download URL format: ${rawBrowserDownloadUrl}`,
-            otherChanges,
           };
         }
 
@@ -447,8 +406,7 @@ export class Installer implements IInstaller {
         return {
           success: false,
           error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${customHost || '(public GitHub)'}, Error: ${(e as Error).message}`,
-          otherChanges,
-        };
+          };
       }
 
       logger.debug(DebugTemplates.command.downloadingAsset(), downloadUrl);
@@ -465,7 +423,6 @@ export class Installer implements IInstaller {
       } finally {
         progressBar.finish();
       }
-      otherChanges.push(`Downloaded asset from ${downloadUrl} to ${downloadPath}.`);
 
       // Update context with download path
       context.downloadPath = downloadPath;
@@ -473,10 +430,9 @@ export class Installer implements IInstaller {
       // Run afterDownload hook if defined
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
-        otherChanges.push(`Executing afterDownload hook for ${toolName}.`);
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger, otherChanges
+          context, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -489,11 +445,9 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `afterDownload hook failed: ${hookResult.error}`,
-            otherChanges,
           };
         }
         
-        otherChanges.push(`Finished executing afterDownload hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Handle extraction if needed
@@ -505,21 +459,16 @@ export class Installer implements IInstaller {
         asset.name.endsWith('.tar')
       ) {
         logger.debug(DebugTemplates.installer.extractingArchive(), asset.name);
-        otherChanges.push(`Starting extraction of archive: ${asset.name}`);
 
         // Extract the archive
         const extractDir = path.join(context.installDir, 'extracted');
         await this.fs.ensureDir(extractDir);
-        otherChanges.push(`Ensured extraction directory exists: ${extractDir}`);
 
         const extractResult: ExtractResult = await this.archiveExtractor.extract(downloadPath, {
           targetDir: extractDir,
           stripComponents: params.stripComponents, // from GithubReleaseInstallParams
         });
         logger.debug(DebugTemplates.installer.archiveExtracted(), extractResult);
-        otherChanges.push(
-          `Extracted archive ${asset.name} to ${extractDir}. Files: ${extractResult.extractedFiles.join(', ')}.`,
-        );
 
         // Update context with extract directory and result
         context.extractDir = extractDir;
@@ -528,10 +477,9 @@ export class Installer implements IInstaller {
         // Run afterExtract hook if defined
         if (toolConfig.installParams?.hooks?.afterExtract) {
           logger.debug(DebugTemplates.installer.runningAfterExtractHook());
-          otherChanges.push(`Executing afterExtract hook for ${toolName}.`);
           
           const enhancedContext = this.hookExecutor.createEnhancedContext(
-            context, this.fs, logger, otherChanges
+            context, this.fs, logger
           );
           
           const hookResult = await this.hookExecutor.executeHook(
@@ -544,11 +492,9 @@ export class Installer implements IInstaller {
             return {
               success: false,
               error: `afterExtract hook failed: ${hookResult.error}`,
-              otherChanges,
-            };
+              };
           }
           
-          otherChanges.push(`Finished executing afterExtract hook for ${toolName} in ${hookResult.durationMs}ms.`);
         }
 
         // Find the binary in the extracted directory
@@ -583,14 +529,12 @@ export class Installer implements IInstaller {
             finalBinaryPath = path.join(extractDir, toolName); // Default if no specific binary found
           }
         }
-        otherChanges.push(`Determined binary path after extraction: ${finalBinaryPath}`);
 
         // If the determined finalBinaryPath doesn't exist, it's an error
         if (!(await this.fs.exists(finalBinaryPath))) {
           return {
             success: false,
             error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
-            otherChanges,
           };
         }
       }
@@ -598,7 +542,6 @@ export class Installer implements IInstaller {
       // Make the binary executable (still in extractDir or downloadPath at this point)
       logger.debug(DebugTemplates.installer.makingExecutable(), finalBinaryPath);
       await this.fs.chmod(finalBinaryPath, 0o755);
-      otherChanges.push(`Set executable permission (0755) on: ${finalBinaryPath}`);
 
       // Determine the final destination path for the binary, directly in context.installDir
       const finalFileName = moveBinaryTo || path.basename(finalBinaryPath);
@@ -613,10 +556,8 @@ export class Installer implements IInstaller {
         await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
         // Copy the file from extractDir/downloadPath to its final place in installDir
         await this.fs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
-        otherChanges.push(`Copied binary from ${finalBinaryPath} to ${actualFinalBinaryDestPath}.`);
         // Ensure the copied file is executable
         await this.fs.chmod(actualFinalBinaryDestPath, 0o755);
-        otherChanges.push(`Set executable permission (0755) on: ${actualFinalBinaryDestPath}`);
         // Update finalBinaryPath to the new location
         finalBinaryPath = actualFinalBinaryDestPath;
       } else {
@@ -635,7 +576,6 @@ export class Installer implements IInstaller {
       ) {
         logger.debug(DebugTemplates.installer.cleaningExtractDir(), context.extractDir);
         await this.fs.rm(context.extractDir, { recursive: true, force: true });
-        otherChanges.push(`Cleaned up temporary extraction directory: ${context.extractDir}`);
       } else if (
         // Clean up downloaded archive if it was extracted and binary moved
         downloadPath !== finalBinaryPath &&
@@ -647,7 +587,6 @@ export class Installer implements IInstaller {
       ) {
         logger.debug(DebugTemplates.installer.cleaningArchive(), downloadPath);
         await this.fs.rm(downloadPath);
-        otherChanges.push(`Cleaned up downloaded archive: ${downloadPath}`);
       }
 
       return {
@@ -659,14 +598,12 @@ export class Installer implements IInstaller {
           publishedAt: release.published_at,
           releaseName: release.name,
         },
-        otherChanges,
       };
     } catch (error) {
       logger.error(ErrorTemplates.tool.installFailed('github-release', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        otherChanges,
       };
     }
   }
@@ -677,19 +614,17 @@ export class Installer implements IInstaller {
   public async installFromBrew(
     toolName: string,
     toolConfig: BrewToolConfig,
-    context: any, // context now includes otherChanges
+    _context: any,
     options?: InstallOptions,
   ): Promise<InstallResult> {
 
     const logger = this.logger.getSubLogger({ name: 'installFromBrew' });
     logger.debug(DebugTemplates.installer.installingFromBrew(), toolName, toolConfig.installParams);
-    const otherChanges: string[] = context.otherChanges || [];
 
     if (!toolConfig.installParams) {
       return {
         success: false,
         error: 'Install parameters not specified',
-        otherChanges,
       };
     }
 
@@ -703,7 +638,6 @@ export class Installer implements IInstaller {
       // This is a simplified check; in a real implementation, we would use
       // the IFileSystem to execute commands
       const brewCommand = 'brew';
-      otherChanges.push(`Using 'brew' command for installation.`);
 
       // Build the brew command
       let command = `${brewCommand} `;
@@ -713,36 +647,29 @@ export class Installer implements IInstaller {
         if (Array.isArray(tap)) {
           for (const t of tap) {
             command += `tap ${t} && ${brewCommand} `;
-            otherChanges.push(`Tapping Homebrew repository: ${t}`);
           }
         } else {
           command += `tap ${tap} && ${brewCommand} `;
-          otherChanges.push(`Tapping Homebrew repository: ${tap}`);
         }
       }
 
       // Add install command
       command += isCask ? 'install --cask ' : 'install ';
       command += formula;
-      otherChanges.push(`Preparing to install Homebrew formula/cask: ${formula}`);
 
       // Add force flag if specified
       if (options?.force) {
         command += ' --force';
-        otherChanges.push(`Using --force flag for installation.`);
       }
 
       logger.debug(DebugTemplates.installer.executingCommand(), command);
-      otherChanges.push(`Executing Homebrew command: ${command}`);
 
       // In a real implementation, we would execute the command here
       // For now, we'll just simulate success
-      otherChanges.push(`Simulated successful execution of Homebrew command.`);
 
       // Find the installed binary
       // In a real implementation, we would use `brew --prefix formula` to find the binary
       const binaryPath = `/usr/local/bin/${toolName}`; // This is a placeholder
-      otherChanges.push(`Assuming binary path after Homebrew install: ${binaryPath}`);
 
       return {
         success: true,
@@ -752,14 +679,12 @@ export class Installer implements IInstaller {
           isCask,
           tap,
         },
-        otherChanges,
       };
     } catch (error) {
       logger.error(ErrorTemplates.tool.installFailed('brew', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        otherChanges,
       };
     }
   }
@@ -770,7 +695,7 @@ export class Installer implements IInstaller {
   public async installFromCurlScript(
     toolName: string,
     toolConfig: CurlScriptToolConfig,
-    context: any, // context now includes otherChanges
+    context: any,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -780,7 +705,6 @@ export class Installer implements IInstaller {
 
     const logger = this.logger.getSubLogger({ name: 'installFromCurlScript' });
     logger.debug(DebugTemplates.installer.installingFromCurl(), toolName);
-    const otherChanges: string[] = context.otherChanges || [];
 
     if (
       !toolConfig.installParams ||
@@ -790,7 +714,6 @@ export class Installer implements IInstaller {
       return {
         success: false,
         error: 'URL or shell not specified in installParams',
-        otherChanges,
       };
     }
 
@@ -814,11 +737,9 @@ export class Installer implements IInstaller {
       } finally {
         progressBar.finish();
       }
-      otherChanges.push(`Downloaded installation script from ${url} to ${scriptPath}.`);
 
       // Make the script executable
       await toolFs.chmod(scriptPath, 0o755);
-      otherChanges.push(`Set executable permission (0755) on script: ${scriptPath}`);
 
       // Update context with download path
       context.downloadPath = scriptPath;
@@ -826,10 +747,9 @@ export class Installer implements IInstaller {
       // Run afterDownload hook if defined
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
-        otherChanges.push(`Executing afterDownload hook for ${toolName}.`);
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger, otherChanges
+          context, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -842,24 +762,19 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `afterDownload hook failed: ${hookResult.error}`,
-            otherChanges,
           };
         }
         
-        otherChanges.push(`Finished executing afterDownload hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Execute the script
       logger.debug(DebugTemplates.installer.executingScript(), shell);
-      otherChanges.push(`Executing installation script ${scriptPath} using ${shell}.`);
 
       // In a real implementation, we would execute the script here
       // For now, we'll just simulate success
-      otherChanges.push(`Simulated successful execution of installation script.`);
 
       // Assume the script installs the binary to a standard location
       const binaryPath = path.join('/usr/local/bin', toolName); // Placeholder
-      otherChanges.push(`Assuming binary path after script execution: ${binaryPath}`);
 
       return {
         success: true,
@@ -868,14 +783,12 @@ export class Installer implements IInstaller {
           scriptUrl: url,
           shell,
         },
-        otherChanges,
       };
     } catch (error) {
       logger.error(ErrorTemplates.tool.installFailed('curl-script', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        otherChanges,
       };
     }
   }
@@ -886,7 +799,7 @@ export class Installer implements IInstaller {
   public async installFromCurlTar(
     toolName: string,
     toolConfig: CurlTarToolConfig,
-    context: any, // context now includes otherChanges
+    context: any,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -896,13 +809,11 @@ export class Installer implements IInstaller {
 
     const logger = this.logger.getSubLogger({ name: 'installFromCurlTar' });
     logger.debug(DebugTemplates.installer.installingFromCurlTar(), toolName);
-    const otherChanges: string[] = [...(context.otherChanges || [])];
 
     if (!toolConfig.installParams || !('url' in toolConfig.installParams)) {
       return {
         success: false,
         error: 'URL not specified in installParams',
-        otherChanges,
       };
     }
 
@@ -927,7 +838,6 @@ export class Installer implements IInstaller {
       } finally {
         progressBar.finish();
       }
-      otherChanges.push(`Downloaded tarball from ${url} to ${tarballPath}.`);
 
       // Update context with download path
       context.downloadPath = tarballPath;
@@ -935,10 +845,9 @@ export class Installer implements IInstaller {
       // Run afterDownload hook if defined
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
-        otherChanges.push(`Executing afterDownload hook for ${toolName}.`);
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger, otherChanges
+          context, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -951,28 +860,21 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `afterDownload hook failed: ${hookResult.error}`,
-            otherChanges,
           };
         }
         
-        otherChanges.push(`Finished executing afterDownload hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Extract the tarball
       logger.debug(DebugTemplates.installer.extractingTarball());
-      otherChanges.push(`Starting extraction of tarball: ${tarballPath}`);
       const extractDir = path.join(context.installDir, 'extracted');
       await toolFs.ensureDir(extractDir);
-      otherChanges.push(`Ensured extraction directory exists: ${extractDir}`);
 
       const extractResult: ExtractResult = await this.archiveExtractor.extract(tarballPath, {
         targetDir: extractDir,
         stripComponents: params.stripComponents, // from CurlTarInstallParams
       });
       logger.debug(DebugTemplates.installer.tarballExtracted(), extractResult);
-      otherChanges.push(
-        `Extracted tarball ${tarballPath} to ${extractDir}. Files: ${extractResult.extractedFiles.join(', ')}.`,
-      );
 
       // Update context with extract directory and result
       context.extractDir = extractDir;
@@ -981,10 +883,9 @@ export class Installer implements IInstaller {
       // Run afterExtract hook if defined
       if (toolConfig.installParams?.hooks?.afterExtract) {
         logger.debug(DebugTemplates.installer.runningAfterExtractHook());
-        otherChanges.push(`Executing afterExtract hook for ${toolName}.`);
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger, otherChanges
+          context, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -997,11 +898,9 @@ export class Installer implements IInstaller {
           return {
             success: false,
             error: `afterExtract hook failed: ${hookResult.error}`,
-            otherChanges,
           };
         }
         
-        otherChanges.push(`Finished executing afterExtract hook for ${toolName} in ${hookResult.durationMs}ms.`);
       }
 
       // Find the binary in the extracted directory
@@ -1034,20 +933,17 @@ export class Installer implements IInstaller {
           finalBinaryPath = path.join(extractDir, toolName);
         }
       }
-      otherChanges.push(`Determined binary path after extraction: ${finalBinaryPath}`);
 
       if (!(await toolFs.exists(finalBinaryPath))) {
         return {
           success: false,
           error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
-          otherChanges,
-        };
+          };
       }
 
       // Make the binary executable (still in extractDir at this point)
       logger.debug(DebugTemplates.installer.makingExecutable(), finalBinaryPath);
       await toolFs.chmod(finalBinaryPath, 0o755);
-      otherChanges.push(`Set executable permission (0755) on: ${finalBinaryPath}`);
 
       // Determine the final destination path for the binary, directly in context.installDir
       const finalFileName = moveBinaryTo || path.basename(finalBinaryPath);
@@ -1063,12 +959,8 @@ export class Installer implements IInstaller {
 
         // Copy the file from extractDir to its final place in installDir
         await toolFs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
-        otherChanges.push(
-          `Copied binary from ${finalBinaryPath} to ${actualFinalBinaryDestPath}.`
-        );
         // Ensure the copied file is executable
         await toolFs.chmod(actualFinalBinaryDestPath, 0o755);
-        otherChanges.push(`Set executable permission (0755) on: ${actualFinalBinaryDestPath}`);
 
         // Update finalBinaryPath to the new location
         finalBinaryPath = actualFinalBinaryDestPath;
@@ -1088,7 +980,6 @@ export class Installer implements IInstaller {
       ) {
         logger.debug(DebugTemplates.installer.cleaningExtractDir(), context.extractDir);
         await toolFs.rm(context.extractDir, { recursive: true, force: true });
-        otherChanges.push(`Cleaned up temporary extraction directory: ${context.extractDir}`);
       } else if (
         // Clean up downloaded tarball if it was extracted and binary moved
         tarballPath !== finalBinaryPath &&
@@ -1096,7 +987,6 @@ export class Installer implements IInstaller {
       ) {
         logger.debug(DebugTemplates.installer.cleaningArchive(), tarballPath);
         await toolFs.rm(tarballPath);
-        otherChanges.push(`Cleaned up downloaded tarball: ${tarballPath}`);
       }
 
       return {
@@ -1105,14 +995,12 @@ export class Installer implements IInstaller {
         info: {
           tarballUrl: url,
         },
-        otherChanges,
       };
     } catch (error) {
       logger.error(ErrorTemplates.tool.installFailed('curl-tar', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        otherChanges,
       };
     }
   }
@@ -1123,7 +1011,7 @@ export class Installer implements IInstaller {
   public async installManually(
     toolName: string,
     toolConfig: ManualToolConfig,
-    context: any, // context now includes otherChanges
+    _context: any,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -1133,46 +1021,38 @@ export class Installer implements IInstaller {
 
     const logger = this.logger.getSubLogger({ name: 'installManually' });
     logger.debug(DebugTemplates.installer.installingManually(), toolName);
-    const otherChanges: string[] = context.otherChanges || [];
 
     if (!toolConfig.installParams || !('binaryPath' in toolConfig.installParams)) {
       return {
         success: false,
         error: 'Binary path not specified in installParams',
-        otherChanges,
       };
     }
 
     const params = toolConfig.installParams;
     const binaryPath = params.binaryPath as string;
-    otherChanges.push(`Manual installation: expecting binary at ${binaryPath}.`);
 
     try {
       // Check if the binary exists
       if (await toolFs.exists(binaryPath)) {
-        otherChanges.push(`Binary found at specified path: ${binaryPath}.`);
         return {
           success: true,
           binaryPath,
           info: {
             manualInstall: true,
           },
-          otherChanges,
-        };
+          };
       } else {
-        otherChanges.push(`Binary not found at specified path: ${binaryPath}.`);
         return {
           success: false,
           error: `Binary not found at ${binaryPath}`,
-          otherChanges,
-        };
+          };
       }
     } catch (error) {
       logger.error(ErrorTemplates.tool.installFailed('manual', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        otherChanges,
       };
     }
   }
