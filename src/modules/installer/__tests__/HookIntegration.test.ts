@@ -175,11 +175,6 @@ describe('Hook Integration Tests', () => {
 
       const result = await installer.install('example-tool', toolConfig);
 
-      // Debug: check installation result
-      if (!result.success) {
-        console.error('Installation failed:', result.error);
-      }
-      
       expect(result.success).toBe(true);
       
       // Verify hook created the expected files and directories

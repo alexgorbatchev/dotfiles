@@ -17,6 +17,9 @@ import type {
   ManualToolConfig,
   GithubReleaseToolConfig,
   CurlScriptToolConfig,
+  BaseInstallContext,
+  PostDownloadInstallContext,
+  PostExtractInstallContext,
 } from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { ErrorTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
@@ -110,10 +113,12 @@ export class Installer implements IInstaller {
       logger.debug(DebugTemplates.command.directoryCreated(), installDir);
 
       // Create context for installation hooks
-      const context = {
+      const context: BaseInstallContext = {
         toolName,
         installDir,
         systemInfo: this.getSystemInfo(),
+        toolConfig,
+        appConfig: this.appConfig,
       };
 
       // Run beforeInstall hook if defined
@@ -205,12 +210,16 @@ export class Installer implements IInstaller {
   public async installFromGitHubRelease(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    context: any,
+    context: BaseInstallContext,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
 
     const logger = this.logger.getSubLogger({ name: 'installFromGitHubRelease' });
     logger.debug(DebugTemplates.command.methodStarted(), toolName);
+
+    // Context variables for lifecycle stages
+    let postDownloadContext: PostDownloadInstallContext;
+    let postExtractContext: PostExtractInstallContext | undefined;
 
     if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
       return {
@@ -425,14 +434,17 @@ export class Installer implements IInstaller {
       }
 
       // Update context with download path
-      context.downloadPath = downloadPath;
+      postDownloadContext = {
+        ...context,
+        downloadPath,
+      };
 
       // Run afterDownload hook if defined
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger
+          postDownloadContext, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -471,15 +483,18 @@ export class Installer implements IInstaller {
         logger.debug(DebugTemplates.installer.archiveExtracted(), extractResult);
 
         // Update context with extract directory and result
-        context.extractDir = extractDir;
-        context.extractResult = extractResult;
+        postExtractContext = {
+          ...postDownloadContext,
+          extractDir,
+          extractResult,
+        };
 
         // Run afterExtract hook if defined
         if (toolConfig.installParams?.hooks?.afterExtract) {
           logger.debug(DebugTemplates.installer.runningAfterExtractHook());
           
           const enhancedContext = this.hookExecutor.createEnhancedContext(
-            context, this.fs, logger
+            postExtractContext, this.fs, logger
           );
           
           const hookResult = await this.hookExecutor.executeHook(
@@ -569,13 +584,13 @@ export class Installer implements IInstaller {
 
       // Clean up the temporary extraction directory if it was used and we've moved/copied the binary
       if (
-        context.extractDir &&
-        (await this.fs.exists(context.extractDir)) &&
+        postExtractContext?.extractDir &&
+        (await this.fs.exists(postExtractContext.extractDir)) &&
         finalBinaryPath.startsWith(context.installDir) && // ensure we are not deleting something outside installDir
-        !finalBinaryPath.startsWith(context.extractDir) // ensure binary is no longer in extractDir
+        !finalBinaryPath.startsWith(postExtractContext.extractDir) // ensure binary is no longer in extractDir
       ) {
-        logger.debug(DebugTemplates.installer.cleaningExtractDir(), context.extractDir);
-        await this.fs.rm(context.extractDir, { recursive: true, force: true });
+        logger.debug(DebugTemplates.installer.cleaningExtractDir(), postExtractContext.extractDir);
+        await this.fs.rm(postExtractContext.extractDir, { recursive: true, force: true });
       } else if (
         // Clean up downloaded archive if it was extracted and binary moved
         downloadPath !== finalBinaryPath &&
@@ -614,7 +629,7 @@ export class Installer implements IInstaller {
   public async installFromBrew(
     toolName: string,
     toolConfig: BrewToolConfig,
-    _context: any,
+    _context: BaseInstallContext,
     options?: InstallOptions,
   ): Promise<InstallResult> {
 
@@ -695,7 +710,7 @@ export class Installer implements IInstaller {
   public async installFromCurlScript(
     toolName: string,
     toolConfig: CurlScriptToolConfig,
-    context: any,
+    context: BaseInstallContext,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -741,15 +756,18 @@ export class Installer implements IInstaller {
       // Make the script executable
       await toolFs.chmod(scriptPath, 0o755);
 
-      // Update context with download path
-      context.downloadPath = scriptPath;
-
       // Run afterDownload hook if defined
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
         
+        // Create context with download path for hook
+        const postDownloadContext = {
+          ...context,
+          downloadPath: scriptPath,
+        };
+        
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger
+          postDownloadContext, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -799,7 +817,7 @@ export class Installer implements IInstaller {
   public async installFromCurlTar(
     toolName: string,
     toolConfig: CurlTarToolConfig,
-    context: any,
+    context: BaseInstallContext,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -809,6 +827,10 @@ export class Installer implements IInstaller {
 
     const logger = this.logger.getSubLogger({ name: 'installFromCurlTar' });
     logger.debug(DebugTemplates.installer.installingFromCurlTar(), toolName);
+
+    // Context variables for lifecycle stages
+    let postDownloadContext: PostDownloadInstallContext;
+    let postExtractContext: PostExtractInstallContext | undefined;
 
     if (!toolConfig.installParams || !('url' in toolConfig.installParams)) {
       return {
@@ -840,14 +862,17 @@ export class Installer implements IInstaller {
       }
 
       // Update context with download path
-      context.downloadPath = tarballPath;
+      postDownloadContext = {
+        ...context,
+        downloadPath: tarballPath,
+      };
 
       // Run afterDownload hook if defined
       if (toolConfig.installParams?.hooks?.afterDownload) {
         logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger
+          postDownloadContext, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -877,15 +902,18 @@ export class Installer implements IInstaller {
       logger.debug(DebugTemplates.installer.tarballExtracted(), extractResult);
 
       // Update context with extract directory and result
-      context.extractDir = extractDir;
-      context.extractResult = extractResult;
+      postExtractContext = {
+        ...postDownloadContext,
+        extractDir,
+        extractResult,
+      };
 
       // Run afterExtract hook if defined
       if (toolConfig.installParams?.hooks?.afterExtract) {
         logger.debug(DebugTemplates.installer.runningAfterExtractHook());
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, this.fs, logger
+          postExtractContext, this.fs, logger
         );
         
         const hookResult = await this.hookExecutor.executeHook(
@@ -973,13 +1001,13 @@ export class Installer implements IInstaller {
 
       // Clean up the temporary extraction directory as we've moved the binary
       if (
-        context.extractDir &&
-        (await toolFs.exists(context.extractDir)) &&
+        postExtractContext?.extractDir &&
+        (await toolFs.exists(postExtractContext.extractDir)) &&
         finalBinaryPath.startsWith(context.installDir) &&
-        !finalBinaryPath.startsWith(context.extractDir)
+        !finalBinaryPath.startsWith(postExtractContext.extractDir)
       ) {
-        logger.debug(DebugTemplates.installer.cleaningExtractDir(), context.extractDir);
-        await toolFs.rm(context.extractDir, { recursive: true, force: true });
+        logger.debug(DebugTemplates.installer.cleaningExtractDir(), postExtractContext.extractDir);
+        await toolFs.rm(postExtractContext.extractDir, { recursive: true, force: true });
       } else if (
         // Clean up downloaded tarball if it was extracted and binary moved
         tarballPath !== finalBinaryPath &&
@@ -1011,7 +1039,7 @@ export class Installer implements IInstaller {
   public async installManually(
     toolName: string,
     toolConfig: ManualToolConfig,
-    _context: any,
+    _context: BaseInstallContext,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance

@@ -286,7 +286,9 @@ describe('Installer', () => {
       const context = {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       };
 
       // Mock chmod and symlink to avoid errors on non-existent files from mock downloader
@@ -319,7 +321,9 @@ describe('Installer', () => {
       const result = await installer.installFromGitHubRelease(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(result.success).toBe(false);
@@ -340,7 +344,9 @@ describe('Installer', () => {
       const context = {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       };
 
       const result = await installer.installFromGitHubRelease(mockToolName, toolConfig, context);
@@ -385,7 +391,9 @@ describe('Installer', () => {
       await installer.installFromGitHubRelease(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: '/home/test' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -452,6 +460,8 @@ describe('Installer', () => {
           release: '',
           homeDir: testDirs.paths.homeDir,
         },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -511,7 +521,9 @@ describe('Installer', () => {
       await tempInstaller.installFromGitHubRelease(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -571,7 +583,9 @@ describe('Installer', () => {
       await tempInstaller.installFromGitHubRelease(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       // Should default to github.com for asset downloads, not api.github.com
@@ -599,7 +613,9 @@ describe('Installer', () => {
       const result = await installer.installFromGitHubRelease(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(result.success).toBe(false);
@@ -641,6 +657,8 @@ describe('Installer', () => {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
         systemInfo,
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(result.success).toBe(false);
@@ -667,7 +685,9 @@ describe('Installer', () => {
       const result = await installer.installFromGitHubRelease(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
-        systemInfo: { platform: 'linux', arch: 'x64', release: '' },
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(result.success).toBe(false);
@@ -696,6 +716,9 @@ describe('Installer', () => {
       const result = await installer.installFromBrew(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(result.success).toBe(true);
@@ -733,6 +756,9 @@ describe('Installer', () => {
       const result = await installer.installFromCurlScript(mockToolName, toolConfig, {
         toolName: mockToolName,
         installDir,
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       });
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -781,6 +807,9 @@ describe('Installer', () => {
         // context is defined here
         toolName: mockToolName,
         installDir,
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       };
 
       // Simulate the existence of the extracted binary before calling the method
@@ -827,6 +856,9 @@ describe('Installer', () => {
       const context = {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       };
 
       const result = await installer.installManually(mockToolName, toolConfig, context);
@@ -851,6 +883,9 @@ describe('Installer', () => {
       const context = {
         toolName: mockToolName,
         installDir: path.join(testDirs.paths.binariesDir, mockToolName),
+        systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
+        toolConfig,
+        appConfig: mockAppConfig,
       };
       const result = await installer.installManually(mockToolName, toolConfig, context);
 

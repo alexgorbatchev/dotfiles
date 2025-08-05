@@ -3,15 +3,15 @@ import type { SystemInfo } from './common.types';
 import type { CompletionConfig } from './completion.types';
 import type { GitHubReleaseAsset } from './githubApi.types';
 import type { Platform, Architecture } from './platform.types';
+import type { YamlConfig } from '@modules/config';
 
 /**
- * Defines the context object passed to asynchronous TypeScript installation hooks.
- * This context provides information about the current tool, installation paths,
- * system details, and results from previous steps (like download or extraction).
- * Hooks can use this information to perform custom setup or modification tasks.
+ * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information
+ * about the current tool, installation paths, system details, and results from previous steps (like download or
+ * extraction).  Hooks can use this information to perform custom setup or modification tasks.
  *
- * It is recommended to use a library like `zx` (google/zx) within hooks for
- * easily running shell commands and performing file system operations.
+ * It is recommended to use a library like `zx` (google/zx) within hooks for easily running shell commands and performing
+ * file system operations.
  */
 export interface InstallHookContext {
   /** The name of the tool currently being installed. */
@@ -43,6 +43,54 @@ export interface InstallHookContext {
 }
 
 /**
+ * Base install context used internally by the installer.
+ * All fields are required as they represent the minimum context available.
+ */
+export interface BaseInstallContext {
+  /** The name of the tool currently being installed */
+  toolName: string;
+  /** The target directory where the tool's primary binary/executable should be installed */
+  installDir: string;
+  /** System information for the installation environment */
+  systemInfo: SystemInfo;
+  /** The full tool configuration being processed */
+  toolConfig: ToolConfig;
+  /** The user's application configuration (YAML config) */
+  appConfig: YamlConfig;
+}
+
+/**
+ * Install context after download phase.
+ * Extends BaseInstallContext with download-specific information.
+ */
+export interface PostDownloadInstallContext extends BaseInstallContext {
+  /** The path to the downloaded file or archive */
+  downloadPath: string;
+}
+
+/**
+ * Install context after extraction phase.
+ * Extends PostDownloadInstallContext with extraction-specific information.
+ */
+export interface PostExtractInstallContext extends PostDownloadInstallContext {
+  /** The path to the directory where the archive contents were extracted */
+  extractDir: string;
+  /** The result of the archive extraction process */
+  extractResult: ExtractResult;
+}
+
+/**
+ * Final install context after successful installation.
+ * Extends BaseInstallContext with the final installation results.
+ */
+export interface FinalInstallContext extends BaseInstallContext {
+  /** The path to the installed binary */
+  binaryPath: string;
+  /** The version of the installed tool */
+  version: string;
+}
+
+/**
  * Defines the signature for an asynchronous TypeScript installation hook function.
  * These hooks allow for custom logic to be executed at various stages of the tool installation process.
  * @param context - The {@link InstallHookContext} providing details about the current installation.
@@ -54,12 +102,16 @@ export interface InstallHookContext {
  * import path from 'path';
  *
  * const myHook: AsyncInstallHook = async (context) => {
+ *   // Access user configuration from appConfig
+ *   const binDir = context.appConfig.paths.binariesDir;
+ *   const customPath = context.appConfig.paths.targetDir;
+ *
  *   if (context.extractDir && context.extractResult?.executables.includes('my-binary')) {
  *     const sourcePath = path.join(context.extractDir, 'my-binary');
- *     const targetPath = path.join(context.installDir, context.toolName);
+ *     const targetPath = path.join(customPath, context.toolName);
  *     await $`mv ${sourcePath} ${targetPath}`;
  *     await $`chmod +x ${targetPath}`;
- *     console.log(`Moved and made ${targetPath} executable.`);
+ *     console.log(`Moved ${context.toolName} to user-configured path: ${targetPath}`);
  *   }
  * };
  * ```
@@ -375,19 +427,9 @@ export interface PlatformConfigBuilder {
 }
 
 /**
- * Defines the fluent interface for configuring a tool.
- * An instance of this builder is passed to the `AsyncConfigureTool` function
- *  in each tool's configuration file (e.g., `fzf.tool.ts`).
- *  Methods are chainable, allowing for a declarative way to define how a tool
- *  should be named, versioned, installed, and integrated into the system.
- */
-
-/**
- * Defines the fluent interface for configuring a tool.
- * An instance of this builder is passed to the `AsyncConfigureTool` function
- * in each tool's configuration file (e.g., `fzf.tool.ts`).
- * Methods are chainable, allowing for a declarative way to define how a tool
- * should be named, versioned, installed, and integrated into the system.
+ * Defines the main interface for configuring a tool.  An instance of this builder is passed to the `AsyncConfigureTool`
+ * function in each tool's configuration file (e.g., `fzf.tool.ts`).  Methods are chainable, allowing for a declarative
+ * way to define how a tool should be named, versioned, installed, and integrated into the system.
  */
 export interface ToolConfigBuilder {
   /**
@@ -410,10 +452,10 @@ export interface ToolConfigBuilder {
   bin(names: string | string[]): this;
 
   /**
-   * Specifies the desired version of the tool to be installed.
-   * This can be a specific version string (e.g., `'1.2.3'`), a SemVer constraint (e.g., `'^1.0.0'`),
-   * or the keyword `'latest'` to always attempt to install the most recent version.
-   * This is analogous to Zinit's `ver` ice.
+   * Specifies the desired version of the tool to be installed.  This can be a specific version string (e.g., `'1.2.3'`),
+   * a SemVer constraint (e.g., `'^1.0.0'`), or the keyword `'latest'` to always attempt to install the most recent
+   * version.  This is analogous to Zinit's `ver` ice.
+   * 
    * @param version - The version string or constraint.
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @default 'latest'
@@ -551,9 +593,8 @@ export interface ToolConfigBuilder {
   symlink(source: string, target: string): this;
 
   /**
-   * Defines platform-specific configurations for the tool.
-   * This allows tailoring installation methods, binaries, versions, etc., for different
-   * operating systems and optionally CPU architectures.
+   * Defines platform-specific configurations for the tool.  This allows tailoring installation methods, binaries,
+   * versions, etc., for different operating systems and optionally CPU architectures.
    *
    * @param platforms - A bitmask of `Platform` enum values specifying the target operating systems.
    * @param architecturesOrConfigure - Either a bitmask of `Architecture` enum values or the configuration callback.

@@ -1,6 +1,6 @@
 import type { TsLogger } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system';
-import type { AsyncInstallHook, InstallHookContext } from '@types';
+import type { AsyncInstallHook, InstallHookContext, BaseInstallContext } from '@types';
 import { TrackedFileSystem } from '@modules/file-registry';
 import { ErrorTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
@@ -17,6 +17,10 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   binaryPath?: string;
   /** Version of the installed tool (available in afterInstall hook) */
   version?: string;
+  /** The user's application configuration (available in all hooks) */
+  appConfig?: import('@modules/config').YamlConfig;
+  /** The full tool configuration being processed (available in all hooks) */
+  toolConfig?: import('@types').ToolConfig;
 }
 
 /**
@@ -122,7 +126,7 @@ export class HookExecutor {
    * Create enhanced context for hook execution with proper filesystem tracking
    */
   createEnhancedContext(
-    baseContext: InstallHookContext,
+    baseContext: BaseInstallContext | InstallHookContext,
     fileSystem: IFileSystem,
     logger: TsLogger
   ): EnhancedInstallHookContext {
@@ -131,10 +135,16 @@ export class HookExecutor {
       ? fileSystem.withToolName(baseContext.toolName)
       : fileSystem;
 
+    // Extract appConfig and toolConfig from BaseInstallContext if available
+    const appConfig = 'appConfig' in baseContext ? baseContext.appConfig : undefined;
+    const toolConfig = 'toolConfig' in baseContext ? baseContext.toolConfig : undefined;
+
     return {
       ...baseContext,
       fileSystem: enhancedFileSystem,
       logger: logger.getSubLogger({ name: `Hook-${baseContext.toolName}` }),
+      appConfig,
+      toolConfig,
     };
   }
 
