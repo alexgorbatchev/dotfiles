@@ -2,7 +2,7 @@ import type { TsLogger } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system';
 import type { AsyncInstallHook, InstallHookContext } from '@types';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Enhanced context for installation hooks with additional utilities
@@ -68,7 +68,7 @@ export class HookExecutor {
     const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
     const startTime = Date.now();
 
-    this.logger.debug('Executing %s hook with %dms timeout', hookName, timeoutMs);
+    this.logger.debug(DebugTemplates.hookExecutor.executingHook(), hookName, timeoutMs);
 
     try {
       // Create a promise that resolves when the hook completes
@@ -85,7 +85,7 @@ export class HookExecutor {
       await Promise.race([hookPromise, timeoutPromise]);
 
       const durationMs = Date.now() - startTime;
-      this.logger.debug('Hook %s completed successfully in %dms', hookName, durationMs);
+      this.logger.debug(DebugTemplates.hookExecutor.hookCompleted(), hookName, durationMs);
 
       return {
         success: true,
@@ -101,7 +101,7 @@ export class HookExecutor {
       );
 
       if (continueOnError) {
-        this.logger.debug('Continuing installation despite %s hook failure', hookName);
+        this.logger.debug(DebugTemplates.hookExecutor.continuingDespiteFailure(), hookName);
         context.otherChanges.push(`Warning: ${hookName} hook failed but installation continued: ${errorMessage}`);
         
         return {
@@ -158,7 +158,7 @@ export class HookExecutor {
 
       // If hook failed and we're not continuing on error, stop execution
       if (!result.success && !options?.continueOnError) {
-        this.logger.debug('Stopping hook execution due to failure in %s hook', name);
+        this.logger.debug(DebugTemplates.hookExecutor.stoppingDueToFailure(), name);
         break;
       }
     }

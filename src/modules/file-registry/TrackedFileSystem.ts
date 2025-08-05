@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { IFileRegistry, FileOperation } from './IFileRegistry';
-import { SuccessTemplates } from '@modules/shared/ErrorTemplates';
+import { SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Context for tracking filesystem operations.
@@ -41,7 +41,7 @@ export class TrackedFileSystem implements IFileSystem {
     this.registry = registry;
     this.context = context;
 
-    this.logger.debug('Created tracked filesystem for tool: %s', context.toolName);
+    this.logger.debug(DebugTemplates.registry.trackedFsCreated(), context.toolName);
   }
 
   /**
@@ -310,7 +310,7 @@ export class TrackedFileSystem implements IFileSystem {
     // Perform the actual operation
     await this.fs.rmdir(dirPath, options);
 
-    logger.debug('Tracked rmdir operation: %s', dirPath);
+    logger.debug(DebugTemplates.registry.rmdirTracked(), dirPath);
   }
 
   async ensureDir(dirPath: string): Promise<void> {
@@ -385,7 +385,7 @@ export class TrackedFileSystem implements IFileSystem {
       // Track the directory itself
       await this.trackFileDeletion(dirPath);
     } catch (error) {
-      this.logger.debug('Error tracking directory deletion %s: %s', dirPath, (error as Error).message);
+      this.logger.debug(DebugTemplates.registry.directoryDeletionError(), dirPath, (error as Error).message);
     }
   }
 }

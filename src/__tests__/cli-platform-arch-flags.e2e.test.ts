@@ -59,7 +59,7 @@ describe('E2E: CLI --platform and --arch flags', () => {
       });
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Architecture overridden to: x64');
+      expect(result.stdout).toContain('Arch overridden to: x64');
     });
 
     it('should use both --platform and --arch flags together', () => {
@@ -77,7 +77,7 @@ describe('E2E: CLI --platform and --arch flags', () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Platform overridden to: linux');
-      expect(result.stdout).toContain('Architecture overridden to: x64');
+      expect(result.stdout).toContain('Arch overridden to: x64');
     });
 
     it('should not show override messages when flags are not used', () => {
@@ -89,7 +89,7 @@ describe('E2E: CLI --platform and --arch flags', () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).not.toContain('Platform overridden');
-      expect(result.stdout).not.toContain('Architecture overridden');
+      expect(result.stdout).not.toContain('Arch overridden');
     });
   });
 });

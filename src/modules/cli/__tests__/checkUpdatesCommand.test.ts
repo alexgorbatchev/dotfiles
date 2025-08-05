@@ -125,9 +125,9 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: fzf',
+      'updates for fzf',
       'fzf (0.40.0) is up to date. Latest: 0.40.0',
-      'Check-updates command finished.',
+      'Check-updates command completed',
     ]);
   });
 
@@ -144,9 +144,9 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: fzf',
+      'updates for fzf',
       'Update available for fzf: 0.40.0 -> 0.41.0',
-      'Check-updates command finished.',
+      'Check-updates command completed',
     ]);
   });
 
@@ -167,11 +167,11 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates'], { from: 'user' });
 
     logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: fzf',
+      'updates for fzf',
       'fzf (0.40.0) is up to date. Latest: 0.40.0',
-      'Checking updates for: lazygit',
+      'updates for lazygit',
       'Update available for lazygit: 0.35.0 -> 0.36.0',
-      'Check-updates command finished.',
+      'Check-updates command completed',
     ]);
   });
 
@@ -185,9 +185,9 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: fzf',
-      'Tool "fzf" is configured to \'latest\'. The latest available version is 0.42.0.',
-      'Check-updates command finished.',
+      'updates for fzf',
+      'Tool "fzf" is configured to \'latest\'. The latest available version is 0.42.0',
+      'Check-updates command completed',
     ]);
   });
 
@@ -195,10 +195,11 @@ describe('checkUpdatesCommand', () => {
     mockLoadSingleToolConfig.mockResolvedValue(manualToolConfig);
     await program.parseAsync(['check-updates', 'manualtool'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: manualtool',
-      'Update checking not yet supported for manualtool (method: manual)',
-      'Check-updates command finished.',
+    logger.expect(['*'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
+      'check-updates command action logic started. Tool: manualtool',
+      'updates for manualtool',
+      'Update checking for manualtool not yet supported (method: manual)',
+      'Check-updates command completed',
     ]);
   });
 
@@ -211,9 +212,9 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO', 'ERROR', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: fzf',
+      'updates for fzf',
       ErrorTemplates.service.github.apiFailed('get latest release', 0, 'GitHub API unavailable'),
-      'Check-updates command finished.',
+      'Check-updates command completed',
     ]);
   });
 
@@ -239,7 +240,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [`No tool configurations found in ${mockYamlConfig.paths.toolConfigsDir}.`],
+      [`No tool configurations found in ${mockYamlConfig.paths.toolConfigsDir}`],
     );
   });
 
@@ -254,9 +255,9 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates', 'invalidrepo'], { from: 'user' });
 
     logger.expect(['INFO', 'WARN', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: invalidrepo',
+      'updates for invalidrepo',
       WarningTemplates.config.invalid('repo format', 'justonename', 'owner/repo'),
-      'Check-updates command finished.',
+      'Check-updates command completed',
     ]);
   });
 
@@ -271,9 +272,9 @@ describe('checkUpdatesCommand', () => {
     await program.parseAsync(['check-updates', 'missingrepo'], { from: 'user' });
 
     logger.expect(['INFO', 'WARN', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'Checking updates for: missingrepo',
+      'updates for missingrepo',
       WarningTemplates.config.ignored('repo', 'Tool "missingrepo" is \'github-release\' but missing \'repo\' parameter'),
-      'Check-updates command finished.',
+      'Check-updates command completed',
     ]);
   });
 

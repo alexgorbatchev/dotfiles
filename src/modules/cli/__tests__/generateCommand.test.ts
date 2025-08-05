@@ -93,12 +93,12 @@ describe('generateCommand', () => {
       ['INFO'],
       ['registerGenerateCommand'],
       [
-        'Artifact generation complete.',
-        `Generated 1 shims in ${mockYamlConfig.paths.targetDir}`,
-        'Generated shims by tool:',
-        `  - toolA -> toolA-bin`,
-        `Shell init file generated at: ${mockYamlConfig.paths.generatedDir}/init.sh`,
-        'Processed 1 symlink operations.',
+        /Artifact generation completed in \d+ms/,
+        /Shim generation completed in \d+ms \(1 items\) .*\/usr-local-bin/,
+        'Generated shims by tool',
+        'Processing toolA (shim generation: toolA-bin)',
+        /\[shell-init\] Created: .*\/init\.sh/,
+        /Symlink operations completed in \d+ms \(1 items\)/,
       ]
     );
   });

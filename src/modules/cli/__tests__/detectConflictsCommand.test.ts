@@ -116,7 +116,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No tool configurations found. Nothing to check for conflicts.'],
+        [/No tool configurations found in .*\/configs\/tools/],
       );
       expect(exitCli).toHaveBeenCalledWith(0);
     });
@@ -148,7 +148,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No conflicts detected.'],
+        ['No conflicts detected'],
       );
       expect(exitCli).toHaveBeenCalledWith(0);
     });
@@ -192,7 +192,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No conflicts detected.'],
+        ['No conflicts detected'],
       );
       expect(exitCli).toHaveBeenCalledWith(0);
     });

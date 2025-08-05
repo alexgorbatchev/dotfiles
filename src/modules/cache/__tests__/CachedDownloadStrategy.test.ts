@@ -108,7 +108,7 @@ describe('CachedDownloadStrategy', () => {
       logger.expect(
         ['DEBUG'],
         ['CachedDownloadStrategy'],
-        ['constructor: Wrapping strategy mock-strategy with cache, TTL: 60000 ms'],
+        ['Wrapping strategy mock-strategy with cache, TTL: 60000 ms'],
       );
     });
   });
@@ -144,9 +144,9 @@ describe('CachedDownloadStrategy', () => {
       expect(mockCache.getCalls).toHaveLength(0);
       expect(mockCache.setCalls).toHaveLength(0);
       logger.expect(
-        ['DEBUG'],
+        ['TRACE'],
         ['CachedDownloadStrategy', 'download'],
-        ['Skipping cache for URL https://example.com/file.txt (has progress callback)'],
+        ['Cache disabled, caching for key:'],
       );
     });
 
@@ -242,12 +242,12 @@ describe('CachedDownloadStrategy', () => {
       
       // Check all logs in order
       logger.expect(
-        ['DEBUG'],
+        ['TRACE'],
         ['CachedDownloadStrategy', 'download'],
         [
-          'Error checking cache for URL https://example.com/file.txt: Cache get failed',
-          'Downloading from underlying strategy for URL: https://example.com/file.txt',
-          'Cached download for URL: https://example.com/file.txt, size: 15 bytes'
+          /Error checking cache for key: download:[a-f0-9]{64}, error: Cache get failed/,
+          /download from mock-strategy/,
+          /Cached data for key: download:[a-f0-9]{64} \(binary\), size: 15 bytes, expires: TTL-based/
         ],
       );
     });
@@ -263,12 +263,12 @@ describe('CachedDownloadStrategy', () => {
       expect(mockStrategy.downloadCalls).toHaveLength(1);
       // Check all logs in order
       logger.expect(
-        ['DEBUG'],
+        ['TRACE'],
         ['CachedDownloadStrategy', 'download'],
         [
-          'Cache miss for URL: https://example.com/file.txt',
-          'Downloading from underlying strategy for URL: https://example.com/file.txt',
-          'Error caching download for URL https://example.com/file.txt: Cache set failed'
+          /No cache entry found for key: download:[a-f0-9]{64}/,
+          /download from mock-strategy/,
+          /Error caching data for key: download:[a-f0-9]{64}, error: Cache set failed/
         ],
       );
     });

@@ -1,6 +1,6 @@
 import { loadSingleToolConfig } from '@modules/config-loader';
 import type { TsLogger } from '@modules/logger';
-import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, WarningTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
@@ -26,7 +26,7 @@ export function registerUpdateCommand(
       const actionLogger = logger.getSubLogger({ name: 'action' });
       const combinedOptions = { ...options, ...program.opts() };
       actionLogger.debug(
-        'Action called for tool "%s" with options: %o',
+        DebugTemplates.command.errorDetails(),
         toolName,
         combinedOptions,
       );
@@ -36,7 +36,7 @@ export function registerUpdateCommand(
         services;
 
       try {
-        actionLogger.debug('starting update process for tool=%s', toolName);
+        actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
         let toolConfig: ToolConfig | undefined;
         try {
           toolConfig = await loadSingleToolConfig(
@@ -45,25 +45,25 @@ export function registerUpdateCommand(
             yamlConfig.paths.toolConfigsDir,
             fs,
           );
-          actionLogger.debug('loaded tool config for tool=%s', toolName);
+          actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
         } catch (error) {
           actionLogger.debug(
-            'error loading tool config for tool=%s, error=%s',
+            DebugTemplates.command.errorDetails(),
             toolName,
             (error as Error).message,
           );
           logger.error(ErrorTemplates.config.loadFailed(`tool "${toolName}"`, (error as Error).message));
-          logger.debug('Error details: %O', error);
+          logger.debug(DebugTemplates.command.errorDetails(), error);
           exitCli(1);
         }
 
         if (!toolConfig) {
-          actionLogger.debug('tool config not found for tool=%s', toolName);
+          actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
           logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           exitCli(1);
         }
 
-        logger.info(`Checking for updates for "${toolName}"...`);
+        logger.info(SuccessTemplates.general.checkingUpdatesFor(toolName));
 
         if (toolConfig.installationMethod === 'github-release') {
           if (!toolConfig.installParams?.repo) {
@@ -86,7 +86,7 @@ export function registerUpdateCommand(
             latestRelease = await githubApiClient.getLatestRelease(owner, repo);
           } catch (networkError) {
             logger.error(ErrorTemplates.service.github.apiFailed('get latest release', 0, (networkError as Error).message));
-            logger.debug('Error details: %O', networkError);
+            logger.debug(DebugTemplates.command.errorDetails(), networkError);
             return;
           }
 
@@ -101,9 +101,7 @@ export function registerUpdateCommand(
           const configuredVersion = toolConfig.version || 'latest';
 
           if (configuredVersion === 'latest') {
-            logger.info(
-              `Tool "${toolName}" is configured to 'latest'. Current latest is ${latestVersion}. To install this specific version, re-install or use update with a specific version target (not yet supported).`,
-            );
+            logger.info(SuccessTemplates.general.toolOnLatest(toolName, latestVersion));
             return;
           }
 
@@ -113,12 +111,8 @@ export function registerUpdateCommand(
           );
 
           if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-            logger.info(
-              `Update available for ${toolName}: ${configuredVersion} -> ${latestVersion}.`,
-            );
-            logger.info(
-              `Updating ${toolName} from ${configuredVersion} to ${latestVersion}...`,
-            );
+            logger.info(SuccessTemplates.general.updateAvailable(toolName, configuredVersion, latestVersion));
+            logger.info(SuccessTemplates.general.processingUpdate(toolName, configuredVersion, latestVersion));
 
             const toolConfigForUpdate: ToolConfig = {
               ...toolConfig,
@@ -132,19 +126,15 @@ export function registerUpdateCommand(
 
             if (installResult.success) {
               logger.info(
-                `${toolName} updated successfully to ${latestVersion}.`,
+                SuccessTemplates.tool.updated(toolName, configuredVersion, latestVersion),
               );
-              logger.debug(
-                `Manifest update for ${toolName} to version ${latestVersion} would occur here.`,
-              );
+              logger.debug(DebugTemplates.command.errorDetails());
             } else {
               logger.error(ErrorTemplates.tool.updateFailed(toolName, installResult.error || 'Unknown error'));
               exitCli(1);
             }
           } else if (status === VersionComparisonStatus.UP_TO_DATE) {
-            logger.info(
-              `${toolName} (version ${configuredVersion}) is already up to date. Latest: ${latestVersion}.`,
-            );
+            logger.info(SuccessTemplates.general.toolUpToDate(toolName, configuredVersion, latestVersion));
           } else if (
             status === VersionComparisonStatus.AHEAD_OF_LATEST ||
             status === VersionComparisonStatus.INVALID_CURRENT_VERSION ||
@@ -155,12 +145,10 @@ export function registerUpdateCommand(
             );
           }
         } else {
-          logger.info(
-            `Update not yet supported for installation method: "${toolConfig.installationMethod}" for tool "${toolName}".`,
-          );
+          logger.info(WarningTemplates.general.unsupportedOperation('Update', `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`));
         }
       } catch (error) {
-        actionLogger.debug('Unhandled error in action handler: %O', error);
+        actionLogger.debug(DebugTemplates.command.errorDetails(), error);
         if (
           error instanceof Error &&
           error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')
@@ -168,7 +156,7 @@ export function registerUpdateCommand(
           throw error;
         } else {
           logger.error(ErrorTemplates.command.executionFailed('update', 1, (error as Error).message));
-          logger.debug('Error details: %O', error);
+          logger.debug(DebugTemplates.command.errorDetails(), error);
         }
         if (
           !(

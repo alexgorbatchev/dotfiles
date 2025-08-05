@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import type { TsLogger } from '@modules/logger';
+import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 import type { 
   IFileRegistry, 
   FileOperation, 
@@ -19,7 +20,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     this.logger = parentLogger.getSubLogger({ name: 'SqliteFileRegistry' });
     this.db = new Database(dbPath);
     this.initializeSchema();
-    this.logger.debug('Initialized SQLite file registry at: %s', dbPath);
+    this.logger.debug(DebugTemplates.registry.initialized(), dbPath);
   }
 
   async recordOperation(operation: Omit<FileOperation, 'id' | 'createdAt'>): Promise<void> {
@@ -48,7 +49,7 @@ export class SqliteFileRegistry implements IFileRegistry {
       operation.operationId
     );
 
-    logger.debug('Recorded %s operation for %s: %s', 
+    logger.debug(DebugTemplates.registry.operationRecorded(), 
       operation.operationType, operation.toolName, operation.filePath);
   }
 
@@ -93,12 +94,12 @@ export class SqliteFileRegistry implements IFileRegistry {
       params.push(filter.operationId);
     }
 
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY created_at DESC, id DESC';
 
     const stmt = this.db.prepare(sql);
     const rows = params.length > 0 ? stmt.all(...params) as any[] : stmt.all() as any[];
 
-    logger.debug('Retrieved %d operations with filter: %o', rows.length, filter);
+    logger.debug(DebugTemplates.registry.operationsRetrieved(), rows.length, filter);
 
     return rows.map(row => ({
       id: row.id,
@@ -146,7 +147,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     // Return all active file states
     const activeStates = Array.from(fileStates.values());
 
-    logger.debug('Computed %d file states for tool: %s', activeStates.length, toolName);
+    logger.debug(DebugTemplates.registry.fileStatesComputed(), activeStates.length, toolName);
     
     return activeStates;
   }
@@ -158,7 +159,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const operations = await this.getOperations({ filePath });
     
     if (operations.length === 0) {
-      logger.debug('No operations found for file: %s', filePath);
+      logger.debug(DebugTemplates.registry.noOperationsFound(), filePath);
       return null;
     }
 
@@ -185,7 +186,7 @@ export class SqliteFileRegistry implements IFileRegistry {
       }
     }
 
-    logger.debug('Computed file state for %s: %s', filePath, state ? 'active' : 'deleted');
+    logger.debug(DebugTemplates.registry.fileStateComputed(), filePath, state ? 'active' : 'deleted');
     
     return state;
   }
@@ -195,7 +196,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const rows = stmt.all() as { tool_name: string }[];
     
     const tools = rows.map(row => row.tool_name);
-    this.logger.debug('Found %d registered tools', tools.length);
+    this.logger.debug(DebugTemplates.registry.toolsFound(), tools.length);
     
     return tools;
   }
@@ -206,7 +207,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const stmt = this.db.prepare('DELETE FROM file_operations WHERE tool_name = ?');
     const result = stmt.run(toolName);
     
-    logger.debug('Removed %d operations for tool: %s', result.changes, toolName);
+    logger.debug(DebugTemplates.registry.operationsRemoved(), result.changes, toolName);
   }
 
   async compact(): Promise<void> {
@@ -231,7 +232,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     }
 
     const after = await this.getStats();
-    logger.debug('Compaction complete: %d -> %d operations', before.totalOperations, after.totalOperations);
+    logger.debug(DebugTemplates.registry.compactionComplete(), before.totalOperations, after.totalOperations);
   }
 
   async validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }> {
@@ -262,7 +263,7 @@ export class SqliteFileRegistry implements IFileRegistry {
       }
     }
 
-    logger.debug('Validation complete: %d issues found, %d repaired', issues.length, repaired.length);
+    logger.debug(DebugTemplates.registry.validationComplete(), issues.length, repaired.length);
 
     return {
       valid: issues.length === 0,
@@ -294,7 +295,7 @@ export class SqliteFileRegistry implements IFileRegistry {
 
   async close(): Promise<void> {
     this.db.close();
-    this.logger.debug('Closed SQLite file registry');
+    this.logger.debug(DebugTemplates.registry.registryClosed());
   }
 
   private initializeSchema(): void {
@@ -326,6 +327,6 @@ export class SqliteFileRegistry implements IFileRegistry {
       CREATE INDEX IF NOT EXISTS idx_operation_id ON file_operations(operation_id);
     `);
 
-    logger.debug('Schema initialization complete');
+    logger.debug(DebugTemplates.registry.schemaInitialized());
   }
 }

@@ -1,4 +1,5 @@
 import { type TsLogger } from '@modules/logger';
+import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Base error class for all downloader-related errors.
@@ -11,7 +12,7 @@ export class DownloaderError extends Error {
     const logger = parentLogger.getSubLogger({ name: 'DownloaderError' });
     this.name = 'DownloaderError';
     this.url = url;
-    logger.debug('DownloaderError created: message=%s, url=%s', message, url);
+    logger.debug(DebugTemplates.downloader.errorCreated('DownloaderError'), message, url);
   }
 }
 
@@ -27,7 +28,7 @@ export class NetworkError extends DownloaderError {
     this.name = 'NetworkError';
     this.originalError = originalError;
     logger.debug(
-      'NetworkError created: message=%s, url=%s, originalError=%o',
+      DebugTemplates.downloader.networkErrorCreated(),
       message,
       url,
       originalError,
@@ -61,7 +62,7 @@ export class HttpError extends DownloaderError {
     this.responseBody = responseBody;
     this.responseHeaders = responseHeaders;
     logger.debug(
-      'HttpError created: message=%s, url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o',
+      DebugTemplates.downloader.httpErrorCreated(),
       message,
       url,
       statusCode,
@@ -86,7 +87,7 @@ export class NotFoundError extends HttpError {
     const logger = parentLogger.getSubLogger({ name: 'NotFoundError' });
     this.name = 'NotFoundError';
     logger.debug(
-      'NotFoundError created: url=%s, responseBody=%o, responseHeaders=%o',
+      DebugTemplates.downloader.notFoundErrorCreated(),
       url,
       responseBody,
       responseHeaders,
@@ -108,7 +109,7 @@ export class ForbiddenError extends HttpError {
     const logger = parentLogger.getSubLogger({ name: 'ForbiddenError' });
     this.name = 'ForbiddenError';
     logger.debug(
-      'ForbiddenError created: url=%s, responseBody=%o, responseHeaders=%o',
+      DebugTemplates.downloader.forbiddenErrorCreated(),
       url,
       responseBody,
       responseHeaders,
@@ -137,7 +138,7 @@ export class RateLimitError extends HttpError {
     this.name = 'RateLimitError';
     this.resetTimestamp = resetTimestamp;
     logger.debug(
-      'RateLimitError created: message=%s, url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o, resetTimestamp=%d',
+      DebugTemplates.downloader.rateLimitErrorCreated(),
       message,
       url,
       statusCode,
@@ -173,7 +174,7 @@ export class ClientError extends HttpError {
     const logger = parentLogger.getSubLogger({ name: 'ClientError' });
     this.name = 'ClientError';
     logger.debug(
-      'ClientError created: url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o',
+      DebugTemplates.downloader.clientErrorCreated(),
       url,
       statusCode,
       statusText,
@@ -207,7 +208,7 @@ export class ServerError extends HttpError {
     const logger = parentLogger.getSubLogger({ name: 'ServerError' });
     this.name = 'ServerError';
     logger.debug(
-      'ServerError created: url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o',
+      DebugTemplates.downloader.serverErrorCreated(),
       url,
       statusCode,
       statusText,

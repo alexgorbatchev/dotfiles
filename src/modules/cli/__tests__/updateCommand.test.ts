@@ -148,8 +148,8 @@ describe('updateCommand', () => {
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO'], ['updateCommand'], [
-      'Checking for updates for "fzf"...',
-      'fzf (version 0.40.0) is already up to date. Latest: 0.40.0.',
+      'updates check for "fzf"',
+      'fzf (0.40.0) is up to date. Latest: 0.40.0',
     ]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -165,10 +165,10 @@ describe('updateCommand', () => {
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO'], ['updateCommand'], [
-      'Checking for updates for "fzf"...',
-      'Update available for fzf: 0.40.0 -> 0.41.0.',
-      'Updating fzf from 0.40.0 to 0.41.0...',
-      'fzf updated successfully to 0.41.0.',
+      'updates check for "fzf"',
+      'Update available for fzf: 0.40.0 -> 0.41.0',
+      'fzf update from 0.40.0 to 0.41.0',
+      'Tool "fzf" updated from v0.40.0 to v0.41.0',
     ]);
     expect(mockInstallerService.install).toHaveBeenCalledWith(
       'fzf',
@@ -217,8 +217,8 @@ describe('updateCommand', () => {
     await program.parseAsync(['update', 'manualtool'], { from: 'user' });
 
     logger.expect(['INFO'], ['updateCommand'], [
-      'Checking for updates for "manualtool"...',
-      'Update not yet supported for installation method: "manual" for tool "manualtool".',
+      'updates check for "manualtool"',
+      'Update not yet supported (installation method: "manual" for tool "manualtool")',
     ]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -249,8 +249,8 @@ describe('updateCommand', () => {
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     logger.expect(['INFO'], ['updateCommand'], [
-      'Checking for updates for "fzf"...',
-      'Tool "fzf" is configured to \'latest\'. Current latest is 0.50.0. To install this specific version, re-install or use update with a specific version target (not yet supported).',
+      'updates check for "fzf"',
+      'Tool "fzf" is configured to \'latest\'. The latest available version is 0.50.0',
     ]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });

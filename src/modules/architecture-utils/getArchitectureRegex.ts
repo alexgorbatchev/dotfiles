@@ -1,5 +1,6 @@
 import type { SystemInfo, ArchitecturePatterns } from '@types';
 import { type TsLogger } from '@modules/logger';
+import { SuccessTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Represents a set of regular expression patterns derived from {@link ArchitecturePatterns}.
@@ -39,7 +40,7 @@ export function getArchitecturePatterns(
   systemInfo: SystemInfo,
 ): ArchitecturePatterns {
   const logger = parentLogger.getSubLogger({ name: 'getArchitecturePatterns' });
-  logger.debug('platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
+  logger.trace(SuccessTemplates.architecture.patterns(), systemInfo.platform, systemInfo.arch);
 
   const patterns: ArchitecturePatterns = {
     system: [],
@@ -121,12 +122,7 @@ export function getArchitecturePatterns(
       break;
   }
 
-  logger.debug(
-    'generated patterns system=%j, cpu=%j, variants=%j',
-    patterns.system,
-    patterns.cpu,
-    patterns.variants,
-  );
+  logger.trace(SuccessTemplates.general.completed('pattern generation'), patterns);
 
   return patterns;
 }
@@ -143,7 +139,7 @@ export function createArchitectureRegex(
   patterns: ArchitecturePatterns,
 ): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'createArchitectureRegex' });
-  logger.debug('creating regex from patterns');
+  logger.trace(SuccessTemplates.architecture.regexCreation());
 
   // Escape special regex characters in pattern strings
   const escapeRegex = (str: string): string => {
@@ -165,12 +161,7 @@ export function createArchitectureRegex(
     variantPattern,
   };
 
-  logger.debug(
-    'generated regex patterns system=%s, cpu=%s, variants=%s',
-    result.systemPattern,
-    result.cpuPattern,
-    result.variantPattern,
-  );
+  logger.trace(SuccessTemplates.general.completed('regex generation'), result);
 
   return result;
 }
@@ -187,12 +178,12 @@ export function getArchitectureRegex(
   systemInfo: SystemInfo,
 ): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'getArchitectureRegex' });
-  logger.debug('platform=%s, arch=%s', systemInfo.platform, systemInfo.arch);
+  logger.trace(SuccessTemplates.general.started('architecture detection'), systemInfo.platform, systemInfo.arch);
 
   const patterns = getArchitecturePatterns(logger, systemInfo);
   const regex = createArchitectureRegex(logger, patterns);
 
-  logger.debug('completed architecture detection');
+  logger.trace(SuccessTemplates.general.completed('architecture detection'));
   return regex;
 }
 
@@ -210,7 +201,7 @@ export function matchesArchitecture(
   architectureRegex: ArchitectureRegex,
 ): boolean {
   const logger = parentLogger.getSubLogger({ name: 'matchesArchitecture' });
-  logger.debug('checking asset=%s', assetName);
+  logger.trace(SuccessTemplates.architecture.assetMatchCheck(assetName));
 
   const lowerAssetName = assetName.toLowerCase();
 
@@ -226,13 +217,7 @@ export function matchesArchitecture(
 
   const matches = systemMatch && cpuMatch;
 
-  logger.debug(
-    'asset=%s, systemMatch=%s, cpuMatch=%s, result=%s',
-    assetName,
-    systemMatch,
-    cpuMatch,
-    matches,
-  );
+  logger.trace(SuccessTemplates.general.completed('asset match check'), { assetName, systemMatch, cpuMatch, matches });
 
   return matches;
 }

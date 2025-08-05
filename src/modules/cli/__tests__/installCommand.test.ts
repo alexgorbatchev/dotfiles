@@ -113,7 +113,7 @@ describe('installCommand', () => {
       verbose: false,
     });
     testLogger.expect(['INFO'], ['registerInstallCommand'], [
-      'Tool "toolA" installed successfully.',
+      'Tool "toolA" v1.0.0 installed successfully using CLI',
     ]);
   });
 

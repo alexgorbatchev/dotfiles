@@ -4,6 +4,12 @@ import { HookExecutor, type HookExecutionOptions } from '../HookExecutor';
 import type { InstallHookContext } from '@types';
 import { TrackedFileSystem } from '@modules/file-registry';
 import { mock, spyOn } from 'bun:test';
+import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+
+// Helper function for tests to create SafeLogMessage
+function testLogMessage(message: string): SafeLogMessage {
+  return message as SafeLogMessage;
+}
 
 describe('HookExecutor', () => {
   let logger: TestLogger;
@@ -169,7 +175,7 @@ describe('HookExecutor', () => {
       );
 
       // Verify logger is a sublogger (should have the expected name in logs)
-      enhancedContext.logger.info('Test message');
+      enhancedContext.logger.info(testLogMessage('Test message'));
       logger.expect(['INFO'], ['Hook-test-tool'], ['Test message']);
     });
   });

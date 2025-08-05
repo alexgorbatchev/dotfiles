@@ -1,7 +1,7 @@
 import { exitCli } from '@modules/cli/exitCli';
 import { type TsLogger } from '@modules/logger';
 import type { GlobalProgram, Services } from '../../cli';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, DebugTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
 
 export interface FilesCommandOptions {
   dryRun: boolean;
@@ -23,7 +23,7 @@ async function filesActionLogic(
   const { tool, type, status, since } = options;
 
   try {
-    logger.debug('execute: starting files inspection with options: %o', options);
+    logger.debug(DebugTemplates.command.actionCalled('files', options.tool), options);
 
     // Build filter object based on options
     const filter: Record<string, unknown> = {};
@@ -39,7 +39,7 @@ async function filesActionLogic(
     if (since) {
       const sinceDate = new Date(since);
       if (isNaN(sinceDate.getTime())) {
-        logger.error('Invalid date format for --since. Use ISO format like "2025-08-01"');
+        logger.error(ErrorTemplates.config.invalid('date format for --since', since, 'ISO format like "2025-08-01"'));
         exitCli(1);
         return;
       }
@@ -49,8 +49,7 @@ async function filesActionLogic(
     if (status) {
       // Show file states instead of operations
       const allTools = await fileRegistry.getRegisteredTools();
-      logger.info('File Status Report');
-      logger.info('==================');
+      logger.info(SuccessTemplates.general.checkingFileStates());
       
       for (const toolName of allTools) {
         if (tool && toolName !== tool) continue;
@@ -61,7 +60,7 @@ async function filesActionLogic(
           continue;
         }
         
-        logger.info(`\n${toolName}:`);
+        logger.info(SuccessTemplates.general.fileStatesForTool(toolName));
         
         for (const state of fileStates) {
           const exists = await fs.exists(state.filePath);
@@ -69,12 +68,12 @@ async function filesActionLogic(
           const statusText = exists ? 'exists' : 'MISSING';
           const sizeText = state.sizeBytes ? ` (${state.sizeBytes} bytes)` : '';
           
-          logger.info(`  ${statusIcon} ${state.filePath} [${state.fileType}] - ${statusText}${sizeText}`);
+          logger.info(SuccessTemplates.general.fileStatus(statusIcon, state.filePath, state.fileType, statusText, sizeText));
           
           if (state.targetPath) {
             const targetExists = await fs.exists(state.targetPath);
             const targetIcon = targetExists ? '→' : '✗';
-            logger.info(`    ${targetIcon} ${state.targetPath}`);
+            logger.info(SuccessTemplates.general.targetStatus(targetIcon, state.targetPath));
           }
         }
       }
@@ -86,7 +85,7 @@ async function filesActionLogic(
     const operations = await fileRegistry.getOperations(filter);
     
     if (operations.length === 0) {
-      logger.info('No tracked files found matching the criteria.');
+      logger.info(SuccessTemplates.general.noFileOperationsFound());
       return;
     }
 
@@ -100,32 +99,31 @@ async function filesActionLogic(
       operationsByTool[operation.toolName]!.push(operation);
     }
 
-    logger.info(`Found ${operations.length} tracked file operations`);
-    logger.info('============================================');
+    logger.info(SuccessTemplates.general.listingFileOperations());
 
     for (const [toolName, toolOperations] of Object.entries(operationsByTool)) {
-      logger.info(`\n${toolName} (${toolOperations.length} operations):`);
+      logger.info(SuccessTemplates.general.toolOperations(toolName, toolOperations.length));
       
       for (const operation of toolOperations) {
         const timestamp = new Date(operation.createdAt).toLocaleString();
         const sizeText = operation.sizeBytes ? ` (${operation.sizeBytes} bytes)` : '';
         
-        logger.info(`  ${operation.operationType.toUpperCase()}: ${operation.filePath}`);
-        logger.info(`    Type: ${operation.fileType} | Time: ${timestamp}${sizeText}`);
+        logger.info(SuccessTemplates.general.operationInfo(operation.operationType.toUpperCase(), operation.filePath));
+        logger.info(SuccessTemplates.general.operationDetails(operation.fileType, timestamp, sizeText));
         
         if (operation.targetPath) {
-          logger.info(`    Target: ${operation.targetPath}`);
+          logger.info(SuccessTemplates.general.operationTarget(operation.targetPath));
         }
         
         if (operation.metadata && Object.keys(operation.metadata).length > 0) {
-          logger.info(`    Metadata: ${JSON.stringify(operation.metadata)}`);
+          logger.info(SuccessTemplates.general.operationMetadata(JSON.stringify(operation.metadata)));
         }
       }
     }
 
   } catch (error) {
     logger.error(ErrorTemplates.command.executionFailed('files', 1, (error as Error).message));
-    logger.debug('Error details: %O', error);
+    logger.debug(DebugTemplates.command.errorDetails(), error);
     exitCli(1);
   }
 }
@@ -147,7 +145,7 @@ export function registerFilesCommand(
     .action(async (options) => {
       const combinedOptions: FilesCommandOptions = { ...options, ...program.opts() };
 
-      logger.debug('files command: Action called with options: %o', combinedOptions);
+      logger.debug(DebugTemplates.command.actionCalled('files', options.tool), combinedOptions);
       const services = await servicesFactory();
       await filesActionLogic(logger, combinedOptions, services);
     });

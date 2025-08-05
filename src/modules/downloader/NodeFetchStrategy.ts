@@ -11,6 +11,7 @@ import {
   ServerError,
 } from './errors';
 import type { TsLogger } from '@modules/logger';
+import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 export class NodeFetchStrategy implements DownloadStrategy {
   public readonly name = 'node-fetch';
@@ -19,7 +20,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
 
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
     this.logger = parentLogger.getSubLogger({ name: 'NodeFetchStrategy' });
-    this.logger.debug('constructor: fileSystem=%o', fileSystem ? 'provided' : 'undefined');
+    this.logger.debug(DebugTemplates.downloader.constructorDebug(), fileSystem ? 'provided' : 'undefined');
     this.fileSystem = fileSystem;
   }
 
@@ -82,12 +83,12 @@ export class NodeFetchStrategy implements DownloadStrategy {
 
         if (timeout) {
           timeoutId = setTimeout(() => {
-            this.logger.debug('Download timeout for %s', url);
+            this.logger.debug(DebugTemplates.downloader.downloadTimeout(), url);
             controller.abort();
           }, timeout);
         }
 
-        this.logger.debug('Attempt %d: Downloading %s', attempt + 1, url);
+        this.logger.debug(DebugTemplates.downloader.downloadAttempt(), attempt + 1, url);
         const response = await fetch(url, {
           headers,
           signal: controller.signal,
@@ -102,14 +103,14 @@ export class NodeFetchStrategy implements DownloadStrategy {
           try {
             responseBody = await response.text();
           } catch (e) {
-            this.logger.debug('Failed to read response body for error: %s, error: %o', url, e);
+            this.logger.debug(DebugTemplates.downloader.responseBodyReadFailed(), url, e);
           }
           const responseHeaders = this.getResponseHeaders(response.headers);
           const statusCode = response.status;
           const statusText = response.statusText;
 
           this.logger.debug(
-            'Download failed: url=%s, statusCode=%d, statusText=%s, responseBody=%s',
+            DebugTemplates.downloader.downloadFailed(),
             url,
             statusCode,
             statusText,
@@ -208,23 +209,23 @@ export class NodeFetchStrategy implements DownloadStrategy {
         }
 
         const resultBuffer = Buffer.concat(chunks);
-        this.logger.debug('Download successful for %s, size: %d bytes', url, resultBuffer.length);
+        this.logger.debug(DebugTemplates.downloader.downloadSuccessful(), url, resultBuffer.length);
 
         if (destinationPath) {
-          this.logger.debug('Saving to destination: %s', destinationPath);
+          this.logger.debug(DebugTemplates.downloader.savingToDestination(), destinationPath);
           // Use IFileSystem to write the buffer
           await this.fileSystem.writeFile(destinationPath, resultBuffer);
-          this.logger.debug('Successfully wrote to %s using IFileSystem', destinationPath);
+          this.logger.debug(DebugTemplates.downloader.savedSuccessfully(), destinationPath);
           return;
         } else {
           return resultBuffer;
         }
       } catch (error: any) {
-        this.logger.debug('Error during download attempt %d for %s: %o', attempt + 1, url, error);
+        this.logger.debug(DebugTemplates.downloader.downloadAttemptError(), attempt + 1, url, error);
         if (attempt < retryCount) {
           attempt++;
           this.logger.debug(
-            'Retrying download for %s, attempt %d/%d after %dms',
+            DebugTemplates.downloader.retryingDownload(),
             url,
             attempt + 1,
             retryCount + 1,
@@ -250,7 +251,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
       }
     }
     // Fallback, should ideally not be reached if retryCount >= 0
-    this.logger.debug('Exhausted retries for %s', url);
+    this.logger.debug(DebugTemplates.downloader.exhaustedRetries(), url);
     throw new NetworkError(
       this.logger,
       `Download failed for ${url} after ${retryCount} retries.`,

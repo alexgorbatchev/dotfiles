@@ -3,6 +3,7 @@ import type { ToolConfig, AsyncConfigureTool } from '@types';
 import { ToolConfigBuilder } from '@modules/tool-config-builder';
 import path from 'node:path';
 import { type TsLogger } from '@modules/logger';
+import { SuccessTemplates, ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Loads all tool configurations from *.tool.ts files in a given directory.
@@ -18,22 +19,22 @@ export async function loadToolConfigsFromDirectory(
 ): Promise<Record<string, ToolConfig>> {
   const logger = parentLogger.getSubLogger({ name: 'loadToolConfigsFromDirectory' });
   const toolConfigs: Record<string, ToolConfig> = {};
-  logger.debug('Loading tool configs from directory: %s using FS: %s', toolConfigsDir, fs.constructor.name);
+  logger.debug(SuccessTemplates.config.toolConfigLoading(toolConfigsDir));
 
   try {
     if (!(await fs.exists(toolConfigsDir))) {
-      logger.debug('Tool configs directory does not exist: %s', toolConfigsDir);
+      logger.debug(ErrorTemplates.fs.notFound('tool configs directory', toolConfigsDir));
       return {}; // Return empty if directory doesn't exist
     }
 
     const files = await fs.readdir(toolConfigsDir);
-    logger.debug('Files in toolConfigsDir "%s": %o', toolConfigsDir, files);
+    logger.trace(SuccessTemplates.config.directoryScan(toolConfigsDir), files);
 
     for (const file of files) {
       if (file.endsWith('.tool.ts')) {
         // Resolve to an absolute path for dynamic import
         const filePath = path.resolve(toolConfigsDir, file);
-        logger.debug('Attempting to load tool config from: %s', filePath);
+        logger.trace(SuccessTemplates.config.toolConfigLoad(filePath));
 
         try {
           // While fs.exists(filePath) could be checked here using the passed `fs`,
@@ -48,27 +49,18 @@ export async function loadToolConfigsFromDirectory(
             const toolNameFromFile = path.basename(file, '.tool.ts');
 
             if (typeof module.default === 'function') {
-              logger.debug('Default export from %s is a function. Assuming AsyncConfigureTool.', filePath);
+              logger.trace(SuccessTemplates.config.validated(filePath));
               const configureToolFn = module.default as AsyncConfigureTool;
               const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
               await configureToolFn(builder);
               toolConfig = builder.build();
-              logger.debug('Built ToolConfig for "%s" from AsyncConfigureTool function.', toolConfig.name);
+              logger.trace(SuccessTemplates.config.loaded(filePath, 1));
             } else {
-              logger.debug('Default export from %s is an object. Assuming direct ToolConfig.', filePath);
+              logger.trace(SuccessTemplates.config.validated(filePath));
               toolConfig = module.default as ToolConfig;
               // Ensure the toolConfig.name matches the filename if it's a direct object export
               if (toolConfig.name !== toolNameFromFile) {
-                logger.debug(
-                  'Warning: Tool config object from %s has name "%s" but filename implies "%s". Using name from object: "%s".',
-                  filePath,
-                  toolConfig.name,
-                  toolNameFromFile,
-                  toolConfig.name
-                );
-                 console.warn(
-                  `Warning: Tool config object from ${filePath} has name "${toolConfig.name}" but filename implies "${toolNameFromFile}". Using name from object: "${toolConfig.name}".`
-                );
+                logger.warn(WarningTemplates.config.invalid('tool config object name', toolConfig.name, `filename: ${toolNameFromFile}`), filePath);
               }
             }
 
@@ -76,33 +68,27 @@ export async function loadToolConfigsFromDirectory(
               // Prefer toolConfig.name if explicitly set by builder/object, otherwise use filename-derived.
               // The builder now sets the name from the filename, so toolConfig.name should be reliable.
               toolConfigs[toolConfig.name] = toolConfig;
-              logger.debug('Successfully loaded tool config: %s from %s', toolConfig.name, filePath);
+              logger.debug(SuccessTemplates.config.loaded(filePath, 1), toolConfig.name);
             } else if (toolConfig) {
-              logger.debug('Warning: Tool config from %s is missing a "name" property after processing.', filePath);
-              console.warn(`Warning: Tool config from ${filePath} is missing a "name" property after processing.`);
+              logger.warn(WarningTemplates.config.invalid('tool config', 'missing name', 'valid name property'), filePath);
             } else {
               // This case should ideally not be hit if builder.build() always returns a valid config or throws.
-              logger.debug('Warning: Could not derive a valid ToolConfig from %s.', filePath);
-              console.warn(`Warning: Could not derive a valid ToolConfig from ${filePath}.`);
+              logger.error(ErrorTemplates.config.parseErrors(filePath, 'ToolConfig', 'Could not derive valid configuration'));
             }
           } else {
-            logger.debug('Warning: Tool config from %s has no default export.', filePath);
-            console.warn(`Warning: Tool config from ${filePath} has no default export.`);
+            logger.error(ErrorTemplates.config.parseErrors(filePath, 'ToolConfig', 'no default export'));
           }
         } catch (e) {
-          logger.debug('Error loading tool config from %s: %O', filePath, e);
-          // Log the error but continue processing other files
-          console.error(`Error loading tool configuration from ${filePath}:`, e);
+          logger.error(ErrorTemplates.config.loadFailed(filePath, String(e)), e);
         }
       }
     }
   } catch (e) {
-    logger.debug('Error reading tool configs directory %s: %O', toolConfigsDir, e);
-    console.error(`Error reading tool configs directory ${toolConfigsDir}:`, e);
+    logger.error(ErrorTemplates.fs.readFailed(toolConfigsDir, String(e)), e);
     // If the directory itself can't be read, return empty or rethrow depending on desired strictness
     return {};
   }
-  logger.debug('Finished loading tool configs. Found: %o', Object.keys(toolConfigs));
+  logger.debug(SuccessTemplates.general.completed('tool config loading'), Object.keys(toolConfigs).length);
   return toolConfigs;
 }
 
@@ -120,7 +106,7 @@ export async function loadSingleToolConfig(
   fs: IFileSystem
 ): Promise<ToolConfig | undefined> {
   const logger = parentLogger.getSubLogger({ name: 'loadSingleToolConfig' });
-  logger.debug('Loading single tool config: "%s" from directory: %s', toolName, toolConfigsDir);
+  logger.debug(SuccessTemplates.config.singleToolConfigLoad(toolName, toolConfigsDir));
   const toolFileName = `${toolName}.tool.ts`;
   const filePath = path.resolve(toolConfigsDir, toolFileName); // Absolute path for import
 
@@ -128,7 +114,7 @@ export async function loadSingleToolConfig(
     // Check existence using the provided fs. This is useful if fs is MemFileSystem
     // and we want to ensure it's aware of the file before attempting import.
     if (!(await fs.exists(filePath))) {
-      logger.debug('Tool config file does not exist via %s: %s', fs.constructor.name, filePath);
+      logger.debug(ErrorTemplates.fs.notFound('Tool config file', filePath), fs.constructor.name, filePath);
       return undefined;
     }
 
@@ -140,39 +126,29 @@ export async function loadSingleToolConfig(
       const toolNameFromFile = path.basename(filePath, '.tool.ts');
 
       if (typeof module.default === 'function') {
-        logger.debug('Default export from %s is a function. Assuming AsyncConfigureTool for single load.', filePath);
+        logger.trace(SuccessTemplates.config.validated(filePath));
         const configureToolFn = module.default as AsyncConfigureTool;
         const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
         await configureToolFn(builder);
         toolConfig = builder.build();
-        logger.debug('Built ToolConfig for "%s" from AsyncConfigureTool function (single load).', toolConfig.name);
+        logger.trace(SuccessTemplates.config.loaded(filePath, 1));
       } else {
-        logger.debug('Default export from %s is an object. Assuming direct ToolConfig for single load.', filePath);
+        logger.trace(SuccessTemplates.config.validated(filePath));
         toolConfig = module.default as ToolConfig;
       }
 
       if (toolConfig && toolConfig.name === toolName) {
-        logger.debug('Successfully loaded single tool config: %s from %s', toolConfig.name, filePath);
+        logger.debug(SuccessTemplates.config.loaded(filePath, 1), toolConfig.name);
         return toolConfig;
       } else if (toolConfig) {
-        logger.debug(
-          'Warning: Single tool config loaded from %s has name "%s" but tool "%s" was requested. Mismatch or build error.',
-          filePath,
-          toolConfig.name,
-          toolName
-        );
-        console.warn(
-          `Warning: Tool config loaded from ${filePath} (name: "${toolConfig.name}") does not match requested tool "${toolName}".`
-        );
+        logger.warn(WarningTemplates.config.invalid('single tool config name', toolConfig.name, `requested: ${toolName}`), filePath);
         return undefined; // Strict: only return if names match
       }
     }
-    logger.debug('Warning: Tool config from %s has no default export or failed to process.', filePath);
-    console.warn(`Warning: Tool config from ${filePath} has no default export or failed to process.`);
+    logger.error(ErrorTemplates.config.parseErrors(filePath, 'ToolConfig', 'no default export or failed to process'));
     return undefined;
   } catch (e) {
-    logger.debug('Error loading single tool config "%s" from %s: %O', toolName, filePath, e);
-    console.error(`Error loading single tool configuration "${toolName}" from ${filePath}:`, e);
+    logger.error(ErrorTemplates.config.loadFailed(filePath, String(e)), e);
     return undefined;
   }
 }

@@ -67,19 +67,19 @@ export async function setupServices(
   options: SetupServicesOptions
 ): Promise<Services> {
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
-  logger.trace('options=%o', options);
+  logger.trace(SuccessTemplates.general.started('setupServices'), options);
   const { dryRun, env, config } = options;
 
   // Initialize filesystem first
   let fs: IFileSystem;
   if (dryRun) {
-    logger.trace('Dry run enabled. Initializing MemFileSystem.');
+    logger.trace(SuccessTemplates.general.dryRunEnabled());
     fs = new MemFileSystem({});
   } else {
     fs = new NodeFileSystem();
   }
 
-  logger.trace('Using IFileSystem implementation: %s', fs.constructor.name);
+  logger.trace(SuccessTemplates.general.initialized('filesystem'), fs.constructor.name);
 
   const systemInfo: SystemInfo = {
     platform: options.platform || process.platform,
@@ -88,10 +88,10 @@ export async function setupServices(
   };
 
   if (options.platform) {
-    logger.warn(`Platform overridden to: ${options.platform}`);
+    logger.warn(WarningTemplates.config.overridden('platform', options.platform));
   }
   if (options.arch) {
-    logger.warn(`Architecture overridden to: ${options.arch}`);
+    logger.warn(WarningTemplates.config.overridden('arch', options.arch));
   }
 
   const userConfigPath = config.length === 0 ? path.resolve(options.cwd, 'config.yaml') : config;
@@ -101,13 +101,13 @@ export async function setupServices(
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    logger.trace('Loading tool configs into MemFileSystem for dry run.');
+    logger.trace(SuccessTemplates.general.toolConfigsForDryRun());
     const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
     const nodeFs = new NodeFileSystem();
 
     try {
       if (await nodeFs.exists(realToolConfigsDir)) {
-        logger.trace('Reading tool configs from actual directory: %s', realToolConfigsDir);
+        logger.trace(SuccessTemplates.config.loaded(realToolConfigsDir, 0));
         const filesInDir = await nodeFs.readdir(realToolConfigsDir);
 
         for (const fileName of filesInDir) {
@@ -117,10 +117,10 @@ export async function setupServices(
               const content = await nodeFs.readFile(filePath, 'utf8');
               await fs.ensureDir(realToolConfigsDir);
               await fs.writeFile(filePath, content);
-              logger.trace('Added tool config %s to MemFileSystem.', filePath);
+              logger.trace(SuccessTemplates.fs.created('memfs', filePath));
             } catch (readError: any) {
               logger.warn(WarningTemplates.fs.readFailed(filePath, readError.message));
-              logger.debug('Tool file read error details: %O', readError);
+              logger.error(ErrorTemplates.fs.readFailed(filePath, String(readError)), readError);
               // Optionally, decide whether to throw or continue. For now, logging and continuing.
             }
           }
@@ -148,9 +148,9 @@ export async function setupServices(
         storageStrategy: 'binary',
       }
     );
-    parentLogger.info('Download cache enabled: %s (TTL: %d ms)', cacheDir, yamlConfig.downloader.cache.ttl);
+    parentLogger.info(SuccessTemplates.general.cachingEnabled(), 'Directory: %s (TTL: %d ms)', cacheDir, yamlConfig.downloader.cache.ttl);
   } else {
-    parentLogger.info('Download cache disabled');
+    parentLogger.info(SuccessTemplates.general.cachingDisabled());
   }
 
   // Initialize file registry
@@ -222,7 +222,7 @@ export async function setupServices(
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
 
-  logger.trace('Services initialized.');
+  logger.trace(SuccessTemplates.general.servicesSetup());
   return {
     yamlConfig,
     fs,
@@ -290,7 +290,7 @@ export async function main(argv: string[]) {
   const rootLogger = createTsLogger({ name: 'cli', minLevel: logLevel });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
-  logger.trace('CLI starting with arguments:', argv);
+  logger.trace(SuccessTemplates.general.cliStarted(), 'Arguments: %o', argv);
 
   // Create a factory function that will initialize services only when needed
   const servicesFactory = async () => {
@@ -310,7 +310,7 @@ if (import.meta.main) {
   main(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
     const fatalLogger = createTsLogger({ name: 'cli', minLevel: 5 }); // FATAL level only
-    fatalLogger.fatal('Top-level unhandled error in main().catch(): %O', error);
+    fatalLogger.fatal(ErrorTemplates.command.executionFailed('main', 1, 'Top-level unhandled error'), '%O', error);
     process.exit(1);
   });
 }

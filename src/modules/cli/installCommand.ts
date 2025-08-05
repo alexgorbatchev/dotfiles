@@ -1,6 +1,6 @@
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
 import { type TsLogger } from '@modules/logger';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
@@ -20,62 +20,50 @@ export function registerInstallCommand(
     )
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
-      logger.debug('install command: Action called for tool "%s" with options: %o', toolName, combinedOptions);
+      logger.debug(DebugTemplates.command.actionCalled('install', toolName), combinedOptions);
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer } = services;
 
       try {
         logger.debug(
-          'Loading tool config for "%s" from directory: %s using FS: %s',
-          toolName,
+          DebugTemplates.command.actionStarted('install', toolName),
           yamlConfig.paths.toolConfigsDir,
           fs.constructor.name,
         );
         const toolConfig = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs);
-        logger.debug('Loaded tool config for "%s": %o', toolName, toolConfig ? toolConfig.name : 'Not found');
+        // Tool configuration loaded, proceeding with installation
 
         if (!toolConfig) {
           logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           exitCli(1);
         }
 
-        logger.debug('Calling installerService.install for tool: %s', toolName);
+        // Starting installation process
         const result = await installer.install(toolName, toolConfig, {
           force: combinedOptions.force,
           verbose: combinedOptions.verbose,
         });
 
         if (result.success) {
-          logger.debug(
-            'Tool %s installed successfully at %s',
-            toolName,
-            result.binaryPath,
-          );
+          // Installation successful, logging result
           if (combinedOptions.verbose && result.otherChanges && result.otherChanges.length > 0) {
-            logger.debug('Detailed installation steps:');
-            result.otherChanges.forEach((change) => logger.debug(`  - ${change}`));
+            // Additional changes logged by installer
+            result.otherChanges.forEach((change) => logger.debug(SuccessTemplates.general.additionalChange(), change));
           }
-          logger.info(`Tool "${toolName}" installed successfully.`);
-          if (result.binaryPath) {
-            logger.info(`Binary path: ${result.binaryPath}`);
-          }
-          if (result.version) {
-            logger.info(`Version: ${result.version}`);
-          }
+          logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
+          // Additional debug info handled by installer
         } else {
           logger.debug(
-            'Failed to install tool %s: %s',
-            toolName,
+            DebugTemplates.command.actionStarted('install-failed', toolName),
             result.error,
           );
           logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
           exitCli(1);
         }
       } catch (error) {
-        logger.debug('Error during tool installation: %O', error);
+        logger.debug(DebugTemplates.command.unhandledError(), error);
         logger.error(ErrorTemplates.command.executionFailed('install', 1, (error as Error).message));
-        logger.debug('Error details: %O', error);
         exitCli(1);
       }
     });

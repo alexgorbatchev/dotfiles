@@ -6,7 +6,7 @@ import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
 import { exitCli } from '../cli';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
 
 
 /**
@@ -105,7 +105,7 @@ function applyPlatformOverrides(
   const currentPlatform = detectOS(systemInfo.platform);
   const currentArch = detectArch(systemInfo.arch);
 
-  logger.debug('applyPlatformOverrides: platform=%s, arch=%s', currentPlatform, currentArch);
+  logger.debug(SuccessTemplates.config.platformOverrides(currentPlatform, currentArch));
 
   let result: Record<string, unknown> = deepMerge({}, config );
 
@@ -146,7 +146,7 @@ function applyPlatformOverrides(
     });
 
     if (matches) {
-      logger.debug('Applying platform override: %o', platformOverride.config);
+      logger.trace(SuccessTemplates.config.validated('platform override'), platformOverride.config);
       result = deepMerge(result, platformOverride.config);
     }
   }
@@ -236,7 +236,7 @@ function processConfig(
   env: Record<string, string | undefined>
 ): YamlConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
-  logger.debug('processConfig: defaultConfig=%o, userConfig=%o, systemInfo=%o', defaultConfig, userConfig, systemInfo);
+  logger.debug(SuccessTemplates.config.configProcessing(), defaultConfig, userConfig, systemInfo);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
@@ -317,7 +317,7 @@ export async function loadYamlConfig(
     userConfig = parse(userConfigContent) || {};
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
-    logger.error(ErrorTemplates.config.parseError(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)));
+    logger.error(ErrorTemplates.config.parseErrors(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)));
   }
 
   return processConfig(parentLogger, defaultConfig, userConfig, systemInfo, env);

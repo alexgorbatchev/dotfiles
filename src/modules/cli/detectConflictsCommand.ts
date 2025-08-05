@@ -1,7 +1,7 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader';
 import type { Stats } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
+import { ErrorTemplates, WarningTemplates, DebugTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
 import type { ToolConfig } from '@types';
 import path from 'path';
 import { type GlobalProgram, type Services } from '../../cli';
@@ -26,7 +26,7 @@ export async function detectConflictsActionLogic(
   }
 
   if (toolConfigsArray.length === 0) {
-    logger.info('No tool configurations found. Nothing to check for conflicts.');
+    logger.info(SuccessTemplates.general.noToolsFound(yamlConfig.paths.toolConfigsDir));
     exitCli(0);
   }
 
@@ -59,7 +59,7 @@ export async function detectConflictsActionLogic(
         const targetPath = path.join(yamlConfig.paths.homeDir, symlink.target);
         const sourcePath = path.join(yamlConfig.paths.dotfilesDir, symlink.source);
 
-        logger.debug(`Checking symlink: ${targetPath} -> ${sourcePath}`);
+        // Check symlink conflicts
 
         try {
           const stats: Stats | null = await fs.lstat(targetPath);
@@ -91,11 +91,10 @@ export async function detectConflictsActionLogic(
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
     logger.warn(WarningTemplates.tool.conflictsDetected(header, formattedConflicts));
-    logger.info('Please review the warnings above.');
     exitCli(1);
     return;
   } else {
-    logger.info('No conflicts detected.');
+    logger.info(SuccessTemplates.general.noConflictsDetected());
     exitCli(0);
     return;
   }
@@ -114,7 +113,7 @@ export function registerDetectConflictsCommand(
     )
     .action(async (options) => {
       const combinedOptions = { ...options, ...program.opts() };
-      logger.debug('detect-conflicts command: Action called with options: %o', combinedOptions);
+      logger.debug(DebugTemplates.command.errorDetails(), combinedOptions);
       try {
         const services = await servicesFactory();
         await detectConflictsActionLogic(logger, combinedOptions, services);
@@ -125,9 +124,9 @@ export function registerDetectConflictsCommand(
         }
 
         logger.fatal(ErrorTemplates.command.executionFailed('detect-conflicts', 1, 'Unhandled error in action handler'));
-        logger.debug('Fatal error details: %O', error);
+        logger.debug(DebugTemplates.command.errorDetails(), error);
         logger.error(ErrorTemplates.command.executionFailed('detect-conflicts', 1, (error as Error).message));
-        logger.debug('Error details: %O', error);
+        logger.debug(DebugTemplates.command.errorDetails(), error);
         exitCli(1);
       }
     });
