@@ -11,11 +11,16 @@ globs:
 - Line length is 120 characters.
 - Do not add file header comments.
 - Avoid type casting at all costs and absolutely never use `as any`.
+
+- **Small files:** 
+  - Files should be small and focused on a single responsibility.
+  - If a file is too large, it should be broken down into smaller files. Try to keep files under 200 lines of code. 
+  - Break up large test files into smaller files using `{fileName}--{part}` naming convention.
 - **Comments:**
   - The project uses GIT to track these changes and change comments are not necessary.
   - Do not comment out code, remove it instead.
+  - Use meaningful comments for complex business logic.
   - Write JSDoc comments and keep them updated as implementation evolves (including single-line JSDoc like `/** comment */`).
-  - Use meaningful comments for complex business logic
 - **Import Statements:**
   - Do not rename import bindings.
   - When you are editing files and there are `as Foo` imports, replace them with the actual binding name.
@@ -25,7 +30,6 @@ globs:
   - **Isolate Side Effects:** Operations with side effects (e.g., file system access, network requests, direct logging to console/files, reading `process.env` or system properties) must be isolated from pure core logic. These side effects should be handled at the "edges" of the application (e.g., in the main entry point, dedicated I/O modules, or specific command handlers).
   - **Dependency Injection for Effects:** Functions that orchestrate operations but need to invoke side effects must receive the necessary handlers (e.g., `FileSystem` instance, HTTP client, logger instance) as arguments.
   - **Configuration:** Configuration objects derived from external sources (like environment variables) must be created by pure functions. These functions receive all necessary raw inputs (e.g., an object representing environment variables, system properties) as arguments and should use appropriate validation (such as `zod`, per the Data Validation rule) to parse and transform these inputs into a typed configuration object. This validated configuration object is then created at the application's main entry point and passed down via dependency injection.
-- **Small files:** Files should be small and focused on a single responsibility. If a file is too large, it should be broken down into smaller files. Try to keep files under 200 lines of code. Break up large test files into smaller files using `FileName--{part}.test.ts` naming convention.
 
 ### Variable Types
 

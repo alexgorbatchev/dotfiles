@@ -8,7 +8,7 @@
         "--rm",
         "-i",
         "--mount",
-        "type=bind,src=/Users/alex/.dotfiles,dst=/Users/alex/.dotfiles",
+        "type=bind,src=/Users/alex/.dotfiles,dst=/Users/alex/.dotfiles/generator",
         "mcp/git"
       ]
     },
