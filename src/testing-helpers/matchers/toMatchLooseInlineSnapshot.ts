@@ -1,4 +1,5 @@
 import { expect } from 'bun:test';
+import { dedentString } from '@utils';
 
 declare module 'bun:test' {
   interface Matchers<T> {
@@ -10,14 +11,6 @@ function escapeRegexLiteral(value: any): string {
   return String(value).replace(/[-/\\^$*+?.()|[\]{}]/gm, '\\$&');
 }
 
-function stripIndentFromPattern(pattern: string): string {
-  const lines = pattern.split('\n');
-  const nonEmpty = lines.filter((line) => line.trim().length > 0);
-  const minIndent = nonEmpty.length
-    ? Math.min(...nonEmpty.map((line) => line.match(/^ */)![0].length))
-    : 0;
-  return lines.map((line) => line.slice(minIndent)).join('\n');
-}
 
 expect.extend({
   toMatchLooseInlineSnapshot(
@@ -53,7 +46,7 @@ expect.extend({
       }
     }
 
-    const dedentedPattern = stripIndentFromPattern(pattern).trim();
+    const dedentedPattern = dedentString(pattern);
     const fullRegex = `^${dedentedPattern}$`;
 
     try {

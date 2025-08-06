@@ -6,8 +6,8 @@ export type ShellType =
   | 'zsh'
   /** Bash (Bourne Again SHell) */
   | 'bash'
-  /** Fish (Friendly Interactive SHell) */
-  | 'fish';
+  /** PowerShell (Windows PowerShell and PowerShell Core) */
+  | 'powershell';
 
 /**
  * Configuration for installing command-line completion for a specific shell.
@@ -42,8 +42,8 @@ export interface CompletionConfig {
   zsh?: ShellCompletionConfig;
   /** Configuration for Bash completions. */
   bash?: ShellCompletionConfig;
-  /** Configuration for Fish completions. */
-  fish?: ShellCompletionConfig;
+  /** Configuration for PowerShell completions. */
+  powershell?: ShellCompletionConfig;
 }
 
 /**

@@ -31,6 +31,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public currentInstallationMethod?: ToolConfigInstallationMethod;
   public currentInstallParams?: ToolConfigInstallParams;
   public zshScripts: string[] = [];
+  public bashScripts: string[] = [];
+  public powershellScripts: string[] = [];
   public symlinkPairs: { source: string; target: string }[] = [];
   public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -87,6 +89,16 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
   zsh(code: string): this {
     this.zshScripts.push(code);
+    return this;
+  }
+
+  bash(code: string): this {
+    this.bashScripts.push(code);
+    return this;
+  }
+
+  powershell(code: string): this {
+    this.powershellScripts.push(code);
     return this;
   }
 
@@ -149,6 +161,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const binaries = this.binaries;
     const version = this.versionNum;
     const zshInit = this.zshScripts.length > 0 ? this.zshScripts : undefined;
+    const bashInit = this.bashScripts.length > 0 ? this.bashScripts : undefined;
+    const powershellInit = this.powershellScripts.length > 0 ? this.powershellScripts : undefined;
     const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
     const completions = this.completionSettings;
     const updateCheck = this.updateCheckConfig;
@@ -169,6 +183,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         binaries: binaries && binaries.length > 0 ? binaries : [],
         version,
         zshInit,
+        bashInit,
+        powershellInit,
         symlinks,
         completions,
         updateCheck,
@@ -220,12 +236,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     if (
       finalBinaries.length === 0 &&
       !zshInit &&
+      !bashInit &&
+      !powershellInit &&
       !symlinks &&
       (!platformConfigs || platformConfigs.length === 0)
     ) {
       const requiredConfigError = ErrorTemplates.config.required(
         'tool definition',
-        `Tool "${name}" must define at least binaries, zshInit, symlinks, or platformConfigs`
+        `Tool "${name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
       );
       this.logger.error(requiredConfigError);
       throw new Error(requiredConfigError);
@@ -236,6 +254,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       binaries: finalBinaries,
       version,
       zshInit,
+      bashInit,
+      powershellInit,
       symlinks,
       completions,
       updateCheck,

@@ -411,6 +411,20 @@ export interface PlatformConfigBuilder {
   zsh(code: string): this;
 
   /**
+   * Adds raw Bash shell code for this specific platform configuration.
+   * @param code - A string containing valid Bash script code.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  bash(code: string): this;
+
+  /**
+   * Adds raw PowerShell code for this specific platform configuration.
+   * @param code - A string containing valid PowerShell script code.
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  powershell(code: string): this;
+
+  /**
    * Configures a symbolic link for this specific platform configuration.
    * @param source - The path to the source file/directory.
    * @param target - The path where the symlink should be created.
@@ -567,7 +581,7 @@ export interface ToolConfigBuilder {
 
   /**
    * Adds raw Zsh shell code to be included in the generated Zsh initialization file (typically
-   * `~/.generated/shell-scripts/init.zsh`, which is then sourced by the user's `.zshrc`).  This is useful for setting environment
+   * `~/.generated/shell-scripts/main.zsh`, which is then sourced by the user's `.zshrc`).  This is useful for setting environment
    * variables, defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts related to the
    * tool.  Multiple calls to `zsh()` will append the code.
    *
@@ -578,6 +592,34 @@ export interface ToolConfigBuilder {
    * c.zsh('alias m="mytool"')
    */
   zsh(code: string): this;
+
+  /**
+   * Adds raw Bash shell code to be included in the generated Bash initialization file (typically
+   * `~/.generated/shell-scripts/main.bash`). This is useful for setting environment variables,
+   * defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts
+   * related to the tool. Multiple calls to `bash()` will append the code.
+   *
+   * @param code - A string containing valid Bash script code.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.bash('export MYTOOL_CONFIG_DIR="$HOME/.mytool"')
+   * c.bash('alias m="mytool"')
+   */
+  bash(code: string): this;
+
+  /**
+   * Adds raw PowerShell code to be included in the generated PowerShell initialization file
+   * (typically `~/.generated/shell-scripts/main.ps1`). This is useful for setting environment
+   * variables, defining functions, adding directories to the `PATH`, or dot-sourcing other
+   * scripts related to the tool. Multiple calls to `powershell()` will append the code.
+   *
+   * @param code - A string containing valid PowerShell script code.
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @example
+   * c.powershell('$env:MYTOOL_CONFIG_DIR = "$env:HOME\\.mytool"')
+   * c.powershell('function m { mytool @args }')
+   */
+  powershell(code: string): this;
 
   /**
    * Configures a symbolic link to be created from a source file or directory within the dotfiles
@@ -712,6 +754,10 @@ interface BaseToolConfigProperties {
   configFilePath?: string;
   /** An array of Zsh initialization script snippets, added via `c.zsh()`. */
   zshInit?: string[];
+  /** An array of Bash initialization script snippets, added via `c.bash()`. */
+  bashInit?: string[];
+  /** An array of PowerShell initialization script snippets, added via `c.powershell()`. */
+  powershellInit?: string[];
   /**
    * An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths where
    * `source` is real file and `target` is the symlink.

@@ -182,7 +182,7 @@ describe('ToolConfigBuilder', () => {
   test('build method throws error if nothing is configured', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     expect(() => builder.build()).toThrow(
-      'Required configuration missing: tool definition. Example: Tool "test-tool" must define at least binaries, zshInit, symlinks, or platformConfigs'
+      'Required configuration missing: tool definition. Example: Tool "test-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
     );
   });
 
@@ -240,7 +240,7 @@ describe('ToolConfigBuilder', () => {
     testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
       ErrorTemplates.config.required(
         'tool definition',
-        'Tool "empty-tool" must define at least binaries, zshInit, symlinks, or platformConfigs'
+        'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
       )
     ]);
   });

@@ -108,15 +108,17 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     currentManifest.shims = generatedShimsPaths;
     logger.debug(DebugTemplates.generator.shimGenerationComplete(), currentManifest.shims?.length ?? 0);
 
-    // 2. Generate Shell Init
+    // 2. Generate Shell Init for all supported shells
     // dryRun is removed; IFileSystem handles behavior
-    const shellInitOptions: GenerateShellInitOptions = {}; // Add other options if any in future
+    const shellInitOptions: GenerateShellInitOptions = { 
+      shellTypes: ['zsh', 'bash', 'powershell'] 
+    };
     logger.debug(DebugTemplates.generator.shellGenerate(), shellInitOptions);
-    const generatedShellInitPath = await this.shellInitGenerator.generate(
+    const shellInitResult = await this.shellInitGenerator.generate(
       toolConfigs,
       shellInitOptions
     );
-    currentManifest.shellInit = { path: generatedShellInitPath };
+    currentManifest.shellInit = { path: shellInitResult?.primaryPath ?? null };
     logger.debug(DebugTemplates.generator.shellInitComplete(), currentManifest.shellInit?.path ?? 'null');
 
     // 3. Generate Symlinks

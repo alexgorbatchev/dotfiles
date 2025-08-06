@@ -1,9 +1,9 @@
 import type { YamlConfig } from '@modules/config';
-import type { ToolConfig } from '@types';
+import type { ToolConfig, ShellType } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 
 /**
- * Options for generating the shell initialization file.
+ * Options for generating shell initialization files.
  */
 export interface GenerateShellInitOptions {
   /**
@@ -11,24 +11,40 @@ export interface GenerateShellInitOptions {
    * If not provided, a default path will be derived from AppConfig.
    */
   outputPath?: string;
+  
+  /**
+   * Shell types to generate initialization files for.
+   * If not provided, defaults to ['zsh'] for backward compatibility.
+   */
+  shellTypes?: ShellType[];
 }
 
 /**
- * Interface for a service that generates a consolidated shell initialization file.
+ * Results from generating shell initialization files.
+ */
+export interface ShellInitGenerationResult {
+  /** Map of shell type to generated file path */
+  files: Map<ShellType, string>;
+  /** Primary shell initialization file path (for backward compatibility) */
+  primaryPath: string | null;
+}
+
+/**
+ * Interface for a service that generates shell initialization files for multiple shells.
  */
 export interface IShellInitGenerator {
   /**
-   * Generates the shell initialization file based on the provided tool configurations.
+   * Generates shell initialization files based on the provided tool configurations.
    *
    * @param toolConfigs - A record of tool configurations, where keys are tool names.
-   * @param options - Optional parameters for generation, like dry-run.
-   * @returns A promise that resolves with the path to the generated shell init file, or `null` if not generated (e.g., `dryRun` or error).
-   * @throws Error if generation fails (e.g., due to file system issues, unless in dryRun mode and an unrecoverable error occurs).
+   * @param options - Optional parameters for generation, including shell types to generate.
+   * @returns A promise that resolves with the generation results, or `null` if not generated.
+   * @throws Error if generation fails (e.g., due to file system issues).
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
-  ): Promise<string | null>;
+  ): Promise<ShellInitGenerationResult | null>;
 }
 
 /**

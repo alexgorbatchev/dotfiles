@@ -40,7 +40,7 @@ describe('cleanupCommand', () => {
     mockFs = fs;
     mockShim1 = '/usr/bin/shim1';
     mockShim2 = `${mockYamlConfig.paths.generatedDir}/bin/shim2`;
-    mockShellInit = `${mockYamlConfig.paths.shellScriptsDir}/init.zsh`;
+    mockShellInit = `${mockYamlConfig.paths.shellScriptsDir}/main.zsh`;
     mockSymlinkSource = `${mockYamlConfig.paths.dotfilesDir}/tool/config.yml`;
     mockSymlinkTarget = `${mockYamlConfig.paths.targetDir}/.config/tool/config.yml`;
 
@@ -105,7 +105,7 @@ describe('cleanupCommand', () => {
         `[cleanup] rm ${mockShim1}`,
         '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
         'shell init file deletion',
-        '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/init.zsh',
+        '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
         'symlink deletion',
         '[cleanup] rm ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
         '[cleanup] rm ~/.dotfiles/.generated',

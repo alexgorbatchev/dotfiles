@@ -40,7 +40,7 @@ describe('E2E: bun run cli generate', () => {
       // Define paths for generated artifacts
       fzfShimPath = path.join(testDirs.paths.targetDir, 'fzf');
       lazygitShimPath = path.join(testDirs.paths.targetDir, 'lazygit');
-      zshInitFilePath = path.join(testDirs.paths.shellScriptsDir, 'init.zsh');
+      zshInitFilePath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
       lazygitSourceConfigPath = path.join(
         testDirs.paths.toolConfigsDir,
         '02-configs',
