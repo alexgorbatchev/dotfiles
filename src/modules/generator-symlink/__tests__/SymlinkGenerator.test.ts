@@ -409,6 +409,35 @@ describe('SymlinkGenerator', () => {
     ]);
   });
 
+  it('should skip if symlink already points to correct target', async () => {
+    const sourcePath = 'src/file.txt';
+    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const targetPath = '.file.txt';
+    const expectedTargetPath = path.join(yamlConfig.paths.targetDir, targetPath);
+
+    const toolConfigs = {
+      tool1: createToolConfig([{ source: sourcePath, target: targetPath }]),
+    };
+    await mockFs.addFiles({ [sourceFullPath]: 'content' });
+    
+    // Pre-create the correct symlink
+    await mockFs.fs.symlink(sourceFullPath, expectedTargetPath);
+
+    const results = await symlinkGenerator.generate(toolConfigs, { overwrite: true });
+
+    // Should not recreate the symlink - just skip with correct status
+    expect(results).toEqual([
+      {
+        sourcePath: sourceFullPath,
+        targetPath: expectedTargetPath,
+        status: 'skipped_correct',
+      },
+    ]);
+
+    // Verify symlink still points to the correct target
+    expect(await mockFs.fs.readlink(expectedTargetPath)).toBe(sourceFullPath);
+  });
+
   it('should return failed status if symlink creation fails', async () => {
     const sourcePath = 'src/file.txt';
     const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);

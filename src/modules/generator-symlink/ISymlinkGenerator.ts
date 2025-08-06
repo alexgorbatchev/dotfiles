@@ -29,6 +29,7 @@ export type SymlinkOperationResult = {
     | 'updated_target'
     | 'backed_up'
     | 'skipped_exists'
+    | 'skipped_correct'
     | 'skipped_source_missing'
     | 'failed';
   error?: string;

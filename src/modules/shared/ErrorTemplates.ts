@@ -910,6 +910,7 @@ export const SuccessTemplates = {
   general: {
     started: (operation: string): SafeLogMessage => createSafeLogMessage(`${operation} started`),
     completed: (operation: string): SafeLogMessage => createSafeLogMessage(`${operation} completed`),
+    done: (isDryRun?: boolean): SafeLogMessage => createSafeLogMessage(`DONE${isDryRun ? ' (dry run)' : ''}`),
     initialized: (component: string): SafeLogMessage => createSafeLogMessage(`${component} initialized`),
     // General configuration and loading messages
     toolConfigsForDryRun: (): SafeLogMessage => createSafeLogMessage('tool configs for dry run'),

@@ -87,6 +87,31 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
         if (targetExists) {
           logger.debug(DebugTemplates.symlink.targetExists(), targetAbsPath);
+          
+          // Check if target is already a symlink pointing to the correct source
+          try {
+            const targetStat = await toolFs.lstat(targetAbsPath);
+            if (targetStat.isSymbolicLink()) {
+              const currentTarget = await toolFs.readlink(targetAbsPath);
+              // Resolve both paths to handle relative vs absolute comparisons
+              const resolvedCurrentTarget = path.resolve(path.dirname(targetAbsPath), currentTarget);
+              const resolvedSourcePath = path.resolve(sourceAbsPath);
+              
+              if (resolvedCurrentTarget === resolvedSourcePath) {
+                // Symlink already points to correct target, skip
+                currentStatus = 'skipped_correct';
+                results.push({
+                  sourcePath: sourceAbsPath,
+                  targetPath: targetAbsPath,
+                  status: currentStatus,
+                });
+                continue;
+              }
+            }
+          } catch (error) {
+            // If we can't check the symlink, proceed with normal logic
+          }
+          
           if (!overwrite) {
             currentStatus = 'skipped_exists';
             logger.debug(DebugTemplates.symlink.skipTargetExists(), targetAbsPath);

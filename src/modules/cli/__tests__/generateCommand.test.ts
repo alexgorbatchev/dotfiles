@@ -89,7 +89,21 @@ describe('generateCommand', () => {
       mockFs.fs.asIFileSystem
     );
 
-    // TrackedFileSystem will handle the actual file creation logging
+    // Should log DONE message at the end
+    logger.expect(['INFO'], ['registerGenerateCommand'], ['DONE']);
+  });
+
+  test('should successfully generate artifacts in dry run mode', async () => {
+    await program.parseAsync(['generate', '--dry-run'], { from: 'user' });
+
+    expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
+      expect.any(Object),
+      mockYamlConfig.paths.toolConfigsDir,
+      mockFs.fs.asIFileSystem
+    );
+
+    // Should log DONE (dry run) message at the end
+    logger.expect(['INFO'], ['registerGenerateCommand'], ['DONE (dry run)']);
   });
 
   test('should handle errors during artifact generation', async () => {

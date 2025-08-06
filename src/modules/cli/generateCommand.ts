@@ -44,9 +44,7 @@ export function registerGenerateCommand(
             });
           }
   
-          if (combinedOptions.dryRun) {
-            logger.info(SuccessTemplates.general.completed('Dry run completed'));
-          }
+          logger.info(SuccessTemplates.general.done(combinedOptions.dryRun));
         } catch (error) {
           logger.error(ErrorTemplates.command.executionFailed('generate', 1, (error as Error).message), error);
           exitCli(1);

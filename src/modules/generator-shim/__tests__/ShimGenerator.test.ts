@@ -239,4 +239,76 @@ describe('ShimGenerator', () => {
       generateForToolSpy.mockRestore();
     });
   });
+
+  describe('chmod optimization', () => {
+    it('should skip chmod when file already has correct permissions', async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'test-tool');
+      
+      // Mock stat to return the desired permissions (755)
+      fsMocks.stat.mockResolvedValueOnce({
+        mode: 0o100755, // File with 755 permissions (0o100000 is regular file flag)
+      } as any);
+
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+
+      await shimGenerator.generateForTool('test-tool', toolConfig);
+
+      // Should write file but skip chmod since permissions are already correct
+      expect(fsMocks.writeFile).toHaveBeenCalledWith(expectedShimPath, expect.any(String));
+      expect(fsMocks.stat).toHaveBeenCalledWith(expectedShimPath);
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
+    });
+
+    it('should call chmod when file has incorrect permissions', async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'test-tool');
+      
+      // Mock stat to return different permissions (644)
+      fsMocks.stat.mockResolvedValueOnce({
+        mode: 0o100644, // File with 644 permissions
+      } as any);
+
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+
+      await shimGenerator.generateForTool('test-tool', toolConfig);
+
+      // Should write file and call chmod to fix permissions
+      expect(fsMocks.writeFile).toHaveBeenCalledWith(expectedShimPath, expect.any(String));
+      expect(fsMocks.stat).toHaveBeenCalledWith(expectedShimPath);
+      expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
+    });
+
+    it('should call chmod when stat fails', async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, 'test-tool');
+      
+      // Mock stat to throw an error
+      fsMocks.stat.mockRejectedValueOnce(new Error('Stat failed'));
+
+      const toolConfig: ToolConfig = {
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: '1.0.0',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+
+      await shimGenerator.generateForTool('test-tool', toolConfig);
+
+      // Should write file and call chmod as fallback
+      expect(fsMocks.writeFile).toHaveBeenCalledWith(expectedShimPath, expect.any(String));
+      expect(fsMocks.stat).toHaveBeenCalledWith(expectedShimPath);
+      expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
+    });
+  });
 });

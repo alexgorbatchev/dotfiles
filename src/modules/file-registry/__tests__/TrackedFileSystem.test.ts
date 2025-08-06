@@ -120,6 +120,129 @@ describe('TrackedFileSystem', () => {
       expect(operations[0]?.sizeBytes).toBe(content.length);
       expect(operations[0]?.permissions).toBeDefined();
     });
+
+    it('should skip write when content is identical', async () => {
+      const filePath = '/test/file.txt';
+      const content = 'identical content';
+
+      // Ensure directory exists first
+      await fs.mkdir('/test', { recursive: true });
+      
+      // Create file first
+      await fs.writeFile(filePath, content);
+      
+      // Clear any tracked operations
+      await registry.close();
+      registry = new SqliteFileRegistry(logger, dbPath);
+      trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
+
+      // Try to write identical content
+      await trackedFs.writeFile(filePath, content);
+
+      // Should not track operation since content is identical
+      const operations = await registry.getOperations();
+      expect(operations).toHaveLength(0);
+
+      // File should still exist with same content
+      const fileContent = await fs.readFile(filePath);
+      expect(fileContent).toBe(content);
+    });
+
+    it('should write and track when content is different', async () => {
+      const filePath = '/test/file.txt';
+      const originalContent = 'original content';
+      const newContent = 'new content';
+
+      // Ensure directory exists first
+      await fs.mkdir('/test', { recursive: true });
+      
+      // Create file first
+      await fs.writeFile(filePath, originalContent);
+
+      // Write different content through tracked filesystem
+      await trackedFs.writeFile(filePath, newContent);
+
+      // Should track operation since content is different
+      const operations = await registry.getOperations();
+      expect(operations).toHaveLength(1);
+      expect(operations[0]?.operationType).toBe('writeFile');
+
+      // File should have new content
+      const fileContent = await fs.readFile(filePath);
+      expect(fileContent).toBe(newContent);
+    });
+
+    it('should write when file cannot be read', async () => {
+      const filePath = '/test/file.txt';
+      const content = 'test content';
+
+      // Ensure directory exists first
+      await fs.mkdir('/test', { recursive: true });
+      
+      // Create file but make readFile fail by mocking
+      await fs.writeFile(filePath, 'original');
+      const originalReadFile = fs.readFile;
+      fs.readFile = async () => { throw new Error('Read failed'); };
+
+      // Write content through tracked filesystem
+      await trackedFs.writeFile(filePath, content);
+
+      // Should track operation since read failed
+      const operations = await registry.getOperations();
+      expect(operations).toHaveLength(1);
+      expect(operations[0]?.operationType).toBe('writeFile');
+
+      // Restore original readFile
+      fs.readFile = originalReadFile;
+    });
+
+    it('should handle ArrayBufferView content properly', async () => {
+      const filePath = '/test/file.txt';
+      const originalContent = 'original content';
+      const newBuffer = Buffer.from('buffer content');
+
+      // Ensure directory exists first
+      await fs.mkdir('/test', { recursive: true });
+      
+      // Create file first
+      await fs.writeFile(filePath, originalContent);
+
+      // Write buffer content through tracked filesystem
+      await trackedFs.writeFile(filePath, newBuffer);
+
+      // Should track operation since content is different
+      const operations = await registry.getOperations();
+      expect(operations).toHaveLength(1);
+      expect(operations[0]?.operationType).toBe('writeFile');
+
+      // File should have buffer content
+      const fileContent = await fs.readFile(filePath);
+      expect(fileContent).toBe('buffer content');
+    });
+
+    it('should skip write when ArrayBufferView content is identical', async () => {
+      const filePath = '/test/file.txt';
+      const content = 'buffer content';
+      const buffer = Buffer.from(content);
+
+      // Ensure directory exists first
+      await fs.mkdir('/test', { recursive: true });
+      
+      // Create file first
+      await fs.writeFile(filePath, content);
+      
+      // Clear any tracked operations
+      await registry.close();
+      registry = new SqliteFileRegistry(logger, dbPath);
+      trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
+
+      // Try to write identical buffer content
+      await trackedFs.writeFile(filePath, buffer);
+
+      // Should not track operation since content is identical
+      const operations = await registry.getOperations();
+      expect(operations).toHaveLength(0);
+    });
   });
 
   describe('copyFile', () => {

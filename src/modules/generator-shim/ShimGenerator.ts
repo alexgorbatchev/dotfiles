@@ -122,7 +122,19 @@ fi
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     await toolFs.ensureDir(path.dirname(shimFilePath));
     await toolFs.writeFile(shimFilePath, shimContent);
-    await toolFs.chmod(shimFilePath, 0o755); // rwxr-xr-x
+    
+    // Only chmod if file doesn't already have the correct permissions
+    const desiredMode = 0o755; // rwxr-xr-x
+    try {
+      const stats = await toolFs.stat(shimFilePath);
+      const currentMode = stats.mode & 0o777; // Extract permission bits
+      if (currentMode !== desiredMode) {
+        await toolFs.chmod(shimFilePath, desiredMode);
+      }
+    } catch (error) {
+      // If we can't check permissions, try to set them anyway
+      await toolFs.chmod(shimFilePath, desiredMode);
+    }
     this.logger.debug(DebugTemplates.shim.shimSuccess(), toolName, shimFilePath, toolFs.constructor.name);
     return [shimFilePath];
   }

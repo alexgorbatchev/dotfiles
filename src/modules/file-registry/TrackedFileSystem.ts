@@ -93,6 +93,24 @@ export class TrackedFileSystem implements IFileSystem {
   async writeFile(filePath: string, content: string | NodeJS.ArrayBufferView, encoding?: BufferEncoding): Promise<void> {
     
     const fileExists = await this.fs.exists(filePath);
+    let contentChanged = true;
+
+    // Check if content is identical to avoid unnecessary write
+    if (fileExists) {
+      try {
+        const existingContent = await this.fs.readFile(filePath, encoding || 'utf8');
+        const newContent = typeof content === 'string' ? content : content.toString();
+        contentChanged = existingContent !== newContent;
+      } catch {
+        // If we can't read the file, assume content is different
+        contentChanged = true;
+      }
+    }
+
+    if (!contentChanged) {
+      // Content is identical, skip the write operation
+      return;
+    }
 
     // Perform the actual file operation
     await this.fs.writeFile(filePath, content, encoding);
