@@ -4,7 +4,7 @@ import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { IFileRegistry, FileOperation } from './IFileRegistry';
 import { SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
-import { contractHomePath } from '@utils';
+import { contractHomePath, formatPermissions } from '@utils';
 
 /**
  * Context for tracking filesystem operations.
@@ -253,7 +253,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.permissionsChanged(this.context.toolName, contractHomePath(this.homeDir, filePath), mode));
+    this.logger.info(SuccessTemplates.fs.permissionsChanged(this.context.toolName, contractHomePath(this.homeDir, filePath), formatPermissions(mode)));
   }
 
   // Non-modifying operations - these don't need tracking

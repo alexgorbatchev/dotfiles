@@ -872,7 +872,7 @@ export const SuccessTemplates = {
     moved: (toolName: string, oldPath: string, newPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Moved: ${oldPath} → ${newPath}`),
     copied: (toolName: string, srcPath: string, destPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Copied: ${srcPath} → ${destPath}`),
     symlinkCreated: (toolName: string, linkPath: string, targetPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Symlink: ${linkPath} → ${targetPath}`),
-    permissionsChanged: (toolName: string, path: string, mode: string | number): SafeLogMessage => createSafeLogMessage(`[${toolName}] Permissions: ${path} (${mode})`),
+    permissionsChanged: (toolName: string, path: string, mode: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Permissions: ${path} (${mode})`),
     directoryCreated: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Created directory: ${path}`),
   },
   architecture: {
