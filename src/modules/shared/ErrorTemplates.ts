@@ -47,6 +47,8 @@ export const ErrorTemplates = {
       createSafeLogMessage(`Installation of tool "${toolName}" appears corrupted at ${path}`),
     dependencyMissing: (toolName: string, dependency: string): SafeLogMessage => 
       createSafeLogMessage(`Tool "${toolName}" requires missing dependency: ${dependency}`),
+    shimConflict: (toolName: string, filePath: string): SafeLogMessage =>
+      createSafeLogMessage(`Cannot create shim for "${toolName}": conflicting file exists at ${filePath}. Use --overwrite to replace it.`),
   },
 
   /**
