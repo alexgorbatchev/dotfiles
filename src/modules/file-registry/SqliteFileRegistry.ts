@@ -1,4 +1,6 @@
 import { Database } from 'bun:sqlite';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { TsLogger } from '@modules/logger';
 import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 import type { 
@@ -18,6 +20,15 @@ export class SqliteFileRegistry implements IFileRegistry {
 
   constructor(parentLogger: TsLogger, dbPath: string) {
     this.logger = parentLogger.getSubLogger({ name: 'SqliteFileRegistry' });
+    
+    // Ensure the parent directory exists
+    const dbDir = dirname(dbPath);
+    try {
+      mkdirSync(dbDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist, which is fine
+    }
+    
     this.db = new Database(dbPath);
     this.initializeSchema();
     this.logger.debug(DebugTemplates.registry.initialized(), dbPath);

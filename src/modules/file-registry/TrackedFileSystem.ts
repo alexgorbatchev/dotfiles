@@ -295,7 +295,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: { ...this.context.metadata, isDirectory: true },
       });
 
-      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(SuccessTemplates.fs.created(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -335,7 +335,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: { ...this.context.metadata, isDirectory: true },
       });
 
-      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(SuccessTemplates.fs.created(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 

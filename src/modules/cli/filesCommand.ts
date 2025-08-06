@@ -135,14 +135,33 @@ async function filesActionLogic(
         
         const metadataString = metadataParts.length > 0 ? metadataParts.join(', ') : '';
         
-        // Output: TIMESTAMP OPERATION type: FILE METADATA
-        logger.info(SuccessTemplates.general.fileOperationStructured(
-          timestamp,
-          operation.operationType.toUpperCase(),
-          operation.fileType.toLowerCase(),
-          contractHomePath(yamlConfig.paths.homeDir, operation.filePath),
-          metadataString
-        ));
+        // Use TrackedFileSystem templates for consistency with timestamp prefix
+        const contractedPath = contractHomePath(yamlConfig.paths.homeDir, operation.filePath);
+        
+        switch (operation.operationType) {
+          case 'create':
+            const createMsg = SuccessTemplates.fs.created(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${createMsg} ${metadataString}`.trim() as any);
+            break;
+          case 'update':
+            const updateMsg = SuccessTemplates.fs.updated(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${updateMsg} ${metadataString}`.trim() as any);
+            break;
+          case 'delete':
+            const deleteMsg = SuccessTemplates.fs.removed(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${deleteMsg} ${metadataString}`.trim() as any);
+            break;
+          case 'symlink':
+            const targetPath = operation.targetPath 
+              ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
+              : contractedPath;
+            const symlinkMsg = SuccessTemplates.fs.symlinkCreated(operation.toolName, contractedPath, targetPath);
+            logger.info(`${timestamp} ${symlinkMsg} ${metadataString}`.trim() as any);
+            break;
+          default:
+            const defaultMsg = SuccessTemplates.fs.updated(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${defaultMsg} ${metadataString}`.trim() as any);
+        }
       }
     }
 
