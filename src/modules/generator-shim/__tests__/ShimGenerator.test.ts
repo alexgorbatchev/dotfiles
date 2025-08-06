@@ -82,14 +82,23 @@ describe('ShimGenerator', () => {
           exec "$TOOL_EXECUTABLE" "$@"
           exit $?
         else
-          ${expect.anything} --quiet --config "$CONFIG_PATH" install "$TOOL_NAME"
-          # Re-check after installation attempt
-          if [ -x "$TOOL_EXECUTABLE" ]; then
-            exec "$TOOL_EXECUTABLE" "$@"
-            exit $?
+          # Capture both stdout and stderr from the install command
+          install_output=$("$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config "$CONFIG_PATH" "$TOOL_NAME" 2>&1)
+          install_exit_code=$?
+          
+          if [ $install_exit_code -eq 0 ]; then
+            # Installation successful, check if binary now exists
+            if [ -x "$TOOL_EXECUTABLE" ]; then
+              exec "$TOOL_EXECUTABLE" "$@"
+              exit $?
+            else
+              echo "Installation completed but binary not found at '$TOOL_EXECUTABLE'."
+              exit 1
+            fi
           else
-            echo "Failed to install 'my-tool' via '${expect.anything}' or it's still not found at '$TOOL_EXECUTABLE'. Please check the installation."
-            exit 1
+            # Installation failed, show the actual error message
+            echo "$install_output"
+            exit $install_exit_code
           fi
         fi
       `;

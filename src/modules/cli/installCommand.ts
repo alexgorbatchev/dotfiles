@@ -18,6 +18,11 @@ export function registerInstallCommand(
       'Force installation even if the tool is already installed',
       false,
     )
+    .option(
+      '--shim-mode',
+      'Optimized output for shim usage: shows errors but suppresses success messages',
+      false,
+    )
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
       logger.debug(DebugTemplates.command.actionCalled('install', toolName), combinedOptions);
@@ -46,21 +51,46 @@ export function registerInstallCommand(
         });
 
         if (result.success) {
-          // Installation successful, logging result
-          logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
-          // Additional debug info handled by installer
+          // Installation successful
+          if (combinedOptions.shimMode) {
+            // In shim mode, exit silently on success
+            exitCli(0);
+          } else {
+            // Normal mode: log success message
+            logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
+          }
         } else {
           logger.debug(
             DebugTemplates.command.actionStarted('install-failed', toolName),
             result.error,
           );
-          logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
-          exitCli(1);
+          
+          if (combinedOptions.shimMode) {
+            // In shim mode, output user-friendly error message to stderr
+            // NOTE: Using console.error instead of logger here because shims need clean,
+            // unformatted error messages for end users (no timestamps, log levels, etc.)
+            console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
+            exitCli(1);
+          } else {
+            // Normal mode: use logger
+            logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
+            exitCli(1);
+          }
         }
       } catch (error) {
         logger.debug(DebugTemplates.command.unhandledError(), error);
-        logger.error(ErrorTemplates.command.executionFailed('install', 1, (error as Error).message));
-        exitCli(1);
+        
+        if (combinedOptions.shimMode) {
+          // In shim mode, output user-friendly error message to stderr
+          // NOTE: Using console.error instead of logger here because shims need clean,
+          // unformatted error messages for end users (no timestamps, log levels, etc.)
+          console.error(`Failed to install '${toolName}': ${(error as Error).message}`);
+          exitCli(1);
+        } else {
+          // Normal mode: use logger
+          logger.error(ErrorTemplates.command.executionFailed('install', 1, (error as Error).message));
+          exitCli(1);
+        }
       }
     });
 }

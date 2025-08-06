@@ -117,6 +117,74 @@ describe('installCommand', () => {
     ]);
   });
 
+  test('should exit silently in shim mode when installation succeeds', async () => {
+    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    
+    await expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+      'MOCK_EXIT_CLI_CALLED_WITH_0'
+    );
+
+    expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
+      force: false,
+      verbose: false,
+    });
+    
+    expect(mockExitCli).toHaveBeenCalledWith(0);
+    
+    // Should not log success message in shim mode
+    expect(() => testLogger.expect(['INFO'], ['registerInstallCommand'], [/installed successfully/])).toThrow();
+  });
+
+  test('should output error to stderr in shim mode when installation fails', async () => {
+    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    (mockInstaller.install as any).mockResolvedValueOnce({
+      success: false,
+      error: 'Download failed: Network timeout',
+    });
+    
+    // Mock console.error
+    const mockConsoleError = mock(() => {});
+    const originalConsoleError = console.error;
+    console.error = mockConsoleError as any;
+    
+    try {
+      await expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+        'MOCK_EXIT_CLI_CALLED_WITH_1'
+      );
+      
+      // Should output user-friendly error to stderr
+      expect(mockConsoleError).toHaveBeenCalledWith("Failed to install 'toolA': Download failed: Network timeout");
+      
+      // Should exit with code 1
+      expect(mockExitCli).toHaveBeenCalledWith(1);
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
+
+  test('should output unhandled error to stderr in shim mode', async () => {
+    mockLoadSingleToolConfig.mockRejectedValue(new Error('Config file corrupted'));
+    
+    // Mock console.error
+    const mockConsoleError = mock(() => {});
+    const originalConsoleError = console.error;
+    console.error = mockConsoleError as any;
+    
+    try {
+      await expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+        'MOCK_EXIT_CLI_CALLED_WITH_1'
+      );
+      
+      // Should output user-friendly error to stderr
+      expect(mockConsoleError).toHaveBeenCalledWith("Failed to install 'toolA': Config file corrupted");
+      
+      // Should exit with code 1
+      expect(mockExitCli).toHaveBeenCalledWith(1);
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
+
   test('should exit with error if tool config is not found', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(undefined);
 
