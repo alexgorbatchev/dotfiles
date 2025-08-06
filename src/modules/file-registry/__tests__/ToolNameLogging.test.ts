@@ -32,7 +32,7 @@ test('should include tool name in filesystem operation logs', async () => {
   logger.expect(
     ['INFO'],
     ['TrackedFileSystem'],
-    ['[nodejs] Created directory: /test', '[nodejs] Created: /test/file.txt']
+    ['[nodejs] mkdir /test', '[nodejs] write /test/file.txt']
   );
 });
 
@@ -59,10 +59,10 @@ test('should show different tool names for different contexts', async () => {
     ['INFO'],
     ['TrackedFileSystem'],
     [
-      '[nodejs] Created directory: /nodejs',
-      '[curl] Created directory: /curl',
-      '[nodejs] Created: /nodejs/file.txt',
-      '[curl] Created: /curl/file.txt'
+      '[nodejs] mkdir /nodejs',
+      '[curl] mkdir /curl',
+      '[nodejs] write /nodejs/file.txt',
+      '[curl] write /curl/file.txt'
     ]
   );
 });

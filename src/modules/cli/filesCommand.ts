@@ -139,23 +139,41 @@ async function filesActionLogic(
         const contractedPath = contractHomePath(yamlConfig.paths.homeDir, operation.filePath);
         
         switch (operation.operationType) {
-          case 'create':
-            const createMsg = SuccessTemplates.fs.created(operation.toolName, contractedPath);
-            logger.info(`${timestamp} ${createMsg} ${metadataString}`.trim() as any);
+          case 'writeFile':
+            const writeMsg = SuccessTemplates.fs.created(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${writeMsg} ${metadataString}`.trim() as any);
             break;
-          case 'update':
-            const updateMsg = SuccessTemplates.fs.updated(operation.toolName, contractedPath);
-            logger.info(`${timestamp} ${updateMsg} ${metadataString}`.trim() as any);
+          case 'mkdir':
+            const mkdirMsg = SuccessTemplates.fs.directoryCreated(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${mkdirMsg} ${metadataString}`.trim() as any);
             break;
-          case 'delete':
-            const deleteMsg = SuccessTemplates.fs.removed(operation.toolName, contractedPath);
-            logger.info(`${timestamp} ${deleteMsg} ${metadataString}`.trim() as any);
+          case 'chmod':
+            const chmodMsg = SuccessTemplates.fs.permissionsChanged(operation.toolName, contractedPath, formatPermissions(operation.permissions || 0));
+            logger.info(`${timestamp} ${chmodMsg} ${metadataString}`.trim() as any);
             break;
-          case 'symlink':
+          case 'rm':
+            const rmMsg = SuccessTemplates.fs.removed(operation.toolName, contractedPath);
+            logger.info(`${timestamp} ${rmMsg} ${metadataString}`.trim() as any);
+            break;
+          case 'rename':
             const targetPath = operation.targetPath 
               ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
               : contractedPath;
-            const symlinkMsg = SuccessTemplates.fs.symlinkCreated(operation.toolName, contractedPath, targetPath);
+            const renameMsg = SuccessTemplates.fs.moved(operation.toolName, targetPath, contractedPath);
+            logger.info(`${timestamp} ${renameMsg} ${metadataString}`.trim() as any);
+            break;
+          case 'cp':
+            const sourcePath = operation.targetPath 
+              ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
+              : contractedPath;
+            const cpMsg = SuccessTemplates.fs.copied(operation.toolName, sourcePath, contractedPath);
+            logger.info(`${timestamp} ${cpMsg} ${metadataString}`.trim() as any);
+            break;
+          case 'symlink':
+            const symlinkTargetPath = operation.targetPath 
+              ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
+              : contractedPath;
+            const symlinkMsg = SuccessTemplates.fs.symlinkCreated(operation.toolName, contractedPath, symlinkTargetPath);
             logger.info(`${timestamp} ${symlinkMsg} ${metadataString}`.trim() as any);
             break;
           default:

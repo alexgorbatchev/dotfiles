@@ -61,7 +61,7 @@ async function registryBasedCleanup(
     
     for (const operation of operations) {
       const fileState = await fileRegistry.getFileState(operation.filePath);
-      if (fileState && fileState.lastOperation !== 'delete') {
+      if (fileState && fileState.lastOperation !== 'rm') {
         await removeFile(logger, fs, operation.filePath, services.yamlConfig.paths.homeDir, dryRun);
       }
     }
@@ -169,7 +169,7 @@ async function cleanupActionLogic(
             if (await fs.exists(shimPath)) {
               if (!dryRun) {
                 await fs.rm(shimPath, { force: true });
-                logger.info(SuccessTemplates.fs.removed('cleanup', `shim: ${contractHomePath(services.yamlConfig.paths.homeDir, shimPath)}`));
+                logger.info(SuccessTemplates.fs.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, shimPath)));
                 logger.debug(DebugTemplates.command.shimDeletion(shimPath, true, false));
               } else {
                 logger.info(SuccessTemplates.general.fileCleanupDryRun(shimPath));
@@ -193,7 +193,7 @@ async function cleanupActionLogic(
           if (await fs.exists(manifest.shellInit.path)) {
             if (!dryRun) {
               await fs.rm(manifest.shellInit.path, { force: true });
-              logger.info(SuccessTemplates.fs.removed('cleanup', `shell init: ${contractHomePath(services.yamlConfig.paths.homeDir, manifest.shellInit.path)}`));
+              logger.info(SuccessTemplates.fs.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, manifest.shellInit.path)));
               logger.debug(DebugTemplates.command.shellInitDeletion(manifest.shellInit.path, true, false));
             } else {
               logger.info(SuccessTemplates.general.fileCleanupDryRun(manifest.shellInit.path));
@@ -218,7 +218,7 @@ async function cleanupActionLogic(
               // Check if path exists (could be symlink or regular file if broken)
               if (!dryRun) {
                 await fs.rm(symlinkOp.targetPath, { force: true });
-                logger.info(SuccessTemplates.fs.removed('cleanup', `symlink: ${contractHomePath(services.yamlConfig.paths.homeDir, symlinkOp.targetPath)}`));
+                logger.info(SuccessTemplates.fs.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, symlinkOp.targetPath)));
                 logger.debug(DebugTemplates.command.symlinkDeletion(symlinkOp.targetPath, true, false));
               } else {
                 logger.info(SuccessTemplates.general.fileCleanupDryRun(symlinkOp.targetPath));

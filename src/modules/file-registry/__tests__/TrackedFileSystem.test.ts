@@ -85,7 +85,7 @@ describe('TrackedFileSystem', () => {
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
         toolName: 'test-tool',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: path.resolve(filePath),
         fileType: 'shim',
       });
@@ -105,7 +105,7 @@ describe('TrackedFileSystem', () => {
       // Verify operation was tracked as update
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
-      expect(operations[0]?.operationType).toBe('update');
+      expect(operations[0]?.operationType).toBe('writeFile');
     });
 
     it('should track file stats', async () => {
@@ -140,15 +140,15 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'create',
+        operationType: 'cp',
         filePath: path.resolve(destPath),
       });
-      expect(operations[0]?.metadata?.['copiedFrom']).toBe(path.resolve(srcPath));
+      expect(operations[0]?.targetPath).toBe(path.resolve(srcPath));
     });
   });
 
   describe('rename', () => {
-    it('should track file renaming as delete + create', async () => {
+    it('should track file renaming as single rename operation', async () => {
       const oldPath = '/test/old.txt';
       const newPath = '/test/new.txt';
       const content = 'test content';
@@ -161,23 +161,17 @@ describe('TrackedFileSystem', () => {
       // Rename through tracked filesystem
       await trackedFs.rename(oldPath, newPath);
 
-      // Verify both operations were tracked
+      // Verify rename operation was tracked
       const operations = await registry.getOperations();
-      expect(operations).toHaveLength(2);
+      expect(operations).toHaveLength(1);
       
-      // Should have delete operation for old path
-      const deleteOp = operations.find(op => op.operationType === 'delete');
-      expect(deleteOp).toBeDefined();
-      if (deleteOp) {
-        expect(deleteOp.filePath).toBe(path.resolve(oldPath));
-      }
-
-      // Should have create operation for new path
-      const createOp = operations.find(op => op.operationType === 'create');
-      expect(createOp).toBeDefined();
-      if (createOp) {
-        expect(createOp.filePath).toBe(path.resolve(newPath));
-        expect(createOp.metadata?.['renamedFrom']).toBe(path.resolve(oldPath));
+      // Should have rename operation with target path
+      const renameOp = operations[0];
+      expect(renameOp).toBeDefined();
+      if (renameOp) {
+        expect(renameOp.operationType).toBe('rename');
+        expect(renameOp.filePath).toBe(path.resolve(newPath));
+        expect(renameOp.targetPath).toBe(path.resolve(oldPath));
       }
     });
   });
@@ -223,7 +217,7 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'delete',
+        operationType: 'rm',
         filePath: path.resolve(filePath),
       });
     });
@@ -271,11 +265,10 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'update',
+        operationType: 'chmod',
         filePath: path.resolve(filePath),
       });
-      expect(operations[0]?.metadata?.['permissionChange']).toBe(true);
-      expect(operations[0]?.metadata?.['newMode']).toBe(newMode);
+      expect(operations[0]?.permissions).toBeDefined();
     });
   });
 
@@ -290,10 +283,10 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
-        operationType: 'create',
+        operationType: 'mkdir',
         filePath: path.resolve(dirPath),
       });
-      expect(operations[0]?.metadata?.['isDirectory']).toBe(true);
+      // Directory creation tracked with mkdir operation type
     });
 
     it('should not track when directory already exists', async () => {

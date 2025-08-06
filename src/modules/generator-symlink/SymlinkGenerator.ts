@@ -9,7 +9,7 @@ import type {
   SymlinkOperationResult,
 } from './ISymlinkGenerator';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { expandHomePath, contractHomePath } from '@utils';
+import { expandHomePath } from '@utils';
 import { ErrorTemplates, WarningTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
@@ -102,18 +102,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           currentStatus = 'updated_target'; // Tentative status
           if (backup) {
             const backupPath = `${targetAbsPath}.bak`;
-            logger.debug(DebugTemplates.symlink.backupAttempt(), targetAbsPath, backupPath, toolFs.constructor.name);
             // Backup behavior determined by IFileSystem
             try {
               if (await toolFs.exists(backupPath)) {
-                logger.warn(
-                  WarningTemplates.fs.overwriting(toolName, contractHomePath(this.yamlConfig.paths.homeDir, backupPath))
-                );
                 await toolFs.rm(backupPath, { recursive: true, force: true });
               }
               await toolFs.rename(targetAbsPath, backupPath);
               currentStatus = 'backed_up';
-              logger.debug(DebugTemplates.symlink.backupSuccess(), targetAbsPath, backupPath, toolFs.constructor.name);
             } catch (e: any) {
               currentStatus = 'failed';
               const errorMsg = ErrorTemplates.fs.writeFailed(`backup of ${targetAbsPath}`, e.message);
@@ -122,17 +117,15 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             }
           }
 
-          if (currentStatus !== 'failed') {
-            logger.debug(DebugTemplates.symlink.overwriteDelete(), targetAbsPath, toolFs.constructor.name);
-            // Deletion behavior determined by IFileSystem
+          if (currentStatus !== 'failed' && currentStatus !== 'backed_up') {
+            // Only delete if we didn't back up (backup already moved the file)
             try {
               if (targetIsDir) {
                 await toolFs.rm(targetAbsPath, { recursive: true, force: true });
               } else {
                 await toolFs.rm(targetAbsPath, { force: true });
               }
-              logger.debug(DebugTemplates.symlink.deleteSuccess(), targetAbsPath, toolFs.constructor.name);
-              // Status remains 'updated_target' or 'backed_up'
+              // Status remains 'updated_target'
             } catch (e: any) {
               currentStatus = 'failed';
               const errorMsg = ErrorTemplates.fs.deleteFailed(targetAbsPath, e.message);
@@ -153,7 +146,6 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         }
 
         const targetDir = path.dirname(targetAbsPath);
-        logger.debug(DebugTemplates.symlink.ensureDir(), targetDir, toolFs.constructor.name);
         // ensureDir behavior determined by IFileSystem
         try {
           await toolFs.ensureDir(targetDir);
@@ -165,11 +157,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         }
 
         if (currentStatus !== 'failed') {
-          logger.debug(DebugTemplates.symlink.symlinkAttempt(), sourceAbsPath, targetAbsPath, toolFs.constructor.name);
           // Symlink creation behavior determined by IFileSystem
           try {
             await toolFs.symlink(sourceAbsPath, targetAbsPath);
-            logger.debug(DebugTemplates.symlink.symlinkSuccess(), sourceAbsPath, targetAbsPath, toolFs.constructor.name);
             // currentStatus is already 'created', 'updated_target', or 'backed_up'
           } catch (e: any) {
             currentStatus = 'failed';

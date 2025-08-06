@@ -118,10 +118,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     try {
-      this.logger.debug(DebugTemplates.shellInit.writingFile(), outputPath, this.fs.constructor.name, content);
       await this.fs.ensureDir(path.dirname(outputPath));
       await this.fs.writeFile(outputPath, content);
-      this.logger.debug(DebugTemplates.shellInit.writeSuccess(), outputPath, this.fs.constructor.name);
       return outputPath;
     } catch (error: any) {
       this.logger.debug(DebugTemplates.shellInit.writeError(), outputPath, this.fs.constructor.name, error.message);

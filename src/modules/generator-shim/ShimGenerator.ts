@@ -120,10 +120,8 @@ fi
     this.logger.debug(DebugTemplates.shim.shimContent(), shimContent);
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
-    this.logger.debug(DebugTemplates.shim.writingShim(), shimFilePath, toolFs.constructor.name);
     await toolFs.ensureDir(path.dirname(shimFilePath));
     await toolFs.writeFile(shimFilePath, shimContent);
-    this.logger.debug(DebugTemplates.shim.makingExecutable(), shimFilePath, toolFs.constructor.name);
     await toolFs.chmod(shimFilePath, 0o755); // rwxr-xr-x
     this.logger.debug(DebugTemplates.shim.shimSuccess(), toolName, shimFilePath, toolFs.constructor.name);
     return [shimFilePath];

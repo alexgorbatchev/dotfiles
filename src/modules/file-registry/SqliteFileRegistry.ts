@@ -136,7 +136,7 @@ export class SqliteFileRegistry implements IFileRegistry {
 
     // Process operations chronologically (oldest first) - create a copy to reverse
     for (const op of [...operations].reverse()) {
-      if (op.operationType === 'delete') {
+      if (op.operationType === 'rm') {
         // Mark file as deleted by removing it from the map
         fileStates.delete(op.filePath);
       } else {
@@ -178,7 +178,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     let state: FileState | null = null;
 
     for (const op of [...operations].reverse()) {
-      if (op.operationType === 'delete') {
+      if (op.operationType === 'rm') {
         // File was deleted
         state = null;
       } else {
@@ -229,7 +229,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const before = await this.getStats();
     
     // For now, just clean up any operations for files that were ultimately deleted
-    const deletedFiles = await this.getOperations({ operationType: 'delete' });
+    const deletedFiles = await this.getOperations({ operationType: 'rm' });
     
     for (const deleteOp of deletedFiles) {
       // Remove all operations for this file if the final state is deleted

@@ -7,7 +7,7 @@ export interface FileOperation {
   /** Tool that performed the operation */
   toolName: string;
   /** Type of operation performed */
-  operationType: 'create' | 'update' | 'delete' | 'symlink';
+  operationType: 'writeFile' | 'chmod' | 'rm' | 'mkdir' | 'symlink' | 'rename' | 'cp';
   /** Full path to the file */
   filePath: string;
   /** Target path for symlinks */
@@ -57,7 +57,7 @@ export interface FileState {
   /** Current file type */
   fileType: FileOperation['fileType'];
   /** Last operation performed on this file */
-  lastOperation: 'create' | 'update' | 'delete' | 'symlink';
+  lastOperation: FileOperation['operationType'];
   /** Target path for symlinks */
   targetPath?: string;
   /** Last modification timestamp */

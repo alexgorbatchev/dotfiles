@@ -93,7 +93,6 @@ export class TrackedFileSystem implements IFileSystem {
   async writeFile(filePath: string, content: string | NodeJS.ArrayBufferView, encoding?: BufferEncoding): Promise<void> {
     
     const fileExists = await this.fs.exists(filePath);
-    const operationType = fileExists ? 'update' : 'create';
 
     // Perform the actual file operation
     await this.fs.writeFile(filePath, content, encoding);
@@ -104,7 +103,7 @@ export class TrackedFileSystem implements IFileSystem {
     // Record the operation
     await this.registry.recordOperation({
       toolName: this.context.toolName,
-      operationType,
+      operationType: 'writeFile',
       filePath: path.resolve(filePath),
       fileType: this.context.fileType,
       operationId: this.context.operationId,
@@ -114,7 +113,7 @@ export class TrackedFileSystem implements IFileSystem {
     });
 
     // Log user-facing filesystem changes
-    if (operationType === 'create') {
+    if (!fileExists) {
       this.logger.info(SuccessTemplates.fs.created(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
       this.logger.info(SuccessTemplates.fs.updated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
@@ -134,14 +133,12 @@ export class TrackedFileSystem implements IFileSystem {
     // Record the operation
     await this.registry.recordOperation({
       toolName: this.context.toolName,
-      operationType: 'create',
+      operationType: 'cp',
       filePath: path.resolve(dest),
+      targetPath: path.resolve(src),
       fileType: this.context.fileType,
       operationId: this.context.operationId,
-      metadata: { 
-        ...this.context.metadata, 
-        copiedFrom: path.resolve(src) 
-      },
+      metadata: this.context.metadata,
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
     });
@@ -151,35 +148,21 @@ export class TrackedFileSystem implements IFileSystem {
 
   async rename(oldPath: string, newPath: string): Promise<void> {
     
-    // Record deletion of source
-    if (await this.fs.exists(oldPath)) {
-      await this.registry.recordOperation({
-        toolName: this.context.toolName,
-        operationType: 'delete',
-        filePath: path.resolve(oldPath),
-        fileType: this.context.fileType,
-        operationId: this.context.operationId,
-        metadata: this.context.metadata,
-      });
-    }
-
     // Perform the actual operation
     await this.fs.rename(oldPath, newPath);
 
     // Get file stats for tracking
     const stats = await this.getFileStats(newPath);
 
-    // Record creation of destination
+    // Record the rename operation
     await this.registry.recordOperation({
       toolName: this.context.toolName,
-      operationType: 'create',
+      operationType: 'rename',
       filePath: path.resolve(newPath),
+      targetPath: path.resolve(oldPath),
       fileType: this.context.fileType,
       operationId: this.context.operationId,
-      metadata: { 
-        ...this.context.metadata, 
-        renamedFrom: path.resolve(oldPath) 
-      },
+      metadata: this.context.metadata,
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
     });
@@ -238,18 +221,14 @@ export class TrackedFileSystem implements IFileSystem {
     // Get updated file stats
     const stats = await this.getFileStats(filePath);
 
-    // Record as update operation
+    // Record as chmod operation
     await this.registry.recordOperation({
       toolName: this.context.toolName,
-      operationType: 'update',
+      operationType: 'chmod',
       filePath: path.resolve(filePath),
       fileType: this.context.fileType,
       operationId: this.context.operationId,
-      metadata: { 
-        ...this.context.metadata, 
-        permissionChange: true, 
-        newMode: mode 
-      },
+      metadata: this.context.metadata,
       permissions: stats?.permissions,
     });
 
@@ -288,14 +267,14 @@ export class TrackedFileSystem implements IFileSystem {
     if (!existed) {
       await this.registry.recordOperation({
         toolName: this.context.toolName,
-        operationType: 'create',
+        operationType: 'mkdir',
         filePath: path.resolve(dirPath),
         fileType: this.context.fileType,
         operationId: this.context.operationId,
-        metadata: { ...this.context.metadata, isDirectory: true },
+        metadata: this.context.metadata,
       });
 
-      this.logger.info(SuccessTemplates.fs.created(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -328,14 +307,14 @@ export class TrackedFileSystem implements IFileSystem {
     if (!existed) {
       await this.registry.recordOperation({
         toolName: this.context.toolName,
-        operationType: 'create',
+        operationType: 'mkdir',
         filePath: path.resolve(dirPath),
         fileType: this.context.fileType,
         operationId: this.context.operationId,
-        metadata: { ...this.context.metadata, isDirectory: true },
+        metadata: this.context.metadata,
       });
 
-      this.logger.info(SuccessTemplates.fs.created(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -360,7 +339,7 @@ export class TrackedFileSystem implements IFileSystem {
   private async trackFileDeletion(filePath: string): Promise<void> {
     await this.registry.recordOperation({
       toolName: this.context.toolName,
-      operationType: 'delete',
+      operationType: 'rm',
       filePath: path.resolve(filePath),
       fileType: this.context.fileType,
       operationId: this.context.operationId,

@@ -29,7 +29,7 @@ describe('SqliteFileRegistry', () => {
     it('should record a file operation', async () => {
       const operation = {
         toolName: 'nodejs',
-        operationType: 'create' as const,
+        operationType: 'writeFile' as const,
         filePath: '/usr/local/bin/node',
         fileType: 'shim' as const,
         operationId: randomUUID(),
@@ -42,7 +42,7 @@ describe('SqliteFileRegistry', () => {
       expect(operations).toHaveLength(1);
       expect(operations[0]).toMatchObject({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         sizeBytes: 1024,
@@ -71,7 +71,7 @@ describe('SqliteFileRegistry', () => {
       const metadata = { version: '18.0.0', source: 'github' };
       const operation = {
         toolName: 'nodejs',
-        operationType: 'create' as const,
+        operationType: 'writeFile' as const,
         filePath: '/usr/local/bin/node',
         fileType: 'binary' as const,
         operationId: randomUUID(),
@@ -92,7 +92,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId1,
@@ -100,7 +100,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'python',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/python',
         fileType: 'binary',
         operationId: opId2,
@@ -108,7 +108,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'update',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId1,
@@ -127,9 +127,9 @@ describe('SqliteFileRegistry', () => {
     });
 
     it('should filter by operation type', async () => {
-      const operations = await registry.getOperations({ operationType: 'create' });
-      expect(operations).toHaveLength(2);
-      expect(operations.every(op => op.operationType === 'create')).toBe(true);
+      const operations = await registry.getOperations({ operationType: 'writeFile' });
+      expect(operations).toHaveLength(3);
+      expect(operations.every(op => op.operationType === 'writeFile')).toBe(true);
     });
 
     it('should filter by file type', async () => {
@@ -146,8 +146,8 @@ describe('SqliteFileRegistry', () => {
 
     it('should return operations in reverse chronological order', async () => {
       const operations = await registry.getOperations({ toolName: 'nodejs' });
-      expect(operations[0]?.operationType).toBe('update'); // Most recent first
-      expect(operations[1]?.operationType).toBe('create');
+      expect(operations[0]?.operationType).toBe('writeFile'); // Most recent first
+      expect(operations[1]?.operationType).toBe('writeFile');
     });
   });
 
@@ -158,7 +158,7 @@ describe('SqliteFileRegistry', () => {
       // Create file
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId,
@@ -168,7 +168,7 @@ describe('SqliteFileRegistry', () => {
       // Update file
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'update',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId,
@@ -181,7 +181,7 @@ describe('SqliteFileRegistry', () => {
         filePath: '/usr/local/bin/node',
         toolName: 'nodejs',
         fileType: 'shim',
-        lastOperation: 'update',
+        lastOperation: 'writeFile',
         sizeBytes: 2048,
       });
     });
@@ -192,7 +192,7 @@ describe('SqliteFileRegistry', () => {
       // Create and then delete file
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId,
@@ -200,7 +200,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'delete',
+        operationType: 'rm',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId,
@@ -218,7 +218,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath,
         fileType: 'shim',
         operationId: opId,
@@ -230,7 +230,7 @@ describe('SqliteFileRegistry', () => {
         filePath,
         toolName: 'nodejs',
         fileType: 'shim',
-        lastOperation: 'create',
+        lastOperation: 'writeFile',
         sizeBytes: 1024,
       });
     });
@@ -241,7 +241,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath,
         fileType: 'shim',
         operationId: opId,
@@ -249,7 +249,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'delete',
+        operationType: 'rm',
         filePath,
         fileType: 'shim',
         operationId: opId,
@@ -269,7 +269,7 @@ describe('SqliteFileRegistry', () => {
     it('should return list of registered tools', async () => {
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: randomUUID(),
@@ -277,7 +277,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'python',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/python',
         fileType: 'binary',
         operationId: randomUUID(),
@@ -295,7 +295,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: opId1,
@@ -303,7 +303,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'python',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/python',
         fileType: 'binary',
         operationId: opId2,
@@ -321,7 +321,7 @@ describe('SqliteFileRegistry', () => {
     it('should return registry statistics', async () => {
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: randomUUID(),
@@ -329,7 +329,7 @@ describe('SqliteFileRegistry', () => {
 
       await registry.recordOperation({
         toolName: 'python',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/python',
         fileType: 'binary',
         operationId: randomUUID(),
@@ -357,7 +357,7 @@ describe('SqliteFileRegistry', () => {
     it('should validate registry integrity', async () => {
       await registry.recordOperation({
         toolName: 'nodejs',
-        operationType: 'create',
+        operationType: 'writeFile',
         filePath: '/usr/local/bin/node',
         fileType: 'shim',
         operationId: randomUUID(),
