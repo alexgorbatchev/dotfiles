@@ -1,18 +1,17 @@
 ---
 root: false
 targets: ["*"]
-description: 'testing'
+description: Project testing requirements.
 globs:
   - '**/*'
 ---
 
-# Testing
+# Project Testing Requirements
 
-- Never delete tests to get them to oass.
-- **Test Files & Location:** Test files are named `*.test.ts`. They must be stored in a `__tests__` directory located *directly next to the file or module directory they are testing*. For example, tests for `src/module/utils/myUtil.ts` should be in `src/module/utils/__tests__/myUtil.test.ts`. 
-- **Test Fixtures:** Test fixtures are named `fixtures.ts` and export constants `FIXTURE_[lowercase_snake_case]`. These fixtures are stored in the `src/module/__tests__/fixtures` directories or if shared project-wide, in a central `src/__tests__/fixtures/` directory.
-- **Test Coverage:** Each file must have 100% test coverage. This is enforced by the CI pipeline and the `bun run test` command.
-- **Testing Helpers:** Various testing utilities are located in the `src/testing-helpers` directory. Testing helpers don't need to have their own tests.
+- `bun run test {file}` - Run a single test file.
+- `bun run test` - Run all tests.
+- `bun lint` - Run linting.
+- Do not run `tsc` directly. 
 
 ## Available Testing Helpers
 
@@ -35,7 +34,7 @@ Before creating any bespoke mocks, check the `src/testing-helpers` directory to 
   - module mocking is 
 - **Testing Framework:** The project uses `bun:test` framework and `bun run test {file}` command to run tests.
 
-## How to mock modules
+## How to Mock Modules
 
 ```typescript
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';

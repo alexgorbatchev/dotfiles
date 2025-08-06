@@ -1,22 +1,22 @@
 ---
 root: false
 targets: ["*"]
-description: 'logging'
+description: Project logging requirements.
 globs:
   - '**/*'
 ---
 
-# Structured Logging
+# Project Logging Requirements
 
 - The project uses `tslog` for structured logging.
 - An instance of a logger is created and passed into each class or function.
 - A logger instance can be created either in a test or at the application entry point.
-- src/modules/shared/ErrorTemplates.ts must be used for all log messages.
 - Log message templates must only accept variables to customize the message. They must not include the message itself.
 - Log message templates must not be indented, formatting is handled by the logger.
 - Log messages must not include method names, subloggers are used for this.
 - Code must not have any `console.[fn]` statements.
 - There must not be duplicate consequitive logger call with the same message, eg `logger.error('message')` followed by `logger.debug('message')`. 
+- src/modules/shared/ErrorTemplates.ts must be used for all log messages.
 
 ## Usage
 
@@ -46,6 +46,8 @@ function myFunction(logger: Logger, args: any) {
   logger.info(args);
 }
 ```
+
+## Testing
 
 In tests, an instance of `TestLogger` from `@testing-helpers` must be used. `TestLogger` WILL NOT log to `stderr` or `stdout`. It is used to capture logs for testing.
 
