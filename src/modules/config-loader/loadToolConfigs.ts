@@ -64,6 +64,11 @@ export async function loadToolConfigsFromDirectory(
               }
             }
 
+            // Set the config file path after building/loading
+            if (toolConfig) {
+              toolConfig.configFilePath = filePath;
+            }
+
             if (toolConfig && toolConfig.name) {
               // Prefer toolConfig.name if explicitly set by builder/object, otherwise use filename-derived.
               // The builder now sets the name from the filename, so toolConfig.name should be reliable.
@@ -135,6 +140,11 @@ export async function loadSingleToolConfig(
       } else {
         logger.trace(SuccessTemplates.config.validated(filePath));
         toolConfig = module.default as ToolConfig;
+      }
+
+      // Set the config file path after building/loading
+      if (toolConfig) {
+        toolConfig.configFilePath = filePath;
       }
 
       if (toolConfig && toolConfig.name === toolName) {

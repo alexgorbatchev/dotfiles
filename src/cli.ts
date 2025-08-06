@@ -196,7 +196,7 @@ export async function setupServices(
 
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, yamlConfig);
   const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, yamlConfig);
-  const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, yamlConfig);
+  const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, yamlConfig, systemInfo);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     parentLogger,

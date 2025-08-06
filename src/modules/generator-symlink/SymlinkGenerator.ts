@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ToolConfig } from '@types';
+import type { ToolConfig, SystemInfo } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { TsLogger } from '@modules/logger';
@@ -9,17 +9,19 @@ import type {
   SymlinkOperationResult,
 } from './ISymlinkGenerator';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { expandHomePath } from '@utils';
+import { expandToolConfigPath } from '@utils';
 import { ErrorTemplates, WarningTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
   private readonly yamlConfig: YamlConfig;
+  private readonly systemInfo: SystemInfo;
   private readonly logger: TsLogger;
 
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, yamlConfig: YamlConfig) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, yamlConfig: YamlConfig, systemInfo: SystemInfo) {
     this.fs = fileSystem;
     this.yamlConfig = yamlConfig;
+    this.systemInfo = systemInfo;
     this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
     this.logger.debug(DebugTemplates.symlink.constructorInit());
   }
@@ -32,8 +34,6 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     logger.debug(DebugTemplates.symlink.generateStart(), options, this.fs.constructor.name);
     const results: SymlinkOperationResult[] = [];
     const { overwrite = false, backup = false } = options;
-    const homeDir = this.yamlConfig.paths.homeDir;
-    const dotfilesDir = this.yamlConfig.paths.dotfilesDir;
 
     for (const toolName in toolConfigs) {
       // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -55,12 +55,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       for (const symlinkConfig of toolConfig.symlinks) {
         const sourceRelPath = symlinkConfig.source;
         const targetRelPath = symlinkConfig.target;
-        const sourceAbsPath = path.resolve(dotfilesDir, sourceRelPath);
-        let targetAbsPath = expandHomePath(homeDir, targetRelPath);
-
-        if (!path.isAbsolute(targetAbsPath)) {
-          targetAbsPath = path.resolve(this.yamlConfig.paths.targetDir, targetRelPath);
-        }
+        const sourceAbsPath = expandToolConfigPath(toolConfig.configFilePath, sourceRelPath, this.yamlConfig, this.systemInfo);
+        const targetAbsPath = expandToolConfigPath(toolConfig.configFilePath, targetRelPath, this.yamlConfig, this.systemInfo);
 
         logger.debug(DebugTemplates.symlink.processingSymlink(), sourceRelPath, sourceAbsPath, targetRelPath, targetAbsPath);
 

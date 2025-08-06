@@ -6,6 +6,7 @@ import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { YamlConfig } from '@modules/config';
+import { expandToolConfigPath } from '@utils';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type {
   ToolConfig,
@@ -1039,7 +1040,7 @@ export class Installer implements IInstaller {
   public async installManually(
     toolName: string,
     toolConfig: ManualToolConfig,
-    _context: BaseInstallContext,
+    context: BaseInstallContext,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
@@ -1058,7 +1059,8 @@ export class Installer implements IInstaller {
     }
 
     const params = toolConfig.installParams;
-    const binaryPath = params.binaryPath as string;
+    const rawBinaryPath = params.binaryPath as string;
+    const binaryPath = expandToolConfigPath(toolConfig.configFilePath, rawBinaryPath, context.appConfig, context.systemInfo);
 
     try {
       // Check if the binary exists

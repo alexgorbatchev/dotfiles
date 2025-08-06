@@ -13,10 +13,10 @@ const configureLazygit: AsyncConfigureTool = async (c: ToolConfigBuilder): Promi
       // `zinit ice from=gh-r as=program` implies a direct binary or simple extraction.
     })
     .symlink(
-      '02-configs/lazygit/config.yml',
-      // The generator will resolve ~ to the home directory.
-      // Per ToolConfigSchema, target is relative to home.
-      '.config/lazygit/config.yml'
+      // Source path relative to this tool config file
+      '../../../02-configs/lazygit/config.yml',
+      // Target path also relative to this tool config file (using ~/ for home directory)
+      '~/.config/lazygit/config.yml'
     ).zsh(/* zsh */`
       alias g="lazygit"
     `);

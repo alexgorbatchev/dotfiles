@@ -7,7 +7,7 @@ import {
   createTestDirectories,
   type MemFileSystemReturn,
 } from '@testing-helpers';
-import type { ToolConfig } from '@types';
+import type { ToolConfig, SystemInfo } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
@@ -18,13 +18,15 @@ describe('SymlinkGenerator', () => {
   let yamlConfig: YamlConfig;
   let symlinkGenerator: SymlinkGenerator;
   let logger: TestLogger;
+  let systemInfo: SystemInfo;
 
   beforeEach(async () => {
     mock.restore();
     logger = new TestLogger();
     mockFs = await createMemFileSystem();
-    yamlConfig = await createYamlConfigFromObject(logger, mockFs.fs, MOCK_DEFAULT_CONFIG_OBJ, { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' }, {});
-    symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, yamlConfig);
+    systemInfo = { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' };
+    yamlConfig = await createYamlConfigFromObject(logger, mockFs.fs, MOCK_DEFAULT_CONFIG_OBJ, systemInfo, {});
+    symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, yamlConfig, systemInfo);
 
     await createTestDirectories(logger, mockFs.fs, { paths: yamlConfig.paths });
   });
@@ -33,30 +35,36 @@ describe('SymlinkGenerator', () => {
     name: 'test-tool',
     binaries: ['test-tool'],
     version: '1.0.0',
+    configFilePath: '/test/configs/test-tool.tool.ts',
     symlinks,
     installationMethod: 'none',
     installParams: undefined,
   });
 
+  // Helper function to get the absolute path where source files should be created (relative to config file)
+  const getSourcePath = (relativePath: string) => path.join('/test/configs', relativePath);
+  
+  // Helper function to get the absolute path where target symlinks will be created (relative to config file)
+  const getTargetPath = (relativePath: string) => path.join('/test/configs', relativePath);
+
   it('should create a symlink successfully', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const targetPath = '.file.txt';
+    const sourceFullPath = getSourcePath(sourcePath);
+    const targetFullPath = getTargetPath(targetPath);
     
     const toolConfigs = {
-      tool1: createToolConfig([{ source: sourcePath, target: '.file.txt' }]),
+      tool1: createToolConfig([{ source: sourcePath, target: targetPath }]),
     };
     await mockFs.addFiles({ [sourceFullPath]: 'content' });
 
     const results = await symlinkGenerator.generate(toolConfigs);
-    const targetPath = path.join(yamlConfig.paths.targetDir, '.file.txt');
-    expect(await mockFs.fs.exists(targetPath)).toBe(true);
-    expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
-    );
+    expect(await mockFs.fs.exists(targetFullPath)).toBe(true);
+    expect(await mockFs.fs.readlink(targetFullPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
-        targetPath,
+        sourcePath: sourceFullPath,
+        targetPath: targetFullPath,
         status: 'created',
       },
     ]);
@@ -64,7 +72,7 @@ describe('SymlinkGenerator', () => {
 
   it('should expand ~ in target path to home directory and return result', async () => {
     const sourcePath = 'src/another.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     
     const toolConfigs = {
       tool1: createToolConfig([{ source: sourcePath, target: '~/.another.txt' }]),
@@ -75,13 +83,11 @@ describe('SymlinkGenerator', () => {
     const targetPath = path.join(yamlConfig.paths.homeDir, '.another.txt');
 
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
-    expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/another.txt')
-    );
+    expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
 
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/another.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'created',
       },
@@ -89,8 +95,10 @@ describe('SymlinkGenerator', () => {
   });
 
   it('should skip symlink if source file does not exist and return skipped_source_missing', async () => {
+    const sourcePath = 'nonexistent.txt';
+    const sourceFullPath = getSourcePath(sourcePath);
     const toolConfigs = {
-      tool1: createToolConfig([{ source: 'nonexistent.txt', target: '.nonexistent.txt' }]),
+      tool1: createToolConfig([{ source: sourcePath, target: '.nonexistent.txt' }]),
     };
 
     const results = await symlinkGenerator.generate(toolConfigs);
@@ -99,7 +107,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.exists(targetPath)).toBe(false);
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'nonexistent.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'skipped_source_missing',
       },
@@ -108,7 +116,7 @@ describe('SymlinkGenerator', () => {
 
   it('should skip if target exists and overwrite is false (default), returning skipped_exists', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target.txt');
     
     const toolConfigs = {
@@ -124,7 +132,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readFile(targetPath)).toBe('existing target content'); // Should not be overwritten
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'skipped_exists',
       },
@@ -133,7 +141,7 @@ describe('SymlinkGenerator', () => {
 
   it('should overwrite if target exists and overwrite is true, returning updated_target', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target.txt');
     
     const toolConfigs = {
@@ -148,12 +156,10 @@ describe('SymlinkGenerator', () => {
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
-    expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
-    );
+    expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'updated_target', // Or 'created' if it considers the final link as new after delete
       },
@@ -162,7 +168,7 @@ describe('SymlinkGenerator', () => {
 
   it('should backup and overwrite if target exists, overwrite is true, and backup is true, returning backed_up', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target.txt');
     const backupPath = `${targetPath}.bak`;
     
@@ -181,11 +187,11 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readFile(backupPath)).toBe('existing target content');
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
     expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'backed_up',
       },
@@ -195,7 +201,7 @@ describe('SymlinkGenerator', () => {
   it('should attempt symlink creation and return created status (simulating dry run with MemFS)', async () => {
     // SymlinkGenerator always attempts operations. MemFS simulates dry run by not hitting actual disk.
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target.txt');
     
     const toolConfigs = {
@@ -209,11 +215,11 @@ describe('SymlinkGenerator', () => {
     // MemFS will reflect the symlink creation
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
     expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'created',
       },
@@ -222,7 +228,7 @@ describe('SymlinkGenerator', () => {
 
   it('should attempt backup/overwrite and return backed_up status (simulating dry run with MemFS)', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target.txt');
     const backupPath = `${targetPath}.bak`;
     
@@ -243,11 +249,11 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readFile(backupPath)).toBe('existing target content');
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
     expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'backed_up',
       },
@@ -293,7 +299,7 @@ describe('SymlinkGenerator', () => {
 
   it('should overwrite existing backup file if backup is true and return backed_up', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target.txt');
     const backupPath = `${targetPath}.bak`;
     
@@ -311,11 +317,11 @@ describe('SymlinkGenerator', () => {
 
     expect(await mockFs.fs.readFile(backupPath)).toBe('original target content'); // New backup
     expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'backed_up',
       },
@@ -324,7 +330,7 @@ describe('SymlinkGenerator', () => {
 
   it('should correctly overwrite an existing directory if target is a directory and overwrite is true, returning updated_target', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = path.join(yamlConfig.paths.targetDir, '.target_dir_as_file');
     const fileInTargetDir = path.join(targetPath, 'somefile.txt');
     
@@ -344,11 +350,11 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
     expect((await mockFs.fs.stat(targetPath)).isDirectory()).toBe(false); // No longer a directory
     expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'updated_target',
       },
@@ -357,7 +363,7 @@ describe('SymlinkGenerator', () => {
 
   it('should ensure target directory is created and return created', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     
     const toolConfigs = {
       tool1: createToolConfig([{ source: sourcePath, target: 'newdir/.file.txt' }]),
@@ -373,11 +379,11 @@ describe('SymlinkGenerator', () => {
     expect((await mockFs.fs.stat(targetDir)).isDirectory()).toBe(true);
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
     expect(await mockFs.fs.readlink(targetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath,
         status: 'created',
       },
@@ -386,7 +392,7 @@ describe('SymlinkGenerator', () => {
 
   it('should correctly resolve non-tilde prefixed relative target paths from homeDir and return created', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     
     const toolConfigs = {
       tool1: createToolConfig([{ source: sourcePath, target: 'subdir/.configfile' }]),
@@ -398,11 +404,11 @@ describe('SymlinkGenerator', () => {
     const expectedTargetPath = path.join(yamlConfig.paths.targetDir, 'subdir/.configfile');
     expect(await mockFs.fs.exists(expectedTargetPath)).toBe(true);
     expect(await mockFs.fs.readlink(expectedTargetPath)).toBe(
-      path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt')
+      sourceFullPath
     );
     expect(results).toEqual([
       {
-        sourcePath: path.join(yamlConfig.paths.dotfilesDir, 'src/file.txt'),
+        sourcePath: sourceFullPath,
         targetPath: expectedTargetPath,
         status: 'created',
       },
@@ -411,7 +417,7 @@ describe('SymlinkGenerator', () => {
 
   it('should skip if symlink already points to correct target', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
     const targetPath = '.file.txt';
     const expectedTargetPath = path.join(yamlConfig.paths.targetDir, targetPath);
 
@@ -440,7 +446,7 @@ describe('SymlinkGenerator', () => {
 
   it('should return failed status if symlink creation fails', async () => {
     const sourcePath = 'src/file.txt';
-    const sourceFullPath = path.join(yamlConfig.paths.dotfilesDir, sourcePath);
+    const sourceFullPath = getSourcePath(sourcePath);
 
     const toolConfigs = {
       tool1: createToolConfig([{ source: sourcePath, target: '.file.txt' }]),

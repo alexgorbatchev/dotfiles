@@ -708,6 +708,8 @@ interface BaseToolConfigProperties {
   binaries?: string[];
   /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
   version: string;
+  /** The absolute path to the tool configuration file that defined this configuration. */
+  configFilePath?: string;
   /** An array of Zsh initialization script snippets, added via `c.zsh()`. */
   zshInit?: string[];
   /**
