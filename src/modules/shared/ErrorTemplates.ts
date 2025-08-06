@@ -950,6 +950,8 @@ export const SuccessTemplates = {
     operationTarget: (targetPath: string): SafeLogMessage => createSafeLogMessage(`Target: ${targetPath}`),
     operationMetadata: (metadata: string): SafeLogMessage => createSafeLogMessage(`Metadata: ${metadata}`),
     toolOperations: (toolName: string, count: number): SafeLogMessage => createSafeLogMessage(`${toolName} (${count} operations):`),
+    fileOperationStructured: (timestamp: string, operationType: string, fileType: string, filePath: string, metadata: string): SafeLogMessage => 
+      createSafeLogMessage(`${timestamp} ${operationType} ${fileType}: ${filePath} ${metadata}`.trim()),
     fileReport: (): SafeLogMessage => createSafeLogMessage('File Status Report'),
     fileReportSeparator: (): SafeLogMessage => createSafeLogMessage('=================='),
     operationsReport: (count: number): SafeLogMessage => createSafeLogMessage(`Found ${count} tracked file operations`),

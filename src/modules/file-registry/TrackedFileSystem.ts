@@ -342,12 +342,12 @@ export class TrackedFileSystem implements IFileSystem {
   /**
    * Helper method to get file stats for tracking purposes.
    */
-  private async getFileStats(filePath: string): Promise<{ sizeBytes: number; permissions: string } | null> {
+  private async getFileStats(filePath: string): Promise<{ sizeBytes: number; permissions: number } | null> {
     try {
       const stats = await this.fs.stat(filePath);
       return {
         sizeBytes: stats.size,
-        permissions: stats.mode.toString(8),
+        permissions: stats.mode & 0o777,
       };
     } catch {
       return null;

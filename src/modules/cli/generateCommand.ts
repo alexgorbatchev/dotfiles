@@ -3,7 +3,6 @@ import { type TsLogger } from '@modules/logger';
 import { ErrorTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
-import { contractHomePath } from '@utils';
 
 export interface GenerateCommandOptions {
   dryRun: boolean;
@@ -37,9 +36,6 @@ export function registerGenerateCommand(
   
   
 
-          if (manifest.shellInit?.path) {
-            logger.info(SuccessTemplates.fs.created('shell-init', contractHomePath(yamlConfig.paths.homeDir, manifest.shellInit.path)));
-          }
   
           const numSymlinks = manifest.symlinks?.length ?? 0;
           if (combinedOptions.verbose && manifest.symlinks && numSymlinks > 0) {

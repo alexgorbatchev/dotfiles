@@ -19,7 +19,7 @@ export interface FileOperation {
   /** File size in bytes */
   sizeBytes?: number;
   /** File permissions */
-  permissions?: string;
+  permissions?: number;
   /** When the operation was performed (Unix timestamp) */
   createdAt: number;
   /** UUID to group related operations */
@@ -67,7 +67,7 @@ export interface FileState {
   /** File size in bytes */
   sizeBytes?: number;
   /** File permissions */
-  permissions?: string;
+  permissions?: number;
   /** Whether the file actually exists on disk */
   existsOnDisk?: boolean;
   /** Whether symlink target exists (for symlinks) */

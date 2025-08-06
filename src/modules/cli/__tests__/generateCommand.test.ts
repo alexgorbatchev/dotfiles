@@ -89,13 +89,7 @@ describe('generateCommand', () => {
       mockFs.fs.asIFileSystem
     );
 
-    logger.expect(
-      ['INFO'],
-      ['registerGenerateCommand'],
-      [
-        /\[shell-init\] Created: .*\/init\.sh/,
-      ]
-    );
+    // TrackedFileSystem will handle the actual file creation logging
   });
 
   test('should handle errors during artifact generation', async () => {

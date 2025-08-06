@@ -2,6 +2,7 @@ import { exitCli } from '@modules/cli/exitCli';
 import { type TsLogger } from '@modules/logger';
 import type { GlobalProgram, Services } from '../../cli';
 import { ErrorTemplates, DebugTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
+import { contractHomePath, formatPermissions } from '@utils';
 
 export interface FilesCommandOptions {
   dryRun: boolean;
@@ -19,7 +20,7 @@ async function filesActionLogic(
   services: Services,
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'filesActionLogic' });
-  const { fileRegistry, fs } = services;
+  const { fileRegistry, fs, yamlConfig } = services;
   const { tool, type, status, since } = options;
 
   try {
@@ -99,25 +100,49 @@ async function filesActionLogic(
       operationsByTool[operation.toolName]!.push(operation);
     }
 
-    logger.info(SuccessTemplates.general.listingFileOperations());
-
-    for (const [toolName, toolOperations] of Object.entries(operationsByTool)) {
-      logger.info(SuccessTemplates.general.toolOperations(toolName, toolOperations.length));
-      
+    for (const [, toolOperations] of Object.entries(operationsByTool)) {
       for (const operation of toolOperations) {
-        const timestamp = new Date(operation.createdAt).toLocaleString();
-        const sizeText = operation.sizeBytes ? ` (${operation.sizeBytes} bytes)` : '';
+        const timestamp = new Date(operation.createdAt).toLocaleString('en-US', { 
+          hour12: false,
+          year: 'numeric',
+          month: 'numeric', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }).replace(',', '');
         
-        logger.info(SuccessTemplates.general.operationInfo(operation.operationType.toUpperCase(), operation.filePath));
-        logger.info(SuccessTemplates.general.operationDetails(operation.fileType, timestamp, sizeText));
-        
+        // Build metadata string
+        const metadataParts: string[] = [];
+        if (operation.sizeBytes) {
+          metadataParts.push(`size: ${operation.sizeBytes}`);
+        }
+        if (operation.permissions) {
+          metadataParts.push(`permissions: ${formatPermissions(operation.permissions)}`);
+        }
         if (operation.targetPath) {
-          logger.info(SuccessTemplates.general.operationTarget(operation.targetPath));
+          metadataParts.push(`target: ${contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)}`);
+        }
+        if (operation.metadata && Object.keys(operation.metadata).length > 0) {
+          for (const [key, value] of Object.entries(operation.metadata)) {
+            if (key === 'newMode') {
+              metadataParts.push(`${key}: ${formatPermissions(value as string | number)}`);
+            } else {
+              metadataParts.push(`${key}: ${value}`);
+            }
+          }
         }
         
-        if (operation.metadata && Object.keys(operation.metadata).length > 0) {
-          logger.info(SuccessTemplates.general.operationMetadata(JSON.stringify(operation.metadata)));
-        }
+        const metadataString = metadataParts.length > 0 ? metadataParts.join(', ') : '';
+        
+        // Output: TIMESTAMP OPERATION type: FILE METADATA
+        logger.info(SuccessTemplates.general.fileOperationStructured(
+          timestamp,
+          operation.operationType.toUpperCase(),
+          operation.fileType.toLowerCase(),
+          contractHomePath(yamlConfig.paths.homeDir, operation.filePath),
+          metadataString
+        ));
       }
     }
 
