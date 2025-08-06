@@ -1,6 +1,11 @@
 {
   "editor.formatOnSave": false,
 
+  "search.exclude": {
+    "**/dist": true,
+    "**/.generated": true,
+  },
+
   "files.exclude": {
     "**/.roo": true,
     "**/.claude": true,

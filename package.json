@@ -7,7 +7,7 @@
     "mydotfiles": "./dist/cli.js"
   },
   "scripts": {
-    "test": "bun run src/testing-helpers/bun-test-runner.ts || bun lint",
+    "test": "bun lint && bun run src/testing-helpers/bun-test-runner.ts",
     "lint": "tsc --noEmit",
     "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
     "fmt": "prettier --write .",

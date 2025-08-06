@@ -48,7 +48,7 @@ describe('yamlConfigLoader', () => {
       { GITHUB_TOKEN: 'test-token' }
     );
 
-    expect(result.paths.dotfilesDir).toBe('/home/testuser/custom-dotfiles');
+    expect(result.paths.dotfilesDir).toBe('/test/custom-dotfiles');
     expect(result.paths.targetDir).toBe('/custom/bin');
     expect(result.github.token).toBe('user-github-token');
     expect(result.logging.debug).toBe('');
@@ -172,15 +172,15 @@ describe('yamlConfigLoader', () => {
       {}
     );
 
-    expect(result.paths.generatedDir).toBe('/home/testuser/custom-dotfiles/.generated');
+    expect(result.paths.generatedDir).toBe('/test/custom-dotfiles/.generated');
     expect(result.paths.toolConfigsDir).toBe(
-      '/home/testuser/custom-dotfiles/generator/configs/tools'
+      '/test/custom-dotfiles/generator/configs/tools'
     );
     expect(result.paths.completionsDir).toBe(
-      '/home/testuser/custom-dotfiles/.generated/completions'
+      '/test/custom-dotfiles/.generated/completions'
     );
     expect(result.paths.manifestPath).toBe(
-      '/home/testuser/custom-dotfiles/.generated/manifest.json'
+      '/test/custom-dotfiles/.generated/manifest.json'
     );
   });
 

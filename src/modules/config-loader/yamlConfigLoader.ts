@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { expandHomePath } from '@utils';
 import { exitCli } from '../cli';
 import { ErrorTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
+import path from 'node:path';
 
 
 /**
@@ -225,7 +226,10 @@ function substituteTokens(
   const parsedConfig = parse(configStr) as Record<string, unknown>;
 
   // Expand home paths in the config
-  return expandHomePathsInObject(parsedConfig, systemInfo.homeDir) as Record<string, unknown>;
+  // Use config file directory as base for relative paths, fall back to system homeDir if no config path
+  const userConfigPath = (fullConfig as any).userConfigPath as string | undefined;
+  const baseDir = userConfigPath ? path.dirname(userConfigPath) : systemInfo.homeDir;
+  return expandHomePathsInObject(parsedConfig, baseDir) as Record<string, unknown>;
 }
 
 function processConfig(
