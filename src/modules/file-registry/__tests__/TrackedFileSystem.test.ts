@@ -24,7 +24,7 @@ describe('TrackedFileSystem', () => {
     registry = new SqliteFileRegistry(logger, dbPath);
     
     context = TrackedFileSystem.createContext('test-tool', 'shim');
-    trackedFs = new TrackedFileSystem(logger, fs, registry, context);
+    trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
   });
 
   afterEach(async () => {
@@ -365,7 +365,7 @@ describe('TrackedFileSystem', () => {
   describe('operation grouping', () => {
     it('should use same operation ID for related operations', async () => {
       const context = TrackedFileSystem.createContext('nodejs', 'shim');
-      const trackedFs = new TrackedFileSystem(logger, fs, registry, context);
+      const trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
@@ -384,8 +384,8 @@ describe('TrackedFileSystem', () => {
       const context1 = TrackedFileSystem.createContext('nodejs', 'shim');
       const context2 = TrackedFileSystem.createContext('python', 'binary');
       
-      const trackedFs1 = new TrackedFileSystem(logger, fs, registry, context1);
-      const trackedFs2 = new TrackedFileSystem(logger, fs, registry, context2);
+      const trackedFs1 = new TrackedFileSystem(logger, fs, registry, context1, '/home/test');
+      const trackedFs2 = new TrackedFileSystem(logger, fs, registry, context2, '/home/test');
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });

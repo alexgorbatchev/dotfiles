@@ -93,12 +93,7 @@ describe('generateCommand', () => {
       ['INFO'],
       ['registerGenerateCommand'],
       [
-        /Artifact generation completed in \d+ms/,
-        /Shim generation completed in \d+ms \(1 items\) .*\/usr-local-bin/,
-        'Generated shims by tool',
-        'Processing toolA (shim generation: toolA-bin)',
         /\[shell-init\] Created: .*\/init\.sh/,
-        /Symlink operations completed in \d+ms \(1 items\)/,
       ]
     );
   });

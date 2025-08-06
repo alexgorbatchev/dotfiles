@@ -3,6 +3,7 @@ import { type TsLogger } from '@modules/logger';
 import { ErrorTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
+import { contractHomePath } from '@utils';
 
 export interface GenerateCommandOptions {
   dryRun: boolean;
@@ -24,50 +25,24 @@ export function registerGenerateCommand(
         const services = await servicesFactory();
         const { yamlConfig, fs, generatorOrchestrator } = services;
   
-        logger.debug(DebugTemplates.command.errorDetails(), combinedOptions);
+        logger.debug(DebugTemplates.command.actionCalled('generate'), combinedOptions);
   
         try {
-          logger.debug(DebugTemplates.command.errorDetails(), yamlConfig.paths.toolConfigsDir, fs.constructor.name);
+          logger.debug(SuccessTemplates.config.toolConfigLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
           const toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
-          logger.debug(DebugTemplates.command.errorDetails(), Object.keys(toolConfigs).length);
+          logger.debug(SuccessTemplates.config.loaded('tool configs', Object.keys(toolConfigs).length));
   
           const manifest = await generatorOrchestrator.generateAll(toolConfigs, {});
-          logger.debug(DebugTemplates.command.errorDetails(), manifest);
-          logger.info(SuccessTemplates.operation.completed('Artifact generation', 0));
+          logger.debug(DebugTemplates.generator.orchestrationComplete(), manifest);
   
-          const numShims = manifest.shims?.length ?? 0;
-          logger.info(SuccessTemplates.operation.completed('Shim generation', 0, numShims), yamlConfig.paths.targetDir);
-          if (numShims > 0) {
-            logger.info(SuccessTemplates.general.generatedShimsByTool());
-            Object.values(toolConfigs).forEach((toolConfig) => {
-              if (toolConfig.binaries && toolConfig.binaries.length > 0) {
-                if (toolConfig.binaries.length === 1 && toolConfig.binaries[0] === toolConfig.name) {
-                  logger.info(SuccessTemplates.tool.processing(toolConfig.name, 'shim generation'));
-                } else {
-                  logger.info(SuccessTemplates.tool.processing(toolConfig.name, `shim generation: ${toolConfig.binaries.join(', ')}`));
-                }
-              }
-            });
-          }
   
-          if (combinedOptions.verbose && manifest.shims && numShims > 0) {
-            logger.debug(DebugTemplates.command.errorDetails());
-            manifest.shims.forEach((shimPath) => logger.debug(DebugTemplates.command.errorDetails(), shimPath));
-          }
-  
+
           if (manifest.shellInit?.path) {
-            logger.info(SuccessTemplates.fs.created('shell-init', manifest.shellInit.path));
-            if (combinedOptions.verbose) {
-              logger.debug(DebugTemplates.command.errorDetails(), manifest.shellInit.path);
-            }
-          } else {
-            logger.info(SuccessTemplates.general.completed('No shell init file generated'));
+            logger.info(SuccessTemplates.fs.created('shell-init', contractHomePath(yamlConfig.paths.homeDir, manifest.shellInit.path)));
           }
   
           const numSymlinks = manifest.symlinks?.length ?? 0;
-          logger.info(SuccessTemplates.operation.completed('Symlink operations', 0, numSymlinks));
           if (combinedOptions.verbose && manifest.symlinks && numSymlinks > 0) {
-            logger.debug(DebugTemplates.command.errorDetails());
             manifest.symlinks.forEach((op) => {
               logger.debug(SuccessTemplates.general.symlinkOperation(op.targetPath, op.sourcePath, op.status, op.error));
             });

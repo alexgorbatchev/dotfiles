@@ -16,7 +16,8 @@ beforeEach(() => {
     logger,
     fs,
     registry,
-    TrackedFileSystem.createContext('nodejs', 'binary')
+    TrackedFileSystem.createContext('nodejs', 'binary'),
+    '/home/test'
   );
 });
 
@@ -41,7 +42,8 @@ test('should show different tool names for different contexts', async () => {
     logger,
     fs,
     registry,
-    TrackedFileSystem.createContext('curl', 'binary')
+    TrackedFileSystem.createContext('curl', 'binary'),
+    '/home/test'
   );
 
   // Create parent directories

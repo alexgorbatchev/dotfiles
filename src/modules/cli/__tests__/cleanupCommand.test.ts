@@ -102,13 +102,13 @@ describe('cleanupCommand', () => {
       [
         'cleanup started',
         'shim deletion',
-        `[cleanup] Removed: shim: ${mockShim1}`,
-        `[cleanup] Removed: shim: ${mockShim2}`,
+        `[cleanup] Deleted: shim: ${mockShim1}`,
+        '[cleanup] Deleted: shim: ~/.dotfiles/.generated/bin/shim2',
         'shell init file deletion',
-        `[cleanup] Removed: shell init: ${mockShellInit}`,
+        '[cleanup] Deleted: shell init: ~/.dotfiles/.generated/zsh/init.zsh',
         'symlink deletion',
-        `[cleanup] Removed: symlink: ${mockSymlinkTarget}`,
-        `[cleanup] Removed directory: ${mockYamlConfig.paths.generatedDir}`,
+        '[cleanup] Deleted: symlink: ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
+        '[cleanup] Deleted: ~/.dotfiles/.generated',
         'Cleanup completed',
       ],
     );
@@ -132,7 +132,7 @@ describe('cleanupCommand', () => {
       [
         'cleanup started',
         `Manifest file not found: ${mockYamlConfig.paths.manifestPath}`,
-        `[cleanup] Removed directory: ${mockYamlConfig.paths.generatedDir}`,
+        '[cleanup] Deleted: ~/.dotfiles/.generated',
         'Cleanup completed',
       ],
     );

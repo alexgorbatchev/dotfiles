@@ -9,7 +9,7 @@ import type {
   SymlinkOperationResult,
 } from './ISymlinkGenerator';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { expandHomePath } from '@utils';
+import { expandHomePath, contractHomePath } from '@utils';
 import { ErrorTemplates, WarningTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
@@ -107,7 +107,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             try {
               if (await toolFs.exists(backupPath)) {
                 logger.warn(
-                  WarningTemplates.fs.overwriting(toolName, backupPath)
+                  WarningTemplates.fs.overwriting(toolName, contractHomePath(this.yamlConfig.paths.homeDir, backupPath))
                 );
                 await toolFs.rm(backupPath, { recursive: true, force: true });
               }

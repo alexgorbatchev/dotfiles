@@ -35,6 +35,7 @@ import { type TsLogger, createTsLogger, getLogLevelFromFlags } from '@modules/lo
 import { SqliteFileRegistry, type IFileRegistry, TrackedFileSystem } from '@modules/file-registry';
 import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
+import { contractHomePath } from '@utils';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
@@ -117,7 +118,7 @@ export async function setupServices(
               const content = await nodeFs.readFile(filePath, 'utf8');
               await fs.ensureDir(realToolConfigsDir);
               await fs.writeFile(filePath, content);
-              logger.trace(SuccessTemplates.fs.created('memfs', filePath));
+              logger.trace(SuccessTemplates.fs.created('memfs', contractHomePath(systemInfo.homeDir, filePath)));
             } catch (readError: any) {
               logger.warn(WarningTemplates.fs.readFailed(filePath, readError.message));
               logger.error(ErrorTemplates.fs.readFailed(filePath, String(readError)), readError);
@@ -148,7 +149,7 @@ export async function setupServices(
         storageStrategy: 'binary',
       }
     );
-    parentLogger.info(SuccessTemplates.general.cachingEnabled(), 'Directory: %s (TTL: %d ms)', cacheDir, yamlConfig.downloader.cache.ttl);
+    parentLogger.debug(SuccessTemplates.general.cachingEnabled(), `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`);
   } else {
     parentLogger.info(SuccessTemplates.general.cachingDisabled());
   }
@@ -175,19 +176,22 @@ export async function setupServices(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'shim')
+    TrackedFileSystem.createContext('system', 'shim'),
+    systemInfo.homeDir
   );
   const shellInitTrackedFs = new TrackedFileSystem(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'init')
+    TrackedFileSystem.createContext('system', 'init'),
+    systemInfo.homeDir
   );
   const symlinkTrackedFs = new TrackedFileSystem(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'symlink')
+    TrackedFileSystem.createContext('system', 'symlink'),
+    systemInfo.homeDir
   );
 
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, yamlConfig);
@@ -208,7 +212,8 @@ export async function setupServices(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'binary')
+    TrackedFileSystem.createContext('system', 'binary'),
+    systemInfo.homeDir
   );
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, fs);

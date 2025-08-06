@@ -3,6 +3,7 @@ import { type TsLogger } from '@modules/logger';
 import type { GeneratedArtifactsManifest } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
 import { ErrorTemplates, WarningTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { contractHomePath } from '@utils';
 
 export interface CleanupCommandOptions {
   dryRun: boolean;
@@ -29,7 +30,7 @@ async function registryBasedCleanup(
     const allTools = await fileRegistry.getRegisteredTools();
     
     for (const toolName of allTools) {
-      await cleanupToolFiles(logger, fs, fileRegistry, toolName, undefined, dryRun);
+      await cleanupToolFiles(logger, fs, fileRegistry, toolName, services.yamlConfig.paths.homeDir, undefined, dryRun);
     }
     
     // Clean up the registry database itself
@@ -44,7 +45,7 @@ async function registryBasedCleanup(
   } else if (tool) {
     // Remove files for specific tool
     logger.info(SuccessTemplates.general.cleanupToolFiles(tool));
-    await cleanupToolFiles(logger, fs, fileRegistry, tool, type, dryRun);
+    await cleanupToolFiles(logger, fs, fileRegistry, tool, services.yamlConfig.paths.homeDir, type, dryRun);
     
     if (!dryRun) {
       await fileRegistry.removeToolOperations(tool);
@@ -61,7 +62,7 @@ async function registryBasedCleanup(
     for (const operation of operations) {
       const fileState = await fileRegistry.getFileState(operation.filePath);
       if (fileState && fileState.lastOperation !== 'delete') {
-        await removeFile(logger, fs, operation.filePath, dryRun);
+        await removeFile(logger, fs, operation.filePath, services.yamlConfig.paths.homeDir, dryRun);
       }
     }
   } else {
@@ -74,6 +75,7 @@ async function cleanupToolFiles(
   fs: any,
   fileRegistry: any,
   toolName: string,
+  homeDir: string,
   fileType?: string,
   dryRun?: boolean,
 ): Promise<void> {
@@ -86,10 +88,10 @@ async function cleanupToolFiles(
   logger.trace(DebugTemplates.command.foundFiles(filteredStates.length, toolName, fileType));
   
   for (const fileState of filteredStates) {
-    await removeFile(logger, fs, fileState.filePath, dryRun);
+    await removeFile(logger, fs, fileState.filePath, homeDir, dryRun);
     
     if (fileState.targetPath) {
-      await removeFile(logger, fs, fileState.targetPath, dryRun);
+      await removeFile(logger, fs, fileState.targetPath, homeDir, dryRun);
     }
   }
 }
@@ -98,13 +100,14 @@ async function removeFile(
   logger: TsLogger,
   fs: any,
   filePath: string,
+  homeDir: string,
   dryRun?: boolean,
 ): Promise<void> {
   try {
     if (await fs.exists(filePath)) {
       if (!dryRun) {
         await fs.rm(filePath, { force: true });
-        logger.info(SuccessTemplates.fs.removed('cleanup', filePath));
+        logger.info(SuccessTemplates.fs.removed('cleanup', contractHomePath(homeDir, filePath)));
       } else {
         logger.info(SuccessTemplates.general.fileCleanupDryRun(filePath));
       }
@@ -166,7 +169,7 @@ async function cleanupActionLogic(
             if (await fs.exists(shimPath)) {
               if (!dryRun) {
                 await fs.rm(shimPath, { force: true });
-                logger.info(SuccessTemplates.fs.removed('cleanup', `shim: ${shimPath}`));
+                logger.info(SuccessTemplates.fs.removed('cleanup', `shim: ${contractHomePath(services.yamlConfig.paths.homeDir, shimPath)}`));
                 logger.debug(DebugTemplates.command.shimDeletion(shimPath, true, false));
               } else {
                 logger.info(SuccessTemplates.general.fileCleanupDryRun(shimPath));
@@ -190,7 +193,7 @@ async function cleanupActionLogic(
           if (await fs.exists(manifest.shellInit.path)) {
             if (!dryRun) {
               await fs.rm(manifest.shellInit.path, { force: true });
-              logger.info(SuccessTemplates.fs.removed('cleanup', `shell init: ${manifest.shellInit.path}`));
+              logger.info(SuccessTemplates.fs.removed('cleanup', `shell init: ${contractHomePath(services.yamlConfig.paths.homeDir, manifest.shellInit.path)}`));
               logger.debug(DebugTemplates.command.shellInitDeletion(manifest.shellInit.path, true, false));
             } else {
               logger.info(SuccessTemplates.general.fileCleanupDryRun(manifest.shellInit.path));
@@ -215,7 +218,7 @@ async function cleanupActionLogic(
               // Check if path exists (could be symlink or regular file if broken)
               if (!dryRun) {
                 await fs.rm(symlinkOp.targetPath, { force: true });
-                logger.info(SuccessTemplates.fs.removed('cleanup', `symlink: ${symlinkOp.targetPath}`));
+                logger.info(SuccessTemplates.fs.removed('cleanup', `symlink: ${contractHomePath(services.yamlConfig.paths.homeDir, symlinkOp.targetPath)}`));
                 logger.debug(DebugTemplates.command.symlinkDeletion(symlinkOp.targetPath, true, false));
               } else {
                 logger.info(SuccessTemplates.general.fileCleanupDryRun(symlinkOp.targetPath));
@@ -240,7 +243,7 @@ async function cleanupActionLogic(
         if (!dryRun) {
           await fs.rm(yamlConfig.paths.generatedDir, { recursive: true, force: true });
           logger.info(
-            SuccessTemplates.fs.removedDirectory('cleanup', yamlConfig.paths.generatedDir),
+            SuccessTemplates.fs.removed('cleanup', contractHomePath(yamlConfig.paths.homeDir, yamlConfig.paths.generatedDir)),
           );
           logger.debug(DebugTemplates.command.fileDeletion(yamlConfig.paths.generatedDir, true, false));
         } else {

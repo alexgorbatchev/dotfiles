@@ -813,7 +813,7 @@ export const WarningTemplates = {
   },
   fs: {
     overwriting: (toolName: string, path: string): SafeLogMessage => 
-      createSafeLogMessage(`[${toolName}] Overwriting existing file: ${path}`),
+      createSafeLogMessage(`[${toolName}] Overwrote: ${path}`),
     permissionsFixed: (path: string, newPermissions: string): SafeLogMessage => 
       createSafeLogMessage(`Fixed permissions on ${path} to ${newPermissions}`),
     readFailed: (path: string, reason: string): SafeLogMessage => 
@@ -868,12 +868,11 @@ export const SuccessTemplates = {
   fs: {
     created: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Created: ${path}`),
     updated: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Updated: ${path}`),
-    removed: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Removed: ${path}`),
-    removedDirectory: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Removed directory: ${path}`),
+    removed: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Deleted: ${path}`),
     moved: (toolName: string, oldPath: string, newPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Moved: ${oldPath} → ${newPath}`),
     copied: (toolName: string, srcPath: string, destPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Copied: ${srcPath} → ${destPath}`),
-    symlinkCreated: (toolName: string, linkPath: string, targetPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Created symlink: ${linkPath} → ${targetPath}`),
-    permissionsChanged: (toolName: string, path: string, mode: string | number): SafeLogMessage => createSafeLogMessage(`[${toolName}] Changed permissions: ${path} (${mode})`),
+    symlinkCreated: (toolName: string, linkPath: string, targetPath: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Symlink: ${linkPath} → ${targetPath}`),
+    permissionsChanged: (toolName: string, path: string, mode: string | number): SafeLogMessage => createSafeLogMessage(`[${toolName}] Permissions: ${path} (${mode})`),
     directoryCreated: (toolName: string, path: string): SafeLogMessage => createSafeLogMessage(`[${toolName}] Created directory: ${path}`),
   },
   architecture: {
