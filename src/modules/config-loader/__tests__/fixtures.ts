@@ -8,7 +8,7 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
     targetDir: '/usr/local/bin',
     generatedDir: '${paths.dotfilesDir}/.generated',
     toolConfigsDir: '${paths.dotfilesDir}/generator/configs/tools',
-    completionsDir: '${paths.generatedDir}/completions',
+    shellScriptsDir: '${paths.generatedDir}/shell-scripts',
     manifestPath: '${paths.generatedDir}/generated-manifest.json',
     binariesDir: '${paths.generatedDir}/bin',
   },

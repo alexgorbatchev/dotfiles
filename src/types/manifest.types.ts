@@ -65,7 +65,7 @@ export interface GeneratedArtifactsManifest {
    */
   shellInit?: {
     /**
-     * The path to the generated shell initialization file (e.g., `~/.generated/zsh/init.zsh`).
+     * The path to the generated shell initialization file (e.g., `~/.generated/shell-scripts/init.zsh`).
      * This can be `null` if no shell initialization content was generated.
      */
     path: string | null;

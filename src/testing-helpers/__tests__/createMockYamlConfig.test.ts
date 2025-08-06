@@ -12,7 +12,7 @@ describe('createMockYamlConfig', () => {
       targetDir: '/target',
       generatedDir: '/generated',
       toolConfigsDir: '/tool-configs',
-      completionsDir: '/completions',
+      shellScriptsDir: '/shell-scripts',
       manifestPath: '/manifest.json',
     },
   };

@@ -14,7 +14,7 @@ describe('ShellInitGenerator', () => {
   let generator: IShellInitGenerator;
   let logger: TestLogger;
 
-  const DEFAULT_COMPLETIONS_DIR = '/test/home/.dotfiles/.generated/completions';
+  const DEFAULT_SHELL_SCRIPTS_DIR = '/test/home/.dotfiles/.generated/shell-scripts';
   const DEFAULT_BIN_DIR = '/test/home/.dotfiles/.generated/bin';
   const DEFAULT_DOTFILES_DIR = '/test/home/.dotfiles';
 
@@ -28,7 +28,7 @@ describe('ShellInitGenerator', () => {
       {
         paths: {
           dotfilesDir: DEFAULT_DOTFILES_DIR, // Keep specific for test consistency
-          completionsDir: DEFAULT_COMPLETIONS_DIR,
+          shellScriptsDir: DEFAULT_SHELL_SCRIPTS_DIR,
           binariesDir: DEFAULT_BIN_DIR,
           generatedDir: path.join(DEFAULT_DOTFILES_DIR, '.generated'), // Ensure consistency
         },
@@ -52,7 +52,7 @@ describe('ShellInitGenerator', () => {
   const getExpectedFooter = () => ['# === End of Generated File ===\n'];
 
   it('should generate a basic init file with no tool configs and return its path', async () => {
-    const expectedPath = path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh');
+    const expectedPath = path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh');
     const resultPath = await generator.generate({});
     expect(resultPath).toBe(expectedPath);
 
@@ -67,7 +67,7 @@ describe('ShellInitGenerator', () => {
     ].join('\n');
 
     expect(content).toBe(expectedContent);
-    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(DEFAULT_COMPLETIONS_DIR);
+    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(DEFAULT_SHELL_SCRIPTS_DIR);
   });
 
   it('should use custom output path if provided and return it', async () => {
@@ -91,13 +91,13 @@ describe('ShellInitGenerator', () => {
         installParams: undefined,
       },
     };
-    const expectedPath = path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh');
+    const expectedPath = path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh');
     // No dryRun option passed to generate
     const resultPath = await generator.generate(toolConfigs, {});
     expect(resultPath).toBe(expectedPath);
 
     // It should now ATTEMPT to write, and MemFileSystem will capture it.
-    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(DEFAULT_COMPLETIONS_DIR);
+    expect(mockFileSystem.ensureDir).toHaveBeenCalledWith(DEFAULT_SHELL_SCRIPTS_DIR);
     expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
       expectedPath,
       expect.stringContaining('export TEST_TOOL_VAR="hello"')
@@ -128,8 +128,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     expect(content).toContain('# === PATH Modifications ===');
     expect(content).toContain(`export PATH="${DEFAULT_BIN_DIR}:$PATH"`);
@@ -157,8 +157,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     expect(content).toContain('# === Environment Variables ===');
     expect(content).toContain('export TOOL_A_ENABLED=true');
@@ -185,8 +185,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     expect(content).toContain('# === Tool-Specific Initializations ===');
     expect(content).toContain('# --- toolA ---');
@@ -219,13 +219,13 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     expect(content).toContain('# === Shell Completions Setup ===');
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(DEFAULT_COMPLETIONS_DIR, 'zsh'))} $fpath)`
+      `fpath=(${JSON.stringify(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'zsh'))} $fpath)`
     );
   });
 
@@ -242,8 +242,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     const occurrences = (content.match(/typeset -U fpath/g) || []).length;
     expect(occurrences).toBe(1);
@@ -251,7 +251,7 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('fpath=("/my/custom/fpath" $fpath)');
     // The completion specific fpath add should still be there for its own directory
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(DEFAULT_COMPLETIONS_DIR, 'zsh'))} $fpath)`
+      `fpath=(${JSON.stringify(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'zsh'))} $fpath)`
     );
   });
 
@@ -287,8 +287,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     // PATH
     expect(content).toContain('export PATH="/opt/alpha/bin:$PATH"');
@@ -307,7 +307,7 @@ describe('ShellInitGenerator', () => {
     // Completions
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(DEFAULT_COMPLETIONS_DIR, 'zsh'))} $fpath)`
+      `fpath=(${JSON.stringify(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'zsh'))} $fpath)`
     ); // For alpha
     expect(content).toContain(
       `fpath=(${JSON.stringify('/usr/local/share/zsh/site-functions')} $fpath)`
@@ -331,8 +331,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     const pathSectionIndex = content.indexOf('# === PATH Modifications ===');
     const envSectionIndex = content.indexOf('# === Environment Variables ===');
@@ -369,8 +369,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     // Count occurrences
     expect((content.match(/export DUP_VAR="val"/g) || []).length).toBe(1);
@@ -398,8 +398,8 @@ describe('ShellInitGenerator', () => {
       },
     };
     const resultPath = await generator.generate(toolConfigs as Record<string, ToolConfig>);
-    expect(resultPath).toBe(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
-    const content = await mockFileSystem.readFile(path.join(DEFAULT_COMPLETIONS_DIR, 'init.zsh'));
+    expect(resultPath).toBe(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
+    const content = await mockFileSystem.readFile(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'init.zsh'));
 
     expect(content).toContain('export TOOL_A_VAR="set"');
     expect(content).toContain('export TOOL_C_VAR="active"');

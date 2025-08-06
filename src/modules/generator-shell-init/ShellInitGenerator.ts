@@ -25,7 +25,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     this.logger.debug(DebugTemplates.shellInit.generateDebug(), toolConfigs, options, this.fs.constructor.name);
     // dryRun is removed; IFileSystem handles behavior
     const outputPath =
-      options?.outputPath ?? path.join(this.appConfig.paths.completionsDir, 'init.zsh');
+      options?.outputPath ?? path.join(this.appConfig.paths.shellScriptsDir, 'init.zsh');
     this.logger.debug(DebugTemplates.shellInit.outputPath(), outputPath);
 
     const header = [
@@ -140,7 +140,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       if (shellConfig && shell === 'zsh') {
         // Only Zsh supported for now by this generator
         const completionDir =
-          shellConfig.targetDir ?? path.join(this.appConfig.paths.completionsDir, shell);
+          shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, shell);
         // const completionName = shellConfig.name ?? `_${toolName}`; // This var is unused for now
         // const completionSourcePath = path.join(completionDir, completionName); // This var is unused for now
 

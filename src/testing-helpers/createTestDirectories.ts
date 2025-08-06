@@ -71,7 +71,7 @@ export async function createTestDirectories(logger: TsLogger, fs: IFileSystem, o
   await fs.ensureDir(paths.toolConfigsDir);
   await fs.ensureDir(paths.binariesDir);
   await fs.ensureDir(paths.targetDir);
-  await fs.ensureDir(paths.completionsDir);
+  await fs.ensureDir(paths.shellScriptsDir);
 
   const result: TestDirectories = {
     paths: {

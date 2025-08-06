@@ -176,8 +176,8 @@ describe('yamlConfigLoader', () => {
     expect(result.paths.toolConfigsDir).toBe(
       '/test/custom-dotfiles/generator/configs/tools'
     );
-    expect(result.paths.completionsDir).toBe(
-      '/test/custom-dotfiles/.generated/completions'
+    expect(result.paths.shellScriptsDir).toBe(
+      '/test/custom-dotfiles/.generated/shell-scripts'
     );
     expect(result.paths.manifestPath).toBe(
       '/test/custom-dotfiles/.generated/manifest.json'

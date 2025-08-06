@@ -12,8 +12,8 @@ const pathsConfigSchema = z.object({
   targetDir: z.string().default("${paths.generatedDir}/usr-local-bin"),
   /** Specifies the directory containing `*.tool.ts` tool configuration files. Defaults to `${paths.dotfilesDir}/generator/configs/tools`. */
   toolConfigsDir: z.string().default("${paths.dotfilesDir}/generator/configs/tools"),
-  /** Specifies the base directory where shell completion files should be installed. Defaults to `${paths.generatedDir}/completions`. */
-  completionsDir: z.string().default("${paths.generatedDir}/completions"),
+  /** Specifies the directory where generated shell scripts are stored. Defaults to `${paths.generatedDir}/shell-scripts`. */
+  shellScriptsDir: z.string().default("${paths.generatedDir}/shell-scripts"),
   /** Defines the directory where downloaded tool binaries are stored. Defaults to `${paths.generatedDir}/binaries`. */
   binariesDir: z.string().default("${paths.generatedDir}/binaries"),
   /** Specifies the path to the manifest file that tracks all generated artifacts. Defaults to `${paths.generatedDir}/manifest.json`. */
@@ -136,7 +136,7 @@ export type YamlConfigPartial = PartialDeep<YamlConfig>;
       targetDir: '',
       generatedDir: '',
       toolConfigsDir: '',
-      completionsDir: '',
+      shellScriptsDir: '',
       manifestPath: '',
       binariesDir: '',
     },

@@ -152,7 +152,7 @@ describe('GeneratorOrchestrator', () => {
         path.join(mockAppConfig.paths.targetDir, 'toolA'),
         path.join(mockAppConfig.paths.targetDir, 'toolB'),
       ];
-      const mockShellInitPath = path.join(mockAppConfig.paths.completionsDir, 'init.zsh');
+      const mockShellInitPath = path.join(mockAppConfig.paths.shellScriptsDir, 'init.zsh');
       const mockSymlinkResults: SymlinkOperationResult[] = [
         {
           sourcePath: path.join(mockAppConfig.paths.dotfilesDir, 'a.conf'),
@@ -184,7 +184,7 @@ describe('GeneratorOrchestrator', () => {
       mockFsExists.mockResolvedValue(false); // No existing manifest
 
       const mockShimPaths = [path.join(mockAppConfig.paths.targetDir, 'toolA-write')];
-      const mockShellInitPathWrite = path.join(mockAppConfig.paths.completionsDir, 'init-write.zsh');
+      const mockShellInitPathWrite = path.join(mockAppConfig.paths.shellScriptsDir, 'init-write.zsh');
       const mockSymlinkResultsWrite: SymlinkOperationResult[] = [
         {
           sourcePath: path.join(mockAppConfig.paths.dotfilesDir, 'b.conf'),
@@ -301,7 +301,7 @@ describe('GeneratorOrchestrator', () => {
     it('should handle empty toolConfigs gracefully', async () => {
       mockFsExists.mockResolvedValue(false);
 
-      const expectedShellPath = path.join(mockAppConfig.paths.completionsDir, 'init.zsh');
+      const expectedShellPath = path.join(mockAppConfig.paths.shellScriptsDir, 'init.zsh');
       (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue([]);
       // Directly re-assign the mock implementation for this specific test case
       (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(

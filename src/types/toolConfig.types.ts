@@ -567,7 +567,7 @@ export interface ToolConfigBuilder {
 
   /**
    * Adds raw Zsh shell code to be included in the generated Zsh initialization file (typically
-   * `~/.generated/zsh/init.zsh`, which is then sourced by the user's `.zshrc`).  This is useful for setting environment
+   * `~/.generated/shell-scripts/init.zsh`, which is then sourced by the user's `.zshrc`).  This is useful for setting environment
    * variables, defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts related to the
    * tool.  Multiple calls to `zsh()` will append the code.
    *
