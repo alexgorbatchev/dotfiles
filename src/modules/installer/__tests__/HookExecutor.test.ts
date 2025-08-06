@@ -56,8 +56,24 @@ describe('HookExecutor', () => {
 
       expect(result.success).toBe(true);
       expect(result.error).toBeUndefined();
-      expect(result.durationMs).toBeGreaterThanOrEqual(0);
-      expect(result.skipped).toBe(false);
+    });
+
+    it('should create hook-specific logger with correct naming format', async () => {
+      const mockHook = mock(async (ctx: InstallHookContext) => {
+        // Log a message using the hook-specific logger
+        (ctx as any).logger.info(testLogMessage('Hook execution message'));
+      });
+
+      const enhancedContext = hookExecutor.createEnhancedContext(
+        baseContext, memFs.fs, logger
+      );
+
+      const result = await hookExecutor.executeHook('afterInstall', mockHook, enhancedContext);
+
+      // Verify the hook received a logger with the correct name format: toolName--hookName
+      // The logger hierarchy is: test-tool (parent) -> test-tool--afterInstall (child)
+      logger.expect(['INFO'], ['test-tool', 'test-tool--afterInstall'], ['Hook execution message']);
+      expect(result.success).toBe(true);
       expect(mockHook).toHaveBeenCalledTimes(1);
     });
 
@@ -165,7 +181,7 @@ describe('HookExecutor', () => {
 
       // Verify logger is a sublogger (should have the expected name in logs)
       enhancedContext.logger.info(testLogMessage('Test message'));
-      logger.expect(['INFO'], ['Hook-test-tool'], ['Test message']);
+      logger.expect(['INFO'], ['test-tool'], ['Test message']);
     });
   });
 

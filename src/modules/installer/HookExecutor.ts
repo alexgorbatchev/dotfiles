@@ -72,9 +72,13 @@ export class HookExecutor {
 
     this.logger.debug(DebugTemplates.hookExecutor.executingHook(), hookName, timeoutMs);
 
+    // Create hook-specific logger and update context
+    const hookSpecificLogger = context.logger.getSubLogger({ name: `${context.toolName}--${hookName}` });
+    const hookContext = { ...context, logger: hookSpecificLogger };
+
     try {
       // Create a promise that resolves when the hook completes
-      const hookPromise = hook(context);
+      const hookPromise = hook(hookContext);
 
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -142,7 +146,7 @@ export class HookExecutor {
     return {
       ...baseContext,
       fileSystem: enhancedFileSystem,
-      logger: logger.getSubLogger({ name: `Hook-${baseContext.toolName}` }),
+      logger: logger.getSubLogger({ name: baseContext.toolName }),
       appConfig,
       toolConfig,
     };

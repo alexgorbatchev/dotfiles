@@ -1,3 +1,4 @@
+
 import {
   createFile,
   createMockGitHubServer,
@@ -124,7 +125,8 @@ describe('E2E: bun run cli generate', () => {
           exit $?
         else
           # Capture both stdout and stderr from the install command
-          install_output=$("$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config "$CONFIG_PATH" "$TOOL_NAME" 2>&1)
+          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
           install_exit_code=$?
           
           if [ $install_exit_code -eq 0 ]; then
@@ -162,7 +164,8 @@ describe('E2E: bun run cli generate', () => {
           exit $?
         else
           # Capture both stdout and stderr from the install command
-          install_output=$("$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config "$CONFIG_PATH" "$TOOL_NAME" 2>&1)
+          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
           install_exit_code=$?
           
           if [ $install_exit_code -eq 0 ]; then
@@ -327,7 +330,7 @@ describe('E2E: bun run cli generate', () => {
         customCmd: [fzfShimPath],
         env: {},
       });
-
+      
       expect(shimResult.stderr).toBe('');
       expect(shimResult.stdout).toContain(`Mock fzf v${mockToolVersion}`);
       expect(shimResult.exitCode).toBe(0);

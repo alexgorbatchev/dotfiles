@@ -30,6 +30,8 @@ export function registerInstallCommand(
       const services = await servicesFactory();
       const { yamlConfig, fs, installer } = services;
 
+      let shouldExitWithCode: number | null = null;
+
       try {
         logger.debug(
           DebugTemplates.command.actionStarted('install', toolName),
@@ -41,40 +43,40 @@ export function registerInstallCommand(
 
         if (!toolConfig) {
           logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
-          exitCli(1);
-        }
-
-        // Starting installation process
-        const result = await installer.install(toolName, toolConfig, {
-          force: combinedOptions.force,
-          verbose: combinedOptions.verbose,
-        });
-
-        if (result.success) {
-          // Installation successful
-          if (combinedOptions.shimMode) {
-            // In shim mode, exit silently on success
-            exitCli(0);
-          } else {
-            // Normal mode: log success message
-            logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
-          }
+          shouldExitWithCode = 1;
         } else {
-          logger.debug(
-            DebugTemplates.command.actionStarted('install-failed', toolName),
-            result.error,
-          );
-          
-          if (combinedOptions.shimMode) {
-            // In shim mode, output user-friendly error message to stderr
-            // NOTE: Using console.error instead of logger here because shims need clean,
-            // unformatted error messages for end users (no timestamps, log levels, etc.)
-            console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
-            exitCli(1);
+          // Starting installation process
+          const result = await installer.install(toolName, toolConfig, {
+            force: combinedOptions.force,
+            verbose: combinedOptions.verbose,
+          });
+
+          if (result.success) {
+            // Installation successful
+            if (combinedOptions.shimMode) {
+              // In shim mode, exit silently on success
+              shouldExitWithCode = 0;
+            } else {
+              // Normal mode: log success message
+              logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
+            }
           } else {
-            // Normal mode: use logger
-            logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
-            exitCli(1);
+            logger.debug(
+              DebugTemplates.command.actionStarted('install-failed', toolName),
+              result.error,
+            );
+            
+            if (combinedOptions.shimMode) {
+              // In shim mode, output user-friendly error message to stderr
+              // NOTE: Using console.error instead of logger here because shims need clean,
+              // unformatted error messages for end users (no timestamps, log levels, etc.)
+              console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
+              shouldExitWithCode = 1;
+            } else {
+              // Normal mode: use logger
+              logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
+              shouldExitWithCode = 1;
+            }
           }
         }
       } catch (error) {
@@ -85,12 +87,16 @@ export function registerInstallCommand(
           // NOTE: Using console.error instead of logger here because shims need clean,
           // unformatted error messages for end users (no timestamps, log levels, etc.)
           console.error(`Failed to install '${toolName}': ${(error as Error).message}`);
-          exitCli(1);
+          shouldExitWithCode = 1;
         } else {
           // Normal mode: use logger
           logger.error(ErrorTemplates.command.executionFailed('install', 1, (error as Error).message));
-          exitCli(1);
+          shouldExitWithCode = 1;
         }
+      }
+
+      if (shouldExitWithCode !== null) {
+        exitCli(shouldExitWithCode);
       }
     });
 }

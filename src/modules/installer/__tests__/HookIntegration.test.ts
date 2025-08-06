@@ -397,7 +397,8 @@ describe('Hook Integration Tests', () => {
       // Verify that hook was executed with proper logger context
       expect(capturedLogger).toBeDefined();
       // Check if logger has proper context (logger structure may vary)
-      expect(capturedLogger.settings?.name || capturedLogger._name || capturedLogger.name).toMatch(/Hook.*logging-test-tool/);
+      // The new naming format is toolName--hookName
+      expect(capturedLogger.settings?.name || capturedLogger._name || capturedLogger.name).toMatch(/logging-test-tool--afterInstall/);
       
       // Verify hook execution completed
     });
