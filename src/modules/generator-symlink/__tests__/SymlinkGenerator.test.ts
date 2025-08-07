@@ -1,11 +1,11 @@
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject } from '@modules/config-loader';
-import { MOCK_DEFAULT_CONFIG_OBJ } from '@modules/config-loader/__tests__/fixtures';
 import {
   TestLogger,
   createMemFileSystem,
   createTestDirectories,
+  createMockYamlConfig,
   type MemFileSystemReturn,
+  type TestDirectories,
 } from '@testing-helpers';
 import type { ToolConfig, SystemInfo } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
@@ -19,33 +19,46 @@ describe('SymlinkGenerator', () => {
   let symlinkGenerator: SymlinkGenerator;
   let logger: TestLogger;
   let systemInfo: SystemInfo;
+  let testDirs: TestDirectories;
 
   beforeEach(async () => {
     mock.restore();
     logger = new TestLogger();
     mockFs = await createMemFileSystem();
-    systemInfo = { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' };
-    yamlConfig = await createYamlConfigFromObject(logger, mockFs.fs, MOCK_DEFAULT_CONFIG_OBJ, systemInfo, {});
+    
+    testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'symlink-generator' });
+    
+    systemInfo = { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir };
+    
+    yamlConfig = await createMockYamlConfig({
+      config: {
+        paths: testDirs.paths,
+      },
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFs.fs,
+      logger,
+      systemInfo,
+      env: {},
+    });
+    
     symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, yamlConfig, systemInfo);
-
-    await createTestDirectories(logger, mockFs.fs, { paths: yamlConfig.paths });
   });
 
   const createToolConfig = (symlinks: Array<{ source: string; target: string }>): ToolConfig => ({
     name: 'test-tool',
     binaries: ['test-tool'],
     version: '1.0.0',
-    configFilePath: '/test/configs/test-tool.tool.ts',
+    configFilePath: path.join(testDirs.paths.toolConfigsDir, 'test-tool.tool.ts'),
     symlinks,
     installationMethod: 'none',
     installParams: undefined,
   });
 
   // Helper function to get the absolute path where source files should be created (relative to config file)
-  const getSourcePath = (relativePath: string) => path.join('/test/configs', relativePath);
+  const getSourcePath = (relativePath: string) => path.join(testDirs.paths.toolConfigsDir, relativePath);
   
   // Helper function to get the absolute path where target symlinks will be created (relative to config file)
-  const getTargetPath = (relativePath: string) => path.join('/test/configs', relativePath);
+  const getTargetPath = (relativePath: string) => path.join(testDirs.paths.toolConfigsDir, relativePath);
 
   it('should create a symlink successfully', async () => {
     const sourcePath = 'src/file.txt';

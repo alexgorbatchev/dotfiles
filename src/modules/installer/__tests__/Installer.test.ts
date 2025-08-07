@@ -7,6 +7,7 @@ import type { IGitHubApiClient } from '@modules/github-client';
 import {
   createMemFileSystem,
   createTestDirectories,
+  createMockYamlConfig,
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
@@ -141,17 +142,16 @@ describe('Installer', () => {
     };
 
     // Setup mock app config
-    mockAppConfig = await createYamlConfigFromObject(
-      logger,
-      mockFileSystem,
-      {
-        paths: {
-          ...testDirs.paths,
-        },
+    mockAppConfig = await createMockYamlConfig({
+      config: {
+        paths: testDirs.paths,
       },
-      { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
-      {}
-    );
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFileSystem,
+      logger,
+      systemInfo: { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
+      env: {},
+    });
 
     // Create installer instance
     installer = new Installer(

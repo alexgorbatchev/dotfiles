@@ -1,6 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject } from '@modules/config-loader';
-import { createMemFileSystem, type FileSystemSpies, TestLogger } from '@testing-helpers';
+import { createMemFileSystem, createMockYamlConfig, createTestDirectories, type FileSystemSpies, TestLogger, type TestDirectories } from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
@@ -13,20 +12,34 @@ describe('ShimGenerator', () => {
   let shimGenerator: ShimGenerator;
   let fsMocks: FileSystemSpies;
   let logger: TestLogger;
+  let testDirs: TestDirectories;
 
   beforeEach(async () => {
     const { fs, spies } = await createMemFileSystem({});
     fsMocks = spies;
     logger = new TestLogger();
-
-    mockConfig = await createYamlConfigFromObject(
+    
+    testDirs = await createTestDirectories(logger, fs, { testName: 'shim-generator' });
+    
+    mockConfig = await createMockYamlConfig({
+      config: {
+        paths: testDirs.paths,
+      },
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: fs,
       logger,
-      fs,
-      {}, 
-      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
-      {}
-    );
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+      env: {},
+    });
+    
     shimGenerator = new ShimGenerator(logger, fs, mockConfig);
+    
+    // Clear all mock calls from the setup phase (createMockYamlConfig writes config file)
+    Object.values(fsMocks).forEach(mock => {
+      if (typeof mock.mockClear === 'function') {
+        mock.mockClear();
+      }
+    });
   });
 
   describe('constructor', () => {

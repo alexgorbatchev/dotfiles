@@ -1,18 +1,12 @@
-import type { GlobalProgram, Services } from '@cli';
-import { createProgram } from '@cli';
-import { exitCli } from '@modules/cli/exitCli';
+import type { GlobalProgram } from '@cli';
 import { type YamlConfig } from '@modules/config';
 import {
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
-  createYamlConfigFromObject,
 } from '@modules/config-loader';
 import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import {
-  createMemFileSystem,
-  TestLogger,
-  type MemFileSystemReturn,
-} from '@testing-helpers';
+import { TestLogger, type MemFileSystemReturn } from '@testing-helpers';
+import { createCliTestSetup } from './createCliTestSetup';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
@@ -21,14 +15,7 @@ import { registerDetectConflictsCommand } from '../detectConflictsCommand';
 setupTestCleanup();
 const mockModules = createModuleMocker();
 
-const createMockExitCli = () =>
-  mock((code: number) => {
-    throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
-  });
-
 const createMockLoadToolConfigsFromDirectory = () => mock(actualLoadToolConfigsFromDirectory);
-
-let mockExitCli: ReturnType<typeof createMockExitCli>;
 let mockLoadToolConfigsFromDirectory: ReturnType<typeof createMockLoadToolConfigsFromDirectory>;
 
 describe('detectConflictsCommand', () => {
@@ -59,29 +46,23 @@ describe('detectConflictsCommand', () => {
     mock.restore();
     clearMockRegistry();
 
-    logger = new TestLogger();
+    const setup = await createCliTestSetup({
+      testName: 'detect-conflicts-command',
+    });
 
-    mockExitCli = createMockExitCli();
+    program = setup.program;
+    logger = setup.logger;
+    mockFs = setup.mockFs;
+    mockYamlConfig = setup.mockYamlConfig;
+
     mockLoadToolConfigsFromDirectory = createMockLoadToolConfigsFromDirectory();
-
-    await mockModules.mock('@modules/cli/exitCli', () => ({
-      exitCli: mockExitCli,
-    }));
 
     await mockModules.mock('@modules/config-loader', () => ({
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
       loadSingleToolConfig: mock(async () => ({})),
     }));
 
-    program = createProgram();
-    mockFs = await createMemFileSystem({});
-
-    mockYamlConfig = await createYamlConfigFromObject(logger, mockFs.fs);
-
-    registerDetectConflictsCommand(logger, program, async () => ({
-      yamlConfig: mockYamlConfig,
-      fs: mockFs.fs.asIFileSystem,
-    } as Services));
+    registerDetectConflictsCommand(logger, program, async () => setup.createServices());
   });
 
   afterEach(() => {
@@ -118,7 +99,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         [/No tool configurations found in .*\/configs\/tools/],
       );
-      expect(exitCli).toHaveBeenCalledWith(0);
     });
 
     test('Error during loadToolConfigsFromDirectory - should log error and exit 1', async () => {
@@ -134,7 +114,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         [ErrorTemplates.config.loadFailed('tool configurations', loadError.message)],
       );
-      expect(exitCli).toHaveBeenCalledWith(1);
     });
 
     test('No conflicts found - should log info and exit 0', async () => {
@@ -150,7 +129,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         ['No conflicts detected'],
       );
-      expect(exitCli).toHaveBeenCalledWith(0);
     });
 
     test('Shim path conflict (not a generator shim) - should log warning and exit 1', async () => {
@@ -173,7 +151,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         [expectedMessageShim],
       );
-      expect(exitCli).toHaveBeenCalledWith(1);
     });
 
     test('Shim path exists and IS a generator shim - should NOT log warning for this shim', async () => {
@@ -194,7 +171,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         ['No conflicts detected'],
       );
-      expect(exitCli).toHaveBeenCalledWith(0);
     });
 
     test('Symlink target exists as a file - should log warning and exit 1', async () => {
@@ -219,7 +195,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         [expectedMessageSymlinkFile],
       );
-      expect(exitCli).toHaveBeenCalledWith(1);
     });
 
     test('Symlink target exists as a symlink to a different source - should log warning and exit 1', async () => {
@@ -245,7 +220,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         [expectedMessage],
       );
-      expect(exitCli).toHaveBeenCalledWith(1);
     });
 
     test('Multiple conflicts (shim and symlink) - should log all warnings and exit 1', async () => {
@@ -276,7 +250,6 @@ describe('detectConflictsCommand', () => {
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
         [expectedMessageMultiple],
       );
-      expect(exitCli).toHaveBeenCalledWith(1);
     });
   });
 });

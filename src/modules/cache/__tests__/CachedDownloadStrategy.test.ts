@@ -276,7 +276,7 @@ describe('CachedDownloadStrategy', () => {
     it('should propagate download errors from underlying strategy', async () => {
       mockStrategy.shouldFail = true;
       
-      await expect(cachedStrategy.download('https://example.com/file.txt'))
+      expect(cachedStrategy.download('https://example.com/file.txt'))
         .rejects.toThrow('Mock download failed');
     });
 

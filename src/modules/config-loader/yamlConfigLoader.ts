@@ -12,6 +12,7 @@ import path from 'node:path';
 
 /**
  * Detects the current operating system
+ * 
  * @param platform - The platform from NodeJS.Process
  * @returns The detected OS as a string ('macos', 'linux', or 'windows')
  */
@@ -52,6 +53,7 @@ export interface PlatformOverride {
 /**
  * Deep merges two objects, with values from the second object overriding those in the first.
  * This function creates a new object and does not modify the original objects.
+ * 
  * @param target - The target object to merge into.
  * @param source - The source object to merge from.
  * @returns The merged object.
@@ -87,6 +89,7 @@ function deepMerge<T extends Record<string, unknown>>(
 
 /**
  * Applies platform-specific overrides based on the current OS and architecture.
+ * 
  * @param config - The configuration object to apply overrides to.
  * @param systemInfo - System information for platform detection.
  * @returns The configuration with platform-specific overrides applied.
@@ -158,6 +161,7 @@ function applyPlatformOverrides(
 
 /**
  * Recursively processes an object to expand home paths in string values.
+ * 
  * @param target - The object to process.
  * @param systemInfo - System information containing the home directory.
  * @returns The object with home paths expanded.
@@ -185,6 +189,7 @@ function expandHomePathsInObject(target: unknown, homeDir: string): unknown {
 /**
  * Substitutes tokens in the configuration with values from environment variables and other config values.
  * Also expands home paths (~ character) in string values.
+ * 
  * @param config - The configuration object to substitute tokens in.
  * @param env - Environment variables for substitution.
  * @param fullConfig - The full configuration object for reference substitution.
@@ -328,8 +333,8 @@ export async function loadYamlConfig(
 }
 
 /**
- * Creates a validated YAML configuration by merging default and user config objects.
- * Applies platform-specific overrides and performs token substitution.
+ * Creates a validated YAML configuration by merging default and user config objects.  Applies platform-specific
+ * overrides and performs token substitution.
  *
  * @param defaultConfig - The default configuration object
  * @param userConfig - The user configuration object that overrides default values
@@ -338,10 +343,7 @@ export async function loadYamlConfig(
  * @returns A promise that resolves to the validated YAML configuration
  *
  * @testing
- * This function is primarily tested through `createMockYamlConfig`, which uses
- * it to generate configuration objects from partial mock data.
- * - `createMockYamlConfig`: A helper that simplifies the creation of YAML config files for tests.
- *   (import from `@testing-helpers`)
+ * When writing tests, `createMockYamlConfig` should be used to create a mock configuration object.
  */
 export async function createYamlConfigFromObject(
   parentLogger: TsLogger,

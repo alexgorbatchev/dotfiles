@@ -2,18 +2,32 @@ import { mock } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
 import {
   createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
   type PartialYamlConfig,
   TestLogger,
 } from '@testing-helpers';
 import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
 import type { ICache } from '@modules/cache';
-import { createYamlConfigFromObject, } from '../../../config-loader';
+import path from 'node:path';
 
 export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
-  return createYamlConfigFromObject(logger, memFs.fs, overrides);
+  const testDirs = await createTestDirectories(logger, memFs.fs, { testName: 'github-api-client' });
+  
+  return createMockYamlConfig({
+    config: {
+      paths: testDirs.paths,
+      ...overrides,
+    },
+    filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+    fileSystem: memFs.fs,
+    logger,
+    systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+    env: {},
+  });
 };
 
 export const createMockDownloader = (): IDownloader & {

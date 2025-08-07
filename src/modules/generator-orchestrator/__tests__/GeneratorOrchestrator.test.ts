@@ -1,11 +1,10 @@
 import type { YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject, } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator } from '@modules/generator-shell-init';
 import type { IShimGenerator } from '@modules/generator-shim';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
-import { createMemFileSystem, TestLogger } from '@testing-helpers';
-import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
+import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import type { GeneratedArtifactsManifest, ToolConfig, SystemInfo } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
@@ -18,6 +17,8 @@ describe('GeneratorOrchestrator', () => {
   let mockAppConfig: YamlConfig;
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
+  let testDirs: TestDirectories;
+  let systemInfo: SystemInfo;
 
   let mockFsReadFile: ReturnType<typeof spyOn>;
   let mockFsExists: ReturnType<typeof spyOn>;
@@ -45,22 +46,30 @@ describe('GeneratorOrchestrator', () => {
     mockFileSystem = fs;
     mockFsReadFile = spies.readFile;
     mockFsExists = spies.exists;
-    mockAppConfig = await createYamlConfigFromObject(
+    
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator' });
+    
+    systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
+    
+    mockAppConfig = await createMockYamlConfig({
+      config: {
+        paths: testDirs.paths,
+      },
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFileSystem,
       logger,
-      fs,
-      {},
-      { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
-      {}
-    );
+      systemInfo,
+      env: {},
+    });
 
-    logger = new TestLogger();
     orchestrator = new GeneratorOrchestrator(
       logger,
       mockShimGenerator,
       mockShellInitGenerator,
       mockSymlinkGenerator,
       mockFileSystem,
-      mockAppConfig
+      mockAppConfig,
+      systemInfo
     );
   });
 
@@ -100,7 +109,8 @@ describe('GeneratorOrchestrator', () => {
         overwrite: true,
       });
       expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, { 
-        shellTypes: ['zsh', 'bash', 'powershell'] 
+        shellTypes: ['zsh', 'bash', 'powershell'],
+        systemInfo 
       });
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         // dryRun: false, // Removed
@@ -234,7 +244,8 @@ describe('GeneratorOrchestrator', () => {
           overwrite: true,
         });
         expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, { 
-        shellTypes: ['zsh', 'bash', 'powershell'] 
+        shellTypes: ['zsh', 'bash', 'powershell'],
+        systemInfo 
       }); 
         expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,

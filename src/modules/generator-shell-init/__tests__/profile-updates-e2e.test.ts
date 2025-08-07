@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { TestLogger, createMemFileSystem } from '@testing-helpers';
+import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
 import type { IFileSystem } from '@modules/file-system';
-import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig, ShellType } from '@types';
 import { ShellInitGenerator } from '../ShellInitGenerator';
@@ -14,31 +13,26 @@ describe('Profile Updates E2E Tests', () => {
   let mockAppConfig: YamlConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
-
-  const DEFAULT_HOME_DIR = '/home/test';
-  const DEFAULT_SHELL_SCRIPTS_DIR = '/home/test/.dotfiles/.generated/shell-scripts';
-  const DEFAULT_DOTFILES_DIR = '/home/test/.dotfiles';
-  const DEFAULT_BIN_DIR = '/home/test/.dotfiles/.generated/binaries';
+  let testDirs: TestDirectories;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
     logger = new TestLogger();
-    mockAppConfig = await createYamlConfigFromObject(
-      logger,
-      fs,
-      {
-        paths: {
-          homeDir: DEFAULT_HOME_DIR,
-          dotfilesDir: DEFAULT_DOTFILES_DIR,
-          shellScriptsDir: DEFAULT_SHELL_SCRIPTS_DIR,
-          binariesDir: DEFAULT_BIN_DIR,
-          generatedDir: path.join(DEFAULT_DOTFILES_DIR, '.generated'),
-        },
+    
+    testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'profile-updates-e2e' });
+    
+    mockAppConfig = await createMockYamlConfig({
+      config: {
+        paths: testDirs.paths,
       },
-      { platform: 'linux', arch: 'x64', homeDir: DEFAULT_HOME_DIR },
-      {}
-    );
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFileSystem,
+      logger,
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+      env: {},
+    });
+    
     generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
   });
 
@@ -84,7 +78,7 @@ describe('Profile Updates E2E Tests', () => {
       // Setup: Create existing shell profile files with realistic content
       const shellProfiles = {
         zsh: {
-          path: path.join(DEFAULT_HOME_DIR, '.zshrc'),
+          path: path.join(testDirs.paths.homeDir, '.zshrc'),
           content: dedentString(`
             # Zsh configuration
             export ZSH="$HOME/.oh-my-zsh"
@@ -98,7 +92,7 @@ describe('Profile Updates E2E Tests', () => {
           `),
         },
         bash: {
-          path: path.join(DEFAULT_HOME_DIR, '.bashrc'),
+          path: path.join(testDirs.paths.homeDir, '.bashrc'),
           content: dedentString(`
             # Bash configuration
             export PS1='\\u@\\h:\\w\\$ '
@@ -111,7 +105,7 @@ describe('Profile Updates E2E Tests', () => {
           `),
         },
         powershell: {
-          path: path.join(DEFAULT_HOME_DIR, '.config/powershell/profile.ps1'),
+          path: path.join(testDirs.paths.homeDir, '.config/powershell/profile.ps1'),
           content: dedentString(`
             # PowerShell configuration
             $PSDefaultParameterValues['Out-Default:OutVariable'] = '__'
@@ -152,9 +146,9 @@ describe('Profile Updates E2E Tests', () => {
 
       // Verify: Generated shell script files exist and contain expected content
       const generatedFiles = [
-        { shell: 'zsh', path: path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'main.zsh') },
-        { shell: 'bash', path: path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'main.bash') },
-        { shell: 'powershell', path: path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'main.ps1') },
+        { shell: 'zsh', path: path.join(testDirs.paths.shellScriptsDir, 'main.zsh') },
+        { shell: 'bash', path: path.join(testDirs.paths.shellScriptsDir, 'main.bash') },
+        { shell: 'powershell', path: path.join(testDirs.paths.shellScriptsDir, 'main.ps1') },
       ];
 
       for (const { shell, path: scriptPath } of generatedFiles) {
@@ -168,11 +162,11 @@ describe('Profile Updates E2E Tests', () => {
         
         // Check shell-specific PATH syntax
         if (shell === 'powershell') {
-          expect(scriptContent).toContain(`$env:PATH = "${DEFAULT_BIN_DIR};$env:PATH"`);
+          expect(scriptContent).toContain(`$env:PATH = "${testDirs.paths.binariesDir};$env:PATH"`);
           expect(scriptContent).toContain('Set-Alias g lazygit');
           expect(scriptContent).toContain('$env:LAZYGIT_CONFIG_FILE');
         } else {
-          expect(scriptContent).toContain(`export PATH="${DEFAULT_BIN_DIR}:$PATH"`);
+          expect(scriptContent).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
           expect(scriptContent).toContain('alias g="lazygit"');
           expect(scriptContent).toContain('export LAZYGIT_CONFIG_FILE');
           expect(scriptContent).toContain('export FZF_DEFAULT_OPTS');
@@ -236,10 +230,10 @@ describe('Profile Updates E2E Tests', () => {
       // - Bash profile exists and already has the sourcing line
       // - PowerShell profile doesn't exist
       
-      const zshProfile = path.join(DEFAULT_HOME_DIR, '.zshrc');
-      const bashProfile = path.join(DEFAULT_HOME_DIR, '.bashrc');
-      const zshScriptPath = path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'main.zsh');
-      const bashScriptPath = path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'main.bash');
+      const zshProfile = path.join(testDirs.paths.homeDir, '.zshrc');
+      const bashProfile = path.join(testDirs.paths.homeDir, '.bashrc');
+      const zshScriptPath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
+      const bashScriptPath = path.join(testDirs.paths.shellScriptsDir, 'main.bash');
       
       // Create zsh profile (empty)
       await mockFileSystem.ensureDir(path.dirname(zshProfile));
@@ -280,7 +274,7 @@ describe('Profile Updates E2E Tests', () => {
       });
 
       // Verify PowerShell profile was not updated (didn't exist)
-      const psProfile = path.join(DEFAULT_HOME_DIR, '.config/powershell/profile.ps1');
+      const psProfile = path.join(testDirs.paths.homeDir, '.config/powershell/profile.ps1');
       const psUpdate = result?.profileUpdates?.find(u => u.shellType === 'powershell');
       expect(psUpdate).toEqual({
         shellType: 'powershell',
@@ -313,7 +307,7 @@ describe('Profile Updates E2E Tests', () => {
       };
 
       // Create existing zsh profile
-      const zshProfile = path.join(DEFAULT_HOME_DIR, '.zshrc');
+      const zshProfile = path.join(testDirs.paths.homeDir, '.zshrc');
       await mockFileSystem.ensureDir(path.dirname(zshProfile));
       await mockFileSystem.writeFile(zshProfile, '# Existing config\n');
 
@@ -338,7 +332,7 @@ describe('Profile Updates E2E Tests', () => {
 
       const profileContent = await mockFileSystem.readFile(zshProfile);
       expect(profileContent).toContain(`source "${customOutputPath}"`);
-      expect(profileContent).not.toContain(path.join(DEFAULT_SHELL_SCRIPTS_DIR, 'main.zsh'));
+      expect(profileContent).not.toContain(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
     });
 
     it('should generate comprehensive shell script content and update profiles for real-world scenario', async () => {
@@ -406,8 +400,8 @@ describe('Profile Updates E2E Tests', () => {
       };
 
       // Create realistic shell profiles
-      const zshProfile = path.join(DEFAULT_HOME_DIR, '.zshrc');
-      const bashProfile = path.join(DEFAULT_HOME_DIR, '.bashrc');
+      const zshProfile = path.join(testDirs.paths.homeDir, '.zshrc');
+      const bashProfile = path.join(testDirs.paths.homeDir, '.bashrc');
       
       await mockFileSystem.ensureDir(path.dirname(zshProfile));
       await mockFileSystem.writeFile(zshProfile, dedentString(`
@@ -463,7 +457,7 @@ describe('Profile Updates E2E Tests', () => {
 
       // Check hoisted PATH modifications
       expect(zshScriptContent).toContain('# ============================= PATH Modifications ==============================');
-      expect(zshScriptContent).toContain(`export PATH="${DEFAULT_BIN_DIR}:$PATH"`);
+      expect(zshScriptContent).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
       expect(zshScriptContent).toContain('export PATH="$HOME/.cargo/bin:$PATH"');
 
       // Check hoisted environment variables

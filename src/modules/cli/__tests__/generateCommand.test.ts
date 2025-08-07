@@ -1,14 +1,12 @@
-import type { GlobalProgram, Services } from '@cli';
-import { createProgram } from '@cli';
+import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import {
-  createYamlConfigFromObject,
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
 } from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
-import { TestLogger } from '@testing-helpers';
-import { createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
+import { TestLogger, type MemFileSystemReturn } from '@testing-helpers';
+import { createCliTestSetup } from './createCliTestSetup';
 import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -34,10 +32,14 @@ describe('generateCommand', () => {
   } as ToolConfig;
 
   beforeEach(async () => {
-    program = createProgram();
-    logger = new TestLogger();
-    mockFs = await createMemFileSystem({});
-    mockYamlConfig = await createYamlConfigFromObject(logger, mockFs.fs);
+    const setup = await createCliTestSetup({
+      testName: 'generate-command',
+    });
+
+    program = setup.program;
+    logger = setup.logger;
+    mockFs = setup.mockFs;
+    mockYamlConfig = setup.mockYamlConfig;
 
     mockLoadToolConfigsFromDirectory = createMockLoadToolConfigsFromDirectory();
     mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
@@ -45,7 +47,6 @@ describe('generateCommand', () => {
     await mockModules.mock('@modules/config-loader', () => ({
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
       loadSingleToolConfig: mock(async () => ({})),
-      createYamlConfigFromObject,
     }));
 
     const mockManifest: GeneratedArtifactsManifest = {
@@ -65,11 +66,10 @@ describe('generateCommand', () => {
       generateAll: mock(async () => mockManifest),
     };
 
-    registerGenerateCommand(logger, program, async () => ({
-      yamlConfig: mockYamlConfig,
-      fs: mockFs.fs.asIFileSystem,
-      generatorOrchestrator: mockGeneratorOrchestrator,
-    } as Services));
+    // Update the mockServices with our custom implementation
+    setup.mockServices.generatorOrchestrator = mockGeneratorOrchestrator;
+
+    registerGenerateCommand(logger, program, async () => setup.createServices());
   });
 
   afterEach(() => {

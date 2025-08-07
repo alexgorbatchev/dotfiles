@@ -1,13 +1,8 @@
-import type { GlobalProgram, Services } from '@cli';
-import { createProgram } from '@cli';
+import type { GlobalProgram } from '@cli';
 import { type YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject } from '@modules/config-loader';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import {
-  TestLogger,
-  createMemFileSystem,
-  type MockedFileSystem,
-} from '@testing-helpers';
+import { TestLogger, type MockedFileSystem } from '@testing-helpers';
+import { createCliTestSetup } from './createCliTestSetup';
 import type { GeneratedArtifactsManifest } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { registerCleanupCommand } from '../cleanupCommand';
@@ -30,14 +25,17 @@ describe('cleanupCommand', () => {
 
   beforeEach(async () => {
     mock.restore();
-    program = createProgram();
-    logger = new TestLogger();
 
-    const { fs, addFiles, addSymlinks } = await createMemFileSystem({});
+    const setup = await createCliTestSetup({
+      testName: 'cleanup-command',
+    });
 
-    mockYamlConfig = await createYamlConfigFromObject(logger, fs);
+    program = setup.program;
+    logger = setup.logger;
+    mockFs = setup.mockFs.fs;
+    mockYamlConfig = setup.mockYamlConfig;
 
-    mockFs = fs;
+    const { addFiles, addSymlinks } = setup.mockFs;
     mockShim1 = '/usr/bin/shim1';
     mockShim2 = `${mockYamlConfig.paths.generatedDir}/bin/shim2`;
     mockShellInit = `${mockYamlConfig.paths.shellScriptsDir}/main.zsh`;
@@ -69,10 +67,7 @@ describe('cleanupCommand', () => {
       [mockSymlinkSource]: mockSymlinkTarget,
     });
 
-    registerCleanupCommand(logger, program, async () => ({
-      yamlConfig: mockYamlConfig,
-      fs: mockFs.asIFileSystem,
-    } as Services));
+    registerCleanupCommand(logger, program, async () => setup.createServices());
   });
 
   afterEach(() => {

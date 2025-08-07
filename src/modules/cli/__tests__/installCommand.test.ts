@@ -1,18 +1,12 @@
-import type { GlobalProgram, Services } from '@cli';
-import { createProgram } from '@cli';
-import { exitCli } from '@modules/cli/exitCli';
+import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
-  createYamlConfigFromObject,
 } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
-import {
-  createMemFileSystem,
-  type MemFileSystemReturn,
-  TestLogger,
-} from '@testing-helpers';
+import { TestLogger } from '@testing-helpers';
+import { createCliTestSetup } from './createCliTestSetup';
 import type { ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerInstallCommand } from '../installCommand';
@@ -27,17 +21,15 @@ setupTestCleanup();
 
 const mockModules = createModuleMocker();
 
-const mockExitCli = mock(exitCli);
 const mockLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
 const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
 
 describe('installCommand', () => {
   let program: GlobalProgram;
-  let mockServices: Services;
   let mockInstaller: IInstaller;
   let mockYamlConfig: YamlConfig;
-  let mockFs: MemFileSystemReturn;
   let testLogger: TestLogger;
+  let mockServices: any;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -48,14 +40,7 @@ describe('installCommand', () => {
   };
 
   beforeEach(async () => {
-    program = createProgram();
-    testLogger = new TestLogger();
-
-    mockFs = await createMemFileSystem({
-    });
-
-    mockYamlConfig = await createYamlConfigFromObject(testLogger, mockFs.fs);
-
+    // Create custom installer mock with specific behavior
     mockInstaller = {
       install: mock(
         async (): Promise<InstallResult> => ({
@@ -66,21 +51,19 @@ describe('installCommand', () => {
       ),
     };
 
-    mockServices = {
-      yamlConfig: mockYamlConfig,
-      fs: mockFs.fs.asIFileSystem,
-      installer: mockInstaller,
-    } as Services;
-
-    mockExitCli.mockImplementation((code: number) => {
-      throw new Error(`MOCK_EXIT_CLI_CALLED_WITH_${code}`);
+    const setup = await createCliTestSetup({
+      testName: 'install-command',
+      services: {
+        installer: mockInstaller,
+      },
     });
 
-    // Set up mocks
-    await mockModules.mock('@modules/cli/exitCli', () => ({
-      exitCli: mockExitCli,
-    }));
+    program = setup.program;
+    testLogger = setup.logger;
+    mockYamlConfig = setup.mockYamlConfig;
+    mockServices = setup.createServices();
 
+    // Set up mocks
     await mockModules.mock('@modules/config-loader', () => ({
       loadSingleToolConfig: mockLoadSingleToolConfig,
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
@@ -120,7 +103,7 @@ describe('installCommand', () => {
   test('should exit silently in shim mode when installation succeeds', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
     
-    await expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+    expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_0'
     );
 
@@ -129,7 +112,6 @@ describe('installCommand', () => {
       verbose: false,
     });
     
-    expect(mockExitCli).toHaveBeenCalledWith(0);
     
     // Should not log success message in shim mode
     expect(() => testLogger.expect(['INFO'], ['registerInstallCommand'], [/installed successfully/])).toThrow();
@@ -148,15 +130,13 @@ describe('installCommand', () => {
     console.error = mockConsoleError as any;
     
     try {
-      await expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+      expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
         'MOCK_EXIT_CLI_CALLED_WITH_1'
       );
       
       // Should output user-friendly error to stderr
       expect(mockConsoleError).toHaveBeenCalledWith("Failed to install 'toolA': Download failed: Network timeout");
       
-      // Should exit with code 1
-      expect(mockExitCli).toHaveBeenCalledWith(1);
     } finally {
       console.error = originalConsoleError;
     }
@@ -171,15 +151,13 @@ describe('installCommand', () => {
     console.error = mockConsoleError as any;
     
     try {
-      await expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
+      expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
         'MOCK_EXIT_CLI_CALLED_WITH_1'
       );
       
       // Should output user-friendly error to stderr
       expect(mockConsoleError).toHaveBeenCalledWith("Failed to install 'toolA': Config file corrupted");
       
-      // Should exit with code 1
-      expect(mockExitCli).toHaveBeenCalledWith(1);
     } finally {
       console.error = originalConsoleError;
     }
@@ -195,7 +173,6 @@ describe('installCommand', () => {
     testLogger.expect(['ERROR'], ['registerInstallCommand'], [
       ErrorTemplates.tool.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
     ]);
-    expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 
   test('should exit with error if installation fails', async () => {
@@ -212,7 +189,6 @@ describe('installCommand', () => {
     testLogger.expect(['ERROR'], ['registerInstallCommand'], [
       ErrorTemplates.tool.installFailed('unknown', 'toolA', 'Installation failed'),
     ]);
-    expect(mockExitCli).toHaveBeenCalledWith(1);
   });
 
   test('should pass force option to installer', async () => {

@@ -1,19 +1,19 @@
-import type { GlobalProgram, Services } from '@cli';
+import type { GlobalProgram } from '@cli';
 import { createProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
-  createYamlConfigFromObject,
 } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
 import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import { TestLogger, createMemFileSystem } from '@testing-helpers';
+import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import path from 'node:path';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 
 // Set up test cleanup
@@ -54,8 +54,10 @@ const manualToolConfig: ToolConfig = {
 
 describe('checkUpdatesCommand', () => {
   let program: GlobalProgram;
-  let mockServices: Services;
   let logger: TestLogger;
+  let testDirs: TestDirectories;
+  let mockGitHubApiClient: Partial<IGitHubApiClient>;
+  let mockVersionChecker: Partial<IVersionChecker>;
 
   beforeEach(async () => {
     mock.restore();
@@ -66,19 +68,29 @@ describe('checkUpdatesCommand', () => {
     await mockModules.mock('@modules/config-loader', () => ({
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
       loadSingleToolConfig: mockLoadSingleToolConfig,
-      createYamlConfigFromObject,
       getDefaultConfigPath: mockGetDefaultConfigPath,
     }));
 
     const mockFs = await createMemFileSystem({});
+    
+    testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'check-updates-command' });
 
-    mockYamlConfig = await createYamlConfigFromObject(logger, mockFs.fs);
+    mockYamlConfig = await createMockYamlConfig({
+      config: {
+        paths: testDirs.paths,
+      },
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFs.fs,
+      logger,
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+      env: {},
+    });
 
-    const mockVersionChecker: Partial<IVersionChecker> = {
+    mockVersionChecker = {
       checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
     };
 
-    const mockGitHubApiClient: Partial<IGitHubApiClient> = {
+    mockGitHubApiClient = {
       getLatestRelease: mock(
         async (owner: string, repo: string): Promise<GitHubRelease | null> => ({
           id: 123,
@@ -95,14 +107,14 @@ describe('checkUpdatesCommand', () => {
       ),
     };
 
-    mockServices = {
+    const mockServices = {
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
       versionChecker: mockVersionChecker as IVersionChecker,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
-    } as Services;
+    };
 
-    registerCheckUpdatesCommand(logger, program, async () => mockServices);
+    registerCheckUpdatesCommand(logger, program, async () => mockServices as any);
   });
 
   afterEach(() => {
@@ -115,10 +127,10 @@ describe('checkUpdatesCommand', () => {
 
   test('should report a tool is up-to-date', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockServices.githubApiClient.getLatestRelease as any).mockResolvedValue({
+    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
       tag_name: 'v0.40.0',
     });
-    (mockServices.versionChecker.checkVersionStatus as any).mockResolvedValue(
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
       VersionComparisonStatus.UP_TO_DATE,
     );
 
@@ -133,11 +145,11 @@ describe('checkUpdatesCommand', () => {
 
   test('should report an update is available', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockServices.githubApiClient.getLatestRelease as any).mockResolvedValue({
+    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
       tag_name: 'v0.41.0',
     });
 
-    (mockServices.versionChecker.checkVersionStatus as any).mockResolvedValue(
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
       VersionComparisonStatus.NEWER_AVAILABLE,
     );
 
@@ -156,11 +168,11 @@ describe('checkUpdatesCommand', () => {
       lazygit: lazygitToolConfig,
     });
 
-    (mockServices.githubApiClient.getLatestRelease as any)
+    (mockGitHubApiClient.getLatestRelease as any)
       .mockResolvedValueOnce({ tag_name: 'v0.40.0' })
       .mockResolvedValueOnce({ tag_name: 'v0.36.0' });
 
-    (mockServices.versionChecker.checkVersionStatus as any)
+    (mockVersionChecker.checkVersionStatus as any)
       .mockResolvedValueOnce(VersionComparisonStatus.UP_TO_DATE)
       .mockResolvedValueOnce(VersionComparisonStatus.NEWER_AVAILABLE);
 
@@ -178,7 +190,7 @@ describe('checkUpdatesCommand', () => {
   test('should handle tool configured with "latest" version', async () => {
     const fzfLatestConfig: GithubReleaseToolConfig = { ...fzfToolConfig, version: 'latest' };
     mockLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
-    (mockServices.githubApiClient.getLatestRelease as any).mockResolvedValue({
+    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
       tag_name: 'v0.42.0',
     });
 
@@ -205,7 +217,7 @@ describe('checkUpdatesCommand', () => {
 
   test('should handle GitHub API error gracefully', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockServices.githubApiClient.getLatestRelease as any).mockRejectedValue(
+    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(
       new Error('GitHub API unavailable'),
     );
 

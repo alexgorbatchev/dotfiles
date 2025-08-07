@@ -1,5 +1,4 @@
 import { type YamlConfig } from '@modules/config';
-import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
@@ -7,11 +6,13 @@ import type { IGitHubApiClient } from '@modules/github-client';
 import {
   createMemFileSystem,
   createTestDirectories,
+  createMockYamlConfig,
   TestLogger,
   type TestDirectories,
 } from '@testing-helpers';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, type Mock } from 'bun:test';
+import path from 'node:path';
 import { Installer } from '../Installer';
 
 describe('Installer with custom GitHub host', () => {
@@ -98,20 +99,19 @@ describe('Installer with custom GitHub host', () => {
     };
 
     // Setup mock AppConfig with custom GitHub host
-    mockAppConfig = await createYamlConfigFromObject(
-      logger,
-      mockFileSystem,
-      {
-        paths: {
-          ...directories.paths,
-        },
+    mockAppConfig = await createMockYamlConfig({
+      config: {
+        paths: directories.paths,
         github: {
           host: githubHost,
         },
       },
-      { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
-      {}
-    );
+      filePath: path.join(directories.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFileSystem,
+      logger,
+      systemInfo: { platform: 'linux', arch: 'x64', release: 'test', homeDir: directories.paths.homeDir },
+      env: {},
+    });
 
     // Create installer instance
     installer = new Installer(
