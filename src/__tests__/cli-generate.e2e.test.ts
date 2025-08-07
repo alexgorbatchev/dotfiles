@@ -120,6 +120,14 @@ describe('E2E: bun run cli generate', () => {
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="${path.join(testDirs.paths.dotfilesDir, 'config.yaml')}"
 
+        # Check if the first argument is @update
+        if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
+          echo "Updating $TOOL_NAME to latest version..."
+          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+          exit $?
+        fi
+
         if [ -x "$TOOL_EXECUTABLE" ]; then
           exec "$TOOL_EXECUTABLE" "$@"
           exit $?
@@ -158,6 +166,14 @@ describe('E2E: bun run cli generate', () => {
         TOOL_EXECUTABLE="${path.join(testDirs.paths.binariesDir, 'lazygit', 'lazygit')}"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="${path.join(testDirs.paths.dotfilesDir, 'config.yaml')}"
+
+        # Check if the first argument is @update
+        if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
+          echo "Updating $TOOL_NAME to latest version..."
+          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+          exit $?
+        fi
 
         if [ -x "$TOOL_EXECUTABLE" ]; then
           exec "$TOOL_EXECUTABLE" "$@"

@@ -116,6 +116,14 @@ TOOL_EXECUTABLE="${toolBinPath}"
 GENERATOR_CLI_EXECUTABLE="${getCliBinPath()}"
 CONFIG_PATH="${this.config.userConfigPath}"
 
+# Check if the first argument is @update
+if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
+  echo "Updating $TOOL_NAME to latest version..."
+  # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+  eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+  exit $?
+fi
+
 if [ -x "$TOOL_EXECUTABLE" ]; then
   exec "$TOOL_EXECUTABLE" "$@"
   exit $?

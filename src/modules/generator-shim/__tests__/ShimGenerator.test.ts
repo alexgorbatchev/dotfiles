@@ -78,6 +78,14 @@ describe('ShimGenerator', () => {
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="/path/to/config.yaml"
 
+        # Check if the first argument is @update
+        if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
+          echo "Updating $TOOL_NAME to latest version..."
+          # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+          exit $?
+        fi
+
         if [ -x "$TOOL_EXECUTABLE" ]; then
           exec "$TOOL_EXECUTABLE" "$@"
           exit $?
@@ -408,6 +416,71 @@ describe('ShimGenerator', () => {
       
       // Should log error about conflicting file
       logger.expect(['ERROR'], ['ShimGenerator'], [/Cannot create shim for "test-tool": conflicting file exists/]);
+    });
+  });
+
+  describe('@update functionality', () => {
+    const toolName = 'test-tool';
+    const toolConfig: ToolConfig = {
+      name: toolName,
+      binaries: ['test-binary'],
+      version: '1.0.0',
+      installationMethod: 'github-release',
+      installParams: { repo: 'owner/repo' },
+    };
+
+    it('should include @update detection logic in generated shim', async () => {
+      const result = await shimGenerator.generateForTool(toolName, toolConfig);
+      
+      expect(result).toHaveLength(1);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
+      
+      // Should contain the @update detection block
+      expect(writtenContent).toContain('# Check if the first argument is @update');
+      expect(writtenContent).toContain('if [ $# -gt 0 ] && [ "$1" = "@update" ]; then');
+      expect(writtenContent).toContain('echo "Updating $TOOL_NAME to latest version..."');
+      expect(writtenContent).toContain('eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config');
+      expect(writtenContent).toContain('exit $?');
+    });
+
+    it('should include tool name and config path in update command', async () => {
+      const result = await shimGenerator.generateForTool(toolName, toolConfig);
+      
+      expect(result).toHaveLength(1);
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
+      
+      // Should use the correct tool name and config path
+      expect(writtenContent).toContain(`TOOL_NAME="${toolName}"`);
+      expect(writtenContent).toContain(`CONFIG_PATH="${mockConfig.userConfigPath}"`);
+      expect(writtenContent).toContain('\'\"$CONFIG_PATH\"\' \'\"$TOOL_NAME\"\'');
+    });
+
+    it('should place @update check before normal execution logic', async () => {
+      const result = await shimGenerator.generateForTool(toolName, toolConfig);
+      
+      expect(result).toHaveLength(1);
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
+      
+      // @update check should come before the tool execution logic
+      const content = String(writtenContent);
+      const updateCheckIndex = content.indexOf('if [ $# -gt 0 ] && [ "$1" = "@update" ]');
+      const toolExecutionIndex = content.indexOf('if [ -x "$TOOL_EXECUTABLE" ]');
+      
+      expect(updateCheckIndex).toBeGreaterThan(-1);
+      expect(toolExecutionIndex).toBeGreaterThan(-1);
+      expect(updateCheckIndex).toBeLessThan(toolExecutionIndex);
+    });
+
+    it('should use --shim-mode flag in update command', async () => {
+      const result = await shimGenerator.generateForTool(toolName, toolConfig);
+      
+      expect(result).toHaveLength(1);
+      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
+      
+      // Should include --shim-mode flag for cleaner output
+      expect(writtenContent).toContain('update --shim-mode --config');
     });
   });
 });

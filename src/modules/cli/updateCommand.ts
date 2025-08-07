@@ -10,6 +10,7 @@ export interface UpdateCommandOptions {
   yes?: boolean;
   verbose?: boolean;
   quiet?: boolean;
+  shimMode?: boolean;
 }
 
 export function registerUpdateCommand(
@@ -22,6 +23,7 @@ export function registerUpdateCommand(
     .command('update <toolName>')
     .description('Updates a specified tool to its latest version.')
     .option('-y, --yes', 'Automatically confirm updates', false)
+    .option('--shim-mode', 'Run in shim mode with minimal output', false)
     .action(async (toolName, options) => {
       const actionLogger = logger.getSubLogger({ name: 'action' });
       const combinedOptions = { ...options, ...program.opts() };
@@ -63,7 +65,9 @@ export function registerUpdateCommand(
           exitCli(1);
         }
 
-        logger.info(SuccessTemplates.general.checkingUpdatesFor(toolName));
+        if (!combinedOptions.shimMode) {
+          logger.info(SuccessTemplates.general.checkingUpdatesFor(toolName));
+        }
 
         if (toolConfig.installationMethod === 'github-release') {
           if (!toolConfig.installParams?.repo) {
@@ -101,7 +105,11 @@ export function registerUpdateCommand(
           const configuredVersion = toolConfig.version || 'latest';
 
           if (configuredVersion === 'latest') {
-            logger.info(SuccessTemplates.general.toolOnLatest(toolName, latestVersion));
+            if (combinedOptions.shimMode) {
+              logger.info(SuccessTemplates.general.shimToolOnLatest(toolName, latestVersion));
+            } else {
+              logger.info(SuccessTemplates.general.toolOnLatest(toolName, latestVersion));
+            }
             return;
           }
 
@@ -111,8 +119,12 @@ export function registerUpdateCommand(
           );
 
           if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-            logger.info(SuccessTemplates.general.updateAvailable(toolName, configuredVersion, latestVersion));
-            logger.info(SuccessTemplates.general.processingUpdate(toolName, configuredVersion, latestVersion));
+            if (combinedOptions.shimMode) {
+              logger.info(SuccessTemplates.general.shimUpdateStarting(toolName, configuredVersion, latestVersion));
+            } else {
+              logger.info(SuccessTemplates.general.updateAvailable(toolName, configuredVersion, latestVersion));
+              logger.info(SuccessTemplates.general.processingUpdate(toolName, configuredVersion, latestVersion));
+            }
 
             const toolConfigForUpdate: ToolConfig = {
               ...toolConfig,
@@ -125,16 +137,24 @@ export function registerUpdateCommand(
             );
 
             if (installResult.success) {
-              logger.info(
-                SuccessTemplates.tool.updated(toolName, configuredVersion, latestVersion),
-              );
+              if (combinedOptions.shimMode) {
+                logger.info(SuccessTemplates.general.shimUpdateSuccess(toolName, latestVersion));
+              } else {
+                logger.info(
+                  SuccessTemplates.tool.updated(toolName, configuredVersion, latestVersion),
+                );
+              }
               logger.debug(DebugTemplates.command.errorDetails());
             } else {
               logger.error(ErrorTemplates.tool.updateFailed(toolName, installResult.error || 'Unknown error'));
               exitCli(1);
             }
           } else if (status === VersionComparisonStatus.UP_TO_DATE) {
-            logger.info(SuccessTemplates.general.toolUpToDate(toolName, configuredVersion, latestVersion));
+            if (combinedOptions.shimMode) {
+              logger.info(SuccessTemplates.general.shimToolUpToDate(toolName, latestVersion));
+            } else {
+              logger.info(SuccessTemplates.general.toolUpToDate(toolName, configuredVersion, latestVersion));
+            }
           } else if (
             status === VersionComparisonStatus.AHEAD_OF_LATEST ||
             status === VersionComparisonStatus.INVALID_CURRENT_VERSION ||

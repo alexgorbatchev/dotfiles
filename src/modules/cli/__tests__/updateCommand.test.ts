@@ -254,4 +254,77 @@ describe('updateCommand', () => {
     ]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
+
+  describe('shim mode', () => {
+    test('should use concise output when --shim-mode flag is provided', async () => {
+      mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
+      (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+      (mockInstallerService.install as any).mockResolvedValue({ success: true });
+
+      await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
+
+      // Should use concise shim-mode output instead of verbose template messages
+      logger.expect(['INFO'], ['updateCommand'], [
+        'Updating fzf from 0.40.0 to 0.41.0...',
+        'fzf successfully updated to 0.41.0',
+      ]);
+    });
+
+    test('should show concise message when tool is already latest in shim mode', async () => {
+      const fzfLatestConfig = { ...fzfToolConfig, version: 'latest' };
+      mockActualLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
+      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+        ...latestGitHubRelease,
+        tag_name: 'v0.41.0',
+      });
+
+      await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
+
+      // Should use concise shim-mode output
+      logger.expect(['INFO'], ['updateCommand'], [
+        'fzf is already on latest version (0.41.0)',
+      ]);
+      expect(mockInstallerService.install).not.toHaveBeenCalled();
+    });
+
+    test('should show concise message when tool is already up to date in shim mode', async () => {
+      mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+        ...latestGitHubRelease,
+        tag_name: 'v0.40.0', // Same as configured version
+      });
+      (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+
+      await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
+
+      // Should use concise shim-mode output
+      logger.expect(['INFO'], ['updateCommand'], [
+        'fzf is already up to date (0.40.0)',
+      ]);
+      expect(mockInstallerService.install).not.toHaveBeenCalled();
+    });
+
+    test('should skip "checking updates" message in shim mode', async () => {
+      mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+        ...latestGitHubRelease,
+        tag_name: 'v0.40.0',
+      });
+      (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+
+      await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
+
+      // Should not include the "checking updates" message in shim mode
+      logger.expect(['INFO'], ['updateCommand'], [
+        'fzf is already up to date (0.40.0)',
+      ]);
+      // Ensure no "Checking for updates" message appears  
+      // Check that no log message contains "updates check for"
+      const logsContainCheckingMessage = logger.logs.some((log: any) => 
+        log['message'] && typeof log['message'] === 'string' && log['message'].includes('updates check for')
+      );
+      expect(logsContainCheckingMessage).toBe(false);
+    });
+  });
 });

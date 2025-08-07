@@ -936,6 +936,11 @@ export const SuccessTemplates = {
     updateAvailable: (toolName: string, current: string, latest: string): SafeLogMessage => createSafeLogMessage(`Update available for ${toolName}: ${current} -> ${latest}`),
     toolUpToDate: (toolName: string, current: string, latest: string): SafeLogMessage => createSafeLogMessage(`${toolName} (${current}) is up to date. Latest: ${latest}`),
     toolAhead: (toolName: string, current: string, latest: string): SafeLogMessage => createSafeLogMessage(`${toolName} (${current}) is ahead of the latest known version (${latest})`),
+    // Shim mode specific messages (concise output for command-line usage)
+    shimUpdateStarting: (toolName: string, fromVersion: string, toVersion: string): SafeLogMessage => createSafeLogMessage(`Updating ${toolName} from ${fromVersion} to ${toVersion}...`),
+    shimUpdateSuccess: (toolName: string, version: string): SafeLogMessage => createSafeLogMessage(`${toolName} successfully updated to ${version}`),
+    shimToolUpToDate: (toolName: string, version: string): SafeLogMessage => createSafeLogMessage(`${toolName} is already up to date (${version})`),
+    shimToolOnLatest: (toolName: string, version: string): SafeLogMessage => createSafeLogMessage(`${toolName} is already on latest version (${version})`),
     // Cleanup command messages  
     cleanupAllTrackedFiles: (): SafeLogMessage => createSafeLogMessage('Registry-based cleanup: Removing all tracked files'),
     cleanupRegistryDatabase: (): SafeLogMessage => createSafeLogMessage('registry database cleanup'),
