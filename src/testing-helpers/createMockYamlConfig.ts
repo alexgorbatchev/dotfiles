@@ -49,10 +49,11 @@ export type CreateMockYamlConfigOptions = {
  * @returns A promise that resolves with the `YamlConfig` object.
  *
  * @testing
- * This function is a utility for creating mock YAML configuration files in tests.
- * It simplifies the process of generating valid YAML content from a partial
- * config object and writing it to a mock file system, making it easier to
+ * This function is a utility for creating mock YAML configuration files in tests.  It simplifies the process of
+ * generating valid YAML content from a partial config object and writing it to a mock file system, making it easier to
  * set up test preconditions for modules that consume these configuration files.
+ * 
+ * Most commonly used together with `createTestingDirectories` and `createMemFileSystems`.
  */
 export async function createMockYamlConfig({
   config,

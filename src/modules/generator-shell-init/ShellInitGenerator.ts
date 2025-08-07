@@ -7,6 +7,7 @@ import type { YamlConfig } from '@modules/config';
 import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { ShellGeneratorFactory, type ShellInitContent } from './shell-generators';
 import { ProfileUpdater, type ProfileUpdateConfig } from './profile-updater';
+import { resolvePlatformConfig } from '@utils';
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
@@ -50,12 +51,15 @@ export class ShellInitGenerator implements IShellInitGenerator {
             continue;
           }
 
+          // Resolve platform-specific configuration if systemInfo is provided
+          const resolvedConfig = options?.systemInfo ? resolvePlatformConfig(config, options.systemInfo) : config;
+
           // Extract shell content using the generator
-          const shellContent = generator.extractShellContent(toolName, config);
+          const shellContent = generator.extractShellContent(toolName, resolvedConfig);
           
           // Process completions if they exist
-          if (config.completions) {
-            const completionSetup = generator.processCompletions(toolName, config.completions);
+          if (resolvedConfig.completions) {
+            const completionSetup = generator.processCompletions(toolName, resolvedConfig.completions);
             shellContent.completionSetup.push(...completionSetup);
           }
 

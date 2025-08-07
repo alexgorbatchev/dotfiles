@@ -204,7 +204,8 @@ export async function setupServices(
     shellInitGenerator,
     symlinkGenerator,
     fs,
-    yamlConfig
+    yamlConfig,
+    systemInfo
   );
 
   // Create tracked filesystem for installer binary operations  

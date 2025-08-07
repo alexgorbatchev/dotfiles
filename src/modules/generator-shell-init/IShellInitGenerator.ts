@@ -1,5 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import type { ToolConfig, ShellType } from '@types';
+import type { ToolConfig, ShellType, SystemInfo } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import type { ProfileUpdateResult } from './profile-updater/IProfileUpdater';
 
@@ -24,6 +24,12 @@ export interface GenerateShellInitOptions {
    * Defaults to true.
    */
   updateProfileFiles?: boolean;
+
+  /**
+   * System information for platform-aware shell generation.
+   * When provided, platform-specific configurations matching this system will be included.
+   */
+  systemInfo?: SystemInfo;
 }
 
 /**

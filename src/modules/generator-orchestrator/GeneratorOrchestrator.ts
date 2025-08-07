@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
+import type { GeneratedArtifactsManifest, ToolConfig, SystemInfo } from '@types';
 import type { IShimGenerator, GenerateShimsOptions } from '@modules/generator-shim';
 import type { IShellInitGenerator, GenerateShellInitOptions } from '@modules/generator-shell-init';
 import type {
@@ -20,6 +20,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly symlinkGenerator: ISymlinkGenerator;
   private readonly fs: IFileSystem;
   private readonly appConfig: YamlConfig;
+  private readonly systemInfo: SystemInfo;
 
   constructor(
     parentLogger: TsLogger,
@@ -27,7 +28,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
     fs: IFileSystem,
-    appConfig: YamlConfig
+    appConfig: YamlConfig,
+    systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
     this.logger.debug(DebugTemplates.generator.orchestratorInit());
@@ -36,6 +38,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.symlinkGenerator = symlinkGenerator;
     this.fs = fs;
     this.appConfig = appConfig;
+    this.systemInfo = systemInfo;
   }
 
   async generateAll(
@@ -111,7 +114,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     // 2. Generate Shell Init for all supported shells
     // dryRun is removed; IFileSystem handles behavior
     const shellInitOptions: GenerateShellInitOptions = { 
-      shellTypes: ['zsh', 'bash', 'powershell'] 
+      shellTypes: ['zsh', 'bash', 'powershell'],
+      systemInfo: this.systemInfo
     };
     logger.debug(DebugTemplates.generator.shellGenerate(), shellInitOptions);
     const shellInitResult = await this.shellInitGenerator.generate(
