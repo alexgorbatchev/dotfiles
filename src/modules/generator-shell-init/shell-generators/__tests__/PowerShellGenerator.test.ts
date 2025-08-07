@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'bun:test';
 import { PowerShellGenerator } from '../PowerShellGenerator';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
-import { createSectionHeader } from '../shellTemplates';
+import { createSectionHeader } from '../../shellTemplates';
 
 describe('PowerShellGenerator', () => {
   let generator: PowerShellGenerator;

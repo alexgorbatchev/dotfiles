@@ -1,6 +1,7 @@
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig, ShellType } from '@types';
 import type { IFileSystem } from '@modules/file-system';
+import type { ProfileUpdateResult } from './profile-updater/IProfileUpdater';
 
 /**
  * Options for generating shell initialization files.
@@ -17,6 +18,12 @@ export interface GenerateShellInitOptions {
    * If not provided, defaults to ['zsh'] for backward compatibility.
    */
   shellTypes?: ShellType[];
+  
+  /**
+   * Whether to update shell profile files to source the generated scripts.
+   * Defaults to true.
+   */
+  updateProfileFiles?: boolean;
 }
 
 /**
@@ -27,6 +34,8 @@ export interface ShellInitGenerationResult {
   files: Map<ShellType, string>;
   /** Primary shell initialization file path (for backward compatibility) */
   primaryPath: string | null;
+  /** Results from profile file updates, if requested */
+  profileUpdates?: ProfileUpdateResult[];
 }
 
 /**

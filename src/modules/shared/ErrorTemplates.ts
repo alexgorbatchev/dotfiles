@@ -526,6 +526,8 @@ export const DebugTemplates = {
       createSafeLogMessage('toolName=%s, completions=%o'),
     fpathAdded: (): SafeLogMessage => 
       createSafeLogMessage('Added %s to fpath for tool %s'),
+    updatingProfiles: (): SafeLogMessage => 
+      createSafeLogMessage('Updating profile files with configs: %o'),
   },
   shim: {
     constructorDebug: (): SafeLogMessage => 

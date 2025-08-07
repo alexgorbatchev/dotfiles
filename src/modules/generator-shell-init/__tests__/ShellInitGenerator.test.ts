@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
-import { createSectionHeader, generateFileHeader, generateEndOfFile } from '../shell-generators/shellTemplates';
+import { createSectionHeader, generateFileHeader, generateEndOfFile } from '../shellTemplates';
 
 describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;

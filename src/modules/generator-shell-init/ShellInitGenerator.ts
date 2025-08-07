@@ -6,6 +6,7 @@ import type { TsLogger } from '@modules/logger';
 import type { YamlConfig } from '@modules/config';
 import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { ShellGeneratorFactory, type ShellInitContent } from './shell-generators';
+import { ProfileUpdater, type ProfileUpdateConfig } from './profile-updater';
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
@@ -90,10 +91,42 @@ export class ShellInitGenerator implements IShellInitGenerator {
       return null;
     }
 
-    return {
+    const result: ShellInitGenerationResult = {
       files: generatedFiles,
       primaryPath,
     };
+
+    // Update profile files if requested (defaults to true)
+    const shouldUpdateProfiles = options?.updateProfileFiles ?? true;
+    if (shouldUpdateProfiles) {
+      result.profileUpdates = await this.updateProfileFiles(generatedFiles);
+    }
+
+    return result;
+  }
+
+  /**
+   * Updates shell profile files to source the generated shell scripts.
+   * @param generatedFiles - Map of shell type to generated file path
+   * @returns Promise resolving to array of profile update results
+   */
+  private async updateProfileFiles(generatedFiles: Map<ShellType, string>) {
+    const logger = this.logger.getSubLogger({ name: 'updateProfileFiles' });
+    const profileUpdater = new ProfileUpdater(this.fs, this.appConfig.paths.homeDir);
+    
+    const configs: ProfileUpdateConfig[] = [];
+    for (const [shellType, scriptPath] of generatedFiles) {
+      configs.push({
+        shellType,
+        generatedScriptPath: scriptPath,
+        onlyIfExists: true, // Only update profile files if they already exist
+        yamlConfigPath: this.appConfig.userConfigPath,
+      });
+    }
+    
+    logger.debug(DebugTemplates.shellInit.updatingProfiles(), configs.map(c => ({ shellType: c.shellType, path: c.generatedScriptPath })));
+    
+    return await profileUpdater.updateProfiles(configs);
   }
 
   /**

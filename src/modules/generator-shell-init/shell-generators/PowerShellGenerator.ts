@@ -3,7 +3,7 @@ import type { ShellType, ToolConfig, CompletionConfig } from '@types';
 import type { YamlConfig } from '@modules/config';
 import type { IShellGenerator, ShellInitContent } from './IShellGenerator';
 import { dedentString } from '@utils';
-import { generateFileHeader, generateSectionHeader, generateToolHeader, generateHoistingExplanation, generateHoistingAttribution, generateDefaultPathModification, generateEndOfFile } from './shellTemplates';
+import { generateFileHeader, generateSectionHeader, generateToolHeader, generateHoistingExplanation, generateHoistingAttribution, generateDefaultPathModification, generateEndOfFile } from '../shellTemplates';
 
 /**
  * PowerShell-specific shell initialization generator.

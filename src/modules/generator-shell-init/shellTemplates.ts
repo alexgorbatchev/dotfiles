@@ -184,3 +184,36 @@ export function generateCompletionSetup(shellType: ShellType, completionDir: str
 export function generateEndOfFile(shellType: ShellType): string {
   return generateSectionHeader(shellType, 'End of Generated File');
 }
+
+/**
+ * Generates shell-specific source command for including generated scripts.
+ * @param shellType - Type of shell
+ * @param scriptPath - Path to the script to source
+ * @returns Appropriate source command for the shell
+ */
+export function generateSourceLine(shellType: ShellType, scriptPath: string): string {
+  switch (shellType) {
+    case 'zsh':
+    case 'bash':
+      return `source "${scriptPath}"`;
+    case 'powershell':
+      return `. "${scriptPath}"`;
+    default:
+      throw new Error(`Unsupported shell type: ${shellType}`);
+  }
+}
+
+/**
+ * Generates a header comment block for profile file modifications.
+ * Creates a double-line header with generator attribution and config path.
+ * @param shellType - Type of shell for comment syntax
+ * @param yamlConfigPath - Full path to the YAML config file
+ * @returns Multi-line header comment block
+ */
+export function generateProfileHeader(shellType: ShellType, yamlConfigPath: string): string {
+  return [
+    commentLine(shellType, 'Generated via dotfiles generator - do not modify'),
+    commentLine(shellType, yamlConfigPath),
+    headerLine(shellType, '-'),
+  ].join('\n');
+}
