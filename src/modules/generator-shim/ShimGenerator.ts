@@ -97,13 +97,11 @@ export class ShimGenerator implements IShimGenerator {
         ? toolConfig.binaries[0]! // Added non-null assertion
         : toolName; // Fallback to toolName if binaries are not well-defined
 
-    const toolBinPath = path.join(
-      this.config.paths.binariesDir,
-      toolConfig.name, // Use toolConfig.name for the tool-specific subdirectory
-      primaryBinaryName
-    );
+    // Binary location after installation (installer now moves binary to direct location)
+    const toolDir = path.join(this.config.paths.binariesDir, toolConfig.name);
+    const binaryPath = path.join(toolDir, primaryBinaryName);
 
-    this.logger.debug(DebugTemplates.shim.toolBinPath(), toolBinPath);
+    this.logger.debug(DebugTemplates.shim.toolBinPath(), binaryPath);
 
     const shimContent = dedentString(`
       #!/usr/bin/env bash
@@ -113,7 +111,7 @@ export class ShimGenerator implements IShimGenerator {
       set -euo pipefail
 
       TOOL_NAME="${toolName}"
-      TOOL_EXECUTABLE="${toolBinPath}"
+      TOOL_EXECUTABLE="${binaryPath}"
       GENERATOR_CLI_EXECUTABLE="${getCliBinPath()}"
       CONFIG_PATH="${this.config.userConfigPath}"
 
@@ -125,22 +123,24 @@ export class ShimGenerator implements IShimGenerator {
         exit $?
       fi
 
+      # Check if the tool is already installed and execute it
       if [ -x "$TOOL_EXECUTABLE" ]; then
         exec "$TOOL_EXECUTABLE" "$@"
         exit $?
       else
+        # Tool not found, try to install it
         # Capture both stdout and stderr from the install command
         # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
         install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
         install_exit_code=$?
         
         if [ $install_exit_code -eq 0 ]; then
-          # Installation successful, check if binary now exists
+          # Installation successful, try to execute the tool
           if [ -x "$TOOL_EXECUTABLE" ]; then
             exec "$TOOL_EXECUTABLE" "$@"
             exit $?
           else
-            echo "Installation completed but binary not found at '$TOOL_EXECUTABLE'."
+            echo "Installation completed but binary not found at: $TOOL_EXECUTABLE"
             exit 1
           fi
         else

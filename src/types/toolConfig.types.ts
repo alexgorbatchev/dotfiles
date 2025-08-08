@@ -201,19 +201,6 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    */
   binaryPath?: string;
   /**
-   * An optional path or new name to which the extracted binary should be moved or renamed.
-   * This path is relative to the `installDir` (see {@link InstallHookContext.installDir}).
-   * If it's just a name (e.g., `mytool`), the binary will be placed in `installDir/mytool`.
-   * If it's a relative path (e.g., `libexec/mytool`), it will be `installDir/libexec/mytool`.
-   * Similar to Zinit's `mv` ice or how `pick` implies the final binary name within the tool's directory.
-   * @example Zinit conceptual `mv` ice:
-   * ```zsh
-   * zinit ice mv"oldname newname" pick"oldname"
-   * zinit light "user/tool"
-   * ```
-   */
-  moveBinaryTo?: string;
-  /**
    * A specific version string (e.g., `v1.2.3`, `0.48.0`) or a SemVer constraint
    * (e.g., `^1.0.0`, `~2.3.x`) for the release to target.
    * If omitted, the latest stable release is typically targeted.
@@ -326,11 +313,6 @@ export interface CurlTarInstallParams extends BaseInstallParams {
    * or auto-detection might occur.
    */
   extractPath?: string;
-  /**
-   * An optional path or new name to which the extracted file/binary (identified by `extractPath` or auto-detection)
-   * should be moved or renamed, relative to the `installDir`.
-   */
-  moveBinaryTo?: string;
   /**
    * The number of leading directory components to strip from file paths during tarball extraction.
    * @default 0
@@ -525,7 +507,7 @@ export interface ToolConfigBuilder {
    * ```
    *
    * ## Curl Tarball Method (`'curl-tar'`)
-   * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball and `moveBinaryTo`
+   * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball
    * for the final binary location. Similar to Zinit's `dl` for archives, combined with `extract` and `pick`.
    * See {@link CurlTarInstallParams}.
    *

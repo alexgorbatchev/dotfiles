@@ -95,7 +95,6 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       repo: 'owner/repository',
       assetPattern: '*linux_amd64.tar.gz',
       binaryPath: 'bin/tool',
-      moveBinaryTo: 'tool',
       stripComponents: 1,
     })
     
@@ -132,7 +131,7 @@ The `ToolConfigContext` provides access to configuration paths and directories f
 
 ```typescript
 interface ToolConfigContext {
-  /** Current tool's installation directory */
+  /** Current tool's installation directory (should contain version subdirectories) */
   toolDir: string;
   
   /** Get the installation directory for any tool */
@@ -202,6 +201,85 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 - **Flexibility**: Easy access to any configured directory
 - **Consistency**: Same path resolution across all tools
 
+## Path Resolution Summary
+
+Understanding how paths are resolved is crucial for correctly configuring your tools. Different methods have different path resolution rules:
+
+### Tool Configuration Directory
+- **Location**: The directory containing your `.tool.ts` file
+- **Example**: If your configuration is at `configs-migrated/fzf/fzf.tool.ts`, then the tool directory is `configs-migrated/fzf/`
+
+### Path Resolution Rules by Method
+
+| Method | Path Type | Resolution Rule | Example |
+|--------|-----------|-----------------|---------|
+| **symlink()** | `source` starting with `./` | Relative to tool configuration directory | `'./config.toml'` → `configs-migrated/fzf/config.toml` |
+| **symlink()** | `source` absolute path | Used as-is | `'/etc/global.conf'` → `/etc/global.conf` |
+| **symlink()** | `target` | Must be absolute (use context) | `\`${ctx.homeDir}/.config/tool/config.toml\`` |
+| **completions()** | `source` | Relative to extracted archive root | `'shell/completion.zsh'` → inside downloaded archive |
+| **completions()** | `targetDir` | Must be absolute (optional) | `\`${ctx.homeDir}/.zsh/completions\`` |
+| **install('github-release')** | `binaryPath` | Relative to extracted archive root | `'bin/tool'` → locates binary inside downloaded archive |
+| **install('manual')** | `binaryPath` | Must be absolute path | `'/usr/local/bin/tool'` or `\`${ctx.homeDir}/bin/tool\`` |
+
+### Context Variables for Paths
+
+Always use ToolConfigContext variables for dynamic paths:
+- `${ctx.homeDir}` → User's home directory  
+- `${ctx.toolDir}` → Tool's base installation directory (contains version subdirectories)
+- `${ctx.dotfilesDir}` → Root dotfiles directory
+- `${ctx.generatedDir}` → Generated files directory
+- `${ctx.binDir}` → Generated shims directory (where tool shims are created)
+- `${ctx.shellScriptsDir}` → Generated shell scripts directory
+
+### Common Path Patterns
+
+```typescript
+// ✅ Correct symlink usage
+c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+
+// ✅ Correct completion usage  
+c.completions({ zsh: { source: 'shell/completion.zsh' } })
+
+// ✅ Correct install usage  
+c.install('github-release', {
+  repo: 'owner/tool',
+  binaryPath: 'bin/tool',           // Binary location inside archive (used for shim generation)
+})
+
+// ❌ Incorrect - using hardcoded paths
+c.symlink('./config.toml', '~/.config/tool/config.toml')
+c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
+```
+
+### Recommended Directory Structure
+
+For optimal tool management, the system should use a versioned directory structure that preserves archive integrity:
+
+```
+${ctx.generatedDir}/binaries/
+├── tool-name/
+│   └── version/                 # e.g., "1.2.3" or "latest"  
+│       ├── bin/                 # Extracted archive contents (preserved)
+│       │   └── tool-binary
+│       ├── lib/                 # Shared libraries (if any)
+│       ├── share/               # Assets, docs, etc.
+│       └── config/              # Default configs
+```
+
+**Benefits of this approach:**
+- **Archive Integrity**: Tools can access their dependencies (shared libs, configs, assets)
+- **Version Management**: Easy to switch between versions or rollback
+- **Immutable Installs**: Once extracted, archives remain untouched
+- **Shim-Based Execution**: Shims in `${ctx.binDir}` point to actual binaries
+
+**How it works:**
+1. Archives are extracted to `${ctx.toolDir}/version/` 
+2. Archive structure is preserved completely
+3. `binaryPath` identifies which file is the main executable
+4. Shims are generated in `${ctx.binDir}/` that execute the binary from its original location
+5. No files are moved or copied from the extraction location
+
+
 ## Core Methods Reference
 
 ### `.bin(names: string | string[])`
@@ -267,7 +345,6 @@ c.install('github-release', {
   repo: 'owner/repository',                    // Required
   assetPattern?: 'pattern',                    // Optional
   binaryPath?: 'path/within/archive',          // Optional  
-  moveBinaryTo?: 'final-binary-name',          // Optional
   version?: 'v1.2.3',                         // Optional
   includePrerelease?: false,                   // Optional
   stripComponents?: 1,                         // Optional
@@ -283,16 +360,14 @@ c.install('github-release', {
   assetPattern: '*linux_amd64.tar.gz'
   assetPattern: 'tool-*-darwin-arm64.tar.gz'
   ```
-- **`binaryPath`**: Path to executable within extracted archive
+- **`binaryPath`**: Path to executable **relative to extracted archive root**
   ```typescript
-  binaryPath: 'bin/tool'           // Archive has bin/tool
-  binaryPath: 'tool'               // Binary at archive root
+  binaryPath: 'bin/tool'           // Binary located at bin/tool inside extracted archive
+  binaryPath: 'tool'               // Binary located at archive root
+  binaryPath: 'dist/linux/tool'   // Binary located at dist/linux/tool inside archive
   ```
-- **`moveBinaryTo`**: Final name/location for the binary
-  ```typescript
-  moveBinaryTo: 'tool'             // Rename to 'tool'
-  moveBinaryTo: 'bin/custom-name'  // Move to subdirectory
-  ```
+  This path is used to generate shims that point to the binary at its original location within the extracted archive.
+  
 - **`stripComponents`**: Number of directory levels to strip during extraction (like tar --strip-components)
 - **`assetSelector`**: Custom function to select the correct asset
 
@@ -308,7 +383,6 @@ c.install('github-release', {
 c.install('github-release', {
   repo: 'sharkdp/bat',
   assetPattern: '*linux_amd64.tar.gz',
-  moveBinaryTo: 'bat',
 })
 
 // Using custom asset selector
@@ -415,7 +489,6 @@ Downloads and extracts tarballs directly.
 c.install('curl-tar', {
   url: 'https://example.com/tool.tar.gz',  // Required
   extractPath?: 'path/to/binary',          // Optional
-  moveBinaryTo?: 'final-name',             // Optional
   stripComponents?: 1,                     // Optional
 })
 ```
@@ -426,7 +499,6 @@ c.install('curl-tar', {
 c.install('curl-tar', {
   url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
   extractPath: 'bin/tool',
-  moveBinaryTo: 'tool',
 })
 ```
 
@@ -436,9 +508,14 @@ For tools installed by other means or already present on the system.
 
 ```typescript
 c.install('manual', {
-  binaryPath: '/path/to/binary',  // Required
+  binaryPath: '/path/to/binary',  // Required: absolute path to existing binary
 })
 ```
+
+**Parameters:**
+- **`binaryPath`**: **Absolute path** to the existing binary on the system
+  - Must be absolute path (e.g., `/usr/local/bin/tool`, `${ctx.homeDir}/bin/custom-tool`)
+  - The binary must already exist at this location
 
 **Examples:**
 
@@ -590,6 +667,54 @@ c.powershell(/* powershell */ `
 `)
 ```
 
+### Path Usage in Shell Scripts
+
+When writing shell scripts within `.zsh()`, `.bash()`, or `.powershell()` methods, use ToolConfigContext variables for all paths:
+
+**✅ Correct Path Usage:**
+```typescript
+c.zsh(always/* zsh */`
+  # Use context variables for paths
+  export TOOL_CONFIG_DIR="${ctx.toolDir}"
+  export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
+  
+  # Source files from tool directory
+  if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+    source "${ctx.toolDir}/shell/key-bindings.zsh"
+  fi
+  
+  # Generate completions to proper directory
+  if command -v tool >/dev/null 2>&1; then
+    tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+  fi
+  
+  # Reference other tools
+  FZF_DIR="${ctx.getToolDir('fzf')}"
+  [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
+`);
+```
+
+**❌ Incorrect Path Usage:**
+```typescript
+// Don't use hardcoded paths
+c.zsh(always/* zsh */`
+  export TOOL_CONFIG_DIR="$HOME/.config/tool"     // ❌ Use ${ctx.homeDir} instead
+  source "$DOTFILES/.generated/tools/tool/init"   // ❌ Use ${ctx.toolDir} instead
+  tool complete > ~/.zsh/completions/_tool        // ❌ Use ${ctx.generatedDir} instead
+`);
+```
+
+**Path Context Variables Reference:**
+- `${ctx.toolDir}` → Tool's base installation directory (contains version subdirectories)  
+- `${ctx.homeDir}` → User's home directory
+- `${ctx.dotfilesDir}` → Root dotfiles directory  
+- `${ctx.generatedDir}` → Generated files directory
+- `${ctx.getToolDir('other-tool')}` → Another tool's base directory
+
+**Note:** For referencing files within the current tool version, you'll typically need to construct paths like:
+- `${ctx.toolDir}/latest/share/` for tool assets
+- `${ctx.toolDir}/latest/config/` for tool configs
+
 ## Platform-Specific Configuration
 
 Use the `.platform()` method to define different configurations for different operating systems and architectures.
@@ -725,9 +850,11 @@ c.completions({
 
 ### Parameters
 
-- **`source`**: Path to completion file within the extracted tool archive
-- **`name`**: Optional custom name for the installed completion file
-- **`targetDir`**: Optional custom installation directory
+- **`source`**: Path to completion file **relative to the extracted tool archive root**
+  - Example: `'completions/_tool.zsh'` looks for `completions/_tool.zsh` inside the extracted archive
+  - Example: `'shell/completion.zsh'` looks for `shell/completion.zsh` inside the extracted archive
+- **`name`**: Optional custom name for the installed completion file (defaults to source filename)
+- **`targetDir`**: Optional custom installation directory **absolute path** (defaults to shell-specific completion directory)
 
 ### Examples
 
@@ -787,13 +914,20 @@ c.completions({
 Creates symbolic links for configuration files.
 
 **Parameters:**
-- **`source`**: Path to source file, relative to tool directory or absolute
-- **`target`**: Target path where symlink should be created
+- **`source`**: Path to source file or directory to be symlinked
+  - **Relative paths** (starting with `./`): Relative to the **tool configuration directory** (where the `.tool.ts` file is located)
+  - **Absolute paths**: Used as-is
+  - Example: `'./config.toml'` looks for `config.toml` next to your `.tool.ts` file
+  - Example: `'./themes/'` looks for `themes/` directory next to your `.tool.ts` file
+- **`target`**: **Absolute path** where symlink should be created
+  - Must be absolute path (use `${ctx.homeDir}/...`, `${ctx.dotfilesDir}/...`, etc.)
+  - Example: `${ctx.homeDir}/.config/tool/config.toml`
 
-**Path Conventions:**
-- Use `./` prefix for files relative to the tool's directory
-- Use `${ctx.homeDir}/` for home directory paths instead of `~/`
-- Absolute paths are supported
+**Path Resolution Rules:**
+- **Source paths** starting with `./` → Relative to tool configuration directory (same directory as `.tool.ts` file)
+- **Source paths** without `./` but not absolute → Also relative to tool configuration directory  
+- **Source paths** starting with `/` → Absolute paths used as-is
+- **Target paths** → Must always be absolute paths using context variables
 
 ### Examples
 
@@ -1329,7 +1463,7 @@ bun run cli.ts check-updates tool-name
 |---------------|------------------------------|
 | `zinit ice from"gh-r"` | `.install('github-release', { repo: 'owner/repo' })` |
 | `zinit load owner/repo` | `repo: 'owner/repo'` in install params |
-| `mv="*/binary -> binary"` | `moveBinaryTo: 'binary'` |
+| `mv="*/binary -> binary"` | Not needed - binary stays in extracted location |
 | `pick"path/to/binary"` | `binaryPath: 'path/to/binary'` |
 | `completions="path.zsh"` | `.completions({ zsh: { source: 'path.zsh' }})` |
 | `atclone"make install"` | Use `hooks.afterExtract` or `hooks.afterInstall` |

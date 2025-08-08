@@ -234,7 +234,6 @@ export class Installer implements IInstaller {
     const version = params.version || 'latest';
     const assetPattern = params.assetPattern;
     const binaryPath = params.binaryPath;
-    const moveBinaryTo = params.moveBinaryTo;
 
     try {
       // Get the release from GitHub
@@ -553,35 +552,27 @@ export class Installer implements IInstaller {
             error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
           };
         }
+
+        // Move binary from extracted location to direct location for shim access
+        const primaryBinaryName = toolConfig.binaries && toolConfig.binaries.length > 0 
+          ? toolConfig.binaries[0]! 
+          : toolName;
+        const targetBinaryPath = path.join(context.installDir, primaryBinaryName);
+        
+        logger.debug(DebugTemplates.installer.movingBinary(), finalBinaryPath, targetBinaryPath);
+        await this.fs.copyFile(finalBinaryPath, targetBinaryPath);
+        await this.fs.rm(finalBinaryPath);
+        finalBinaryPath = targetBinaryPath;
       }
 
-      // Make the binary executable (still in extractDir or downloadPath at this point)
+      // Make the binary executable
       logger.debug(DebugTemplates.installer.makingExecutable(), finalBinaryPath);
       await this.fs.chmod(finalBinaryPath, 0o755);
 
-      // Determine the final destination path for the binary, directly in context.installDir
-      const finalFileName = moveBinaryTo || path.basename(finalBinaryPath);
-      const actualFinalBinaryDestPath = path.join(context.installDir, finalFileName);
-
-      if (finalBinaryPath !== actualFinalBinaryDestPath) {
-        logger.debug(
-          DebugTemplates.installer.githubReleaseBinaryMoving(),
-          finalBinaryPath,
-          actualFinalBinaryDestPath,
-        );
-        await this.fs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
-        // Copy the file from extractDir/downloadPath to its final place in installDir
-        await this.fs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
-        // Ensure the copied file is executable
-        await this.fs.chmod(actualFinalBinaryDestPath, 0o755);
-        // Update finalBinaryPath to the new location
-        finalBinaryPath = actualFinalBinaryDestPath;
-      } else {
-        logger.debug(
-          DebugTemplates.installer.githubReleaseFinalDestination(),
-          finalBinaryPath,
-        );
-      }
+      logger.debug(
+        DebugTemplates.installer.githubReleaseFinalDestination(),
+        finalBinaryPath,
+      );
 
       // Clean up the temporary extraction directory if it was used and we've moved/copied the binary
       if (
@@ -592,8 +583,10 @@ export class Installer implements IInstaller {
       ) {
         logger.debug(DebugTemplates.installer.cleaningExtractDir(), postExtractContext.extractDir);
         await this.fs.rm(postExtractContext.extractDir, { recursive: true, force: true });
-      } else if (
-        // Clean up downloaded archive if it was extracted and binary moved
+      }
+
+      // Clean up downloaded archive if it was extracted (always check, independent of extract dir cleanup)
+      if (
         downloadPath !== finalBinaryPath &&
         (await this.fs.exists(downloadPath)) &&
         (asset.name.endsWith('.tar.gz') ||
@@ -843,7 +836,6 @@ export class Installer implements IInstaller {
     const params = toolConfig.installParams;
     const url = params.url;
     // extractPath is now handled as extractPathInArchive below
-    const moveBinaryTo = params.moveBinaryTo;
 
     try {
       // Download the tarball
@@ -970,47 +962,28 @@ export class Installer implements IInstaller {
           };
       }
 
-      // Make the binary executable (still in extractDir at this point)
+      // Move binary from extracted location to direct location for shim access
+      const primaryBinaryName = toolConfig.binaries && toolConfig.binaries.length > 0 
+        ? toolConfig.binaries[0]! 
+        : toolName;
+      const targetBinaryPath = path.join(context.installDir, primaryBinaryName);
+      
+      logger.debug(DebugTemplates.installer.movingBinary(), finalBinaryPath, targetBinaryPath);
+      await toolFs.copyFile(finalBinaryPath, targetBinaryPath);
+      await toolFs.rm(finalBinaryPath);
+      finalBinaryPath = targetBinaryPath;
+
+      // Make the binary executable
       logger.debug(DebugTemplates.installer.makingExecutable(), finalBinaryPath);
       await toolFs.chmod(finalBinaryPath, 0o755);
 
-      // Determine the final destination path for the binary, directly in context.installDir
-      const finalFileName = moveBinaryTo || path.basename(finalBinaryPath);
-      const actualFinalBinaryDestPath = path.join(context.installDir, finalFileName);
+      logger.debug(
+        DebugTemplates.installer.curlTarFinalDestination(),
+        finalBinaryPath,
+      );
 
-      if (finalBinaryPath !== actualFinalBinaryDestPath) {
-        logger.debug(
-          DebugTemplates.installer.curlTarBinaryMoving(),
-          finalBinaryPath,
-          actualFinalBinaryDestPath,
-        );
-        await toolFs.ensureDir(path.dirname(actualFinalBinaryDestPath)); // Ensure parent dir of final destination exists
-
-        // Copy the file from extractDir to its final place in installDir
-        await toolFs.copyFile(finalBinaryPath, actualFinalBinaryDestPath);
-        // Ensure the copied file is executable
-        await toolFs.chmod(actualFinalBinaryDestPath, 0o755);
-
-        // Update finalBinaryPath to the new location
-        finalBinaryPath = actualFinalBinaryDestPath;
-      } else {
-        logger.debug(
-          DebugTemplates.installer.curlTarFinalDestination(),
-          finalBinaryPath,
-        );
-      }
-
-      // Clean up the temporary extraction directory as we've moved the binary
+      // Clean up downloaded tarball if it was extracted (binary remains in extractDir)
       if (
-        postExtractContext?.extractDir &&
-        (await toolFs.exists(postExtractContext.extractDir)) &&
-        finalBinaryPath.startsWith(context.installDir) &&
-        !finalBinaryPath.startsWith(postExtractContext.extractDir)
-      ) {
-        logger.debug(DebugTemplates.installer.cleaningExtractDir(), postExtractContext.extractDir);
-        await toolFs.rm(postExtractContext.extractDir, { recursive: true, force: true });
-      } else if (
-        // Clean up downloaded tarball if it was extracted and binary moved
         tarballPath !== finalBinaryPath &&
         (await toolFs.exists(tarballPath))
       ) {

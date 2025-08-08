@@ -724,6 +724,8 @@ export const DebugTemplates = {
       createSafeLogMessage('Found executable in archive: %s'),
     makingExecutable: (): SafeLogMessage => 
       createSafeLogMessage('Making binary executable: %s'),
+    movingBinary: (): SafeLogMessage => 
+      createSafeLogMessage('Moving binary from %s to %s'),
     cleaningExtractDir: (): SafeLogMessage => 
       createSafeLogMessage('Cleaning up extractDir: %s'),
     cleaningArchive: (): SafeLogMessage => 

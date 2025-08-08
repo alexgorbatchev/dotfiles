@@ -118,7 +118,7 @@ describe('E2E: bun run cli install', () => {
 
   describe('downloaded tar.gz archive (GitHub Release with Mock Server)', () => {
     let localArchiveFilePath: string;
-    let expectedExtractedBinaryPath: string;
+    let expectedBinaryPath: string;
     let testDirs: TestDirectories;
     let fs: NodeFileSystem;
     let mockServer: MockGitHubServerResult;
@@ -137,7 +137,7 @@ describe('E2E: bun run cli install', () => {
           'temp-archive-source': { path: 'temp-archive-source' },
         },
       });
-      expectedExtractedBinaryPath = path.join(
+      expectedBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockArchiveToolName,
         mockArchiveToolName
@@ -225,24 +225,25 @@ describe('E2E: bun run cli install', () => {
       await mockServer.close();
     });
 
-    it('should download archive to the correct location', async () => {
+    it('should clean up downloaded archive after extraction', async () => {
+      // Archive should be cleaned up after extraction
       expect(
         await fs.exists(
           path.join(testDirs.paths.binariesDir, mockArchiveToolName, mockArchiveFileName)
         )
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it('should extract binary to the correct location', async () => {
-      expect(await fs.exists(expectedExtractedBinaryPath)).toBe(true);
+    it('should move binary to the direct location', async () => {
+      expect(await fs.exists(expectedBinaryPath)).toBe(true);
     });
 
-    it('should make extracted binary executable', async () => {
-      expect((await fs.stat(expectedExtractedBinaryPath)).mode & 0o100).toBeGreaterThan(0);
+    it('should make binary executable', async () => {
+      expect((await fs.stat(expectedBinaryPath)).mode & 0o100).toBeGreaterThan(0);
     });
 
     it('should verify the downloaded file content',async () => {
-      const binaryContent = await fs.readFile(expectedExtractedBinaryPath, 'utf8');
+      const binaryContent = await fs.readFile(expectedBinaryPath, 'utf8');
       expect(binaryContent).toEqual(mockBinaryContent);
     });
   });

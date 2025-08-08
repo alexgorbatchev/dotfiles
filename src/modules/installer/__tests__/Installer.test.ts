@@ -11,7 +11,7 @@ import {
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
-import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
+import type { ExtractResult, GitHubRelease, ToolConfig, CurlTarToolConfig } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import { Installer } from '../Installer';
@@ -787,7 +787,6 @@ describe('Installer', () => {
         installParams: {
           url: 'https://example.com/archive.tar.gz',
           extractPath: 'bin/tool',
-          moveBinaryTo: 'bin/tool-renamed',
         },
       };
 
@@ -818,7 +817,7 @@ describe('Installer', () => {
 
       const result = await installer.installFromCurlTar(
         mockToolName,
-        toolConfig,
+        toolConfig as CurlTarToolConfig,
         context // Pass the defined context
       );
 
@@ -831,7 +830,7 @@ describe('Installer', () => {
 
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
       expect(fileSystemMocks.chmod).toHaveBeenCalled();
-      // copyFile IS called when moveBinaryTo is set
+      // copyFile should be called to move binary from extracted to direct location
       expect(fileSystemMocks.copyFile).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.info).toEqual({
