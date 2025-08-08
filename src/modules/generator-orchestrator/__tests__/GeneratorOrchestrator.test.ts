@@ -5,6 +5,7 @@ import type { IShimGenerator } from '@modules/generator-shim';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
 import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
 import type { GeneratedArtifactsManifest, ToolConfig, SystemInfo } from '@types';
+import { always } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
@@ -91,7 +92,7 @@ describe('GeneratorOrchestrator', () => {
         name: 'toolB',
         binaries: ['tb'],
         version: '2.0',
-        zshInit: ['export TB=1'],
+        zshInit: [always`export TB=1`],
         installationMethod: 'none',
         installParams: undefined,
       },

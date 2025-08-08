@@ -4,6 +4,7 @@ import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirect
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig, ShellType } from '@types';
+import { always } from '@types';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { dedentString } from '@utils';
@@ -44,9 +45,9 @@ describe('Profile Updates E2E Tests', () => {
           name: 'lazygit',
           binaries: ['lazygit'],
           version: '0.40.2',
-          zshInit: ['alias g="lazygit"', 'export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"'],
-          bashInit: ['alias g="lazygit"', 'export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"'],
-          powershellInit: ['Set-Alias g lazygit', '$env:LAZYGIT_CONFIG_FILE = "$HOME/.config/lazygit/config.yml"'],
+          zshInit: [always`alias g="lazygit"`, always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`],
+          bashInit: [always`alias g="lazygit"`, always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`],
+          powershellInit: [always`Set-Alias g lazygit`, always`$env:LAZYGIT_CONFIG_FILE = "$HOME/.config/lazygit/config.yml"`],
           installationMethod: 'github-release',
           installParams: {
             repo: 'jesseduffield/lazygit',
@@ -57,12 +58,12 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['fzf'],
           version: '0.44.1',
           zshInit: [
-            'export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"',
-            'export PATH="$HOME/.fzf/bin:$PATH"',
+            always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
+            always`export PATH="$HOME/.fzf/bin:$PATH"`,
           ],
           bashInit: [
-            'export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"',
-            'export PATH="$HOME/.fzf/bin:$PATH"',
+            always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
+            always`export PATH="$HOME/.fzf/bin:$PATH"`,
           ],
           completions: {
             zsh: { source: 'completion.zsh', name: '_fzf' },
@@ -218,8 +219,8 @@ describe('Profile Updates E2E Tests', () => {
           name: 'testTool',
           binaries: ['test-tool'],
           version: '1.0.0',
-          zshInit: ['export TEST_VAR="value"'],
-          bashInit: ['export TEST_VAR="value"'],
+          zshInit: [always`export TEST_VAR="value"`],
+          bashInit: [always`export TEST_VAR="value"`],
           installationMethod: 'none',
           installParams: undefined,
         },
@@ -300,7 +301,7 @@ describe('Profile Updates E2E Tests', () => {
           name: 'customTool',
           binaries: ['custom'],
           version: '1.0.0',
-          zshInit: ['export CUSTOM_VAR="test"'],
+          zshInit: [always`export CUSTOM_VAR="test"`],
           installationMethod: 'none',
           installParams: undefined,
         },
@@ -343,16 +344,16 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['nvim'],
           version: '0.9.5',
           zshInit: [
-            'export EDITOR="nvim"',
-            'export VISUAL="nvim"',
-            'alias vim="nvim"',
-            'alias vi="nvim"',
+            always`export EDITOR="nvim"`,
+            always`export VISUAL="nvim"`,
+            always`alias vim="nvim"`,
+            always`alias vi="nvim"`,
           ],
           bashInit: [
-            'export EDITOR="nvim"',
-            'export VISUAL="nvim"',
-            'alias vim="nvim"',
-            'alias vi="nvim"',
+            always`export EDITOR="nvim"`,
+            always`export VISUAL="nvim"`,
+            always`alias vim="nvim"`,
+            always`alias vi="nvim"`,
           ],
           installationMethod: 'github-release',
           installParams: {
@@ -364,12 +365,12 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['rg'],
           version: '13.0.0',
           zshInit: [
-            'export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"',
-            'export PATH="$HOME/.cargo/bin:$PATH"',
+            always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
+            always`export PATH="$HOME/.cargo/bin:$PATH"`,
           ],
           bashInit: [
-            'export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"',
-            'export PATH="$HOME/.cargo/bin:$PATH"',
+            always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
+            always`export PATH="$HOME/.cargo/bin:$PATH"`,
           ],
           installationMethod: 'github-release',
           installParams: {
@@ -381,12 +382,12 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['bat'],
           version: '0.24.0',
           zshInit: [
-            'export BAT_THEME="ansi"',
-            'alias cat="bat"',
+            always`export BAT_THEME="ansi"`,
+            always`alias cat="bat"`,
           ],
           bashInit: [
-            'export BAT_THEME="ansi"',
-            'alias cat="bat"',
+            always`export BAT_THEME="ansi"`,
+            always`alias cat="bat"`,
           ],
           completions: {
             zsh: { source: 'bat.zsh', name: '_bat' },
@@ -460,15 +461,14 @@ describe('Profile Updates E2E Tests', () => {
       expect(zshScriptContent).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
       expect(zshScriptContent).toContain('export PATH="$HOME/.cargo/bin:$PATH"');
 
-      // Check hoisted environment variables
-      expect(zshScriptContent).toContain('# ============================ Environment Variables ============================');
+      // Check always scripts section
+      expect(zshScriptContent).toContain('# =============================== Always Scripts ================================');
       expect(zshScriptContent).toContain('export EDITOR="nvim"');
       expect(zshScriptContent).toContain('export VISUAL="nvim"');
       expect(zshScriptContent).toContain('export RIPGREP_CONFIG_PATH');
       expect(zshScriptContent).toContain('export BAT_THEME="ansi"');
 
-      // Check tool-specific sections
-      expect(zshScriptContent).toContain('# ======================== Tool-Specific Initializations ========================');
+      // All scripts are now in the Always Scripts section
       expect(zshScriptContent).toContain('alias vim="nvim"');
       expect(zshScriptContent).toContain('alias vi="nvim"');
       expect(zshScriptContent).toContain('alias cat="bat"');

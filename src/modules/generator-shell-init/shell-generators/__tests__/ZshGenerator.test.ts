@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'bun:test';
 import { ZshGenerator } from '../ZshGenerator';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
+import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
 
 describe('ZshGenerator', () => {
@@ -35,9 +36,9 @@ describe('ZshGenerator', () => {
       binaries: ['test'],
       version: '1.0.0',
       zshInit: [
-        'export TEST_VAR="value"',
-        'export PATH="/opt/test/bin:$PATH"',
-        'alias test="test-tool --verbose"',
+        always`export TEST_VAR="value"`,
+        always`export PATH="/opt/test/bin:$PATH"`,
+        always`alias test="test-tool --verbose"`,
       ],
       installationMethod: 'none',
       installParams: undefined,
@@ -45,9 +46,12 @@ describe('ZshGenerator', () => {
 
     const content = generator.extractShellContent('test-tool', toolConfig);
 
-    expect(content.environmentVariables).toContain('export TEST_VAR="value"');
-    expect(content.pathModifications).toContain('export PATH="/opt/test/bin:$PATH"');
-    expect(content.toolInit).toContain('alias test="test-tool --verbose"');
+    // With the new branded types system, scripts are stored in alwaysScripts
+    expect(content.alwaysScripts).toHaveLength(3);
+    expect(content.onceScripts).toHaveLength(0);
+    expect(content.environmentVariables).toHaveLength(0);
+    expect(content.pathModifications).toHaveLength(0);
+    expect(content.toolInit).toHaveLength(0);
   });
 
   it('should process completions for zsh', () => {
@@ -67,12 +71,16 @@ describe('ZshGenerator', () => {
         pathModifications: ['export PATH="/opt/tool1/bin:$PATH"'],
         environmentVariables: ['export TOOL1_ENV="value"'],
         completionSetup: ['fpath=("/completions/zsh" $fpath)'],
+        onceScripts: [],
+        alwaysScripts: [],
       }],
       ['tool2', {
         toolInit: ['source ~/.tool2rc'],
         pathModifications: [],
         environmentVariables: ['export TOOL2_DEBUG=true'],
         completionSetup: [],
+        onceScripts: [],
+        alwaysScripts: [],
       }],
     ]);
 

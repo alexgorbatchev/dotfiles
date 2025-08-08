@@ -3,6 +3,7 @@ import type { SystemInfo } from './common.types';
 import type { CompletionConfig } from './completion.types';
 import type { GitHubReleaseAsset } from './githubApi.types';
 import type { Platform, Architecture } from './platform.types';
+import type { ShellScript } from './shellScript.types';
 import type { YamlConfig } from '@modules/config';
 import type { $ } from 'zx';
 
@@ -410,25 +411,25 @@ export interface PlatformConfigBuilder {
   }): this;
 
   /**
-   * Adds raw Zsh shell code for this specific platform configuration.
-   * @param code - A string containing valid Zsh script code.
+   * Adds Zsh shell scripts for this specific platform configuration.
+   * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
-  zsh(code: string): this;
+  zsh(...scripts: ShellScript[]): this;
 
   /**
-   * Adds raw Bash shell code for this specific platform configuration.
-   * @param code - A string containing valid Bash script code.
+   * Adds Bash shell scripts for this specific platform configuration.
+   * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
-  bash(code: string): this;
+  bash(...scripts: ShellScript[]): this;
 
   /**
-   * Adds raw PowerShell code for this specific platform configuration.
-   * @param code - A string containing valid PowerShell script code.
+   * Adds PowerShell scripts for this specific platform configuration.
+   * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
-  powershell(code: string): this;
+  powershell(...scripts: ShellScript[]): this;
 
   /**
    * Configures a symbolic link for this specific platform configuration.
@@ -586,46 +587,79 @@ export interface ToolConfigBuilder {
   }): this;
 
   /**
-   * Adds raw Zsh shell code to be included in the generated Zsh initialization file (typically
-   * `~/.generated/shell-scripts/main.zsh`, which is then sourced by the user's `.zshrc`).  This is useful for setting environment
+   * Adds Zsh shell scripts to be included in the generated Zsh initialization file (typically
+   * `~/.generated/shell-scripts/main.zsh`, which is then sourced by the user's `.zshrc`). This is useful for setting environment
    * variables, defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts related to the
-   * tool.  Multiple calls to `zsh()` will append the code.
+   * tool. Multiple calls to `zsh()` will append the scripts.
    *
-   * @param code - A string containing valid Zsh script code.
+   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
-   * c.zsh('export MYTOOL_CONFIG_DIR="$HOME/.mytool"')
-   * c.zsh('alias m="mytool"')
+   * import { once, always } from '@types';
+   * 
+   * c.zsh(
+   *   once`
+   *     # Generate completions (runs only once after installation/update)
+   *     tool completion zsh > "$DOTFILES/.generated/completions/_tool"
+   *   `,
+   *   always`
+   *     # Fast runtime setup (runs every shell startup)
+   *     export MYTOOL_CONFIG_DIR="$HOME/.mytool"
+   *     alias m="mytool"
+   *   `
+   * )
    */
-  zsh(code: string): this;
+  zsh(...scripts: ShellScript[]): this;
 
   /**
-   * Adds raw Bash shell code to be included in the generated Bash initialization file (typically
+   * Adds Bash shell scripts to be included in the generated Bash initialization file (typically
    * `~/.generated/shell-scripts/main.bash`). This is useful for setting environment variables,
    * defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts
-   * related to the tool. Multiple calls to `bash()` will append the code.
+   * related to the tool. Multiple calls to `bash()` will append the scripts.
    *
-   * @param code - A string containing valid Bash script code.
+   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
-   * c.bash('export MYTOOL_CONFIG_DIR="$HOME/.mytool"')
-   * c.bash('alias m="mytool"')
+   * import { once, always } from '@types';
+   * 
+   * c.bash(
+   *   once`
+   *     # Generate completions (runs only once after installation/update)
+   *     tool completion bash > "$HOME/.bash_completion.d/tool"
+   *   `,
+   *   always`
+   *     # Fast runtime setup (runs every shell startup)
+   *     export MYTOOL_CONFIG_DIR="$HOME/.mytool"
+   *     alias m="mytool"
+   *   `
+   * )
    */
-  bash(code: string): this;
+  bash(...scripts: ShellScript[]): this;
 
   /**
-   * Adds raw PowerShell code to be included in the generated PowerShell initialization file
+   * Adds PowerShell scripts to be included in the generated PowerShell initialization file
    * (typically `~/.generated/shell-scripts/main.ps1`). This is useful for setting environment
    * variables, defining functions, adding directories to the `PATH`, or dot-sourcing other
-   * scripts related to the tool. Multiple calls to `powershell()` will append the code.
+   * scripts related to the tool. Multiple calls to `powershell()` will append the scripts.
    *
-   * @param code - A string containing valid PowerShell script code.
+   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
-   * c.powershell('$env:MYTOOL_CONFIG_DIR = "$env:HOME\\.mytool"')
-   * c.powershell('function m { mytool @args }')
+   * import { once, always } from '@types';
+   * 
+   * c.powershell(
+   *   once`
+   *     # Generate completions (runs only once after installation/update)
+   *     & tool completion powershell > "$env:HOME\\.powershell_completions\\tool.ps1"
+   *   `,
+   *   always`
+   *     # Fast runtime setup (runs every shell startup)
+   *     $env:MYTOOL_CONFIG_DIR = "$env:HOME\\.mytool"
+   *     function m { mytool @args }
+   *   `
+   * )
    */
-  powershell(code: string): this;
+  powershell(...scripts: ShellScript[]): this;
 
   /**
    * Configures a symbolic link to be created from a source file or directory within the dotfiles
@@ -758,12 +792,12 @@ interface BaseToolConfigProperties {
   version: string;
   /** The absolute path to the tool configuration file that defined this configuration. */
   configFilePath?: string;
-  /** An array of Zsh initialization script snippets, added via `c.zsh()`. */
-  zshInit?: string[];
-  /** An array of Bash initialization script snippets, added via `c.bash()`. */
-  bashInit?: string[];
-  /** An array of PowerShell initialization script snippets, added via `c.powershell()`. */
-  powershellInit?: string[];
+  /** An array of Zsh initialization scripts, added via `c.zsh()`. */
+  zshInit?: ShellScript[];
+  /** An array of Bash initialization scripts, added via `c.bash()`. */
+  bashInit?: ShellScript[];
+  /** An array of PowerShell initialization scripts, added via `c.powershell()`. */
+  powershellInit?: ShellScript[];
   /**
    * An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths where
    * `source` is real file and `target` is the symlink.

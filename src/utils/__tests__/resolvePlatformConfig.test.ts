@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { resolvePlatformConfig } from '../resolvePlatformConfig';
-import { Platform, Architecture, type ToolConfig, type SystemInfo, type PlatformConfigEntry } from '@types';
+import { Platform, Architecture, type ToolConfig, type SystemInfo, always } from '@types';
 
 describe('resolvePlatformConfig', () => {
   let baseToolConfig: ToolConfig;
@@ -15,8 +15,8 @@ describe('resolvePlatformConfig', () => {
       installationMethod: 'github-release',
       installParams: { repo: 'test/repo' },
       binaries: ['test-tool'],
-      zshInit: ['# Base zsh init'],
-      bashInit: ['# Base bash init'],
+      zshInit: [always`# Base zsh init`],
+      bashInit: [always`# Base bash init`],
       symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
     };
 
@@ -59,7 +59,7 @@ describe('resolvePlatformConfig', () => {
         platformConfigs: [{
           platforms: Platform.Linux,
           config: {
-            zshInit: ['# Linux specific'],
+            zshInit: [always`# Linux specific`],
             binaries: ['linux-tool'],
           },
         }],
@@ -81,7 +81,7 @@ describe('resolvePlatformConfig', () => {
         platformConfigs: [{
           platforms: Platform.MacOS,
           config: {
-            zshInit: ['# macOS specific', 'export MACOS_VAR="true"'],
+            zshInit: [always`# macOS specific`, always`export MACOS_VAR="true"`],
             binaries: ['macos-tool'],
             symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
           },
@@ -91,9 +91,9 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithPlatforms, macosSystemInfo);
 
       expect(result.zshInit).toEqual([
-        '# Base zsh init',
-        '# macOS specific', 
-        'export MACOS_VAR="true"'
+        always`# Base zsh init`,
+        always`# macOS specific`, 
+        always`export MACOS_VAR="true"`
       ]);
       expect(result.binaries).toEqual(['macos-tool']); // Platform overrides base
       expect(result.symlinks).toEqual([
@@ -109,16 +109,16 @@ describe('resolvePlatformConfig', () => {
         platformConfigs: [{
           platforms: Platform.Linux,
           config: {
-            zshInit: ['# Linux specific'],
-            bashInit: ['# Linux bash init'],
+            zshInit: [always`# Linux specific`],
+            bashInit: [always`# Linux bash init`],
           },
         }],
       };
 
       const result = resolvePlatformConfig(configWithPlatforms, linuxSystemInfo);
 
-      expect(result.zshInit).toEqual(['# Base zsh init', '# Linux specific']);
-      expect(result.bashInit).toEqual(['# Base bash init', '# Linux bash init']);
+      expect(result.zshInit).toEqual([always`# Base zsh init`, always`# Linux specific`]);
+      expect(result.bashInit).toEqual([always`# Base bash init`, always`# Linux bash init`]);
       expect(result.binaries).toEqual(['test-tool']); // Unchanged from base
     });
   });
@@ -131,13 +131,13 @@ describe('resolvePlatformConfig', () => {
           {
             platforms: Platform.Unix, // Matches both Linux and macOS
             config: {
-              zshInit: ['# Unix common'],
+              zshInit: [always`# Unix common`],
             },
           },
           {
             platforms: Platform.MacOS,
             config: {
-              zshInit: ['# macOS specific'],
+              zshInit: [always`# macOS specific`],
               binaries: ['macos-specific-tool'],
             },
           },
@@ -147,9 +147,9 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithMultiplePlatforms, macosSystemInfo);
 
       expect(result.zshInit).toEqual([
-        '# Base zsh init',
-        '# Unix common',
-        '# macOS specific'
+        always`# Base zsh init`,
+        always`# Unix common`,
+        always`# macOS specific`
       ]);
       expect(result.binaries).toEqual(['macos-specific-tool']); // Last override wins
     });
@@ -163,7 +163,7 @@ describe('resolvePlatformConfig', () => {
           platforms: Platform.MacOS,
           architectures: Architecture.Arm64,
           config: {
-            zshInit: ['# macOS ARM64 specific'],
+            zshInit: [always`# macOS ARM64 specific`],
             binaries: ['macos-arm64-tool'],
           },
         }],
@@ -171,7 +171,7 @@ describe('resolvePlatformConfig', () => {
 
       const result = resolvePlatformConfig(configWithArchitecture, macosSystemInfo);
 
-      expect(result.zshInit).toEqual(['# Base zsh init', '# macOS ARM64 specific']);
+      expect(result.zshInit).toEqual([always`# Base zsh init`, always`# macOS ARM64 specific`]);
       expect(result.binaries).toEqual(['macos-arm64-tool']);
     });
 
@@ -182,7 +182,7 @@ describe('resolvePlatformConfig', () => {
           platforms: Platform.MacOS,
           architectures: Architecture.X86_64, // macosSystemInfo has arm64
           config: {
-            zshInit: ['# macOS x64 specific'],
+            zshInit: [always`# macOS x64 specific`],
           },
         }],
       };
@@ -190,7 +190,7 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithArchitecture, macosSystemInfo);
 
       // Should not match because architecture doesn't match
-      expect(result.zshInit).toEqual(['# Base zsh init']);
+      expect(result.zshInit).toEqual([always`# Base zsh init`]);
     });
 
     it('should match platform when no architecture constraint specified', () => {
@@ -200,14 +200,14 @@ describe('resolvePlatformConfig', () => {
           platforms: Platform.MacOS,
           // No architectures specified - should match all architectures
           config: {
-            zshInit: ['# macOS all architectures'],
+            zshInit: [always`# macOS all architectures`],
           },
         }],
       };
 
       const result = resolvePlatformConfig(configWithoutArchitecture, macosSystemInfo);
 
-      expect(result.zshInit).toEqual(['# Base zsh init', '# macOS all architectures']);
+      expect(result.zshInit).toEqual([always`# Base zsh init`, always`# macOS all architectures`]);
     });
   });
 
@@ -218,7 +218,7 @@ describe('resolvePlatformConfig', () => {
         platformConfigs: [{
           platforms: Platform.Linux | Platform.MacOS, // Unix platforms
           config: {
-            zshInit: ['# Unix platforms'],
+            zshInit: [always`# Unix platforms`],
           },
         }],
       };
@@ -228,9 +228,9 @@ describe('resolvePlatformConfig', () => {
       const macosResult = resolvePlatformConfig(configWithCombinedPlatforms, macosSystemInfo);
       const windowsResult = resolvePlatformConfig(configWithCombinedPlatforms, windowsSystemInfo);
 
-      expect(linuxResult.zshInit).toEqual(['# Base zsh init', '# Unix platforms']);
-      expect(macosResult.zshInit).toEqual(['# Base zsh init', '# Unix platforms']);
-      expect(windowsResult.zshInit).toEqual(['# Base zsh init']); // Windows should not match
+      expect(linuxResult.zshInit).toEqual([always`# Base zsh init`, always`# Unix platforms`]);
+      expect(macosResult.zshInit).toEqual([always`# Base zsh init`, always`# Unix platforms`]);
+      expect(windowsResult.zshInit).toEqual([always`# Base zsh init`]); // Windows should not match
     });
   });
 
@@ -247,13 +247,13 @@ describe('resolvePlatformConfig', () => {
         platformConfigs: [{
           platforms: Platform.All,
           config: {
-            zshInit: ['# Should not match'],
+            zshInit: [always`# Should not match`],
           },
         }],
       };
 
       const result = resolvePlatformConfig(configWithPlatforms, unknownPlatformSystem);
-      expect(result.zshInit).toEqual(['# Base zsh init']); // No platform match
+      expect(result.zshInit).toEqual([always`# Base zsh init`]); // No platform match
     });
 
     it('should not match when system architecture is unknown but architecture is specified', () => {
@@ -269,13 +269,13 @@ describe('resolvePlatformConfig', () => {
           platforms: Platform.MacOS,
           architectures: Architecture.All,
           config: {
-            zshInit: ['# Should not match'],
+            zshInit: [always`# Should not match`],
           },
         }],
       };
 
       const result = resolvePlatformConfig(configWithArchitecture, unknownArchSystem);
-      expect(result.zshInit).toEqual(['# Base zsh init']); // No architecture match
+      expect(result.zshInit).toEqual([always`# Base zsh init`]); // No architecture match
     });
   });
 
@@ -304,13 +304,13 @@ describe('resolvePlatformConfig', () => {
     it('should merge array properties (zshInit, bashInit, symlinks)', () => {
       const configWithArrays: ToolConfig = {
         ...baseToolConfig,
-        powershellInit: ['# Base PowerShell'],
+        powershellInit: [always`# Base PowerShell`],
         platformConfigs: [{
           platforms: Platform.MacOS,
           config: {
-            zshInit: ['# Platform zsh 1', '# Platform zsh 2'],
-            bashInit: ['# Platform bash'],
-            powershellInit: ['# Platform PowerShell'],
+            zshInit: [always`# Platform zsh 1`, always`# Platform zsh 2`],
+            bashInit: [always`# Platform bash`],
+            powershellInit: [always`# Platform PowerShell`],
             symlinks: [
               { source: './platform1.conf', target: '~/.platform1.conf' },
               { source: './platform2.conf', target: '~/.platform2.conf' }
@@ -322,17 +322,17 @@ describe('resolvePlatformConfig', () => {
       const result = resolvePlatformConfig(configWithArrays, macosSystemInfo);
 
       expect(result.zshInit).toEqual([
-        '# Base zsh init',
-        '# Platform zsh 1',
-        '# Platform zsh 2'
+        always`# Base zsh init`,
+        always`# Platform zsh 1`,
+        always`# Platform zsh 2`
       ]);
       expect(result.bashInit).toEqual([
-        '# Base bash init',
-        '# Platform bash'
+        always`# Base bash init`,
+        always`# Platform bash`
       ]);
       expect(result.powershellInit).toEqual([
-        '# Base PowerShell',
-        '# Platform PowerShell'
+        always`# Base PowerShell`,
+        always`# Platform PowerShell`
       ]);
       expect(result.symlinks).toEqual([
         { source: './base.conf', target: '~/.base.conf' },

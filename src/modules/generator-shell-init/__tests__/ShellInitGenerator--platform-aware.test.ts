@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig, SystemInfo } from '@types';
-import { Platform, Architecture } from '@types';
+import { Platform, Architecture, always } from '@types';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
@@ -49,14 +49,14 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'aerospace',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: ['# Base aerospace init'],
+          zshInit: [always`# Base aerospace init`],
           platformConfigs: [{
             platforms: Platform.MacOS,
             config: {
               installationMethod: 'brew',
               installParams: { formula: 'nikitabobko/tap/aerospace', cask: true },
               binaries: ['aerospace'],
-              zshInit: ['# macOS aerospace init', 'export AEROSPACE_CONFIG="~/.config/aerospace/aerospace.toml"'],
+              zshInit: [always`# macOS aerospace init`, always`export AEROSPACE_CONFIG="~/.config/aerospace/aerospace.toml"`],
             },
           }],
         },
@@ -93,11 +93,11 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'aerospace',
           version: 'latest', 
           installationMethod: 'none',
-          zshInit: ['# Base aerospace init'],
+          zshInit: [always`# Base aerospace init`],
           platformConfigs: [{
             platforms: Platform.MacOS, // Only for macOS
             config: {
-              zshInit: ['# macOS-only aerospace init'],
+              zshInit: [always`# macOS-only aerospace init`],
               binaries: ['aerospace'],
             },
           }],
@@ -132,18 +132,18 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'multi-platform-tool',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: ['# Base init'],
+          zshInit: [always`# Base init`],
           platformConfigs: [
             {
               platforms: Platform.Unix, // Matches both Linux and macOS
               config: {
-                zshInit: ['# Unix common init'],
+                zshInit: [always`# Unix common init`],
               },
             },
             {
               platforms: Platform.MacOS,
               config: {
-                zshInit: ['# macOS specific init'],
+                zshInit: [always`# macOS specific init`],
                 binaries: ['macos-tool'],
               },
             },
@@ -194,13 +194,13 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'arch-specific-tool',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: ['# Base init'],
+          zshInit: [always`# Base init`],
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               architectures: Architecture.Arm64,
               config: {
-                zshInit: ['# macOS ARM64 init'],
+                zshInit: [always`# macOS ARM64 init`],
                 binaries: ['arm64-tool'],
               },
             },
@@ -208,7 +208,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
               platforms: Platform.MacOS,
               architectures: Architecture.X86_64,
               config: {
-                zshInit: ['# macOS x86_64 init'],
+                zshInit: [always`# macOS x86_64 init`],
                 binaries: ['x64-tool'],
               },
             },
@@ -253,11 +253,11 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/repo' },
           binaries: ['platform-tool'],
-          zshInit: ['# Base init only'],
+          zshInit: [always`# Base init only`],
           platformConfigs: [{
             platforms: Platform.MacOS,
             config: {
-              zshInit: ['# This should not appear'],
+              zshInit: [always`# This should not appear`],
             },
           }],
         },
@@ -337,17 +337,17 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/regular' },
           binaries: ['regular'],
-          zshInit: ['# Regular tool init'],
+          zshInit: [always`# Regular tool init`],
         },
         'platform-tool': {
           name: 'platform-tool',
           version: 'latest', 
           installationMethod: 'none',
-          zshInit: ['# Base platform init'],
+          zshInit: [always`# Base platform init`],
           platformConfigs: [{
             platforms: Platform.MacOS,
             config: {
-              zshInit: ['# macOS platform init'],
+              zshInit: [always`# macOS platform init`],
               binaries: ['macos-platform'],
             },
           }],
@@ -359,7 +359,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           platformConfigs: [{
             platforms: Platform.Linux,
             config: {
-              zshInit: ['# Linux only - should not appear'],
+              zshInit: [always`# Linux only - should not appear`],
               binaries: ['linux-only'],
             },
           }],

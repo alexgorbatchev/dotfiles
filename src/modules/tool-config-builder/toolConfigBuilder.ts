@@ -14,6 +14,7 @@ import type {
   ManualInstallParams,
   ManualToolConfig,
   PlatformConfigEntry,
+  ShellScript,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigInstallationMethod,
@@ -30,9 +31,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public versionNum: string = 'latest';
   public currentInstallationMethod?: ToolConfigInstallationMethod;
   public currentInstallParams?: ToolConfigInstallParams;
-  public zshScripts: string[] = [];
-  public bashScripts: string[] = [];
-  public powershellScripts: string[] = [];
+  public zshScripts: ShellScript[] = [];
+  public bashScripts: ShellScript[] = [];
+  public powershellScripts: ShellScript[] = [];
   public symlinkPairs: { source: string; target: string }[] = [];
   public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -87,18 +88,18 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
-  zsh(code: string): this {
-    this.zshScripts.push(code);
+  zsh(...scripts: ShellScript[]): this {
+    this.zshScripts.push(...scripts);
     return this;
   }
 
-  bash(code: string): this {
-    this.bashScripts.push(code);
+  bash(...scripts: ShellScript[]): this {
+    this.bashScripts.push(...scripts);
     return this;
   }
 
-  powershell(code: string): this {
-    this.powershellScripts.push(code);
+  powershell(...scripts: ShellScript[]): this {
+    this.powershellScripts.push(...scripts);
     return this;
   }
 

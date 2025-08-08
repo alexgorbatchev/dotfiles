@@ -1,4 +1,5 @@
 import type { AsyncConfigureTool, ToolConfigBuilder } from '@types'; // Adjusted import path
+import { always } from '@types';
 
 const configureLazygit: AsyncConfigureTool = async (c: ToolConfigBuilder): Promise<void> => {
   // Name is implicitly 'lazygit' (derived from the filename by the config loader)
@@ -21,7 +22,7 @@ const configureLazygit: AsyncConfigureTool = async (c: ToolConfigBuilder): Promi
 
   // Adheres to the guideline: zshInit MUST be a single multi-line string (template literal).
   // The builder method is `zsh()` for this.
-  c.zsh(`
+  c.zsh(always`
 alias g="lazygit"
 `);
 

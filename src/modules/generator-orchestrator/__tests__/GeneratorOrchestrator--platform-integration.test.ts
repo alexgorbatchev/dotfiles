@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig, SystemInfo, GeneratedArtifactsManifest } from '@types';
-import { Platform } from '@types';
+import { Platform, always } from '@types';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 import type { IShimGenerator } from '@modules/generator-shim';
 import type { IShellInitGenerator, ShellInitGenerationResult } from '@modules/generator-shell-init';
@@ -98,17 +98,12 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     mockSymlinkGenerator = {
       generate: async () => {
         const mockResult: SymlinkOperationResult = {
-          created: [{ source: '/test/src', target: '/test/target', toolName: 'test' }],
-          skipped: [],
-          failed: [],
+          sourcePath: '/test/src',
+          targetPath: '/test/target',
+          status: 'created',
         };
-        return mockResult;
+        return [mockResult];
       },
-      generateForTool: async () => Promise.resolve({
-        created: [],
-        skipped: [],
-        failed: [],
-      }),
     };
   });
 
@@ -133,7 +128,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
             platforms: Platform.MacOS,
             config: {
               binaries: ['aerospace'],
-              zshInit: ['# macOS aerospace init'],
+              zshInit: [always`# macOS aerospace init`],
             },
           }],
         },
@@ -143,7 +138,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/regular' },
           binaries: ['regular'],
-          zshInit: ['# Regular tool init'],
+          zshInit: [always`# Regular tool init`],
         },
       };
 
@@ -175,18 +170,18 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           name: 'cross-platform-tool',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: ['# Base init'],
+          zshInit: [always`# Base init`],
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                zshInit: ['# macOS specific - should not appear'],
+                zshInit: [always`# macOS specific - should not appear`],
               },
             },
             {
               platforms: Platform.Linux,
               config: {
-                zshInit: ['# Linux specific - should appear'],
+                zshInit: [always`# Linux specific - should appear`],
               },
             },
           ],
@@ -224,7 +219,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/simple' },
           binaries: ['simple'],
-          zshInit: ['# Simple tool init'],
+          zshInit: [always`# Simple tool init`],
           // No platform configs
         },
       };
@@ -259,13 +254,13 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           name: 'full-platform-tool',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: ['# Base shell init'],
+          zshInit: [always`# Base shell init`],
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
           platformConfigs: [{
             platforms: Platform.MacOS,
             config: {
               binaries: ['macos-binary'],
-              zshInit: ['# macOS shell init'],
+              zshInit: [always`# macOS shell init`],
               symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
               installationMethod: 'brew',
               installParams: { formula: 'test-formula' },
@@ -280,7 +275,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       expect(result).toBeDefined();
       expect(result.shims).toEqual(['/test/bin/shim1', '/test/bin/shim2']);
       expect(result.shellInit?.path).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(result.symlinks?.created).toHaveLength(1);
+      expect(result.symlinks).toHaveLength(1);
 
       // Verify shell content includes platform-aware information
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));

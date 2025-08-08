@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'bun:test';
 import { BashGenerator } from '../BashGenerator';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
+import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
 
 describe('BashGenerator', () => {
@@ -35,10 +36,10 @@ describe('BashGenerator', () => {
       binaries: ['test'],
       version: '1.0.0',
       bashInit: [
-        'export TEST_VAR="value"',
-        'export PATH="/opt/test/bin:$PATH"',
-        'declare -U PATH',
-        '# Bash-specific completion setup',
+        always`export TEST_VAR="value"`,
+        always`export PATH="/opt/test/bin:$PATH"`,
+        always`declare -U PATH`,
+        always`# Bash-specific completion setup`,
       ],
       installationMethod: 'none',
       installParams: undefined,
@@ -46,10 +47,12 @@ describe('BashGenerator', () => {
 
     const content = generator.extractShellContent('test-tool', toolConfig);
 
-    expect(content.environmentVariables).toContain('export TEST_VAR="value"');
-    expect(content.pathModifications).toContain('export PATH="/opt/test/bin:$PATH"');
-    expect(content.toolInit).toContain('declare -U PATH');
-    expect(content.toolInit).toContain('# Bash-specific completion setup');
+    // With the new branded types system, scripts are stored in alwaysScripts
+    expect(content.alwaysScripts).toHaveLength(4);
+    expect(content.onceScripts).toHaveLength(0);
+    expect(content.environmentVariables).toHaveLength(0);
+    expect(content.pathModifications).toHaveLength(0);
+    expect(content.toolInit).toHaveLength(0);
   });
 
   it('should process completions for bash', () => {
@@ -69,6 +72,8 @@ describe('BashGenerator', () => {
         pathModifications: ['PATH="$PATH:/opt/tool1/bin"'],
         environmentVariables: ['export TOOL1_ENV="value"'],
         completionSetup: ['[[ -f "/completions/tool1.bash" ]] && source "/completions/tool1.bash"'],
+        onceScripts: [],
+        alwaysScripts: [],
       }],
     ]);
 

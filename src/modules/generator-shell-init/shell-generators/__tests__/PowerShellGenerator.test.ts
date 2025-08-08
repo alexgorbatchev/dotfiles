@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'bun:test';
 import { PowerShellGenerator } from '../PowerShellGenerator';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
+import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
 
 describe('PowerShellGenerator', () => {
@@ -35,10 +36,10 @@ describe('PowerShellGenerator', () => {
       binaries: ['test'],
       version: '1.0.0',
       powershellInit: [
-        '$env:TEST_VAR = "value"',
-        '$env:PATH = "/opt/test/bin;$env:PATH"',
-        'function test { test-tool --verbose }',
-        '. ~/.testrc',
+        always`$env:TEST_VAR = "value"`,
+        always`$env:PATH = "/opt/test/bin;$env:PATH"`,
+        always`function test { test-tool --verbose }`,
+        always`. ~/.testrc`,
       ],
       installationMethod: 'none',
       installParams: undefined,
@@ -46,10 +47,12 @@ describe('PowerShellGenerator', () => {
 
     const content = generator.extractShellContent('test-tool', toolConfig);
 
-    expect(content.environmentVariables).toContain('$env:TEST_VAR = "value"');
-    expect(content.pathModifications).toContain('$env:PATH = "/opt/test/bin;$env:PATH"');
-    expect(content.toolInit).toContain('function test { test-tool --verbose }');
-    expect(content.toolInit).toContain('. ~/.testrc');
+    // With the new branded types system, scripts are stored in alwaysScripts
+    expect(content.alwaysScripts).toHaveLength(4);
+    expect(content.onceScripts).toHaveLength(0);
+    expect(content.environmentVariables).toHaveLength(0);
+    expect(content.pathModifications).toHaveLength(0);
+    expect(content.toolInit).toHaveLength(0);
   });
 
   it('should process completions for PowerShell', () => {
@@ -69,6 +72,8 @@ describe('PowerShellGenerator', () => {
         pathModifications: ['$env:PATH = "/opt/tool1/bin;$env:PATH"'],
         environmentVariables: ['$env:TOOL1_ENV = "value"'],
         completionSetup: ['if (Test-Path "/completions/tool1.ps1") { . "/completions/tool1.ps1" }'],
+        onceScripts: [],
+        alwaysScripts: [],
       }],
     ]);
 

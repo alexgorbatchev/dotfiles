@@ -1,8 +1,10 @@
 import path from 'node:path';
-import type { ShellType, ToolConfig, CompletionConfig } from '@types';
+import type { ShellType, ToolConfig, CompletionConfig, ShellScript } from '@types';
+import { isOnceScript, isAlwaysScript, getScriptContent } from '@types';
 import type { YamlConfig } from '@modules/config';
-import type { IShellGenerator, ShellInitContent } from './IShellGenerator';
-import { dedentString } from '@utils';
+import type { IShellGenerator, ShellInitContent, AdditionalShellFile } from './IShellGenerator';
+import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
+import { OnceScriptInitializer } from '../script-initializers';
 import { generateFileHeader, generateSectionHeader, generateToolHeader, generateHoistingExplanation, generateHoistingAttribution, generateDefaultPathModification, generateCompletionSetup, generateEndOfFile } from '../shellTemplates';
 
 /**
@@ -27,12 +29,17 @@ export class ZshGenerator implements IShellGenerator {
       pathModifications: [],
       environmentVariables: [],
       completionSetup: [],
+      onceScripts: [],
+      alwaysScripts: [],
     };
 
     if (toolConfig.zshInit && toolConfig.zshInit.length > 0) {
-      toolConfig.zshInit.forEach((line) => {
-        const dedentedLine = dedentString(line);
-        this.categorizeZshLine(dedentedLine, content);
+      toolConfig.zshInit.forEach((script: ShellScript) => {
+        if (isOnceScript(script)) {
+          content.onceScripts.push(script);
+        } else if (isAlwaysScript(script)) {
+          content.alwaysScripts.push(script);
+        }
       });
     }
 
@@ -59,6 +66,12 @@ export class ZshGenerator implements IShellGenerator {
     const allEnvironmentVariables: string[] = [];
     const allToolInits: string[] = [];
     const allCompletionSetup: string[] = [];
+    const formattedAlwaysScripts: string[] = [];
+    let hasOnceScripts = false;
+
+    // Initialize formatters
+    const alwaysFormatter = new AlwaysScriptFormatter();
+    const onceInitializer = new OnceScriptInitializer();
 
     // Add default PATH modification first
     allPathModifications.push(generateDefaultPathModification(this.shellType, this.appConfig.paths.binariesDir));
@@ -66,13 +79,39 @@ export class ZshGenerator implements IShellGenerator {
     // Collect content from all tools with proper attribution
     this.collectContentWithAttribution(toolContents, allPathModifications, allEnvironmentVariables, allToolInits, allCompletionSetup);
 
+    // Process branded scripts from all tools
+    for (const [toolName, content] of toolContents) {
+      // Format always scripts
+      for (const script of content.alwaysScripts) {
+        const formatted = alwaysFormatter.format(script, toolName, this.shellType);
+        formattedAlwaysScripts.push(formatted.content);
+      }
+
+      // Check if any tools have once scripts
+      if (content.onceScripts.length > 0) {
+        hasOnceScripts = true;
+      }
+    }
+
     let fileContent = generateFileHeader(this.shellType, this.appConfig.paths.dotfilesDir) + '\n';
+
+    // Add once script initialization if any tools use once scripts
+    if (hasOnceScripts) {
+      const initialization = onceInitializer.initialize(this.shellType, this.appConfig.paths.shellScriptsDir);
+      fileContent += initialization.content + '\n\n';
+    }
 
     // Add PATH modifications section with hoisting comments
     fileContent += this.generateHoistedSection('PATH Modifications', allPathModifications, toolContents, 'pathModifications');
 
     // Add environment variables section with hoisting comments
     fileContent += this.generateHoistedSection('Environment Variables', allEnvironmentVariables, toolContents, 'environmentVariables');
+
+    // Add formatted always scripts section
+    if (formattedAlwaysScripts.length > 0) {
+      fileContent += `${generateSectionHeader(this.shellType, 'Always Scripts')}\n`;
+      fileContent += formattedAlwaysScripts.join('\n\n') + '\n\n';
+    }
 
     // Add tool-specific initializations section with file headers
     fileContent += this.generateToolInitSection(allToolInits, toolContents);
@@ -104,40 +143,6 @@ export class ZshGenerator implements IShellGenerator {
     return path.join(this.appConfig.paths.shellScriptsDir, `main${this.fileExtension}`);
   }
 
-  /**
-   * Categorizes a Zsh line into the appropriate content section.
-   * @param line - Zsh command line
-   * @param content - Content object to populate
-   */
-  private categorizeZshLine(line: string, content: ShellInitContent): void {
-    const trimmedLine = line.trim();
-    
-    if (this.isPathModification(trimmedLine)) {
-      content.pathModifications.push(line);
-    } else if (this.isEnvironmentVariable(trimmedLine)) {
-      content.environmentVariables.push(line);
-    } else {
-      content.toolInit.push(line);
-    }
-  }
-
-  /**
-   * Checks if a line is a PATH modification command.
-   */
-  private isPathModification(trimmedLine: string): boolean {
-    return (
-      trimmedLine.startsWith('export PATH=') ||
-      trimmedLine.startsWith('path+=') ||
-      trimmedLine.startsWith('fpath+=')
-    );
-  }
-
-  /**
-   * Checks if a line is an environment variable export.
-   */
-  private isEnvironmentVariable(trimmedLine: string): boolean {
-    return trimmedLine.startsWith('export ') && trimmedLine.includes('=');
-  }
 
   /**
    * Collects content from all tools with proper attribution.
@@ -154,6 +159,7 @@ export class ZshGenerator implements IShellGenerator {
       allEnvironmentVariables.push(...content.environmentVariables);
       allToolInits.push(...content.toolInit);
       allCompletionSetup.push(...content.completionSetup);
+      // Note: onceScripts and alwaysScripts are handled separately in generateFileContent()
     }
   }
 
@@ -251,11 +257,39 @@ export class ZshGenerator implements IShellGenerator {
     
     for (const [toolName, content] of toolContents) {
       const contentArray = content[contentType];
-      if (Array.isArray(contentArray) && contentArray.includes(item)) {
-        sourceTools.push(toolName);
+      if (Array.isArray(contentArray)) {
+        // Handle both plain strings and ShellScript branded types
+        const hasMatch = contentArray.some(arrayItem => {
+          if (typeof arrayItem === 'string') {
+            return arrayItem === item;
+          }
+          // For ShellScript branded types, compare the content
+          return getScriptContent(arrayItem as ShellScript) === item;
+        });
+        if (hasMatch) {
+          sourceTools.push(toolName);
+        }
       }
     }
     
     return sourceTools;
+  }
+
+  getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[] {
+    const additionalFiles: AdditionalShellFile[] = [];
+    const onceFormatter = new OnceScriptFormatter(this.appConfig.paths.shellScriptsDir);
+
+    for (const [toolName, content] of toolContents) {
+      for (let i = 0; i < content.onceScripts.length; i++) {
+        const script = content.onceScripts[i];
+        const formatted = onceFormatter.format(script, toolName, this.shellType, i);
+        additionalFiles.push({
+          content: formatted.content,
+          outputPath: formatted.outputPath!,
+        });
+      }
+    }
+
+    return additionalFiles;
   }
 }

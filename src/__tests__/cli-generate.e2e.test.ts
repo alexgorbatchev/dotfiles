@@ -205,9 +205,9 @@ describe('E2E: bun run cli generate', () => {
     it('should generate the correct shell initialization file content', async () => {
       expect(await fs.exists(zshInitFilePath)).toBe(true);
       const content = await fs.readFile(zshInitFilePath);
-      expect(content).toContain('# Tool: fzf');
+      expect(content).toContain('__dotfiles_fzf_always');
       expect(content).toContain('export FZF_DEFAULT_OPTS=');
-      expect(content).toContain('# Tool: lazygit');
+      expect(content).toContain('__dotfiles_lazygit_always');
       expect(content).toContain('alias g="lazygit"');
     });
 

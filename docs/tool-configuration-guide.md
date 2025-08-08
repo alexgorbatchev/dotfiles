@@ -378,15 +378,51 @@ c.install('manual', {
 
 ## Shell Integration
 
-### `.zsh(code: string)`
+### Shell Script Execution Timing
 
-Adds Zsh shell initialization code.
+The shell integration system supports two types of scripts with different execution timing:
+
+- **Always Scripts**: Run every time the shell starts (traditional behavior)
+- **Once Scripts**: Run only once after tool installation or updates (for expensive operations)
+
+This distinction helps optimize shell startup performance by preventing expensive operations like completion generation from running on every shell startup.
+
+### `.zsh(scripts: ShellScript[])`
+
+Adds Zsh shell initialization code using branded script types.
+
+**Branded Script Types:**
+- `always(script)`: For scripts that should run on every shell startup
+- `once(script)`: For scripts that should run only once after installation/updates
 
 **Guidelines:**
 - Use template literals (backticks) for multi-line code
 - Include the `/* zsh */` comment for syntax highlighting
-- Code is executed during shell initialization
+- Use `once()` for expensive operations like completion generation
+- Use `always()` for aliases, functions, and lightweight setup
 - Multiple calls append to the initialization
+
+**Basic Usage:**
+```typescript
+import { once, always } from '@types';
+
+c.zsh(
+  once/* zsh */`
+    # Generate completions (runs only once)
+    tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
+  `,
+  always/* zsh */`
+    # Fast runtime setup (runs every shell startup)
+    export TOOL_CONFIG_DIR="$HOME/.tool"
+    alias t="tool"
+  `
+)
+```
+
+**Performance Benefits:**
+- Expensive operations (completion generation, cache building) run only once
+- Shell startup remains fast with lightweight always scripts
+- Once scripts automatically self-delete after execution to prevent re-running
 
 **Common Patterns:**
 

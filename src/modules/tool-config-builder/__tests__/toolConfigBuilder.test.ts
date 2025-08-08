@@ -1,6 +1,7 @@
 import { expect, test, describe, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
+import { always } from '@types';
 import { TestLogger } from '@testing-helpers';
 import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
 
@@ -88,10 +89,10 @@ describe('ToolConfigBuilder', () => {
 
   test('zsh method adds zsh code correctly to zshInit', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.zsh('alias ll="ls -l"');
-    builder.zsh('export PATH="$HOME/bin:$PATH"');
+    builder.zsh(always`alias ll="ls -l"`);
+    builder.zsh(always`export PATH="$HOME/bin:$PATH"`);
     // build() is valid here as zshInit is provided
-    expect(builder.build().zshInit).toEqual(['alias ll="ls -l"', 'export PATH="$HOME/bin:$PATH"']);
+    expect(builder.build().zshInit).toEqual([always`alias ll="ls -l"`, always`export PATH="$HOME/bin:$PATH"`]);
   });
 
   test('symlink method adds symlinks correctly', () => {
@@ -124,7 +125,7 @@ describe('ToolConfigBuilder', () => {
       .version('1.0.0')
       .install('github-release', installParams)
       .hooks(hooks)
-      .zsh('alias tt="test-tool"')
+      .zsh(always`alias tt="test-tool"`)
       .symlink('config.yml', '~/.config/tool/config.yml')
       .completions(completionConfig);
 
@@ -137,7 +138,7 @@ describe('ToolConfigBuilder', () => {
     if (config.installationMethod === 'github-release') {
       expect(config.installParams).toEqual({ ...installParams, hooks });
     }
-    expect(config.zshInit).toEqual(['alias tt="test-tool"']);
+    expect(config.zshInit).toEqual([always`alias tt="test-tool"`]);
     expect(config.symlinks).toEqual([
       { source: 'config.yml', target: '~/.config/tool/config.yml' },
     ]);
@@ -161,12 +162,12 @@ describe('ToolConfigBuilder', () => {
 
   test('build method returns NoInstallToolConfig if only zshInit is present', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.zsh('alias tt="test-tool"');
+    builder.zsh(always`alias tt="test-tool"`);
     const config = builder.build();
     expect(config.installationMethod).toBe('none'); // Should be 'none'
     expect(config.installParams).toBeUndefined();
     expect(config.binaries).toEqual([]);
-    expect(config.zshInit).toEqual(['alias tt="test-tool"']);
+    expect(config.zshInit).toEqual([always`alias tt="test-tool"`]);
   });
 
   test('build method returns NoInstallToolConfig if only symlinks are present', () => {

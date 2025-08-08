@@ -1,4 +1,4 @@
-import type { ShellType, ToolConfig, CompletionConfig } from '@types';
+import type { ShellType, ToolConfig, CompletionConfig, ShellScript } from '@types';
 
 /**
  * Represents shell-specific initialization content for a single tool.
@@ -14,6 +14,22 @@ export interface ShellInitContent {
   environmentVariables: string[];
   /** Shell completion setup commands */
   completionSetup: string[];
+  /** Scripts that run only once after tool installation/update */
+  onceScripts: ShellScript[];
+  /** Scripts that run every time the shell starts */
+  alwaysScripts: ShellScript[];
+}
+
+/**
+ * Additional file that needs to be written during shell generation
+ */
+export interface AdditionalShellFile {
+  /** Content of the file */
+  content: string;
+  /** Path where the file should be written */
+  outputPath: string;
+  /** Whether the file should be made executable */
+  executable?: boolean;
 }
 
 /**
@@ -58,6 +74,13 @@ export interface IShellGenerator {
    * @returns Complete shell initialization file content
    */
   generateFileContent(toolContents: Map<string, ShellInitContent>): string;
+
+  /**
+   * Gets additional files that need to be written during generation (e.g., once scripts)
+   * @param toolContents - Map of tool names to their shell content
+   * @returns Array of additional files to write
+   */
+  getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[];
 
   /**
    * Gets the default output filename for this shell.

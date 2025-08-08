@@ -70,8 +70,14 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
         // Generate file content using the shell-specific generator
         const fileContent = generator.generateFileContent(toolContents);
+        
+        // Clean up once scripts directory before writing new ones
+        await this.cleanupOnceScriptsDirectory(shellType);
 
-        // Write the file
+        // Get additional files (e.g., once scripts)
+        const additionalFiles = generator.getAdditionalFiles(toolContents);
+
+        // Write the main file
         try {
           await this.fs.ensureDir(path.dirname(outputPath));
           await this.fs.writeFile(outputPath, fileContent);
@@ -80,6 +86,17 @@ export class ShellInitGenerator implements IShellInitGenerator {
           // Set primary path to the first generated file (for backward compatibility)
           if (primaryPath === null) {
             primaryPath = outputPath;
+          }
+          
+          // Write additional files
+          for (const additionalFile of additionalFiles) {
+            try {
+              await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
+              await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
+            } catch (error: any) {
+              this.logger.debug(DebugTemplates.shellInit.writeError(), additionalFile.outputPath, this.fs.constructor.name, error.message);
+              // Continue with other additional files even if one fails
+            }
           }
         } catch (error: any) {
           this.logger.debug(DebugTemplates.shellInit.writeError(), outputPath, this.fs.constructor.name, error.message);
@@ -134,6 +151,60 @@ export class ShellInitGenerator implements IShellInitGenerator {
   }
 
   /**
+   * Cleans up the once scripts directory for a specific shell type by removing all existing files.
+   * This ensures that removed or changed once scripts don't remain from previous generations.
+   * @param shellType - The shell type to clean up once scripts for
+   */
+  private async cleanupOnceScriptsDirectory(shellType: ShellType): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'cleanupOnceScriptsDirectory' });
+    const onceDir = path.join(this.appConfig.paths.shellScriptsDir, '.once');
+    
+    try {
+      const onceDirExists = await this.fs.exists(onceDir);
+      if (!onceDirExists) {
+        logger.debug(DebugTemplates.shellInit.outputPath(), `Once directory does not exist: ${onceDir}`);
+        return;
+      }
+
+      // Get file extension for this shell type
+      const extension = this.getShellExtension(shellType);
+      
+      // Read all files in the once directory
+      const files = await this.fs.readdir(onceDir);
+      
+      // Filter to only files matching this shell type and remove them
+      for (const file of files) {
+        if (file.endsWith(`.${extension}`)) {
+          const filePath = path.join(onceDir, file);
+          await this.fs.rm(filePath);
+          logger.debug(DebugTemplates.shellInit.outputPath(), `Removed stale once script: ${filePath}`);
+        }
+      }
+    } catch (error: any) {
+      logger.debug(DebugTemplates.shellInit.writeError(), onceDir, this.fs.constructor.name, error.message);
+      // Continue generation even if cleanup fails
+    }
+  }
+
+  /**
+   * Gets the file extension for a shell type
+   * @param shellType - The shell type
+   * @returns The file extension for the shell
+   */
+  private getShellExtension(shellType: ShellType): string {
+    switch (shellType) {
+      case 'zsh':
+        return 'zsh';
+      case 'bash':
+        return 'bash';
+      case 'powershell':
+        return 'ps1';
+      default:
+        throw new Error(`Unsupported shell type: ${shellType}`);
+    }
+  }
+
+  /**
    * Checks if shell content has any meaningful content to generate.
    * @param content - Shell content to check
    * @returns True if content has meaningful data
@@ -143,7 +214,9 @@ export class ShellInitGenerator implements IShellInitGenerator {
       content.toolInit.length > 0 ||
       content.pathModifications.length > 0 ||
       content.environmentVariables.length > 0 ||
-      content.completionSetup.length > 0
+      content.completionSetup.length > 0 ||
+      content.onceScripts.length > 0 ||
+      content.alwaysScripts.length > 0
     );
   }
 }

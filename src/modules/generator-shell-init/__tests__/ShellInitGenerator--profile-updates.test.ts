@@ -4,6 +4,7 @@ import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirect
 import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
+import { always } from '@types';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 
@@ -41,7 +42,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
         name: 'testTool',
         binaries: ['tt'],
         version: '1.0.0',
-        zshInit: ['export TEST_VAR="hello"'],
+        zshInit: [always`export TEST_VAR="hello"`],
         installationMethod: 'none',
         installParams: undefined,
       },
@@ -243,7 +244,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
           name: 'testTool',
           binaries: ['tt'],
           version: '1.0.0',
-          powershellInit: ['$env:TEST_VAR = "hello"'],
+          powershellInit: [always`$env:TEST_VAR = "hello"`],
           installationMethod: 'none',
           installParams: undefined,
         },
@@ -283,7 +284,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
           name: 'testTool',
           binaries: ['tt'],
           version: '1.0.0',
-          zshInit: ['export TEST_VAR="hello"'],
+          zshInit: [always`export TEST_VAR="hello"`],
           installationMethod: 'none',
           installParams: undefined,
         },

@@ -1,4 +1,5 @@
-import type { ToolConfig } from '@types'; 
+import type { ToolConfig } from '@types';
+import { always } from '@types'; 
 
 const fzfToolConfig: ToolConfig = {
   name: 'fzf',
@@ -18,7 +19,7 @@ const fzfToolConfig: ToolConfig = {
     },
   },
   zshInit: [
-    `
+    always`
       # Unset and set FZF environment variables as per user's 02-configs/fzf/init.zsh
       unset FZF_PREVIEW
       unset FZF_PREVIEW_WINDOW
