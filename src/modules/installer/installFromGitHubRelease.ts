@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
@@ -15,7 +16,6 @@ import type {
   ExtractResult,
 } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { DebugTemplates, ErrorTemplates } from '@modules/shared/ErrorTemplates';
 import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import { HookExecutor } from './HookExecutor';
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from './BinarySetupService';
@@ -42,7 +42,7 @@ export async function installFromGitHubRelease(
     : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
-  logger.debug(DebugTemplates.command.methodStarted(), toolName);
+  logger.debug(logs.command.debug.methodStarted(), toolName);
 
   // Context variables for lifecycle stages
   let postDownloadContext: PostDownloadInstallContext;
@@ -64,7 +64,7 @@ export async function installFromGitHubRelease(
     // Get the release from GitHub
     let release;
     if (version === 'latest') {
-      logger.debug(DebugTemplates.command.gitHubReleaseLatest(), repo || toolName);
+      logger.debug(logs.command.debug.gitHubReleaseLatest(), repo || toolName);
       const [owner, repoName] = (repo || '').split('/');
       if (!owner || !repoName) {
         return {
@@ -75,7 +75,7 @@ export async function installFromGitHubRelease(
       release = await githubApiClient.getLatestRelease(owner, repoName);
     } else {
       logger.debug(
-        DebugTemplates.command.gitHubReleaseDetails(),
+        logs.command.debug.gitHubReleaseDetails(),
         version,
         repo || toolName,
       );
@@ -99,15 +99,15 @@ export async function installFromGitHubRelease(
     // Select the appropriate asset
     let asset: GitHubReleaseAsset | undefined;
     if (params.assetSelector) {
-      logger.debug(DebugTemplates.command.assetSelectorCustom());
+      logger.debug(logs.command.debug.assetSelectorCustom());
       asset = params.assetSelector(release.assets, context.systemInfo);
     } else if (assetPattern) {
-      logger.debug(DebugTemplates.command.assetPatternMatch(), assetPattern);
+      logger.debug(logs.command.debug.assetPatternMatch(), assetPattern);
       const regex = new RegExp(assetPattern || '');
       asset = release.assets.find((a) => regex.test(a.name));
     } else {
       // Try to find an asset that matches the current platform and architecture
-      logger.debug(DebugTemplates.command.assetPlatformMatch());
+      logger.debug(logs.command.debug.assetPlatformMatch());
       const platform = context.systemInfo.platform.toLowerCase();
       const arch = context.systemInfo.arch.toLowerCase();
 
@@ -165,7 +165,7 @@ export async function installFromGitHubRelease(
     const customHost = appConfig.github.host;
 
     logger.debug(
-      DebugTemplates.command.determiningDownloadUrl(),
+      logs.command.debug.determiningDownloadUrl(),
       rawBrowserDownloadUrl,
       customHost,
     );
@@ -190,7 +190,7 @@ export async function installFromGitHubRelease(
         // the host of a perfectly valid github.com download URL.
         downloadUrl = rawBrowserDownloadUrl;
         logger.debug(
-          DebugTemplates.command.usingAbsoluteUrl(),
+          logs.command.debug.usingAbsoluteUrl(),
           downloadUrl,
         );
       } else if (rawBrowserDownloadUrl.startsWith('/')) {
@@ -207,7 +207,7 @@ export async function installFromGitHubRelease(
         const finalUrl = new URL(rawBrowserDownloadUrl, base);
         downloadUrl = finalUrl.toString();
         logger.debug(
-          DebugTemplates.command.resolvedRelativeUrl(),
+          logs.command.debug.resolvedRelativeUrl(),
           base,
           rawBrowserDownloadUrl,
           downloadUrl,
@@ -215,7 +215,7 @@ export async function installFromGitHubRelease(
       } else {
         // Invalid or unsupported URL format
         logger.debug(
-          DebugTemplates.command.invalidUrlFormat(),
+          logs.command.debug.invalidUrlFormat(),
           rawBrowserDownloadUrl,
         );
         return {
@@ -225,14 +225,14 @@ export async function installFromGitHubRelease(
       }
 
       logger.debug(
-        DebugTemplates.command.finalDownloadUrl(),
+        logs.command.debug.finalDownloadUrl(),
         rawBrowserDownloadUrl,
         customHost || '(public GitHub)',
         downloadUrl,
       );
     } catch (e) {
-      logger.error(ErrorTemplates.service.network.invalidUrl(rawBrowserDownloadUrl));
-      logger.debug(DebugTemplates.command.downloadUrlError(),
+      logger.error(logs.service.error.network.invalidUrl(rawBrowserDownloadUrl));
+      logger.debug(logs.command.debug.downloadUrlError(),
         rawBrowserDownloadUrl,
         customHost || '(public GitHub)',
         (e as Error).message,
@@ -243,7 +243,7 @@ export async function installFromGitHubRelease(
         };
     }
 
-    logger.debug(DebugTemplates.command.downloadingAsset(), downloadUrl);
+    logger.debug(logs.command.debug.downloadingAsset(), downloadUrl);
     const downloadPath = path.join(context.installDir, asset.name);
     
     const showProgress = shouldShowProgress(options?.quiet);
@@ -266,7 +266,7 @@ export async function installFromGitHubRelease(
 
     // Run afterDownload hook if defined
     if (toolConfig.installParams?.hooks?.afterDownload) {
-      logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
+      logger.debug(logs.installer.debug.runningAfterDownloadHook());
       
       const enhancedContext = hookExecutor.createEnhancedContext(
         postDownloadContext, fs, logger
@@ -294,7 +294,7 @@ export async function installFromGitHubRelease(
                       asset.name.endsWith('.tar');
     
     if (isArchive) {
-      logger.debug(DebugTemplates.installer.extractingArchive(), asset.name);
+      logger.debug(logs.installer.debug.extractingArchive(), asset.name);
 
       // Extract the archive to a temporary directory
       const tempExtractDir = path.join(context.installDir, 'temp-extract');
@@ -304,7 +304,7 @@ export async function installFromGitHubRelease(
         targetDir: tempExtractDir,
         stripComponents: params.stripComponents, // from GithubReleaseInstallParams
       });
-      logger.debug(DebugTemplates.installer.archiveExtracted(), extractResult);
+      logger.debug(logs.installer.debug.archiveExtracted(), extractResult);
 
       // Update context with extract directory and result
       postExtractContext = {
@@ -315,7 +315,7 @@ export async function installFromGitHubRelease(
 
       // Run afterExtract hook if defined
       if (toolConfig.installParams?.hooks?.afterExtract) {
-        logger.debug(DebugTemplates.installer.runningAfterExtractHook());
+        logger.debug(logs.installer.debug.runningAfterExtractHook());
         
         const enhancedContext = hookExecutor.createEnhancedContext(
           postExtractContext, fs, logger
@@ -340,7 +340,7 @@ export async function installFromGitHubRelease(
       await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
 
       // Clean up temp extract directory
-      logger.debug(DebugTemplates.installer.cleaningExtractDir(), tempExtractDir);
+      logger.debug(logs.installer.debug.cleaningExtractDir(), tempExtractDir);
       await toolFs.rm(tempExtractDir, { recursive: true, force: true });
     } else {
       // Handle direct binary download
@@ -348,7 +348,7 @@ export async function installFromGitHubRelease(
     }
 
     logger.debug(
-      DebugTemplates.installer.githubReleaseFinalDestination(),
+      logs.installer.debug.githubReleaseFinalDestination(),
       context.installDir,
     );
 
@@ -360,7 +360,7 @@ export async function installFromGitHubRelease(
         asset.name.endsWith('.zip') ||
         asset.name.endsWith('.tar'))
     ) {
-      logger.debug(DebugTemplates.installer.cleaningArchive(), downloadPath);
+      logger.debug(logs.installer.debug.cleaningArchive(), downloadPath);
       await toolFs.rm(downloadPath);
     }
 
@@ -379,7 +379,7 @@ export async function installFromGitHubRelease(
       },
     };
   } catch (error) {
-    logger.error(ErrorTemplates.tool.installFailed('github-release', toolName, (error as Error).message));
+    logger.error(logs.tool.error.installFailed('github-release', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

@@ -1,10 +1,10 @@
 import { loadSingleToolConfig, loadToolConfigsFromDirectory } from '@modules/config-loader';
 import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { ToolConfig } from '@types';
 import type { GlobalProgram, Services } from '../../cli';
 import { exitCli } from './exitCli';
-import { ErrorTemplates, WarningTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 export interface CheckUpdatesCommandOptions {
   verbose?: boolean;
@@ -19,7 +19,7 @@ export async function checkUpdatesActionLogic(
   const logger = parentLogger.getSubLogger({ name: 'checkUpdatesActionLogic' });
   const { yamlConfig, fs, versionChecker, githubApiClient } = services;
 
-  logger.trace(DebugTemplates.command.actionStarted('check-updates', toolName || 'all'));
+  logger.trace(logs.command.debug.actionStarted('check-updates', toolName || 'all'));
 
   let toolConfigs: Record<string, ToolConfig> = {};
   let specificToolNotFound = false;
@@ -31,18 +31,18 @@ export async function checkUpdatesActionLogic(
         toolConfigs[toolName] = config;
       } else {
         specificToolNotFound = true;
-        logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
+        logger.error(logs.tool.error.notFound(toolName, yamlConfig.paths.toolConfigsDir));
       }
     } else {
       toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
       if (Object.keys(toolConfigs).length === 0) {
-        logger.info(SuccessTemplates.general.noToolsFound(yamlConfig.paths.toolConfigsDir));
+        logger.info(logs.general.success.noToolsFound(yamlConfig.paths.toolConfigsDir));
         return;
       }
     }
   } catch (error) {
-    logger.error(ErrorTemplates.config.loadFailed('tool configurations', (error as Error).message));
-    logger.debug(DebugTemplates.command.configErrorDetails(), error);
+    logger.error(logs.config.error.loadFailed('tool configurations', (error as Error).message));
+    logger.debug(logs.command.debug.configErrorDetails(), error);
     exitCli(1);
     return;
   }
@@ -53,20 +53,20 @@ export async function checkUpdatesActionLogic(
   }
 
   for (const config of Object.values(toolConfigs)) {
-    logger.info(SuccessTemplates.general.checkingUpdates(config.name));
+    logger.info(logs.general.success.checkingUpdates(config.name));
     const configuredVersion = config.version || 'latest';
 
     if (config.installationMethod === 'github-release') {
       if (!config.installParams.repo) {
         logger.warn(
-          WarningTemplates.config.ignored('repo', `Tool "${config.name}" is 'github-release' but missing 'repo' parameter`)
+          logs.config.warning.ignored('repo', `Tool "${config.name}" is 'github-release' but missing 'repo' parameter`)
         );
         continue;
       }
       const [owner, repoName] = config.installParams.repo.split('/');
       if (!owner || !repoName) {
         logger.warn(
-          WarningTemplates.config.invalid('repo format', config.installParams.repo, 'owner/repo')
+          logs.config.warning.invalid('repo format', config.installParams.repo, 'owner/repo')
         );
         continue;
       }
@@ -75,16 +75,16 @@ export async function checkUpdatesActionLogic(
         const latestRelease = await githubApiClient.getLatestRelease(owner, repoName);
         if (!latestRelease || !latestRelease.tag_name) {
           logger.warn(
-            WarningTemplates.service.github.notFound('release', `${config.name} latest release`)
+            logs.service.warning.github.notFound('release', `${config.name} latest release`)
           );
           continue;
         }
         const latestVersion = latestRelease.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
 
-        logger.debug(DebugTemplates.command.versionComparisonDebug(config.name, configuredVersion, latestVersion));
+        logger.debug(logs.command.debug.versionComparisonDebug(config.name, configuredVersion, latestVersion));
 
         if (configuredVersion.toLowerCase() === 'latest') {
-          logger.info(SuccessTemplates.general.toolOnLatest(config.name, latestVersion));
+          logger.info(logs.general.success.toolOnLatest(config.name, latestVersion));
         } else {
           const currentVersionToCompare = configuredVersion.replace(/^v/, '');
           const status = await versionChecker.checkVersionStatus(
@@ -93,26 +93,26 @@ export async function checkUpdatesActionLogic(
           );
 
           if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-            logger.info(SuccessTemplates.general.updateAvailable(config.name, currentVersionToCompare, latestVersion));
+            logger.info(logs.general.success.updateAvailable(config.name, currentVersionToCompare, latestVersion));
           } else if (status === VersionComparisonStatus.UP_TO_DATE) {
-            logger.info(SuccessTemplates.general.toolUpToDate(config.name, currentVersionToCompare, latestVersion));
+            logger.info(logs.general.success.toolUpToDate(config.name, currentVersionToCompare, latestVersion));
           } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
-            logger.info(SuccessTemplates.general.toolAhead(config.name, currentVersionToCompare, latestVersion));
+            logger.info(logs.general.success.toolAhead(config.name, currentVersionToCompare, latestVersion));
           } else {
             logger.warn(
-              WarningTemplates.tool.versionComparisonFailed(config.name, currentVersionToCompare, latestVersion)
+              logs.tool.warning.versionComparisonFailed(config.name, currentVersionToCompare, latestVersion)
             );
           }
         }
       } catch (error) {
-        logger.error(ErrorTemplates.service.github.apiFailed('get latest release', 0, (error as Error).message));
-        logger.debug(DebugTemplates.command.githubApiError(config.name), error);
+        logger.error(logs.service.error.github.apiFailed('get latest release', 0, (error as Error).message));
+        logger.debug(logs.command.debug.githubApiError(config.name), error);
       }
     } else {
-      logger.warn(WarningTemplates.general.unsupportedOperation(`Update checking for ${config.name}`, `method: ${config.installationMethod}`));
+      logger.warn(logs.general.warning.unsupportedOperation(`Update checking for ${config.name}`, `method: ${config.installationMethod}`));
     }
   }
-  logger.info(SuccessTemplates.general.completed('Check-updates command'));
+  logger.info(logs.general.success.completed('Check-updates command'));
 }
 
 export function registerCheckUpdatesCommand(
@@ -129,14 +129,14 @@ export function registerCheckUpdatesCommand(
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
 
-      logger.debug(DebugTemplates.command.actionCalled('check-updates', toolName || 'all'), combinedOptions);
+      logger.debug(logs.command.debug.actionCalled('check-updates', toolName || 'all'), combinedOptions);
       try {
         const services = await servicesFactory();
         await checkUpdatesActionLogic(logger, toolName, services);
       } catch (error) {
-        logger.debug(DebugTemplates.command.unhandledError(), error);
-        logger.error(ErrorTemplates.command.executionFailed('check-updates', 1, (error as Error).message));
-        logger.debug(DebugTemplates.command.errorDetails(), error);
+        logger.debug(logs.command.debug.unhandledError(), error);
+        logger.error(logs.command.error.executionFailed('check-updates', 1, (error as Error).message));
+        logger.debug(logs.command.debug.errorDetails(), error);
         exitCli(1);
       }
     });

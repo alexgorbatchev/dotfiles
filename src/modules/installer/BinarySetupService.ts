@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { ToolConfig, ExtractResult, BaseInstallContext } from '@types';
-import { DebugTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Setup binaries from extracted archive - handles all binaries in toolConfig.binaries[]
@@ -40,19 +40,19 @@ export async function setupBinariesFromArchive(
       } else {
         primarySourcePath = path.join(extractDir, toolName);
       }
-      logger.debug(DebugTemplates.installer.foundExecutable(), primarySourcePath);
+      logger.debug(logs.installer.debug.foundExecutable(), primarySourcePath);
     } else if (extractResult?.extractedFiles && extractResult.extractedFiles.length === 1) {
       // If only one file was extracted, assume it's the binary
       primarySourcePath = path.join(extractDir, extractResult.extractedFiles[0] as string);
-      logger.debug(DebugTemplates.installer.assumingSingleBinary(), primarySourcePath);
+      logger.debug(logs.installer.debug.assumingSingleBinary(), primarySourcePath);
     } else if (extractResult?.extractedFiles) {
       // Fallback: attempt to find a file named like the tool
       const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
       if (potentialBinary) {
         primarySourcePath = path.join(extractDir, potentialBinary);
-        logger.debug(DebugTemplates.installer.attemptingFallback(), primarySourcePath);
+        logger.debug(logs.installer.debug.attemptingFallback(), primarySourcePath);
       } else {
-        logger.debug(DebugTemplates.installer.noExecutableFound(), extractResult.extractedFiles);
+        logger.debug(logs.installer.debug.noExecutableFound(), extractResult.extractedFiles);
         primarySourcePath = path.join(extractDir, toolName); // Default fallback
       }
     } else {
@@ -72,7 +72,7 @@ export async function setupBinariesFromArchive(
     const primaryBinary = binaryNames[0] || toolName;
     const finalPrimaryPath = path.join(context.installDir, primaryBinary);
     
-    logger.debug(DebugTemplates.installer.movingBinary(), primarySourcePath, finalPrimaryPath);
+    logger.debug(logs.installer.debug.movingBinary(), primarySourcePath, finalPrimaryPath);
     await fs.copyFile(primarySourcePath, finalPrimaryPath);
     
     // Handle additional binaries if any (for future multiple binary support)
@@ -83,10 +83,10 @@ export async function setupBinariesFromArchive(
         const additionalFinalPath = path.join(context.installDir, binaryName);
         
         if (await fs.exists(additionalSourcePath)) {
-          logger.debug(DebugTemplates.installer.movingBinary(), additionalSourcePath, additionalFinalPath);
+          logger.debug(logs.installer.debug.movingBinary(), additionalSourcePath, additionalFinalPath);
           await fs.copyFile(additionalSourcePath, additionalFinalPath);
         } else {
-          logger.debug(DebugTemplates.installer.binaryNotFound(), binaryName, additionalSourcePath);
+          logger.debug(logs.installer.debug.binaryNotFound(), binaryName, additionalSourcePath);
         }
       }
     }
@@ -109,7 +109,7 @@ export async function setupBinariesFromDirectDownload(
     const primaryBinary = binaryNames[0] || toolName;
     const finalBinaryPath = path.join(context.installDir, primaryBinary);
     
-    logger.debug(DebugTemplates.installer.movingBinary(), downloadPath, finalBinaryPath);
+    logger.debug(logs.installer.debug.movingBinary(), downloadPath, finalBinaryPath);
     await fs.copyFile(downloadPath, finalBinaryPath);
     
     // Make binary executable for direct downloads (may not preserve permissions)
@@ -117,13 +117,13 @@ export async function setupBinariesFromDirectDownload(
     
     // Clean up original downloaded file if it was renamed
     if (downloadPath !== finalBinaryPath && (await fs.exists(downloadPath))) {
-      logger.debug(DebugTemplates.installer.cleaningArchive(), downloadPath);
+      logger.debug(logs.installer.debug.cleaningArchive(), downloadPath);
       await fs.rm(downloadPath);
     }
     
     // For direct downloads with multiple binary names, we can't provide them all
     // Log a warning if multiple binaries were requested
     if (binaryNames.length > 1) {
-      logger.debug(DebugTemplates.installer.directDownloadSingleBinary(), binaryNames.length.toString(), primaryBinary);
+      logger.debug(logs.installer.debug.directDownloadSingleBinary(), binaryNames.length.toString(), primaryBinary);
     }
 }

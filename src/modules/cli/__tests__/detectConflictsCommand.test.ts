@@ -3,7 +3,7 @@ import { type YamlConfig } from '@modules/config';
 import {
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
 } from '@modules/config-loader';
-import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { TestLogger, type MemFileSystemReturn } from '@testing-helpers';
 import { createCliTestSetup } from './createCliTestSetup';
@@ -113,7 +113,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['ERROR'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [ErrorTemplates.config.loadFailed('tool configurations', loadError.message)],
+        [logs.config.error.loadFailed('tool configurations', loadError.message)],
       );
     });
 
@@ -146,7 +146,7 @@ describe('detectConflictsCommand', () => {
       );
 
       const conflictsMessage = `  - [toolA]: ${shimPath} (exists but is not a generator shim)`;
-      const expectedMessageShim = WarningTemplates.tool.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
+      const expectedMessageShim = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
       logger.expect(
         ['WARN'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
@@ -190,7 +190,7 @@ describe('detectConflictsCommand', () => {
       );
 
       const conflictsMessage = `  - [toolA]: ${configPath} (exists but is not a symlink)`;
-      const expectedMessageSymlinkFile = WarningTemplates.tool.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
+      const expectedMessageSymlinkFile = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
       logger.expect(
         ['WARN'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
@@ -215,7 +215,7 @@ describe('detectConflictsCommand', () => {
       );
 
       const conflictsMessage = `  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
-      const expectedMessage = WarningTemplates.tool.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
+      const expectedMessage = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
       logger.expect(
         ['WARN'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
@@ -245,7 +245,7 @@ describe('detectConflictsCommand', () => {
       );
 
       const conflictsMessage = `  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
-      const expectedMessageMultiple = WarningTemplates.tool.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
+      const expectedMessageMultiple = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
       logger.expect(
         ['WARN'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],

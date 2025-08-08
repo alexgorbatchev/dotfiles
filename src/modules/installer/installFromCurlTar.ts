@@ -12,7 +12,7 @@ import type {
   ExtractResult,
 } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { DebugTemplates, ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import { HookExecutor } from './HookExecutor';
 import { setupBinariesFromArchive } from './BinarySetupService';
@@ -37,7 +37,7 @@ export async function installFromCurlTar(
     : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
-  logger.debug(DebugTemplates.installer.installingFromCurlTar(), toolName);
+  logger.debug(logs.installer.debug.installingFromCurlTar(), toolName);
 
   // Context variables for lifecycle stages
   let postDownloadContext: PostDownloadInstallContext;
@@ -56,7 +56,7 @@ export async function installFromCurlTar(
 
   try {
     // Download the tarball
-    logger.debug(DebugTemplates.installer.downloadingTarball(), url);
+    logger.debug(logs.installer.debug.downloadingTarball(), url);
     const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`); // Assuming .tar.gz, adjust if needed
     
     const showProgress = shouldShowProgress(options?.quiet);
@@ -79,7 +79,7 @@ export async function installFromCurlTar(
 
     // Run afterDownload hook if defined
     if (toolConfig.installParams?.hooks?.afterDownload) {
-      logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
+      logger.debug(logs.installer.debug.runningAfterDownloadHook());
       
       const enhancedContext = hookExecutor.createEnhancedContext(
         postDownloadContext, fs, logger
@@ -101,7 +101,7 @@ export async function installFromCurlTar(
     }
 
     // Extract the tarball to temporary directory
-    logger.debug(DebugTemplates.installer.extractingTarball());
+    logger.debug(logs.installer.debug.extractingTarball());
     const tempExtractDir = path.join(context.installDir, 'temp-extract');
     await toolFs.ensureDir(tempExtractDir);
 
@@ -109,7 +109,7 @@ export async function installFromCurlTar(
       targetDir: tempExtractDir,
       stripComponents: params.stripComponents, // from CurlTarInstallParams
     });
-    logger.debug(DebugTemplates.installer.tarballExtracted(), extractResult);
+    logger.debug(logs.installer.debug.tarballExtracted(), extractResult);
 
     // Update context with extract directory and result
     postExtractContext = {
@@ -120,7 +120,7 @@ export async function installFromCurlTar(
 
     // Run afterExtract hook if defined
     if (toolConfig.installParams?.hooks?.afterExtract) {
-      logger.debug(DebugTemplates.installer.runningAfterExtractHook());
+      logger.debug(logs.installer.debug.runningAfterExtractHook());
       
       const enhancedContext = hookExecutor.createEnhancedContext(
         postExtractContext, fs, logger
@@ -145,12 +145,12 @@ export async function installFromCurlTar(
     await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
 
     // Clean up temp extract directory
-    logger.debug(DebugTemplates.installer.cleaningExtractDir(), tempExtractDir);
+    logger.debug(logs.installer.debug.cleaningExtractDir(), tempExtractDir);
     await toolFs.rm(tempExtractDir, { recursive: true, force: true });
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
-      logger.debug(DebugTemplates.installer.cleaningArchive(), tarballPath);
+      logger.debug(logs.installer.debug.cleaningArchive(), tarballPath);
       await toolFs.rm(tarballPath);
     }
 
@@ -166,7 +166,7 @@ export async function installFromCurlTar(
       },
     };
   } catch (error) {
-    logger.error(ErrorTemplates.tool.installFailed('curl-tar', toolName, (error as Error).message));
+    logger.error(logs.tool.error.installFailed('curl-tar', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

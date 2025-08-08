@@ -39,7 +39,7 @@ import { contractHomePath } from '@utils';
 import { Command } from 'commander';
 import os from 'node:os';
 import path from 'node:path';
-import { ErrorTemplates, WarningTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 export interface Services {
   yamlConfig: YamlConfig;
@@ -68,19 +68,19 @@ export async function setupServices(
   options: SetupServicesOptions
 ): Promise<Services> {
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
-  logger.trace(SuccessTemplates.general.started('setupServices'), options);
+  logger.trace(logs.general.success.started('setupServices'), options);
   const { dryRun, env, config } = options;
 
   // Initialize filesystem first
   let fs: IFileSystem;
   if (dryRun) {
-    logger.trace(SuccessTemplates.general.dryRunEnabled());
+    logger.trace(logs.general.success.dryRunEnabled());
     fs = new MemFileSystem({});
   } else {
     fs = new NodeFileSystem();
   }
 
-  logger.trace(SuccessTemplates.general.initialized('filesystem'), fs.constructor.name);
+  logger.trace(logs.general.success.initialized('filesystem'), fs.constructor.name);
 
   const systemInfo: SystemInfo = {
     platform: options.platform || process.platform,
@@ -89,10 +89,10 @@ export async function setupServices(
   };
 
   if (options.platform) {
-    logger.warn(WarningTemplates.config.overridden('platform', options.platform));
+    logger.warn(logs.config.warning.overridden('platform', options.platform));
   }
   if (options.arch) {
-    logger.warn(WarningTemplates.config.overridden('arch', options.arch));
+    logger.warn(logs.config.warning.overridden('arch', options.arch));
   }
 
   const userConfigPath = config.length === 0 ? path.resolve(options.cwd, 'config.yaml') : config;
@@ -102,13 +102,13 @@ export async function setupServices(
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    logger.trace(SuccessTemplates.general.toolConfigsForDryRun());
+    logger.trace(logs.general.success.toolConfigsForDryRun());
     const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
     const nodeFs = new NodeFileSystem();
 
     try {
       if (await nodeFs.exists(realToolConfigsDir)) {
-        logger.trace(SuccessTemplates.config.loaded(realToolConfigsDir, 0));
+        logger.trace(logs.config.success.loaded(realToolConfigsDir, 0));
         const filesInDir = await nodeFs.readdir(realToolConfigsDir);
 
         for (const fileName of filesInDir) {
@@ -118,19 +118,19 @@ export async function setupServices(
               const content = await nodeFs.readFile(filePath, 'utf8');
               await fs.ensureDir(realToolConfigsDir);
               await fs.writeFile(filePath, content);
-              logger.trace(SuccessTemplates.fs.created('memfs', contractHomePath(systemInfo.homeDir, filePath)));
+              logger.trace(logs.fs.success.created('memfs', contractHomePath(systemInfo.homeDir, filePath)));
             } catch (readError: any) {
-              logger.warn(WarningTemplates.fs.readFailed(filePath, readError.message));
-              logger.error(ErrorTemplates.fs.readFailed(filePath, String(readError)), readError);
+              logger.warn(logs.fs.warning.readFailed(filePath, readError.message));
+              logger.error(logs.fs.error.readFailed(filePath, String(readError)), readError);
               // Optionally, decide whether to throw or continue. For now, logging and continuing.
             }
           }
         }
       } else {
-        logger.warn(WarningTemplates.fs.notFound('Tool configs directory', realToolConfigsDir));
+        logger.warn(logs.fs.warning.notFound('Tool configs directory', realToolConfigsDir));
       }
     } catch (error) {
-      logger.error(ErrorTemplates.fs.accessDenied('accessing', realToolConfigsDir));
+      logger.error(logs.fs.error.accessDenied('accessing', realToolConfigsDir));
       // Optionally, decide whether to throw or continue.
     }
   }
@@ -149,15 +149,15 @@ export async function setupServices(
         storageStrategy: 'binary',
       }
     );
-    parentLogger.debug(SuccessTemplates.general.cachingEnabled(), `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`);
+    parentLogger.debug(logs.general.success.cachingEnabled(), `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`);
   } else {
-    parentLogger.info(SuccessTemplates.general.cachingDisabled());
+    parentLogger.info(logs.general.success.cachingDisabled());
   }
 
   // Initialize file registry
   const registryPath = path.join(yamlConfig.paths.generatedDir, 'registry.db');
   const fileRegistry = new SqliteFileRegistry(parentLogger, registryPath);
-  parentLogger.debug(SuccessTemplates.registry.initialized(registryPath));
+  parentLogger.debug(logs.registry.success.initialized(registryPath));
 
   // Initialize services with yamlConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
@@ -228,7 +228,7 @@ export async function setupServices(
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
 
-  logger.trace(SuccessTemplates.general.servicesSetup());
+  logger.trace(logs.general.success.servicesSetup());
   return {
     yamlConfig,
     fs,
@@ -296,7 +296,7 @@ export async function main(argv: string[]) {
   const rootLogger = createTsLogger({ name: 'cli', minLevel: logLevel });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
-  logger.trace(SuccessTemplates.general.cliStarted(), 'Arguments: %o', argv);
+  logger.trace(logs.general.success.cliStarted(), 'Arguments: %o', argv);
 
   // Create a factory function that will initialize services only when needed
   const servicesFactory = async () => {
@@ -316,7 +316,7 @@ if (import.meta.main) {
   main(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
     const fatalLogger = createTsLogger({ name: 'cli', minLevel: 5 }); // FATAL level only
-    fatalLogger.fatal(ErrorTemplates.command.executionFailed('main', 1, 'Top-level unhandled error'), '%O', error);
+    fatalLogger.fatal(logs.command.error.executionFailed('main', 1, 'Top-level unhandled error'), '%O', error);
     process.exit(1);
   });
 }

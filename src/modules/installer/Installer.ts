@@ -18,7 +18,7 @@ import type {
   BaseInstallContext,
 } from '@types';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
-import { ErrorTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { HookExecutor } from './HookExecutor';
 import { installFromGitHubRelease } from './installFromGitHubRelease';
 import { installFromBrew } from './installFromBrew';
@@ -74,7 +74,7 @@ export class Installer implements IInstaller {
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.logger.debug(
-      DebugTemplates.command.installerConstructor(),
+      logs.command.debug.installerConstructor(),
       fileSystem.constructor.name,
       downloader.constructor.name,
       githubApiClient.constructor.name,
@@ -98,7 +98,7 @@ export class Installer implements IInstaller {
     options?: InstallOptions,
   ): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
-    logger.debug(DebugTemplates.command.methodDebugParams(), toolName, toolConfig, options);
+    logger.debug(logs.command.debug.methodDebugParams(), toolName, toolConfig, options);
     
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
     const toolFs = this.fs instanceof TrackedFileSystem 
@@ -111,7 +111,7 @@ export class Installer implements IInstaller {
       const versionDir = toolConfig.version || 'unknown';
       const installDir = path.join(binariesDir, toolName, versionDir);
       await toolFs.ensureDir(installDir);
-      logger.debug(DebugTemplates.command.directoryCreated(), installDir);
+      logger.debug(logs.command.debug.directoryCreated(), installDir);
 
       // Create context for installation hooks
       const context: BaseInstallContext = {
@@ -124,7 +124,7 @@ export class Installer implements IInstaller {
 
       // Run beforeInstall hook if defined
       if (toolConfig.installParams?.hooks?.beforeInstall) {
-        logger.debug(DebugTemplates.command.hookExecution('beforeInstall'));
+        logger.debug(logs.command.debug.hookExecution('beforeInstall'));
         
         const enhancedContext = this.hookExecutor.createEnhancedContext(
           context, toolFs, logger
@@ -172,7 +172,7 @@ export class Installer implements IInstaller {
 
       // Run afterInstall hook if defined
       if (toolConfig.installParams?.hooks?.afterInstall) {
-        logger.debug(DebugTemplates.command.hookExecution('afterInstall'));
+        logger.debug(logs.command.debug.hookExecution('afterInstall'));
         
         // Update context with final result information
         const finalContext = {
@@ -197,7 +197,7 @@ export class Installer implements IInstaller {
 
       return result;
     } catch (error) {
-      logger.error(ErrorTemplates.tool.installFailed('install', toolName, (error as Error).message));
+      logger.error(logs.tool.error.installFailed('install', toolName, (error as Error).message));
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

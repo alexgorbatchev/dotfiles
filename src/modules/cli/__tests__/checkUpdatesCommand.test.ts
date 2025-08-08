@@ -6,7 +6,7 @@ import {
   loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
 } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
-import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
@@ -225,7 +225,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(['INFO', 'ERROR', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
       'updates for fzf',
-      ErrorTemplates.service.github.apiFailed('get latest release', 0, 'GitHub API unavailable'),
+      logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API unavailable'),
       'Check-updates command completed',
     ]);
   });
@@ -241,7 +241,7 @@ describe('checkUpdatesCommand', () => {
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        ErrorTemplates.tool.notFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir),
+        logs.tool.error.notFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir),
       ],
     );
   });
@@ -268,7 +268,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(['INFO', 'WARN', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
       'updates for invalidrepo',
-      WarningTemplates.config.invalid('repo format', 'justonename', 'owner/repo'),
+      logs.config.warning.invalid('repo format', 'justonename', 'owner/repo'),
       'Check-updates command completed',
     ]);
   });
@@ -285,7 +285,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(['INFO', 'WARN', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
       'updates for missingrepo',
-      WarningTemplates.config.ignored('repo', 'Tool "missingrepo" is \'github-release\' but missing \'repo\' parameter'),
+      logs.config.warning.ignored('repo', 'Tool "missingrepo" is \'github-release\' but missing \'repo\' parameter'),
       'Check-updates command completed',
     ]);
   });
@@ -297,7 +297,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [ErrorTemplates.config.loadFailed('tool configurations', errorMessage)],
+      [logs.config.error.loadFailed('tool configurations', errorMessage)],
     );
   });
 
@@ -310,7 +310,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [ErrorTemplates.config.loadFailed('tool configurations', errorMessage)],
+      [logs.config.error.loadFailed('tool configurations', errorMessage)],
     );
   });
 });

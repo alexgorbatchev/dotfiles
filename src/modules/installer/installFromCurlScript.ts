@@ -5,7 +5,7 @@ import type { IDownloader } from '@modules/downloader/IDownloader';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { CurlScriptToolConfig, BaseInstallContext } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { DebugTemplates, ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import { HookExecutor } from './HookExecutor';
 
@@ -28,7 +28,7 @@ export async function installFromCurlScript(
     : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
-  logger.debug(DebugTemplates.installer.installingFromCurl(), toolName);
+  logger.debug(logs.installer.debug.installingFromCurl(), toolName);
 
   if (
     !toolConfig.installParams ||
@@ -47,7 +47,7 @@ export async function installFromCurlScript(
 
   try {
     // Download the script
-    logger.debug(DebugTemplates.installer.downloadingScript(), url);
+    logger.debug(logs.installer.debug.downloadingScript(), url);
     const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
     
     const showProgress = shouldShowProgress(options?.quiet);
@@ -67,7 +67,7 @@ export async function installFromCurlScript(
 
     // Run afterDownload hook if defined
     if (toolConfig.installParams?.hooks?.afterDownload) {
-      logger.debug(DebugTemplates.installer.runningAfterDownloadHook());
+      logger.debug(logs.installer.debug.runningAfterDownloadHook());
       
       // Create context with download path for hook
       const postDownloadContext = {
@@ -95,7 +95,7 @@ export async function installFromCurlScript(
     }
 
     // Execute the script
-    logger.debug(DebugTemplates.installer.executingScript(), shell);
+    logger.debug(logs.installer.debug.executingScript(), shell);
 
     // In a real implementation, we would execute the script here
     // For now, we'll just simulate success
@@ -108,7 +108,7 @@ export async function installFromCurlScript(
       
       // In a real implementation, we would copy from script installation location to our versioned directory
       // For now, this is a placeholder that assumes script installed the binary
-      logger.debug(DebugTemplates.installer.movingBinary(), sourcePath, finalBinaryPath);
+      logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
     }
 
     // Return path to first binary for compatibility
@@ -124,7 +124,7 @@ export async function installFromCurlScript(
       },
     };
   } catch (error) {
-    logger.error(ErrorTemplates.tool.installFailed('curl-script', toolName, (error as Error).message));
+    logger.error(logs.tool.error.installFailed('curl-script', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

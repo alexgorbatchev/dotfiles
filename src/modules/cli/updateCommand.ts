@@ -1,6 +1,6 @@
 import { loadSingleToolConfig } from '@modules/config-loader';
 import type { TsLogger } from '@modules/logger';
-import { ErrorTemplates, WarningTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { ToolConfig } from '@types';
 import { type GlobalProgram, type Services } from '../../cli';
@@ -28,7 +28,7 @@ export function registerUpdateCommand(
       const actionLogger = logger.getSubLogger({ name: 'action' });
       const combinedOptions = { ...options, ...program.opts() };
       actionLogger.debug(
-        DebugTemplates.command.errorDetails(),
+        logs.command.debug.errorDetails(),
         toolName,
         combinedOptions,
       );
@@ -38,7 +38,7 @@ export function registerUpdateCommand(
         services;
 
       try {
-        actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
+        actionLogger.debug(logs.command.debug.errorDetails(), toolName);
         let toolConfig: ToolConfig | undefined;
         try {
           toolConfig = await loadSingleToolConfig(
@@ -48,32 +48,32 @@ export function registerUpdateCommand(
             fs,
             yamlConfig,
           );
-          actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
+          actionLogger.debug(logs.command.debug.errorDetails(), toolName);
         } catch (error) {
           actionLogger.debug(
-            DebugTemplates.command.errorDetails(),
+            logs.command.debug.errorDetails(),
             toolName,
             (error as Error).message,
           );
-          logger.error(ErrorTemplates.config.loadFailed(`tool "${toolName}"`, (error as Error).message));
-          logger.debug(DebugTemplates.command.errorDetails(), error);
+          logger.error(logs.config.error.loadFailed(`tool "${toolName}"`, (error as Error).message));
+          logger.debug(logs.command.debug.errorDetails(), error);
           exitCli(1);
         }
 
         if (!toolConfig) {
-          actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
-          logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
+          actionLogger.debug(logs.command.debug.errorDetails(), toolName);
+          logger.error(logs.tool.error.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           exitCli(1);
         }
 
         if (!combinedOptions.shimMode) {
-          logger.info(SuccessTemplates.general.checkingUpdatesFor(toolName));
+          logger.info(logs.general.success.checkingUpdatesFor(toolName));
         }
 
         if (toolConfig.installationMethod === 'github-release') {
           if (!toolConfig.installParams?.repo) {
             logger.warn(
-              WarningTemplates.config.ignored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
+              logs.config.warning.ignored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
             );
             return;
           }
@@ -81,7 +81,7 @@ export function registerUpdateCommand(
           const [owner, repo] = toolConfig.installParams.repo.split('/');
           if (!owner || !repo) {
             logger.warn(
-              WarningTemplates.config.invalid('repo format', toolConfig.installParams.repo, 'owner/repo')
+              logs.config.warning.invalid('repo format', toolConfig.installParams.repo, 'owner/repo')
             );
             return;
           }
@@ -90,14 +90,14 @@ export function registerUpdateCommand(
           try {
             latestRelease = await githubApiClient.getLatestRelease(owner, repo);
           } catch (networkError) {
-            logger.error(ErrorTemplates.service.github.apiFailed('get latest release', 0, (networkError as Error).message));
-            logger.debug(DebugTemplates.command.errorDetails(), networkError);
+            logger.error(logs.service.error.github.apiFailed('get latest release', 0, (networkError as Error).message));
+            logger.debug(logs.command.debug.errorDetails(), networkError);
             return;
           }
 
           if (!latestRelease) {
             logger.warn(
-              WarningTemplates.service.github.notFound('release', `${toolName} from ${owner}/${repo}`)
+              logs.service.warning.github.notFound('release', `${toolName} from ${owner}/${repo}`)
             );
             return;
           }
@@ -107,9 +107,9 @@ export function registerUpdateCommand(
 
           if (configuredVersion === 'latest') {
             if (combinedOptions.shimMode) {
-              logger.info(SuccessTemplates.general.shimToolOnLatest(toolName, latestVersion));
+              logger.info(logs.general.success.shimToolOnLatest(toolName, latestVersion));
             } else {
-              logger.info(SuccessTemplates.general.toolOnLatest(toolName, latestVersion));
+              logger.info(logs.general.success.toolOnLatest(toolName, latestVersion));
             }
             return;
           }
@@ -121,10 +121,10 @@ export function registerUpdateCommand(
 
           if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
             if (combinedOptions.shimMode) {
-              logger.info(SuccessTemplates.general.shimUpdateStarting(toolName, configuredVersion, latestVersion));
+              logger.info(logs.general.success.shimUpdateStarting(toolName, configuredVersion, latestVersion));
             } else {
-              logger.info(SuccessTemplates.general.updateAvailable(toolName, configuredVersion, latestVersion));
-              logger.info(SuccessTemplates.general.processingUpdate(toolName, configuredVersion, latestVersion));
+              logger.info(logs.general.success.updateAvailable(toolName, configuredVersion, latestVersion));
+              logger.info(logs.general.success.processingUpdate(toolName, configuredVersion, latestVersion));
             }
 
             const toolConfigForUpdate: ToolConfig = {
@@ -139,22 +139,22 @@ export function registerUpdateCommand(
 
             if (installResult.success) {
               if (combinedOptions.shimMode) {
-                logger.info(SuccessTemplates.general.shimUpdateSuccess(toolName, latestVersion));
+                logger.info(logs.general.success.shimUpdateSuccess(toolName, latestVersion));
               } else {
                 logger.info(
-                  SuccessTemplates.tool.updated(toolName, configuredVersion, latestVersion),
+                  logs.tool.success.updated(toolName, configuredVersion, latestVersion),
                 );
               }
-              logger.debug(DebugTemplates.command.errorDetails());
+              logger.debug(logs.command.debug.errorDetails());
             } else {
-              logger.error(ErrorTemplates.tool.updateFailed(toolName, installResult.error || 'Unknown error'));
+              logger.error(logs.tool.error.updateFailed(toolName, installResult.error || 'Unknown error'));
               exitCli(1);
             }
           } else if (status === VersionComparisonStatus.UP_TO_DATE) {
             if (combinedOptions.shimMode) {
-              logger.info(SuccessTemplates.general.shimToolUpToDate(toolName, latestVersion));
+              logger.info(logs.general.success.shimToolUpToDate(toolName, latestVersion));
             } else {
-              logger.info(SuccessTemplates.general.toolUpToDate(toolName, configuredVersion, latestVersion));
+              logger.info(logs.general.success.toolUpToDate(toolName, configuredVersion, latestVersion));
             }
           } else if (
             status === VersionComparisonStatus.AHEAD_OF_LATEST ||
@@ -162,22 +162,22 @@ export function registerUpdateCommand(
             status === VersionComparisonStatus.INVALID_LATEST_VERSION
           ) {
             logger.warn(
-              WarningTemplates.tool.versionComparisonFailed(toolName, configuredVersion, latestVersion)
+              logs.tool.warning.versionComparisonFailed(toolName, configuredVersion, latestVersion)
             );
           }
         } else {
-          logger.info(WarningTemplates.general.unsupportedOperation('Update', `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`));
+          logger.info(logs.general.warning.unsupportedOperation('Update', `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`));
         }
       } catch (error) {
-        actionLogger.debug(DebugTemplates.command.errorDetails(), error);
+        actionLogger.debug(logs.command.debug.errorDetails(), error);
         if (
           error instanceof Error &&
           error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')
         ) {
           throw error;
         } else {
-          logger.error(ErrorTemplates.command.executionFailed('update', 1, (error as Error).message));
-          logger.debug(DebugTemplates.command.errorDetails(), error);
+          logger.error(logs.command.error.executionFailed('update', 1, (error as Error).message));
+          logger.debug(logs.command.debug.errorDetails(), error);
         }
         if (
           !(

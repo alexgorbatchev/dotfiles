@@ -1,8 +1,8 @@
 import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system';
 import type { AsyncInstallHook, InstallHookContext, BaseInstallContext } from '@types';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { ErrorTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
 import { $ } from 'zx';
 import path from 'node:path';
 
@@ -74,7 +74,7 @@ export class HookExecutor {
     const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
     const startTime = Date.now();
 
-    this.logger.debug(DebugTemplates.hookExecutor.executingHook(), hookName, timeoutMs);
+    this.logger.debug(logs.hookExecutor.debug.executingHook(), hookName, timeoutMs);
 
     // Create hook-specific logger and update context
     const hookSpecificLogger = context.logger.getSubLogger({ name: `${context.toolName}--${hookName}` });
@@ -87,7 +87,7 @@ export class HookExecutor {
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error(ErrorTemplates.command.timeout(hookName, timeoutMs)));
+          reject(new Error(logs.command.error.timeout(hookName, timeoutMs)));
         }, timeoutMs);
       });
 
@@ -95,7 +95,7 @@ export class HookExecutor {
       await Promise.race([hookPromise, timeoutPromise]);
 
       const durationMs = Date.now() - startTime;
-      this.logger.debug(DebugTemplates.hookExecutor.hookCompleted(), hookName, durationMs);
+      this.logger.debug(logs.hookExecutor.debug.hookCompleted(), hookName, durationMs);
 
       return {
         success: true,
@@ -107,11 +107,11 @@ export class HookExecutor {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       this.logger.error(
-        ErrorTemplates.tool.installFailed(`${hookName} hook`, context.toolName, errorMessage)
+        logs.tool.error.installFailed(`${hookName} hook`, context.toolName, errorMessage)
       );
 
       if (continueOnError) {
-        this.logger.debug(DebugTemplates.hookExecutor.continuingDespiteFailure(), hookName);
+        this.logger.debug(logs.hookExecutor.debug.continuingDespiteFailure(), hookName);
         
         return {
           success: false,
@@ -182,7 +182,7 @@ export class HookExecutor {
 
       // If hook failed and we're not continuing on error, stop execution
       if (!result.success && !options?.continueOnError) {
-        this.logger.debug(DebugTemplates.hookExecutor.stoppingDueToFailure(), name);
+        this.logger.debug(logs.hookExecutor.debug.stoppingDueToFailure(), name);
         break;
       }
     }

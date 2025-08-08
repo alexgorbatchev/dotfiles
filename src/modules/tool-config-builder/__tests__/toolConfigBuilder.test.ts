@@ -3,7 +3,7 @@ import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
 import { always } from '@types';
 import { TestLogger } from '@testing-helpers';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 describe('ToolConfigBuilder', () => {
   let logger: TestLogger;
@@ -215,7 +215,7 @@ describe('ToolConfigBuilder', () => {
     expect(thrownError!.message).toContain('Invalid installationMethod');
 
     testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
-      ErrorTemplates.config.invalid(
+      logs.config.error.invalid(
         'installationMethod',
         'invalid-method',
         'github-release | brew | curl-script | curl-tar | manual'
@@ -239,7 +239,7 @@ describe('ToolConfigBuilder', () => {
     expect(thrownError!.message).toContain('Required configuration missing: tool definition');
 
     testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
-      ErrorTemplates.config.required(
+      logs.config.error.required(
         'tool definition',
         'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
       )

@@ -6,7 +6,7 @@ import type { IArchiveExtractor } from './IArchiveExtractor';
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 /**
  * Implements the IArchiveExtractor interface using system commands.
@@ -42,7 +42,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
     try {
-      logger.debug(DebugTemplates.extractor.commandExecution(), command);
+      logger.debug(logs.extractor.debug.commandExecution(), command);
       const { stdout, stderr } = await this.promisedExec(command);
       return { stdout, stderr, exitCode: 0 };
     } catch (error: any) {
@@ -54,7 +54,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       execError.stderr = error.stderr || '';
       execError.exitCode = typeof error.code === 'number' ? error.code : 1;
       execError.originalError = error; // Keep original error if needed
-      logger.debug(DebugTemplates.extractor.commandError(), execError);
+      logger.debug(logs.extractor.debug.commandError(), execError);
       throw execError;
     }
   }
@@ -93,7 +93,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       if (output.includes('x-rpm')) return 'rpm';
       if (output.includes('x-apple-diskimage')) return 'dmg';
     } catch (error) {
-      logger.debug(DebugTemplates.extractor.fileCommandFailed(), error);
+      logger.debug(logs.extractor.debug.fileCommandFailed(), error);
     }
 
     throw new Error(`Unsupported or undetectable archive format for: ${filePath}`);
@@ -121,7 +121,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       detectExecutables = true,
     } = options;
 
-    logger.debug(DebugTemplates.extractor.debugArchivePath(), archivePath, options);
+    logger.debug(logs.extractor.debug.debugArchivePath(), archivePath, options);
 
     const format = explicitFormat || (await this.detectFormat(archivePath));
 
@@ -177,7 +177,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
           // If needed, would require extracting to a subdir and then moving.
           // For now, we ignore stripComponents for zip or require user to handle.
           if (stripComponents > 0) {
-            logger.debug(DebugTemplates.extractor.zipStripComponents());
+            logger.debug(logs.extractor.debug.zipStripComponents());
             // A more complex solution would be to extract to a temporary unique dir inside tempExtractDir,
             // then list contents, find the common base (if stripComponents=1 and it's a single dir), and move.
           }
@@ -222,12 +222,12 @@ export class ArchiveExtractor implements IArchiveExtractor {
       // we only clean up here on error within this method's scope.
       // The Installer is responsible for cleanup on successful return.
       logger.debug(
-        DebugTemplates.extractor.extractErrorCleanup(),
+        logs.extractor.debug.extractErrorCleanup(),
         tempExtractDir,
         error
       );
       await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
-        logger.debug(DebugTemplates.extractor.cleanupError(), cleanupErr);
+        logger.debug(logs.extractor.debug.cleanupError(), cleanupErr);
       });
       throw error; // Re-throw the original error
     }
@@ -252,14 +252,14 @@ export class ArchiveExtractor implements IArchiveExtractor {
           if (ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext)) {
             // Check if it's already executable (owner execute bit)
             if (!(stat.mode & 0o100)) {
-              logger.debug(DebugTemplates.extractor.settingExecutable(), filePath);
+              logger.debug(logs.extractor.debug.settingExecutable(), filePath);
               await this.fs.chmod(filePath, stat.mode | 0o100); // Add owner execute
             }
             executables.push(file);
           }
         }
       } catch (error) {
-        logger.debug(DebugTemplates.extractor.fileStatError(), filePath, error);
+        logger.debug(logs.extractor.debug.fileStatError(), filePath, error);
       }
     }
     return executables;

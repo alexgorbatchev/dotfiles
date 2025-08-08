@@ -10,8 +10,7 @@ import type {
   SymlinkOperationResult,
 } from '@modules/generator-symlink';
 import type { IGeneratorOrchestrator, GenerateAllOptions } from './IGeneratorOrchestrator';
-import { type TsLogger } from '@modules/logger';
-import { DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { type TsLogger, logs } from '@modules/logger';
 
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly logger: TsLogger;
@@ -32,7 +31,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
-    this.logger.debug(DebugTemplates.generator.orchestratorInit());
+    this.logger.debug(logs.generator.debug.orchestratorInit());
     this.shimGenerator = shimGenerator;
     this.shellInitGenerator = shellInitGenerator;
     this.symlinkGenerator = symlinkGenerator;
@@ -46,44 +45,44 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     options?: GenerateAllOptions
   ): Promise<GeneratedArtifactsManifest> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
-    logger.debug(DebugTemplates.generator.methodEntry(), options, this.fs.constructor.name);
-    logger.debug(DebugTemplates.generator.manifestPath(), this.appConfig.paths.manifestPath);
+    logger.debug(logs.generator.debug.methodEntry(), options, this.fs.constructor.name);
+    logger.debug(logs.generator.debug.manifestPath(), this.appConfig.paths.manifestPath);
 
     const generatorVersion = options?.generatorVersion;
     const toolConfigsCount = toolConfigs ? Object.keys(toolConfigs).length : 0;
 
-    logger.debug(DebugTemplates.generator.parsedOptions(), generatorVersion, toolConfigsCount);
+    logger.debug(logs.generator.debug.parsedOptions(), generatorVersion, toolConfigsCount);
 
     if (!this.appConfig) {
-      logger.debug(DebugTemplates.generator.configCritical());
+      logger.debug(logs.generator.debug.configCritical());
       throw new Error('GeneratorOrchestrator: AppConfig is not available.');
     }
-    logger.debug(DebugTemplates.generator.yamlConfigAvailable(), this.appConfig.paths.manifestPath);
+    logger.debug(logs.generator.debug.yamlConfigAvailable(), this.appConfig.paths.manifestPath);
 
     if (!this.appConfig.paths.manifestPath) {
-      logger.debug(DebugTemplates.generator.pathsCritical());
+      logger.debug(logs.generator.debug.pathsCritical());
       throw new Error(
         'GeneratorOrchestrator: YamlConfig.paths.manifestPath is missing.'
       );
     }
     const manifestPath = this.appConfig.paths.manifestPath;
-    logger.debug(DebugTemplates.generator.manifestPathDetermined(), manifestPath);
+    logger.debug(logs.generator.debug.manifestPathDetermined(), manifestPath);
 
     let currentManifest: GeneratedArtifactsManifest;
 
-    logger.debug(DebugTemplates.generator.manifestRead(), this.fs.constructor.name);
+    logger.debug(logs.generator.debug.manifestRead(), this.fs.constructor.name);
     try {
       const manifestFileExists = await this.fs.exists(manifestPath);
-      logger.debug(DebugTemplates.generator.fsExistsCompleted(), manifestFileExists);
+      logger.debug(logs.generator.debug.fsExistsCompleted(), manifestFileExists);
 
       if (manifestFileExists) {
-        logger.debug(DebugTemplates.generator.existingManifestFound(), manifestPath);
+        logger.debug(logs.generator.debug.existingManifestFound(), manifestPath);
         const fileContent = await this.fs.readFile(manifestPath);
-        logger.debug(DebugTemplates.generator.readFileCompleted());
+        logger.debug(logs.generator.debug.readFileCompleted());
         currentManifest = JSON.parse(fileContent) as GeneratedArtifactsManifest;
-        logger.debug(DebugTemplates.generator.existingManifest());
+        logger.debug(logs.generator.debug.existingManifest());
       } else {
-        logger.debug(DebugTemplates.generator.noExistingManifest(), manifestPath);
+        logger.debug(logs.generator.debug.noExistingManifest(), manifestPath);
         currentManifest = {
           lastGenerated: '', // Will be updated
           shims: [],
@@ -92,7 +91,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         };
       }
     } catch (error) {
-      logger.debug(DebugTemplates.generator.manifestReadError(), manifestPath, error instanceof Error ? error.message : String(error));
+      logger.debug(logs.generator.debug.manifestReadError(), manifestPath, error instanceof Error ? error.message : String(error));
       currentManifest = {
         lastGenerated: '', // Will be updated
         shims: [],
@@ -106,10 +105,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     // 1. Generate Shims
     // dryRun is removed; IFileSystem handles behavior
     const shimOptions: GenerateShimsOptions = { overwrite: true };
-    logger.debug(DebugTemplates.generator.shimGenerate(), shimOptions);
+    logger.debug(logs.generator.debug.shimGenerate(), shimOptions);
     const generatedShimsPaths = await this.shimGenerator.generate(toolConfigs, shimOptions);
     currentManifest.shims = generatedShimsPaths;
-    logger.debug(DebugTemplates.generator.shimGenerationComplete(), currentManifest.shims?.length ?? 0);
+    logger.debug(logs.generator.debug.shimGenerationComplete(), currentManifest.shims?.length ?? 0);
 
     // 2. Generate Shell Init for all supported shells
     // dryRun is removed; IFileSystem handles behavior
@@ -117,41 +116,41 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       shellTypes: ['zsh', 'bash', 'powershell'],
       systemInfo: this.systemInfo
     };
-    logger.debug(DebugTemplates.generator.shellGenerate(), shellInitOptions);
+    logger.debug(logs.generator.debug.shellGenerate(), shellInitOptions);
     const shellInitResult = await this.shellInitGenerator.generate(
       toolConfigs,
       shellInitOptions
     );
     currentManifest.shellInit = { path: shellInitResult?.primaryPath ?? null };
-    logger.debug(DebugTemplates.generator.shellInitComplete(), currentManifest.shellInit?.path ?? 'null');
+    logger.debug(logs.generator.debug.shellInitComplete(), currentManifest.shellInit?.path ?? 'null');
 
     // 3. Generate Symlinks
     // dryRun is removed; IFileSystem handles behavior
     const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
-    logger.debug(DebugTemplates.generator.symlinkGenerate(), symlinkOptions);
+    logger.debug(logs.generator.debug.symlinkGenerate(), symlinkOptions);
     const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
       toolConfigs,
       symlinkOptions
     );
     currentManifest.symlinks = symlinkResults;
-    logger.debug(DebugTemplates.generator.symlinkGenerationComplete(), currentManifest.symlinks?.length ?? 0);
+    logger.debug(logs.generator.debug.symlinkGenerationComplete(), currentManifest.symlinks?.length ?? 0);
 
     // Update timestamp
     currentManifest.lastGenerated = new Date().toISOString(); // Use new field name
 
     // Manifest writing behavior is now solely determined by the injected IFileSystem type
     try {
-      logger.debug(DebugTemplates.generator.writingManifest(), manifestPath, this.fs.constructor.name);
+      logger.debug(logs.generator.debug.writingManifest(), manifestPath, this.fs.constructor.name);
       const manifestDir = path.dirname(manifestPath);
       await this.fs.ensureDir(manifestDir);
       await this.fs.writeFile(manifestPath, JSON.stringify(currentManifest, null, 2));
-      logger.debug(DebugTemplates.generator.manifestWritten());
+      logger.debug(logs.generator.debug.manifestWritten());
     } catch (error) {
-      logger.debug(DebugTemplates.generator.manifestWriteFailed(), manifestPath, error instanceof Error ? error.message : String(error));
+      logger.debug(logs.generator.debug.manifestWriteFailed(), manifestPath, error instanceof Error ? error.message : String(error));
       // Potentially re-throw or handle more gracefully depending on requirements
     }
 
-    logger.debug(DebugTemplates.generator.orchestrationComplete(), this.fs.constructor.name);
+    logger.debug(logs.generator.debug.orchestrationComplete(), this.fs.constructor.name);
     return currentManifest;
   }
 }

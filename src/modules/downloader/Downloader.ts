@@ -5,7 +5,7 @@ import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { ICache } from '@modules/cache/ICache';
 import type { TsLogger } from '@modules/logger';
-import { DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];
@@ -27,10 +27,10 @@ export class Downloader implements IDownloader {
       // Create default strategy, optionally wrapped with cache
       const baseStrategy = new NodeFetchStrategy(this.logger, this.fs);
       if (cache) {
-        this.logger.debug(DebugTemplates.downloader.strategyCreated('CachedDownloadStrategy', true));
+        this.logger.debug(logs.downloader.debug.strategyCreated(), 'CachedDownloadStrategy', ' wrapping NodeFetchStrategy');
         this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, baseStrategy));
       } else {
-        this.logger.debug(DebugTemplates.downloader.strategyCreated('NodeFetchStrategy', false));
+        this.logger.debug(logs.downloader.debug.strategyCreated(), 'NodeFetchStrategy', ' (no cache)');
         this.strategies.push(baseStrategy);
       }
     }
@@ -42,7 +42,7 @@ export class Downloader implements IDownloader {
 
   public async download(url: string, options: DownloadOptions = {}): Promise<Buffer | void> {
     const logger = this.logger.getSubLogger({ name: 'download' });
-    logger.debug(DebugTemplates.downloader.downloadStarted(), url);
+    logger.debug(logs.downloader.debug.downloadStarted(), url);
 
     if (this.strategies.length === 0) {
       throw new Error('No download strategies registered.');
@@ -75,7 +75,7 @@ export class Downloader implements IDownloader {
 
   public async downloadToFile(url: string, filePath: string, options: DownloadOptions = {}): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'downloadToFile' });
-    logger.debug(DebugTemplates.downloader.downloadToFileStarted(), url, filePath);
+    logger.debug(logs.downloader.debug.downloadToFileStarted(), url, filePath);
 
     // Set destination path in options to indicate file download
     const fileOptions = { ...options, destinationPath: filePath };

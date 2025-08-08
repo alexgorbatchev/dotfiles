@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { Architecture, Platform } from '../../../types/platform.types';
 import { TestLogger } from '@testing-helpers';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import type { ManualInstallParams } from '@types';
 
 describe('ToolConfigBuilder - Platform Support', () => {
@@ -162,7 +162,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(thrownError!.message).toContain('Required configuration missing: configure callback');
 
     testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
-      ErrorTemplates.config.required(
+      logs.config.error.required(
         'configure callback',
         'platform() called for tool "test-tool" with architectures but without a configure callback'
       )

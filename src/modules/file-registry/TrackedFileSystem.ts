@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { IFileRegistry, FileOperation } from './IFileRegistry';
-import { SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { contractHomePath, formatPermissions } from '@utils';
 
 /**
@@ -45,7 +45,7 @@ export class TrackedFileSystem implements IFileSystem {
     this.context = context;
     this.homeDir = homeDir;
 
-    this.logger.debug(DebugTemplates.registry.trackedFsCreated(), context.toolName);
+    this.logger.debug(logs.registry.debug.trackedFsCreated(), context.toolName);
   }
 
   /**
@@ -132,9 +132,9 @@ export class TrackedFileSystem implements IFileSystem {
 
     // Log user-facing filesystem changes
     if (!fileExists) {
-      this.logger.info(SuccessTemplates.fs.created(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logger.info(logs.fs.success.created(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
-      this.logger.info(SuccessTemplates.fs.updated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logger.info(logs.fs.success.updated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     }
   }
 
@@ -161,7 +161,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.copied(this.context.toolName, contractHomePath(this.homeDir, src), contractHomePath(this.homeDir, dest)));
+    this.logger.info(logs.fs.success.copied(this.context.toolName, contractHomePath(this.homeDir, src), contractHomePath(this.homeDir, dest)));
   }
 
   async rename(oldPath: string, newPath: string): Promise<void> {
@@ -185,7 +185,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.moved(this.context.toolName, contractHomePath(this.homeDir, oldPath), contractHomePath(this.homeDir, newPath)));
+    this.logger.info(logs.fs.success.moved(this.context.toolName, contractHomePath(this.homeDir, oldPath), contractHomePath(this.homeDir, newPath)));
   }
 
   async symlink(target: string, linkPath: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
@@ -204,7 +204,7 @@ export class TrackedFileSystem implements IFileSystem {
       metadata: this.context.metadata,
     });
 
-    this.logger.info(SuccessTemplates.fs.symlinkCreated(this.context.toolName, contractHomePath(this.homeDir, linkPath), contractHomePath(this.homeDir, target)));
+    this.logger.info(logs.fs.success.symlinkCreated(this.context.toolName, contractHomePath(this.homeDir, linkPath), contractHomePath(this.homeDir, target)));
   }
 
   async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
@@ -225,9 +225,9 @@ export class TrackedFileSystem implements IFileSystem {
     await this.fs.rm(filePath, options);
 
     if (options?.recursive) {
-      this.logger.info(SuccessTemplates.fs.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logger.info(logs.fs.success.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
-      this.logger.info(SuccessTemplates.fs.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logger.info(logs.fs.success.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     }
   }
 
@@ -250,7 +250,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(SuccessTemplates.fs.permissionsChanged(this.context.toolName, contractHomePath(this.homeDir, filePath), formatPermissions(mode)));
+    this.logger.info(logs.fs.success.permissionsChanged(this.context.toolName, contractHomePath(this.homeDir, filePath), formatPermissions(mode)));
   }
 
   // Non-modifying operations - these don't need tracking
@@ -292,7 +292,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -311,7 +311,7 @@ export class TrackedFileSystem implements IFileSystem {
     // Perform the actual operation
     await this.fs.rmdir(dirPath, options);
 
-    logger.debug(DebugTemplates.registry.rmdirTracked(), dirPath);
+    logger.debug(logs.registry.debug.rmdirTracked(), dirPath);
   }
 
   async ensureDir(dirPath: string): Promise<void> {
@@ -332,7 +332,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logger.info(SuccessTemplates.fs.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -386,7 +386,7 @@ export class TrackedFileSystem implements IFileSystem {
       // Track the directory itself
       await this.trackFileDeletion(dirPath);
     } catch (error) {
-      this.logger.debug(DebugTemplates.registry.directoryDeletionError(), dirPath, (error as Error).message);
+      this.logger.debug(logs.registry.debug.directoryDeletionError(), dirPath, (error as Error).message);
     }
   }
 }

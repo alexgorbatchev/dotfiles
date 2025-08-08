@@ -1,11 +1,11 @@
 import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import { expandToolConfigPath } from '@utils';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { ManualToolConfig, BaseInstallContext } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { DebugTemplates, ErrorTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
  * Install a tool manually
@@ -24,7 +24,7 @@ export async function installManually(
     : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
-  logger.debug(DebugTemplates.installer.installingManually(), toolName);
+  logger.debug(logs.installer.debug.installingManually(), toolName);
 
   if (!toolConfig.installParams || !('binaryPath' in toolConfig.installParams)) {
     return {
@@ -55,7 +55,7 @@ export async function installManually(
         } else {
           // For additional binaries, they would need to be specified separately
           // This is a limitation of the current manual installation approach
-          logger.debug(DebugTemplates.installer.manualMultipleBinariesNotSupported(), binaryName);
+          logger.debug(logs.installer.debug.manualMultipleBinariesNotSupported(), binaryName);
         }
       }
 
@@ -78,7 +78,7 @@ export async function installManually(
       };
     }
   } catch (error) {
-    logger.error(ErrorTemplates.tool.installFailed('manual', toolName, (error as Error).message));
+    logger.error(logs.tool.error.installFailed('manual', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

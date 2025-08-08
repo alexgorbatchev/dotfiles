@@ -4,7 +4,7 @@ import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator, GenerateShellInitOptions, ShellInitGenerationResult } from './IShellInitGenerator';
 import type { TsLogger } from '@modules/logger';
 import type { YamlConfig } from '@modules/config';
-import { DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { ShellGeneratorFactory, type ShellInitContent } from './shell-generators';
 import { ProfileUpdater, type ProfileUpdateConfig } from './profile-updater';
 import { resolvePlatformConfig } from '@utils';
@@ -16,7 +16,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, appConfig: YamlConfig) {
     this.logger = parentLogger.getSubLogger({ name: 'ShellInitGenerator' });
-    this.logger.debug(DebugTemplates.shellInit.constructorDebug(), fileSystem, appConfig);
+    this.logger.debug(logs.shellInit.debug.constructorDebug(), fileSystem, appConfig);
     this.fs = fileSystem;
     this.appConfig = appConfig;
   }
@@ -25,7 +25,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
   ): Promise<ShellInitGenerationResult | null> {
-    this.logger.debug(DebugTemplates.shellInit.generateDebug(), toolConfigs, options, this.fs.constructor.name);
+    this.logger.debug(logs.shellInit.debug.generateDebug(), toolConfigs, options, this.fs.constructor.name);
     
     // Default to zsh for backward compatibility
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
@@ -37,17 +37,17 @@ export class ShellInitGenerator implements IShellInitGenerator {
         const generator = ShellGeneratorFactory.createGenerator(shellType, this.appConfig);
         const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
         
-        this.logger.debug(DebugTemplates.shellInit.outputPath(), outputPath);
+        this.logger.debug(logs.shellInit.debug.outputPath(), outputPath);
 
         // Extract shell content from all tools
         const toolContents = new Map<string, ShellInitContent>();
         
         for (const toolName in toolConfigs) {
           const config = toolConfigs[toolName];
-          this.logger.debug(DebugTemplates.shellInit.processingTool(), toolName, config);
+          this.logger.debug(logs.shellInit.debug.processingTool(), toolName, config);
 
           if (!config) {
-            this.logger.debug(DebugTemplates.shellInit.skippingUndefined(), toolName);
+            this.logger.debug(logs.shellInit.debug.skippingUndefined(), toolName);
             continue;
           }
 
@@ -94,16 +94,16 @@ export class ShellInitGenerator implements IShellInitGenerator {
               await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
               await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
             } catch (error: any) {
-              this.logger.debug(DebugTemplates.shellInit.writeError(), additionalFile.outputPath, this.fs.constructor.name, error.message);
+              this.logger.debug(logs.shellInit.debug.writeError(), additionalFile.outputPath, this.fs.constructor.name, error.message);
               // Continue with other additional files even if one fails
             }
           }
         } catch (error: any) {
-          this.logger.debug(DebugTemplates.shellInit.writeError(), outputPath, this.fs.constructor.name, error.message);
+          this.logger.debug(logs.shellInit.debug.writeError(), outputPath, this.fs.constructor.name, error.message);
           // Continue with other shell types even if one fails
         }
       } catch (error: any) {
-        this.logger.debug(DebugTemplates.shellInit.writeError(), shellType, this.fs.constructor.name, error.message);
+        this.logger.debug(logs.shellInit.debug.writeError(), shellType, this.fs.constructor.name, error.message);
         // Continue with other shell types even if one fails
       }
     }
@@ -145,7 +145,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       });
     }
     
-    logger.debug(DebugTemplates.shellInit.updatingProfiles(), configs.map(c => ({ shellType: c.shellType, path: c.generatedScriptPath })));
+    logger.debug(logs.shellInit.debug.updatingProfiles(), configs.map(c => ({ shellType: c.shellType, path: c.generatedScriptPath })));
     
     return await profileUpdater.updateProfiles(configs);
   }
@@ -162,7 +162,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     try {
       const onceDirExists = await this.fs.exists(onceDir);
       if (!onceDirExists) {
-        logger.debug(DebugTemplates.shellInit.outputPath(), `Once directory does not exist: ${onceDir}`);
+        logger.debug(logs.shellInit.debug.outputPath(), `Once directory does not exist: ${onceDir}`);
         return;
       }
 
@@ -177,11 +177,11 @@ export class ShellInitGenerator implements IShellInitGenerator {
         if (file.endsWith(`.${extension}`)) {
           const filePath = path.join(onceDir, file);
           await this.fs.rm(filePath);
-          logger.debug(DebugTemplates.shellInit.outputPath(), `Removed stale once script: ${filePath}`);
+          logger.debug(logs.shellInit.debug.outputPath(), `Removed stale once script: ${filePath}`);
         }
       }
     } catch (error: any) {
-      logger.debug(DebugTemplates.shellInit.writeError(), onceDir, this.fs.constructor.name, error.message);
+      logger.debug(logs.shellInit.debug.writeError(), onceDir, this.fs.constructor.name, error.message);
       // Continue generation even if cleanup fails
     }
   }

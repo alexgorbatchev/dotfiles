@@ -11,7 +11,7 @@ import {
   ServerError,
 } from './errors';
 import type { TsLogger } from '@modules/logger';
-import { DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 export class NodeFetchStrategy implements DownloadStrategy {
   public readonly name = 'node-fetch';
@@ -20,7 +20,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
 
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
     this.logger = parentLogger.getSubLogger({ name: 'NodeFetchStrategy' });
-    this.logger.debug(DebugTemplates.downloader.constructorDebug(), fileSystem ? 'provided' : 'undefined');
+    this.logger.debug(logs.downloader.debug.constructorDebug(), fileSystem ? 'provided' : 'undefined');
     this.fileSystem = fileSystem;
   }
 
@@ -83,12 +83,12 @@ export class NodeFetchStrategy implements DownloadStrategy {
 
         if (timeout) {
           timeoutId = setTimeout(() => {
-            this.logger.debug(DebugTemplates.downloader.downloadTimeout(), url);
+            this.logger.debug(logs.downloader.debug.downloadTimeout(), url);
             controller.abort();
           }, timeout);
         }
 
-        this.logger.debug(DebugTemplates.downloader.downloadAttempt(), attempt + 1, url);
+        this.logger.debug(logs.downloader.debug.downloadAttempt(), attempt + 1, url);
         const response = await fetch(url, {
           headers,
           signal: controller.signal,
@@ -103,14 +103,14 @@ export class NodeFetchStrategy implements DownloadStrategy {
           try {
             responseBody = await response.text();
           } catch (e) {
-            this.logger.debug(DebugTemplates.downloader.responseBodyReadFailed(), url, e);
+            this.logger.debug(logs.downloader.debug.responseBodyReadFailed(), url, e);
           }
           const responseHeaders = this.getResponseHeaders(response.headers);
           const statusCode = response.status;
           const statusText = response.statusText;
 
           this.logger.debug(
-            DebugTemplates.downloader.downloadFailed(),
+            logs.downloader.debug.downloadFailed(),
             url,
             statusCode,
             statusText,
@@ -209,23 +209,23 @@ export class NodeFetchStrategy implements DownloadStrategy {
         }
 
         const resultBuffer = Buffer.concat(chunks);
-        this.logger.debug(DebugTemplates.downloader.downloadSuccessful(), url, resultBuffer.length);
+        this.logger.debug(logs.downloader.debug.downloadSuccessful(), url, resultBuffer.length);
 
         if (destinationPath) {
-          this.logger.debug(DebugTemplates.downloader.savingToDestination(), destinationPath);
+          this.logger.debug(logs.downloader.debug.savingToDestination(), destinationPath);
           // Use IFileSystem to write the buffer
           await this.fileSystem.writeFile(destinationPath, resultBuffer);
-          this.logger.debug(DebugTemplates.downloader.savedSuccessfully(), destinationPath);
+          this.logger.debug(logs.downloader.debug.savedSuccessfully(), destinationPath);
           return;
         } else {
           return resultBuffer;
         }
       } catch (error: any) {
-        this.logger.debug(DebugTemplates.downloader.downloadAttemptError(), attempt + 1, url, error);
+        this.logger.debug(logs.downloader.debug.downloadAttemptError(), attempt + 1, url, error);
         if (attempt < retryCount) {
           attempt++;
           this.logger.debug(
-            DebugTemplates.downloader.retryingDownload(),
+            logs.downloader.debug.retryingDownload(),
             url,
             attempt + 1,
             retryCount + 1,
@@ -251,7 +251,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
       }
     }
     // Fallback, should ideally not be reached if retryCount >= 0
-    this.logger.debug(DebugTemplates.downloader.exhaustedRetries(), url);
+    this.logger.debug(logs.downloader.debug.exhaustedRetries(), url);
     throw new NetworkError(
       this.logger,
       `Download failed for ${url} after ${retryCount} retries.`,

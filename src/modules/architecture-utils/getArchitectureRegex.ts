@@ -1,6 +1,5 @@
 import type { SystemInfo, ArchitecturePatterns } from '@types';
-import { type TsLogger } from '@modules/logger';
-import { SuccessTemplates } from '@modules/shared/ErrorTemplates';
+import { type TsLogger, logs } from '@modules/logger';
 
 /**
  * Represents a set of regular expression patterns derived from {@link ArchitecturePatterns}.
@@ -40,7 +39,7 @@ export function getArchitecturePatterns(
   systemInfo: SystemInfo,
 ): ArchitecturePatterns {
   const logger = parentLogger.getSubLogger({ name: 'getArchitecturePatterns' });
-  logger.trace(SuccessTemplates.architecture.patterns(), systemInfo.platform, systemInfo.arch);
+  logger.trace(logs.architecture.success.patterns(), systemInfo.platform, systemInfo.arch);
 
   const patterns: ArchitecturePatterns = {
     system: [],
@@ -122,7 +121,7 @@ export function getArchitecturePatterns(
       break;
   }
 
-  logger.trace(SuccessTemplates.general.completed('pattern generation'), patterns);
+  logger.trace(logs.general.success.completed('pattern generation'), patterns);
 
   return patterns;
 }
@@ -139,7 +138,7 @@ export function createArchitectureRegex(
   patterns: ArchitecturePatterns,
 ): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'createArchitectureRegex' });
-  logger.trace(SuccessTemplates.architecture.regexCreation());
+  logger.trace(logs.architecture.success.regexCreation());
 
   // Escape special regex characters in pattern strings
   const escapeRegex = (str: string): string => {
@@ -161,7 +160,7 @@ export function createArchitectureRegex(
     variantPattern,
   };
 
-  logger.trace(SuccessTemplates.general.completed('regex generation'), result);
+  logger.trace(logs.general.success.completed('regex generation'), result);
 
   return result;
 }
@@ -178,12 +177,12 @@ export function getArchitectureRegex(
   systemInfo: SystemInfo,
 ): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'getArchitectureRegex' });
-  logger.trace(SuccessTemplates.general.started('architecture detection'), systemInfo.platform, systemInfo.arch);
+  logger.trace(logs.general.success.started('architecture detection'), systemInfo.platform, systemInfo.arch);
 
   const patterns = getArchitecturePatterns(logger, systemInfo);
   const regex = createArchitectureRegex(logger, patterns);
 
-  logger.trace(SuccessTemplates.general.completed('architecture detection'));
+  logger.trace(logs.general.success.completed('architecture detection'));
   return regex;
 }
 
@@ -201,7 +200,7 @@ export function matchesArchitecture(
   architectureRegex: ArchitectureRegex,
 ): boolean {
   const logger = parentLogger.getSubLogger({ name: 'matchesArchitecture' });
-  logger.trace(SuccessTemplates.architecture.assetMatchCheck(assetName));
+  logger.trace(logs.architecture.success.assetMatchCheck(assetName));
 
   const lowerAssetName = assetName.toLowerCase();
 
@@ -217,7 +216,7 @@ export function matchesArchitecture(
 
   const matches = systemMatch && cpuMatch;
 
-  logger.trace(SuccessTemplates.general.completed('asset match check'), { assetName, systemMatch, cpuMatch, matches });
+  logger.trace(logs.general.success.completed('asset match check'), { assetName, systemMatch, cpuMatch, matches });
 
   return matches;
 }

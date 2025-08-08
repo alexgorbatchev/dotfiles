@@ -1,7 +1,7 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader';
 import type { Stats } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { ErrorTemplates, WarningTemplates, DebugTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import type { ToolConfig } from '@types';
 import path from 'path';
 import { type GlobalProgram, type Services } from '../../cli';
@@ -21,12 +21,12 @@ export async function detectConflictsActionLogic(
     const toolConfigsRecord = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
     toolConfigsArray = Object.values(toolConfigsRecord);
   } catch (error: any) {
-    logger.error(ErrorTemplates.config.loadFailed('tool configurations', error.message));
+    logger.error(logs.config.error.loadFailed('tool configurations', error.message));
     exitCli(1);
   }
 
   if (toolConfigsArray.length === 0) {
-    logger.info(SuccessTemplates.general.noToolsFound(yamlConfig.paths.toolConfigsDir));
+    logger.info(logs.general.success.noToolsFound(yamlConfig.paths.toolConfigsDir));
     exitCli(0);
   }
 
@@ -44,7 +44,7 @@ export async function detectConflictsActionLogic(
               );
             }
           } catch (readError: any) {
-            logger.warn(WarningTemplates.fs.readFailed(shimPath, readError.message));
+            logger.warn(logs.fs.warning.readFailed(shimPath, readError.message));
             conflictMessages.push(
               `[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`,
             );
@@ -80,7 +80,7 @@ export async function detectConflictsActionLogic(
           }
         } catch (error: any) {
           if (error.code !== 'ENOENT') {
-            logger.warn(WarningTemplates.fs.readFailed(targetPath, error.message));
+            logger.warn(logs.fs.warning.readFailed(targetPath, error.message));
           }
         }
       }
@@ -90,11 +90,11 @@ export async function detectConflictsActionLogic(
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
-    logger.warn(WarningTemplates.tool.conflictsDetected(header, formattedConflicts));
+    logger.warn(logs.tool.warning.conflictsDetected(header, formattedConflicts));
     exitCli(1);
     return;
   } else {
-    logger.info(SuccessTemplates.general.noConflictsDetected());
+    logger.info(logs.general.success.noConflictsDetected());
     exitCli(0);
     return;
   }
@@ -113,7 +113,7 @@ export function registerDetectConflictsCommand(
     )
     .action(async (options) => {
       const combinedOptions = { ...options, ...program.opts() };
-      logger.debug(DebugTemplates.command.errorDetails(), combinedOptions);
+      logger.debug(logs.command.debug.errorDetails(), combinedOptions);
       try {
         const services = await servicesFactory();
         await detectConflictsActionLogic(logger, combinedOptions, services);
@@ -123,10 +123,10 @@ export function registerDetectConflictsCommand(
           throw error;
         }
 
-        logger.fatal(ErrorTemplates.command.executionFailed('detect-conflicts', 1, 'Unhandled error in action handler'));
-        logger.debug(DebugTemplates.command.errorDetails(), error);
-        logger.error(ErrorTemplates.command.executionFailed('detect-conflicts', 1, (error as Error).message));
-        logger.debug(DebugTemplates.command.errorDetails(), error);
+        logger.fatal(logs.command.error.executionFailed('detect-conflicts', 1, 'Unhandled error in action handler'));
+        logger.debug(logs.command.debug.errorDetails(), error);
+        logger.error(logs.command.error.executionFailed('detect-conflicts', 1, (error as Error).message));
+        logger.debug(logs.command.debug.errorDetails(), error);
         exitCli(1);
       }
     });

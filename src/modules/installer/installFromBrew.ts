@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
 import type { BrewToolConfig, BaseInstallContext } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { DebugTemplates, ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 /**
  * Install a tool using Homebrew
@@ -15,7 +15,7 @@ export async function installFromBrew(
   parentLogger: TsLogger,
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
-  logger.debug(DebugTemplates.installer.installingFromBrew(), toolName, toolConfig.installParams);
+  logger.debug(logs.installer.debug.installingFromBrew(), toolName, toolConfig.installParams);
 
   if (!toolConfig.installParams) {
     return {
@@ -58,7 +58,7 @@ export async function installFromBrew(
       command += ' --force';
     }
 
-    logger.debug(DebugTemplates.installer.executingCommand(), command);
+    logger.debug(logs.installer.debug.executingCommand(), command);
 
     // In a real implementation, we would execute the command here
     // For now, we'll just simulate success
@@ -71,7 +71,7 @@ export async function installFromBrew(
       
       // In a real implementation, we would copy from brew location to our versioned directory
       // For now, this is a placeholder that assumes brew installed the binary
-      logger.debug(DebugTemplates.installer.movingBinary(), sourcePath, finalBinaryPath);
+      logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
     }
 
     // Return path to first binary for compatibility
@@ -88,7 +88,7 @@ export async function installFromBrew(
       },
     };
   } catch (error) {
-    logger.error(ErrorTemplates.tool.installFailed('brew', toolName, (error as Error).message));
+    logger.error(logs.tool.error.installFailed('brew', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

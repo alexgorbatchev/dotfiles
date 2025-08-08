@@ -1,6 +1,5 @@
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
-import { type TsLogger } from '@modules/logger';
-import { ErrorTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { type TsLogger, logs } from '@modules/logger';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
@@ -24,15 +23,15 @@ export function registerGenerateCommand(
         const services = await servicesFactory();
         const { yamlConfig, fs, generatorOrchestrator } = services;
   
-        logger.debug(DebugTemplates.command.actionCalled('generate'), combinedOptions);
+        logger.debug(logs.command.debug.actionCalled('generate'), combinedOptions);
   
         try {
-          logger.debug(SuccessTemplates.config.toolConfigLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
+          logger.debug(logs.config.success.toolConfigLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
           const toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
-          logger.debug(SuccessTemplates.config.loaded('tool configs', Object.keys(toolConfigs).length));
+          logger.debug(logs.config.success.loaded('tool configs', Object.keys(toolConfigs).length));
   
           const manifest = await generatorOrchestrator.generateAll(toolConfigs, {});
-          logger.debug(DebugTemplates.generator.orchestrationComplete(), manifest);
+          logger.debug(logs.generator.debug.orchestrationComplete(), manifest);
   
   
 
@@ -40,13 +39,13 @@ export function registerGenerateCommand(
           const numSymlinks = manifest.symlinks?.length ?? 0;
           if (combinedOptions.verbose && manifest.symlinks && numSymlinks > 0) {
             manifest.symlinks.forEach((op) => {
-              logger.debug(SuccessTemplates.general.symlinkOperation(op.targetPath, op.sourcePath, op.status, op.error));
+              logger.debug(logs.general.success.symlinkOperation(op.targetPath, op.sourcePath, op.status, op.error));
             });
           }
   
-          logger.info(SuccessTemplates.general.done(combinedOptions.dryRun));
+          logger.info(logs.general.success.done(combinedOptions.dryRun));
         } catch (error) {
-          logger.error(ErrorTemplates.command.executionFailed('generate', 1, (error as Error).message), error);
+          logger.error(logs.command.error.executionFailed('generate', 1, (error as Error).message), error);
           exitCli(1);
         }
       });

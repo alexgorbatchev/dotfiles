@@ -1,4 +1,4 @@
-import { type TsLogger } from '@modules/logger';
+import { type TsLogger, logs } from '@modules/logger';
 import type {
   Architecture,
   AsyncInstallHook,
@@ -22,7 +22,6 @@ import type {
   ToolConfigUpdateCheck,
   Platform,
 } from '@types';
-import { ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
@@ -79,7 +78,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
     } else {
       this.logger.warn(
-        WarningTemplates.config.ignored(
+        logs.config.warning.ignored(
           'hooks',
           `hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
         )
@@ -122,7 +121,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     } else {
       targetArchitectures = architecturesOrConfigure;
       if (typeof configureCallback !== 'function') {
-        const missingCallbackError = ErrorTemplates.config.required(
+        const missingCallbackError = logs.config.error.required(
           'configure callback',
           `platform() called for tool "${this.toolName}" with architectures but without a configure callback`
         );
@@ -222,7 +221,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
             installParams: this.currentInstallParams,
           } as ManualToolConfig;
         default:
-          const invalidMethodError = ErrorTemplates.config.invalid(
+          const invalidMethodError = logs.config.error.invalid(
             'installationMethod',
             this.currentInstallationMethod!,
             'github-release | brew | curl-script | curl-tar | manual'
@@ -242,7 +241,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       !symlinks &&
       (!platformConfigs || platformConfigs.length === 0)
     ) {
-      const requiredConfigError = ErrorTemplates.config.required(
+      const requiredConfigError = logs.config.error.required(
         'tool definition',
         `Tool "${name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
       );

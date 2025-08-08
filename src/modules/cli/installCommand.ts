@@ -1,6 +1,6 @@
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
 import { type TsLogger } from '@modules/logger';
-import { ErrorTemplates, SuccessTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { type GlobalProgram, type Services } from '../../cli';
 import { exitCli } from './exitCli';
 
@@ -25,7 +25,7 @@ export function registerInstallCommand(
     )
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
-      logger.debug(DebugTemplates.command.actionCalled('install', toolName), combinedOptions);
+      logger.debug(logs.command.debug.actionCalled('install', toolName), combinedOptions);
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer } = services;
@@ -34,7 +34,7 @@ export function registerInstallCommand(
 
       try {
         logger.debug(
-          DebugTemplates.command.actionStarted('install', toolName),
+          logs.command.debug.actionStarted('install', toolName),
           yamlConfig.paths.toolConfigsDir,
           fs.constructor.name,
         );
@@ -42,7 +42,7 @@ export function registerInstallCommand(
         // Tool configuration loaded, proceeding with installation
 
         if (!toolConfig) {
-          logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
+          logger.error(logs.tool.error.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           shouldExitWithCode = 1;
         } else {
           // Starting installation process
@@ -58,11 +58,11 @@ export function registerInstallCommand(
               shouldExitWithCode = 0;
             } else {
               // Normal mode: log success message
-              logger.info(SuccessTemplates.tool.installed(toolName, result.version || 'unknown', 'CLI'));
+              logger.info(logs.tool.success.installed(toolName, result.version || 'unknown', 'CLI'));
             }
           } else {
             logger.debug(
-              DebugTemplates.command.actionStarted('install-failed', toolName),
+              logs.command.debug.actionStarted('install-failed', toolName),
               result.error,
             );
             
@@ -74,13 +74,13 @@ export function registerInstallCommand(
               shouldExitWithCode = 1;
             } else {
               // Normal mode: use logger
-              logger.error(ErrorTemplates.tool.installFailed('unknown', toolName, result.error || 'Unknown error'));
+              logger.error(logs.tool.error.installFailed('unknown', toolName, result.error || 'Unknown error'));
               shouldExitWithCode = 1;
             }
           }
         }
       } catch (error) {
-        logger.debug(DebugTemplates.command.unhandledError(), error);
+        logger.debug(logs.command.debug.unhandledError(), error);
         
         if (combinedOptions.shimMode) {
           // In shim mode, output user-friendly error message to stderr
@@ -90,7 +90,7 @@ export function registerInstallCommand(
           shouldExitWithCode = 1;
         } else {
           // Normal mode: use logger
-          logger.error(ErrorTemplates.command.executionFailed('install', 1, (error as Error).message));
+          logger.error(logs.command.error.executionFailed('install', 1, (error as Error).message));
           shouldExitWithCode = 1;
         }
       }

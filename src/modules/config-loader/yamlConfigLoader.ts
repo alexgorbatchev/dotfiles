@@ -1,12 +1,11 @@
 import { yamlConfigSchema, type YamlConfig, type YamlConfigPartial } from '@modules/config';
 import { type IFileSystem } from '@modules/file-system';
-import { type TsLogger } from '@modules/logger';
+import { type TsLogger, logs } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { expandHomePath } from '@utils';
 import { exitCli } from '../cli';
-import { ErrorTemplates, SuccessTemplates } from '@modules/shared/ErrorTemplates';
 import path from 'node:path';
 
 
@@ -109,7 +108,7 @@ function applyPlatformOverrides(
   const currentPlatform = detectOS(systemInfo.platform);
   const currentArch = detectArch(systemInfo.arch);
 
-  logger.debug(SuccessTemplates.config.platformOverrides(currentPlatform, currentArch));
+  logger.debug(logs.config.success.platformOverrides(currentPlatform, currentArch));
 
   let result: Record<string, unknown> = deepMerge({}, config );
 
@@ -150,7 +149,7 @@ function applyPlatformOverrides(
     });
 
     if (matches) {
-      logger.trace(SuccessTemplates.config.validated('platform override'), platformOverride.config);
+      logger.trace(logs.config.success.validated('platform override'), platformOverride.config);
       result = deepMerge(result, platformOverride.config);
     }
   }
@@ -245,7 +244,7 @@ function processConfig(
   env: Record<string, string | undefined>
 ): YamlConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
-  logger.debug(SuccessTemplates.config.configProcessing(), defaultConfig, userConfig, systemInfo);
+  logger.debug(logs.config.success.configProcessing(), defaultConfig, userConfig, systemInfo);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
@@ -260,7 +259,7 @@ function processConfig(
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
-    logger.error(ErrorTemplates.config.validationFailed([pretty]));
+    logger.error(logs.config.error.validationFailed([pretty]));
     throw new Error(`YAML configuration is invalid.\n${pretty}`);
   }
 
@@ -317,7 +316,7 @@ export async function loadYamlConfig(
   let userConfig = {};
 
   if (!await fileSystem.exists(userConfigPath)) {
-    logger.error(ErrorTemplates.fs.notFound('Config file', userConfigPath));
+    logger.error(logs.fs.error.notFound('Config file', userConfigPath));
     exitCli(1);
   }
 
@@ -326,7 +325,7 @@ export async function loadYamlConfig(
     userConfig = parse(userConfigContent) || {};
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
-    logger.error(ErrorTemplates.config.parseErrors(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)));
+    logger.error(logs.config.error.parseErrors(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)));
   }
 
   return processConfig(parentLogger, defaultConfig, userConfig, systemInfo, env);

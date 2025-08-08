@@ -5,7 +5,7 @@ import {
 } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { IInstaller, InstallResult } from '@modules/installer';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { VersionComparisonStatus, type IVersionChecker } from '@modules/version-checker';
 import { TestLogger } from '@testing-helpers';
 import { createCliTestSetup } from './createCliTestSetup';
@@ -181,7 +181,7 @@ describe('updateCommand', () => {
     );
 
     logger.expect(['ERROR'], ['updateCommand'], [
-      ErrorTemplates.tool.updateFailed('fzf', 'Install failed miserably'),
+      logs.tool.error.updateFailed('fzf', 'Install failed miserably'),
     ]);
   });
 
@@ -193,7 +193,7 @@ describe('updateCommand', () => {
     );
 
     logger.expect(['ERROR'], ['updateCommand'], [
-      ErrorTemplates.tool.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
+      logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
     ]);
   });
 
@@ -216,7 +216,7 @@ describe('updateCommand', () => {
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     logger.expect(['ERROR'], ['updateCommand'], [
-      ErrorTemplates.service.github.apiFailed('get latest release', 0, 'GitHub API Down'),
+      logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API Down'),
     ]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });

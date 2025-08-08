@@ -4,7 +4,7 @@ import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
 } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
-import { ErrorTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 import { TestLogger } from '@testing-helpers';
 import { createCliTestSetup } from './createCliTestSetup';
 import type { ToolConfig } from '@types';
@@ -172,7 +172,7 @@ describe('installCommand', () => {
     );
 
     testLogger.expect(['ERROR'], ['registerInstallCommand'], [
-      ErrorTemplates.tool.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
+      logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
     ]);
   });
 
@@ -188,7 +188,7 @@ describe('installCommand', () => {
     );
 
     testLogger.expect(['ERROR'], ['registerInstallCommand'], [
-      ErrorTemplates.tool.installFailed('unknown', 'toolA', 'Installation failed'),
+      logs.tool.error.installFailed('unknown', 'toolA', 'Installation failed'),
     ]);
   });
 

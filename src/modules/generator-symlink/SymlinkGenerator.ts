@@ -10,7 +10,7 @@ import type {
 } from './ISymlinkGenerator';
 import { TrackedFileSystem } from '@modules/file-registry';
 import { expandToolConfigPath } from '@utils';
-import { ErrorTemplates, WarningTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { logs } from '@modules/logger';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
@@ -23,7 +23,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     this.yamlConfig = yamlConfig;
     this.systemInfo = systemInfo;
     this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
-    this.logger.debug(DebugTemplates.symlink.constructorInit());
+    this.logger.debug(logs.symlink.debug.constructorInit());
   }
 
   async generate(
@@ -31,7 +31,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: GenerateSymlinksOptions = {},
   ): Promise<SymlinkOperationResult[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
-    logger.debug(DebugTemplates.symlink.generateStart(), options, this.fs.constructor.name);
+    logger.debug(logs.symlink.debug.generateStart(), options, this.fs.constructor.name);
     const results: SymlinkOperationResult[] = [];
     const { overwrite = false, backup = false } = options;
 
@@ -43,22 +43,22 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
       const toolConfig = toolConfigs[toolName];
       if (!toolConfig) {
-        logger.debug(DebugTemplates.symlink.toolConfigUndefined(), toolName);
+        logger.debug(logs.symlink.debug.toolConfigUndefined(), toolName);
         continue;
       }
       if (!toolConfig.symlinks || toolConfig.symlinks.length === 0) {
-        logger.debug(DebugTemplates.symlink.noSymlinks(), toolName);
+        logger.debug(logs.symlink.debug.noSymlinks(), toolName);
         continue;
       }
 
-      logger.debug(DebugTemplates.symlink.processingTool(), toolName);
+      logger.debug(logs.symlink.debug.processingTool(), toolName);
       for (const symlinkConfig of toolConfig.symlinks) {
         const sourceRelPath = symlinkConfig.source;
         const targetRelPath = symlinkConfig.target;
         const sourceAbsPath = expandToolConfigPath(toolConfig.configFilePath, sourceRelPath, this.yamlConfig, this.systemInfo);
         const targetAbsPath = expandToolConfigPath(toolConfig.configFilePath, targetRelPath, this.yamlConfig, this.systemInfo);
 
-        logger.debug(DebugTemplates.symlink.processingSymlink(), sourceRelPath, sourceAbsPath, targetRelPath, targetAbsPath);
+        logger.debug(logs.symlink.debug.processingSymlink(), sourceRelPath, sourceAbsPath, targetRelPath, targetAbsPath);
 
         let currentStatus: SymlinkOperationResult['status'] = 'created'; // Optimistic default
         let currentError: string | undefined;
@@ -66,7 +66,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         if (!(await toolFs.exists(sourceAbsPath))) {
           currentStatus = 'skipped_source_missing';
           logger.warn(
-            WarningTemplates.fs.notFound('Source file', sourceAbsPath)
+            logs.fs.warning.notFound('Source file', sourceAbsPath)
           );
           results.push({
             sourcePath: sourceAbsPath,
@@ -82,7 +82,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           : false;
 
         if (targetExists) {
-          logger.debug(DebugTemplates.symlink.targetExists(), targetAbsPath);
+          logger.debug(logs.symlink.debug.targetExists(), targetAbsPath);
           
           // Check if target is already a symlink pointing to the correct source
           try {
@@ -110,7 +110,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           
           if (!overwrite) {
             currentStatus = 'skipped_exists';
-            logger.debug(DebugTemplates.symlink.skipTargetExists(), targetAbsPath);
+            logger.debug(logs.symlink.debug.skipTargetExists(), targetAbsPath);
             results.push({
               sourcePath: sourceAbsPath,
               targetPath: targetAbsPath,
@@ -132,7 +132,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               currentStatus = 'backed_up';
             } catch (e: any) {
               currentStatus = 'failed';
-              const errorMsg = ErrorTemplates.fs.writeFailed(`backup of ${targetAbsPath}`, e.message);
+              const errorMsg = logs.fs.error.writeFailed(`backup of ${targetAbsPath}`, e.message);
               currentError = errorMsg;
               logger.error(errorMsg);
             }
@@ -149,7 +149,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               // Status remains 'updated_target'
             } catch (e: any) {
               currentStatus = 'failed';
-              const errorMsg = ErrorTemplates.fs.deleteFailed(targetAbsPath, e.message);
+              const errorMsg = logs.fs.error.deleteFailed(targetAbsPath, e.message);
               currentError = errorMsg;
               logger.error(errorMsg);
             }
@@ -172,7 +172,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           await toolFs.ensureDir(targetDir);
         } catch (e: any) {
           currentStatus = 'failed';
-          const errorMsg = ErrorTemplates.fs.directoryCreateFailed(targetDir, e.message);
+          const errorMsg = logs.fs.error.directoryCreateFailed(targetDir, e.message);
           currentError = errorMsg;
           logger.error(errorMsg);
         }
@@ -184,7 +184,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
             // currentStatus is already 'created', 'updated_target', or 'backed_up'
           } catch (e: any) {
             currentStatus = 'failed';
-            const errorMsg = ErrorTemplates.fs.symlinkFailed(sourceAbsPath, targetAbsPath, (e as Error).message);
+            const errorMsg = logs.fs.error.symlinkFailed(sourceAbsPath, targetAbsPath, (e as Error).message);
             currentError = errorMsg;
             logger.error(errorMsg);
           }
@@ -197,7 +197,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         });
       } // End for symlinkConfig
     } // End for toolName
-    logger.debug(DebugTemplates.symlink.generationComplete(), results);
+    logger.debug(logs.symlink.debug.generationComplete(), results);
     return results;
   }
 }
