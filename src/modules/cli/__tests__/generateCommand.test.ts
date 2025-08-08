@@ -86,7 +86,8 @@ describe('generateCommand', () => {
     expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
       expect.any(Object),
       mockYamlConfig.paths.toolConfigsDir,
-      mockFs.fs.asIFileSystem
+      mockFs.fs.asIFileSystem,
+      mockYamlConfig
     );
 
     // Should log DONE message at the end
@@ -99,7 +100,8 @@ describe('generateCommand', () => {
     expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
       expect.any(Object),
       mockYamlConfig.paths.toolConfigsDir,
-      mockFs.fs.asIFileSystem
+      mockFs.fs.asIFileSystem,
+      mockYamlConfig
     );
 
     // Should log DONE (dry run) message at the end

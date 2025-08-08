@@ -1,21 +1,46 @@
 import type { IFileSystem } from '@modules/file-system';
-import type { ToolConfig, AsyncConfigureTool } from '@types';
+import type { ToolConfig, AsyncConfigureTool, ToolConfigContext } from '@types';
+import type { YamlConfig } from '@modules/config';
 import { ToolConfigBuilder } from '@modules/tool-config-builder';
 import path from 'node:path';
 import { type TsLogger } from '@modules/logger';
 import { SuccessTemplates, ErrorTemplates, WarningTemplates } from '@modules/shared/ErrorTemplates';
 
 /**
+ * Creates a ToolConfigContext from YamlConfig for the specified tool.
+ * @param yamlConfig The application configuration containing path information.
+ * @param currentToolName The name of the tool currently being configured.
+ * @returns A ToolConfigContext with all necessary path information.
+ */
+function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string): ToolConfigContext {
+  const getToolDir = (toolName: string): string => {
+    return path.join(yamlConfig.paths.binariesDir, toolName);
+  };
+
+  return {
+    toolDir: getToolDir(currentToolName),
+    getToolDir,
+    homeDir: yamlConfig.paths.homeDir,
+    binDir: yamlConfig.paths.targetDir,
+    shellScriptsDir: yamlConfig.paths.shellScriptsDir,
+    dotfilesDir: yamlConfig.paths.dotfilesDir,
+    generatedDir: yamlConfig.paths.generatedDir,
+  };
+}
+
+/**
  * Loads all tool configurations from *.tool.ts files in a given directory.
  * Uses dynamic import() to load the TypeScript modules.
  * @param toolConfigsDir The directory containing .tool.ts files.
  * @param fs The file system implementation to use for reading directory and checking file existence.
+ * @param yamlConfig The application configuration containing path information.
  * @returns A promise that resolves to a record of tool configurations, keyed by tool name.
  */
 export async function loadToolConfigsFromDirectory(
   parentLogger: TsLogger,
   toolConfigsDir: string,
-  fs: IFileSystem
+  fs: IFileSystem,
+  yamlConfig: YamlConfig
 ): Promise<Record<string, ToolConfig>> {
   const logger = parentLogger.getSubLogger({ name: 'loadToolConfigsFromDirectory' });
   const toolConfigs: Record<string, ToolConfig> = {};
@@ -52,7 +77,8 @@ export async function loadToolConfigsFromDirectory(
               logger.trace(SuccessTemplates.config.validated(filePath));
               const configureToolFn = module.default as AsyncConfigureTool;
               const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
-              await configureToolFn(builder);
+              const context = createToolConfigContext(yamlConfig, toolNameFromFile);
+              await configureToolFn(builder, context);
               toolConfig = builder.build();
               logger.trace(SuccessTemplates.config.loaded(filePath, 1));
             } else {
@@ -102,13 +128,15 @@ export async function loadToolConfigsFromDirectory(
  * @param toolName The name of the tool to load.
  * @param toolConfigsDir The directory containing .tool.ts files.
  * @param fs The file system implementation (primarily for fs.exists check).
+ * @param yamlConfig The application configuration containing path information.
  * @returns A promise that resolves to the ToolConfig if found, otherwise undefined.
  */
 export async function loadSingleToolConfig(
   parentLogger: TsLogger,
   toolName: string,
   toolConfigsDir: string,
-  fs: IFileSystem
+  fs: IFileSystem,
+  yamlConfig: YamlConfig
 ): Promise<ToolConfig | undefined> {
   const logger = parentLogger.getSubLogger({ name: 'loadSingleToolConfig' });
   logger.debug(SuccessTemplates.config.singleToolConfigLoad(toolName, toolConfigsDir));
@@ -134,7 +162,8 @@ export async function loadSingleToolConfig(
         logger.trace(SuccessTemplates.config.validated(filePath));
         const configureToolFn = module.default as AsyncConfigureTool;
         const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
-        await configureToolFn(builder);
+        const context = createToolConfigContext(yamlConfig, toolNameFromFile);
+        await configureToolFn(builder, context);
         toolConfig = builder.build();
         logger.trace(SuccessTemplates.config.loaded(filePath, 1));
       } else {

@@ -28,7 +28,7 @@ export function registerGenerateCommand(
   
         try {
           logger.debug(SuccessTemplates.config.toolConfigLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
-          const toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
+          const toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
           logger.debug(SuccessTemplates.config.loaded('tool configs', Object.keys(toolConfigs).length));
   
           const manifest = await generatorOrchestrator.generateAll(toolConfigs, {});

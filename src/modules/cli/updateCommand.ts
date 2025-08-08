@@ -46,6 +46,7 @@ export function registerUpdateCommand(
             toolName,
             yamlConfig.paths.toolConfigsDir,
             fs,
+            yamlConfig,
           );
           actionLogger.debug(DebugTemplates.command.errorDetails(), toolName);
         } catch (error) {

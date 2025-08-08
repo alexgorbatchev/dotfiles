@@ -65,9 +65,9 @@ configs-migrated/           # Migrated configurations
 ### Minimal Configuration
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('tool-name')
     .version('latest')
@@ -80,9 +80,9 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 ### Complete Configuration Template
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     // Define the binary names this tool provides
     .bin(['primary-binary', 'secondary-binary'])
@@ -106,12 +106,12 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
     })
     
     // Configure symbolic links
-    .symlink('./config.toml', '~/.config/tool/config.toml')
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
     
     // Add shell initialization code
     .zsh(/* zsh */ `
       # Environment variables
-      export TOOL_CONFIG_DIR="$HOME/.tool"
+      export TOOL_CONFIG_DIR="${ctx.homeDir}/.tool"
       
       # Aliases
       alias t="tool"
@@ -123,6 +123,84 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
     `);
 };
 ```
+
+## ToolConfigContext Interface
+
+The `ToolConfigContext` provides access to configuration paths and directories for tool configuration. This context is automatically passed to your tool configuration function and provides type-safe access to all configuration paths from the YAML config.
+
+### Context Properties
+
+```typescript
+interface ToolConfigContext {
+  /** Current tool's installation directory */
+  toolDir: string;
+  
+  /** Get the installation directory for any tool */
+  getToolDir(toolName: string): string;
+  
+  /** User's home directory (from yamlConfig.paths.homeDir) */
+  homeDir: string;
+  
+  /** Generated binaries directory (from yamlConfig.paths.binariesDir) */
+  binDir: string;
+  
+  /** Generated shell scripts directory (from yamlConfig.paths.shellScriptsDir) */
+  shellScriptsDir: string;
+  
+  /** Root dotfiles directory (from yamlConfig.paths.dotfilesDir) */
+  dotfilesDir: string;
+  
+  /** Generated files directory (from yamlConfig.paths.generatedDir) */
+  generatedDir: string;
+}
+```
+
+### Usage Examples
+
+**Accessing Current Tool Directory:**
+```typescript
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  c.zsh(/* zsh */ `
+    # Reference the current tool's installation directory
+    export TOOL_CONFIG_DIR="${ctx.toolDir}"
+    
+    # Source tool-specific files
+    if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+      source "${ctx.toolDir}/shell/key-bindings.zsh"
+    fi
+  `);
+};
+```
+
+**Accessing Other Tool Directories:**
+```typescript
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  c.zsh(/* zsh */ `
+    # Reference another tool's directory
+    FZF_DIR="${ctx.getToolDir('fzf')}"
+    if [[ -d "$FZF_DIR" ]]; then
+      export FZF_BASE="$FZF_DIR"
+    fi
+  `);
+};
+```
+
+**Using Generated Directories:**
+```typescript
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  c.zsh(once/* zsh */ `
+    # Generate completions to the proper directory
+    tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+  `);
+};
+```
+
+**Path Resolution Benefits:**
+- **Type Safety**: All paths are validated at compile time
+- **Configuration Source**: Paths come from YAML config as single source of truth
+- **No Hard-coding**: Eliminates hardcoded `$DOTFILES` or similar references
+- **Flexibility**: Easy access to any configured directory
+- **Consistency**: Same path resolution across all tools
 
 ## Core Methods Reference
 
@@ -372,7 +450,7 @@ c.install('manual', {
 
 // User-installed binary
 c.install('manual', {
-  binaryPath: '$HOME/bin/custom-tool',
+  binaryPath: `${ctx.homeDir}/bin/custom-tool`,
 })
 ```
 
@@ -409,11 +487,11 @@ import { once, always } from '@types';
 c.zsh(
   once/* zsh */`
     # Generate completions (runs only once)
-    tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
+    tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
   `,
   always/* zsh */`
     # Fast runtime setup (runs every shell startup)
-    export TOOL_CONFIG_DIR="$HOME/.tool"
+    export TOOL_CONFIG_DIR="${ctx.toolDir}"
     alias t="tool"
   `
 )
@@ -429,11 +507,11 @@ c.zsh(
 ```typescript
 c.zsh(/* zsh */ `
   # Environment variables
-  export TOOL_CONFIG_DIR="$HOME/.config/tool"
-  export TOOL_DATA_DIR="$HOME/.local/share/tool"
+  export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
+  export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
   
   # PATH modifications
-  add-to-path "$HOME/.tool/bin"
+  add-to-path "${ctx.homeDir}/.tool/bin"
   
   # Aliases
   alias t="tool"
@@ -486,7 +564,7 @@ c.zsh(/* zsh */ `
   fi
   
   # Source additional files
-  local tool_extras="$DOTFILES/.generated/tools/tool/extras.zsh"
+  local tool_extras="${ctx.toolDir}/extras.zsh"
   [[ -f "$tool_extras" ]] && source "$tool_extras"
 `)
 ```
@@ -502,7 +580,7 @@ Adds PowerShell initialization code for Windows support.
 **Example:**
 ```typescript
 c.powershell(/* powershell */ `
-  $env:TOOL_CONFIG_DIR = "$env:HOME\\.tool"
+  $env:TOOL_CONFIG_DIR = "${ctx.homeDir}\\.tool"
   
   function tool-helper {
     tool --config "$env:TOOL_CONFIG_DIR\\config.toml" @args
@@ -596,7 +674,7 @@ c.platform(Platform.Windows, Architecture.Arm64, (c) => {
 
 **Complete Multi-Platform Example:**
 ```typescript
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   // Common configuration for all platforms
   c
     .bin('tool')
@@ -676,7 +754,7 @@ c.completions({
 c.completions({
   zsh: {
     source: 'completions/tool.zsh',
-    targetDir: '$HOME/.zsh/completions',
+    targetDir: `${ctx.homeDir}/.zsh/completions`,
   },
 })
 ```
@@ -714,27 +792,27 @@ Creates symbolic links for configuration files.
 
 **Path Conventions:**
 - Use `./` prefix for files relative to the tool's directory
-- Use `~/` prefix for home directory paths
+- Use `${ctx.homeDir}/` for home directory paths instead of `~/`
 - Absolute paths are supported
 
 ### Examples
 
 **Basic Configuration File:**
 ```typescript
-c.symlink('./config.toml', '~/.config/tool/config.toml')
+c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
 ```
 
 **Multiple Configuration Files:**
 ```typescript
 c
-  .symlink('./config.toml', '~/.config/tool/config.toml')
-  .symlink('./themes/', '~/.config/tool/themes')
-  .symlink('./scripts/helper.sh', '~/bin/tool-helper')
+  .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+  .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
+  .symlink('./scripts/helper.sh', `${ctx.homeDir}/bin/tool-helper`)
 ```
 
 **Absolute Paths:**
 ```typescript
-c.symlink('/etc/tool/global.conf', '~/.config/tool/global.conf')
+c.symlink('/etc/tool/global.conf', `${ctx.homeDir}/.config/tool/global.conf`)
 ```
 
 **Directory Structure Example:**
@@ -752,9 +830,9 @@ configs-migrated/my-tool/
 ```typescript
 // In my-tool.tool.ts
 c
-  .symlink('./config.toml', '~/.config/my-tool/config.toml')
-  .symlink('./themes/', '~/.config/my-tool/themes')
-  .symlink('./scripts/helper.sh', '~/bin/my-tool-helper')
+  .symlink('./config.toml', `${ctx.homeDir}/.config/my-tool/config.toml`)
+  .symlink('./themes/', `${ctx.homeDir}/.config/my-tool/themes`)
+  .symlink('./scripts/helper.sh', `${ctx.homeDir}/bin/my-tool-helper`)
 ```
 
 ## Hooks and Advanced Features
@@ -839,7 +917,7 @@ if (configExists.stdout.includes('yes')) {
 }
 
 // Copy files from tool directory to user's home
-await $`cp ./dotfiles/.vimrc ${systemInfo.homeDir}/.vimrc`;
+await $`cp ./dotfiles/.vimrc ${ctx.homeDir}/.vimrc`;
 
 // Run tool-specific setup scripts
 await $`chmod +x ./setup.sh && ./setup.sh`;
@@ -974,7 +1052,7 @@ c.install('curl-script', {
   url: 'https://example.com/install.sh',
   shell: 'bash',
   env: {
-    INSTALL_DIR: '$HOME/.local/bin',
+    INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
     ENABLE_FEATURE: 'true',
     API_KEY: process.env.TOOL_API_KEY || 'default',
   },
@@ -988,7 +1066,7 @@ c.install('curl-script', {
 Always import required types at the top:
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 import { Platform, Architecture } from '@types';
 ```
 
@@ -997,7 +1075,7 @@ import { Platform, Architecture } from '@types';
 The default export must be an async function with this exact signature:
 
 ```typescript
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   // Configuration goes here
 };
 ```
@@ -1034,9 +1112,9 @@ c.platform(Platform.MacOS, (c) => {})
 ### 1. Simple GitHub Tool
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('ripgrep')
     .version('latest')
@@ -1056,9 +1134,9 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 ### 2. Complex Tool with Multiple Features
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('fzf')
     .version('latest')
@@ -1073,7 +1151,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       export FZF_DEFAULT_OPTS="--color=fg+:cyan,bg+:black,hl+:yellow"
       
       # Source key bindings
-      _fzf_install_dir="$DOTFILES/.generated/tools/fzf"
+      _fzf_install_dir="${ctx.toolDir}"
       if [[ -f "$_fzf_install_dir/shell/key-bindings.zsh" ]]; then
         source "$_fzf_install_dir/shell/key-bindings.zsh"
       fi
@@ -1101,9 +1179,9 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 ### 3. Platform-Specific Tool
 
 ```typescript
-import { Platform, type ToolConfigBuilder } from '@types';
+import { Platform, type ToolConfigBuilder, type ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('aerospace')
     .version('latest')
@@ -1113,7 +1191,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
           formula: 'nikitabobko/tap/aerospace',
           cask: true,
         })
-        .symlink('./aerospace.toml', '~/.config/aerospace/aerospace.toml')
+        .symlink('./aerospace.toml', `${ctx.homeDir}/.config/aerospace/aerospace.toml`)
         .zsh(/* zsh */ `
           # macOS-specific aerospace shortcuts
           alias ar="aerospace reload-config"
@@ -1126,9 +1204,9 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 ### 4. Script-Based Installation
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('bun')
     .version('latest')
@@ -1137,7 +1215,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       shell: 'bash',
     })
     .zsh(/* zsh */ `
-      export BUN_INSTALL="$HOME/.bun"
+      export BUN_INSTALL="${ctx.homeDir}/.bun"
       add-to-path "$BUN_INSTALL/bin"
       
       # Load completions
@@ -1161,16 +1239,16 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 ### 5. Tool with Configuration Files
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('lazygit')
     .version('latest')
     .install('github-release', {
       repo: 'jesseduffield/lazygit',
     })
-    .symlink('./config.yml', '~/.config/lazygit/config.yml')
+    .symlink('./config.yml', `${ctx.homeDir}/.config/lazygit/config.yml`)
     .zsh(/* zsh */ `
       alias lg="lazygit"
       alias g="lazygit"
@@ -1181,10 +1259,10 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
 ### 6. Tool with Hooks
 
 ```typescript
-import type { ToolConfigBuilder } from '@types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 import path from 'path';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('custom-tool')
     .version('latest')
@@ -1204,7 +1282,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       }
     })
     .zsh(/* zsh */ `
-      export CUSTOM_TOOL_DATA="$HOME/.local/share/custom-tool"
+      export CUSTOM_TOOL_DATA="${ctx.homeDir}/.local/share/custom-tool"
       alias ct="custom-tool"
     `);
 };
@@ -1261,9 +1339,15 @@ bun run cli.ts check-updates tool-name
 1. **Create tool directory**: `mkdir configs-migrated/tool-name/`
 2. **Copy config files**: Copy non-script files from old config
 3. **Create .tool.ts file**: Convert shell logic to TypeScript
-4. **Map installation method**: Convert zinit installation to appropriate method
-5. **Convert shell initialization**: Move init.zsh content to `.zsh()` method
-6. **Test thoroughly**: Ensure tool works as expected
+4. **Update function signature**: Use `(c: ToolConfigBuilder, ctx: ToolConfigContext) => Promise<void>`
+5. **Map installation method**: Convert zinit installation to appropriate method
+6. **Convert shell initialization**: Move init.zsh content to `.zsh()` method
+7. **Replace hardcoded paths**: Use context properties instead of `$DOTFILES`, `$HOME`, etc.
+   - Use `${ctx.homeDir}` instead of `$HOME` or `~/`
+   - Use `${ctx.toolDir}` for tool-specific directories
+   - Use `${ctx.dotfilesDir}` instead of `$DOTFILES`
+   - Use `${ctx.generatedDir}` for generated content
+8. **Test thoroughly**: Ensure tool works as expected
 
 ## Troubleshooting
 
@@ -1299,13 +1383,13 @@ bun run cli.ts check-updates tool-name
 **Check generated files:**
 ```bash
 # View generated shell scripts
-cat ~/.generated/shell-scripts/main.zsh
+cat ${ctx.generatedDir}/shell-scripts/main.zsh
 
 # Check shim contents  
-cat ~/.generated/bin/tool-name
+cat ${ctx.generatedDir}/bin/tool-name
 
 # View tool installation directory
-ls -la ~/.generated/tools/tool-name/
+ls -la ${ctx.toolDir}/
 ```
 
 **Enable debug logging:**
@@ -1377,7 +1461,7 @@ c.install('github-release', {
 Use environment variables or system detection:
 
 ```typescript
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   const version = process.env.TOOL_VERSION || 'latest';
   const enableFeature = process.env.ENABLE_FEATURE === 'true';
   
@@ -1615,7 +1699,7 @@ Error: Environment variable not found
 **Solution:** Pass environment variables explicitly or use systemInfo:
 ```typescript
 // Using systemInfo for common paths
-await $`cp ./config ${systemInfo.homeDir}/.config/tool/`;
+await $`cp ./config ${ctx.homeDir}/.config/tool/`;
 
 // Setting environment variables for the command
 await $`CUSTOM_VAR=value ./script.sh`;

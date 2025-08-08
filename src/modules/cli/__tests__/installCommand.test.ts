@@ -89,7 +89,8 @@ describe('installCommand', () => {
       expect.any(Object),
       'toolA',
       mockYamlConfig.paths.toolConfigsDir,
-      mockServices.fs
+      mockServices.fs,
+      mockYamlConfig
     );
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,

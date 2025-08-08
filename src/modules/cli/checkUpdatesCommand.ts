@@ -26,7 +26,7 @@ export async function checkUpdatesActionLogic(
 
   try {
     if (toolName) {
-      const config = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs);
+      const config = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
       if (config) {
         toolConfigs[toolName] = config;
       } else {
@@ -34,7 +34,7 @@ export async function checkUpdatesActionLogic(
         logger.error(ErrorTemplates.tool.notFound(toolName, yamlConfig.paths.toolConfigsDir));
       }
     } else {
-      toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
+      toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
       if (Object.keys(toolConfigs).length === 0) {
         logger.info(SuccessTemplates.general.noToolsFound(yamlConfig.paths.toolConfigsDir));
         return;

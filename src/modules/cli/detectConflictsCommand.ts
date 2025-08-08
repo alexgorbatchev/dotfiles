@@ -18,7 +18,7 @@ export async function detectConflictsActionLogic(
 
   let toolConfigsArray: ToolConfig[] = [];
   try {
-    const toolConfigsRecord = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs);
+    const toolConfigsRecord = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
     toolConfigsArray = Object.values(toolConfigsRecord);
   } catch (error: any) {
     logger.error(ErrorTemplates.config.loadFailed('tool configurations', error.message));

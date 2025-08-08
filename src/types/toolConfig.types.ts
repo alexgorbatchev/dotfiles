@@ -721,30 +721,73 @@ export interface ToolConfigBuilder {
 }
 
 /**
+ * Context object providing access to configuration paths and directories for tool configuration.
+ * All paths are sourced from the yamlConfig rather than OS-specific defaults.
+ */
+export interface ToolConfigContext {
+  /**
+   * Current tool's installation directory
+   */
+  toolDir: string;
+
+  /**
+   * Get the installation directory for any tool
+   * @param toolName - Name of the tool
+   * @returns Full path to the specified tool's installation directory
+   */
+  getToolDir(toolName: string): string;
+
+  /**
+   * User's home directory path (from yamlConfig.paths.homeDir)
+   */
+  homeDir: string;
+
+  /**
+   * Generated binaries directory (from yamlConfig.paths.binariesDir)
+   */
+  binDir: string;
+
+  /**
+   * Generated shell scripts directory (from yamlConfig.paths.shellScriptsDir)
+   */
+  shellScriptsDir: string;
+
+  /**
+   * Root dotfiles directory (from yamlConfig.paths.dotfilesDir)
+   */
+  dotfilesDir: string;
+
+  /**
+   * Generated files directory (from yamlConfig.paths.generatedDir)
+   */
+  generatedDir: string;
+}
+
+/**
  * Defines the type for the main configuration function exported by each tool's `.tool.ts` file.
- * This asynchronous function receives an instance of {@link ToolConfigBuilder} and uses its methods
- * to declaratively define all aspects of the tool's setup and integration.
+ * This asynchronous function receives an instance of {@link ToolConfigBuilder} and a context object
+ * with path information to declaratively define all aspects of the tool's setup and integration.
  * @param c - The {@link ToolConfigBuilder} instance used to configure the tool.
+ * @param ctx - The {@link ToolConfigContext} providing access to configuration paths and directories.
  * @returns A Promise that resolves when the configuration is complete.
  * @example
  * ```typescript
  * // In generator/configs/tools/my-cli-tool.tool.ts
  * import type { AsyncConfigureTool } from '@types';
  *
- * export const configure: AsyncConfigureTool = async (c) => {
- *   c.name('my-cli-tool');
- *   c.version('1.5.0');
+ * export const configure: AsyncConfigureTool = async (c, ctx) => {
  *   c.bin('my-cli');
+ *   c.version('1.5.0');
  *   c.install('github-release', {
  *     repo: 'user/my-cli-tool',
  *     assetPattern: '*linux_amd64.tar.gz',
  *     binaryPath: 'bin/my-cli',
  *   });
- *   c.zsh('export MY_CLI_ENABLE_FEATURE_X=true');
+ *   c.zsh(`export MY_CLI_CONFIG_DIR="${ctx.homeDir}/.my-cli"`);
  * };
  * ```
  */
-export type AsyncConfigureTool = (c: ToolConfigBuilder) => Promise<void>;
+export type AsyncConfigureTool = (c: ToolConfigBuilder, ctx: ToolConfigContext) => Promise<void>;
 
 export type ToolConfigUpdateCheck = {
   /**

@@ -93,6 +93,7 @@ describe('detectConflictsCommand', () => {
         expect.any(Object),
         mockYamlConfig.paths.toolConfigsDir,
         mockFs.fs.asIFileSystem,
+        mockYamlConfig,
       );
       logger.expect(
         ['INFO'],

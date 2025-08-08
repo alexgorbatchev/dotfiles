@@ -38,7 +38,7 @@ export function registerInstallCommand(
           yamlConfig.paths.toolConfigsDir,
           fs.constructor.name,
         );
-        const toolConfig = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs);
+        const toolConfig = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
         // Tool configuration loaded, proceeding with installation
 
         if (!toolConfig) {
