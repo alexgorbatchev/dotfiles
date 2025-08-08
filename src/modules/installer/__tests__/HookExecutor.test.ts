@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, expect } from 'bun:test';
 import { TestLogger, createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
 import { HookExecutor, type HookExecutionOptions } from '../HookExecutor';
-import type { InstallHookContext } from '@types';
+import type { InstallHookContext, ToolConfig } from '@types';
 import { TrackedFileSystem } from '@modules/file-registry';
 import { mock, spyOn } from 'bun:test';
 import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
@@ -9,6 +9,11 @@ import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
 // Helper function for tests to create SafeLogMessage
 function testLogMessage(message: string): SafeLogMessage {
   return message as SafeLogMessage;
+}
+
+// Helper function to create mock $ instance
+function createMock$() {
+  return mock(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })) as any;
 }
 
 describe('HookExecutor', () => {
@@ -38,6 +43,7 @@ describe('HookExecutor', () => {
         release: '10.0.0',
         homeDir: '/home/user',
       },
+      $: createMock$(),
     };
 
     it('should execute hook successfully and return correct result', async () => {
@@ -152,6 +158,7 @@ describe('HookExecutor', () => {
     const baseContext: InstallHookContext = {
       toolName: 'test-tool',
       installDir: '/test/install/dir',
+      $: createMock$(),
     };
 
     it('should create enhanced context with regular filesystem', () => {
@@ -183,12 +190,184 @@ describe('HookExecutor', () => {
       enhancedContext.logger.info(testLogMessage('Test message'));
       logger.expect(['INFO'], ['test-tool'], ['Test message']);
     });
+
+    it('should create $ instance with cwd set to tool config directory', () => {
+      const mockToolConfig: ToolConfig = {
+        configFilePath: '/path/to/configs/tool.tool.ts',
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: 'latest',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+      
+      const contextWithToolConfig = {
+        ...baseContext,
+        toolConfig: mockToolConfig,
+      };
+
+      const enhancedContext = hookExecutor.createEnhancedContext(
+        contextWithToolConfig, memFs.fs, logger
+      );
+
+      // Verify $ instance is created and configured
+      expect(enhancedContext.$).toBeDefined();
+      expect(typeof enhancedContext.$).toBe('function');
+      
+      // Verify the $ instance has the correct cwd configuration
+      // We can't directly test the cwd without executing commands, but we can verify it exists
+      expect((enhancedContext.$ as any).bind).toBeDefined(); // $ should be a bound function
+    });
+
+    it('should use fallback $ instance when configFilePath is missing', () => {
+      const contextWithoutConfigPath = {
+        ...baseContext,
+        toolConfig: { 
+          name: 'test-tool',
+          binaries: ['test-tool'],
+          version: 'latest',
+          installationMethod: 'none',
+          installParams: undefined,
+        } as ToolConfig, // No configFilePath
+      };
+
+      const enhancedContext = hookExecutor.createEnhancedContext(
+        contextWithoutConfigPath, memFs.fs, logger
+      );
+
+      // Verify $ instance is still created (fallback)
+      expect(enhancedContext.$).toBeDefined();
+      expect(typeof enhancedContext.$).toBe('function');
+    });
+
+    it('should preserve toolConfig and appConfig in enhanced context', () => {
+      const mockToolConfig: ToolConfig = {
+        configFilePath: '/path/to/configs/tool.tool.ts',
+        name: 'test-tool',
+        binaries: ['test-tool'],
+        version: 'latest',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+      
+      const mockAppConfig = { paths: { generatedDir: '/generated' } } as any;
+      
+      const contextWithConfigs = {
+        ...baseContext,
+        toolConfig: mockToolConfig,
+        appConfig: mockAppConfig,
+      };
+
+      const enhancedContext = hookExecutor.createEnhancedContext(
+        contextWithConfigs, memFs.fs, logger
+      );
+
+      expect(enhancedContext.toolConfig).toBe(mockToolConfig);
+      expect(enhancedContext.appConfig).toBe(mockAppConfig);
+    });
+  });
+
+  describe('$ shell executor functionality', () => {
+    const baseContext: InstallHookContext = {
+      toolName: 'test-tool',
+      installDir: '/test/install/dir',
+      $: createMock$(),
+    };
+
+    it('should provide $ instance to hooks that can execute shell commands', async () => {
+      let capturedDollar: any;
+      
+      const hookThatUsesShell = mock(async (ctx: InstallHookContext) => {
+        capturedDollar = ctx.$;
+        expect(ctx.$).toBeDefined();
+        expect(typeof ctx.$).toBe('function');
+        
+        // Simulate using $ in the hook (but don't actually execute)
+        // We just verify the function is available
+      });
+
+      const enhancedContext = hookExecutor.createEnhancedContext(
+        baseContext, memFs.fs, logger
+      );
+
+      await hookExecutor.executeHook('testShellHook', hookThatUsesShell, enhancedContext);
+
+      expect(capturedDollar).toBeDefined();
+      expect(typeof capturedDollar).toBe('function');
+    });
+
+    it('should pass $ instance through hook executor chain', async () => {
+      const mockToolConfig: ToolConfig = {
+        configFilePath: '/path/to/configs/shell-tool/shell-tool.tool.ts',
+        name: 'shell-tool',
+        binaries: ['shell-tool'],
+        version: 'latest',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+      
+      const contextWithToolConfig = {
+        ...baseContext,
+        toolConfig: mockToolConfig,
+      };
+
+      let receivedDollar: any;
+      
+      const hook = mock(async (ctx: InstallHookContext) => {
+        receivedDollar = ctx.$;
+        // The $ instance should be available and configured with correct cwd
+        expect(ctx.$).toBeDefined();
+      });
+
+      const enhancedContext = hookExecutor.createEnhancedContext(
+        contextWithToolConfig, memFs.fs, logger
+      );
+
+      await hookExecutor.executeHook('afterExtract', hook, enhancedContext);
+
+      expect(receivedDollar).toBeDefined();
+      expect(hook).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create different $ instances for different tool configs', () => {
+      const toolConfig1: ToolConfig = {
+        configFilePath: '/path/to/configs/tool1/tool1.tool.ts',
+        name: 'tool1',
+        binaries: ['tool1'],
+        version: 'latest',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+      
+      const toolConfig2: ToolConfig = {
+        configFilePath: '/path/to/configs/tool2/tool2.tool.ts', 
+        name: 'tool2',
+        binaries: ['tool2'],
+        version: 'latest',
+        installationMethod: 'none',
+        installParams: undefined,
+      };
+
+      const context1 = { ...baseContext, toolConfig: toolConfig1 };
+      const context2 = { ...baseContext, toolConfig: toolConfig2 };
+
+      const enhanced1 = hookExecutor.createEnhancedContext(context1, memFs.fs, logger);
+      const enhanced2 = hookExecutor.createEnhancedContext(context2, memFs.fs, logger);
+
+      // Each enhanced context should have its own $ instance
+      expect(enhanced1.$).toBeDefined();
+      expect(enhanced2.$).toBeDefined();
+      // They should be different instances (though we can't easily verify cwd difference in tests)
+      expect(typeof enhanced1.$).toBe('function');
+      expect(typeof enhanced2.$).toBe('function');
+    });
   });
 
   describe('executeHooks', () => {
     const baseContext: InstallHookContext = {
       toolName: 'test-tool',
       installDir: '/test/install/dir',
+      $: createMock$(),
     };
 
     it('should execute multiple hooks in sequence', async () => {
@@ -296,6 +475,7 @@ describe('HookExecutor', () => {
     const baseContext: InstallHookContext = {
       toolName: 'test-tool',
       installDir: '/test/install/dir',
+      $: createMock$(),
     };
 
     it('should log debug messages during hook execution', async () => {

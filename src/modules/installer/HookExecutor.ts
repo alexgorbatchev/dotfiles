@@ -3,6 +3,8 @@ import type { IFileSystem } from '@modules/file-system';
 import type { AsyncInstallHook, InstallHookContext, BaseInstallContext } from '@types';
 import { TrackedFileSystem } from '@modules/file-registry';
 import { ErrorTemplates, DebugTemplates } from '@modules/shared/ErrorTemplates';
+import { $ } from 'zx';
+import path from 'node:path';
 
 /**
  * Enhanced context for installation hooks with additional utilities
@@ -21,6 +23,8 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   appConfig?: import('@modules/config').YamlConfig;
   /** The full tool configuration being processed (available in all hooks) */
   toolConfig?: import('@types').ToolConfig;
+  /** ZX shell executor with cwd set to the .tool.ts file directory */
+  $: ReturnType<typeof $>;
 }
 
 /**
@@ -143,12 +147,23 @@ export class HookExecutor {
     const appConfig = 'appConfig' in baseContext ? baseContext.appConfig : undefined;
     const toolConfig = 'toolConfig' in baseContext ? baseContext.toolConfig : undefined;
 
+    // Create ZX $ instance with cwd set to the directory of the .tool.ts file
+    let zxInstance: ReturnType<typeof $>;
+    if (toolConfig?.configFilePath) {
+      const toolConfigDir = path.dirname(toolConfig.configFilePath);
+      zxInstance = $({ cwd: toolConfigDir });
+    } else {
+      // Fallback to default $ instance if no config file path is available
+      zxInstance = $;
+    }
+
     return {
       ...baseContext,
       fileSystem: enhancedFileSystem,
       logger: logger.getSubLogger({ name: baseContext.toolName }),
       appConfig,
       toolConfig,
+      $: zxInstance,
     };
   }
 

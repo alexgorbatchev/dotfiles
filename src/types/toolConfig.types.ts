@@ -4,6 +4,7 @@ import type { CompletionConfig } from './completion.types';
 import type { GitHubReleaseAsset } from './githubApi.types';
 import type { Platform, Architecture } from './platform.types';
 import type { YamlConfig } from '@modules/config';
+import type { $ } from 'zx';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information
@@ -40,6 +41,11 @@ export interface InstallHookContext {
    * @see SystemInfo
    */
   systemInfo?: SystemInfo;
+  /**
+   * ZX shell executor with cwd set to the directory of the .tool.ts file.
+   * This allows hooks to run shell commands relative to the tool's configuration directory.
+   */
+  $: ReturnType<typeof $>;
 }
 
 /**
