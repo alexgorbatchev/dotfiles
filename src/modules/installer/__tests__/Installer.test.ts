@@ -11,7 +11,7 @@ import {
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
-import type { ExtractResult, GitHubRelease, ToolConfig, CurlTarToolConfig } from '@types';
+import type { ExtractResult, GitHubRelease, ToolConfig, CurlTarToolConfig, BaseInstallContext } from '@types';
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import { Installer } from '../Installer';
@@ -179,7 +179,7 @@ describe('Installer', () => {
       await installer.install(mockToolName, toolConfig);
 
       expect(fileSystemMocks.ensureDir).toHaveBeenCalledWith(
-        path.join(testDirs.paths.binariesDir, mockToolName)
+        path.join(testDirs.paths.binariesDir, mockToolName, toolConfig.version)
       );
     });
 
@@ -291,9 +291,11 @@ describe('Installer', () => {
         appConfig: mockAppConfig,
       };
 
-      // Mock chmod and symlink to avoid errors on non-existent files from mock downloader
+      // Mock filesystem operations to avoid errors on non-existent files from mock downloader
       fileSystemMocks.chmod.mockResolvedValue(undefined);
       fileSystemMocks.symlink.mockResolvedValue(undefined);
+      fileSystemMocks.copyFile.mockResolvedValue(undefined);
+      fileSystemMocks.rm.mockResolvedValue(undefined);
 
       const result = await installer.installFromGitHubRelease(mockToolName, toolConfig, context);
 
@@ -779,7 +781,7 @@ describe('Installer', () => {
 
   describe('installFromCurlTar', () => {
     it('should download and extract tarball', async () => {
-      const toolConfig: ToolConfig = {
+      const toolConfig: CurlTarToolConfig = {
         name: mockToolName,
         binaries: [mockToolName],
         version: mockToolVersion,
@@ -790,19 +792,19 @@ describe('Installer', () => {
         },
       };
 
-      // Setup mockExists for the path of the binary within the extracted directory
-      const expectedExtractedBinaryPath = path.join(
+      // Setup mockExists for the path of the binary within the temp extraction directory
+      const expectedTempExtractedBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockToolName,
-        'extracted',
+        mockToolVersion,
+        'temp-extract',
         'bin/tool' // This comes from toolConfig.installParams.extractPath
       );
-      const installDir = path.join(testDirs.paths.binariesDir, mockToolName);
-      const extractDir = path.join(installDir, 'extracted');
-      (fileSystemMocks.exists as ReturnType<typeof mock>).mockImplementation(async (p) => {
-        return p === expectedExtractedBinaryPath || p === extractDir;
-      });
-      const context = {
+      
+      // The binary should be copied to the final location
+      const installDir = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion);
+      const tempExtractDir = path.join(installDir, 'temp-extract');
+      const context: BaseInstallContext = {
         // context is defined here
         toolName: mockToolName,
         installDir,
@@ -811,14 +813,19 @@ describe('Installer', () => {
         appConfig: mockAppConfig,
       };
 
-      // Simulate the existence of the extracted binary before calling the method
-      await mockFileSystem.ensureDir(path.dirname(expectedExtractedBinaryPath)); // Ensure parent dir exists
-      await mockFileSystem.writeFile(expectedExtractedBinaryPath, 'binary content');
+      // Create the temp extract directory and binary file in the mock filesystem
+      await mockFileSystem.ensureDir(tempExtractDir);
+      await mockFileSystem.ensureDir(path.dirname(expectedTempExtractedBinaryPath));
+      await mockFileSystem.writeFile(expectedTempExtractedBinaryPath, 'binary content');
+      // Also create the binary at the tool name location (fallback path)
+      await mockFileSystem.writeFile(path.join(tempExtractDir, mockToolName), 'binary content');
+
+      mock.restore()
 
       const result = await installer.installFromCurlTar(
         mockToolName,
-        toolConfig as CurlTarToolConfig,
-        context // Pass the defined context
+        toolConfig,
+        context 
       );
 
       expect(mockDownload).toHaveBeenCalledWith(
@@ -829,8 +836,9 @@ describe('Installer', () => {
       );
 
       expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
-      expect(fileSystemMocks.chmod).toHaveBeenCalled();
-      // copyFile should be called to move binary from extracted to direct location
+      // chmod should NOT be called for archive extraction (archives preserve permissions)
+      expect(fileSystemMocks.chmod).not.toHaveBeenCalled();
+      // copyFile should be called to move binary from temp extract to final location
       expect(fileSystemMocks.copyFile).toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.info).toEqual({
@@ -841,8 +849,13 @@ describe('Installer', () => {
 
   describe('installManually', () => {
     it('should check if binary exists', async () => {
-      (fileSystemMocks.exists as ReturnType<typeof mock>).mockResolvedValue(true);
       const manualBinaryPath = '/usr/local/bin/test-tool';
+      const expectedFinalPath = path.join(testDirs.paths.binariesDir, mockToolName, 'unknown', mockToolName);
+      
+      // Create the manual binary file in the mock filesystem
+      await mockFileSystem.ensureDir(path.dirname(manualBinaryPath));
+      await mockFileSystem.writeFile(manualBinaryPath, 'manual binary content');
+      
       const toolConfig: ToolConfig = {
         name: mockToolName,
         binaries: [mockToolName],
@@ -854,7 +867,7 @@ describe('Installer', () => {
       };
       const context = {
         toolName: mockToolName,
-        installDir: path.join(testDirs.paths.binariesDir, mockToolName),
+        installDir: path.join(testDirs.paths.binariesDir, mockToolName, 'unknown'),
         systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: testDirs.paths.homeDir },
         toolConfig,
         appConfig: mockAppConfig,
@@ -863,8 +876,15 @@ describe('Installer', () => {
       const result = await installer.installManually(mockToolName, toolConfig, context);
 
       expect(fileSystemMocks.exists).toHaveBeenCalledWith(manualBinaryPath);
+      expect(fileSystemMocks.ensureDir).toHaveBeenCalled();
+      expect(fileSystemMocks.copyFile).toHaveBeenCalledWith(manualBinaryPath, expectedFinalPath);
+      expect(fileSystemMocks.chmod).not.toHaveBeenCalledWith();
       expect(result.success).toBe(true);
-      expect(result.binaryPath).toBe(manualBinaryPath);
+      expect(result.binaryPath).toBe(expectedFinalPath);
+      expect(result.info).toEqual({
+        manualInstall: true,
+        originalPath: manualBinaryPath,
+      });
     });
 
     it('should return error if binary does not exist', async () => {

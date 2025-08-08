@@ -543,7 +543,7 @@ export const DebugTemplates = {
     shimExists: (): SafeLogMessage => 
       createSafeLogMessage('Shim already exists at %s and overwrite is false. Skipping.'),
     toolBinPath: (): SafeLogMessage => 
-      createSafeLogMessage('toolBinPath=%s'),
+      createSafeLogMessage('directBinaryPath=%s, extractedBinaryPath=%s'),
     shimContent: (): SafeLogMessage => 
       createSafeLogMessage('shimContent=\n%s'),
     writingShim: (): SafeLogMessage => 
@@ -786,6 +786,12 @@ export const DebugTemplates = {
       createSafeLogMessage('installFromCurlTar: Moving binary from %s to %s'),
     curlTarFinalDestination: (): SafeLogMessage => 
       createSafeLogMessage('installFromCurlTar: Binary already at final destination: %s'),
+    manualMultipleBinariesNotSupported: (): SafeLogMessage => 
+      createSafeLogMessage('Manual installation with multiple binaries not fully supported for %s'),
+    binaryNotFound: (): SafeLogMessage => 
+      createSafeLogMessage('Binary %s not found at %s, skipping'),
+    directDownloadSingleBinary: (): SafeLogMessage => 
+      createSafeLogMessage('Direct download only provides one binary, but %s were configured. Only %s will be available.'),
   },
 } as const;
 

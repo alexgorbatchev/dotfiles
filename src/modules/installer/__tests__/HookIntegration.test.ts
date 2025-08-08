@@ -178,8 +178,8 @@ describe('Hook Integration Tests', () => {
       expect(result.success).toBe(true);
       
       // Verify hook created the expected files and directories
-      const configDir = '/app/generated/binaries/example-tool/config';
-      const configFile = '/app/generated/binaries/example-tool/config/default.yaml';
+      const configDir = '/app/generated/binaries/example-tool/latest/config';
+      const configFile = '/app/generated/binaries/example-tool/latest/config/default.yaml';
       
       // Verify config directory was created
       expect(await memFs.fs.exists(configDir)).toBe(true);
@@ -188,7 +188,7 @@ describe('Hook Integration Tests', () => {
       expect(await memFs.fs.exists(configFile)).toBe(true);
       const configContent = await memFs.fs.readFile(configFile, 'utf-8');
       expect(configContent).toContain('Default configuration for example-tool');
-      expect(configContent).toContain('install_dir: /app/generated/binaries/example-tool');
+      expect(configContent).toContain('install_dir: /app/generated/binaries/example-tool/latest');
 
     });
 
@@ -246,9 +246,9 @@ describe('Hook Integration Tests', () => {
       expect(result.success).toBe(true);
       
       // Verify hook created the expected directory structure
-      const binDir = '/app/generated/binaries/multi-binary-tool/bin';
-      const docsDir = '/app/generated/binaries/multi-binary-tool/docs';
-      const toolBinary = '/app/generated/binaries/multi-binary-tool/bin/tool';
+      const binDir = '/app/generated/binaries/multi-binary-tool/latest/bin';
+      const docsDir = '/app/generated/binaries/multi-binary-tool/latest/docs';
+      const toolBinary = '/app/generated/binaries/multi-binary-tool/latest/bin/tool';
       
       // Verify directories were created
       expect(await memFs.fs.exists(binDir)).toBe(true);
@@ -258,8 +258,8 @@ describe('Hook Integration Tests', () => {
       expect(await memFs.fs.exists(toolBinary)).toBe(true);
       
       // Verify documentation files were copied to docs directory
-      const readmeFile = '/app/generated/binaries/multi-binary-tool/docs/README.md';
-      const licenseFile = '/app/generated/binaries/multi-binary-tool/docs/LICENSE';
+      const readmeFile = '/app/generated/binaries/multi-binary-tool/latest/docs/README.md';
+      const licenseFile = '/app/generated/binaries/multi-binary-tool/latest/docs/LICENSE';
       expect(await memFs.fs.exists(readmeFile)).toBe(true);
       expect(await memFs.fs.exists(licenseFile)).toBe(true);
 
@@ -312,7 +312,7 @@ describe('Hook Integration Tests', () => {
       };
 
       // Mock filesystem to simulate extracted Makefile existence
-      const extractDir = '/app/generated/binaries/source-tool/extracted';
+      const extractDir = '/app/generated/binaries/source-tool/latest/temp-extract';
       await memFs.fs.ensureDir(extractDir);
       await memFs.fs.writeFile(`${extractDir}/Makefile`, 'CC=gcc\nall:\n\tgcc -o source-tool source-tool.c');
       await memFs.fs.writeFile(`${extractDir}/source-tool.c`, '#include <stdio.h>\nint main() { return 0; }');
@@ -322,9 +322,9 @@ describe('Hook Integration Tests', () => {
       expect(result.success).toBe(true);
       
       // Verify hook performed the expected build operations
-      const libDir = '/app/generated/binaries/source-tool/lib';
-      const compiledBinary = '/app/generated/binaries/source-tool/source-tool';
-      const libFile = '/app/generated/binaries/source-tool/lib/libsource-tool.so';
+      const libDir = '/app/generated/binaries/source-tool/latest/lib';
+      const compiledBinary = '/app/generated/binaries/source-tool/latest/source-tool';
+      const libFile = '/app/generated/binaries/source-tool/latest/lib/libsource-tool.so';
       
       // Verify library directory was created
       expect(await memFs.fs.exists(libDir)).toBe(true);

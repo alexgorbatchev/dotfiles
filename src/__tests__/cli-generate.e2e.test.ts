@@ -116,9 +116,10 @@ describe('E2E: bun run cli generate', () => {
         set -euo pipefail
 
         TOOL_NAME="fzf"
-        TOOL_EXECUTABLE="${path.join(testDirs.paths.binariesDir, 'fzf', 'fzf')}"
-        GENERATOR_CLI_EXECUTABLE="${expect.anything}"
-        CONFIG_PATH="${path.join(testDirs.paths.dotfilesDir, 'config.yaml')}"
+        BINARY_NAME="fzf"
+        TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/fzf/latest/fzf"
+        GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
+        CONFIG_PATH="${testDirs.paths.dotfilesDir}/config.yaml"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
@@ -128,10 +129,9 @@ describe('E2E: bun run cli generate', () => {
           exit $?
         fi
 
-        # Check if the tool is already installed and execute it
+        # Check if tool exists and execute it
         if [ -x "$TOOL_EXECUTABLE" ]; then
           exec "$TOOL_EXECUTABLE" "$@"
-          exit $?
         else
           # Tool not found, try to install it
           # Capture both stdout and stderr from the install command
@@ -140,10 +140,9 @@ describe('E2E: bun run cli generate', () => {
           install_exit_code=$?
           
           if [ $install_exit_code -eq 0 ]; then
-            # Installation successful, try to execute the tool
+            # Installation successful, try to execute binary again
             if [ -x "$TOOL_EXECUTABLE" ]; then
               exec "$TOOL_EXECUTABLE" "$@"
-              exit $?
             else
               echo "Installation completed but binary not found at: $TOOL_EXECUTABLE"
               exit 1
@@ -165,9 +164,10 @@ describe('E2E: bun run cli generate', () => {
         set -euo pipefail
 
         TOOL_NAME="lazygit"
-        TOOL_EXECUTABLE="${path.join(testDirs.paths.binariesDir, 'lazygit', 'lazygit')}"
-        GENERATOR_CLI_EXECUTABLE="${expect.anything}"
-        CONFIG_PATH="${path.join(testDirs.paths.dotfilesDir, 'config.yaml')}"
+        BINARY_NAME="lazygit"
+        TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/lazygit/latest/lazygit"
+        GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
+        CONFIG_PATH="${testDirs.paths.dotfilesDir}/config.yaml"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
@@ -177,10 +177,9 @@ describe('E2E: bun run cli generate', () => {
           exit $?
         fi
 
-        # Check if the tool is already installed and execute it
+        # Check if tool exists and execute it
         if [ -x "$TOOL_EXECUTABLE" ]; then
           exec "$TOOL_EXECUTABLE" "$@"
-          exit $?
         else
           # Tool not found, try to install it
           # Capture both stdout and stderr from the install command
@@ -189,10 +188,9 @@ describe('E2E: bun run cli generate', () => {
           install_exit_code=$?
           
           if [ $install_exit_code -eq 0 ]; then
-            # Installation successful, try to execute the tool
+            # Installation successful, try to execute binary again
             if [ -x "$TOOL_EXECUTABLE" ]; then
               exec "$TOOL_EXECUTABLE" "$@"
-              exit $?
             else
               echo "Installation completed but binary not found at: $TOOL_EXECUTABLE"
               exit 1

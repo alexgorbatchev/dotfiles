@@ -34,7 +34,8 @@ describe('E2E: bun run cli install', () => {
       expectedInstalledBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockToolName,
-        mockAssetFileName
+        mockToolVersion,
+        mockToolName
       );
 
       localMockBinaryFilePath = await createFile(
@@ -140,6 +141,7 @@ describe('E2E: bun run cli install', () => {
       expectedBinaryPath = path.join(
         testDirs.paths.binariesDir,
         mockArchiveToolName,
+        mockArchiveToolVersion,
         mockArchiveToolName
       );
 

@@ -109,7 +109,8 @@ export class Installer implements IInstaller {
     try {
       // Create installation directory if it doesn't exist
       const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
-      const installDir = path.join(binariesDir, toolName);
+      const versionDir = toolConfig.version || 'unknown';
+      const installDir = path.join(binariesDir, toolName, versionDir);
       await toolFs.ensureDir(installDir);
       logger.debug(DebugTemplates.command.directoryCreated(), installDir);
 
@@ -214,6 +215,10 @@ export class Installer implements IInstaller {
     context: BaseInstallContext,
     _options?: InstallOptions,
   ): Promise<InstallResult> {
+    // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
+    const toolFs = this.fs instanceof TrackedFileSystem 
+      ? this.fs.withToolName(toolName)
+      : this.fs;
 
     const logger = this.logger.getSubLogger({ name: 'installFromGitHubRelease' });
     logger.debug(DebugTemplates.command.methodStarted(), toolName);
@@ -233,7 +238,6 @@ export class Installer implements IInstaller {
     const repo = params.repo;
     const version = params.version || 'latest';
     const assetPattern = params.assetPattern;
-    const binaryPath = params.binaryPath;
 
     try {
       // Get the release from GitHub
@@ -463,21 +467,20 @@ export class Installer implements IInstaller {
       }
 
       // Handle extraction if needed
-      let finalBinaryPath = downloadPath;
-      if (
-        asset.name.endsWith('.tar.gz') ||
-        asset.name.endsWith('.tgz') ||
-        asset.name.endsWith('.zip') ||
-        asset.name.endsWith('.tar')
-      ) {
+      const isArchive = asset.name.endsWith('.tar.gz') ||
+                        asset.name.endsWith('.tgz') ||
+                        asset.name.endsWith('.zip') ||
+                        asset.name.endsWith('.tar');
+      
+      if (isArchive) {
         logger.debug(DebugTemplates.installer.extractingArchive(), asset.name);
 
-        // Extract the archive
-        const extractDir = path.join(context.installDir, 'extracted');
-        await this.fs.ensureDir(extractDir);
+        // Extract the archive to a temporary directory
+        const tempExtractDir = path.join(context.installDir, 'temp-extract');
+        await toolFs.ensureDir(tempExtractDir);
 
         const extractResult: ExtractResult = await this.archiveExtractor.extract(downloadPath, {
-          targetDir: extractDir,
+          targetDir: tempExtractDir,
           stripComponents: params.stripComponents, // from GithubReleaseInstallParams
         });
         logger.debug(DebugTemplates.installer.archiveExtracted(), extractResult);
@@ -485,7 +488,7 @@ export class Installer implements IInstaller {
         // Update context with extract directory and result
         postExtractContext = {
           ...postDownloadContext,
-          extractDir,
+          extractDir: tempExtractDir,
           extractResult,
         };
 
@@ -512,95 +515,41 @@ export class Installer implements IInstaller {
           
         }
 
-        // Find the binary in the extracted directory
-        if (binaryPath) {
-          // binaryPath from toolConfig.installParams
-          finalBinaryPath = path.join(extractDir, binaryPath);
-        } else if (extractResult.executables && extractResult.executables.length > 0) {
-          // Prefer the first executable found if multiple, or one that matches toolName
-          const exeMatchingToolName = extractResult.executables?.find(
-            (exe) => path.basename(exe) === toolName
-          );
-          if (exeMatchingToolName) {
-            finalBinaryPath = path.join(extractDir, exeMatchingToolName);
-          } else if (extractResult.executables?.length) {
-            finalBinaryPath = path.join(extractDir, extractResult.executables[0] as string);
-          } else {
-            finalBinaryPath = path.join(extractDir, toolName);
-          }
-          logger.debug(DebugTemplates.installer.foundExecutable(), finalBinaryPath);
-        } else if (extractResult.extractedFiles && extractResult.extractedFiles.length === 1) {
-          // If only one file was extracted, assume it's the binary
-          finalBinaryPath = path.join(extractDir, extractResult.extractedFiles[0] as string);
-          logger.debug(DebugTemplates.installer.assumingSingleBinary(), finalBinaryPath);
-        } else {
-          // Fallback: attempt to find a file named like the tool
-          const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
-          if (potentialBinary) {
-            finalBinaryPath = path.join(extractDir, potentialBinary);
-            logger.debug(DebugTemplates.installer.attemptingFallback(), finalBinaryPath);
-          } else {
-            logger.debug(DebugTemplates.installer.noExecutableFound(), extractResult.extractedFiles);
-            finalBinaryPath = path.join(extractDir, toolName); // Default if no specific binary found
-          }
-        }
+        // Handle all binaries from extracted archive
+        await this.setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
 
-        // If the determined finalBinaryPath doesn't exist, it's an error
-        if (!(await this.fs.exists(finalBinaryPath))) {
-          return {
-            success: false,
-            error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
-          };
-        }
-
-        // Move binary from extracted location to direct location for shim access
-        const primaryBinaryName = toolConfig.binaries && toolConfig.binaries.length > 0 
-          ? toolConfig.binaries[0]! 
-          : toolName;
-        const targetBinaryPath = path.join(context.installDir, primaryBinaryName);
-        
-        logger.debug(DebugTemplates.installer.movingBinary(), finalBinaryPath, targetBinaryPath);
-        await this.fs.copyFile(finalBinaryPath, targetBinaryPath);
-        await this.fs.rm(finalBinaryPath);
-        finalBinaryPath = targetBinaryPath;
+        // Clean up temp extract directory
+        logger.debug(DebugTemplates.installer.cleaningExtractDir(), tempExtractDir);
+        await toolFs.rm(tempExtractDir, { recursive: true, force: true });
+      } else {
+        // Handle direct binary download
+        await this.setupBinariesFromDirectDownload(toolFs, toolName, toolConfig, context, downloadPath, logger);
       }
-
-      // Make the binary executable
-      logger.debug(DebugTemplates.installer.makingExecutable(), finalBinaryPath);
-      await this.fs.chmod(finalBinaryPath, 0o755);
 
       logger.debug(
         DebugTemplates.installer.githubReleaseFinalDestination(),
-        finalBinaryPath,
+        context.installDir,
       );
 
-      // Clean up the temporary extraction directory if it was used and we've moved/copied the binary
+      // Clean up downloaded archive if it was extracted
       if (
-        postExtractContext?.extractDir &&
-        (await this.fs.exists(postExtractContext.extractDir)) &&
-        finalBinaryPath.startsWith(context.installDir) && // ensure we are not deleting something outside installDir
-        !finalBinaryPath.startsWith(postExtractContext.extractDir) // ensure binary is no longer in extractDir
-      ) {
-        logger.debug(DebugTemplates.installer.cleaningExtractDir(), postExtractContext.extractDir);
-        await this.fs.rm(postExtractContext.extractDir, { recursive: true, force: true });
-      }
-
-      // Clean up downloaded archive if it was extracted (always check, independent of extract dir cleanup)
-      if (
-        downloadPath !== finalBinaryPath &&
-        (await this.fs.exists(downloadPath)) &&
+        (await toolFs.exists(downloadPath)) &&
         (asset.name.endsWith('.tar.gz') ||
           asset.name.endsWith('.tgz') ||
           asset.name.endsWith('.zip') ||
           asset.name.endsWith('.tar'))
       ) {
         logger.debug(DebugTemplates.installer.cleaningArchive(), downloadPath);
-        await this.fs.rm(downloadPath);
+        await toolFs.rm(downloadPath);
       }
+
+      // Return path to first binary for compatibility
+      const primaryBinary = toolConfig.binaries?.[0] || toolName;
+      const primaryBinaryPath = path.join(context.installDir, primaryBinary);
 
       return {
         success: true,
-        binaryPath: finalBinaryPath,
+        binaryPath: primaryBinaryPath,
         version: release.tag_name,
         info: {
           releaseUrl: release.html_url,
@@ -676,13 +625,24 @@ export class Installer implements IInstaller {
       // In a real implementation, we would execute the command here
       // For now, we'll just simulate success
 
-      // Find the installed binary
-      // In a real implementation, we would use `brew --prefix formula` to find the binary
-      const binaryPath = `/usr/local/bin/${toolName}`; // This is a placeholder
+      // Handle all binaries by copying from brew installation to versioned directory
+      const binaryNames = toolConfig.binaries || [toolName];
+      for (const binaryName of binaryNames) {
+        const sourcePath = `/usr/local/bin/${binaryName}`;
+        const finalBinaryPath = path.join(_context.installDir, binaryName);
+        
+        // In a real implementation, we would copy from brew location to our versioned directory
+        // For now, this is a placeholder that assumes brew installed the binary
+        logger.debug(DebugTemplates.installer.movingBinary(), sourcePath, finalBinaryPath);
+      }
+
+      // Return path to first binary for compatibility
+      const primaryBinary = toolConfig.binaries?.[0] || toolName;
+      const primaryBinaryPath = path.join(_context.installDir, primaryBinary);
 
       return {
         success: true,
-        binaryPath,
+        binaryPath: primaryBinaryPath,
         info: {
           formula,
           isCask,
@@ -785,12 +745,24 @@ export class Installer implements IInstaller {
       // In a real implementation, we would execute the script here
       // For now, we'll just simulate success
 
-      // Assume the script installs the binary to a standard location
-      const binaryPath = path.join('/usr/local/bin', toolName); // Placeholder
+      // Handle all binaries by copying from script installation to versioned directory
+      const binaryNames = toolConfig.binaries || [toolName];
+      for (const binaryName of binaryNames) {
+        const sourcePath = path.join('/usr/local/bin', binaryName); // Placeholder location
+        const finalBinaryPath = path.join(context.installDir, binaryName);
+        
+        // In a real implementation, we would copy from script installation location to our versioned directory
+        // For now, this is a placeholder that assumes script installed the binary
+        logger.debug(DebugTemplates.installer.movingBinary(), sourcePath, finalBinaryPath);
+      }
+
+      // Return path to first binary for compatibility
+      const primaryBinary = toolConfig.binaries?.[0] || toolName;
+      const primaryBinaryPath = path.join(context.installDir, primaryBinary);
 
       return {
         success: true,
-        binaryPath,
+        binaryPath: primaryBinaryPath,
         info: {
           scriptUrl: url,
           shell,
@@ -883,13 +855,13 @@ export class Installer implements IInstaller {
         
       }
 
-      // Extract the tarball
+      // Extract the tarball to temporary directory
       logger.debug(DebugTemplates.installer.extractingTarball());
-      const extractDir = path.join(context.installDir, 'extracted');
-      await toolFs.ensureDir(extractDir);
+      const tempExtractDir = path.join(context.installDir, 'temp-extract');
+      await toolFs.ensureDir(tempExtractDir);
 
       const extractResult: ExtractResult = await this.archiveExtractor.extract(tarballPath, {
-        targetDir: extractDir,
+        targetDir: tempExtractDir,
         stripComponents: params.stripComponents, // from CurlTarInstallParams
       });
       logger.debug(DebugTemplates.installer.tarballExtracted(), extractResult);
@@ -897,7 +869,7 @@ export class Installer implements IInstaller {
       // Update context with extract directory and result
       postExtractContext = {
         ...postDownloadContext,
-        extractDir,
+        extractDir: tempExtractDir,
         extractResult,
       };
 
@@ -924,76 +896,26 @@ export class Installer implements IInstaller {
         
       }
 
-      // Find the binary in the extracted directory
-      let finalBinaryPath: string;
-      // extractPathInArchive is from toolConfig.installParams.extractPath (renamed for clarity)
-      const extractPathInArchive = params.extractPath as string | undefined; // Explicitly type
-      if (extractPathInArchive) {
-        finalBinaryPath = path.join(extractDir, extractPathInArchive);
-      } else if (extractResult.executables && extractResult.executables.length > 0) {
-        const exeMatchingToolName = extractResult.executables.find(
-          (exe) => path.basename(exe) === toolName
-        );
+      // Handle all binaries from extracted archive  
+      await this.setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
 
-        if (exeMatchingToolName) {
-          finalBinaryPath = path.join(extractDir, exeMatchingToolName);
-        } else {
-          finalBinaryPath = path.join(extractDir, extractResult.executables[0] as string);
-        }
-        logger.debug(DebugTemplates.installer.foundExecutable(), finalBinaryPath);
-      } else if (extractResult.extractedFiles && extractResult.extractedFiles.length === 1) {
-        finalBinaryPath = path.join(extractDir, extractResult.extractedFiles[0] as string);
-        logger.debug(DebugTemplates.installer.assumingSingleBinary(), finalBinaryPath);
-      } else {
-        const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
-        if (potentialBinary) {
-          finalBinaryPath = path.join(extractDir, potentialBinary);
-          logger.debug(DebugTemplates.installer.curlTarFallback(), finalBinaryPath);
-        } else {
-          logger.debug(DebugTemplates.installer.noFallbackExecutable(), extractResult.extractedFiles);
-          finalBinaryPath = path.join(extractDir, toolName);
-        }
-      }
+      // Clean up temp extract directory
+      logger.debug(DebugTemplates.installer.cleaningExtractDir(), tempExtractDir);
+      await toolFs.rm(tempExtractDir, { recursive: true, force: true });
 
-      if (!(await toolFs.exists(finalBinaryPath))) {
-        return {
-          success: false,
-          error: `Binary not found at expected path after extraction: ${finalBinaryPath}. Extracted files: ${extractResult.extractedFiles.join(', ')}`,
-          };
-      }
-
-      // Move binary from extracted location to direct location for shim access
-      const primaryBinaryName = toolConfig.binaries && toolConfig.binaries.length > 0 
-        ? toolConfig.binaries[0]! 
-        : toolName;
-      const targetBinaryPath = path.join(context.installDir, primaryBinaryName);
-      
-      logger.debug(DebugTemplates.installer.movingBinary(), finalBinaryPath, targetBinaryPath);
-      await toolFs.copyFile(finalBinaryPath, targetBinaryPath);
-      await toolFs.rm(finalBinaryPath);
-      finalBinaryPath = targetBinaryPath;
-
-      // Make the binary executable
-      logger.debug(DebugTemplates.installer.makingExecutable(), finalBinaryPath);
-      await toolFs.chmod(finalBinaryPath, 0o755);
-
-      logger.debug(
-        DebugTemplates.installer.curlTarFinalDestination(),
-        finalBinaryPath,
-      );
-
-      // Clean up downloaded tarball if it was extracted (binary remains in extractDir)
-      if (
-        tarballPath !== finalBinaryPath &&
-        (await toolFs.exists(tarballPath))
-      ) {
+      // Clean up downloaded tarball
+      if (await toolFs.exists(tarballPath)) {
         logger.debug(DebugTemplates.installer.cleaningArchive(), tarballPath);
         await toolFs.rm(tarballPath);
       }
 
+      // Return path to first binary for compatibility
+      const primaryBinary = toolConfig.binaries?.[0] || toolName;
+      const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+
       return {
         success: true,
-        binaryPath: finalBinaryPath,
+        binaryPath: primaryBinaryPath,
         info: {
           tarballUrl: url,
         },
@@ -1038,18 +960,42 @@ export class Installer implements IInstaller {
     try {
       // Check if the binary exists
       if (await toolFs.exists(binaryPath)) {
+        // Handle all binaries by creating symlinks or copies to versioned directory
+        const binaryNames = toolConfig.binaries || [toolName];
+        for (const binaryName of binaryNames) {
+          const finalBinaryPath = path.join(context.installDir, binaryName);
+          
+          // For manual installation, we create a symlink to the original binary
+          // or copy it if the original path is specific to this binary
+          if (binaryName === toolName || binaryNames.length === 1) {
+            // Use the provided binaryPath for the primary binary or if only one binary
+            await toolFs.ensureDir(path.dirname(finalBinaryPath));
+            await toolFs.copyFile(binaryPath, finalBinaryPath);
+            await toolFs.chmod(finalBinaryPath, 0o755);
+          } else {
+            // For additional binaries, they would need to be specified separately
+            // This is a limitation of the current manual installation approach
+            logger.debug(DebugTemplates.installer.manualMultipleBinariesNotSupported(), binaryName);
+          }
+        }
+
+        // Return path to first binary for compatibility
+        const primaryBinary = toolConfig.binaries?.[0] || toolName;
+        const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+
         return {
           success: true,
-          binaryPath,
+          binaryPath: primaryBinaryPath,
           info: {
             manualInstall: true,
+            originalPath: binaryPath,
           },
-          };
+        };
       } else {
         return {
           success: false,
           error: `Binary not found at ${binaryPath}`,
-          };
+        };
       }
     } catch (error) {
       logger.error(ErrorTemplates.tool.installFailed('manual', toolName, (error as Error).message));
@@ -1070,5 +1016,129 @@ export class Installer implements IInstaller {
       release: os.release(),
       homeDir: os.homedir(),
     };
+  }
+
+  /**
+   * Setup binaries from extracted archive - handles all binaries in toolConfig.binaries[]
+   */
+  private async setupBinariesFromArchive(
+    fs: IFileSystem,
+    toolName: string,
+    toolConfig: ToolConfig,
+    context: BaseInstallContext,
+    extractDir: string,
+    logger: TsLogger,
+    extractResult?: ExtractResult,
+  ): Promise<void> {
+    const binaryNames = toolConfig.binaries || [toolName];
+    const installParams = toolConfig.installParams as any;
+    
+    // Determine the primary binary source path using the same logic as original
+    let primarySourcePath: string;
+    
+    if (installParams?.binaryPath) {
+      // Use explicit binaryPath from toolConfig.installParams (GitHub releases)
+      primarySourcePath = path.join(extractDir, installParams.binaryPath);
+    } else if (installParams?.extractPath) {
+      // Use extractPath from toolConfig.installParams (curl-tar)
+      primarySourcePath = path.join(extractDir, installParams.extractPath);
+    } else if (extractResult?.executables && extractResult.executables.length > 0) {
+      // Prefer the first executable found if multiple, or one that matches toolName
+      const exeMatchingToolName = extractResult.executables.find(
+        (exe) => path.basename(exe) === toolName
+      );
+      if (exeMatchingToolName) {
+        primarySourcePath = path.join(extractDir, exeMatchingToolName);
+      } else if (extractResult.executables.length) {
+        primarySourcePath = path.join(extractDir, extractResult.executables[0] as string);
+      } else {
+        primarySourcePath = path.join(extractDir, toolName);
+      }
+      logger.debug(DebugTemplates.installer.foundExecutable(), primarySourcePath);
+    } else if (extractResult?.extractedFiles && extractResult.extractedFiles.length === 1) {
+      // If only one file was extracted, assume it's the binary
+      primarySourcePath = path.join(extractDir, extractResult.extractedFiles[0] as string);
+      logger.debug(DebugTemplates.installer.assumingSingleBinary(), primarySourcePath);
+    } else if (extractResult?.extractedFiles) {
+      // Fallback: attempt to find a file named like the tool
+      const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));
+      if (potentialBinary) {
+        primarySourcePath = path.join(extractDir, potentialBinary);
+        logger.debug(DebugTemplates.installer.attemptingFallback(), primarySourcePath);
+      } else {
+        logger.debug(DebugTemplates.installer.noExecutableFound(), extractResult.extractedFiles);
+        primarySourcePath = path.join(extractDir, toolName); // Default fallback
+      }
+    } else {
+      // No extractResult provided, fallback to toolName
+      primarySourcePath = path.join(extractDir, toolName);
+    }
+
+    // Verify the primary binary exists and copy it
+    if (!(await fs.exists(primarySourcePath))) {
+      const errorMsg = `Binary not found at expected path after extraction: ${primarySourcePath}${
+        extractResult?.extractedFiles ? `. Extracted files: ${extractResult.extractedFiles.join(', ')}` : ''
+      }`;
+      throw new Error(errorMsg);
+    }
+
+    // Handle the primary binary
+    const primaryBinary = binaryNames[0] || toolName;
+    const finalPrimaryPath = path.join(context.installDir, primaryBinary);
+    
+    logger.debug(DebugTemplates.installer.movingBinary(), primarySourcePath, finalPrimaryPath);
+    await fs.copyFile(primarySourcePath, finalPrimaryPath);
+    
+    // Handle additional binaries if any (for future multiple binary support)
+    for (let i = 1; i < binaryNames.length; i++) {
+      const binaryName = binaryNames[i];
+      if (binaryName) {
+        const additionalSourcePath = path.join(extractDir, binaryName);
+        const additionalFinalPath = path.join(context.installDir, binaryName);
+        
+        if (await fs.exists(additionalSourcePath)) {
+          logger.debug(DebugTemplates.installer.movingBinary(), additionalSourcePath, additionalFinalPath);
+          await fs.copyFile(additionalSourcePath, additionalFinalPath);
+        } else {
+          logger.debug(DebugTemplates.installer.binaryNotFound(), binaryName, additionalSourcePath);
+        }
+      }
+    }
+  }
+
+  /**
+   * Setup binaries from direct download - handles all binaries in toolConfig.binaries[]
+   */
+  private async setupBinariesFromDirectDownload(
+    fs: IFileSystem,
+    toolName: string,
+    toolConfig: ToolConfig,
+    context: BaseInstallContext,
+    downloadPath: string,
+    logger: TsLogger,
+  ): Promise<void> {
+    const binaryNames = toolConfig.binaries || [toolName];
+    
+    // For direct downloads, we only have one file, so use it for the first binary
+    const primaryBinary = binaryNames[0] || toolName;
+    const finalBinaryPath = path.join(context.installDir, primaryBinary);
+    
+    logger.debug(DebugTemplates.installer.movingBinary(), downloadPath, finalBinaryPath);
+    await fs.copyFile(downloadPath, finalBinaryPath);
+    
+    // Make binary executable for direct downloads (may not preserve permissions)
+    await fs.chmod(finalBinaryPath, 0o755);
+    
+    // Clean up original downloaded file if it was renamed
+    if (downloadPath !== finalBinaryPath && (await fs.exists(downloadPath))) {
+      logger.debug(DebugTemplates.installer.cleaningArchive(), downloadPath);
+      await fs.rm(downloadPath);
+    }
+    
+    // For direct downloads with multiple binary names, we can't provide them all
+    // Log a warning if multiple binaries were requested
+    if (binaryNames.length > 1) {
+      logger.debug(DebugTemplates.installer.directDownloadSingleBinary(), binaryNames.length.toString(), primaryBinary);
+    }
   }
 }

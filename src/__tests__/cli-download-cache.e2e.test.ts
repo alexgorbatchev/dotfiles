@@ -124,7 +124,7 @@ describe('E2E: Download Cache', () => {
       }
 
       // Remove any existing binary to force fresh install
-      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockAssetFileName);
+      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
       if (await fs.exists(binaryPath)) {
         await fs.rm(binaryPath, { force: true });
       }
@@ -135,7 +135,6 @@ describe('E2E: Download Cache', () => {
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
-
 
       expect(result.exitCode).toEqual(0);
 
@@ -240,10 +239,10 @@ describe('E2E: Download Cache', () => {
         env: {},
       });
 
-      // Remove binary to force fresh install
-      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockAssetFileName);
-      if (await fs.exists(binaryPath)) {
-        await fs.rm(binaryPath, { force: true });
+      // Remove binary to force fresh install  
+      const expectedBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
+      if (await fs.exists(expectedBinaryPath)) {
+        await fs.rm(expectedBinaryPath, { force: true });
       }
 
       // Install with cache disabled
@@ -256,8 +255,8 @@ describe('E2E: Download Cache', () => {
       expect(result.exitCode).toEqual(0);
 
       // Verify binary was installed
-      expect(await fs.exists(binaryPath)).toBe(true);
-      const content = await fs.readFile(binaryPath, 'utf8');
+      expect(await fs.exists(expectedBinaryPath)).toBe(true);
+      const content = await fs.readFile(expectedBinaryPath, 'utf8');
       expect(content).toEqual(mockBinaryContent);
     });
   });
