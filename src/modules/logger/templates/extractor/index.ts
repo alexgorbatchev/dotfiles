@@ -1,4 +1,4 @@
-import { extractorDebugTemplates } from './extractor/debug';
+import { extractorDebugTemplates } from './debug';
 
 /**
  * Extractor operation templates grouped by log level

@@ -1,5 +1,5 @@
-import { registrySuccessTemplates } from './registry/success';
-import { registryDebugTemplates } from './registry/debug';
+import { registrySuccessTemplates } from './success';
+import { registryDebugTemplates } from './debug';
 
 /**
  * Registry operation templates grouped by log level

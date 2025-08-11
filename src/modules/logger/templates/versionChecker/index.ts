@@ -1,4 +1,4 @@
-import { versionCheckerDebugTemplates } from './versionChecker/debug';
+import { versionCheckerDebugTemplates } from './debug';
 
 /**
  * Version checker operation templates grouped by log level

@@ -1,4 +1,4 @@
-import { shellInitDebugTemplates } from './shellInit/debug';
+import { shellInitDebugTemplates } from './debug';
 
 /**
  * Shell initialization templates grouped by log level

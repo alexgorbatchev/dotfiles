@@ -1,5 +1,5 @@
-import { serviceErrorTemplates } from './service/error';
-import { serviceWarningTemplates } from './service/warning';
+import { serviceErrorTemplates } from './error';
+import { serviceWarningTemplates } from './warning';
 
 /**
  * External service integration templates grouped by log level

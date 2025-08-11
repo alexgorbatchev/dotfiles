@@ -1,4 +1,4 @@
-import { installerDebugTemplates } from './installer/debug';
+import { installerDebugTemplates } from './debug';
 
 /**
  * Installer operation templates grouped by log level

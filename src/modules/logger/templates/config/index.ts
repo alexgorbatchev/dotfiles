@@ -1,6 +1,6 @@
-import { configErrorTemplates } from './config/error';
-import { configWarningTemplates } from './config/warning';
-import { configSuccessTemplates } from './config/success';
+import { configErrorTemplates } from './error';
+import { configWarningTemplates } from './warning';
+import { configSuccessTemplates } from './success';
 
 /**
  * Configuration loading and validation templates grouped by log level

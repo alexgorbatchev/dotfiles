@@ -1,4 +1,4 @@
-import { generatorDebugTemplates } from './generator/debug';
+import { generatorDebugTemplates } from './debug';
 
 /**
  * Generator operation templates grouped by log level

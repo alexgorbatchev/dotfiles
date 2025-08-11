@@ -1,5 +1,5 @@
-import { generalWarningTemplates } from './general/warning';
-import { generalSuccessTemplates } from './general/success';
+import { generalWarningTemplates } from './warning';
+import { generalSuccessTemplates } from './success';
 
 /**
  * General templates grouped by log level
