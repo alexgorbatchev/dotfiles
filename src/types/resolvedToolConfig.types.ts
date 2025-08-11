@@ -53,6 +53,34 @@ interface BaseToolConfigProperties {
 }
 
 /**
+ * Configuration overrides that can be applied in platform-specific configurations.
+ * This includes all tool configuration properties except name and platformConfigs
+ * to avoid circular references.
+ */
+export interface PlatformConfig {
+  /** An array of binary names that should have shims generated for this tool. */
+  binaries?: string[];
+  /** The desired version of the tool. */
+  version?: string;
+  /** An array of Zsh initialization scripts. */
+  zshInit?: ShellScript[];
+  /** An array of Bash initialization scripts. */
+  bashInit?: ShellScript[];  
+  /** An array of PowerShell initialization scripts. */
+  powershellInit?: ShellScript[];
+  /** An array of symlink configurations. */
+  symlinks?: { source: string; target: string }[];
+  /** Shell completion configurations. */
+  completions?: CompletionConfig;
+  /** Configuration for automatic update checking for this tool. */
+  updateCheck?: ToolConfigUpdateCheck;
+  /** The installation method to use. */
+  installationMethod?: ToolConfigInstallationMethod;
+  /** Parameters specific to the installation method. */
+  installParams?: GithubReleaseInstallParams | BrewInstallParams | CurlScriptInstallParams | CurlTarInstallParams | ManualInstallParams;
+}
+
+/**
  * Represents a single platform-specific configuration entry.
  * It specifies the target platforms (and optionally architectures) and the
  * configuration overrides that apply to them.
@@ -62,8 +90,8 @@ export interface PlatformConfigEntry {
   platforms: Platform;
   /** An optional bitmask of target architectures for this configuration. If undefined, applies to all architectures on the specified platforms. */
   architectures?: Architecture;
-  /** The actual configuration settings for this platform/architecture combination. This would be the result of the PlatformConfigBuilder. */
-  config: any; // Partial<Omit<ToolConfig, 'name' | 'platformConfigs'>> - avoiding circular reference
+  /** The actual configuration settings for this platform/architecture combination. */
+  config: PlatformConfig;
 }
 
 /** Resolved tool configuration for the 'github-release' installation method. */
