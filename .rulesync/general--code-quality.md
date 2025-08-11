@@ -35,3 +35,10 @@ globs:
 - Maintain consistent formatting and style
 - Apply the same level of rigor to all parts of the codebase
 - Document deviations from standard patterns when necessary
+
+## Comments and Code Maintenance
+
+- The project uses GIT to track changes and change comments are not necessary.
+- Do not comment out code, remove it instead.
+- Use meaningful comments for complex business logic.
+- All comments must reflect the current state of the code only and never refer to previous versions or changes.

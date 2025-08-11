@@ -17,7 +17,7 @@ globs:
 ## File Modification Guidelines
 
 - Use dedicated text processing tools rather than general-purpose stream editors
-- Never use `sed` or `awk` to modify files
+- Never use schell commands to modify files, all changes have to be done manually
 - Verify file changes before committing modifications
 - Prefer tools with built-in backup or safety mechanisms
 - Test modifications in isolated environments first

@@ -59,3 +59,8 @@ The project solves key problems developers face with dotfiles management:
 - The system handles edge cases and errors gracefully
 
 This project represents a modern approach to dotfiles management, providing automation and consistency for developer environment setup and maintenance.
+
+# Restrictions
+
+- You must not use `sed` or `awk` to make changes to files. 
+- You must use `rg` to search for files or text in files.

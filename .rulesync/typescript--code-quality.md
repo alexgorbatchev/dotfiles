@@ -10,6 +10,7 @@ globs:
 
 ## General Requirements
 
+- `any` type is not allowed.
 - Line length is 120 characters.
 - Do not add file header comments.
 - Avoid type casting at all costs and absolutely never use `as any`.
@@ -20,12 +21,6 @@ globs:
 - Files should be small and focused on a single responsibility.
 - If a file is too large, it should be broken down into smaller files. Try to keep files under 200 lines of code.
 - Break up large test files into smaller files using `{fileName}--{part}` naming convention.
-
-## Comments and Code Maintenance
-
-- The project uses GIT to track changes and change comments are not necessary.
-- Do not comment out code, remove it instead.
-- Use meaningful comments for complex business logic.
 
 ## Functional Programming Approach
 
