@@ -23,6 +23,7 @@ import type {
   ToolConfigUpdateCheck,
   Platform,
 } from '@types';
+import { always } from '@types';
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
@@ -34,6 +35,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public zshScripts: ShellScript[] = [];
   public bashScripts: ShellScript[] = [];
   public powershellScripts: ShellScript[] = [];
+  public zshAliases: Record<string, string> = {};
+  public bashAliases: Record<string, string> = {};
+  public powershellAliases: Record<string, string> = {};
   public symlinkPairs: { source: string; target: string }[] = [];
   public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -100,6 +104,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           zsh: configOrScript.completions,
         };
       }
+      if (configOrScript.aliases) {
+        this.zshAliases = { ...this.zshAliases, ...configOrScript.aliases };
+      }
       return this;
     }
     
@@ -119,6 +126,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           ...this.completionSettings,
           bash: configOrScript.completions,
         };
+      }
+      if (configOrScript.aliases) {
+        this.bashAliases = { ...this.bashAliases, ...configOrScript.aliases };
       }
       return this;
     }
@@ -140,6 +150,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           powershell: configOrScript.completions,
         };
       }
+      if (configOrScript.aliases) {
+        this.powershellAliases = { ...this.powershellAliases, ...configOrScript.aliases };
+      }
       return this;
     }
     
@@ -150,6 +163,29 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
   private isShellConfig(value: ShellConfig | ShellScript): value is ShellConfig {
     return typeof value === 'object' && value !== null && !('__brand' in value);
+  }
+
+  private generateAliasScripts(aliases: Record<string, string>, shellType: 'zsh' | 'bash' | 'powershell'): ShellScript | undefined {
+    const aliasEntries = Object.entries(aliases);
+    if (aliasEntries.length === 0) {
+      return undefined;
+    }
+
+    let aliasScript: string;
+    if (shellType === 'powershell') {
+      // PowerShell uses Set-Alias
+      aliasScript = aliasEntries
+        .map(([name, command]) => `Set-Alias ${name} "${command}"`)
+        .join('\n');
+    } else {
+      // Zsh and Bash use the same alias syntax
+      aliasScript = aliasEntries
+        .map(([name, command]) => `alias ${name}="${command}"`)
+        .join('\n');
+    }
+
+    // Create a branded script with always timing
+    return always`${aliasScript}`;
   }
 
   symlink(source: string, target: string): this {
@@ -210,9 +246,34 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const name = this.toolName;
     const binaries = this.binaries;
     const version = this.versionNum;
-    const zshInit = this.zshScripts.length > 0 ? this.zshScripts : undefined;
-    const bashInit = this.bashScripts.length > 0 ? this.bashScripts : undefined;
-    const powershellInit = this.powershellScripts.length > 0 ? this.powershellScripts : undefined;
+    // Combine manual shell scripts with generated alias scripts
+    const zshAliasScript = this.generateAliasScripts(this.zshAliases, 'zsh');
+    const bashAliasScript = this.generateAliasScripts(this.bashAliases, 'bash');
+    const powershellAliasScript = this.generateAliasScripts(this.powershellAliases, 'powershell');
+    
+    const zshInit = [
+      ...(zshAliasScript ? [zshAliasScript] : []),
+      ...this.zshScripts
+    ].length > 0 ? [
+      ...(zshAliasScript ? [zshAliasScript] : []),
+      ...this.zshScripts
+    ] : undefined;
+    
+    const bashInit = [
+      ...(bashAliasScript ? [bashAliasScript] : []),
+      ...this.bashScripts
+    ].length > 0 ? [
+      ...(bashAliasScript ? [bashAliasScript] : []),
+      ...this.bashScripts
+    ] : undefined;
+    
+    const powershellInit = [
+      ...(powershellAliasScript ? [powershellAliasScript] : []),
+      ...this.powershellScripts
+    ].length > 0 ? [
+      ...(powershellAliasScript ? [powershellAliasScript] : []),
+      ...this.powershellScripts
+    ] : undefined;
     const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
     const completions = this.completionSettings;
     const updateCheck = this.updateCheckConfig;

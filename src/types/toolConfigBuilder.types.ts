@@ -25,8 +25,12 @@ export interface ShellConfig {
    */
   shellInit?: ShellScript[];
   
+  /**
+   * Shell aliases to define (alias name -> command).
+   */
+  aliases?: Record<string, string>;
+  
   // Future extensibility for shell-specific features:
-  // aliases?: Record<string, string>;
   // functions?: ShellFunction[];
   // keybindings?: KeyBinding[];
   // environment?: Record<string, string>;

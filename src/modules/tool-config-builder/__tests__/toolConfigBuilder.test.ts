@@ -1,7 +1,7 @@
 import { expect, test, describe, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
-import { always } from '@types';
+import { always, getScriptContent } from '@types';
 import { TestLogger } from '@testing-helpers';
 import { logs } from '@modules/logger';
 
@@ -244,5 +244,125 @@ describe('ToolConfigBuilder', () => {
         'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
       )
     ]);
+  });
+
+  test('zsh method handles aliases correctly', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    
+    builder.zsh({
+      aliases: {
+        'g': 'git',
+        'l': 'ls -la',
+        'v': 'vim'
+      },
+      shellInit: [
+        always`echo "test init"`
+      ]
+    });
+
+    expect(builder.zshAliases).toEqual({
+      'g': 'git',
+      'l': 'ls -la', 
+      'v': 'vim'
+    });
+    expect(builder.zshScripts).toHaveLength(1);
+  });
+
+  test('bash method handles aliases correctly', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    
+    builder.bash({
+      aliases: {
+        'g': 'git',
+        'dc': 'docker-compose'
+      }
+    });
+
+    expect(builder.bashAliases).toEqual({
+      'g': 'git',
+      'dc': 'docker-compose'
+    });
+  });
+
+  test('powershell method handles aliases correctly', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    
+    builder.powershell({
+      aliases: {
+        'g': 'git',
+        'cat': 'Get-Content'
+      }
+    });
+
+    expect(builder.powershellAliases).toEqual({
+      'g': 'git',
+      'cat': 'Get-Content'
+    });
+  });
+
+  test('build method includes aliases in shell init scripts', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    
+    builder
+      .bin('test-tool')
+      .zsh({
+        aliases: {
+          'g': 'git',
+          'l': 'ls -la'
+        }
+      });
+
+    const config = builder.build();
+    
+    expect(config.zshInit).toBeDefined();
+    expect(config.zshInit).toHaveLength(1);
+    
+    // The first script should be the generated alias script
+    const aliasScript = config.zshInit![0]!;
+    const scriptContent = getScriptContent(aliasScript);
+    expect(scriptContent).toMatch('alias g="git"');
+    expect(scriptContent).toMatch('alias l="ls -la"');
+  });
+
+  test('build method generates correct PowerShell aliases', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    
+    builder
+      .bin('test-tool')
+      .powershell({
+        aliases: {
+          'g': 'git',
+          'cat': 'Get-Content'
+        }
+      });
+
+    const config = builder.build();
+    
+    expect(config.powershellInit).toBeDefined();
+    expect(config.powershellInit).toHaveLength(1);
+    
+    // The first script should be the generated alias script
+    const aliasScript = config.powershellInit![0]!;
+    const scriptContent = getScriptContent(aliasScript);
+    expect(scriptContent).toMatch('Set-Alias g "git"');
+    expect(scriptContent).toMatch('Set-Alias cat "Get-Content"');
+  });
+
+  test('multiple zsh calls merge aliases correctly', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    
+    builder
+      .zsh({
+        aliases: { 'g': 'git' }
+      })
+      .zsh({
+        aliases: { 'l': 'ls -la', 'v': 'vim' }
+      });
+
+    expect(builder.zshAliases).toEqual({
+      'g': 'git',
+      'l': 'ls -la',
+      'v': 'vim'
+    });
   });
 });

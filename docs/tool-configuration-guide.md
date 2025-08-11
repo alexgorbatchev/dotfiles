@@ -572,8 +572,8 @@ Configures Zsh-specific properties including shell scripts, completions, and fut
 interface ShellConfig {
   completions?: ShellCompletionConfig;  // Shell completions
   shellInit?: ShellScript[];           // Shell initialization scripts
+  aliases?: Record<string, string>;    // Shell aliases (alias name -> command)
   // Future extensions:
-  // aliases?: Record<string, string>;
   // functions?: ShellFunction[];
   // keybindings?: KeyBinding[];
   // environment?: Record<string, string>;
@@ -589,6 +589,13 @@ interface ShellConfig {
 import { once, always } from '@types';
 
 c.zsh({
+  // Define aliases - automatically converted to shell alias commands
+  aliases: {
+    't': 'tool',
+    'tl': 'tool list',
+    'ts': 'tool status',
+    'tc': 'tool config'
+  },
   completions: {
     source: 'shell/completion.zsh',
     name: '_my-tool'
@@ -601,11 +608,21 @@ c.zsh({
     always/* zsh */`
       # Fast runtime setup (runs every shell startup)
       export TOOL_CONFIG_DIR="${ctx.toolDir}"
-      alias t="tool"
+      
+      # Custom functions
+      function tool-helper() {
+        tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+      }
     `
   ]
 })
 ```
+
+**Aliases Advantages:**
+- **Clean Configuration**: Aliases are defined declaratively in the configuration object
+- **Automatic Generation**: Shell-specific alias syntax is generated automatically
+- **Cross-Shell Support**: Same alias definitions work for zsh, bash, and powershell
+- **Performance**: Aliases are generated once and executed efficiently
 
 **Performance Benefits:**
 - Expensive operations (completion generation, cache building) run only once
@@ -690,13 +707,18 @@ Configures Bash-specific properties using the same configuration object structur
 **Example:**
 ```typescript
 c.bash({
+  // Aliases work the same way in bash
+  aliases: {
+    't': 'tool',
+    'tl': 'tool list',
+    'ts': 'tool status'
+  },
   completions: {
     source: 'shell/completion.bash'
   },
   shellInit: [
     always/* bash */`
       export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
-      alias t="tool"
       
       # Source key bindings for bash
       if [[ -f "${ctx.toolDir}/shell/key-bindings.bash" ]]; then
@@ -714,6 +736,12 @@ Configures PowerShell-specific properties for Windows support.
 **Example:**
 ```typescript
 c.powershell({
+  // Aliases automatically converted to Set-Alias commands
+  aliases: {
+    't': 'tool',
+    'tl': 'tool list',
+    'ts': 'tool status'
+  },
   completions: {
     source: 'shell/completion.ps1'
   },
@@ -724,8 +752,6 @@ c.powershell({
       function tool-helper {
         tool --config "$env:TOOL_CONFIG_DIR\\config.toml" @args
       }
-      
-      Set-Alias t tool
     `
   ]
 })
