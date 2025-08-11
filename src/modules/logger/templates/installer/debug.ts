@@ -1,85 +1,85 @@
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
 import { createSafeLogMessage } from '../../utils';
 
 export const installerDebugTemplates = {
-  runningAfterDownloadHook: (): SafeLogMessage => 
+  runningAfterDownloadHook: () => 
     createSafeLogMessage('Running afterDownload hook'),
-  extractingArchive: (): SafeLogMessage => 
+  extractingArchive: () => 
     createSafeLogMessage('Extracting archive: %s'),
-  archiveExtracted: (): SafeLogMessage => 
+  archiveExtracted: () => 
     createSafeLogMessage('Archive extracted: %o'),
-  runningAfterExtractHook: (): SafeLogMessage => 
+  runningAfterExtractHook: () => 
     createSafeLogMessage('Running afterExtract hook'),
-  foundExecutable: (): SafeLogMessage => 
+  foundExecutable: () => 
     createSafeLogMessage('Found executable in archive: %s'),
-  makingExecutable: (): SafeLogMessage => 
+  makingExecutable: () => 
     createSafeLogMessage('Making binary executable: %s'),
-  movingBinary: (): SafeLogMessage => 
+  movingBinary: () => 
     createSafeLogMessage('Moving binary from %s to %s'),
-  cleaningExtractDir: (): SafeLogMessage => 
+  cleaningExtractDir: () => 
     createSafeLogMessage('Cleaning up extractDir: %s'),
-  cleaningArchive: (): SafeLogMessage => 
+  cleaningArchive: () => 
     createSafeLogMessage('Cleaning up downloaded archive: %s'),
-  downloadingAsset: (): SafeLogMessage => 
+  downloadingAsset: () => 
     createSafeLogMessage('Downloading asset: %s from %s'),
-  installingFromBrew: (): SafeLogMessage => 
+  installingFromBrew: () => 
     createSafeLogMessage('Installing from brew: toolName=%s, brewConfig=%o'),
-  brewFormula: (): SafeLogMessage => 
+  brewFormula: () => 
     createSafeLogMessage('Formula: %s'),
-  brewExecuting: (): SafeLogMessage => 
+  brewExecuting: () => 
     createSafeLogMessage('Executing brew command: %s'),
-  brewCompleted: (): SafeLogMessage => 
+  brewCompleted: () => 
     createSafeLogMessage('Brew command completed successfully'),
-  curlScriptDownloading: (): SafeLogMessage => 
+  curlScriptDownloading: () => 
     createSafeLogMessage('Downloading curl script from: %s'),
-  curlScriptExecuting: (): SafeLogMessage => 
+  curlScriptExecuting: () => 
     createSafeLogMessage('Executing curl script: %s'),
-  curlScriptCompleted: (): SafeLogMessage => 
+  curlScriptCompleted: () => 
     createSafeLogMessage('Curl script completed successfully'),
-  installingFromCurl: (): SafeLogMessage => 
+  installingFromCurl: () => 
     createSafeLogMessage('installFromCurlScript: toolName=%s'),
-  downloadingScript: (): SafeLogMessage => 
+  downloadingScript: () => 
     createSafeLogMessage('installFromCurlScript: Downloading script from %s'),
-  executingScript: (): SafeLogMessage => 
+  executingScript: () => 
     createSafeLogMessage('installFromCurlScript: Executing script with %s'),
-  installingFromCurlTar: (): SafeLogMessage => 
+  installingFromCurlTar: () => 
     createSafeLogMessage('installFromCurlTar: toolName=%s'),
-  downloadingTarball: (): SafeLogMessage => 
+  downloadingTarball: () => 
     createSafeLogMessage('installFromCurlTar: Downloading tarball from %s'),
-  extractingTarball: (): SafeLogMessage => 
+  extractingTarball: () => 
     createSafeLogMessage('installFromCurlTar: Extracting tarball'),
-  tarballExtracted: (): SafeLogMessage => 
+  tarballExtracted: () => 
     createSafeLogMessage('installFromCurlTar: Tarball extracted: %o'),
-  installingManually: (): SafeLogMessage => 
+  installingManually: () => 
     createSafeLogMessage('installManually: toolName=%s'),
-  executingCommand: (): SafeLogMessage => 
+  executingCommand: () => 
     createSafeLogMessage('installFromBrew: Executing command: %s'),
-  assumingSingleBinary: (): SafeLogMessage => 
+  assumingSingleBinary: () => 
     createSafeLogMessage('installFromGitHubRelease: Assuming single extracted file is binary: %s'),
-  noExecutableFound: (): SafeLogMessage => 
+  noExecutableFound: () => 
     createSafeLogMessage('installFromGitHubRelease: Could not find executable in extracted files: %o'),
-  attemptingFallback: (): SafeLogMessage => 
+  attemptingFallback: () => 
     createSafeLogMessage('installFromGitHubRelease: Attempting fallback to find binary named like tool: %s'),
-  scriptDownloaded: (): SafeLogMessage => 
+  scriptDownloaded: () => 
     createSafeLogMessage('installFromCurlScript: Script downloaded to: %s'),
-  scriptMadeExecutable: (): SafeLogMessage => 
+  scriptMadeExecutable: () => 
     createSafeLogMessage('installFromCurlScript: Made script executable: %s'),
-  noFallbackExecutable: (): SafeLogMessage => 
+  noFallbackExecutable: () => 
     createSafeLogMessage('installFromCurlTar: Could not find executable in extracted files: %o'),
-  curlTarFallback: (): SafeLogMessage => 
+  curlTarFallback: () => 
     createSafeLogMessage('installFromCurlTar: Attempting fallback to find binary named like tool: %s'),
-  githubReleaseBinaryMoving: (): SafeLogMessage => 
+  githubReleaseBinaryMoving: () => 
     createSafeLogMessage('installFromGitHubRelease: Moving binary from %s to %s'),
-  githubReleaseFinalDestination: (): SafeLogMessage => 
+  githubReleaseFinalDestination: () => 
     createSafeLogMessage('installFromGitHubRelease: Binary already at final destination: %s'),
-  curlTarBinaryMoving: (): SafeLogMessage => 
+  curlTarBinaryMoving: () => 
     createSafeLogMessage('installFromCurlTar: Moving binary from %s to %s'),
-  curlTarFinalDestination: (): SafeLogMessage => 
+  curlTarFinalDestination: () => 
     createSafeLogMessage('installFromCurlTar: Binary already at final destination: %s'),
-  manualMultipleBinariesNotSupported: (): SafeLogMessage => 
+  manualMultipleBinariesNotSupported: () => 
     createSafeLogMessage('Manual installation with multiple binaries not fully supported for %s'),
-  binaryNotFound: (): SafeLogMessage => 
+  binaryNotFound: () => 
     createSafeLogMessage('Binary %s not found at %s, skipping'),
-  directDownloadSingleBinary: (): SafeLogMessage => 
+  directDownloadSingleBinary: () => 
     createSafeLogMessage('Direct download only provides one binary, but %s were configured. Only %s will be available.'),
-} as const;
+} satisfies SafeLogMessageMap;

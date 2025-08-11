@@ -1,33 +1,33 @@
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
 import { createSafeLogMessage } from '../../utils';
 
 export const shellInitDebugTemplates = {
-  constructorDebug: (): SafeLogMessage => 
+  constructorDebug: () => 
     createSafeLogMessage('fileSystem=%o, config=%o'),
-  generateDebug: (): SafeLogMessage => 
+  generateDebug: () => 
     createSafeLogMessage('toolConfigs=%o, options=%o'),
-  processingTool: (): SafeLogMessage => 
+  processingTool: () => 
     createSafeLogMessage('Processing shell init for tool: %s'),
-  shellScriptGenerated: (): SafeLogMessage => 
+  shellScriptGenerated: () => 
     createSafeLogMessage('Generated %s shell script: %d lines'),
-  writingShellScript: (): SafeLogMessage => 
+  writingShellScript: () => 
     createSafeLogMessage('Writing shell script to: %s'),
-  shellInitComplete: (): SafeLogMessage => 
+  shellInitComplete: () => 
     createSafeLogMessage('Shell initialization complete: %d tools processed'),
-  outputPath: (): SafeLogMessage => 
+  outputPath: () => 
     createSafeLogMessage('outputPath=%s'),
-  skippingUndefined: (): SafeLogMessage => 
+  skippingUndefined: () => 
     createSafeLogMessage('skipping undefined config for toolName=%s'),
-  writingFile: (): SafeLogMessage => 
+  writingFile: () => 
     createSafeLogMessage('Writing to %s using %s with content:\n%s'),
-  writeSuccess: (): SafeLogMessage => 
+  writeSuccess: () => 
     createSafeLogMessage('Successfully wrote Zsh init file to %s using %s'),
-  writeError: (): SafeLogMessage => 
+  writeError: () => 
     createSafeLogMessage('ERROR: Failed to write Zsh init file to %s using %s. Error: %s'),
-  processCompletions: (): SafeLogMessage => 
+  processCompletions: () => 
     createSafeLogMessage('toolName=%s, completions=%o'),
-  fpathAdded: (): SafeLogMessage => 
+  fpathAdded: () => 
     createSafeLogMessage('Added %s to fpath for tool %s'),
-  updatingProfiles: (): SafeLogMessage => 
+  updatingProfiles: () => 
     createSafeLogMessage('Updating profile files with configs: %o'),
-} as const;
+} satisfies SafeLogMessageMap;

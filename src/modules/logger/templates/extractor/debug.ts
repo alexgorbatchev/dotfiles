@@ -1,57 +1,57 @@
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
 import { createSafeLogMessage } from '../../utils';
 
 export const extractorDebugTemplates = {
-  constructorDebug: (): SafeLogMessage => 
+  constructorDebug: () => 
     createSafeLogMessage('fileSystem=%o'),
-  extractDebug: (): SafeLogMessage => 
+  extractDebug: () => 
     createSafeLogMessage('archivePath=%s, extractDir=%s, options=%o'),
-  formatDetected: (): SafeLogMessage => 
+  formatDetected: () => 
     createSafeLogMessage('Detected archive format: %s for file %s'),
-  extractionStart: (): SafeLogMessage => 
+  extractionStart: () => 
     createSafeLogMessage('Starting extraction of %s to %s'),
-  extractionProgress: (): SafeLogMessage => 
+  extractionProgress: () => 
     createSafeLogMessage('Extraction progress: %d files processed'),
-  extractionComplete: (): SafeLogMessage => 
+  extractionComplete: () => 
     createSafeLogMessage('Extraction completed: %d files extracted to %s'),
-  stripComponents: (): SafeLogMessage => 
+  stripComponents: () => 
     createSafeLogMessage('Stripping %d path components during extraction'),
-  extractStarted: (): SafeLogMessage => 
+  extractStarted: () => 
     createSafeLogMessage('Extracting %s using format %s'),
-  extractionCompleted: (): SafeLogMessage => 
+  extractionCompleted: () => 
     createSafeLogMessage('Extraction completed in %s ms'),
-  fileExecutableCheck: (): SafeLogMessage => 
+  fileExecutableCheck: () => 
     createSafeLogMessage('Checking if file is executable: %s'),
-  commandExecution: (): SafeLogMessage => 
+  commandExecution: () => 
     createSafeLogMessage('Executing command: %s'),
-  fileContent: (): SafeLogMessage => 
+  fileContent: () => 
     createSafeLogMessage('File content preview (first 200 bytes): %s'),
-  executionResult: (): SafeLogMessage => 
+  executionResult: () => 
     createSafeLogMessage('Command result: stdout=%s, stderr=%s'),
-  commandError: (): SafeLogMessage => 
+  commandError: () => 
     createSafeLogMessage('executeShellCommand error: %o'),
-  fileCommandFailed: (): SafeLogMessage => 
+  fileCommandFailed: () => 
     createSafeLogMessage('"file" command failed during fallback. Error: %o'),
-  extractingArchive: (): SafeLogMessage => 
+  extractingArchive: () => 
     createSafeLogMessage('Extracting %s to %s using format %s'),
-  extractionTime: (): SafeLogMessage => 
+  extractionTime: () => 
     createSafeLogMessage('Extraction took %d ms'),
-  findingExecutables: (): SafeLogMessage => 
+  findingExecutables: () => 
     createSafeLogMessage('Finding executable files in %s'),
-  checkingExecutable: (): SafeLogMessage => 
+  checkingExecutable: () => 
     createSafeLogMessage('Checking if %s is executable'),
-  executableDetails: (): SafeLogMessage => 
+  executableDetails: () => 
     createSafeLogMessage('File %s - size: %d, isExecutable: %s'),
-  zipStripComponents: (): SafeLogMessage => 
+  zipStripComponents: () => 
     createSafeLogMessage('--strip-components is not directly supported for zip, files will be extracted with full paths into target.'),
-  debugArchivePath: (): SafeLogMessage => 
+  debugArchivePath: () => 
     createSafeLogMessage('archivePath=%s, options=%o'),
-  extractErrorCleanup: (): SafeLogMessage => 
+  extractErrorCleanup: () => 
     createSafeLogMessage('Error during extract process, cleaning up temp dir: %s. Error: %o'),
-  cleanupError: (): SafeLogMessage => 
+  cleanupError: () => 
     createSafeLogMessage('Error during cleanup of temp dir after an error: %o'),
-  settingExecutable: (): SafeLogMessage => 
+  settingExecutable: () => 
     createSafeLogMessage('Setting +x for %s'),
-  fileStatError: (): SafeLogMessage => 
+  fileStatError: () => 
     createSafeLogMessage('Error stating or chmoding file %s: %o'),
-} as const;
+} satisfies SafeLogMessageMap;

@@ -1,62 +1,62 @@
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
 import { createSafeLogMessage } from '../../utils';
 
 export const fsDebugTemplates = {
   // Symlink operations
-  symlinkGeneratorInit: (): SafeLogMessage => 
+  symlinkGeneratorInit: () => 
     createSafeLogMessage('SymlinkGenerator initialized'),
-  symlinkGenerateStart: (): SafeLogMessage => 
+  symlinkGenerateStart: () => 
     createSafeLogMessage('Starting symlink generation. Options: %o, FileSystem: %s'),
-  symlinkToolConfigUndefined: (): SafeLogMessage => 
+  symlinkToolConfigUndefined: () => 
     createSafeLogMessage('Tool config for "%s" is undefined. Skipping.'),
-  symlinkNoSymlinks: (): SafeLogMessage => 
+  symlinkNoSymlinks: () => 
     createSafeLogMessage('Tool "%s" has no symlinks defined, skipping.'),
-  symlinkProcessingTool: (): SafeLogMessage => 
+  symlinkProcessingTool: () => 
     createSafeLogMessage('Processing symlinks for tool "%s"'),
-  symlinkProcessing: (): SafeLogMessage => 
+  symlinkProcessing: () => 
     createSafeLogMessage('Processing symlink: source="%s" (abs: "%s"), target="%s" (abs: "%s")'),
-  symlinkTargetExists: (): SafeLogMessage => 
+  symlinkTargetExists: () => 
     createSafeLogMessage('Target path "%s" already exists.'),
-  symlinkSkipTargetExists: (): SafeLogMessage => 
+  symlinkSkipTargetExists: () => 
     createSafeLogMessage('Target "%s" exists and overwrite is false. Skipping symlink creation.'),
-  symlinkBackupAttempt: (): SafeLogMessage => 
+  symlinkBackupAttempt: () => 
     createSafeLogMessage('Backup option enabled. Attempting to rename "%s" to "%s" using %s.'),
-  symlinkBackupSuccess: (): SafeLogMessage => 
+  symlinkBackupSuccess: () => 
     createSafeLogMessage('Successfully backed up "%s" to "%s" using %s.'),
-  symlinkOverwriteDelete: (): SafeLogMessage => 
+  symlinkOverwriteDelete: () => 
     createSafeLogMessage('Overwrite enabled. Attempting to delete "%s" using %s.'),
-  symlinkDeleteSuccess: (): SafeLogMessage => 
+  symlinkDeleteSuccess: () => 
     createSafeLogMessage('Successfully deleted "%s" for overwrite using %s.'),
-  symlinkEnsureDir: (): SafeLogMessage => 
+  symlinkEnsureDir: () => 
     createSafeLogMessage('Ensuring target directory "%s" exists using %s.'),
-  symlinkAttempt: (): SafeLogMessage => 
+  symlinkAttempt: () => 
     createSafeLogMessage('Attempting to create symlink from "%s" to "%s" using %s.'),
-  symlinkSuccess: (): SafeLogMessage => 
+  symlinkSuccess: () => 
     createSafeLogMessage('Successfully created symlink from "%s" to "%s" using %s.'),
-  symlinkGenerationComplete: (): SafeLogMessage => 
+  symlinkGenerationComplete: () => 
     createSafeLogMessage('Symlink generation process completed. Results: %o'),
 
   // Shim operations  
-  shimConstructor: (): SafeLogMessage => 
+  shimConstructor: () => 
     createSafeLogMessage('fileSystem=%o, config=%o'),
-  shimGenerate: (): SafeLogMessage => 
+  shimGenerate: () => 
     createSafeLogMessage('toolConfigs=%o, options=%o'),
-  shimToolConfigUndefined: (): SafeLogMessage => 
+  shimToolConfigUndefined: () => 
     createSafeLogMessage('toolConfig for %s is undefined. Skipping.'),
-  shimGenerateForTool: (): SafeLogMessage => 
+  shimGenerateForTool: () => 
     createSafeLogMessage('toolName=%s, toolConfig=%o, options=%o, FileSystem: %s'),
-  shimFilePath: (): SafeLogMessage => 
+  shimFilePath: () => 
     createSafeLogMessage('shimFilePath=%s'),
-  shimExists: (): SafeLogMessage => 
+  shimExists: () => 
     createSafeLogMessage('Shim already exists at %s and overwrite is false. Skipping.'),
-  shimToolBinPath: (): SafeLogMessage => 
+  shimToolBinPath: () => 
     createSafeLogMessage('directBinaryPath=%s, extractedBinaryPath=%s'),
-  shimContent: (): SafeLogMessage => 
+  shimContent: () => 
     createSafeLogMessage('shimContent=\n%s'),
-  shimWriting: (): SafeLogMessage => 
+  shimWriting: () => 
     createSafeLogMessage('Writing shim file to %s using %s'),
-  shimMakingExecutable: (): SafeLogMessage => 
+  shimMakingExecutable: () => 
     createSafeLogMessage('Making shim executable: chmod +x %s using %s'),
-  shimSuccess: (): SafeLogMessage => 
+  shimSuccess: () => 
     createSafeLogMessage('Shim for %s generated successfully at %s (using %s).'),
-} as const;
+} satisfies SafeLogMessageMap;

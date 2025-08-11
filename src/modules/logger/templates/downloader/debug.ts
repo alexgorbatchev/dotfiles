@@ -1,73 +1,73 @@
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
 import { createSafeLogMessage } from '../../utils';
 
 export const downloaderDebugTemplates = {
-  constructorDebug: (): SafeLogMessage => 
+  constructorDebug: () => 
     createSafeLogMessage('fileSystem=%o, config=%o'),
-  downloadDebug: (): SafeLogMessage => 
+  downloadDebug: () => 
     createSafeLogMessage('url=%s, destination=%s, options=%o'),
-  downloadStart: (): SafeLogMessage => 
+  downloadStart: () => 
     createSafeLogMessage('Starting download: %s'),
-  downloadProgress: (): SafeLogMessage => 
+  downloadProgress: () => 
     createSafeLogMessage('Download progress: %d%% (%d/%d bytes)'),
-  downloadComplete: (): SafeLogMessage => 
+  downloadComplete: () => 
     createSafeLogMessage('Download completed: %s (%d bytes)'),
-  cacheCheck: (): SafeLogMessage => 
+  cacheCheck: () => 
     createSafeLogMessage('Checking cache for: %s'),
-  cacheWrite: (): SafeLogMessage => 
+  cacheWrite: () => 
     createSafeLogMessage('Writing to cache: %s'),
-  strategyCreated: (): SafeLogMessage => 
+  strategyCreated: () => 
     createSafeLogMessage('constructor: Created %s%s'),
-  downloadStarted: (): SafeLogMessage => 
+  downloadStarted: () => 
     createSafeLogMessage('Downloading URL: %s'),
-  downloadToFileStarted: (): SafeLogMessage => 
+  downloadToFileStarted: () => 
     createSafeLogMessage('Downloading URL %s to file: %s'),
-  fileExists: (exists: boolean): SafeLogMessage => 
+  fileExists: (exists: boolean) => 
     createSafeLogMessage(`Downloaded file exists: ${exists}`),
-  fileCached: (): SafeLogMessage => 
+  fileCached: () => 
     createSafeLogMessage('Successfully read file for caching'),
-  errorCreated: (): SafeLogMessage => 
+  errorCreated: () => 
     createSafeLogMessage('%s created: message=%s, url=%s'),
-  networkErrorCreated: (): SafeLogMessage => 
+  networkErrorCreated: () => 
     createSafeLogMessage('NetworkError created: message=%s, url=%s, originalError=%o'),
-  httpErrorCreated: (): SafeLogMessage => 
+  httpErrorCreated: () => 
     createSafeLogMessage('HttpError created: message=%s, url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o'),
-  notFoundErrorCreated: (): SafeLogMessage => 
+  notFoundErrorCreated: () => 
     createSafeLogMessage('NotFoundError created: url=%s, responseBody=%o, responseHeaders=%o'),
-  forbiddenErrorCreated: (): SafeLogMessage => 
+  forbiddenErrorCreated: () => 
     createSafeLogMessage('ForbiddenError created: url=%s, responseBody=%o, responseHeaders=%o'),
-  rateLimitErrorCreated: (): SafeLogMessage => 
+  rateLimitErrorCreated: () => 
     createSafeLogMessage('RateLimitError created: message=%s, url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o, resetTimestamp=%d'),
-  clientErrorCreated: (): SafeLogMessage => 
+  clientErrorCreated: () => 
     createSafeLogMessage('ClientError created: url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o'),
-  serverErrorCreated: (): SafeLogMessage => 
+  serverErrorCreated: () => 
     createSafeLogMessage('ServerError created: url=%s, statusCode=%d, statusText=%s, responseBody=%o, responseHeaders=%o'),
-  fetchProgress: (): SafeLogMessage => 
+  fetchProgress: () => 
     createSafeLogMessage('fetch progress: %s'),
-  fetchStarted: (): SafeLogMessage => 
+  fetchStarted: () => 
     createSafeLogMessage('fetch started for URL: %s'),
-  responseReceived: (): SafeLogMessage => 
+  responseReceived: () => 
     createSafeLogMessage('response received: %s'),
-  responseProcessing: (): SafeLogMessage => 
+  responseProcessing: () => 
     createSafeLogMessage('processing response for URL: %s'),
-  downloadTimeout: (): SafeLogMessage => 
+  downloadTimeout: () => 
     createSafeLogMessage('Download timeout for %s'),
-  downloadAttempt: (): SafeLogMessage => 
+  downloadAttempt: () => 
     createSafeLogMessage('Attempt %d: Downloading %s'),
-  responseBodyReadFailed: (): SafeLogMessage => 
+  responseBodyReadFailed: () => 
     createSafeLogMessage('Failed to read response body for error: %s, error: %o'),
-  downloadFailed: (): SafeLogMessage => 
+  downloadFailed: () => 
     createSafeLogMessage('Download failed: url=%s, statusCode=%d, statusText=%s, responseBody=%s'),
-  downloadSuccessful: (): SafeLogMessage => 
+  downloadSuccessful: () => 
     createSafeLogMessage('Download successful for %s, size: %d bytes'),
-  savingToDestination: (): SafeLogMessage => 
+  savingToDestination: () => 
     createSafeLogMessage('Saving to destination: %s'),
-  savedSuccessfully: (): SafeLogMessage => 
+  savedSuccessfully: () => 
     createSafeLogMessage('Successfully wrote to %s using IFileSystem'),
-  downloadAttemptError: (): SafeLogMessage => 
+  downloadAttemptError: () => 
     createSafeLogMessage('Error during download attempt %d for %s: %o'),
-  retryingDownload: (): SafeLogMessage => 
+  retryingDownload: () => 
     createSafeLogMessage('Retrying download for %s, attempt %d/%d after %dms'),
-  exhaustedRetries: (): SafeLogMessage => 
+  exhaustedRetries: () => 
     createSafeLogMessage('Exhausted retries for %s'),
-} as const;
+} satisfies SafeLogMessageMap;

@@ -1,7 +1,7 @@
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
 import { createSafeLogMessage } from '../../utils';
 
 export const downloaderSuccessTemplates = {
-  downloadFrom: (strategyName: string): SafeLogMessage => createSafeLogMessage(`download from ${strategyName}`),
-  readFileForCaching: (path: string): SafeLogMessage => createSafeLogMessage(`read file for caching: ${path}`),
-} as const;
+  downloadFrom: (strategyName: string) => createSafeLogMessage(`download from ${strategyName}`),
+  readFileForCaching: (path: string) => createSafeLogMessage(`read file for caching: ${path}`),
+} satisfies SafeLogMessageMap;
