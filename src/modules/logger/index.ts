@@ -6,7 +6,6 @@ import { config } from './templates/config';
 import { service } from './templates/service';
 import { command } from './templates/command';
 import { cache } from './templates/cache';
-import { archive } from './templates/archive';
 import { downloader } from './templates/downloader';
 import { extractor } from './templates/extractor';
 import { generator } from './templates/generator';
@@ -17,7 +16,6 @@ import { versionChecker } from './templates/versionChecker';
 import { hookExecutor } from './templates/hookExecutor';
 import { installer } from './templates/installer';
 import { architecture } from './templates/architecture';
-import { operation } from './templates/operation';
 import { general } from './templates/general';
 import { symlink } from './templates/symlink';
 import { shim } from './templates/shim';
@@ -29,7 +27,6 @@ export const logs = {
   service,
   command,
   cache,
-  archive,
   downloader,
   extractor,
   generator,
@@ -40,7 +37,6 @@ export const logs = {
   hookExecutor,
   installer,
   architecture,
-  operation,
   general,
   symlink,
   shim,
