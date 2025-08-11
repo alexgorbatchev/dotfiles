@@ -85,21 +85,70 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
     return configWithoutPlatforms;
   }
 
-  // Start with a copy of the base config (excluding platformConfigs to avoid recursion)
-  const resolvedConfig = { ...toolConfig };
+  // Start with a deep copy of the base config (excluding platformConfigs to avoid recursion)
+  const resolvedConfig = { 
+    ...toolConfig,
+    shellConfigs: toolConfig.shellConfigs ? {
+      ...toolConfig.shellConfigs,
+      zsh: toolConfig.shellConfigs.zsh ? {
+        ...toolConfig.shellConfigs.zsh,
+        scripts: toolConfig.shellConfigs.zsh.scripts ? [...toolConfig.shellConfigs.zsh.scripts] : undefined
+      } : undefined,
+      bash: toolConfig.shellConfigs.bash ? {
+        ...toolConfig.shellConfigs.bash,
+        scripts: toolConfig.shellConfigs.bash.scripts ? [...toolConfig.shellConfigs.bash.scripts] : undefined
+      } : undefined,
+      powershell: toolConfig.shellConfigs.powershell ? {
+        ...toolConfig.shellConfigs.powershell,
+        scripts: toolConfig.shellConfigs.powershell.scripts ? [...toolConfig.shellConfigs.powershell.scripts] : undefined
+      } : undefined,
+    } : undefined
+  };
   delete (resolvedConfig as any).platformConfigs;
 
   // Apply each matching platform config in order
   for (const match of matchingConfigs) {
-    // Merge shell init arrays
-    if (match.config.zshInit) {
-      resolvedConfig.zshInit = [...(resolvedConfig.zshInit || []), ...match.config.zshInit];
-    }
-    if (match.config.bashInit) {
-      resolvedConfig.bashInit = [...(resolvedConfig.bashInit || []), ...match.config.bashInit];
-    }
-    if (match.config.powershellInit) {
-      resolvedConfig.powershellInit = [...(resolvedConfig.powershellInit || []), ...match.config.powershellInit];
+    // Merge shell configs
+    if (match.config.shellConfigs) {
+      // Ensure resolvedConfig.shellConfigs exists
+      if (!resolvedConfig.shellConfigs) {
+        resolvedConfig.shellConfigs = {} as any;
+      }
+      
+      // Merge zsh scripts
+      if (match.config.shellConfigs.zsh?.scripts) {
+        if (!resolvedConfig.shellConfigs!.zsh) {
+          resolvedConfig.shellConfigs!.zsh = { scripts: undefined };
+        }
+        resolvedConfig.shellConfigs!.zsh!.scripts = [
+          ...(resolvedConfig.shellConfigs!.zsh!.scripts || []),
+          ...match.config.shellConfigs.zsh.scripts
+        ];
+      }
+      
+      // Merge bash scripts
+      if (match.config.shellConfigs.bash?.scripts) {
+        if (!resolvedConfig.shellConfigs!.bash) {
+          resolvedConfig.shellConfigs!.bash = { scripts: undefined };
+        }
+        resolvedConfig.shellConfigs!.bash!.scripts = [
+          ...(resolvedConfig.shellConfigs!.bash!.scripts || []),
+          ...match.config.shellConfigs.bash.scripts
+        ];
+      }
+      
+      // Merge powershell scripts
+      if (match.config.shellConfigs.powershell?.scripts) {
+        if (!resolvedConfig.shellConfigs!.powershell) {
+          resolvedConfig.shellConfigs!.powershell = { scripts: undefined };
+        }
+        resolvedConfig.shellConfigs!.powershell!.scripts = [
+          ...(resolvedConfig.shellConfigs!.powershell!.scripts || []),
+          ...match.config.shellConfigs.powershell.scripts
+        ];
+      }
+      
+      // TODO: Also merge aliases and environment variables when those are implemented
     }
 
     // Merge symlinks arrays

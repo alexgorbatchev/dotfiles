@@ -30,16 +30,20 @@ describe('ZshGenerator', () => {
     expect(generator.fileExtension).toBe('.zsh');
   });
 
-  it('should extract shell content from tool config with zshInit', () => {
+  it('should extract shell content from tool config with shellConfigs', () => {
     const toolConfig: ToolConfig = {
       name: 'test-tool',
       binaries: ['test'],
       version: '1.0.0',
-      zshInit: [
-        always`export TEST_VAR="value"`,
-        always`export PATH="/opt/test/bin:$PATH"`,
-        always`alias test="test-tool --verbose"`,
-      ],
+      shellConfigs: {
+        zsh: {
+          scripts: [
+            always`export TEST_VAR="value"`,
+            always`export PATH="/opt/test/bin:$PATH"`,
+            always`alias test="test-tool --verbose"`,
+          ],
+        },
+      },
       installationMethod: 'none',
       installParams: undefined,
     };

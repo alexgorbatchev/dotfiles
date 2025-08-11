@@ -16,6 +16,7 @@ import type {
   PlatformConfigEntry,
   ShellScript,
   ShellConfig,
+  ShellConfigs,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigInstallationMethod,
@@ -23,7 +24,23 @@ import type {
   ToolConfigUpdateCheck,
   Platform,
 } from '@types';
-import { always } from '@types';
+
+/**
+ * Internal shell configuration storage organized by shell type
+ */
+interface ShellStorage {
+  scripts: ShellScript[];
+  aliases: Record<string, string>;
+}
+
+/**
+ * Internal shell configurations organized by shell type
+ */
+interface InternalShellConfigs {
+  zsh: ShellStorage;
+  bash: ShellStorage;
+  powershell: ShellStorage;
+}
 
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
@@ -32,12 +49,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public versionNum: string = 'latest';
   public currentInstallationMethod?: ToolConfigInstallationMethod;
   public currentInstallParams?: ToolConfigInstallParams;
-  public zshScripts: ShellScript[] = [];
-  public bashScripts: ShellScript[] = [];
-  public powershellScripts: ShellScript[] = [];
-  public zshAliases: Record<string, string> = {};
-  public bashAliases: Record<string, string> = {};
-  public powershellAliases: Record<string, string> = {};
+  
+  // Organized shell storage matching final ToolConfig structure
+  private internalShellConfigs: InternalShellConfigs = {
+    zsh: { scripts: [], aliases: {} },
+    bash: { scripts: [], aliases: {} },
+    powershell: { scripts: [], aliases: {} }
+  };
+  
   public symlinkPairs: { source: string; target: string }[] = [];
   public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -49,6 +68,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     this.logger = parentLogger.getSubLogger({ name: 'ToolConfigBuilder' });
     this.toolName = toolName;
     this.isPlatformScope = isPlatformScope;
+  }
+
+  get shellConfigs(): Readonly<InternalShellConfigs> {
+    return this.internalShellConfigs;
   }
 
   bin(names: string | string[]): this {
@@ -96,7 +119,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     // Handle new API: ShellConfig object
     if (this.isShellConfig(configOrScript)) {
       if (configOrScript.shellInit) {
-        this.zshScripts.push(...configOrScript.shellInit);
+        this.internalShellConfigs.zsh.scripts.push(...configOrScript.shellInit);
       }
       if (configOrScript.completions) {
         this.completionSettings = {
@@ -105,13 +128,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         };
       }
       if (configOrScript.aliases) {
-        this.zshAliases = { ...this.zshAliases, ...configOrScript.aliases };
+        this.internalShellConfigs.zsh.aliases = { ...this.internalShellConfigs.zsh.aliases, ...configOrScript.aliases };
       }
       return this;
     }
     
     // Handle old API: ShellScript arguments
-    this.zshScripts.push(configOrScript, ...additionalScripts);
+    this.internalShellConfigs.zsh.scripts.push(configOrScript, ...additionalScripts);
     return this;
   }
 
@@ -119,7 +142,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     // Handle new API: ShellConfig object
     if (this.isShellConfig(configOrScript)) {
       if (configOrScript.shellInit) {
-        this.bashScripts.push(...configOrScript.shellInit);
+        this.internalShellConfigs.bash.scripts.push(...configOrScript.shellInit);
       }
       if (configOrScript.completions) {
         this.completionSettings = {
@@ -128,13 +151,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         };
       }
       if (configOrScript.aliases) {
-        this.bashAliases = { ...this.bashAliases, ...configOrScript.aliases };
+        this.internalShellConfigs.bash.aliases = { ...this.internalShellConfigs.bash.aliases, ...configOrScript.aliases };
       }
       return this;
     }
     
     // Handle old API: ShellScript arguments
-    this.bashScripts.push(configOrScript, ...additionalScripts);
+    this.internalShellConfigs.bash.scripts.push(configOrScript, ...additionalScripts);
     return this;
   }
 
@@ -142,7 +165,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     // Handle new API: ShellConfig object
     if (this.isShellConfig(configOrScript)) {
       if (configOrScript.shellInit) {
-        this.powershellScripts.push(...configOrScript.shellInit);
+        this.internalShellConfigs.powershell.scripts.push(...configOrScript.shellInit);
       }
       if (configOrScript.completions) {
         this.completionSettings = {
@@ -151,13 +174,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         };
       }
       if (configOrScript.aliases) {
-        this.powershellAliases = { ...this.powershellAliases, ...configOrScript.aliases };
+        this.internalShellConfigs.powershell.aliases = { ...this.internalShellConfigs.powershell.aliases, ...configOrScript.aliases };
       }
       return this;
     }
     
     // Handle old API: ShellScript arguments
-    this.powershellScripts.push(configOrScript, ...additionalScripts);
+    this.internalShellConfigs.powershell.scripts.push(configOrScript, ...additionalScripts);
     return this;
   }
 
@@ -165,27 +188,26 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return typeof value === 'object' && value !== null && !('__brand' in value);
   }
 
-  private generateAliasScripts(aliases: Record<string, string>, shellType: 'zsh' | 'bash' | 'powershell'): ShellScript | undefined {
-    const aliasEntries = Object.entries(aliases);
-    if (aliasEntries.length === 0) {
-      return undefined;
+  private buildShellConfigs(): ShellConfigs | undefined {
+    const shellTypes = ['zsh', 'bash', 'powershell'] as const;
+    const result: ShellConfigs = {};
+    let hasAnyConfig = false;
+
+    for (const shellType of shellTypes) {
+      const config = this.internalShellConfigs[shellType];
+      const hasScripts = config.scripts.length > 0;
+      const hasAliases = Object.keys(config.aliases).length > 0;
+
+      if (hasScripts || hasAliases) {
+        result[shellType] = {
+          ...(hasScripts && { scripts: config.scripts }),
+          ...(hasAliases && { aliases: config.aliases })
+        };
+        hasAnyConfig = true;
+      }
     }
 
-    let aliasScript: string;
-    if (shellType === 'powershell') {
-      // PowerShell uses Set-Alias
-      aliasScript = aliasEntries
-        .map(([name, command]) => `Set-Alias ${name} "${command}"`)
-        .join('\n');
-    } else {
-      // Zsh and Bash use the same alias syntax
-      aliasScript = aliasEntries
-        .map(([name, command]) => `alias ${name}="${command}"`)
-        .join('\n');
-    }
-
-    // Create a branded script with always timing
-    return always`${aliasScript}`;
+    return hasAnyConfig ? result : undefined;
   }
 
   symlink(source: string, target: string): this {
@@ -246,34 +268,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const name = this.toolName;
     const binaries = this.binaries;
     const version = this.versionNum;
-    // Combine manual shell scripts with generated alias scripts
-    const zshAliasScript = this.generateAliasScripts(this.zshAliases, 'zsh');
-    const bashAliasScript = this.generateAliasScripts(this.bashAliases, 'bash');
-    const powershellAliasScript = this.generateAliasScripts(this.powershellAliases, 'powershell');
     
-    const zshInit = [
-      ...(zshAliasScript ? [zshAliasScript] : []),
-      ...this.zshScripts
-    ].length > 0 ? [
-      ...(zshAliasScript ? [zshAliasScript] : []),
-      ...this.zshScripts
-    ] : undefined;
-    
-    const bashInit = [
-      ...(bashAliasScript ? [bashAliasScript] : []),
-      ...this.bashScripts
-    ].length > 0 ? [
-      ...(bashAliasScript ? [bashAliasScript] : []),
-      ...this.bashScripts
-    ] : undefined;
-    
-    const powershellInit = [
-      ...(powershellAliasScript ? [powershellAliasScript] : []),
-      ...this.powershellScripts
-    ].length > 0 ? [
-      ...(powershellAliasScript ? [powershellAliasScript] : []),
-      ...this.powershellScripts
-    ] : undefined;
+    // Build organized shell configs
+    const shellConfigs = this.buildShellConfigs();
     const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
     const completions = this.completionSettings;
     const updateCheck = this.updateCheckConfig;
@@ -293,9 +290,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         name,
         binaries: binaries && binaries.length > 0 ? binaries : [],
         version,
-        zshInit,
-        bashInit,
-        powershellInit,
+        shellConfigs,
         symlinks,
         completions,
         updateCheck,
@@ -346,9 +341,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
     if (
       finalBinaries.length === 0 &&
-      !zshInit &&
-      !bashInit &&
-      !powershellInit &&
+      !shellConfigs &&
       !symlinks &&
       (!platformConfigs || platformConfigs.length === 0)
     ) {
@@ -364,9 +357,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       name,
       binaries: finalBinaries,
       version,
-      zshInit,
-      bashInit,
-      powershellInit,
+      shellConfigs,
       symlinks,
       completions,
       updateCheck,

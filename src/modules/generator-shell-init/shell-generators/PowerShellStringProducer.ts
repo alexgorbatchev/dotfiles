@@ -16,7 +16,7 @@ export class PowerShellStringProducer implements IShellStringProducer {
   }
 
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
-    return toolConfig.powershellInit || [];
+    return toolConfig.shellConfigs?.powershell?.scripts || [];
   }
 
   processCompletions(toolName: string, completions: CompletionConfig): string[] {

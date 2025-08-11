@@ -35,12 +35,16 @@ describe('PowerShellGenerator', () => {
       name: 'test-tool',
       binaries: ['test'],
       version: '1.0.0',
-      powershellInit: [
-        always`$env:TEST_VAR = "value"`,
-        always`$env:PATH = "/opt/test/bin;$env:PATH"`,
-        always`function test { test-tool --verbose }`,
-        always`. ~/.testrc`,
-      ],
+      shellConfigs: {
+        powershell: {
+          scripts: [
+            always`$env:TEST_VAR = "value"`,
+            always`$env:PATH = "/opt/test/bin;$env:PATH"`,
+            always`function test { test-tool --verbose }`,
+            always`. ~/.testrc`,
+          ],
+        },
+      },
       installationMethod: 'none',
       installParams: undefined,
     };

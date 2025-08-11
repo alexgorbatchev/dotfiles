@@ -11,6 +11,30 @@ import type {
 import type { ToolConfigUpdateCheck } from './toolConfigBuilder.types';
 
 /**
+ * Shell configuration for a specific shell type
+ */
+export interface ShellTypeConfig {
+  /** Shell initialization scripts */
+  scripts?: ShellScript[];
+  /** Shell aliases (alias name -> command) */
+  aliases?: Record<string, string>;
+  /** Environment variables to define (variable name -> value) */
+  environment?: Record<string, string>;
+}
+
+/**
+ * Shell configuration organized by shell type
+ */
+export interface ShellConfigs {
+  /** Zsh shell configuration */
+  zsh?: ShellTypeConfig;
+  /** Bash shell configuration */
+  bash?: ShellTypeConfig;
+  /** PowerShell configuration */
+  powershell?: ShellTypeConfig;
+}
+
+/**
  * Base properties common to all variants of a fully resolved {@link ToolConfig}.
  * This represents the internal data structure after the `ToolConfigBuilder` has been processed.
  */
@@ -26,12 +50,8 @@ interface BaseToolConfigProperties {
   version: string;
   /** The absolute path to the tool configuration file that defined this configuration. */
   configFilePath?: string;
-  /** An array of Zsh initialization scripts, added via `c.zsh()`. */
-  zshInit?: ShellScript[];
-  /** An array of Bash initialization scripts, added via `c.bash()`. */
-  bashInit?: ShellScript[];
-  /** An array of PowerShell initialization scripts, added via `c.powershell()`. */
-  powershellInit?: ShellScript[];
+  /** Shell configurations organized by shell type, added via `c.zsh()`, `c.bash()`, `c.powershell()`. */
+  shellConfigs?: ShellConfigs;
   /**
    * An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths where
    * `source` is real file and `target` is the symlink.
@@ -62,12 +82,8 @@ export interface PlatformConfig {
   binaries?: string[];
   /** The desired version of the tool. */
   version?: string;
-  /** An array of Zsh initialization scripts. */
-  zshInit?: ShellScript[];
-  /** An array of Bash initialization scripts. */
-  bashInit?: ShellScript[];  
-  /** An array of PowerShell initialization scripts. */
-  powershellInit?: ShellScript[];
+  /** Shell configurations organized by shell type. */
+  shellConfigs?: ShellConfigs;
   /** An array of symlink configurations. */
   symlinks?: { source: string; target: string }[];
   /** Shell completion configurations. */

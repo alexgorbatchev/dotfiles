@@ -17,7 +17,7 @@ export class ZshStringProducer implements IShellStringProducer {
   }
 
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
-    return toolConfig.zshInit || [];
+    return toolConfig.shellConfigs?.zsh?.scripts || [];
   }
 
   processCompletions(_toolName: string, completions: CompletionConfig): string[] {

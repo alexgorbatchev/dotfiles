@@ -1,7 +1,7 @@
 import { expect, test, describe, beforeEach } from 'bun:test';
 import { ToolConfigBuilder } from '../index';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
-import { always, getScriptContent } from '@types';
+import { always } from '@types';
 import { TestLogger } from '@testing-helpers';
 import { logs } from '@modules/logger';
 
@@ -17,7 +17,7 @@ describe('ToolConfigBuilder', () => {
     expect(builder.toolName).toBe('test-tool');
     expect(builder.versionNum).toBe('latest');
     expect(builder.binaries).toEqual([]);
-    expect(builder.zshScripts).toEqual([]);
+    expect(builder.shellConfigs.zsh.scripts).toEqual([]);
     expect(builder.symlinkPairs).toEqual([]);
     expect(builder.currentInstallationMethod).toBeUndefined();
     expect(builder.currentInstallParams).toBeUndefined();
@@ -92,7 +92,8 @@ describe('ToolConfigBuilder', () => {
     builder.zsh(always`alias ll="ls -l"`);
     builder.zsh(always`export PATH="$HOME/bin:$PATH"`);
     // build() is valid here as zshInit is provided
-    expect(builder.build().zshInit).toEqual([always`alias ll="ls -l"`, always`export PATH="$HOME/bin:$PATH"`]);
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias ll="ls -l"`, always`export PATH="$HOME/bin:$PATH"`]);
   });
 
   test('symlink method adds symlinks correctly', () => {
@@ -138,7 +139,7 @@ describe('ToolConfigBuilder', () => {
     if (config.installationMethod === 'github-release') {
       expect(config.installParams).toEqual({ ...installParams, hooks });
     }
-    expect(config.zshInit).toEqual([always`alias tt="test-tool"`]);
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
     expect(config.symlinks).toEqual([
       { source: 'config.yml', target: '~/.config/tool/config.yml' },
     ]);
@@ -154,7 +155,7 @@ describe('ToolConfigBuilder', () => {
     expect(config.installationMethod).toBe('none');
     expect(config.installParams).toBeUndefined();
     // Ensure other optional fields are undefined if not set
-    expect(config.zshInit).toBeUndefined();
+    expect(config.shellConfigs).toBeUndefined();
     expect(config.symlinks).toBeUndefined();
     expect(config.completions).toBeUndefined();
     expect(config.updateCheck).toBeUndefined();
@@ -167,7 +168,7 @@ describe('ToolConfigBuilder', () => {
     expect(config.installationMethod).toBe('none'); // Should be 'none'
     expect(config.installParams).toBeUndefined();
     expect(config.binaries).toEqual([]);
-    expect(config.zshInit).toEqual([always`alias tt="test-tool"`]);
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
   });
 
   test('build method returns NoInstallToolConfig if only symlinks are present', () => {
@@ -260,12 +261,12 @@ describe('ToolConfigBuilder', () => {
       ]
     });
 
-    expect(builder.zshAliases).toEqual({
+    expect(builder.shellConfigs.zsh.aliases).toEqual({
       'g': 'git',
       'l': 'ls -la', 
       'v': 'vim'
     });
-    expect(builder.zshScripts).toHaveLength(1);
+    expect(builder.shellConfigs.zsh.scripts).toHaveLength(1);
   });
 
   test('bash method handles aliases correctly', () => {
@@ -278,7 +279,7 @@ describe('ToolConfigBuilder', () => {
       }
     });
 
-    expect(builder.bashAliases).toEqual({
+    expect(builder.shellConfigs.bash.aliases).toEqual({
       'g': 'git',
       'dc': 'docker-compose'
     });
@@ -294,13 +295,13 @@ describe('ToolConfigBuilder', () => {
       }
     });
 
-    expect(builder.powershellAliases).toEqual({
+    expect(builder.shellConfigs.powershell.aliases).toEqual({
       'g': 'git',
       'cat': 'Get-Content'
     });
   });
 
-  test('build method includes aliases in shell init scripts', () => {
+  test('build method includes aliases in shell configs', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     
     builder
@@ -314,17 +315,14 @@ describe('ToolConfigBuilder', () => {
 
     const config = builder.build();
     
-    expect(config.zshInit).toBeDefined();
-    expect(config.zshInit).toHaveLength(1);
-    
-    // The first script should be the generated alias script
-    const aliasScript = config.zshInit![0]!;
-    const scriptContent = getScriptContent(aliasScript);
-    expect(scriptContent).toMatch('alias g="git"');
-    expect(scriptContent).toMatch('alias l="ls -la"');
+    expect(config.shellConfigs?.zsh?.aliases).toBeDefined();
+    expect(config.shellConfigs?.zsh?.aliases).toEqual({
+      'g': 'git',
+      'l': 'ls -la'
+    });
   });
 
-  test('build method generates correct PowerShell aliases', () => {
+  test('build method stores PowerShell aliases correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     
     builder
@@ -338,14 +336,11 @@ describe('ToolConfigBuilder', () => {
 
     const config = builder.build();
     
-    expect(config.powershellInit).toBeDefined();
-    expect(config.powershellInit).toHaveLength(1);
-    
-    // The first script should be the generated alias script
-    const aliasScript = config.powershellInit![0]!;
-    const scriptContent = getScriptContent(aliasScript);
-    expect(scriptContent).toMatch('Set-Alias g "git"');
-    expect(scriptContent).toMatch('Set-Alias cat "Get-Content"');
+    expect(config.shellConfigs?.powershell?.aliases).toBeDefined();
+    expect(config.shellConfigs?.powershell?.aliases).toEqual({
+      'g': 'git',
+      'cat': 'Get-Content'
+    });
   });
 
   test('multiple zsh calls merge aliases correctly', () => {
@@ -359,7 +354,7 @@ describe('ToolConfigBuilder', () => {
         aliases: { 'l': 'ls -la', 'v': 'vim' }
       });
 
-    expect(builder.zshAliases).toEqual({
+    expect(builder.shellConfigs.zsh.aliases).toEqual({
       'g': 'git',
       'l': 'ls -la',
       'v': 'vim'

@@ -35,12 +35,16 @@ describe('BashGenerator', () => {
       name: 'test-tool',
       binaries: ['test'],
       version: '1.0.0',
-      bashInit: [
-        always`export TEST_VAR="value"`,
-        always`export PATH="/opt/test/bin:$PATH"`,
-        always`declare -U PATH`,
-        always`# Bash-specific completion setup`,
-      ],
+      shellConfigs: {
+        bash: {
+          scripts: [
+            always`export TEST_VAR="value"`,
+            always`export PATH="/opt/test/bin:$PATH"`,
+            always`declare -U PATH`,
+            always`# Bash-specific completion setup`,
+          ],
+        },
+      },
       installationMethod: 'none',
       installParams: undefined,
     };

@@ -92,7 +92,11 @@ describe('GeneratorOrchestrator', () => {
         name: 'toolB',
         binaries: ['tb'],
         version: '2.0',
-        zshInit: [always`export TB=1`],
+        shellConfigs: {
+          zsh: {
+            scripts: [always`export TB=1`],
+          },
+        },
         installationMethod: 'none',
         installParams: undefined,
       },

@@ -91,10 +91,10 @@ describe('ToolConfigContext', () => {
       
       expect(toolConfig).toBeDefined();
       expect(toolConfig.name).toBe('shell-tool');
-      expect(toolConfig.zshInit).toBeDefined();
-      expect(toolConfig.zshInit![0]).toContain(mockYamlConfig.paths.binariesDir);
-      expect(toolConfig.zshInit![0]).toContain(mockYamlConfig.paths.homeDir);
-      expect(toolConfig.zshInit![0]).toContain(mockYamlConfig.paths.generatedDir);
+      expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(mockYamlConfig.paths.binariesDir);
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(mockYamlConfig.paths.homeDir);
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(mockYamlConfig.paths.generatedDir);
     });
 
     it('should handle tool dependencies using getToolDir', async () => {
@@ -121,9 +121,9 @@ describe('ToolConfigContext', () => {
       await configureToolFn(builder, context);
       const toolConfig = builder.build();
       
-      expect(toolConfig.zshInit).toBeDefined();
-      expect(toolConfig.zshInit![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf'));
-      expect(toolConfig.zshInit![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'));
+      expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf'));
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'));
     });
 
 
@@ -147,8 +147,8 @@ describe('ToolConfigContext', () => {
       await configureToolFn(builder, context);
       const toolConfig = builder.build();
       
-      expect(toolConfig.zshInit).toBeDefined();
-      expect(toolConfig.zshInit![0]).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_completion-tool'));
+      expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_completion-tool'));
     });
   });
 
@@ -233,8 +233,8 @@ describe('ToolConfigContext', () => {
       
       expect(toolConfig.installationMethod).toBe('github-release');
       expect(toolConfig.completions).toBeDefined();
-      expect(toolConfig.zshInit).toBeDefined();
-      expect(toolConfig.zshInit![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf-like'));
+      expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf-like'));
     });
 
     it('should work with atuin-like tool pattern', async () => {
@@ -261,9 +261,9 @@ describe('ToolConfigContext', () => {
       const toolConfig = builder.build();
       
       expect(toolConfig.symlinks).toBeDefined();
-      expect(toolConfig.zshInit).toBeDefined();
-      expect(toolConfig.zshInit![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'atuin-like'));
-      expect(toolConfig.zshInit![0]).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_atuin-like'));
+      expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'atuin-like'));
+      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_atuin-like'));
     });
   });
 });

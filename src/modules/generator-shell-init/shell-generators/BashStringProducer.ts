@@ -16,7 +16,7 @@ export class BashStringProducer implements IShellStringProducer {
   }
 
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
-    return toolConfig.bashInit || [];
+    return toolConfig.shellConfigs?.bash?.scripts || [];
   }
 
   processCompletions(toolName: string, completions: CompletionConfig): string[] {

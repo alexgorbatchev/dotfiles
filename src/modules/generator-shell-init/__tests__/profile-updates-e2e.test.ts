@@ -45,9 +45,11 @@ describe('Profile Updates E2E Tests', () => {
           name: 'lazygit',
           binaries: ['lazygit'],
           version: '0.40.2',
-          zshInit: [always`alias g="lazygit"`, always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`],
-          bashInit: [always`alias g="lazygit"`, always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`],
-          powershellInit: [always`Set-Alias g lazygit`, always`$env:LAZYGIT_CONFIG_FILE = "$HOME/.config/lazygit/config.yml"`],
+          shellConfigs: {
+            zsh: { scripts: [always`alias g="lazygit"`, always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`] },
+            bash: { scripts: [always`alias g="lazygit"`, always`export LAZYGIT_CONFIG_FILE="$HOME/.config/lazygit/config.yml"`] },
+            powershell: { scripts: [always`Set-Alias g lazygit`, always`$env:LAZYGIT_CONFIG_FILE = "$HOME/.config/lazygit/config.yml"`] },
+          },
           installationMethod: 'github-release',
           installParams: {
             repo: 'jesseduffield/lazygit',
@@ -57,14 +59,16 @@ describe('Profile Updates E2E Tests', () => {
           name: 'fzf',
           binaries: ['fzf'],
           version: '0.44.1',
-          zshInit: [
-            always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
-            always`export PATH="$HOME/.fzf/bin:$PATH"`,
-          ],
-          bashInit: [
-            always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
-            always`export PATH="$HOME/.fzf/bin:$PATH"`,
-          ],
+          shellConfigs: {
+            zsh: { scripts: [
+              always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
+              always`export PATH="$HOME/.fzf/bin:$PATH"`,
+            ] },
+            bash: { scripts: [
+              always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
+              always`export PATH="$HOME/.fzf/bin:$PATH"`,
+            ] },
+          },
           completions: {
             zsh: { source: 'completion.zsh', name: '_fzf' },
             bash: { source: 'completion.bash', name: 'fzf' },
@@ -219,8 +223,10 @@ describe('Profile Updates E2E Tests', () => {
           name: 'testTool',
           binaries: ['test-tool'],
           version: '1.0.0',
-          zshInit: [always`export TEST_VAR="value"`],
-          bashInit: [always`export TEST_VAR="value"`],
+          shellConfigs: {
+            zsh: { scripts: [always`export TEST_VAR="value"`] },
+            bash: { scripts: [always`export TEST_VAR="value"`] },
+          },
           installationMethod: 'none',
           installParams: undefined,
         },
@@ -301,7 +307,9 @@ describe('Profile Updates E2E Tests', () => {
           name: 'customTool',
           binaries: ['custom'],
           version: '1.0.0',
-          zshInit: [always`export CUSTOM_VAR="test"`],
+          shellConfigs: {
+            zsh: { scripts: [always`export CUSTOM_VAR="test"`] },
+          },
           installationMethod: 'none',
           installParams: undefined,
         },
@@ -343,18 +351,20 @@ describe('Profile Updates E2E Tests', () => {
           name: 'neovim',
           binaries: ['nvim'],
           version: '0.9.5',
-          zshInit: [
-            always`export EDITOR="nvim"`,
-            always`export VISUAL="nvim"`,
-            always`alias vim="nvim"`,
-            always`alias vi="nvim"`,
-          ],
-          bashInit: [
-            always`export EDITOR="nvim"`,
-            always`export VISUAL="nvim"`,
-            always`alias vim="nvim"`,
-            always`alias vi="nvim"`,
-          ],
+          shellConfigs: {
+            zsh: { scripts: [
+              always`export EDITOR="nvim"`,
+              always`export VISUAL="nvim"`,
+              always`alias vim="nvim"`,
+              always`alias vi="nvim"`,
+            ] },
+            bash: { scripts: [
+              always`export EDITOR="nvim"`,
+              always`export VISUAL="nvim"`,
+              always`alias vim="nvim"`,
+              always`alias vi="nvim"`,
+            ] },
+          },
           installationMethod: 'github-release',
           installParams: {
             repo: 'neovim/neovim',
@@ -364,14 +374,16 @@ describe('Profile Updates E2E Tests', () => {
           name: 'ripgrep',
           binaries: ['rg'],
           version: '13.0.0',
-          zshInit: [
-            always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
-            always`export PATH="$HOME/.cargo/bin:$PATH"`,
-          ],
-          bashInit: [
-            always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
-            always`export PATH="$HOME/.cargo/bin:$PATH"`,
-          ],
+          shellConfigs: {
+            zsh: { scripts: [
+              always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
+              always`export PATH="$HOME/.cargo/bin:$PATH"`,
+            ] },
+            bash: { scripts: [
+              always`export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"`,
+              always`export PATH="$HOME/.cargo/bin:$PATH"`,
+            ] },
+          },
           installationMethod: 'github-release',
           installParams: {
             repo: 'BurntSushi/ripgrep',
@@ -381,14 +393,16 @@ describe('Profile Updates E2E Tests', () => {
           name: 'bat',
           binaries: ['bat'],
           version: '0.24.0',
-          zshInit: [
-            always`export BAT_THEME="ansi"`,
-            always`alias cat="bat"`,
-          ],
-          bashInit: [
-            always`export BAT_THEME="ansi"`,
-            always`alias cat="bat"`,
-          ],
+          shellConfigs: {
+            zsh: { scripts: [
+              always`export BAT_THEME="ansi"`,
+              always`alias cat="bat"`,
+            ] },
+            bash: { scripts: [
+              always`export BAT_THEME="ansi"`,
+              always`alias cat="bat"`,
+            ] },
+          },
           completions: {
             zsh: { source: 'bat.zsh', name: '_bat' },
             bash: { source: 'bat.bash', name: 'bat' },

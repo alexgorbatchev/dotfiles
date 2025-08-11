@@ -81,8 +81,8 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
                   (platformConfig.platforms & Platform.MacOS && options.systemInfo.platform === 'darwin') ||
                   (platformConfig.platforms & Platform.Linux && options.systemInfo.platform === 'linux');
                 
-                if (isMatch && platformConfig.config.zshInit) {
-                  mockContent += `# Platform-specific content for ${toolName}: ${platformConfig.config.zshInit.join(' ')}\n`;
+                if (isMatch && platformConfig.config.shellConfigs?.zsh?.scripts) {
+                  mockContent += `# Platform-specific content for ${toolName}: ${platformConfig.config.shellConfigs.zsh.scripts.join(' ')}\n`;
                 }
               }
             }
@@ -128,7 +128,11 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
             platforms: Platform.MacOS,
             config: {
               binaries: ['aerospace'],
-              zshInit: [always`# macOS aerospace init`],
+              shellConfigs: {
+                zsh: {
+                  scripts: [always`# macOS aerospace init`],
+                },
+              },
             },
           }],
         },
@@ -138,7 +142,11 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/regular' },
           binaries: ['regular'],
-          zshInit: [always`# Regular tool init`],
+          shellConfigs: {
+            zsh: {
+              scripts: [always`# Regular tool init`],
+            },
+          },
         },
       };
 
@@ -170,18 +178,30 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           name: 'cross-platform-tool',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: [always`# Base init`],
+          shellConfigs: {
+            zsh: {
+              scripts: [always`# Base init`],
+            },
+          },
           platformConfigs: [
             {
               platforms: Platform.MacOS,
               config: {
-                zshInit: [always`# macOS specific - should not appear`],
+                shellConfigs: {
+                  zsh: {
+                    scripts: [always`# macOS specific - should not appear`],
+                  },
+                },
               },
             },
             {
               platforms: Platform.Linux,
               config: {
-                zshInit: [always`# Linux specific - should appear`],
+                shellConfigs: {
+                  zsh: {
+                    scripts: [always`# Linux specific - should appear`],
+                  },
+                },
               },
             },
           ],
@@ -219,7 +239,11 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           installationMethod: 'github-release',
           installParams: { repo: 'test/simple' },
           binaries: ['simple'],
-          zshInit: [always`# Simple tool init`],
+          shellConfigs: {
+            zsh: {
+              scripts: [always`# Simple tool init`],
+            },
+          },
           // No platform configs
         },
       };
@@ -254,13 +278,21 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           name: 'full-platform-tool',
           version: 'latest',
           installationMethod: 'none',
-          zshInit: [always`# Base shell init`],
+          shellConfigs: {
+            zsh: {
+              scripts: [always`# Base shell init`],
+            },
+          },
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
           platformConfigs: [{
             platforms: Platform.MacOS,
             config: {
               binaries: ['macos-binary'],
-              zshInit: [always`# macOS shell init`],
+              shellConfigs: {
+                zsh: {
+                  scripts: [always`# macOS shell init`],
+                },
+              },
               symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
               installationMethod: 'brew',
               installParams: { formula: 'test-formula' },
