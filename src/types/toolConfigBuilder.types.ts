@@ -1,4 +1,4 @@
-import type { CompletionConfig } from './completion.types';
+import type { CompletionConfig, ShellCompletionConfig } from './completion.types';
 import type { Platform, Architecture } from './platform.types';
 import type { ShellScript } from './shellScript.types';
 import type { AsyncInstallHook } from './installHooks.types';
@@ -9,6 +9,34 @@ import type {
   CurlTarInstallParams,
   ManualInstallParams
 } from './installParams.types';
+
+/**
+ * Configuration for shell-specific properties.
+ * This interface groups all shell-related configuration options together.
+ */
+export interface ShellConfig {
+  /**
+   * Shell command-line completion configuration.
+   */
+  completions?: ShellCompletionConfig;
+  
+  /**
+   * Shell initialization scripts (branded with timing).
+   */
+  shellInit?: ShellScript[];
+  
+  // Future extensibility for shell-specific features:
+  // aliases?: Record<string, string>;
+  // functions?: ShellFunction[];
+  // keybindings?: KeyBinding[];
+  // environment?: Record<string, string>;
+  // widgets?: ZLEWidget[];           // Zsh-specific
+  // hooks?: ShellHooks;             // Shell lifecycle hooks
+  // modules?: string[];             // Shell modules to load
+  // options?: ShellOption[];        // Shell-specific options
+  // themes?: ShellTheme;           // Shell theming
+  // plugins?: ShellPlugin[];       // Shell plugin configs
+}
 
 /**
  * Defines the fluent interface for configuring a tool.
@@ -57,21 +85,39 @@ export interface PlatformConfigBuilder {
   }): this;
 
   /**
-   * Adds Zsh shell scripts for this specific platform configuration.
+   * Configures Zsh-specific properties for this platform configuration.
+   * @param config - Shell configuration object containing completions, shellInit, and future shell-specific properties
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  zsh(config: ShellConfig): this;
+  /**
+   * Adds Zsh shell scripts for this platform configuration.
    * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   zsh(...scripts: ShellScript[]): this;
 
   /**
-   * Adds Bash shell scripts for this specific platform configuration.
+   * Configures Bash-specific properties for this platform configuration.
+   * @param config - Shell configuration object containing completions, shellInit, and future shell-specific properties
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  bash(config: ShellConfig): this;
+  /**
+   * Adds Bash shell scripts for this platform configuration.
    * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   bash(...scripts: ShellScript[]): this;
 
   /**
-   * Adds PowerShell scripts for this specific platform configuration.
+   * Configures PowerShell-specific properties for this platform configuration.
+   * @param config - Shell configuration object containing completions, shellInit, and future shell-specific properties
+   * @returns The `PlatformConfigBuilder` instance for chaining.
+   */
+  powershell(config: ShellConfig): this;
+  /**
+   * Adds PowerShell scripts for this platform configuration.
    * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
@@ -233,77 +279,97 @@ export interface ToolConfigBuilder {
   }): this;
 
   /**
-   * Adds Zsh shell scripts to be included in the generated Zsh initialization file (typically
-   * `~/.generated/shell-scripts/main.zsh`, which is then sourced by the user's `.zshrc`). This is useful for setting environment
-   * variables, defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts related to the
-   * tool. Multiple calls to `zsh()` will append the scripts.
+   * Configures Zsh-specific properties including shell scripts, completions, and future shell-specific features.
+   * This method groups all Zsh-related configuration together for better organization and extensibility.
    *
-   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
+   * @param config - Shell configuration object
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
    * import { once, always } from '@types';
    * 
-   * c.zsh(
-   *   once`
-   *     # Generate completions (runs only once after installation/update)
-   *     tool completion zsh > "$DOTFILES/.generated/completions/_tool"
-   *   `,
-   *   always`
-   *     # Fast runtime setup (runs every shell startup)
-   *     export MYTOOL_CONFIG_DIR="$HOME/.mytool"
-   *     alias m="mytool"
-   *   `
-   * )
+   * c.zsh({
+   *   completions: {
+   *     source: 'completions/_tool',
+   *     name: '_my-tool'
+   *   },
+   *   shellInit: [
+   *     once`
+   *       # Generate completions (runs only once after installation/update)
+   *       tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+   *     `,
+   *     always`
+   *       # Fast runtime setup (runs every shell startup)
+   *       export MYTOOL_CONFIG_DIR="${ctx.homeDir}/.mytool"
+   *       alias m="mytool"
+   *     `
+   *   ]
+   * })
+   */
+  zsh(config: ShellConfig): this;
+  /**
+   * Adds Zsh shell scripts to be included in the generated Zsh initialization file.
+   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   zsh(...scripts: ShellScript[]): this;
 
   /**
-   * Adds Bash shell scripts to be included in the generated Bash initialization file (typically
-   * `~/.generated/shell-scripts/main.bash`). This is useful for setting environment variables,
-   * defining aliases or functions, adding directories to the `PATH`, or sourcing other scripts
-   * related to the tool. Multiple calls to `bash()` will append the scripts.
+   * Configures Bash-specific properties including shell scripts, completions, and future shell-specific features.
+   * This method groups all Bash-related configuration together for better organization and extensibility.
    *
-   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
+   * @param config - Shell configuration object
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
    * import { once, always } from '@types';
    * 
-   * c.bash(
-   *   once`
-   *     # Generate completions (runs only once after installation/update)
-   *     tool completion bash > "$HOME/.bash_completion.d/tool"
-   *   `,
-   *   always`
-   *     # Fast runtime setup (runs every shell startup)
-   *     export MYTOOL_CONFIG_DIR="$HOME/.mytool"
-   *     alias m="mytool"
-   *   `
-   * )
+   * c.bash({
+   *   completions: {
+   *     source: 'completions/tool.bash'
+   *   },
+   *   shellInit: [
+   *     always`
+   *       # Fast runtime setup (runs every shell startup)
+   *       export MYTOOL_CONFIG_DIR="$HOME/.mytool"
+   *       alias m="mytool"
+   *     `
+   *   ]
+   * })
+   */
+  bash(config: ShellConfig): this;
+  /**
+   * Adds Bash shell scripts to be included in the generated Bash initialization file.
+   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   bash(...scripts: ShellScript[]): this;
 
   /**
-   * Adds PowerShell scripts to be included in the generated PowerShell initialization file
-   * (typically `~/.generated/shell-scripts/main.ps1`). This is useful for setting environment
-   * variables, defining functions, adding directories to the `PATH`, or dot-sourcing other
-   * scripts related to the tool. Multiple calls to `powershell()` will append the scripts.
+   * Configures PowerShell-specific properties including shell scripts, completions, and future shell-specific features.
+   * This method groups all PowerShell-related configuration together for better organization and extensibility.
    *
-   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
+   * @param config - Shell configuration object
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
    * import { once, always } from '@types';
    * 
-   * c.powershell(
-   *   once`
-   *     # Generate completions (runs only once after installation/update)
-   *     & tool completion powershell > "$env:HOME\\.powershell_completions\\tool.ps1"
-   *   `,
-   *   always`
-   *     # Fast runtime setup (runs every shell startup)
-   *     $env:MYTOOL_CONFIG_DIR = "$env:HOME\\.mytool"
-   *     function m { mytool @args }
-   *   `
-   * )
+   * c.powershell({
+   *   completions: {
+   *     source: 'completions/tool.ps1'
+   *   },
+   *   shellInit: [
+   *     always`
+   *       # Fast runtime setup (runs every shell startup)
+   *       $env:MYTOOL_CONFIG_DIR = "$env:HOME\\.mytool"
+   *       function m { mytool @args }
+   *     `
+   *   ]
+   * })
+   */
+  powershell(config: ShellConfig): this;
+  /**
+   * Adds PowerShell scripts to be included in the generated PowerShell initialization file.
+   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   powershell(...scripts: ShellScript[]): this;
 

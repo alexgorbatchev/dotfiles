@@ -107,19 +107,24 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     // Configure symbolic links
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
     
-    // Add shell initialization code
-    .zsh(/* zsh */ `
-      # Environment variables
-      export TOOL_CONFIG_DIR="${ctx.homeDir}/.tool"
-      
-      # Aliases
-      alias t="tool"
-      
-      # Functions
-      function tool-helper() {
-        tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-      }
-    `);
+    // Add shell configuration
+    .zsh({
+      completions: { source: 'completions/_tool.zsh' },
+      shellInit: [
+        always/* zsh */`
+          # Environment variables
+          export TOOL_CONFIG_DIR="${ctx.homeDir}/.tool"
+          
+          # Aliases
+          alias t="tool"
+          
+          # Functions
+          function tool-helper() {
+            tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+          }
+        `
+      ]
+    });
 };
 ```
 
@@ -159,38 +164,50 @@ interface ToolConfigContext {
 **Accessing Current Tool Directory:**
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh(/* zsh */ `
-    # Reference the current tool's installation directory
-    export TOOL_CONFIG_DIR="${ctx.toolDir}"
-    
-    # Source tool-specific files
-    if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-      source "${ctx.toolDir}/shell/key-bindings.zsh"
-    fi
-  `);
+  c.zsh({
+    shellInit: [
+      always/* zsh */`
+        # Reference the current tool's installation directory
+        export TOOL_CONFIG_DIR="${ctx.toolDir}"
+        
+        # Source tool-specific files
+        if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+          source "${ctx.toolDir}/shell/key-bindings.zsh"
+        fi
+      `
+    ]
+  });
 };
 ```
 
 **Accessing Other Tool Directories:**
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh(/* zsh */ `
-    # Reference another tool's directory
-    FZF_DIR="${ctx.getToolDir('fzf')}"
-    if [[ -d "$FZF_DIR" ]]; then
-      export FZF_BASE="$FZF_DIR"
-    fi
-  `);
+  c.zsh({
+    shellInit: [
+      always/* zsh */`
+        # Reference another tool's directory
+        FZF_DIR="${ctx.getToolDir('fzf')}"
+        if [[ -d "$FZF_DIR" ]]; then
+          export FZF_BASE="$FZF_DIR"
+        fi
+      `
+    ]
+  });
 };
 ```
 
 **Using Generated Directories:**
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh(once/* zsh */ `
-    # Generate completions to the proper directory
-    tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-  `);
+  c.zsh({
+    shellInit: [
+      once/* zsh */`
+        # Generate completions to the proper directory
+        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+      `
+    ]
+  });
 };
 ```
 
@@ -533,45 +550,61 @@ c.install('manual', {
 
 ## Shell Integration
 
+### Modern Shell Configuration API
+
+The shell integration system now groups all shell-specific configuration by shell type, providing better organization and extensibility. Each shell method (`.zsh()`, `.bash()`, `.powershell()`) accepts a configuration object that can include completions, shell initialization scripts, and future shell-specific features.
+
 ### Shell Script Execution Timing
 
 The shell integration system supports two types of scripts with different execution timing:
 
-- **Always Scripts**: Run every time the shell starts (traditional behavior)
+- **Always Scripts**: Run every time the shell starts (traditional behavior)  
 - **Once Scripts**: Run only once after tool installation or updates (for expensive operations)
 
 This distinction helps optimize shell startup performance by preventing expensive operations like completion generation from running on every shell startup.
 
-### `.zsh(scripts: ShellScript[])`
+### `.zsh(config: ShellConfig)`
 
-Adds Zsh shell initialization code using branded script types.
+Configures Zsh-specific properties including shell scripts, completions, and future shell-specific features.
+
+**Configuration Object:**
+```typescript
+interface ShellConfig {
+  completions?: ShellCompletionConfig;  // Shell completions
+  shellInit?: ShellScript[];           // Shell initialization scripts
+  // Future extensions:
+  // aliases?: Record<string, string>;
+  // functions?: ShellFunction[];
+  // keybindings?: KeyBinding[];
+  // environment?: Record<string, string>;
+}
+```
 
 **Branded Script Types:**
 - `always(script)`: For scripts that should run on every shell startup
 - `once(script)`: For scripts that should run only once after installation/updates
 
-**Guidelines:**
-- Use template literals (backticks) for multi-line code
-- Include the `/* zsh */` comment for syntax highlighting
-- Use `once()` for expensive operations like completion generation
-- Use `always()` for aliases, functions, and lightweight setup
-- Multiple calls append to the initialization
-
-**Basic Usage:**
+**Usage:**
 ```typescript
 import { once, always } from '@types';
 
-c.zsh(
-  once/* zsh */`
-    # Generate completions (runs only once)
-    tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-  `,
-  always/* zsh */`
-    # Fast runtime setup (runs every shell startup)
-    export TOOL_CONFIG_DIR="${ctx.toolDir}"
-    alias t="tool"
-  `
-)
+c.zsh({
+  completions: {
+    source: 'shell/completion.zsh',
+    name: '_my-tool'
+  },
+  shellInit: [
+    once/* zsh */`
+      # Generate completions (runs only once)
+      tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+    `,
+    always/* zsh */`
+      # Fast runtime setup (runs every shell startup)
+      export TOOL_CONFIG_DIR="${ctx.toolDir}"
+      alias t="tool"
+    `
+  ]
+})
 ```
 
 **Performance Benefits:**
@@ -582,89 +615,120 @@ c.zsh(
 **Common Patterns:**
 
 ```typescript
-c.zsh(/* zsh */ `
-  # Environment variables
-  export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
-  export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
-  
-  # PATH modifications
-  add-to-path "${ctx.homeDir}/.tool/bin"
-  
-  # Aliases
-  alias t="tool"
-  alias tl="tool list"
-  alias ts="tool status"
-  
-  # Simple functions
-  function tool-cd() {
-    local dir=$(tool list-dirs | fzf)
-    [[ -n "$dir" ]] && cd "$dir"
-  }
-  
-  # Complex functions with error handling
-  function tool-install() {
-    local package="$1"
-    if [[ -z "$package" ]]; then
-      echo "Usage: tool-install <package>" >&2
-      return 1
-    fi
-    
-    echo "Installing $package..."
-    tool install "$package" || {
-      echo "Failed to install $package" >&2
-      return 1
-    }
-  }
-  
-  # ZLE (Zsh Line Editor) widgets
-  function tool-picker() {
-    local selection=$(tool list | fzf)
-    if [[ -n "$selection" ]]; then
-      zle kill-whole-line
-      BUFFER="tool run $selection"
-      zle accept-line
-    fi
-    zle redisplay
-  }
-  zle -N tool-picker
-  
-  # Key bindings (with vi-mode support)
-  if (( \${+zvm_after_init_commands} )); then
-    zvm_after_init_commands+=("bindkey '^T' tool-picker")
-  else
-    bindkey '^T' tool-picker
-  fi
-  
-  # Conditional initialization
-  if command -v tool >/dev/null 2>&1; then
-    eval "$(tool init zsh)"
-  fi
-  
-  # Source additional files
-  local tool_extras="${ctx.toolDir}/extras.zsh"
-  [[ -f "$tool_extras" ]] && source "$tool_extras"
-`)
+c.zsh({
+  shellInit: [
+    always/* zsh */`
+      # Environment variables
+      export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
+      export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
+      
+      # PATH modifications
+      add-to-path "${ctx.homeDir}/.tool/bin"
+      
+      # Aliases
+      alias t="tool"
+      alias tl="tool list"
+      alias ts="tool status"
+      
+      # Simple functions
+      function tool-cd() {
+        local dir=$(tool list-dirs | fzf)
+        [[ -n "$dir" ]] && cd "$dir"
+      }
+      
+      # Complex functions with error handling
+      function tool-install() {
+        local package="$1"
+        if [[ -z "$package" ]]; then
+          echo "Usage: tool-install <package>" >&2
+          return 1
+        fi
+        
+        echo "Installing $package..."
+        tool install "$package" || {
+          echo "Failed to install $package" >&2
+          return 1
+        }
+      }
+      
+      # ZLE (Zsh Line Editor) widgets
+      function tool-picker() {
+        local selection=$(tool list | fzf)
+        if [[ -n "$selection" ]]; then
+          zle kill-whole-line
+          BUFFER="tool run $selection"
+          zle accept-line
+        fi
+        zle redisplay
+      }
+      zle -N tool-picker
+      
+      # Key bindings (with vi-mode support)
+      if (( \${+zvm_after_init_commands} )); then
+        zvm_after_init_commands+=("bindkey '^T' tool-picker")
+      else
+        bindkey '^T' tool-picker
+      fi
+      
+      # Conditional initialization
+      if command -v tool >/dev/null 2>&1; then
+        eval "$(tool init zsh)"
+      fi
+      
+      # Source additional files
+      local tool_extras="${ctx.toolDir}/extras.zsh"
+      [[ -f "$tool_extras" ]] && source "$tool_extras"
+    `
+  ]
+})
 ```
 
-### `.bash(code: string)`
+### `.bash(config: ShellConfig)`
 
-Adds Bash shell initialization code (similar patterns to Zsh).
-
-### `.powershell(code: string)`
-
-Adds PowerShell initialization code for Windows support.
+Configures Bash-specific properties using the same configuration object structure as Zsh.
 
 **Example:**
 ```typescript
-c.powershell(/* powershell */ `
-  $env:TOOL_CONFIG_DIR = "${ctx.homeDir}\\.tool"
-  
-  function tool-helper {
-    tool --config "$env:TOOL_CONFIG_DIR\\config.toml" @args
-  }
-  
-  Set-Alias t tool
-`)
+c.bash({
+  completions: {
+    source: 'shell/completion.bash'
+  },
+  shellInit: [
+    always/* bash */`
+      export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
+      alias t="tool"
+      
+      # Source key bindings for bash
+      if [[ -f "${ctx.toolDir}/shell/key-bindings.bash" ]]; then
+        source "${ctx.toolDir}/shell/key-bindings.bash"
+      fi
+    `
+  ]
+})
+```
+
+### `.powershell(config: ShellConfig)`
+
+Configures PowerShell-specific properties for Windows support.
+
+**Example:**
+```typescript
+c.powershell({
+  completions: {
+    source: 'shell/completion.ps1'
+  },
+  shellInit: [
+    always/* powershell */`
+      $env:TOOL_CONFIG_DIR = "${ctx.homeDir}\\.tool"
+      
+      function tool-helper {
+        tool --config "$env:TOOL_CONFIG_DIR\\config.toml" @args
+      }
+      
+      Set-Alias t tool
+    `
+  ]
+})
 ```
 
 ### Path Usage in Shell Scripts
@@ -673,35 +737,43 @@ When writing shell scripts within `.zsh()`, `.bash()`, or `.powershell()` method
 
 **✅ Correct Path Usage:**
 ```typescript
-c.zsh(always/* zsh */`
-  # Use context variables for paths
-  export TOOL_CONFIG_DIR="${ctx.toolDir}"
-  export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
-  
-  # Source files from tool directory
-  if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-    source "${ctx.toolDir}/shell/key-bindings.zsh"
-  fi
-  
-  # Generate completions to proper directory
-  if command -v tool >/dev/null 2>&1; then
-    tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-  fi
-  
-  # Reference other tools
-  FZF_DIR="${ctx.getToolDir('fzf')}"
-  [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
-`);
+c.zsh({
+  shellInit: [
+    always/* zsh */`
+      # Use context variables for paths
+      export TOOL_CONFIG_DIR="${ctx.toolDir}"
+      export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
+      
+      # Source files from tool directory
+      if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+        source "${ctx.toolDir}/shell/key-bindings.zsh"
+      fi
+      
+      # Generate completions to proper directory
+      if command -v tool >/dev/null 2>&1; then
+        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+      fi
+      
+      # Reference other tools
+      FZF_DIR="${ctx.getToolDir('fzf')}"
+      [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
+    `
+  ]
+});
 ```
 
 **❌ Incorrect Path Usage:**
 ```typescript
 // Don't use hardcoded paths
-c.zsh(always/* zsh */`
-  export TOOL_CONFIG_DIR="$HOME/.config/tool"     // ❌ Use ${ctx.homeDir} instead
-  source "$DOTFILES/.generated/tools/tool/init"   // ❌ Use ${ctx.toolDir} instead
-  tool complete > ~/.zsh/completions/_tool        // ❌ Use ${ctx.generatedDir} instead
-`);
+c.zsh({
+  shellInit: [
+    always/* zsh */`
+      export TOOL_CONFIG_DIR="$HOME/.config/tool"     // ❌ Use ${ctx.homeDir} instead
+      source "$DOTFILES/.generated/tools/tool/init"   // ❌ Use ${ctx.toolDir} instead
+      tool complete > ~/.zsh/completions/_tool        // ❌ Use ${ctx.generatedDir} instead
+    `
+  ]
+});
 ```
 
 **Path Context Variables Reference:**
@@ -761,10 +833,14 @@ c.platform(Platform.MacOS, (c) => {
       formula: 'tool',
       cask: true,
     })
-    .zsh(/* zsh */ `
-      # macOS-specific setup
-      export TOOL_USE_COREAUDIO=1
-    `);
+    .zsh({
+      shellInit: [
+        always/* zsh */`
+          # macOS-specific setup
+          export TOOL_USE_COREAUDIO=1
+        `
+      ]
+    });
 });
 ```
 
@@ -776,10 +852,14 @@ c.platform(Platform.Linux | Platform.MacOS, (c) => {
       repo: 'owner/tool',
       assetPattern: '*unix*.tar.gz',
     })
-    .zsh(/* zsh */ `
-      # Unix-like systems
-      export TOOL_USE_UNIX_SOCKETS=1
-    `);
+    .zsh({
+      shellInit: [
+        always/* zsh */`
+          # Unix-like systems
+          export TOOL_USE_UNIX_SOCKETS=1
+        `
+      ]
+    });
 });
 ```
 
@@ -809,7 +889,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
   c.platform(Platform.MacOS, (c) => {
     c
       .install('brew', { formula: 'tool' })
-      .zsh(/* zsh */ `alias t="tool --macos-mode"`);
+      .zsh({
+        shellInit: [
+          always/* zsh */`alias t="tool --macos-mode"`
+        ]
+      });
   });
   
   // Linux-specific
@@ -819,7 +903,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
       })
-      .zsh(/* zsh */ `alias t="tool --linux-mode"`);
+      .zsh({
+        shellInit: [
+          always/* zsh */`alias t="tool --linux-mode"`
+        ]
+      });
   });
   
   // Windows-specific
@@ -1259,9 +1347,13 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       zsh: { source: 'complete/_rg' },
       bash: { source: 'complete/rg.bash' },
     })
-    .zsh(/* zsh */ `
-      alias rg="ripgrep"
-    `);
+    .zsh({
+      shellInit: [
+        always/* zsh */`
+          alias rg="ripgrep"
+        `
+      ]
+    });
 };
 ```
 
@@ -1277,36 +1369,38 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('github-release', {
       repo: 'junegunn/fzf',
     })
-    .completions({
-      zsh: { source: 'shell/completion.zsh' },
-    })
-    .zsh(/* zsh */ `
-      # Environment setup
-      export FZF_DEFAULT_OPTS="--color=fg+:cyan,bg+:black,hl+:yellow"
-      
-      # Source key bindings
-      _fzf_install_dir="${ctx.toolDir}"
-      if [[ -f "$_fzf_install_dir/shell/key-bindings.zsh" ]]; then
-        source "$_fzf_install_dir/shell/key-bindings.zsh"
-      fi
-      
-      # Custom function
-      function fzf-jump-to-dir() {
-        local dir
-        dir=$(find . -type d | fzf)
-        [[ -n "$dir" ]] && cd "$dir"
-      }
-      
-      # Create ZLE widget
-      zle -N fzf-jump-to-dir
-      
-      # Bind key with vi-mode support
-      if (( \${+zvm_after_init_commands} )); then
-        zvm_after_init_commands+=("bindkey '^]' fzf-jump-to-dir")
-      else
-        bindkey '^]' fzf-jump-to-dir
-      fi
-    `);
+    .zsh({
+      completions: { source: 'shell/completion.zsh' },
+      shellInit: [
+        always/* zsh */`
+          # Environment setup
+          export FZF_DEFAULT_OPTS="--color=fg+:cyan,bg+:black,hl+:yellow"
+          
+          # Source key bindings
+          _fzf_install_dir="${ctx.toolDir}"
+          if [[ -f "$_fzf_install_dir/shell/key-bindings.zsh" ]]; then
+            source "$_fzf_install_dir/shell/key-bindings.zsh"
+          fi
+          
+          # Custom function
+          function fzf-jump-to-dir() {
+            local dir
+            dir=$(find . -type d | fzf)
+            [[ -n "$dir" ]] && cd "$dir"
+          }
+          
+          # Create ZLE widget
+          zle -N fzf-jump-to-dir
+          
+          # Bind key with vi-mode support
+          if (( \${+zvm_after_init_commands} )); then
+            zvm_after_init_commands+=("bindkey '^]' fzf-jump-to-dir")
+          else
+            bindkey '^]' fzf-jump-to-dir
+          fi
+        `
+      ]
+    });
 };
 ```
 
@@ -1326,11 +1420,15 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
           cask: true,
         })
         .symlink('./aerospace.toml', `${ctx.homeDir}/.config/aerospace/aerospace.toml`)
-        .zsh(/* zsh */ `
-          # macOS-specific aerospace shortcuts
-          alias ar="aerospace reload-config"
-          alias al="aerospace list-windows"
-        `);
+        .zsh({
+          shellInit: [
+            always/* zsh */`
+              # macOS-specific aerospace shortcuts
+              alias ar="aerospace reload-config"
+              alias al="aerospace list-windows"
+            `
+          ]
+        });
     });
 };
 ```
@@ -1348,25 +1446,29 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       url: 'https://bun.sh/install',
       shell: 'bash',
     })
-    .zsh(/* zsh */ `
-      export BUN_INSTALL="${ctx.homeDir}/.bun"
-      add-to-path "$BUN_INSTALL/bin"
-      
-      # Load completions
-      [[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
-      
-      # Aliases
-      alias br="bun run"
-      alias bt="bun test"
-      alias btw="bun test --watch"
-      
-      # Helper functions
-      function brf() {
-        local file
-        file=$(find . -name "*.ts" -o -name "*.tsx" | fzf)
-        [[ -n "$file" ]] && bun run "$file"
-      }
-    `);
+    .zsh({
+      shellInit: [
+        always/* zsh */`
+          export BUN_INSTALL="${ctx.homeDir}/.bun"
+          add-to-path "$BUN_INSTALL/bin"
+          
+          # Load completions
+          [[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
+          
+          # Aliases
+          alias br="bun run"
+          alias bt="bun test"
+          alias btw="bun test --watch"
+          
+          # Helper functions
+          function brf() {
+            local file
+            file=$(find . -name "*.ts" -o -name "*.tsx" | fzf)
+            [[ -n "$file" ]] && bun run "$file"
+          }
+        `
+      ]
+    });
 };
 ```
 
@@ -1383,10 +1485,14 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       repo: 'jesseduffield/lazygit',
     })
     .symlink('./config.yml', `${ctx.homeDir}/.config/lazygit/config.yml`)
-    .zsh(/* zsh */ `
-      alias lg="lazygit"
-      alias g="lazygit"
-    `);
+    .zsh({
+      shellInit: [
+        always/* zsh */`
+          alias lg="lazygit"
+          alias g="lazygit"
+        `
+      ]
+    });
 };
 ```
 
@@ -1415,10 +1521,14 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
       }
     })
-    .zsh(/* zsh */ `
-      export CUSTOM_TOOL_DATA="${ctx.homeDir}/.local/share/custom-tool"
-      alias ct="custom-tool"
-    `);
+    .zsh({
+      shellInit: [
+        always/* zsh */`
+          export CUSTOM_TOOL_DATA="${ctx.homeDir}/.local/share/custom-tool"
+          alias ct="custom-tool"
+        `
+      ]
+    });
 };
 ```
 
@@ -1605,9 +1715,13 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('github-release', { repo: 'owner/tool' });
     
   if (enableFeature) {
-    c.zsh(/* zsh */ `
-      export TOOL_FEATURE_ENABLED=1
-    `);
+    c.zsh({
+      shellInit: [
+        always/* zsh */`
+          export TOOL_FEATURE_ENABLED=1
+        `
+      ]
+    });
   }
 };
 ```

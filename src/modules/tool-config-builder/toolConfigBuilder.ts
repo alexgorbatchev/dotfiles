@@ -15,6 +15,7 @@ import type {
   ManualToolConfig,
   PlatformConfigEntry,
   ShellScript,
+  ShellConfig,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigInstallationMethod,
@@ -87,19 +88,68 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
-  zsh(...scripts: ShellScript[]): this {
-    this.zshScripts.push(...scripts);
+  zsh(configOrScript: ShellConfig | ShellScript, ...additionalScripts: ShellScript[]): this {
+    // Handle new API: ShellConfig object
+    if (this.isShellConfig(configOrScript)) {
+      if (configOrScript.shellInit) {
+        this.zshScripts.push(...configOrScript.shellInit);
+      }
+      if (configOrScript.completions) {
+        this.completionSettings = {
+          ...this.completionSettings,
+          zsh: configOrScript.completions,
+        };
+      }
+      return this;
+    }
+    
+    // Handle old API: ShellScript arguments
+    this.zshScripts.push(configOrScript, ...additionalScripts);
     return this;
   }
 
-  bash(...scripts: ShellScript[]): this {
-    this.bashScripts.push(...scripts);
+  bash(configOrScript: ShellConfig | ShellScript, ...additionalScripts: ShellScript[]): this {
+    // Handle new API: ShellConfig object
+    if (this.isShellConfig(configOrScript)) {
+      if (configOrScript.shellInit) {
+        this.bashScripts.push(...configOrScript.shellInit);
+      }
+      if (configOrScript.completions) {
+        this.completionSettings = {
+          ...this.completionSettings,
+          bash: configOrScript.completions,
+        };
+      }
+      return this;
+    }
+    
+    // Handle old API: ShellScript arguments
+    this.bashScripts.push(configOrScript, ...additionalScripts);
     return this;
   }
 
-  powershell(...scripts: ShellScript[]): this {
-    this.powershellScripts.push(...scripts);
+  powershell(configOrScript: ShellConfig | ShellScript, ...additionalScripts: ShellScript[]): this {
+    // Handle new API: ShellConfig object
+    if (this.isShellConfig(configOrScript)) {
+      if (configOrScript.shellInit) {
+        this.powershellScripts.push(...configOrScript.shellInit);
+      }
+      if (configOrScript.completions) {
+        this.completionSettings = {
+          ...this.completionSettings,
+          powershell: configOrScript.completions,
+        };
+      }
+      return this;
+    }
+    
+    // Handle old API: ShellScript arguments
+    this.powershellScripts.push(configOrScript, ...additionalScripts);
     return this;
+  }
+
+  private isShellConfig(value: ShellConfig | ShellScript): value is ShellConfig {
+    return typeof value === 'object' && value !== null && !('__brand' in value);
   }
 
   symlink(source: string, target: string): this {
