@@ -33,4 +33,30 @@ export class BashStringProducer implements IShellStringProducer {
 
     return completionSetup;
   }
+
+  processEnvironmentVariables(toolConfig: ToolConfig): string[] {
+    const envVars: string[] = [];
+    
+    if (toolConfig.shellConfigs?.bash?.environment) {
+      const environment = toolConfig.shellConfigs.bash.environment;
+      for (const [key, value] of Object.entries(environment)) {
+        envVars.push(`export ${key}=${JSON.stringify(value)}`);
+      }
+    }
+    
+    return envVars;
+  }
+
+  processAliases(toolConfig: ToolConfig): string[] {
+    const aliases: string[] = [];
+    
+    if (toolConfig.shellConfigs?.bash?.aliases) {
+      const aliasConfig = toolConfig.shellConfigs.bash.aliases;
+      for (const [alias, command] of Object.entries(aliasConfig)) {
+        aliases.push(`alias ${alias}=${JSON.stringify(command)}`);
+      }
+    }
+    
+    return aliases;
+  }
 }

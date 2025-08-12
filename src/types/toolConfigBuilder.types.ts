@@ -30,10 +30,15 @@ export interface ShellConfig {
    */
   aliases?: Record<string, string>;
   
+  /**
+   * Environment variables to define (variable name -> value).
+   * These will be automatically exported with shell-specific syntax.
+   */
+  environment?: Record<string, string>;
+  
   // Future extensibility for shell-specific features:
   // functions?: ShellFunction[];
   // keybindings?: KeyBinding[];
-  // environment?: Record<string, string>;
   // widgets?: ZLEWidget[];           // Zsh-specific
   // hooks?: ShellHooks;             // Shell lifecycle hooks
   // modules?: string[];             // Shell modules to load
@@ -94,12 +99,6 @@ export interface PlatformConfigBuilder {
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   zsh(config: ShellConfig): this;
-  /**
-   * Adds Zsh shell scripts for this platform configuration.
-   * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  zsh(...scripts: ShellScript[]): this;
 
   /**
    * Configures Bash-specific properties for this platform configuration.
@@ -107,12 +106,6 @@ export interface PlatformConfigBuilder {
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   bash(config: ShellConfig): this;
-  /**
-   * Adds Bash shell scripts for this platform configuration.
-   * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  bash(...scripts: ShellScript[]): this;
 
   /**
    * Configures PowerShell-specific properties for this platform configuration.
@@ -120,12 +113,6 @@ export interface PlatformConfigBuilder {
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   powershell(config: ShellConfig): this;
-  /**
-   * Adds PowerShell scripts for this platform configuration.
-   * @param scripts - Branded shell scripts (OnceScript or AlwaysScript)
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  powershell(...scripts: ShellScript[]): this;
 
   /**
    * Configures a symbolic link for this specific platform configuration.
@@ -310,12 +297,6 @@ export interface ToolConfigBuilder {
    * })
    */
   zsh(config: ShellConfig): this;
-  /**
-   * Adds Zsh shell scripts to be included in the generated Zsh initialization file.
-   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
-   * @returns The `ToolConfigBuilder` instance for chaining.
-   */
-  zsh(...scripts: ShellScript[]): this;
 
   /**
    * Configures Bash-specific properties including shell scripts, completions, and future shell-specific features.
@@ -340,12 +321,6 @@ export interface ToolConfigBuilder {
    * })
    */
   bash(config: ShellConfig): this;
-  /**
-   * Adds Bash shell scripts to be included in the generated Bash initialization file.
-   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
-   * @returns The `ToolConfigBuilder` instance for chaining.
-   */
-  bash(...scripts: ShellScript[]): this;
 
   /**
    * Configures PowerShell-specific properties including shell scripts, completions, and future shell-specific features.
@@ -370,12 +345,6 @@ export interface ToolConfigBuilder {
    * })
    */
   powershell(config: ShellConfig): this;
-  /**
-   * Adds PowerShell scripts to be included in the generated PowerShell initialization file.
-   * @param scripts - Branded shell scripts (OnceScript for one-time setup, AlwaysScript for every shell startup)
-   * @returns The `ToolConfigBuilder` instance for chaining.
-   */
-  powershell(...scripts: ShellScript[]): this;
 
   /**
    * Configures a symbolic link to be created from a source file or directory within the dotfiles

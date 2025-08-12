@@ -31,6 +31,7 @@ import type {
 interface ShellStorage {
   scripts: ShellScript[];
   aliases: Record<string, string>;
+  environment: Record<string, string>;
 }
 
 /**
@@ -52,9 +53,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
-    zsh: { scripts: [], aliases: {} },
-    bash: { scripts: [], aliases: {} },
-    powershell: { scripts: [], aliases: {} }
+    zsh: { scripts: [], aliases: {}, environment: {} },
+    bash: { scripts: [], aliases: {}, environment: {} },
+    powershell: { scripts: [], aliases: {}, environment: {} }
   };
   
   public symlinkPairs: { source: string; target: string }[] = [];
@@ -115,78 +116,81 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
-  zsh(configOrScript: ShellConfig | ShellScript, ...additionalScripts: ShellScript[]): this {
-    // Handle new API: ShellConfig object
-    if (this.isShellConfig(configOrScript)) {
-      if (configOrScript.shellInit) {
-        this.internalShellConfigs.zsh.scripts.push(...configOrScript.shellInit);
-      }
-      if (configOrScript.completions) {
-        this.completionSettings = {
-          ...this.completionSettings,
-          zsh: configOrScript.completions,
-        };
-      }
-      if (configOrScript.aliases) {
-        this.internalShellConfigs.zsh.aliases = { ...this.internalShellConfigs.zsh.aliases, ...configOrScript.aliases };
-      }
-      return this;
+  zsh(config: ShellConfig): this {
+    if (config.shellInit) {
+      this.internalShellConfigs.zsh.scripts.push(...config.shellInit);
     }
-    
-    // Handle old API: ShellScript arguments
-    this.internalShellConfigs.zsh.scripts.push(configOrScript, ...additionalScripts);
+    if (config.environment) {
+      this.internalShellConfigs.zsh.environment = {
+        ...this.internalShellConfigs.zsh.environment,
+        ...config.environment,
+      };
+    }
+    if (config.aliases) {
+      this.internalShellConfigs.zsh.aliases = {
+        ...this.internalShellConfigs.zsh.aliases,
+        ...config.aliases,
+      };
+    }
+    if (config.completions) {
+      this.completionSettings = {
+        ...this.completionSettings,
+        zsh: config.completions,
+      };
+    }
     return this;
   }
 
-  bash(configOrScript: ShellConfig | ShellScript, ...additionalScripts: ShellScript[]): this {
-    // Handle new API: ShellConfig object
-    if (this.isShellConfig(configOrScript)) {
-      if (configOrScript.shellInit) {
-        this.internalShellConfigs.bash.scripts.push(...configOrScript.shellInit);
-      }
-      if (configOrScript.completions) {
-        this.completionSettings = {
-          ...this.completionSettings,
-          bash: configOrScript.completions,
-        };
-      }
-      if (configOrScript.aliases) {
-        this.internalShellConfigs.bash.aliases = { ...this.internalShellConfigs.bash.aliases, ...configOrScript.aliases };
-      }
-      return this;
+  bash(config: ShellConfig): this {
+    if (config.shellInit) {
+      this.internalShellConfigs.bash.scripts.push(...config.shellInit);
     }
-    
-    // Handle old API: ShellScript arguments
-    this.internalShellConfigs.bash.scripts.push(configOrScript, ...additionalScripts);
+    if (config.environment) {
+      this.internalShellConfigs.bash.environment = {
+        ...this.internalShellConfigs.bash.environment,
+        ...config.environment,
+      };
+    }
+    if (config.aliases) {
+      this.internalShellConfigs.bash.aliases = {
+        ...this.internalShellConfigs.bash.aliases,
+        ...config.aliases,
+      };
+    }
+    if (config.completions) {
+      this.completionSettings = {
+        ...this.completionSettings,
+        bash: config.completions,
+      };
+    }
     return this;
   }
 
-  powershell(configOrScript: ShellConfig | ShellScript, ...additionalScripts: ShellScript[]): this {
-    // Handle new API: ShellConfig object
-    if (this.isShellConfig(configOrScript)) {
-      if (configOrScript.shellInit) {
-        this.internalShellConfigs.powershell.scripts.push(...configOrScript.shellInit);
-      }
-      if (configOrScript.completions) {
-        this.completionSettings = {
-          ...this.completionSettings,
-          powershell: configOrScript.completions,
-        };
-      }
-      if (configOrScript.aliases) {
-        this.internalShellConfigs.powershell.aliases = { ...this.internalShellConfigs.powershell.aliases, ...configOrScript.aliases };
-      }
-      return this;
+  powershell(config: ShellConfig): this {
+    if (config.shellInit) {
+      this.internalShellConfigs.powershell.scripts.push(...config.shellInit);
     }
-    
-    // Handle old API: ShellScript arguments
-    this.internalShellConfigs.powershell.scripts.push(configOrScript, ...additionalScripts);
+    if (config.environment) {
+      this.internalShellConfigs.powershell.environment = {
+        ...this.internalShellConfigs.powershell.environment,
+        ...config.environment,
+      };
+    }
+    if (config.aliases) {
+      this.internalShellConfigs.powershell.aliases = {
+        ...this.internalShellConfigs.powershell.aliases,
+        ...config.aliases,
+      };
+    }
+    if (config.completions) {
+      this.completionSettings = {
+        ...this.completionSettings,
+        powershell: config.completions,
+      };
+    }
     return this;
   }
 
-  private isShellConfig(value: ShellConfig | ShellScript): value is ShellConfig {
-    return typeof value === 'object' && value !== null && !('__brand' in value);
-  }
 
   private buildShellConfigs(): ShellConfigs | undefined {
     const shellTypes = ['zsh', 'bash', 'powershell'] as const;
@@ -197,11 +201,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       const config = this.internalShellConfigs[shellType];
       const hasScripts = config.scripts.length > 0;
       const hasAliases = Object.keys(config.aliases).length > 0;
+      const hasEnvironment = Object.keys(config.environment).length > 0;
 
-      if (hasScripts || hasAliases) {
+      if (hasScripts || hasAliases || hasEnvironment) {
         result[shellType] = {
           ...(hasScripts && { scripts: config.scripts }),
-          ...(hasAliases && { aliases: config.aliases })
+          ...(hasAliases && { aliases: config.aliases }),
+          ...(hasEnvironment && { environment: config.environment })
         };
         hasAnyConfig = true;
       }

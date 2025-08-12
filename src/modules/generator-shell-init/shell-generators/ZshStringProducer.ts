@@ -35,6 +35,32 @@ export class ZshStringProducer implements IShellStringProducer {
     return completionSetup;
   }
 
+  processEnvironmentVariables(toolConfig: ToolConfig): string[] {
+    const envVars: string[] = [];
+    
+    if (toolConfig.shellConfigs?.zsh?.environment) {
+      const environment = toolConfig.shellConfigs.zsh.environment;
+      for (const [key, value] of Object.entries(environment)) {
+        envVars.push(`export ${key}=${JSON.stringify(value)}`);
+      }
+    }
+    
+    return envVars;
+  }
+
+  processAliases(toolConfig: ToolConfig): string[] {
+    const aliases: string[] = [];
+    
+    if (toolConfig.shellConfigs?.zsh?.aliases) {
+      const aliasConfig = toolConfig.shellConfigs.zsh.aliases;
+      for (const [alias, command] of Object.entries(aliasConfig)) {
+        aliases.push(`alias ${alias}=${JSON.stringify(command)}`);
+      }
+    }
+    
+    return aliases;
+  }
+
   generateCompletionSetup(allCompletionSetup: string[], allToolInits: string[]): string[] {
     // Check if any tool already has typeset -U fpath in their tool init
     const hasTypesetInToolInit = allToolInits.some(line => line.includes('typeset -U fpath'));

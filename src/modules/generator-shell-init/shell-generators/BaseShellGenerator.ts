@@ -24,6 +24,16 @@ export interface IShellStringProducer {
   processCompletions(toolName: string, completions: any): string[];
   
   /**
+   * Processes environment variables into shell-specific export statements.
+   */
+  processEnvironmentVariables(toolConfig: ToolConfig): string[];
+  
+  /**
+   * Processes aliases into shell-specific alias commands.
+   */
+  processAliases(toolConfig: ToolConfig): string[];
+  
+  /**
    * Generates shell-specific completion setup if needed.
    */
   generateCompletionSetup?(allCompletionSetup: string[], allToolInits: string[]): string[];
@@ -65,6 +75,14 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         content.alwaysScripts.push(script);
       }
     });
+
+    // Process declarative environment variables
+    const envVars = this.stringProducer.processEnvironmentVariables(toolConfig);
+    content.environmentVariables.push(...envVars);
+
+    // Process declarative aliases as tool init
+    const aliases = this.stringProducer.processAliases(toolConfig);
+    content.toolInit.push(...aliases);
 
     return content;
   }

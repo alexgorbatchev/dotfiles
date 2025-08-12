@@ -33,4 +33,30 @@ export class PowerShellStringProducer implements IShellStringProducer {
 
     return completionSetup;
   }
+
+  processEnvironmentVariables(toolConfig: ToolConfig): string[] {
+    const envVars: string[] = [];
+    
+    if (toolConfig.shellConfigs?.powershell?.environment) {
+      const environment = toolConfig.shellConfigs.powershell.environment;
+      for (const [key, value] of Object.entries(environment)) {
+        envVars.push(`$env:${key} = ${JSON.stringify(value)}`);
+      }
+    }
+    
+    return envVars;
+  }
+
+  processAliases(toolConfig: ToolConfig): string[] {
+    const aliases: string[] = [];
+    
+    if (toolConfig.shellConfigs?.powershell?.aliases) {
+      const aliasConfig = toolConfig.shellConfigs.powershell.aliases;
+      for (const [alias, command] of Object.entries(aliasConfig)) {
+        aliases.push(`Set-Alias ${alias} ${JSON.stringify(command)}`);
+      }
+    }
+    
+    return aliases;
+  }
 }

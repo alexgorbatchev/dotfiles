@@ -89,8 +89,8 @@ describe('ToolConfigBuilder', () => {
 
   test('zsh method adds zsh code correctly to zshInit', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.zsh(always`alias ll="ls -l"`);
-    builder.zsh(always`export PATH="$HOME/bin:$PATH"`);
+    builder.zsh({ shellInit: [always`alias ll="ls -l"`] });
+    builder.zsh({ shellInit: [always`export PATH="$HOME/bin:$PATH"`] });
     // build() is valid here as zshInit is provided
     const config = builder.build();
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias ll="ls -l"`, always`export PATH="$HOME/bin:$PATH"`]);
@@ -126,7 +126,7 @@ describe('ToolConfigBuilder', () => {
       .version('1.0.0')
       .install('github-release', installParams)
       .hooks(hooks)
-      .zsh(always`alias tt="test-tool"`)
+      .zsh({ shellInit: [always`alias tt="test-tool"`] })
       .symlink('config.yml', '~/.config/tool/config.yml')
       .completions(completionConfig);
 
@@ -163,7 +163,7 @@ describe('ToolConfigBuilder', () => {
 
   test('build method returns NoInstallToolConfig if only zshInit is present', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.zsh(always`alias tt="test-tool"`);
+    builder.zsh({ shellInit: [always`alias tt="test-tool"`] });
     const config = builder.build();
     expect(config.installationMethod).toBe('none'); // Should be 'none'
     expect(config.installParams).toBeUndefined();

@@ -49,9 +49,9 @@ configs/tools/              # New tool configurations
 └── config-files/           # Optional: tool-specific config files
 
 configs-migrated/           # Migrated configurations
-├── tool-name/
-│   ├── tool-name.tool.ts   # Main configuration
-│   └── config.toml         # Tool's config files
+└── tool-name/
+    ├── tool-name.tool.ts   # Main configuration
+    └── config.toml         # Tool's config files
 ```
 
 ### File Naming Convention
@@ -109,15 +109,18 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     
     // Add shell configuration
     .zsh({
+      // Use declarative configuration for environment variables and aliases
+      environment: {
+        'TOOL_CONFIG_DIR': `${ctx.homeDir}/.tool`
+      },
+      
+      aliases: {
+        't': 'tool'
+      },
+      
       completions: { source: 'completions/_tool.zsh' },
       shellInit: [
         always/* zsh */`
-          # Environment variables
-          export TOOL_CONFIG_DIR="${ctx.homeDir}/.tool"
-          
-          # Aliases
-          alias t="tool"
-          
           # Functions
           function tool-helper() {
             tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
@@ -165,11 +168,13 @@ interface ToolConfigContext {
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c.zsh({
+    // Use declarative configuration for environment variables
+    environment: {
+      'TOOL_CONFIG_DIR': `${ctx.toolDir}`
+    },
+    
     shellInit: [
       always/* zsh */`
-        # Reference the current tool's installation directory
-        export TOOL_CONFIG_DIR="${ctx.toolDir}"
-        
         # Source tool-specific files
         if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
           source "${ctx.toolDir}/shell/key-bindings.zsh"
@@ -563,6 +568,42 @@ The shell integration system supports two types of scripts with different execut
 
 This distinction helps optimize shell startup performance by preventing expensive operations like completion generation from running on every shell startup.
 
+### Declarative Configuration vs Script-Based Configuration
+
+The shell integration system provides two approaches for configuring environment variables and aliases:
+
+1. **Declarative Configuration**: Use structured objects for common configurations
+2. **Script-Based Configuration**: Write shell scripts for complex logic and custom functions
+
+#### Declarative Configuration Benefits
+
+**Environment Variables:**
+- Clean, structured definition in configuration objects
+- Automatic shell-specific syntax generation (`export` for zsh/bash, `$env:` for PowerShell)
+- Type safety and validation
+- Cross-shell compatibility with single definition
+
+**Aliases:**
+- Simple key-value pairs for alias definitions
+- Automatic shell-specific syntax generation
+- Performance optimized (generated once, not evaluated on each shell startup)
+- Clear separation from complex shell functions
+
+#### When to Use Each Approach
+
+**Use Declarative Configuration for:**
+- Simple environment variable assignments
+- Basic command aliases
+- Cross-shell compatibility requirements
+- Clean, maintainable configurations
+
+**Use Script-Based Configuration for:**
+- Complex shell functions
+- Conditional logic and environment detection  
+- Advanced shell features (ZLE widgets, key bindings)
+- Shell-specific optimizations
+- Integration with external tools and completion systems
+
 ### `.zsh(config: ShellConfig)`
 
 Configures Zsh-specific properties including shell scripts, completions, and future shell-specific features.
@@ -573,10 +614,10 @@ interface ShellConfig {
   completions?: ShellCompletionConfig;  // Shell completions
   shellInit?: ShellScript[];           // Shell initialization scripts
   aliases?: Record<string, string>;    // Shell aliases (alias name -> command)
+  environment?: Record<string, string>; // Environment variables (var name -> value)
   // Future extensions:
   // functions?: ShellFunction[];
   // keybindings?: KeyBinding[];
-  // environment?: Record<string, string>;
 }
 ```
 
@@ -589,6 +630,13 @@ interface ShellConfig {
 import { once, always } from '@types';
 
 c.zsh({
+  // Define environment variables - automatically converted to export statements
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.toolDir}`,
+    'TOOL_DEBUG': 'true',
+    'TOOL_MODE': 'production'
+  },
+  
   // Define aliases - automatically converted to shell alias commands
   aliases: {
     't': 'tool',
@@ -596,6 +644,7 @@ c.zsh({
     'ts': 'tool status',
     'tc': 'tool config'
   },
+  
   completions: {
     source: 'shell/completion.zsh',
     name: '_my-tool'
@@ -607,7 +656,6 @@ c.zsh({
     `,
     always/* zsh */`
       # Fast runtime setup (runs every shell startup)
-      export TOOL_CONFIG_DIR="${ctx.toolDir}"
       
       # Custom functions
       function tool-helper() {
@@ -618,11 +666,92 @@ c.zsh({
 })
 ```
 
+**Comprehensive Configuration Example:**
+```typescript
+c.zsh({
+  // Declarative environment variables - clean and cross-shell compatible
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
+    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`,
+    'TOOL_DEBUG': 'false',
+    'TOOL_LOG_LEVEL': 'info'
+  },
+  
+  // Declarative aliases - simple and performant
+  aliases: {
+    't': 'tool',
+    'tl': 'tool list',
+    'ts': 'tool status', 
+    'tc': 'tool config',
+    'td': 'tool --debug'
+  },
+  
+  completions: {
+    source: 'shell/completion.zsh',
+    name: '_my-tool'
+  },
+  
+  // Script-based configuration for complex logic
+  shellInit: [
+    once/* zsh */`
+      # One-time expensive operations
+      tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+      tool cache-warm > /dev/null 2>&1 || true
+    `,
+    always/* zsh */`
+      # Fast runtime setup and complex functions
+      add-to-path "${ctx.toolDir}/bin"
+      
+      # Complex function with error handling
+      function tool-project() {
+        local project_dir="$1"
+        if [[ -z "$project_dir" ]]; then
+          echo "Usage: tool-project <directory>" >&2
+          return 1
+        fi
+        
+        if [[ ! -d "$project_dir" ]]; then
+          echo "Directory not found: $project_dir" >&2
+          return 1
+        fi
+        
+        cd "$project_dir" && tool init
+      }
+      
+      # ZLE widget for interactive selection
+      function tool-picker() {
+        local selection=$(tool list --format=name | fzf --preview 'tool info {}')
+        if [[ -n "$selection" ]]; then
+          zle kill-whole-line
+          BUFFER="tool run $selection"
+          zle accept-line
+        fi
+        zle redisplay
+      }
+      zle -N tool-picker
+      
+      # Key binding with vi-mode support
+      if (( \${+zvm_after_init_commands} )); then
+        zvm_after_init_commands+=("bindkey '^T' tool-picker")
+      else
+        bindkey '^T' tool-picker
+      fi
+      
+      # Conditional integration
+      if command -v tool >/dev/null 2>&1; then
+        eval "$(tool init zsh 2>/dev/null || echo '# tool init failed')"
+      fi
+    `
+  ]
+})
+```
+
 **Aliases Advantages:**
 - **Clean Configuration**: Aliases are defined declaratively in the configuration object
 - **Automatic Generation**: Shell-specific alias syntax is generated automatically
 - **Cross-Shell Support**: Same alias definitions work for zsh, bash, and powershell
 - **Performance**: Aliases are generated once and executed efficiently
+- **Maintainability**: Easy to see all aliases at a glance in the configuration
 
 **Performance Benefits:**
 - Expensive operations (completion generation, cache building) run only once
@@ -633,19 +762,23 @@ c.zsh({
 
 ```typescript
 c.zsh({
+  // Use declarative configuration for environment variables
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
+    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`
+  },
+  
+  // Use declarative configuration for simple aliases
+  aliases: {
+    't': 'tool',
+    'tl': 'tool list',
+    'ts': 'tool status'
+  },
+  
   shellInit: [
     always/* zsh */`
-      # Environment variables
-      export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
-      export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
-      
       # PATH modifications
       add-to-path "${ctx.homeDir}/.tool/bin"
-      
-      # Aliases
-      alias t="tool"
-      alias tl="tool list"
-      alias ts="tool status"
       
       # Simple functions
       function tool-cd() {
@@ -707,19 +840,25 @@ Configures Bash-specific properties using the same configuration object structur
 **Example:**
 ```typescript
 c.bash({
-  // Aliases work the same way in bash
+  // Environment variables work the same way in bash
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
+    'TOOL_DEBUG': 'true'
+  },
+  
+  // Aliases work the same way in bash  
   aliases: {
     't': 'tool',
     'tl': 'tool list',
     'ts': 'tool status'
   },
+  
   completions: {
     source: 'shell/completion.bash'
   },
+  
   shellInit: [
     always/* bash */`
-      export TOOL_CONFIG_DIR="${ctx.homeDir}/.config/tool"
-      
       # Source key bindings for bash
       if [[ -f "${ctx.toolDir}/shell/key-bindings.bash" ]]; then
         source "${ctx.toolDir}/shell/key-bindings.bash"
@@ -736,19 +875,25 @@ Configures PowerShell-specific properties for Windows support.
 **Example:**
 ```typescript
 c.powershell({
+  // Environment variables automatically converted to $env: assignments
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.homeDir}\\.tool`,
+    'TOOL_DEBUG': 'true'
+  },
+  
   // Aliases automatically converted to Set-Alias commands
   aliases: {
     't': 'tool',
     'tl': 'tool list',
     'ts': 'tool status'
   },
+  
   completions: {
     source: 'shell/completion.ps1'
   },
+  
   shellInit: [
     always/* powershell */`
-      $env:TOOL_CONFIG_DIR = "${ctx.homeDir}\\.tool"
-      
       function tool-helper {
         tool --config "$env:TOOL_CONFIG_DIR\\config.toml" @args
       }
@@ -763,21 +908,26 @@ When writing shell scripts within `.zsh()`, `.bash()`, or `.powershell()` method
 
 **✅ Correct Path Usage:**
 ```typescript
+import { once, always } from '@types';
+
 c.zsh({
+  // Use declarative configuration for environment variables
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.toolDir}`,
+    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`
+  },
+  
   shellInit: [
+    once/* zsh */`
+      # Generate completions to proper directory (expensive operation, run only once)
+      if command -v tool >/dev/null 2>&1; then
+        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+      fi
+    `,
     always/* zsh */`
-      # Use context variables for paths
-      export TOOL_CONFIG_DIR="${ctx.toolDir}"
-      export TOOL_DATA_DIR="${ctx.homeDir}/.local/share/tool"
-      
       # Source files from tool directory
       if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
         source "${ctx.toolDir}/shell/key-bindings.zsh"
-      fi
-      
-      # Generate completions to proper directory
-      if command -v tool >/dev/null 2>&1; then
-        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
       fi
       
       # Reference other tools
@@ -790,13 +940,15 @@ c.zsh({
 
 **❌ Incorrect Path Usage:**
 ```typescript
-// Don't use hardcoded paths
+// Don't use hardcoded paths or inline exports for simple environment variables
 c.zsh({
   shellInit: [
     always/* zsh */`
-      export TOOL_CONFIG_DIR="$HOME/.config/tool"     // ❌ Use ${ctx.homeDir} instead
+      export TOOL_CONFIG_DIR="$HOME/.config/tool"     // ❌ Use declarative environment config instead
+      export TOOL_DATA_DIR="$HOME/.local/share/tool"  // ❌ Use declarative environment config instead
       source "$DOTFILES/.generated/tools/tool/init"   // ❌ Use ${ctx.toolDir} instead
       tool complete > ~/.zsh/completions/_tool        // ❌ Use ${ctx.generatedDir} instead
+      alias t="tool"                                   // ❌ Use declarative aliases config instead
     `
   ]
 });
@@ -860,12 +1012,10 @@ c.platform(Platform.MacOS, (c) => {
       cask: true,
     })
     .zsh({
-      shellInit: [
-        always/* zsh */`
-          # macOS-specific setup
-          export TOOL_USE_COREAUDIO=1
-        `
-      ]
+      // Use declarative configuration for environment variables
+      environment: {
+        'TOOL_USE_COREAUDIO': '1'
+      }
     });
 });
 ```
@@ -879,12 +1029,10 @@ c.platform(Platform.Linux | Platform.MacOS, (c) => {
       assetPattern: '*unix*.tar.gz',
     })
     .zsh({
-      shellInit: [
-        always/* zsh */`
-          # Unix-like systems
-          export TOOL_USE_UNIX_SOCKETS=1
-        `
-      ]
+      // Use declarative configuration for environment variables
+      environment: {
+        'TOOL_USE_UNIX_SOCKETS': '1'
+      }
     });
 });
 ```
@@ -916,9 +1064,10 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     c
       .install('brew', { formula: 'tool' })
       .zsh({
-        shellInit: [
-          always/* zsh */`alias t="tool --macos-mode"`
-        ]
+        // Use declarative aliases instead of inline shell scripts
+        aliases: {
+          't': 'tool --macos-mode'
+        }
       });
   });
   
@@ -930,9 +1079,10 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         assetPattern: '*linux*.tar.gz',
       })
       .zsh({
-        shellInit: [
-          always/* zsh */`alias t="tool --linux-mode"`
-        ]
+        // Use declarative aliases instead of inline shell scripts
+        aliases: {
+          't': 'tool --linux-mode'
+        }
       });
   });
   
@@ -943,7 +1093,12 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         repo: 'owner/tool', 
         assetPattern: '*windows*.zip',
       })
-      .powershell(/* powershell */ `Set-Alias t "tool --windows-mode"`);
+      .powershell({
+        // Use declarative aliases instead of inline shell scripts
+        aliases: {
+          't': 'tool --windows-mode'
+        }
+      });
   });
 };
 ```
@@ -1374,11 +1529,10 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       bash: { source: 'complete/rg.bash' },
     })
     .zsh({
-      shellInit: [
-        always/* zsh */`
-          alias rg="ripgrep"
-        `
-      ]
+      // Use declarative aliases instead of inline shell scripts
+      aliases: {
+        'rg': 'ripgrep'
+      }
     });
 };
 ```
@@ -1396,12 +1550,14 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       repo: 'junegunn/fzf',
     })
     .zsh({
+      // Use declarative configuration for environment variables
+      environment: {
+        'FZF_DEFAULT_OPTS': '--color=fg+:cyan,bg+:black,hl+:yellow'
+      },
+      
       completions: { source: 'shell/completion.zsh' },
       shellInit: [
         always/* zsh */`
-          # Environment setup
-          export FZF_DEFAULT_OPTS="--color=fg+:cyan,bg+:black,hl+:yellow"
-          
           # Source key bindings
           _fzf_install_dir="${ctx.toolDir}"
           if [[ -f "$_fzf_install_dir/shell/key-bindings.zsh" ]]; then
@@ -1447,13 +1603,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         })
         .symlink('./aerospace.toml', `${ctx.homeDir}/.config/aerospace/aerospace.toml`)
         .zsh({
-          shellInit: [
-            always/* zsh */`
-              # macOS-specific aerospace shortcuts
-              alias ar="aerospace reload-config"
-              alias al="aerospace list-windows"
-            `
-          ]
+          // Use declarative aliases instead of inline shell scripts
+          aliases: {
+            'ar': 'aerospace reload-config',
+            'al': 'aerospace list-windows'
+          }
         });
     });
 };
@@ -1473,18 +1627,23 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       shell: 'bash',
     })
     .zsh({
+      // Use declarative configuration for environment variables and aliases
+      environment: {
+        'BUN_INSTALL': `${ctx.homeDir}/.bun`
+      },
+      
+      aliases: {
+        'br': 'bun run',
+        'bt': 'bun test',
+        'btw': 'bun test --watch'
+      },
+      
       shellInit: [
         always/* zsh */`
-          export BUN_INSTALL="${ctx.homeDir}/.bun"
           add-to-path "$BUN_INSTALL/bin"
           
           # Load completions
           [[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
-          
-          # Aliases
-          alias br="bun run"
-          alias bt="bun test"
-          alias btw="bun test --watch"
           
           # Helper functions
           function brf() {
@@ -1512,12 +1671,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     })
     .symlink('./config.yml', `${ctx.homeDir}/.config/lazygit/config.yml`)
     .zsh({
-      shellInit: [
-        always/* zsh */`
-          alias lg="lazygit"
-          alias g="lazygit"
-        `
-      ]
+      // Use declarative aliases instead of inline shell scripts
+      aliases: {
+        'lg': 'lazygit',
+        'g': 'lazygit'
+      }
     });
 };
 ```
@@ -1548,10 +1706,139 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       }
     })
     .zsh({
+      // Use declarative configuration for simple values
+      environment: {
+        'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool`
+      },
+      aliases: {
+        'ct': 'custom-tool'
+      }
+    });
+};
+```
+
+### 7. Modern Tool with Declarative Configuration
+
+```typescript
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { always, once } from '@types';
+
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  c
+    .bin(['modern-tool', 'mt', 'mt-admin'])
+    .version('latest')
+    .install('github-release', {
+      repo: 'owner/modern-tool',
+    })
+    .completions({
+      zsh: { source: 'completions/_modern-tool' },
+      bash: { source: 'completions/modern-tool.bash' },
+      powershell: { source: 'completions/modern-tool.ps1' }
+    })
+    
+    // Cross-shell compatible declarative configuration
+    .zsh({
+      // Environment variables with context paths
+      environment: {
+        'MT_CONFIG_DIR': `${ctx.homeDir}/.config/modern-tool`,
+        'MT_DATA_DIR': `${ctx.homeDir}/.local/share/modern-tool`,
+        'MT_CACHE_DIR': `${ctx.homeDir}/.cache/modern-tool`,
+        'MT_LOG_LEVEL': 'info',
+        'MT_THEME': 'auto'
+      },
+      
+      // Clean alias definitions
+      aliases: {
+        'mt': 'modern-tool',
+        'mts': 'modern-tool status',
+        'mtl': 'modern-tool list',
+        'mtc': 'modern-tool config',
+        'mtr': 'modern-tool run',
+        'mtd': 'modern-tool --debug'
+      },
+      
       shellInit: [
+        once/* zsh */`
+          # One-time setup operations
+          modern-tool completions zsh > "${ctx.generatedDir}/completions/_mt"
+          modern-tool cache --warm >/dev/null 2>&1 || true
+        `,
         always/* zsh */`
-          export CUSTOM_TOOL_DATA="${ctx.homeDir}/.local/share/custom-tool"
-          alias ct="custom-tool"
+          # Runtime functions and integrations
+          function mt-project() {
+            local project=$(modern-tool projects list | fzf --preview 'modern-tool project info {}')
+            [[ -n "$project" ]] && modern-tool project switch "$project"
+          }
+          
+          # Auto-completion for custom commands
+          if command -v modern-tool >/dev/null 2>&1; then
+            eval "$(modern-tool init zsh)"
+          fi
+        `
+      ]
+    })
+    
+    // Same aliases work automatically for bash  
+    .bash({
+      environment: {
+        'MT_CONFIG_DIR': `${ctx.homeDir}/.config/modern-tool`,
+        'MT_DATA_DIR': `${ctx.homeDir}/.local/share/modern-tool`,
+        'MT_CACHE_DIR': `${ctx.homeDir}/.cache/modern-tool`,
+        'MT_LOG_LEVEL': 'info',
+        'MT_THEME': 'auto'
+      },
+      
+      aliases: {
+        'mt': 'modern-tool',
+        'mts': 'modern-tool status',
+        'mtl': 'modern-tool list',
+        'mtc': 'modern-tool config',
+        'mtr': 'modern-tool run',
+        'mtd': 'modern-tool --debug'
+      },
+      
+      shellInit: [
+        always/* bash */`
+          # Bash-specific integration
+          if command -v modern-tool >/dev/null 2>&1; then
+            eval "$(modern-tool init bash)"
+          fi
+        `
+      ]
+    })
+    
+    // PowerShell configuration with automatic syntax conversion
+    .powershell({
+      environment: {
+        'MT_CONFIG_DIR': `${ctx.homeDir}\\.config\\modern-tool`,
+        'MT_DATA_DIR': `${ctx.homeDir}\\.local\\share\\modern-tool`,
+        'MT_CACHE_DIR': `${ctx.homeDir}\\.cache\\modern-tool`,
+        'MT_LOG_LEVEL': 'info',
+        'MT_THEME': 'auto'
+      },
+      
+      aliases: {
+        'mt': 'modern-tool',
+        'mts': 'modern-tool status',
+        'mtl': 'modern-tool list',
+        'mtc': 'modern-tool config',
+        'mtr': 'modern-tool run',
+        'mtd': 'modern-tool --debug'
+      },
+      
+      shellInit: [
+        always/* powershell */`
+          # PowerShell-specific functions
+          function mt-project {
+            $project = modern-tool projects list | fzf --preview 'modern-tool project info {}'
+            if ($project) {
+              modern-tool project switch $project
+            }
+          }
+          
+          if (Get-Command modern-tool -ErrorAction SilentlyContinue) {
+            Invoke-Expression (modern-tool init powershell)
+          }
         `
       ]
     });
@@ -1612,12 +1899,69 @@ bun run cli.ts check-updates tool-name
 4. **Update function signature**: Use `(c: ToolConfigBuilder, ctx: ToolConfigContext) => Promise<void>`
 5. **Map installation method**: Convert zinit installation to appropriate method
 6. **Convert shell initialization**: Move init.zsh content to `.zsh()` method
-7. **Replace hardcoded paths**: Use context properties instead of `$DOTFILES`, `$HOME`, etc.
+7. **Extract declarative configurations**: Identify environment variables and aliases for declarative configuration
+8. **Replace hardcoded paths**: Use context properties instead of `$DOTFILES`, `$HOME`, etc.
    - Use `${ctx.homeDir}` instead of `$HOME` or `~/`
    - Use `${ctx.toolDir}` for tool-specific directories
    - Use `${ctx.dotfilesDir}` instead of `$DOTFILES`
    - Use `${ctx.generatedDir}` for generated content
-8. **Test thoroughly**: Ensure tool works as expected
+9. **Test thoroughly**: Ensure tool works as expected
+
+### Converting Shell Scripts to Declarative Configuration
+
+**Before (Shell-based):**
+```bash
+# In old init.zsh file
+export TOOL_CONFIG_DIR="$HOME/.config/tool"
+export TOOL_DEBUG="true"
+export TOOL_MODE="production"
+
+alias t="tool"
+alias tl="tool list"
+alias ts="tool status --verbose"
+alias tc="tool config edit"
+
+# Complex function
+function tool-helper() {
+  tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+}
+```
+
+**After (Declarative + Script hybrid):**
+```typescript
+c.zsh({
+  // Extract simple environment variables to declarative config
+  environment: {
+    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
+    'TOOL_DEBUG': 'true',
+    'TOOL_MODE': 'production'
+  },
+  
+  // Extract simple aliases to declarative config  
+  aliases: {
+    't': 'tool',
+    'tl': 'tool list', 
+    'ts': 'tool status --verbose',
+    'tc': 'tool config edit'
+  },
+  
+  shellInit: [
+    always/* zsh */`
+      # Keep complex functions in scripts
+      function tool-helper() {
+        tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+      }
+    `
+  ]
+})
+```
+
+**Benefits of Migration:**
+- **Cleaner code**: Environment variables and aliases are clearly separated from complex logic
+- **Cross-shell support**: Same declarations work for zsh, bash, and powershell
+- **Performance**: Declarative configs generate optimal shell syntax
+- **Maintainability**: Easy to see all environment variables and aliases at a glance
+- **Type safety**: Environment variable names and values are validated
 
 ## Troubleshooting
 
@@ -1742,11 +2086,10 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     
   if (enableFeature) {
     c.zsh({
-      shellInit: [
-        always/* zsh */`
-          export TOOL_FEATURE_ENABLED=1
-        `
-      ]
+      // Use declarative configuration for environment variables
+      environment: {
+        'TOOL_FEATURE_ENABLED': '1'
+      }
     });
   }
 };

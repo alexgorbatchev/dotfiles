@@ -97,4 +97,56 @@ describe('BashGenerator', () => {
     const path = generator.getDefaultOutputPath();
     expect(path).toBe('/home/test/.dotfiles/.generated/shell-scripts/main.bash');
   });
+
+  it('should process environment variables from declarative configuration', () => {
+    const toolConfig: ToolConfig = {
+      name: 'test-tool',
+      binaries: ['test-tool'],
+      version: '1.0.0',
+      shellConfigs: {
+        bash: {
+          environment: {
+            'TEST_TOOL_CONFIG_DIR': '/home/test/.config/test-tool',
+            'TEST_TOOL_DEBUG': 'true',
+            'TEST_TOOL_MODE': 'production'
+          },
+        },
+      },
+      installationMethod: 'none',
+      installParams: undefined,
+    };
+
+    const content = generator.extractShellContent('test-tool', toolConfig);
+
+    expect(content.environmentVariables).toHaveLength(3);
+    expect(content.environmentVariables).toContain('export TEST_TOOL_CONFIG_DIR="/home/test/.config/test-tool"');
+    expect(content.environmentVariables).toContain('export TEST_TOOL_DEBUG="true"');
+    expect(content.environmentVariables).toContain('export TEST_TOOL_MODE="production"');
+  });
+
+  it('should process aliases from declarative configuration', () => {
+    const toolConfig: ToolConfig = {
+      name: 'test-tool',
+      binaries: ['test-tool'],
+      version: '1.0.0',
+      shellConfigs: {
+        bash: {
+          aliases: {
+            'tt': 'test-tool',
+            'ttd': 'test-tool --debug',
+            'tts': 'test-tool status'
+          },
+        },
+      },
+      installationMethod: 'none',
+      installParams: undefined,
+    };
+
+    const content = generator.extractShellContent('test-tool', toolConfig);
+
+    expect(content.toolInit).toHaveLength(3);
+    expect(content.toolInit).toContain('alias tt="test-tool"');
+    expect(content.toolInit).toContain('alias ttd="test-tool --debug"');
+    expect(content.toolInit).toContain('alias tts="test-tool status"');
+  });
 });

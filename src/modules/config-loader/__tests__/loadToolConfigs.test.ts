@@ -1,6 +1,7 @@
 import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirectories } from '@testing-helpers';
 import { describe, expect, it, beforeEach } from 'bun:test';
 import type { ToolConfigContext, ToolConfigBuilder, AsyncConfigureTool } from '@types';
+import { always } from '@types';
 import type { YamlConfig } from '@modules/config';
 import { ToolConfigBuilder as ToolConfigBuilderImpl } from '@modules/tool-config-builder';
 import path from 'node:path';
@@ -74,7 +75,7 @@ describe('ToolConfigContext', () => {
         c.bin('shell-tool')
          .version('latest')
          .install('manual', { binaryPath: '/usr/bin/shell-tool' })
-         .zsh(/* zsh */`
+         .zsh({ shellInit: [always/* zsh */`
            export TOOL_DIR="${ctx.toolDir}"
            export HOME_DIR="${ctx.homeDir}"
            export GENERATED_DIR="${ctx.generatedDir}"
@@ -83,7 +84,7 @@ describe('ToolConfigContext', () => {
            if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
              source "${ctx.toolDir}/shell/key-bindings.zsh"
            fi
-         ` as any);
+         `] });
       };
       
       await configureToolFn(builder, context);
@@ -92,9 +93,9 @@ describe('ToolConfigContext', () => {
       expect(toolConfig).toBeDefined();
       expect(toolConfig.name).toBe('shell-tool');
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(mockYamlConfig.paths.binariesDir);
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(mockYamlConfig.paths.homeDir);
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(mockYamlConfig.paths.generatedDir);
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockYamlConfig.paths.binariesDir);
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockYamlConfig.paths.homeDir);
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockYamlConfig.paths.generatedDir);
     });
 
     it('should handle tool dependencies using getToolDir', async () => {
@@ -106,7 +107,7 @@ describe('ToolConfigContext', () => {
         c.bin('dependent-tool')
          .version('latest')
          .install('manual', { binaryPath: '/usr/bin/dependent-tool' })
-         .zsh(/* zsh */`
+         .zsh({ shellInit: [always/* zsh */`
            # Reference another tool's directory
            FZF_DIR="${ctx.getToolDir('fzf')}"
            if [[ -d "$FZF_DIR" ]]; then
@@ -115,15 +116,15 @@ describe('ToolConfigContext', () => {
            
            # Use current tool directory
            export DEPENDENT_TOOL_CONFIG="${ctx.toolDir}/config.yaml"
-         ` as any);
+         `] });
       };
       
       await configureToolFn(builder, context);
       const toolConfig = builder.build();
       
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf'));
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'));
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf'));
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(path.join(mockYamlConfig.paths.binariesDir, 'dependent-tool', 'config.yaml'));
     });
 
 
@@ -136,19 +137,19 @@ describe('ToolConfigContext', () => {
         c.bin('completion-tool')
          .version('latest')
          .install('manual', { binaryPath: '/usr/bin/completion-tool' })
-         .zsh(/* zsh */`
+         .zsh({ shellInit: [always/* zsh */`
            # Generate completions to the proper directory
            if command -v completion-tool >/dev/null 2>&1; then
              completion-tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_completion-tool"
            fi
-         ` as any);
+         `] });
       };
       
       await configureToolFn(builder, context);
       const toolConfig = builder.build();
       
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_completion-tool'));
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_completion-tool'));
     });
   });
 
@@ -217,7 +218,7 @@ describe('ToolConfigContext', () => {
          .completions({
            zsh: { source: 'shell/completion.zsh' },
          })
-         .zsh(/* zsh */`
+         .zsh({ shellInit: [always/* zsh */`
            export FZF_LIKE_DEFAULT_OPTS="--color=fg+:cyan"
            
            # Source key bindings
@@ -225,7 +226,7 @@ describe('ToolConfigContext', () => {
            if [ -f "$_fzf_like_install_dir/shell/key-bindings.zsh" ]; then
              source "$_fzf_like_install_dir/shell/key-bindings.zsh"
            fi
-         ` as any);
+         `] });
       };
       
       await configureToolFn(builder, context);
@@ -234,7 +235,7 @@ describe('ToolConfigContext', () => {
       expect(toolConfig.installationMethod).toBe('github-release');
       expect(toolConfig.completions).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf-like'));
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(path.join(mockYamlConfig.paths.binariesDir, 'fzf-like'));
     });
 
     it('should work with atuin-like tool pattern', async () => {
@@ -247,14 +248,14 @@ describe('ToolConfigContext', () => {
          .version('latest')
          .install('github-release', { repo: 'owner/atuin-like' })
          .symlink('./config.toml', '~/.config/atuin-like/config.toml')
-         .zsh(/* zsh */`
+         .zsh({ shellInit: [always/* zsh */`
            export ATUIN_LIKE_CONFIG_DIR="${ctx.toolDir}"
            
            # Generate completions
            if command -v atuin-like >/dev/null 2>&1; then
              atuin-like gen-completions --shell zsh > "${ctx.generatedDir}/completions/_atuin-like" 2>/dev/null || true
            fi
-         ` as any);
+         `] });
       };
       
       await configureToolFn(builder, context);
@@ -262,8 +263,8 @@ describe('ToolConfigContext', () => {
       
       expect(toolConfig.symlinks).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.binariesDir, 'atuin-like'));
-      expect(toolConfig.shellConfigs!.zsh!.scripts![0]).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_atuin-like'));
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(path.join(mockYamlConfig.paths.binariesDir, 'atuin-like'));
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(path.join(mockYamlConfig.paths.generatedDir, 'completions/_atuin-like'));
     });
   });
 });
