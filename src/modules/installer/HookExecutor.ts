@@ -24,7 +24,7 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   /** The full tool configuration being processed (available in all hooks) */
   toolConfig?: import('@types').ToolConfig;
   /** ZX shell executor with cwd set to the .tool.ts file directory */
-  $: ReturnType<typeof $>;
+  $: typeof $;
 }
 
 /**

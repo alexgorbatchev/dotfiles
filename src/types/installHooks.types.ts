@@ -1,7 +1,7 @@
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
 import type { YamlConfig } from '@modules/config';
-import type { $ } from 'zx';
+import { $ } from 'zx';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information
@@ -42,7 +42,7 @@ export interface InstallHookContext {
    * ZX shell executor with cwd set to the directory of the .tool.ts file.
    * This allows hooks to run shell commands relative to the tool's configuration directory.
    */
-  $: ReturnType<typeof $>;
+  $: typeof $;
 }
 
 /**

@@ -119,6 +119,7 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       },
       
       completions: { source: 'completions/_tool.zsh' },
+
       shellInit: [
         always/* zsh */`
           # Functions
@@ -216,12 +217,6 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 };
 ```
 
-**Path Resolution Benefits:**
-- **Type Safety**: All paths are validated at compile time
-- **Configuration Source**: Paths come from YAML config as single source of truth
-- **No Hard-coding**: Eliminates hardcoded `$DOTFILES` or similar references
-- **Flexibility**: Easy access to any configured directory
-- **Consistency**: Same path resolution across all tools
 
 ## Path Resolution Summary
 
@@ -252,6 +247,18 @@ Always use ToolConfigContext variables for dynamic paths:
 - `${ctx.generatedDir}` → Generated files directory
 - `${ctx.binDir}` → Generated shims directory (where tool shims are created)
 - `${ctx.shellScriptsDir}` → Generated shell scripts directory
+- `${ctx.getToolDir('other-tool')}` → Another tool's base directory
+
+**Path Resolution Benefits:**
+- **Type Safety**: All paths are validated at compile time
+- **Configuration Source**: Paths come from YAML config as single source of truth
+- **No Hard-coding**: Eliminates hardcoded `$DOTFILES` or similar references
+- **Flexibility**: Easy access to any configured directory
+- **Consistency**: Same path resolution across all tools
+
+**Note:** For referencing files within the current tool version, you'll typically need to construct paths like:
+- `${ctx.toolDir}/latest/share/` for tool assets
+- `${ctx.toolDir}/latest/config/` for tool configs
 
 ### Common Path Patterns
 
@@ -279,13 +286,13 @@ For optimal tool management, the system should use a versioned directory structu
 
 ```
 ${ctx.generatedDir}/binaries/
-├── tool-name/
-│   └── version/                 # e.g., "1.2.3" or "latest"  
-│       ├── bin/                 # Extracted archive contents (preserved)
-│       │   └── tool-binary
-│       ├── lib/                 # Shared libraries (if any)
-│       ├── share/               # Assets, docs, etc.
-│       └── config/              # Default configs
+└── tool-name/
+    └── version/                 # e.g., "1.2.3" or "latest"  
+        ├── bin/                 # Extracted archive contents (preserved)
+        │   └── tool-binary
+        ├── lib/                 # Shared libraries (if any)
+        ├── share/               # Assets, docs, etc.
+        └── config/              # Default configs
 ```
 
 **Benefits of this approach:**
@@ -666,172 +673,25 @@ c.zsh({
 })
 ```
 
-**Comprehensive Configuration Example:**
-```typescript
-c.zsh({
-  // Declarative environment variables - clean and cross-shell compatible
-  environment: {
-    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`,
-    'TOOL_DEBUG': 'false',
-    'TOOL_LOG_LEVEL': 'info'
-  },
-  
-  // Declarative aliases - simple and performant
-  aliases: {
-    't': 'tool',
-    'tl': 'tool list',
-    'ts': 'tool status', 
-    'tc': 'tool config',
-    'td': 'tool --debug'
-  },
-  
-  completions: {
-    source: 'shell/completion.zsh',
-    name: '_my-tool'
-  },
-  
-  // Script-based configuration for complex logic
-  shellInit: [
-    once/* zsh */`
-      # One-time expensive operations
-      tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-      tool cache-warm > /dev/null 2>&1 || true
-    `,
-    always/* zsh */`
-      # Fast runtime setup and complex functions
-      add-to-path "${ctx.toolDir}/bin"
-      
-      # Complex function with error handling
-      function tool-project() {
-        local project_dir="$1"
-        if [[ -z "$project_dir" ]]; then
-          echo "Usage: tool-project <directory>" >&2
-          return 1
-        fi
-        
-        if [[ ! -d "$project_dir" ]]; then
-          echo "Directory not found: $project_dir" >&2
-          return 1
-        fi
-        
-        cd "$project_dir" && tool init
-      }
-      
-      # ZLE widget for interactive selection
-      function tool-picker() {
-        local selection=$(tool list --format=name | fzf --preview 'tool info {}')
-        if [[ -n "$selection" ]]; then
-          zle kill-whole-line
-          BUFFER="tool run $selection"
-          zle accept-line
-        fi
-        zle redisplay
-      }
-      zle -N tool-picker
-      
-      # Key binding with vi-mode support
-      if (( \${+zvm_after_init_commands} )); then
-        zvm_after_init_commands+=("bindkey '^T' tool-picker")
-      else
-        bindkey '^T' tool-picker
-      fi
-      
-      # Conditional integration
-      if command -v tool >/dev/null 2>&1; then
-        eval "$(tool init zsh 2>/dev/null || echo '# tool init failed')"
-      fi
-    `
-  ]
-})
-```
+**Benefits of Declarative Configuration:**
 
-**Aliases Advantages:**
-- **Clean Configuration**: Aliases are defined declaratively in the configuration object
-- **Automatic Generation**: Shell-specific alias syntax is generated automatically
-- **Cross-Shell Support**: Same alias definitions work for zsh, bash, and powershell
-- **Performance**: Aliases are generated once and executed efficiently
-- **Maintainability**: Easy to see all aliases at a glance in the configuration
+**Environment Variables:**
+- Clean, structured definition in configuration objects
+- Automatic shell-specific syntax generation (`export` for zsh/bash, `$env:` for PowerShell)
+- Type safety and validation
+- Cross-shell compatibility with single definition
+
+**Aliases:**
+- Simple key-value pairs for alias definitions
+- Automatic shell-specific syntax generation
+- Performance optimized (generated once, not evaluated on each shell startup)
+- Clear separation from complex shell functions
+- Easy to see all aliases at a glance in the configuration
 
 **Performance Benefits:**
 - Expensive operations (completion generation, cache building) run only once
 - Shell startup remains fast with lightweight always scripts
 - Once scripts automatically self-delete after execution to prevent re-running
-
-**Common Patterns:**
-
-```typescript
-c.zsh({
-  // Use declarative configuration for environment variables
-  environment: {
-    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`
-  },
-  
-  // Use declarative configuration for simple aliases
-  aliases: {
-    't': 'tool',
-    'tl': 'tool list',
-    'ts': 'tool status'
-  },
-  
-  shellInit: [
-    always/* zsh */`
-      # PATH modifications
-      add-to-path "${ctx.homeDir}/.tool/bin"
-      
-      # Simple functions
-      function tool-cd() {
-        local dir=$(tool list-dirs | fzf)
-        [[ -n "$dir" ]] && cd "$dir"
-      }
-      
-      # Complex functions with error handling
-      function tool-install() {
-        local package="$1"
-        if [[ -z "$package" ]]; then
-          echo "Usage: tool-install <package>" >&2
-          return 1
-        fi
-        
-        echo "Installing $package..."
-        tool install "$package" || {
-          echo "Failed to install $package" >&2
-          return 1
-        }
-      }
-      
-      # ZLE (Zsh Line Editor) widgets
-      function tool-picker() {
-        local selection=$(tool list | fzf)
-        if [[ -n "$selection" ]]; then
-          zle kill-whole-line
-          BUFFER="tool run $selection"
-          zle accept-line
-        fi
-        zle redisplay
-      }
-      zle -N tool-picker
-      
-      # Key bindings (with vi-mode support)
-      if (( \${+zvm_after_init_commands} )); then
-        zvm_after_init_commands+=("bindkey '^T' tool-picker")
-      else
-        bindkey '^T' tool-picker
-      fi
-      
-      # Conditional initialization
-      if command -v tool >/dev/null 2>&1; then
-        eval "$(tool init zsh)"
-      fi
-      
-      # Source additional files
-      local tool_extras="${ctx.toolDir}/extras.zsh"
-      [[ -f "$tool_extras" ]] && source "$tool_extras"
-    `
-  ]
-})
-```
 
 ### `.bash(config: ShellConfig)`
 
@@ -954,16 +814,6 @@ c.zsh({
 });
 ```
 
-**Path Context Variables Reference:**
-- `${ctx.toolDir}` → Tool's base installation directory (contains version subdirectories)  
-- `${ctx.homeDir}` → User's home directory
-- `${ctx.dotfilesDir}` → Root dotfiles directory  
-- `${ctx.generatedDir}` → Generated files directory
-- `${ctx.getToolDir('other-tool')}` → Another tool's base directory
-
-**Note:** For referencing files within the current tool version, you'll typically need to construct paths like:
-- `${ctx.toolDir}/latest/share/` for tool assets
-- `${ctx.toolDir}/latest/config/` for tool configs
 
 ## Platform-Specific Configuration
 
@@ -1001,104 +851,38 @@ c.platform(
 )
 ```
 
-### Examples
+### Multi-Platform Example
 
-**Single Platform:**
-```typescript
-c.platform(Platform.MacOS, (c) => {
-  c
-    .install('brew', {
-      formula: 'tool',
-      cask: true,
-    })
-    .zsh({
-      // Use declarative configuration for environment variables
-      environment: {
-        'TOOL_USE_COREAUDIO': '1'
-      }
-    });
-});
-```
-
-**Multiple Platforms:**
-```typescript
-c.platform(Platform.Linux | Platform.MacOS, (c) => {
-  c
-    .install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*unix*.tar.gz',
-    })
-    .zsh({
-      // Use declarative configuration for environment variables
-      environment: {
-        'TOOL_USE_UNIX_SOCKETS': '1'
-      }
-    });
-});
-```
-
-**Platform and Architecture Specific:**
-```typescript
-c.platform(Platform.Windows, Architecture.Arm64, (c) => {
-  c
-    .install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*windows-arm64.zip',
-    })
-    .powershell(/* powershell */ `
-      $env:TOOL_ARCH = "arm64"
-    `);
-});
-```
-
-**Complete Multi-Platform Example:**
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   // Common configuration for all platforms
-  c
-    .bin('tool')
-    .version('latest');
+  c.bin('tool').version('latest');
     
   // macOS-specific
   c.platform(Platform.MacOS, (c) => {
-    c
-      .install('brew', { formula: 'tool' })
-      .zsh({
-        // Use declarative aliases instead of inline shell scripts
-        aliases: {
-          't': 'tool --macos-mode'
-        }
-      });
+    c.install('brew', { formula: 'tool' })
+     .zsh({ aliases: { 't': 'tool --macos-mode' } });
   });
   
-  // Linux-specific
+  // Linux-specific  
   c.platform(Platform.Linux, (c) => {
-    c
-      .install('github-release', {
+    c.install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
       })
-      .zsh({
-        // Use declarative aliases instead of inline shell scripts
-        aliases: {
-          't': 'tool --linux-mode'
-        }
-      });
+     .zsh({ aliases: { 't': 'tool --linux-mode' } });
   });
   
-  // Windows-specific
-  c.platform(Platform.Windows, (c) => {
-    c
-      .install('github-release', {
+  // Windows with architecture-specific configuration
+  c.platform(Platform.Windows, Architecture.Arm64, (c) => {
+    c.install('github-release', {
         repo: 'owner/tool', 
-        assetPattern: '*windows*.zip',
+        assetPattern: '*windows-arm64.zip',
       })
-      .powershell({
-        // Use declarative aliases instead of inline shell scripts
-        aliases: {
-          't': 'tool --windows-mode'
-        }
-      });
+     .powershell({ 
+       environment: { 'TOOL_ARCH': 'arm64' },
+       aliases: { 't': 'tool --windows-mode' }
+     });
   });
 };
 ```
@@ -1378,40 +1162,14 @@ c.hooks({
 
 ### Hook Examples
 
-**Custom Binary Movement:**
-```typescript
-import path from 'path';
-
-c.hooks({
-  afterExtract: async ({ extractDir, installDir, logger, $ }) => {
-    // Move a deeply nested binary
-    if (extractDir) {
-      const sourcePath = path.join(extractDir, 'dist/bin/tool');
-      const targetPath = path.join(installDir, 'tool');
-      
-      // Use shell commands for binary file operations
-      await $`mv ${sourcePath} ${targetPath}`;
-      await $`chmod +x ${targetPath}`;
-      
-      logger.info(`Moved binary from ${sourcePath} to ${targetPath}`);
-    }
-  }
-})
-```
-
 **Build from Source:**
 ```typescript
-import path from 'path';
-
 c.hooks({
   afterExtract: async ({ extractDir, installDir, logger, $ }) => {
     if (extractDir) {
       logger.info('Building tool from source...');
-      
-      // Build the tool ($ is already configured with the tool's directory as cwd)
       await $`cd ${extractDir} && make build`;
       
-      // Move built binary
       const builtBinary = path.join(extractDir, 'target/release/tool');
       const targetPath = path.join(installDir, 'tool');
       await $`mv ${builtBinary} ${targetPath}`;
@@ -1422,26 +1180,18 @@ c.hooks({
 })
 ```
 
-**Post-Installation Configuration:**
+**Post-Installation Setup:**
 ```typescript
-import path from 'path';
-
 c.hooks({
-  afterInstall: async ({ toolName, systemInfo, fileSystem, logger }) => {
+  afterInstall: async ({ toolName, systemInfo, fileSystem, logger, $ }) => {
     // Create configuration directory using file system API
     const configDir = path.join(systemInfo.homeDir, '.config', toolName);
     await fileSystem.mkdir(configDir, { recursive: true });
     
-    // Generate initial config
-    const configPath = path.join(configDir, 'config.json');
-    const configContent = JSON.stringify({
-      version: "1.0",
-      enabled: true
-    }, null, 2);
+    // Initialize tool-specific data using shell executor
+    await $`${path.join(installDir, toolName)} init --data-dir ${configDir}`;
     
-    await fileSystem.writeFile(configPath, configContent);
-    
-    logger.info(`Created initial config at ${configPath}`);
+    logger.info(`Initialized ${toolName} at ${configDir}`);
   }
 })
 ```
@@ -1529,158 +1279,96 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       bash: { source: 'complete/rg.bash' },
     })
     .zsh({
-      // Use declarative aliases instead of inline shell scripts
-      aliases: {
-        'rg': 'ripgrep'
-      }
+      aliases: { 'rg': 'ripgrep' }
     });
 };
 ```
 
-### 2. Complex Tool with Multiple Features
+### 2. Tool with Complex Shell Integration
 
 ```typescript
 import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { always } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
     .bin('fzf')
     .version('latest')
-    .install('github-release', {
-      repo: 'junegunn/fzf',
-    })
+    .install('github-release', { repo: 'junegunn/fzf' })
     .zsh({
-      // Use declarative configuration for environment variables
       environment: {
         'FZF_DEFAULT_OPTS': '--color=fg+:cyan,bg+:black,hl+:yellow'
       },
-      
       completions: { source: 'shell/completion.zsh' },
       shellInit: [
         always/* zsh */`
-          # Source key bindings
-          _fzf_install_dir="${ctx.toolDir}"
-          if [[ -f "$_fzf_install_dir/shell/key-bindings.zsh" ]]; then
-            source "$_fzf_install_dir/shell/key-bindings.zsh"
+          # Source key bindings and create custom functions
+          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.toolDir}/shell/key-bindings.zsh"
           fi
           
-          # Custom function
           function fzf-jump-to-dir() {
-            local dir
-            dir=$(find . -type d | fzf)
+            local dir=$(find . -type d | fzf)
             [[ -n "$dir" ]] && cd "$dir"
           }
-          
-          # Create ZLE widget
           zle -N fzf-jump-to-dir
-          
-          # Bind key with vi-mode support
-          if (( \${+zvm_after_init_commands} )); then
-            zvm_after_init_commands+=("bindkey '^]' fzf-jump-to-dir")
-          else
-            bindkey '^]' fzf-jump-to-dir
-          fi
+          bindkey '^]' fzf-jump-to-dir
         `
       ]
     });
 };
 ```
 
-### 3. Platform-Specific Tool
-
-```typescript
-import { Platform, type ToolConfigBuilder, type ToolConfigContext } from '@types';
-
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin('aerospace')
-    .version('latest')
-    .platform(Platform.MacOS, (c) => {
-      c
-        .install('brew', {
-          formula: 'nikitabobko/tap/aerospace',
-          cask: true,
-        })
-        .symlink('./aerospace.toml', `${ctx.homeDir}/.config/aerospace/aerospace.toml`)
-        .zsh({
-          // Use declarative aliases instead of inline shell scripts
-          aliases: {
-            'ar': 'aerospace reload-config',
-            'al': 'aerospace list-windows'
-          }
-        });
-    });
-};
-```
-
-### 4. Script-Based Installation
+### 3. Cross-Shell Tool with Declarative Configuration
 
 ```typescript
 import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { always, once } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
-    .bin('bun')
+    .bin(['tool', 't'])
     .version('latest')
-    .install('curl-script', {
-      url: 'https://bun.sh/install',
-      shell: 'bash',
+    .install('github-release', { repo: 'owner/tool' })
+    .completions({
+      zsh: { source: 'completions/_tool' },
+      bash: { source: 'completions/tool.bash' },
+      powershell: { source: 'completions/tool.ps1' }
     })
+    
+    // Zsh configuration
     .zsh({
-      // Use declarative configuration for environment variables and aliases
       environment: {
-        'BUN_INSTALL': `${ctx.homeDir}/.bun`
+        'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
+        'TOOL_LOG_LEVEL': 'info'
       },
-      
-      aliases: {
-        'br': 'bun run',
-        'bt': 'bun test',
-        'btw': 'bun test --watch'
-      },
-      
+      aliases: { 't': 'tool', 'ts': 'tool status' },
       shellInit: [
-        always/* zsh */`
-          add-to-path "$BUN_INSTALL/bin"
-          
-          # Load completions
-          [[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
-          
-          # Helper functions
-          function brf() {
-            local file
-            file=$(find . -name "*.ts" -o -name "*.tsx" | fzf)
-            [[ -n "$file" ]] && bun run "$file"
-          }
+        once/* zsh */`
+          tool completions zsh > "${ctx.generatedDir}/completions/_tool"
         `
       ]
-    });
-};
-```
-
-### 5. Tool with Configuration Files
-
-```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin('lazygit')
-    .version('latest')
-    .install('github-release', {
-      repo: 'jesseduffield/lazygit',
     })
-    .symlink('./config.yml', `${ctx.homeDir}/.config/lazygit/config.yml`)
-    .zsh({
-      // Use declarative aliases instead of inline shell scripts
-      aliases: {
-        'lg': 'lazygit',
-        'g': 'lazygit'
-      }
+    
+    // Bash and PowerShell configurations
+    .bash({
+      environment: {
+        'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
+        'TOOL_LOG_LEVEL': 'info'
+      },
+      aliases: { 't': 'tool', 'ts': 'tool status' }
+    })
+    .powershell({
+      environment: {
+        'TOOL_CONFIG_DIR': `${ctx.homeDir}\\.config\\tool`,
+        'TOOL_LOG_LEVEL': 'info'
+      },
+      aliases: { 't': 'tool', 'ts': 'tool status' }
     });
 };
 ```
 
-### 6. Tool with Hooks
+### 4. Tool with Configuration Files and Post-Install Setup
 
 ```typescript
 import type { ToolConfigBuilder, ToolConfigContext } from '@types';
@@ -1690,157 +1378,19 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
   c
     .bin('custom-tool')
     .version('latest')
-    .install('github-release', {
-      repo: 'owner/custom-tool',
-    })
+    .install('github-release', { repo: 'owner/custom-tool' })
+    .symlink('./config.yml', `${ctx.homeDir}/.config/custom-tool/config.yml`)
     .hooks({
       afterInstall: async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
-        // Create required directories using file system API
         const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
         await fileSystem.mkdir(dataDir, { recursive: true });
-        
-        // Initialize database using $ shell executor
         await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
-        
         logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
       }
     })
     .zsh({
-      // Use declarative configuration for simple values
-      environment: {
-        'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool`
-      },
-      aliases: {
-        'ct': 'custom-tool'
-      }
-    });
-};
-```
-
-### 7. Modern Tool with Declarative Configuration
-
-```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { always, once } from '@types';
-
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin(['modern-tool', 'mt', 'mt-admin'])
-    .version('latest')
-    .install('github-release', {
-      repo: 'owner/modern-tool',
-    })
-    .completions({
-      zsh: { source: 'completions/_modern-tool' },
-      bash: { source: 'completions/modern-tool.bash' },
-      powershell: { source: 'completions/modern-tool.ps1' }
-    })
-    
-    // Cross-shell compatible declarative configuration
-    .zsh({
-      // Environment variables with context paths
-      environment: {
-        'MT_CONFIG_DIR': `${ctx.homeDir}/.config/modern-tool`,
-        'MT_DATA_DIR': `${ctx.homeDir}/.local/share/modern-tool`,
-        'MT_CACHE_DIR': `${ctx.homeDir}/.cache/modern-tool`,
-        'MT_LOG_LEVEL': 'info',
-        'MT_THEME': 'auto'
-      },
-      
-      // Clean alias definitions
-      aliases: {
-        'mt': 'modern-tool',
-        'mts': 'modern-tool status',
-        'mtl': 'modern-tool list',
-        'mtc': 'modern-tool config',
-        'mtr': 'modern-tool run',
-        'mtd': 'modern-tool --debug'
-      },
-      
-      shellInit: [
-        once/* zsh */`
-          # One-time setup operations
-          modern-tool completions zsh > "${ctx.generatedDir}/completions/_mt"
-          modern-tool cache --warm >/dev/null 2>&1 || true
-        `,
-        always/* zsh */`
-          # Runtime functions and integrations
-          function mt-project() {
-            local project=$(modern-tool projects list | fzf --preview 'modern-tool project info {}')
-            [[ -n "$project" ]] && modern-tool project switch "$project"
-          }
-          
-          # Auto-completion for custom commands
-          if command -v modern-tool >/dev/null 2>&1; then
-            eval "$(modern-tool init zsh)"
-          fi
-        `
-      ]
-    })
-    
-    // Same aliases work automatically for bash  
-    .bash({
-      environment: {
-        'MT_CONFIG_DIR': `${ctx.homeDir}/.config/modern-tool`,
-        'MT_DATA_DIR': `${ctx.homeDir}/.local/share/modern-tool`,
-        'MT_CACHE_DIR': `${ctx.homeDir}/.cache/modern-tool`,
-        'MT_LOG_LEVEL': 'info',
-        'MT_THEME': 'auto'
-      },
-      
-      aliases: {
-        'mt': 'modern-tool',
-        'mts': 'modern-tool status',
-        'mtl': 'modern-tool list',
-        'mtc': 'modern-tool config',
-        'mtr': 'modern-tool run',
-        'mtd': 'modern-tool --debug'
-      },
-      
-      shellInit: [
-        always/* bash */`
-          # Bash-specific integration
-          if command -v modern-tool >/dev/null 2>&1; then
-            eval "$(modern-tool init bash)"
-          fi
-        `
-      ]
-    })
-    
-    // PowerShell configuration with automatic syntax conversion
-    .powershell({
-      environment: {
-        'MT_CONFIG_DIR': `${ctx.homeDir}\\.config\\modern-tool`,
-        'MT_DATA_DIR': `${ctx.homeDir}\\.local\\share\\modern-tool`,
-        'MT_CACHE_DIR': `${ctx.homeDir}\\.cache\\modern-tool`,
-        'MT_LOG_LEVEL': 'info',
-        'MT_THEME': 'auto'
-      },
-      
-      aliases: {
-        'mt': 'modern-tool',
-        'mts': 'modern-tool status',
-        'mtl': 'modern-tool list',
-        'mtc': 'modern-tool config',
-        'mtr': 'modern-tool run',
-        'mtd': 'modern-tool --debug'
-      },
-      
-      shellInit: [
-        always/* powershell */`
-          # PowerShell-specific functions
-          function mt-project {
-            $project = modern-tool projects list | fzf --preview 'modern-tool project info {}'
-            if ($project) {
-              modern-tool project switch $project
-            }
-          }
-          
-          if (Get-Command modern-tool -ErrorAction SilentlyContinue) {
-            Invoke-Expression (modern-tool init powershell)
-          }
-        `
-      ]
+      environment: { 'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool` },
+      aliases: { 'ct': 'custom-tool', 'lg': 'custom-tool' }
     });
 };
 ```
@@ -2095,153 +1645,6 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 };
 ```
 
-### Real-World Shell Executor Examples
-
-**Configuration File Processing with Templates:**
-```typescript
-import path from 'path';
-
-c.hooks({
-  afterInstall: async ({ toolName, systemInfo, $, logger }) => {
-    // Process configuration template using shell tools
-    await $`envsubst < ./config/template.conf > ./config/generated.conf`;
-    
-    // Use tool-specific configuration processors
-    await $`./scripts/configure.sh "${systemInfo.homeDir}" "${toolName}"`;
-    
-    // Copy processed configs to user directory
-    const userConfigDir = path.join(systemInfo.homeDir, '.config', toolName);
-    await $`mkdir -p "${userConfigDir}"`;
-    await $`cp ./config/generated.conf "${userConfigDir}/config.conf"`;
-    
-    logger.info(`Configured ${toolName} with processed templates`);
-  }
-})
-```
-
-**Building Tools from Source:**
-```typescript
-c.hooks({
-  afterExtract: async ({ extractDir, installDir, $, logger }) => {
-    if (extractDir) {
-      // Navigate to source directory and build
-      await $`cd ${extractDir} && make clean`;
-      await $`cd ${extractDir} && ./configure --prefix="${installDir}"`;
-      await $`cd ${extractDir} && make -j$(nproc)`;
-      
-      // Install to our managed location
-      await $`cd ${extractDir} && make install`;
-      
-      // Clean up build artifacts
-      await $`cd ${extractDir} && make clean`;
-      
-      logger.info('Built tool from source successfully');
-    }
-  }
-})
-```
-
-**Setting Up Development Environment:**
-```typescript
-c.hooks({
-  afterInstall: async ({ toolName, binaryPath, systemInfo, $, logger }) => {
-    // Initialize tool's working directory structure
-    const toolWorkspace = path.join(systemInfo.homeDir, `.${toolName}`);
-    await $`mkdir -p "${toolWorkspace}"/{bin,config,data,logs}`;
-    
-    // Copy tool-specific scripts and configs
-    await $`cp -r ./scripts/* "${toolWorkspace}/bin/"`;
-    await $`cp -r ./config/* "${toolWorkspace}/config/"`;
-    await $`chmod +x "${toolWorkspace}"/bin/*`;
-    
-    // Set up initial data files
-    await $`./setup/init-data.sh "${toolWorkspace}/data"`;
-    
-    // Create symlinks for easy access
-    await $`ln -sf "${binaryPath}" "${toolWorkspace}/bin/${toolName}"`;
-    
-    logger.info(`Development environment set up at ${toolWorkspace}`);
-  }
-})
-```
-
-**Platform-Specific Setup Scripts:**
-```typescript
-c.hooks({
-  afterInstall: async ({ systemInfo, $, logger }) => {
-    // Run platform-specific setup
-    const setupScript = systemInfo.platform === 'darwin' 
-      ? './setup/macos-setup.sh'
-      : systemInfo.platform === 'win32'
-      ? './setup/windows-setup.bat'
-      : './setup/linux-setup.sh';
-    
-    if (await $`test -f ${setupScript}`.exitCode === 0) {
-      await $`chmod +x ${setupScript}`;
-      await $`${setupScript}`;
-      logger.info(`Ran platform-specific setup: ${setupScript}`);
-    } else {
-      logger.warn(`Setup script not found: ${setupScript}`);
-    }
-  }
-})
-```
-
-**Dependency Management:**
-```typescript
-c.hooks({
-  beforeInstall: async ({ $, logger }) => {
-    // Check for required dependencies
-    const dependencies = ['git', 'curl', 'jq'];
-    
-    for (const dep of dependencies) {
-      try {
-        await $`command -v ${dep}`;
-        logger.info(`Dependency satisfied: ${dep}`);
-      } catch (error) {
-        throw new Error(`Missing required dependency: ${dep}`);
-      }
-    }
-    
-    // Download and install additional tools if needed
-    if (await $`test -f ./deps/install-deps.sh`.exitCode === 0) {
-      await $`chmod +x ./deps/install-deps.sh && ./deps/install-deps.sh`;
-    }
-  }
-})
-```
-
-### Complex Hooks with External Dependencies
-
-```typescript
-import path from 'path';
-import { createHash } from 'crypto';
-
-c.hooks({
-  afterInstall: async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
-    // Generate unique identifier
-    const hash = createHash('sha256')
-      .update(toolName + installDir)
-      .digest('hex')
-      .substring(0, 8);
-    
-    // Create tool-specific data directory
-    const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName, hash);
-    await fileSystem.mkdir(dataDir, { recursive: true });
-    
-    // Download additional resources using $ shell executor
-    const resourceUrl = 'https://example.com/resources.json';
-    const resourcePath = path.join(dataDir, 'resources.json');
-    await $`curl -fsSL ${resourceUrl} -o ${resourcePath}`;
-    
-    // Set up environment file
-    const envFile = path.join(dataDir, 'env.sh');
-    await fileSystem.writeFile(envFile, `export TOOL_DATA_DIR="${dataDir}"\n`);
-    
-    logger.info(`Setup complete: ${dataDir}`);
-  }
-})
-```
 
 ## Troubleshooting Shell Executor (`$`) Issues
 
