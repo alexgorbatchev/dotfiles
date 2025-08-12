@@ -52,7 +52,7 @@ export const generalSuccessTemplates = {
   targetStatus: (targetIcon: string, targetPath: string) => 
     createSafeLogMessage(`${targetIcon} ${targetPath}`),
   symlinkOperation: (targetPath: string, sourcePath: string, status: string, error?: string) => {
-    let message = `Target: ${targetPath} <- Source: ${sourcePath} (Status: ${status})`;
+    let message = `Target: ${targetPath} -> Source: ${sourcePath} (Status: ${status})`;
     if (status === 'failed' && error) {
       message += ` | Error: ${error}`;
     } else if (status === 'skipped_exists') {

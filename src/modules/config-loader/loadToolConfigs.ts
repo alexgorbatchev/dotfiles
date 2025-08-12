@@ -55,62 +55,85 @@ export async function loadToolConfigsFromDirectory(
     logger.trace(logs.config.success.directoryScan(toolConfigsDir), files);
 
     for (const file of files) {
+      let filePath: string;
+      let toolNameFromFile: string;
+
       if (file.endsWith('.tool.ts')) {
-        // Resolve to an absolute path for dynamic import
-        const filePath = path.resolve(toolConfigsDir, file);
-        logger.trace(logs.config.success.toolConfigLoad(filePath));
-
+        // Direct .tool.ts file (flat structure like configs/tools/)
+        filePath = path.resolve(toolConfigsDir, file);
+        toolNameFromFile = path.basename(file, '.tool.ts');
+      } else {
+        // Check if it's a directory that might contain a .tool.ts file (nested structure like configs-migrated/)
+        const dirPath = path.resolve(toolConfigsDir, file);
         try {
-          // While fs.exists(filePath) could be checked here using the passed `fs`,
-          // dynamic import() will ultimately rely on the host file system.
-          // In dry-run scenarios, setupServices ensures these files exist on disk
-          // and MemFileSystem is populated with their content using these same absolute paths.
-          // So, import(filePath) should work.
-
-          const module = await import(filePath);
-          if (module.default) {
-            let toolConfig: ToolConfig | undefined;
-            const toolNameFromFile = path.basename(file, '.tool.ts');
-
-            if (typeof module.default === 'function') {
-              logger.trace(logs.config.success.validated(filePath));
-              const configureToolFn = module.default as AsyncConfigureTool;
-              const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
-              const context = createToolConfigContext(yamlConfig, toolNameFromFile);
-              await configureToolFn(builder, context);
-              toolConfig = builder.build();
-              logger.trace(logs.config.success.loaded(filePath, 1));
+          const stat = await fs.stat(dirPath);
+          if (stat.isDirectory()) {
+            const expectedToolFile = path.join(dirPath, `${file}.tool.ts`);
+            if (await fs.exists(expectedToolFile)) {
+              filePath = expectedToolFile;
+              toolNameFromFile = file;
             } else {
-              logger.trace(logs.config.success.validated(filePath));
-              toolConfig = module.default as ToolConfig;
-              // Ensure the toolConfig.name matches the filename if it's a direct object export
-              if (toolConfig.name !== toolNameFromFile) {
-                logger.warn(logs.config.warning.invalid('tool config object name', toolConfig.name, `filename: ${toolNameFromFile}`), filePath);
-              }
-            }
-
-            // Set the config file path after building/loading
-            if (toolConfig) {
-              toolConfig.configFilePath = filePath;
-            }
-
-            if (toolConfig && toolConfig.name) {
-              // Prefer toolConfig.name if explicitly set by builder/object, otherwise use filename-derived.
-              // The builder now sets the name from the filename, so toolConfig.name should be reliable.
-              toolConfigs[toolConfig.name] = toolConfig;
-              logger.debug(logs.config.success.loaded(filePath, 1), toolConfig.name);
-            } else if (toolConfig) {
-              logger.warn(logs.config.warning.invalid('tool config', 'missing name', 'valid name property'), filePath);
-            } else {
-              // This case should ideally not be hit if builder.build() always returns a valid config or throws.
-              logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Could not derive valid configuration'));
+              continue; // Skip directories without matching .tool.ts files
             }
           } else {
-            logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'no default export'));
+            continue; // Skip non-.tool.ts files
           }
-        } catch (e) {
-          logger.error(logs.config.error.loadFailed(filePath, String(e)), e);
+        } catch {
+          continue; // Skip if we can't stat the item
         }
+      }
+
+      logger.trace(logs.config.success.toolConfigLoad(filePath));
+
+      try {
+        // While fs.exists(filePath) could be checked here using the passed `fs`,
+        // dynamic import() will ultimately rely on the host file system.
+        // In dry-run scenarios, setupServices ensures these files exist on disk
+        // and MemFileSystem is populated with their content using these same absolute paths.
+        // So, import(filePath) should work.
+
+        const module = await import(filePath);
+        if (module.default) {
+          let toolConfig: ToolConfig | undefined;
+
+          if (typeof module.default === 'function') {
+            logger.trace(logs.config.success.validated(filePath));
+            const configureToolFn = module.default as AsyncConfigureTool;
+            const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
+            const context = createToolConfigContext(yamlConfig, toolNameFromFile);
+            await configureToolFn(builder, context);
+            toolConfig = builder.build();
+            logger.trace(logs.config.success.loaded(filePath, 1));
+          } else {
+            logger.trace(logs.config.success.validated(filePath));
+            toolConfig = module.default as ToolConfig;
+            // Ensure the toolConfig.name matches the filename if it's a direct object export
+            if (toolConfig.name !== toolNameFromFile) {
+              logger.warn(logs.config.warning.invalid('tool config object name', toolConfig.name, `filename: ${toolNameFromFile}`), filePath);
+            }
+          }
+
+          // Set the config file path after building/loading
+          if (toolConfig) {
+            toolConfig.configFilePath = filePath;
+          }
+
+          if (toolConfig && toolConfig.name) {
+            // Prefer toolConfig.name if explicitly set by builder/object, otherwise use filename-derived.
+            // The builder now sets the name from the filename, so toolConfig.name should be reliable.
+            toolConfigs[toolConfig.name] = toolConfig;
+            logger.debug(logs.config.success.loaded(filePath, 1), toolConfig.name);
+          } else if (toolConfig) {
+            logger.warn(logs.config.warning.invalid('tool config', 'missing name', 'valid name property'), filePath);
+          } else {
+            // This case should ideally not be hit if builder.build() always returns a valid config or throws.
+            logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Could not derive valid configuration'));
+          }
+        } else {
+          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'no default export'));
+        }
+      } catch (e) {
+        logger.error(logs.config.error.loadFailed(filePath, String(e)), e);
       }
     }
   } catch (e) {
