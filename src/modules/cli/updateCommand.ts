@@ -3,7 +3,7 @@ import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { ToolConfig } from '@types';
-import { type GlobalProgram, type Services } from '../../cli';
+import type { GlobalProgram, Services } from '../../cli';
 import { exitCli } from './exitCli';
 
 export interface UpdateCommandOptions {
@@ -16,7 +16,7 @@ export interface UpdateCommandOptions {
 export function registerUpdateCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  servicesFactory: () => Promise<Services>,
+  servicesFactory: () => Promise<Services>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'updateCommand' });
   program
@@ -27,15 +27,10 @@ export function registerUpdateCommand(
     .action(async (toolName, options) => {
       const actionLogger = logger.getSubLogger({ name: 'action' });
       const combinedOptions = { ...options, ...program.opts() };
-      actionLogger.debug(
-        logs.command.debug.errorDetails(),
-        toolName,
-        combinedOptions,
-      );
+      actionLogger.debug(logs.command.debug.errorDetails(), toolName, combinedOptions);
 
       const services = await servicesFactory();
-      const { yamlConfig, fs, githubApiClient, installer, versionChecker } =
-        services;
+      const { yamlConfig, fs, githubApiClient, installer, versionChecker } = services;
 
       try {
         actionLogger.debug(logs.command.debug.errorDetails(), toolName);
@@ -46,15 +41,11 @@ export function registerUpdateCommand(
             toolName,
             yamlConfig.paths.toolConfigsDir,
             fs,
-            yamlConfig,
+            yamlConfig
           );
           actionLogger.debug(logs.command.debug.errorDetails(), toolName);
         } catch (error) {
-          actionLogger.debug(
-            logs.command.debug.errorDetails(),
-            toolName,
-            (error as Error).message,
-          );
+          actionLogger.debug(logs.command.debug.errorDetails(), toolName, (error as Error).message);
           logger.error(logs.config.error.loadFailed(`tool "${toolName}"`, (error as Error).message));
           logger.debug(logs.command.debug.errorDetails(), error);
           exitCli(1);
@@ -80,9 +71,7 @@ export function registerUpdateCommand(
 
           const [owner, repo] = toolConfig.installParams.repo.split('/');
           if (!owner || !repo) {
-            logger.warn(
-              logs.config.warning.invalid('repo format', toolConfig.installParams.repo, 'owner/repo')
-            );
+            logger.warn(logs.config.warning.invalid('repo format', toolConfig.installParams.repo, 'owner/repo'));
             return;
           }
 
@@ -96,9 +85,7 @@ export function registerUpdateCommand(
           }
 
           if (!latestRelease) {
-            logger.warn(
-              logs.service.warning.github.notFound('release', `${toolName} from ${owner}/${repo}`)
-            );
+            logger.warn(logs.service.warning.github.notFound('release', `${toolName} from ${owner}/${repo}`));
             return;
           }
 
@@ -114,10 +101,7 @@ export function registerUpdateCommand(
             return;
           }
 
-          const status = await versionChecker.checkVersionStatus(
-            configuredVersion,
-            latestVersion,
-          );
+          const status = await versionChecker.checkVersionStatus(configuredVersion, latestVersion);
 
           if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
             if (combinedOptions.shimMode) {
@@ -131,19 +115,13 @@ export function registerUpdateCommand(
               ...toolConfig,
               version: latestVersion,
             };
-            const installResult = await installer.install(
-              toolName,
-              toolConfigForUpdate,
-              { force: true },
-            );
+            const installResult = await installer.install(toolName, toolConfigForUpdate, { force: true });
 
             if (installResult.success) {
               if (combinedOptions.shimMode) {
                 logger.info(logs.general.success.shimUpdateSuccess(toolName, latestVersion));
               } else {
-                logger.info(
-                  logs.tool.success.updated(toolName, configuredVersion, latestVersion),
-                );
+                logger.info(logs.tool.success.updated(toolName, configuredVersion, latestVersion));
               }
               logger.debug(logs.command.debug.errorDetails());
             } else {
@@ -161,30 +139,25 @@ export function registerUpdateCommand(
             status === VersionComparisonStatus.INVALID_CURRENT_VERSION ||
             status === VersionComparisonStatus.INVALID_LATEST_VERSION
           ) {
-            logger.warn(
-              logs.tool.warning.versionComparisonFailed(toolName, configuredVersion, latestVersion)
-            );
+            logger.warn(logs.tool.warning.versionComparisonFailed(toolName, configuredVersion, latestVersion));
           }
         } else {
-          logger.info(logs.general.warning.unsupportedOperation('Update', `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`));
+          logger.info(
+            logs.general.warning.unsupportedOperation(
+              'Update',
+              `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`
+            )
+          );
         }
       } catch (error) {
         actionLogger.debug(logs.command.debug.errorDetails(), error);
-        if (
-          error instanceof Error &&
-          error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')
-        ) {
+        if (error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')) {
           throw error;
         } else {
           logger.error(logs.command.error.executionFailed('update', 1, (error as Error).message));
           logger.debug(logs.command.debug.errorDetails(), error);
         }
-        if (
-          !(
-            error instanceof Error &&
-            error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')
-          )
-        ) {
+        if (!(error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_'))) {
           exitCli(1);
         }
       }

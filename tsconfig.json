@@ -30,7 +30,7 @@
     "noImplicitAny": true,
 
     "paths": {
-      "@*": ["./src/*"],
+      "@*": ["./src/*"]
     }
   },
   "exclude": ["**/tmp/**"]

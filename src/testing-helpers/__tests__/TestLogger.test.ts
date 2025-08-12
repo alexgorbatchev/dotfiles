@@ -1,6 +1,6 @@
-import { describe, it, expect, spyOn } from 'bun:test';
-import { TestLogger, type LogLevel } from '../TestLogger';
-import { type ILogObjMeta } from 'tslog';
+import { describe, expect, it, spyOn } from 'bun:test';
+import type { ILogObjMeta } from 'tslog';
+import { type LogLevel, TestLogger } from '../TestLogger';
 
 interface TestLoggerWithPrivates {
   getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[];
@@ -93,9 +93,7 @@ describe('TestLogger', () => {
 
       logger.printLogs(['INFO'], ['TestLogger']);
       expect(consoleSpy).toHaveBeenCalledTimes(1);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(JSON.stringify({ '0': 'info message' }))
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify({ '0': 'info message' })));
 
       consoleSpy.mockClear();
 
@@ -151,9 +149,7 @@ describe('TestLogger', () => {
 
         logger.printLogs(['INFO'], ['TestLogger'], 'message 1');
         expect(consoleSpy).toHaveBeenCalledTimes(1);
-        expect(consoleSpy).toHaveBeenCalledWith(
-          expect.stringContaining(JSON.stringify({ '0': 'info message 1' }))
-        );
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify({ '0': 'info message 1' })));
 
         consoleSpy.mockRestore();
       });

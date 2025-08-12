@@ -39,7 +39,7 @@ export function processBunTestOutput(output: string): string {
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
     if (rawLine === undefined) continue;
-    
+
     const line = stripAnsi(rawLine).trim();
 
     // Detect start of redundant final summary lists and skip them
@@ -60,9 +60,9 @@ export function processBunTestOutput(output: string): string {
     // Detect coverage section start
     if (coverageHeaderTitlesRegex.test(line)) {
       isInCoverageSection = true;
-    // Add the coverage report header
-    result.push(''); // Add a blank line before the header
-    result.push('Coverage Report (file_name:uncovered_lines):');
+      // Add the coverage report header
+      result.push(''); // Add a blank line before the header
+      result.push('Coverage Report (file_name:uncovered_lines):');
       continue;
     }
 
@@ -83,41 +83,41 @@ export function processBunTestOutput(output: string): string {
     if (unhandledErrorHeaderRegex.test(line)) {
       // Add the unhandled error header
       result.push(rawLine);
-      
+
       // Capture all lines until we reach another separator line
       let nextIndex = i + 1;
-      let errorContent = [];
-      
+      const errorContent = [];
+
       // First line after the header should be a separator
       if (nextIndex < lines.length) {
         const separatorLine = lines[nextIndex];
         if (separatorLine && unhandledErrorSeparatorRegex.test(stripAnsi(separatorLine).trim())) {
-          result.push("---"); // Use standardized separator
+          result.push('---'); // Use standardized separator
           nextIndex++;
         }
       }
-      
+
       // Collect all content until the next separator
       while (nextIndex < lines.length) {
         const nextLine = lines[nextIndex];
         if (nextLine === undefined) break;
-        
+
         const errorLine = stripAnsi(nextLine).trim();
-        
+
         // If we find another separator line, add a standardized separator and break
         if (unhandledErrorSeparatorRegex.test(errorLine)) {
           // Add all collected error content
           result.push(...errorContent);
-          result.push("---");
+          result.push('---');
           nextIndex++;
           break;
         }
-        
+
         // Collect the error line
         errorContent.push(nextLine);
         nextIndex++;
       }
-      
+
       // Skip the lines we've already processed
       i = nextIndex - 1; // -1 because the loop will increment i
       contextBuffer = []; // Unhandled errors are self-contained
@@ -128,7 +128,7 @@ export function processBunTestOutput(output: string): string {
     if (coverageFileMatch && isInCoverageSection) {
       const fileName = coverageFileMatch[1] ? coverageFileMatch[1].trim() : '';
       const uncoveredLines = coverageFileMatch[2] ? coverageFileMatch[2].trim() : '';
-      
+
       // Only collect files with uncovered lines and skip "All files" summary
       if (uncoveredLines && fileName !== 'All files') {
         result.push(`- ${fileName}:${uncoveredLines}`);
@@ -136,7 +136,7 @@ export function processBunTestOutput(output: string): string {
       continue;
     }
     if (!coverageFileMatch && isInCoverageSection) {
-      result.push("");
+      result.push('');
       isInCoverageSection = false;
     }
 
@@ -168,7 +168,7 @@ export function processBunTestOutput(output: string): string {
       contextBuffer = [];
     } else {
       // Any other line is considered context for a potential failure.
-      const isExtraNewLine = rawLine.trim() === "" && (contextBuffer[contextBuffer.length - 1] || '').trim() === "";
+      const isExtraNewLine = rawLine.trim() === '' && (contextBuffer[contextBuffer.length - 1] || '').trim() === '';
       if (!isExtraNewLine) {
         contextBuffer.push(rawLine);
       }
@@ -181,10 +181,9 @@ export function processBunTestOutput(output: string): string {
   return result.join(NL);
 }
 
-
 async function main() {
   const args = process.argv.slice(2);
-  const bunArgs = args.filter(arg => arg !== '--watch');
+  const bunArgs = args.filter((arg) => arg !== '--watch');
 
   console.log('Running bun test with args:', bunArgs.join(' '));
 
@@ -195,13 +194,13 @@ async function main() {
         BUN_CORRECT_TEST_COMMAND: '1',
       },
       cwd: process.cwd(),
-    });   
+    });
     const { stdout, stderr } = await $$`bun test ${bunArgs}`.nothrow().quiet();
-    
+
     // Combine stdout and stderr to ensure all output is processed
     const combinedOutput = stdout + stderr;
     const processedOutput = processBunTestOutput(combinedOutput);
-    
+
     process.stdout.write(processedOutput);
   } catch (error: any) {
     // This catch block might be redundant with nothrow(), but it's good for safety.
@@ -211,8 +210,8 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch(error => {
-    console.error("Unhandled error in main:", error);
+  main().catch((error) => {
+    console.error('Unhandled error in main:', error);
     process.exit(1);
   });
 }

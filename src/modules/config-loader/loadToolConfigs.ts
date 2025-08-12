@@ -1,9 +1,9 @@
-import type { IFileSystem } from '@modules/file-system';
-import type { ToolConfig, AsyncConfigureTool, ToolConfigContext } from '@types';
-import type { YamlConfig } from '@modules/config';
-import { ToolConfigBuilder } from '@modules/tool-config-builder';
 import path from 'node:path';
-import { type TsLogger, logs } from '@modules/logger';
+import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import { logs, type TsLogger } from '@modules/logger';
+import { ToolConfigBuilder } from '@modules/tool-config-builder';
+import type { AsyncConfigureTool, ToolConfig, ToolConfigContext } from '@types';
 
 /**
  * Creates a ToolConfigContext from YamlConfig for the specified tool.
@@ -109,7 +109,14 @@ export async function loadToolConfigsFromDirectory(
             toolConfig = module.default as ToolConfig;
             // Ensure the toolConfig.name matches the filename if it's a direct object export
             if (toolConfig.name !== toolNameFromFile) {
-              logger.warn(logs.config.warning.invalid('tool config object name', toolConfig.name, `filename: ${toolNameFromFile}`), filePath);
+              logger.warn(
+                logs.config.warning.invalid(
+                  'tool config object name',
+                  toolConfig.name,
+                  `filename: ${toolNameFromFile}`
+                ),
+                filePath
+              );
             }
           }
 
@@ -202,7 +209,10 @@ export async function loadSingleToolConfig(
         logger.debug(logs.config.success.loaded(filePath, 1), toolConfig.name);
         return toolConfig;
       } else if (toolConfig) {
-        logger.warn(logs.config.warning.invalid('single tool config name', toolConfig.name, `requested: ${toolName}`), filePath);
+        logger.warn(
+          logs.config.warning.invalid('single tool config name', toolConfig.name, `requested: ${toolName}`),
+          filePath
+        );
         return undefined; // Strict: only return if names match
       }
     }

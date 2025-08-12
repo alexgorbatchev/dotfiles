@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll } from 'bun:test'; // vi is global
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'bun:test'; // vi is global
 import { FetchMockHelper } from '../FetchMockHelper';
 
 describe('FetchMockHelper', () => {
@@ -229,9 +229,7 @@ describe('FetchMockHelper', () => {
     it('should mock a fetch call to reject with a default error if none provided', async () => {
       fetchMockHelper.mockErrorOnce();
 
-      expect(globalThis.fetch('http://example.com')).rejects.toThrow(
-        'Simulated network error'
-      );
+      expect(globalThis.fetch('http://example.com')).rejects.toThrow('Simulated network error');
     });
   });
 

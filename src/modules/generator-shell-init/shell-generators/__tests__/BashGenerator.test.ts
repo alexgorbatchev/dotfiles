@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { BashGenerator } from '../BashGenerator';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
+import { BashGenerator } from '../BashGenerator';
 
 describe('BashGenerator', () => {
   let generator: BashGenerator;
@@ -66,19 +66,24 @@ describe('BashGenerator', () => {
 
     const result = generator.processCompletions('test-tool', completions);
 
-    expect(result).toContain('[[ -f "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash" ]] && source "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash"');
+    expect(result).toContain(
+      '[[ -f "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash" ]] && source "/home/test/.dotfiles/.generated/shell-scripts/bash/test-tool.bash"'
+    );
   });
 
   it('should generate complete file content with bash syntax', () => {
     const toolContents = new Map([
-      ['tool1', {
-        toolInit: ['alias t1="tool1"'],
-        pathModifications: ['PATH="$PATH:/opt/tool1/bin"'],
-        environmentVariables: ['export TOOL1_ENV="value"'],
-        completionSetup: ['[[ -f "/completions/tool1.bash" ]] && source "/completions/tool1.bash"'],
-        onceScripts: [],
-        alwaysScripts: [],
-      }],
+      [
+        'tool1',
+        {
+          toolInit: ['alias t1="tool1"'],
+          pathModifications: ['PATH="$PATH:/opt/tool1/bin"'],
+          environmentVariables: ['export TOOL1_ENV="value"'],
+          completionSetup: ['[[ -f "/completions/tool1.bash" ]] && source "/completions/tool1.bash"'],
+          onceScripts: [],
+          alwaysScripts: [],
+        },
+      ],
     ]);
 
     const content = generator.generateFileContent(toolContents);
@@ -106,9 +111,9 @@ describe('BashGenerator', () => {
       shellConfigs: {
         bash: {
           environment: {
-            'TEST_TOOL_CONFIG_DIR': '/home/test/.config/test-tool',
-            'TEST_TOOL_DEBUG': 'true',
-            'TEST_TOOL_MODE': 'production'
+            TEST_TOOL_CONFIG_DIR: '/home/test/.config/test-tool',
+            TEST_TOOL_DEBUG: 'true',
+            TEST_TOOL_MODE: 'production',
           },
         },
       },
@@ -132,9 +137,9 @@ describe('BashGenerator', () => {
       shellConfigs: {
         bash: {
           aliases: {
-            'tt': 'test-tool',
-            'ttd': 'test-tool --debug',
-            'tts': 'test-tool status'
+            tt: 'test-tool',
+            ttd: 'test-tool --debug',
+            tts: 'test-tool status',
           },
         },
       },

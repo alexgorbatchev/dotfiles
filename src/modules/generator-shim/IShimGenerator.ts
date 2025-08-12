@@ -21,10 +21,7 @@ export interface IShimGenerator {
    * @param options Optional settings for shim generation.
    * @returns A promise that resolves with an array of paths to the shims created/updated.
    */
-  generate(
-    toolConfigs: Record<string, ToolConfig>,
-    options?: GenerateShimsOptions
-  ): Promise<string[]>;
+  generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]>;
 
   /**
    * Generates a shim for a single specified tool.
@@ -33,9 +30,5 @@ export interface IShimGenerator {
    * @param options Optional settings for shim generation.
    * @returns A promise that resolves with an array of paths to the shims created/updated (typically one).
    */
-  generateForTool(
-    toolName: string,
-    toolConfig: ToolConfig,
-    options?: GenerateShimsOptions
-  ): Promise<string[]>;
+  generateForTool(toolName: string, toolConfig: ToolConfig, options?: GenerateShimsOptions): Promise<string[]>;
 }

@@ -1,4 +1,4 @@
-import type { ShellType, ToolConfig, CompletionConfig, ShellScript } from '@types';
+import type { CompletionConfig, ShellScript, ShellType, ToolConfig } from '@types';
 
 /**
  * Represents shell-specific initialization content for a single tool.
@@ -48,7 +48,7 @@ export interface ShellGenerateOptions {
 export interface IShellGenerator {
   /** The shell type this generator supports */
   readonly shellType: ShellType;
-  
+
   /** The file extension for this shell's initialization files */
   readonly fileExtension: string;
 

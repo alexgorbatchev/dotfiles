@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GitHubRateLimit } from '@types';
 import { HttpError } from '@modules/downloader';
+import type { GitHubRateLimit } from '@types';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
+  createGitHubConfigOverride,
   type MockSetup,
   setupMockGitHubApiClient,
-  createGitHubConfigOverride
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
@@ -63,7 +63,7 @@ describe('GitHubApiClient', () => {
     it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {
       const url = 'https://api.github.com/rate_limit';
       mocks.mockDownloader.download.mockRejectedValue(
-        new HttpError(mocks.logger, 'API unavailable', url, 500, 'Internal Server Error'),
+        new HttpError(mocks.logger, 'API unavailable', url, 500, 'Internal Server Error')
       );
 
       expect(mocks.apiClient.getRateLimit()).rejects.toThrow(GitHubApiClientError);

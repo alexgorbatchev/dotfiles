@@ -1,10 +1,10 @@
+import { DownloadCacheUtils } from '@modules/cache/DownloadCacheUtils';
+import type { ICache } from '@modules/cache/ICache';
+import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions } from './IDownloader';
-import type { ICache } from '@modules/cache/ICache';
-import { DownloadCacheUtils } from '@modules/cache/DownloadCacheUtils';
-import type { TsLogger } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system';
-import { logs } from '@modules/logger';
 
 /**
  * A download strategy decorator that adds caching functionality.
@@ -31,7 +31,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     fileSystem: IFileSystem,
     cache: ICache,
     underlyingStrategy: DownloadStrategy,
-    cacheTtl: number = 24 * 60 * 60 * 1000, // Default 24 hours
+    cacheTtl: number = 24 * 60 * 60 * 1000 // Default 24 hours
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'CachedDownloadStrategy' });
     this.fileSystem = fileSystem;
@@ -59,30 +59,30 @@ export class CachedDownloadStrategy implements DownloadStrategy {
    */
   async download(url: string, options: DownloadOptions = {}): Promise<Buffer | void> {
     const logger = this.logger.getSubLogger({ name: 'download' });
-    
+
     // Don't cache downloads with progress callbacks as they are meant to be streamed
     const shouldCache = !options.onProgress;
-    
+
     if (!shouldCache) {
       logger.trace(logs.cache.debug.disabled('caching', url), { reason: 'progress callback' });
       return await this.underlyingStrategy.download(url, options);
     }
 
     const cacheKey = DownloadCacheUtils.createCacheKey(url, options);
-    
+
     try {
       // Check cache first
       const cachedBuffer = await this.cache.get<Buffer>(cacheKey);
       if (cachedBuffer) {
         logger.trace(logs.cache.success.hit(cacheKey, 'binary', cachedBuffer.length), { url });
-        
+
         // If destinationPath is specified, write cached data to file and return void
         if (options.destinationPath) {
           await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
           logger.trace(logs.fs.success.created('CachedDownloadStrategy', options.destinationPath));
           return; // Return void for file downloads
         }
-        
+
         return cachedBuffer;
       }
 
@@ -95,10 +95,10 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     // Download from underlying strategy
     logger.trace(logs.downloader.success.downloadFrom(this.underlyingStrategy.name), { url });
     const result = await this.underlyingStrategy.download(url, options);
-    
+
     // Cache the result if it's a Buffer or if we can extract it from void result
     let bufferToCache: Buffer | null = null;
-    
+
     if (result instanceof Buffer) {
       bufferToCache = result;
     } else if (options.destinationPath && result === undefined) {
@@ -108,11 +108,14 @@ export class CachedDownloadStrategy implements DownloadStrategy {
       try {
         const fileExists = await this.fileSystem.exists(options.destinationPath);
         logger.trace(logs.downloader.debug.fileExists(fileExists), { path: options.destinationPath });
-        
+
         if (fileExists) {
           const fileContent = await this.fileSystem.readFile(options.destinationPath);
           bufferToCache = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
-          logger.trace(logs.downloader.debug.fileCached(), { path: options.destinationPath, size: bufferToCache.length });
+          logger.trace(logs.downloader.debug.fileCached(), {
+            path: options.destinationPath,
+            size: bufferToCache.length,
+          });
         } else {
           logger.trace(logs.fs.error.notFound('Downloaded file', options.destinationPath));
         }
@@ -120,7 +123,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
         logger.trace(logs.fs.error.readFailed(options.destinationPath, (error as Error).message));
       }
     }
-    
+
     if (bufferToCache) {
       // Cache the result
       try {
@@ -146,7 +149,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
    */
   private extractContentTypeFromHeaders(headers?: Record<string, string>): string | undefined {
     if (!headers) return undefined;
-    
+
     // Look for Accept header as a hint for expected content type
     return headers['Accept'] || headers['accept'];
   }

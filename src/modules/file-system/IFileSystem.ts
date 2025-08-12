@@ -17,11 +17,7 @@ export interface IFileSystem {
    * @param encoding The encoding to use (default: 'utf8').
    * @returns A promise that resolves when the file has been written.
    */
-  writeFile(
-    path: string,
-    content: string | NodeJS.ArrayBufferView,
-    encoding?: BufferEncoding
-  ): Promise<void>;
+  writeFile(path: string, content: string | NodeJS.ArrayBufferView, encoding?: BufferEncoding): Promise<void>;
 
   /**
    * Checks if a file or directory exists.

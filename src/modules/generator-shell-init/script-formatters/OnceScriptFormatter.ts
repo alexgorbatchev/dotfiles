@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { ShellScript, ShellType } from '@types';
 import { getScriptContent, isOnceScript } from '@types';
 import { dedentString } from '@utils';
-import type { IScriptFormatter, FormattedScriptOutput } from './IScriptFormatter';
+import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
  * Formatter for once scripts - generates individual executable files in .once/ directory
@@ -23,7 +23,7 @@ export class OnceScriptFormatter implements IScriptFormatter {
     const scriptContent = getScriptContent(script);
     const fileName = `${toolName}-${scriptIndex}.${this.getFileExtension(shellType)}`;
     const outputPath = path.join(this.shellScriptsDir, '.once', fileName);
-    
+
     const formattedContent = this.generateFormattedScript(scriptContent, shellType, outputPath);
 
     return {
@@ -32,7 +32,6 @@ export class OnceScriptFormatter implements IScriptFormatter {
       outputPath,
     };
   }
-
 
   private getFileExtension(shellType: ShellType): string {
     switch (shellType) {

@@ -1,9 +1,9 @@
-import path from 'node:path';
 import crypto from 'node:crypto';
+import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { ICache, CacheEntry, CacheConfig } from './ICache';
+import type { CacheConfig, CacheEntry, ICache } from './ICache';
 
 /**
  * File-based cache implementation that supports both JSON and binary storage strategies.
@@ -32,12 +32,7 @@ export class FileCache implements ICache {
     }
 
     this.logger.debug(
-      logs.cache.debug.constructorDebug(
-        config.cacheDir,
-        config.defaultTtl,
-        config.storageStrategy,
-        config.enabled
-      )
+      logs.cache.debug.constructorDebug(config.cacheDir, config.defaultTtl, config.storageStrategy, config.enabled)
     );
   }
 
@@ -50,7 +45,7 @@ export class FileCache implements ICache {
 
     try {
       const metadataPath = this.getMetadataFilePath(key);
-      
+
       if (!(await this.fileSystem.exists(metadataPath))) {
         logger.debug(logs.cache.debug.notFound(key));
         return null;
@@ -85,11 +80,11 @@ export class FileCache implements ICache {
 
         const binaryContent = await this.fileSystem.readFile(binaryPath);
         const buffer = Buffer.isBuffer(binaryContent) ? binaryContent : Buffer.from(binaryContent);
-        
+
         // Verify content integrity for binary data
         const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
         const expectedHash = entry.metadata?.['contentHash'] as string;
-        
+
         if (actualHash !== expectedHash) {
           logger.debug(logs.cache.error.contentHashMismatch(key, expectedHash, actualHash));
           await this.deleteEntry(key, entry);
@@ -130,9 +125,7 @@ export class FileCache implements ICache {
         const metadataPath = this.getMetadataFilePath(key);
         await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
 
-        logger.debug(
-          logs.cache.success.stored(key, 'JSON', new Date(entry.expiresAt).toISOString())
-        );
+        logger.debug(logs.cache.success.stored(key, 'JSON', new Date(entry.expiresAt).toISOString()));
       } else {
         // For binary strategy, store data and metadata separately
         if (!Buffer.isBuffer(data)) {
@@ -147,7 +140,7 @@ export class FileCache implements ICache {
         const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
         const binaryFileName = `${contentHash}.bin`;
         const binaryFilePath = path.join(this.binariesDir, binaryFileName);
-        
+
         // Write binary content to file
         await this.fileSystem.writeFile(binaryFilePath, buffer);
 
@@ -167,14 +160,7 @@ export class FileCache implements ICache {
         const metadataPath = this.getMetadataFilePath(key);
         await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
 
-        logger.debug(
-          logs.cache.success.stored(
-            key,
-            'binary',
-            new Date(entry.expiresAt).toISOString(),
-            buffer.length
-          )
-        );
+        logger.debug(logs.cache.success.stored(key, 'binary', new Date(entry.expiresAt).toISOString(), buffer.length));
       }
     } catch (error) {
       logger.debug(logs.cache.error.storageFailed(key, (error as Error).message));
@@ -191,7 +177,7 @@ export class FileCache implements ICache {
 
     try {
       const metadataPath = this.getMetadataFilePath(key);
-      
+
       if (!(await this.fileSystem.exists(metadataPath))) {
         logger.debug(logs.cache.debug.notFound(key));
         return false;
@@ -209,7 +195,7 @@ export class FileCache implements ICache {
       if (this.config.storageStrategy === 'binary' && this.binariesDir) {
         const binaryPath = path.join(this.binariesDir, entry.metadata?.['binaryFilePath'] as string);
         const binaryExists = await this.fileSystem.exists(binaryPath);
-        
+
         if (!binaryExists) {
           logger.debug(logs.cache.debug.binaryFileMissing(key, binaryPath));
           return false;
@@ -244,7 +230,7 @@ export class FileCache implements ICache {
           // For JSON strategy, just delete the metadata file
           await this.fileSystem.rm(metadataPath);
         }
-        
+
         logger.debug(logs.cache.success.removed(key));
       } else {
         logger.debug(logs.cache.debug.noEntryToDelete(key));
@@ -277,7 +263,7 @@ export class FileCache implements ICache {
         }
 
         const metadataPath = path.join(this.metadataDir, file);
-        
+
         try {
           const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
           const entry: CacheEntry<unknown> = JSON.parse(metadataContent);
@@ -288,9 +274,7 @@ export class FileCache implements ICache {
             expiredCount++;
           }
         } catch (error) {
-          logger.debug(
-            logs.cache.debug.fileProcessingError(file, (error as Error).message)
-          );
+          logger.debug(logs.cache.debug.fileProcessingError(file, (error as Error).message));
           // Remove problematic metadata file
           await this.fileSystem.rm(metadataPath).catch(() => {});
           expiredCount++;

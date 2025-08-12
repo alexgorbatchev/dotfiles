@@ -1,13 +1,13 @@
 import type { CompletionConfig } from './completion.types';
-import type { Platform, Architecture } from './platform.types';
-import type { ShellScript } from './shellScript.types';
-import type { 
-  GithubReleaseInstallParams,
+import type {
   BrewInstallParams,
   CurlScriptInstallParams,
   CurlTarInstallParams,
-  ManualInstallParams
+  GithubReleaseInstallParams,
+  ManualInstallParams,
 } from './installParams.types';
+import type { Architecture, Platform } from './platform.types';
+import type { ShellScript } from './shellScript.types';
 import type { ToolConfigUpdateCheck } from './toolConfigBuilder.types';
 
 /**
@@ -55,7 +55,7 @@ interface BaseToolConfigProperties {
   /**
    * An array of symlink configurations, added via `c.symlink()`. Each object has `source` and `target` paths where
    * `source` is real file and `target` is the symlink.
-   * 
+   *
    * Analogous to `ln -s source target`.
    */
   symlinks?: { source: string; target: string }[];
@@ -93,7 +93,12 @@ export interface PlatformConfig {
   /** The installation method to use. */
   installationMethod?: ToolConfigInstallationMethod;
   /** Parameters specific to the installation method. */
-  installParams?: GithubReleaseInstallParams | BrewInstallParams | CurlScriptInstallParams | CurlTarInstallParams | ManualInstallParams;
+  installParams?:
+    | GithubReleaseInstallParams
+    | BrewInstallParams
+    | CurlScriptInstallParams
+    | CurlTarInstallParams
+    | ManualInstallParams;
 }
 
 /**

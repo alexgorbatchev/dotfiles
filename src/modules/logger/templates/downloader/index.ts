@@ -1,5 +1,5 @@
-import { downloaderSuccessTemplates } from './success';
 import { downloaderDebugTemplates } from './debug';
+import { downloaderSuccessTemplates } from './success';
 
 /**
  * Downloader operation templates grouped by log level

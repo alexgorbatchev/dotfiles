@@ -1,4 +1,4 @@
-import type { ToolConfig, GeneratedArtifactsManifest } from '@types';
+import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 
 /**
  * Options for the `generateAll` method of the `IGeneratorOrchestrator`.

@@ -118,11 +118,7 @@ export interface IGitHubApiClient {
    * @returns A promise that resolves with the {@link GitHubRelease} object that best matches the constraint,
    *          or `null` if no matching release is found.
    */
-  getReleaseByConstraint(
-    owner: string,
-    repo: string,
-    constraint: string
-  ): Promise<GitHubRelease | null>;
+  getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null>;
 
   /**
    * Fetches the current rate limit status from the GitHub API.

@@ -1,21 +1,21 @@
+import type { ICache } from '@modules/cache';
 import type { YamlConfig } from '@modules/config';
-import { logs } from '@modules/logger';
 import {
   ClientError,
   ForbiddenError,
   HttpError,
+  type IDownloader,
   NetworkError,
   NotFoundError,
   RateLimitError,
   ServerError,
-  type IDownloader,
 } from '@modules/downloader';
 import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type { GitHubRateLimit, GitHubRelease } from '@types';
 import crypto from 'crypto';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
-import type { ICache } from '@modules/cache';
 import type { IGitHubApiClient } from './IGitHubApiClient';
 
 /**
@@ -60,12 +60,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   private readonly cacheTtlMs: number;
   private readonly logger: TsLogger;
 
-  constructor(
-    parentLogger: TsLogger,
-    config: YamlConfig,
-    downloader: IDownloader,
-    cache?: ICache,
-  ) {
+  constructor(parentLogger: TsLogger, config: YamlConfig, downloader: IDownloader, cache?: ICache) {
     this.logger = parentLogger.getSubLogger({ name: 'GitHubApiClient' });
     this.baseUrl = config.github.host;
     this.githubToken = config.github.token;
@@ -105,11 +100,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     // If a token is used, include a hash of it in the key
     // This ensures cache invalidation when the token changes
     if (this.githubToken && typeof this.githubToken === 'string' && this.githubToken.length > 0) {
-      const tokenHash = crypto
-        .createHash('sha256')
-        .update(this.githubToken)
-        .digest('hex')
-        .substring(0, 8); // Use only first 8 chars of hash
+      const tokenHash = crypto.createHash('sha256').update(this.githubToken).digest('hex').substring(0, 8); // Use only first 8 chars of hash
       key += `:${tokenHash}`;
     }
 
@@ -179,14 +170,12 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new Error(`GitHub resource not found: ${url}. Status: ${error.statusCode}`);
       }
       if (error instanceof RateLimitError) {
-        const resetTime = error.resetTimestamp
-          ? new Date(error.resetTimestamp).toISOString()
-          : 'N/A';
+        const resetTime = error.resetTimestamp ? new Date(error.resetTimestamp).toISOString() : 'N/A';
         this.logger.debug(logs.githubClient.debug.rateLimitError(), url, resetTime, error.responseBody);
         throw new GitHubApiClientError(
           `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`,
           error.statusCode,
-          error,
+          error
         );
       }
       if (error instanceof ForbiddenError) {
@@ -194,7 +183,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new GitHubApiClientError(
           `GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`,
           error.statusCode,
-          error,
+          error
         );
       }
       if (error instanceof ClientError) {
@@ -202,7 +191,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new GitHubApiClientError(
           `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
           error.statusCode,
-          error,
+          error
         );
       }
       if (error instanceof ServerError) {
@@ -210,7 +199,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new GitHubApiClientError(
           `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
           error.statusCode,
-          error,
+          error
         );
       }
       if (error instanceof HttpError) {
@@ -218,16 +207,12 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new GitHubApiClientError(
           `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
           error.statusCode,
-          error,
+          error
         );
       }
       if (error instanceof NetworkError) {
         this.logger.debug(logs.githubClient.debug.networkError(), url, error.message);
-        throw new GitHubApiClientError(
-          `Network error while requesting ${url}: ${error.message}`,
-          undefined,
-          error,
-        );
+        throw new GitHubApiClientError(`Network error while requesting ${url}: ${error.message}`, undefined, error);
       }
       // Fallback for unknown errors
       this.logger.debug(logs.githubClient.debug.unknownError(), url, error);
@@ -235,7 +220,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         throw new GitHubApiClientError(
           `Unknown error during GitHub API request to ${url}: ${error.message}`,
           undefined,
-          error,
+          error
         );
       }
       throw new GitHubApiClientError(`Unknown error during GitHub API request to ${url}`);
@@ -273,7 +258,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   async getAllReleases(
     owner: string,
     repo: string,
-    options?: { perPage?: number; includePrerelease?: boolean },
+    options?: { perPage?: number; includePrerelease?: boolean }
   ): Promise<GitHubRelease[]> {
     this.logger.debug(logs.githubClient.debug.fetchingAllReleases(), owner, repo, options);
     const perPage = options?.perPage || 30; // Default to 30, max 100
@@ -310,11 +295,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     return allReleases;
   }
 
-  async getReleaseByConstraint(
-    owner: string,
-    repo: string,
-    constraint: string,
-  ): Promise<GitHubRelease | null> {
+  async getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null> {
     this.logger.debug(logs.githubClient.debug.constraintSearch(), constraint, owner, repo);
     // For simplicity in this initial implementation, if constraint is 'latest', use getLatestRelease.
     if (constraint === 'latest') {
@@ -356,14 +337,9 @@ export class GitHubApiClient implements IGitHubApiClient {
         if (!release.tag_name) {
           continue;
         }
-        const cleanVersion = release.tag_name.startsWith('v')
-          ? release.tag_name.substring(1)
-          : release.tag_name;
+        const cleanVersion = release.tag_name.startsWith('v') ? release.tag_name.substring(1) : release.tag_name;
 
-        if (
-          semver.valid(cleanVersion) &&
-          semver.satisfies(cleanVersion, constraint, { includePrerelease: true })
-        ) {
+        if (semver.valid(cleanVersion) && semver.satisfies(cleanVersion, constraint, { includePrerelease: true })) {
           if (
             !latestSatisfyingRelease ||
             (latestSatisfyingVersionClean && semver.gt(cleanVersion, latestSatisfyingVersionClean))

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'bun:test';
-import { DownloadCacheUtils } from '../DownloadCacheUtils';
+import { describe, expect, it } from 'bun:test';
 import type { DownloadOptions } from '@modules/downloader/IDownloader';
+import { DownloadCacheUtils } from '../DownloadCacheUtils';
 
 describe('DownloadCacheUtils', () => {
   describe('createCacheKey', () => {
@@ -21,10 +21,10 @@ describe('DownloadCacheUtils', () => {
 
     it('should include relevant headers in cache key', () => {
       const options1: DownloadOptions = {
-        headers: { 'Authorization': 'Bearer token1' },
+        headers: { Authorization: 'Bearer token1' },
       };
       const options2: DownloadOptions = {
-        headers: { 'Authorization': 'Bearer token2' },
+        headers: { Authorization: 'Bearer token2' },
       };
 
       const key1 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt', options1);
@@ -85,8 +85,8 @@ describe('DownloadCacheUtils', () => {
     });
 
     it('should include headers in API cache key', () => {
-      const headers1 = { 'Authorization': 'Bearer token1' };
-      const headers2 = { 'Authorization': 'Bearer token2' };
+      const headers1 = { Authorization: 'Bearer token1' };
+      const headers2 = { Authorization: 'Bearer token2' };
 
       const key1 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users', headers1);
       const key2 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users', headers2);

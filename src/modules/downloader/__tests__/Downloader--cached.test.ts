@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { TestLogger, FetchMockHelper } from '@testing-helpers';
-import { createMemFileSystem } from '@testing-helpers';
-import { Downloader } from '../Downloader';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { FileCache } from '@modules/cache/FileCache';
 import type { CacheConfig } from '@modules/cache/ICache';
+import { createMemFileSystem, FetchMockHelper, TestLogger } from '@testing-helpers';
+import { Downloader } from '../Downloader';
 
 describe('Downloader with Cache', () => {
   let logger: TestLogger;
@@ -34,16 +33,15 @@ describe('Downloader with Cache', () => {
     fetchMockHelper.restore();
   });
 
-
   describe('constructor with cache', () => {
     it('should create cached strategy when cache is provided', () => {
       expect(downloader).toBeDefined();
-      
+
       // Verify constructor log
       logger.expect(
         ['DEBUG'],
         ['Downloader'],
-        ['constructor: Created CachedDownloadStrategy wrapping NodeFetchStrategy'],
+        ['constructor: Created CachedDownloadStrategy wrapping NodeFetchStrategy']
       );
     });
 
@@ -62,7 +60,7 @@ describe('Downloader with Cache', () => {
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' }
+        headers: { 'Content-Type': 'application/zip' },
       });
 
       // First download - should hit the network
@@ -89,11 +87,13 @@ describe('Downloader with Cache', () => {
       fetchMockHelper.mockImplementation({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' }
+        headers: { 'Content-Type': 'application/zip' },
       });
 
       let progressCallCount = 0;
-      const onProgress = () => { progressCallCount++; };
+      const onProgress = () => {
+        progressCallCount++;
+      };
 
       // First download with progress callback - should bypass cache
       const result1 = await downloader.download(testUrl, { onProgress });
@@ -116,7 +116,7 @@ describe('Downloader with Cache', () => {
       fetchMockHelper.mockImplementation({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' }
+        headers: { 'Content-Type': 'application/zip' },
       });
 
       // First download - should hit network
@@ -140,12 +140,12 @@ describe('Downloader with Cache', () => {
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData1,
-        headers: { 'Content-Type': 'application/zip' }
+        headers: { 'Content-Type': 'application/zip' },
       });
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData2,
-        headers: { 'Content-Type': 'application/zip' }
+        headers: { 'Content-Type': 'application/zip' },
       });
 
       // Download both URLs
@@ -172,7 +172,7 @@ describe('Downloader with Cache', () => {
       fetchMockHelper.mockResponseOnce({
         status: 200,
         body: testData,
-        headers: { 'Content-Type': 'application/zip' }
+        headers: { 'Content-Type': 'application/zip' },
       });
 
       // Download to file - should bypass cache but still work

@@ -1,13 +1,13 @@
+import { beforeAll, describe, expect, it } from 'bun:test';
+import * as path from 'node:path';
+import { NodeFileSystem } from '@modules/file-system';
 import {
   createMockYamlConfig,
   createTestDirectories,
   executeCliCommand,
-  TestLogger,
   type TestDirectories,
+  TestLogger,
 } from '@testing-helpers';
-import { beforeAll, describe, expect, it } from 'bun:test';
-import * as path from 'node:path';
-import { NodeFileSystem } from '@modules/file-system';
 
 describe('E2E: CLI --platform and --arch flags', () => {
   describe('platform and arch override functionality', () => {
@@ -33,11 +33,7 @@ describe('E2E: CLI --platform and --arch flags', () => {
 
     it('should use --platform flag to override detected platform', () => {
       const result = executeCliCommand({
-        command: [
-          'files',
-          '--platform',
-          'linux',
-        ],
+        command: ['files', '--platform', 'linux'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
@@ -49,11 +45,7 @@ describe('E2E: CLI --platform and --arch flags', () => {
 
     it('should use --arch flag to override detected architecture', () => {
       const result = executeCliCommand({
-        command: [
-          'files',
-          '--arch',
-          'x64',
-        ],
+        command: ['files', '--arch', 'x64'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
@@ -64,13 +56,7 @@ describe('E2E: CLI --platform and --arch flags', () => {
 
     it('should use both --platform and --arch flags together', () => {
       const result = executeCliCommand({
-        command: [
-          'files',
-          '--platform',
-          'linux',
-          '--arch',
-          'x64',
-        ],
+        command: ['files', '--platform', 'linux', '--arch', 'x64'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });

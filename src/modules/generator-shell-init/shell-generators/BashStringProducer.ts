@@ -1,7 +1,6 @@
 import path from 'node:path';
-import type { ToolConfig, CompletionConfig } from '@types';
-import type { ShellScript } from '@types';
 import type { YamlConfig } from '@modules/config';
+import type { CompletionConfig, ShellScript, ToolConfig } from '@types';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
 /**
@@ -21,12 +20,12 @@ export class BashStringProducer implements IShellStringProducer {
 
   processCompletions(toolName: string, completions: CompletionConfig): string[] {
     const completionSetup: string[] = [];
-    
+
     if (completions.bash) {
       const shellConfig = completions.bash;
       const completionDir = shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'bash');
       const completionFile = path.join(completionDir, shellConfig.name ?? `${toolName}.bash`);
-      
+
       // Source the completion file
       completionSetup.push(`[[ -f "${completionFile}" ]] && source "${completionFile}"`);
     }
@@ -36,27 +35,27 @@ export class BashStringProducer implements IShellStringProducer {
 
   processEnvironmentVariables(toolConfig: ToolConfig): string[] {
     const envVars: string[] = [];
-    
+
     if (toolConfig.shellConfigs?.bash?.environment) {
       const environment = toolConfig.shellConfigs.bash.environment;
       for (const [key, value] of Object.entries(environment)) {
         envVars.push(`export ${key}=${JSON.stringify(value)}`);
       }
     }
-    
+
     return envVars;
   }
 
   processAliases(toolConfig: ToolConfig): string[] {
     const aliases: string[] = [];
-    
+
     if (toolConfig.shellConfigs?.bash?.aliases) {
       const aliasConfig = toolConfig.shellConfigs.bash.aliases;
       for (const [alias, command] of Object.entries(aliasConfig)) {
         aliases.push(`alias ${alias}=${JSON.stringify(command)}`);
       }
     }
-    
+
     return aliases;
   }
 }

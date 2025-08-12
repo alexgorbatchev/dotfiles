@@ -1,4 +1,3 @@
-
 export function exitCli(exitCode: number): never {
   if (process.env.NODE_ENV !== 'test') {
     process.exit(exitCode);

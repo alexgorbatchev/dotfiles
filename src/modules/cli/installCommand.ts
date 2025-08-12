@@ -1,28 +1,19 @@
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
-import { type TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
-import { type GlobalProgram, type Services } from '../../cli';
+import { logs, type TsLogger } from '@modules/logger';
+import type { GlobalProgram, Services } from '../../cli';
 import { exitCli } from './exitCli';
 
 export function registerInstallCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  servicesFactory: () => Promise<Services>,
+  servicesFactory: () => Promise<Services>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerInstallCommand' });
   program
     .command('install <toolName>')
     .description('Installs a tool if it is not already installed. Typically called by shims.')
-    .option(
-      '--force',
-      'Force installation even if the tool is already installed',
-      false,
-    )
-    .option(
-      '--shim-mode',
-      'Optimized output for shim usage: shows errors but suppresses success messages',
-      false,
-    )
+    .option('--force', 'Force installation even if the tool is already installed', false)
+    .option('--shim-mode', 'Optimized output for shim usage: shows errors but suppresses success messages', false)
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
       logger.debug(logs.command.debug.actionCalled('install', toolName), combinedOptions);
@@ -36,9 +27,15 @@ export function registerInstallCommand(
         logger.debug(
           logs.command.debug.actionStarted('install', toolName),
           yamlConfig.paths.toolConfigsDir,
-          fs.constructor.name,
+          fs.constructor.name
         );
-        const toolConfig = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+        const toolConfig = await loadSingleToolConfig(
+          logger,
+          toolName,
+          yamlConfig.paths.toolConfigsDir,
+          fs,
+          yamlConfig
+        );
         // Tool configuration loaded, proceeding with installation
 
         if (!toolConfig) {
@@ -61,11 +58,8 @@ export function registerInstallCommand(
               logger.info(logs.tool.success.installed(toolName, result.version || 'unknown', 'CLI'));
             }
           } else {
-            logger.debug(
-              logs.command.debug.actionStarted('install-failed', toolName),
-              result.error,
-            );
-            
+            logger.debug(logs.command.debug.actionStarted('install-failed', toolName), result.error);
+
             if (combinedOptions.shimMode) {
               // In shim mode, output user-friendly error message to stderr
               // NOTE: Using console.error instead of logger here because shims need clean,
@@ -81,7 +75,7 @@ export function registerInstallCommand(
         }
       } catch (error) {
         logger.debug(logs.command.debug.unhandledError(), error);
-        
+
         if (combinedOptions.shimMode) {
           // In shim mode, output user-friendly error message to stderr
           // NOTE: Using console.error instead of logger here because shims need clean,

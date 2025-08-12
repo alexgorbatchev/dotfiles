@@ -1,12 +1,12 @@
 import { exec as execCallback } from 'node:child_process';
-import { promisify } from 'node:util';
 // Fully remove zx imports now
 import { basename, extname, join } from 'node:path';
-import type { IArchiveExtractor } from './IArchiveExtractor';
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
+import { promisify } from 'node:util';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
+import type { IArchiveExtractor } from './IArchiveExtractor';
 
 /**
  * Implements the IArchiveExtractor interface using system commands.
@@ -37,9 +37,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * @returns A promise that resolves with an object containing stdout, stderr, and exitCode.
    * @throws An error object augmented with stdout, stderr, and exitCode if the command fails.
    */
-  private async executeShellCommand(
-    command: string
-  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  private async executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
     try {
       logger.debug(logs.extractor.debug.commandExecution(), command);
@@ -63,8 +61,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
     const logger = this.logger.getSubLogger({ name: 'detectFormat' });
     const fileName = basename(filePath).toLowerCase();
     if (fileName.endsWith('.tar.gz') || fileName.endsWith('.tgz')) return 'tar.gz';
-    if (fileName.endsWith('.tar.bz2') || fileName.endsWith('.tbz2') || fileName.endsWith('.tbz'))
-      return 'tar.bz2';
+    if (fileName.endsWith('.tar.bz2') || fileName.endsWith('.tbz2') || fileName.endsWith('.tbz')) return 'tar.bz2';
     if (fileName.endsWith('.tar.xz') || fileName.endsWith('.txz')) return 'tar.xz';
     if (fileName.endsWith('.tar.lzma')) return 'tar.lzma';
     if (fileName.endsWith('.tar')) return 'tar';
@@ -221,11 +218,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       // now needs tempExtractDir to exist *after* this method returns successfully,
       // we only clean up here on error within this method's scope.
       // The Installer is responsible for cleanup on successful return.
-      logger.debug(
-        logs.extractor.debug.extractErrorCleanup(),
-        tempExtractDir,
-        error
-      );
+      logger.debug(logs.extractor.debug.extractErrorCleanup(), tempExtractDir, error);
       await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
         logger.debug(logs.extractor.debug.cleanupError(), cleanupErr);
       });

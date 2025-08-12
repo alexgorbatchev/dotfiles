@@ -1,5 +1,5 @@
-import type { ShellType } from '@types';
 import type { IFileSystem } from '@modules/file-system';
+import type { ShellType } from '@types';
 
 /**
  * Configuration for updating a specific profile file.
@@ -37,23 +37,23 @@ export interface ProfileUpdateResult {
 export interface IProfileUpdater {
   /**
    * Updates profile files for the specified shell types to source the generated scripts.
-   * 
+   *
    * @param configs - Array of profile update configurations
    * @returns Promise resolving to array of update results
    */
   updateProfiles(configs: ProfileUpdateConfig[]): Promise<ProfileUpdateResult[]>;
-  
+
   /**
    * Gets the default profile file path for a given shell type.
-   * 
+   *
    * @param shellType - The shell type to get profile path for
    * @returns The default profile file path for the shell
    */
   getProfilePath(shellType: ShellType): string;
-  
+
   /**
    * Checks if a profile file already contains a source line for the given script path.
-   * 
+   *
    * @param profilePath - Path to the profile file
    * @param scriptPath - Path to the script to check for
    * @returns Promise resolving to true if the sourcing line exists

@@ -1,18 +1,18 @@
-import { type YamlConfig } from '@modules/config';
+import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
+import path from 'node:path';
+import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import {
   createMemFileSystem,
-  createTestDirectories,
   createMockYamlConfig,
-  TestLogger,
+  createTestDirectories,
   type TestDirectories,
+  TestLogger,
 } from '@testing-helpers';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
-import { beforeEach, describe, expect, it, mock, type Mock } from 'bun:test';
-import path from 'node:path';
 import { Installer } from '../Installer';
 
 describe('Installer with custom GitHub host', () => {
@@ -79,9 +79,7 @@ describe('Installer with custom GitHub host', () => {
       getReleaseByTag: mock(() => Promise.resolve(null)),
       getAllReleases: mock(() => Promise.resolve([])),
       getReleaseByConstraint: mock(() => Promise.resolve(null)),
-      getRateLimit: mock(() =>
-        Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })
-      ),
+      getRateLimit: mock(() => Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })),
     };
 
     // Setup mock ArchiveExtractor
@@ -120,7 +118,7 @@ describe('Installer with custom GitHub host', () => {
       mockDownloader,
       mockGitHubApiClient,
       mockArchiveExtractor,
-      mockAppConfig,
+      mockAppConfig
     );
   });
 
@@ -142,16 +140,10 @@ describe('Installer with custom GitHub host', () => {
     await installer.install(toolName, toolConfig);
 
     // Verify that the download URL was modified to use the custom host
-    expect(mockDownload).toHaveBeenCalledWith(
-      expect.stringContaining(new URL(githubHost).host),
-      expect.anything()
-    );
+    expect(mockDownload).toHaveBeenCalledWith(expect.stringContaining(new URL(githubHost).host), expect.anything());
 
     // Verify that the original api.github.com was replaced
-    expect(mockDownload).not.toHaveBeenCalledWith(
-      expect.stringContaining('api.github.com'),
-      expect.anything()
-    );
+    expect(mockDownload).not.toHaveBeenCalledWith(expect.stringContaining('api.github.com'), expect.anything());
   });
 
   it('should handle URLs that do not contain api.github.com', async () => {
@@ -186,38 +178,36 @@ describe('Installer with custom GitHub host', () => {
       getReleaseByTag: mock(() => Promise.resolve(null)),
       getAllReleases: mock(() => Promise.resolve([])),
       getReleaseByConstraint: mock(() => Promise.resolve(null)),
-      getRateLimit: mock(() =>
-        Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })
-      ),
+      getRateLimit: mock(() => Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })),
     };
-// Create a new installer with the different mock
-const installerWithDifferentUrl = new Installer(
-  new TestLogger(),
-  mockFileSystem,
-  mockDownloader,
-  mockGitHubApiClientWithDifferentUrl,
-  mockArchiveExtractor,
-  mockAppConfig
-);
+    // Create a new installer with the different mock
+    const installerWithDifferentUrl = new Installer(
+      new TestLogger(),
+      mockFileSystem,
+      mockDownloader,
+      mockGitHubApiClientWithDifferentUrl,
+      mockArchiveExtractor,
+      mockAppConfig
+    );
 
-const toolConfig: ToolConfig = {
-  name: toolName,
-  binaries: [toolName],
-  version: toolVersion,
-  installationMethod: 'github-release',
-  installParams: {
-    repo: githubRepo,
-    version: 'latest',
-    assetPattern: 'test-tool-linux-amd64',
-  },
-};
+    const toolConfig: ToolConfig = {
+      name: toolName,
+      binaries: [toolName],
+      version: toolVersion,
+      installationMethod: 'github-release',
+      installParams: {
+        repo: githubRepo,
+        version: 'latest',
+        assetPattern: 'test-tool-linux-amd64',
+      },
+    };
 
-await installerWithDifferentUrl.install(toolName, toolConfig);
+    await installerWithDifferentUrl.install(toolName, toolConfig);
 
-// Verify that the download URL was used as-is (not modified)
-expect(mockDownload).toHaveBeenCalledWith(
-  'https://some-other-site.com/downloads/test-tool-linux-amd64', // Expectation updated
-  expect.anything()
-);
-});
+    // Verify that the download URL was used as-is (not modified)
+    expect(mockDownload).toHaveBeenCalledWith(
+      'https://some-other-site.com/downloads/test-tool-linux-amd64', // Expectation updated
+      expect.anything()
+    );
+  });
 });

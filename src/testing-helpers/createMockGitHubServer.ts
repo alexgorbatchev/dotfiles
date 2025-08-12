@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
-import * as path from 'path';
-import express from 'express';
-import type { Express } from 'express';
 import type { Server } from 'node:http';
+import type { Express } from 'express';
+import express from 'express';
+import * as path from 'path';
 
 /**
  * Configuration for an API path in the mock GitHub server
@@ -76,15 +76,13 @@ export interface MockGitHubServerResult {
  * await mockServer.close();
  * ```
  */
-export async function createMockGitHubServer(
-  config: MockGitHubServerConfig
-): Promise<MockGitHubServerResult> {
+export async function createMockGitHubServer(config: MockGitHubServerConfig): Promise<MockGitHubServerResult> {
   const app: Express = express();
 
   // Configure API paths that return JSON responses
   if (config.apiPaths) {
     for (const apiPath of config.apiPaths) {
-      app.get(apiPath.path, function (_req, res) {
+      app.get(apiPath.path, (_req, res) => {
         res.json(apiPath.response);
       });
     }
@@ -93,7 +91,7 @@ export async function createMockGitHubServer(
   // Configure binary paths that return binary file contents
   if (config.binaryPaths) {
     for (const binaryPath of config.binaryPaths) {
-      app.get(binaryPath.path, function (_req, res) {
+      app.get(binaryPath.path, (_req, res) => {
         // Check if the file exists
         if (!fs.existsSync(binaryPath.filePath)) {
           res.status(404).send(`File not found: ${binaryPath.filePath}`);
@@ -121,7 +119,7 @@ export async function createMockGitHubServer(
       }
 
       const baseUrl = `http://localhost:${address.port}`;
-      
+
       // Add close method to simplify server cleanup
       const close = async (): Promise<void> => {
         return new Promise<void>((resolve, reject) => {
@@ -132,7 +130,7 @@ export async function createMockGitHubServer(
           }
         });
       };
-      
+
       resolve({ server, baseUrl, close });
     });
   });

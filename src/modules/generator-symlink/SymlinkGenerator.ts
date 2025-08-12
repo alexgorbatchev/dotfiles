@@ -1,16 +1,12 @@
 import path from 'node:path';
-import type { ToolConfig, SystemInfo } from '@types';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { TsLogger } from '@modules/logger';
-import type {
-  GenerateSymlinksOptions,
-  ISymlinkGenerator,
-  SymlinkOperationResult,
-} from './ISymlinkGenerator';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { expandToolConfigPath } from '@utils';
+import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import type { SystemInfo, ToolConfig } from '@types';
+import { expandToolConfigPath } from '@utils';
+import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
@@ -28,7 +24,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
   async generate(
     toolConfigs: Record<string, ToolConfig>,
-    options: GenerateSymlinksOptions = {},
+    options: GenerateSymlinksOptions = {}
   ): Promise<SymlinkOperationResult[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     logger.debug(logs.symlink.debug.generateStart(), options, this.fs.constructor.name);
@@ -37,9 +33,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
     for (const toolName in toolConfigs) {
       // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-      const toolFs = this.fs instanceof TrackedFileSystem 
-        ? this.fs.withToolName(toolName)
-        : this.fs;
+      const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
       const toolConfig = toolConfigs[toolName];
       if (!toolConfig) {
@@ -55,19 +49,33 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       for (const symlinkConfig of toolConfig.symlinks) {
         const sourceRelPath = symlinkConfig.source;
         const targetRelPath = symlinkConfig.target;
-        const sourceAbsPath = expandToolConfigPath(toolConfig.configFilePath, sourceRelPath, this.yamlConfig, this.systemInfo);
-        const targetAbsPath = expandToolConfigPath(toolConfig.configFilePath, targetRelPath, this.yamlConfig, this.systemInfo);
+        const sourceAbsPath = expandToolConfigPath(
+          toolConfig.configFilePath,
+          sourceRelPath,
+          this.yamlConfig,
+          this.systemInfo
+        );
+        const targetAbsPath = expandToolConfigPath(
+          toolConfig.configFilePath,
+          targetRelPath,
+          this.yamlConfig,
+          this.systemInfo
+        );
 
-        logger.debug(logs.symlink.debug.processingSymlink(), sourceRelPath, sourceAbsPath, targetRelPath, targetAbsPath);
+        logger.debug(
+          logs.symlink.debug.processingSymlink(),
+          sourceRelPath,
+          sourceAbsPath,
+          targetRelPath,
+          targetAbsPath
+        );
 
         let currentStatus: SymlinkOperationResult['status'] = 'created'; // Optimistic default
         let currentError: string | undefined;
 
         if (!(await toolFs.exists(sourceAbsPath))) {
           currentStatus = 'skipped_source_missing';
-          logger.warn(
-            logs.fs.warning.notFound('Source file', sourceAbsPath)
-          );
+          logger.warn(logs.fs.warning.notFound('Source file', sourceAbsPath));
           results.push({
             sourcePath: sourceAbsPath,
             targetPath: targetAbsPath,
@@ -77,13 +85,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         }
 
         const targetExists = await toolFs.exists(targetAbsPath);
-        const targetIsDir = targetExists
-          ? (await toolFs.stat(targetAbsPath)).isDirectory()
-          : false;
+        const targetIsDir = targetExists ? (await toolFs.stat(targetAbsPath)).isDirectory() : false;
 
         if (targetExists) {
           logger.debug(logs.symlink.debug.targetExists(), targetAbsPath);
-          
+
           // Check if target is already a symlink pointing to the correct source
           try {
             const targetStat = await toolFs.lstat(targetAbsPath);
@@ -92,7 +98,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               // Resolve both paths to handle relative vs absolute comparisons
               const resolvedCurrentTarget = path.resolve(path.dirname(targetAbsPath), currentTarget);
               const resolvedSourcePath = path.resolve(sourceAbsPath);
-              
+
               if (resolvedCurrentTarget === resolvedSourcePath) {
                 // Symlink already points to correct target, skip
                 currentStatus = 'skipped_correct';
@@ -107,7 +113,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           } catch (error) {
             // If we can't check the symlink, proceed with normal logic
           }
-          
+
           if (!overwrite) {
             currentStatus = 'skipped_exists';
             logger.debug(logs.symlink.debug.skipTargetExists(), targetAbsPath);

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
 import { TestLogger } from '@testing-helpers';
 import { SqliteFileRegistry } from '../SqliteFileRegistry';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { unlink } from 'node:fs/promises';
 
 describe('SqliteFileRegistry', () => {
   let logger: TestLogger;
@@ -123,25 +123,25 @@ describe('SqliteFileRegistry', () => {
     it('should filter by tool name', async () => {
       const operations = await registry.getOperations({ toolName: 'nodejs' });
       expect(operations).toHaveLength(2);
-      expect(operations.every(op => op.toolName === 'nodejs')).toBe(true);
+      expect(operations.every((op) => op.toolName === 'nodejs')).toBe(true);
     });
 
     it('should filter by operation type', async () => {
       const operations = await registry.getOperations({ operationType: 'writeFile' });
       expect(operations).toHaveLength(3);
-      expect(operations.every(op => op.operationType === 'writeFile')).toBe(true);
+      expect(operations.every((op) => op.operationType === 'writeFile')).toBe(true);
     });
 
     it('should filter by file type', async () => {
       const operations = await registry.getOperations({ fileType: 'shim' });
       expect(operations).toHaveLength(2);
-      expect(operations.every(op => op.fileType === 'shim')).toBe(true);
+      expect(operations.every((op) => op.fileType === 'shim')).toBe(true);
     });
 
     it('should filter by file path', async () => {
       const operations = await registry.getOperations({ filePath: '/usr/local/bin/node' });
       expect(operations).toHaveLength(2);
-      expect(operations.every(op => op.filePath === '/usr/local/bin/node')).toBe(true);
+      expect(operations.every((op) => op.filePath === '/usr/local/bin/node')).toBe(true);
     });
 
     it('should return operations in reverse chronological order', async () => {

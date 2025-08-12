@@ -1,5 +1,5 @@
-import { promises as fsPromises, constants as fsConstants } from 'node:fs';
 import type { Stats } from 'node:fs';
+import { constants as fsConstants, promises as fsPromises } from 'node:fs';
 import type { IFileSystem } from './IFileSystem';
 
 export class NodeFileSystem implements IFileSystem {
@@ -48,11 +48,7 @@ export class NodeFileSystem implements IFileSystem {
     return fsPromises.lstat(path);
   }
 
-  public async symlink(
-    target: string,
-    path: string,
-    type?: 'file' | 'dir' | 'junction'
-  ): Promise<void> {
+  public async symlink(target: string, path: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
     return fsPromises.symlink(target, path, type);
   }
 

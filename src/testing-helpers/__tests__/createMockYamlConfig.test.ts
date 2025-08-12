@@ -1,9 +1,9 @@
-import { createYamlConfigFromObject, } from '@modules/config-loader';
 import { describe, expect, it } from 'bun:test';
+import { createYamlConfigFromObject } from '@modules/config-loader';
 import { stringify } from 'yaml';
 import { createMemFileSystem } from '../createMemFileSystem';
-import { TestLogger } from '../TestLogger';
 import { createMockYamlConfig, type PartialYamlConfig } from '../createMockYamlConfig';
+import { TestLogger } from '../TestLogger';
 
 describe('createMockYamlConfig', () => {
   const mockConfig: PartialYamlConfig = {

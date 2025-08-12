@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
-import type { BrewToolConfig, BaseInstallContext } from '@types';
-import type { InstallOptions, InstallResult } from './IInstaller';
 import { logs } from '@modules/logger';
+import type { BaseInstallContext, BrewToolConfig } from '@types';
+import type { InstallOptions, InstallResult } from './IInstaller';
 
 /**
  * Install a tool using Homebrew
@@ -12,7 +12,7 @@ export async function installFromBrew(
   toolConfig: BrewToolConfig,
   context: BaseInstallContext,
   options: InstallOptions | undefined,
-  parentLogger: TsLogger,
+  parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
   logger.debug(logs.installer.debug.installingFromBrew(), toolName, toolConfig.installParams);
@@ -68,7 +68,7 @@ export async function installFromBrew(
     for (const binaryName of binaryNames) {
       const sourcePath = `/usr/local/bin/${binaryName}`;
       const finalBinaryPath = path.join(context.installDir, binaryName);
-      
+
       // In a real implementation, we would copy from brew location to our versioned directory
       // For now, this is a placeholder that assumes brew installed the binary
       logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);

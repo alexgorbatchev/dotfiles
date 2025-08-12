@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { processBunTestOutput } from '../bun-test-runner';
 import stripAnsi from 'strip-ansi';
+import { processBunTestOutput } from '../bun-test-runner';
 
 function getFixtureContent(fixtureName: string): string {
   return readFileSync(`${__dirname}/fixtures/bun-test-runner--${fixtureName}.txt`, {

@@ -1,13 +1,19 @@
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator } from '@modules/generator-shell-init';
 import type { IShimGenerator } from '@modules/generator-shim';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
-import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
-import type { GeneratedArtifactsManifest, ToolConfig, SystemInfo } from '@types';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
+import type { GeneratedArtifactsManifest, SystemInfo, ToolConfig } from '@types';
 import { always } from '@types';
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import path from 'node:path';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator', () => {
@@ -33,25 +39,26 @@ describe('GeneratorOrchestrator', () => {
       generateForTool: mock(async () => Promise.resolve([])),
     };
     mockShellInitGenerator = {
-      generate: mock(async () => Promise.resolve({
-        files: new Map(),
-        primaryPath: null,
-      })),
+      generate: mock(async () =>
+        Promise.resolve({
+          files: new Map(),
+          primaryPath: null,
+        })
+      ),
     };
     mockSymlinkGenerator = {
       generate: mock(async () => Promise.resolve([] as SymlinkOperationResult[])),
     };
 
-    const { fs, spies } = await createMemFileSystem({
-    });
+    const { fs, spies } = await createMemFileSystem({});
     mockFileSystem = fs;
     mockFsReadFile = spies.readFile;
     mockFsExists = spies.exists;
-    
+
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator' });
-    
+
     systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
-    
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
@@ -113,9 +120,9 @@ describe('GeneratorOrchestrator', () => {
         // dryRun: false, // Removed
         overwrite: true,
       });
-      expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, { 
+      expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         shellTypes: ['zsh', 'bash', 'powershell'],
-        systemInfo 
+        systemInfo,
       });
       expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         // dryRun: false, // Removed
@@ -184,9 +191,7 @@ describe('GeneratorOrchestrator', () => {
         files: new Map([['zsh', mockShellInitPath]]),
         primaryPath: mockShellInitPath,
       });
-      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-        mockSymlinkResults
-      );
+      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockSymlinkResults);
 
       const result = await orchestrator.generateAll(toolConfigs, { generatorVersion: '1.0.0' });
 
@@ -217,9 +222,7 @@ describe('GeneratorOrchestrator', () => {
         files: new Map([['zsh', mockShellInitPathWrite]]),
         primaryPath: mockShellInitPathWrite,
       });
-      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-        mockSymlinkResultsWrite
-      );
+      (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockSymlinkResultsWrite);
 
       await orchestrator.generateAll({
         toolX: {
@@ -248,10 +251,10 @@ describe('GeneratorOrchestrator', () => {
           // dryRun: true, // This is removed
           overwrite: true,
         });
-        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, { 
-        shellTypes: ['zsh', 'bash', 'powershell'],
-        systemInfo 
-      }); 
+        expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
+          shellTypes: ['zsh', 'bash', 'powershell'],
+          systemInfo,
+        });
         expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,
           backup: true,
@@ -302,16 +305,12 @@ describe('GeneratorOrchestrator', () => {
           { sourcePath: 's', targetPath: 't', status: 'created' },
         ];
 
-        (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-          mockTestShimPaths
-        );
+        (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockTestShimPaths);
         (mockShellInitGenerator.generate as ReturnType<typeof mock>).mockResolvedValue({
           files: new Map([['zsh', mockTestShellInitPath]]),
           primaryPath: mockTestShellInitPath,
         });
-        (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(
-          mockTestSymlinkResults
-        );
+        (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockTestSymlinkResults);
 
         const resultWithData = await orchestrator.generateAll(toolConfigs, {
           generatorVersion: mockGenVersion,

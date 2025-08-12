@@ -1,6 +1,6 @@
 export {
-  getArchitecturePatterns,
   createArchitectureRegex,
+  getArchitecturePatterns,
   getArchitectureRegex,
   matchesArchitecture,
 } from './getArchitectureRegex';

@@ -1,6 +1,6 @@
+import { cacheDebugTemplates } from './debug';
 import { cacheErrorTemplates } from './error';
 import { cacheSuccessTemplates } from './success';
-import { cacheDebugTemplates } from './debug';
 
 /**
  * Cache operation templates grouped by log level

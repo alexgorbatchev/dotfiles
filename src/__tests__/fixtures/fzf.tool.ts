@@ -2,8 +2,7 @@ import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 import { always } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin('fzf')
+  c.bin('fzf')
     .version('latest')
     .install('github-release', {
       repo: 'junegunn/fzf',

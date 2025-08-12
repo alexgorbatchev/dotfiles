@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { ShellGeneratorFactory } from '../ShellGeneratorFactory';
-import { ZshGenerator } from '../ZshGenerator';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import type { YamlConfig } from '@modules/config';
 import { BashGenerator } from '../BashGenerator';
 import { PowerShellGenerator } from '../PowerShellGenerator';
-import type { YamlConfig } from '@modules/config';
+import { ShellGeneratorFactory } from '../ShellGeneratorFactory';
+import { ZshGenerator } from '../ZshGenerator';
 
 describe('ShellGeneratorFactory', () => {
   let mockAppConfig: YamlConfig;
@@ -53,7 +53,7 @@ describe('ShellGeneratorFactory', () => {
 
   it('should create all generators', () => {
     const generators = ShellGeneratorFactory.createAllGenerators(mockAppConfig);
-    
+
     expect(generators.size).toBe(3);
     expect(generators.get('zsh')).toBeInstanceOf(ZshGenerator);
     expect(generators.get('bash')).toBeInstanceOf(BashGenerator);

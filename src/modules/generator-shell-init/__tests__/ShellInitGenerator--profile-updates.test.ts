@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
 import type { ToolConfig } from '@types';
 import { always } from '@types';
-import { ShellInitGenerator } from '../ShellInitGenerator';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
+import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Profile Updates', () => {
   let mockFileSystem: IFileSystem;
@@ -19,9 +25,9 @@ describe('ShellInitGenerator - Profile Updates', () => {
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
     logger = new TestLogger();
-    
+
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-profile-updates' });
-    
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
@@ -32,7 +38,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
       env: {},
     });
-    
+
     generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
   });
 
@@ -129,7 +135,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       // Create existing profiles
       const zshrcPath = path.join(testDirs.paths.homeDir, '.zshrc');
       const bashrcPath = path.join(testDirs.paths.homeDir, '.bashrc');
-      
+
       await mockFileSystem.ensureDir(path.dirname(zshrcPath));
       await mockFileSystem.writeFile(zshrcPath, '# Existing zsh config\n');
       await mockFileSystem.ensureDir(path.dirname(bashrcPath));
@@ -146,24 +152,24 @@ describe('ShellInitGenerator - Profile Updates', () => {
       expect(result?.profileUpdates).toHaveLength(2);
 
       // Check zsh profile update
-      const zshUpdate = result?.profileUpdates?.find(u => u.shellType === 'zsh');
+      const zshUpdate = result?.profileUpdates?.find((u) => u.shellType === 'zsh');
       expect(zshUpdate?.wasUpdated).toBe(true);
 
       // Check bash profile update
-      const bashUpdate = result?.profileUpdates?.find(u => u.shellType === 'bash');
+      const bashUpdate = result?.profileUpdates?.find((u) => u.shellType === 'bash');
       expect(bashUpdate?.wasUpdated).toBe(true);
 
       // Verify both profiles were updated with correct paths
       const zshContent = await mockFileSystem.readFile(zshrcPath);
       const bashContent = await mockFileSystem.readFile(bashrcPath);
-      
+
       expect(zshContent).toContain(`source "${path.join(testDirs.paths.shellScriptsDir, 'main.zsh')}"`);
       expect(bashContent).toContain(`source "${path.join(testDirs.paths.shellScriptsDir, 'main.bash')}"`);
     });
 
     it('should only update existing profile files (onlyIfExists behavior)', async () => {
       // Don't create any existing profiles
-      
+
       const options: GenerateShellInitOptions = {
         shellTypes: ['zsh', 'bash'],
         updateProfileFiles: true,
@@ -175,8 +181,8 @@ describe('ShellInitGenerator - Profile Updates', () => {
       expect(result?.profileUpdates).toHaveLength(2);
 
       // Both profiles should exist but not be updated (because they didn't exist initially)
-      const zshUpdate = result?.profileUpdates?.find(u => u.shellType === 'zsh');
-      const bashUpdate = result?.profileUpdates?.find(u => u.shellType === 'bash');
+      const zshUpdate = result?.profileUpdates?.find((u) => u.shellType === 'zsh');
+      const bashUpdate = result?.profileUpdates?.find((u) => u.shellType === 'bash');
 
       expect(zshUpdate).toEqual({
         shellType: 'zsh',
@@ -203,7 +209,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
 
     it('should detect when source line already exists and not duplicate it', async () => {
       const generatedScriptPath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
-      
+
       // Create existing profile with source line already present
       const zshrcPath = path.join(testDirs.paths.homeDir, '.zshrc');
       await mockFileSystem.ensureDir(path.dirname(zshrcPath));
@@ -269,7 +275,9 @@ describe('ShellInitGenerator - Profile Updates', () => {
       expect(profileContent).toContain(`. "${generatedScriptPath}"`);
       expect(profileContent).toContain('# Generated via dotfiles generator - do not modify');
       expect(profileContent).toContain('# /path/to/config.yaml');
-      expect(profileContent).toContain('# ------------------------------------------------------------------------------');
+      expect(profileContent).toContain(
+        '# ------------------------------------------------------------------------------'
+      );
     });
   });
 
@@ -301,7 +309,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       expect(result).not.toBeNull();
       expect(result?.files.size).toBe(1);
       expect(result?.primaryPath).toBeTruthy();
-      
+
       // Profile updates should still be attempted and return results
       expect(result?.profileUpdates).toBeDefined();
     });

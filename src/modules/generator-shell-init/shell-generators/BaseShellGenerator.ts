@@ -1,12 +1,19 @@
 import path from 'node:path';
-import type { ShellType, ToolConfig } from '@types';
-import type { ShellScript } from '@types';
-import { isOnceScript, isAlwaysScript, getScriptContent } from '@types';
 import type { YamlConfig } from '@modules/config';
-import type { IShellGenerator, ShellInitContent, AdditionalShellFile } from './IShellGenerator';
+import type { ShellScript, ShellType, ToolConfig } from '@types';
+import { getScriptContent, isAlwaysScript, isOnceScript } from '@types';
 import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
-import { generateFileHeader, generateSectionHeader, generateToolHeader, generateHoistingExplanation, generateHoistingAttribution, generateDefaultPathModification, generateEndOfFile } from '../shellTemplates';
+import {
+  generateDefaultPathModification,
+  generateEndOfFile,
+  generateFileHeader,
+  generateHoistingAttribution,
+  generateHoistingExplanation,
+  generateSectionHeader,
+  generateToolHeader,
+} from '../shellTemplates';
+import type { AdditionalShellFile, IShellGenerator, ShellInitContent } from './IShellGenerator';
 
 /**
  * Interface for shell-specific string generation strategy.
@@ -17,22 +24,22 @@ export interface IShellStringProducer {
    * Extracts shell-specific init scripts from tool config.
    */
   extractInitScripts(toolConfig: ToolConfig): ShellScript[];
-  
+
   /**
    * Processes completions configuration into shell-specific setup strings.
    */
   processCompletions(toolName: string, completions: any): string[];
-  
+
   /**
    * Processes environment variables into shell-specific export statements.
    */
   processEnvironmentVariables(toolConfig: ToolConfig): string[];
-  
+
   /**
    * Processes aliases into shell-specific alias commands.
    */
   processAliases(toolConfig: ToolConfig): string[];
-  
+
   /**
    * Generates shell-specific completion setup if needed.
    */
@@ -46,7 +53,7 @@ export interface IShellStringProducer {
 export abstract class BaseShellGenerator implements IShellGenerator {
   abstract readonly shellType: ShellType;
   abstract readonly fileExtension: string;
-  
+
   protected readonly appConfig: YamlConfig;
   protected readonly stringProducer: IShellStringProducer;
 
@@ -107,7 +114,13 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     allPathModifications.push(generateDefaultPathModification(this.shellType, this.appConfig.paths.binariesDir));
 
     // Collect content from all tools with proper attribution
-    this.collectContentWithAttribution(toolContents, allPathModifications, allEnvironmentVariables, allToolInits, allCompletionSetup);
+    this.collectContentWithAttribution(
+      toolContents,
+      allPathModifications,
+      allEnvironmentVariables,
+      allToolInits,
+      allCompletionSetup
+    );
 
     // Process branded scripts from all tools
     for (const [toolName, content] of toolContents) {
@@ -132,10 +145,20 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     }
 
     // Add PATH modifications section with hoisting comments
-    fileContent += this.generateHoistedSection('PATH Modifications', allPathModifications, toolContents, 'pathModifications');
+    fileContent += this.generateHoistedSection(
+      'PATH Modifications',
+      allPathModifications,
+      toolContents,
+      'pathModifications'
+    );
 
     // Add environment variables section with hoisting comments
-    fileContent += this.generateHoistedSection('Environment Variables', allEnvironmentVariables, toolContents, 'environmentVariables');
+    fileContent += this.generateHoistedSection(
+      'Environment Variables',
+      allEnvironmentVariables,
+      toolContents,
+      'environmentVariables'
+    );
 
     // Add formatted always scripts section
     if (formattedAlwaysScripts.length > 0) {
@@ -149,12 +172,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     // Add shell completions setup section
     if (allCompletionSetup.length > 0) {
       fileContent += `${generateSectionHeader(this.shellType, 'Shell Completions Setup')}\n`;
-      
+
       // Use string producer for shell-specific completion setup if available
-      const completionSetupStrings = this.stringProducer.generateCompletionSetup 
+      const completionSetupStrings = this.stringProducer.generateCompletionSetup
         ? this.stringProducer.generateCompletionSetup(allCompletionSetup, allToolInits)
         : [...new Set(allCompletionSetup)];
-        
+
       fileContent += completionSetupStrings.join('\n') + '\n\n';
     }
 
@@ -218,21 +241,19 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     if (items.length === 0) return '';
 
     let section = `${generateSectionHeader(this.shellType, sectionTitle)}\n`;
-    
+
     // Add hoisting explanation comment
     section += generateHoistingExplanation(this.shellType, sectionTitle) + '\n';
 
     // For PATH modifications, ensure generated bin directory is first
     if (sectionTitle === 'PATH Modifications') {
       const uniquePaths = [...new Set(items)];
-      const generatedBinPathLine = uniquePaths.find((p) =>
-        p.includes(this.appConfig.paths.binariesDir)
-      );
+      const generatedBinPathLine = uniquePaths.find((p) => p.includes(this.appConfig.paths.binariesDir));
       if (generatedBinPathLine) {
         section += generatedBinPathLine + '\n';
         uniquePaths.splice(uniquePaths.indexOf(generatedBinPathLine), 1);
       }
-      
+
       // Add remaining paths with source attribution
       for (const item of uniquePaths) {
         const sourceTools = this.findSourceTools(item, toolContents, contentType);
@@ -265,15 +286,15 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     if (allToolInits.length === 0) return '';
 
     let section = `${generateSectionHeader(this.shellType, 'Tool-Specific Initializations')}\n`;
-    
+
     // Group tool inits by tool
     const toolGroups = new Map<string, { content: string[]; filePath?: string }>();
-    
+
     for (const [toolName, content] of toolContents) {
       if (content.toolInit.length > 0) {
         toolGroups.set(toolName, {
           content: content.toolInit,
-          filePath: content.configFilePath
+          filePath: content.configFilePath,
         });
       }
     }
@@ -297,12 +318,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     contentType: keyof ShellInitContent
   ): string[] {
     const sourceTools: string[] = [];
-    
+
     for (const [toolName, content] of toolContents) {
       const contentArray = content[contentType];
       if (Array.isArray(contentArray)) {
         // Handle both plain strings and ShellScript branded types
-        const hasMatch = contentArray.some(arrayItem => {
+        const hasMatch = contentArray.some((arrayItem) => {
           if (typeof arrayItem === 'string') {
             return arrayItem === item;
           }
@@ -314,7 +335,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         }
       }
     }
-    
+
     return sourceTools;
   }
 }

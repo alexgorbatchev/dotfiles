@@ -1,5 +1,5 @@
-import { MemFileSystem, type IFileSystem } from '@modules/file-system';
-import { mock, type Mock } from 'bun:test';
+import { type Mock, mock } from 'bun:test';
+import { type IFileSystem, MemFileSystem } from '@modules/file-system';
 import type { DirectoryJSON } from 'memfs';
 import path from 'path';
 
@@ -33,10 +33,7 @@ export interface MemFileSystemOptions {
  * Type for the collection of spies/mocks on the file system methods.
  */
 export type FileSystemSpies = {
-  [K in keyof Omit<
-    Required<MemFileSystemOptions>,
-    'initialVolumeJson' | 'initialSymlinks'
-  >]: Mock<IFileSystem[K]>;
+  [K in keyof Omit<Required<MemFileSystemOptions>, 'initialVolumeJson' | 'initialSymlinks'>]: Mock<IFileSystem[K]>;
 };
 
 /**
@@ -64,9 +61,9 @@ export interface MemFileSystemReturn {
 
   /**
    * Adds symlinks to the file system.
-   * 
+   *
    * @param symlinks - A record of symlink targets and their sources.
-   * 
+   *
    * @example
    * ```typescript
    * // ln -s [realFile:source] [symlinkPath:target]
@@ -134,6 +131,6 @@ export async function createMemFileSystem(options: MemFileSystemOptions = {}): P
     fs,
     spies,
     addFiles,
-    addSymlinks
+    addSymlinks,
   };
 }

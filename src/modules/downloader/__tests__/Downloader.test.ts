@@ -1,7 +1,7 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { Downloader } from '@modules/downloader';
 import type { IFileSystem } from '@modules/file-system';
-import { TestLogger, createMemFileSystem } from '@testing-helpers';
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { createMemFileSystem, TestLogger } from '@testing-helpers';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import type { DownloadOptions } from '../IDownloader';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
@@ -187,9 +187,7 @@ describe('Downloader', () => {
     const downloader = new Downloader(logger, fileSystem, [nonErrorStringThrowingStrategy]);
     const url = 'http://example.com/file.txt';
 
-    expect(downloader.download(url)).rejects.toThrowError(
-      new Error('simulated string error')
-    );
+    expect(downloader.download(url)).rejects.toThrowError(new Error('simulated string error'));
     expect((nonErrorStringThrowingStrategy.download as any).mock.calls.length).toBe(1);
   });
 
@@ -240,9 +238,7 @@ describe('Downloader', () => {
       };
       const downloader = new Downloader(logger, fileSystem, [mockNoProgressStrategy]);
 
-      expect(downloader.download('http://example.com/file', {})).resolves.toBeInstanceOf(
-        Buffer
-      );
+      expect(downloader.download('http://example.com/file', {})).resolves.toBeInstanceOf(Buffer);
       expect(mockStrategyDownload).toHaveBeenCalledWith(
         'http://example.com/file',
         expect.not.objectContaining({ onProgress: expect.any(Function) })

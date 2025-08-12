@@ -1,4 +1,4 @@
-import { Logger, type ILogObjMeta, type ISettingsParam } from 'tslog';
+import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import type { SafeLogMessage } from './SafeLogMessage';
 
 export type TsLogger = SafeLogger<any>;
@@ -57,11 +57,11 @@ class SafeLogger<LogObj = any> extends Logger<LogObj> {
 
 /**
  * Creates a type-safe TSLog logger instance with configurable log level.
- * 
+ *
  * The returned SafeLogger only accepts SafeLogMessage objects as the first argument
  * to log methods, preventing arbitrary strings from being logged. Use ErrorTemplates
  * or SuccessTemplates to create safe log messages.
- * 
+ *
  * @param config Logger configuration
  * @param config.name Logger name
  * @param config.minLevel Minimum log level (0=trace, 1=debug, 2=info, 3=warn, 4=error, 5=fatal)
@@ -73,18 +73,18 @@ export function createTsLogger(name: string): TsLogger; // Backward compatibilit
 export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
   if (typeof configOrName === 'string') {
     // Backward compatibility: default to INFO level with user-friendly formatting
-    return new SafeLogger({ 
+    return new SafeLogger({
       name: configOrName,
       minLevel: 3, // INFO level (0=silly, 1=trace, 2=debug, 3=info)
-      ...getUserFriendlyLoggerSettings()
+      ...getUserFriendlyLoggerSettings(),
     });
   }
-  
+
   const { name, minLevel = 3 } = configOrName; // Default to INFO level
-  return new SafeLogger({ 
+  return new SafeLogger({
     name,
     minLevel,
-    ...getUserFriendlyLoggerSettings()
+    ...getUserFriendlyLoggerSettings(),
   });
 }
 
@@ -100,7 +100,7 @@ function getUserFriendlyLoggerSettings() {
     prettyLogStyles: {
       logLevelName: {
         FATAL: ['bold', 'red'],
-        ERROR: ['bold', 'red'], 
+        ERROR: ['bold', 'red'],
         WARN: ['bold', 'yellow'],
         INFO: ['bold', 'blue'],
         DEBUG: ['bold', 'white'],
@@ -112,7 +112,7 @@ function getUserFriendlyLoggerSettings() {
 
 /**
  * Determines the appropriate log level based on CLI flags.
- * 
+ *
  * @param quiet If true, only show errors and fatal messages (level 5)
  * @param verbose If true, show all messages including debug and trace (level 1)
  * @returns The appropriate log level (0=silly, 1=trace, 2=debug, 3=info, 4=warn, 5=error, 6=fatal)

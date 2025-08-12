@@ -16,16 +16,25 @@ export const generalSuccessTemplates = {
   noConflictsDetected: () => createSafeLogMessage('No conflicts detected'),
   checkingUpdates: (toolName: string) => createSafeLogMessage(`updates for ${toolName}`),
   checkingUpdatesFor: (toolName: string) => createSafeLogMessage(`updates check for "${toolName}"`),
-  processingUpdate: (toolName: string, fromVersion: string, toVersion: string) => createSafeLogMessage(`${toolName} update from ${fromVersion} to ${toVersion}`),
+  processingUpdate: (toolName: string, fromVersion: string, toVersion: string) =>
+    createSafeLogMessage(`${toolName} update from ${fromVersion} to ${toVersion}`),
   noToolsFound: (toolConfigDir: string) => createSafeLogMessage(`No tool configurations found in ${toolConfigDir}`),
-  toolOnLatest: (toolName: string, version: string) => createSafeLogMessage(`Tool "${toolName}" is configured to 'latest'. The latest available version is ${version}`),
-  updateAvailable: (toolName: string, current: string, latest: string) => createSafeLogMessage(`Update available for ${toolName}: ${current} -> ${latest}`),
-  toolUpToDate: (toolName: string, current: string, latest: string) => createSafeLogMessage(`${toolName} (${current}) is up to date. Latest: ${latest}`),
-  toolAhead: (toolName: string, current: string, latest: string) => createSafeLogMessage(`${toolName} (${current}) is ahead of the latest known version (${latest})`),
-  shimUpdateStarting: (toolName: string, fromVersion: string, toVersion: string) => createSafeLogMessage(`Updating ${toolName} from ${fromVersion} to ${toVersion}...`),
-  shimUpdateSuccess: (toolName: string, version: string) => createSafeLogMessage(`${toolName} successfully updated to ${version}`),
-  shimToolUpToDate: (toolName: string, version: string) => createSafeLogMessage(`${toolName} is already up to date (${version})`),
-  shimToolOnLatest: (toolName: string, version: string) => createSafeLogMessage(`${toolName} is already on latest version (${version})`),
+  toolOnLatest: (toolName: string, version: string) =>
+    createSafeLogMessage(`Tool "${toolName}" is configured to 'latest'. The latest available version is ${version}`),
+  updateAvailable: (toolName: string, current: string, latest: string) =>
+    createSafeLogMessage(`Update available for ${toolName}: ${current} -> ${latest}`),
+  toolUpToDate: (toolName: string, current: string, latest: string) =>
+    createSafeLogMessage(`${toolName} (${current}) is up to date. Latest: ${latest}`),
+  toolAhead: (toolName: string, current: string, latest: string) =>
+    createSafeLogMessage(`${toolName} (${current}) is ahead of the latest known version (${latest})`),
+  shimUpdateStarting: (toolName: string, fromVersion: string, toVersion: string) =>
+    createSafeLogMessage(`Updating ${toolName} from ${fromVersion} to ${toVersion}...`),
+  shimUpdateSuccess: (toolName: string, version: string) =>
+    createSafeLogMessage(`${toolName} successfully updated to ${version}`),
+  shimToolUpToDate: (toolName: string, version: string) =>
+    createSafeLogMessage(`${toolName} is already up to date (${version})`),
+  shimToolOnLatest: (toolName: string, version: string) =>
+    createSafeLogMessage(`${toolName} is already on latest version (${version})`),
   cleanupAllTrackedFiles: () => createSafeLogMessage('Registry-based cleanup: Removing all tracked files'),
   cleanupRegistryDatabase: () => createSafeLogMessage('registry database cleanup'),
   cleanupToolFiles: (tool: string) => createSafeLogMessage(`Registry-based cleanup: files for tool '${tool}'`),
@@ -39,7 +48,8 @@ export const generalSuccessTemplates = {
   noFileOperationsFound: () => createSafeLogMessage('No file operations found matching criteria'),
   listingFileOperations: () => createSafeLogMessage('Listing file operations by tool'),
   operationInfo: (operationType: string, filePath: string) => createSafeLogMessage(`${operationType}: ${filePath}`),
-  operationDetails: (fileType: string, timestamp: string, sizeText: string) => createSafeLogMessage(`Type: ${fileType} | Time: ${timestamp}${sizeText}`),
+  operationDetails: (fileType: string, timestamp: string, sizeText: string) =>
+    createSafeLogMessage(`Type: ${fileType} | Time: ${timestamp}${sizeText}`),
   operationTarget: (targetPath: string) => createSafeLogMessage(`Target: ${targetPath}`),
   operationMetadata: (metadata: string) => createSafeLogMessage(`Metadata: ${metadata}`),
   toolOperations: (toolName: string, count: number) => createSafeLogMessage(`${toolName} (${count} operations):`),
@@ -47,10 +57,9 @@ export const generalSuccessTemplates = {
   fileReportSeparator: () => createSafeLogMessage('=================='),
   operationsReport: (count: number) => createSafeLogMessage(`Found ${count} tracked file operations`),
   operationsReportSeparator: () => createSafeLogMessage('============================================'),
-  fileStatus: (statusIcon: string, filePath: string, fileType: string, statusText: string, sizeText: string) => 
+  fileStatus: (statusIcon: string, filePath: string, fileType: string, statusText: string, sizeText: string) =>
     createSafeLogMessage(`${statusIcon} ${filePath} [${fileType}] - ${statusText}${sizeText}`),
-  targetStatus: (targetIcon: string, targetPath: string) => 
-    createSafeLogMessage(`${targetIcon} ${targetPath}`),
+  targetStatus: (targetIcon: string, targetPath: string) => createSafeLogMessage(`${targetIcon} ${targetPath}`),
   symlinkOperation: (targetPath: string, sourcePath: string, status: string, error?: string) => {
     let message = `Target: ${targetPath} -> Source: ${sourcePath} (Status: ${status})`;
     if (status === 'failed' && error) {
@@ -62,8 +71,12 @@ export const generalSuccessTemplates = {
     }
     return createSafeLogMessage(message);
   },
-  cleanupRegistryTool: (tool: string, dryRun: boolean) => 
-    createSafeLogMessage(dryRun ? `Would remove registry entries for tool: ${tool} (dry run)` : `Removed registry entries for tool: ${tool}`),
+  cleanupRegistryTool: (tool: string, dryRun: boolean) =>
+    createSafeLogMessage(
+      dryRun
+        ? `Would remove registry entries for tool: ${tool} (dry run)`
+        : `Removed registry entries for tool: ${tool}`
+    ),
   fileCleanupDryRun: (filePath: string) => createSafeLogMessage(`Would delete: ${filePath}`),
   directoryCleanupInfo: (dirPath: string, exists: boolean, dryRun: boolean) => {
     if (!exists) return createSafeLogMessage(`Generated directory not found, skipping: ${dirPath}`);

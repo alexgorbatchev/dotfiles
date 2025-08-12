@@ -1,5 +1,8 @@
 import { mock } from 'bun:test';
+import path from 'node:path';
+import type { ICache } from '@modules/cache';
 import type { YamlConfig } from '@modules/config';
+import type { IDownloader } from '@modules/downloader';
 import {
   createMemFileSystem,
   createMockYamlConfig,
@@ -7,16 +10,13 @@ import {
   type PartialYamlConfig,
   TestLogger,
 } from '@testing-helpers';
-import type { IDownloader } from '@modules/downloader';
 import { GitHubApiClient } from '../../GitHubApiClient';
-import type { ICache } from '@modules/cache';
-import path from 'node:path';
 
 export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
   const testDirs = await createTestDirectories(logger, memFs.fs, { testName: 'github-api-client' });
-  
+
   return createMockYamlConfig({
     config: {
       paths: testDirs.paths,
@@ -78,9 +78,7 @@ export interface MockSetup {
   logger: TestLogger;
 }
 
-export const setupMockGitHubApiClient = async (
-  configOverrides: PartialYamlConfig = {},
-): Promise<MockSetup> => {
+export const setupMockGitHubApiClient = async (configOverrides: PartialYamlConfig = {}): Promise<MockSetup> => {
   const mockYamlConfig = await createMockYamlConfigForGitHubApi(configOverrides);
   const mockDownloader = createMockDownloader();
   const mockCache = createMockGitHubApiCache();
@@ -115,39 +113,44 @@ export const createGitHubConfigOverride = ({
   githubApiCacheTtl?: number;
 } = {}): PartialYamlConfig => {
   const overrides: PartialYamlConfig = {};
-  
-  if (githubToken !== undefined || githubHost !== undefined || githubClientUserAgent !== undefined ||
-      githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
+
+  if (
+    githubToken !== undefined ||
+    githubHost !== undefined ||
+    githubClientUserAgent !== undefined ||
+    githubApiCacheEnabled !== undefined ||
+    githubApiCacheTtl !== undefined
+  ) {
     overrides.github = {};
-    
+
     if (githubToken !== undefined) {
       overrides.github.token = githubToken;
     }
-    
+
     if (githubHost !== undefined) {
       overrides.github.host = githubHost;
     }
-    
+
     if (githubClientUserAgent !== undefined) {
       overrides.github.userAgent = githubClientUserAgent;
     }
-    
+
     if (githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
       // Initialize with default values from the schema
       overrides.github.cache = {
         enabled: true,
         ttl: 3600000,
       };
-      
+
       if (githubApiCacheEnabled !== undefined) {
         overrides.github.cache.enabled = githubApiCacheEnabled;
       }
-      
+
       if (githubApiCacheTtl !== undefined) {
         overrides.github.cache.ttl = githubApiCacheTtl;
       }
     }
   }
-  
+
   return overrides;
 };

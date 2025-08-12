@@ -1,12 +1,11 @@
-import { describe, it, beforeEach, expect } from 'bun:test';
-import { TestLogger, createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
-import { Installer } from '../Installer';
-import type { IDownloader } from '@modules/downloader';
-import type { IGitHubApiClient } from '@modules/github-client';
-import type { IArchiveExtractor } from '@modules/extractor';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
+import type { IDownloader } from '@modules/downloader';
+import type { IArchiveExtractor } from '@modules/extractor';
+import type { IGitHubApiClient } from '@modules/github-client';
+import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { GithubReleaseToolConfig } from '@types';
-import { mock, spyOn } from 'bun:test';
+import { Installer } from '../Installer';
 
 describe('Installer - Enhanced Hooks', () => {
   let logger: TestLogger;
@@ -37,27 +36,32 @@ describe('Installer - Enhanced Hooks', () => {
     } as IDownloader;
 
     mockGitHubClient = {
-      getLatestRelease: mock(() => Promise.resolve({
-        id: 12345,
-        tag_name: mockToolVersion,
-        html_url: 'https://github.com/owner/test-tool/releases/tag/v1.0.0',
-        published_at: '2023-01-01T00:00:00Z',
-        created_at: '2023-01-01T00:00:00Z',
-        name: 'Release v1.0.0',
-        draft: false,
-        prerelease: false,
-        assets: [{
-          id: 123,
-          name: 'test-tool-darwin-arm64.tar.gz',
-          browser_download_url: 'https://github.com/owner/test-tool/releases/download/v1.0.0/test-tool-darwin-arm64.tar.gz',
-          size: 1024000,
-          content_type: 'application/gzip',
-          state: 'uploaded',
-          download_count: 42,
+      getLatestRelease: mock(() =>
+        Promise.resolve({
+          id: 12345,
+          tag_name: mockToolVersion,
+          html_url: 'https://github.com/owner/test-tool/releases/tag/v1.0.0',
+          published_at: '2023-01-01T00:00:00Z',
           created_at: '2023-01-01T00:00:00Z',
-          updated_at: '2023-01-01T00:00:00Z'
-        }]
-      })),
+          name: 'Release v1.0.0',
+          draft: false,
+          prerelease: false,
+          assets: [
+            {
+              id: 123,
+              name: 'test-tool-darwin-arm64.tar.gz',
+              browser_download_url:
+                'https://github.com/owner/test-tool/releases/download/v1.0.0/test-tool-darwin-arm64.tar.gz',
+              size: 1024000,
+              content_type: 'application/gzip',
+              state: 'uploaded',
+              download_count: 42,
+              created_at: '2023-01-01T00:00:00Z',
+              updated_at: '2023-01-01T00:00:00Z',
+            },
+          ],
+        })
+      ),
       getReleaseByTag: mock(),
       getAllReleases: mock(),
       getReleaseByConstraint: mock(),
@@ -74,7 +78,7 @@ describe('Installer - Enhanced Hooks', () => {
         }
         return {
           extractedFiles: ['test-tool'],
-          executables: ['test-tool']
+          executables: ['test-tool'],
         };
       }),
       detectFormat: mock(),
@@ -91,14 +95,7 @@ describe('Installer - Enhanced Hooks', () => {
       },
     } as YamlConfig;
 
-    installer = new Installer(
-      logger,
-      memFs.fs,
-      mockDownloader,
-      mockGitHubClient,
-      mockArchiveExtractor,
-      mockConfig
-    );
+    installer = new Installer(logger, memFs.fs, mockDownloader, mockGitHubClient, mockArchiveExtractor, mockConfig);
   });
 
   describe('beforeInstall hook', () => {
@@ -158,7 +155,7 @@ describe('Installer - Enhanced Hooks', () => {
     it('should handle beforeInstall hook timeout', async () => {
       const beforeInstallHook = mock(async () => {
         // Simulate a slow hook
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -175,13 +172,12 @@ describe('Installer - Enhanced Hooks', () => {
       };
 
       // Mock HookExecutor to use short timeout
-      const hookExecutorSpy = spyOn(installer['hookExecutor'], 'executeHook')
-        .mockResolvedValue({
-          success: false,
-          error: 'Hook timed out after 50ms',
-          durationMs: 50,
-          skipped: false,
-        });
+      const hookExecutorSpy = spyOn(installer['hookExecutor'], 'executeHook').mockResolvedValue({
+        success: false,
+        error: 'Hook timed out after 50ms',
+        durationMs: 50,
+        skipped: false,
+      });
 
       const result = await installer.install(mockToolName, toolConfig);
 

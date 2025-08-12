@@ -1,13 +1,19 @@
-import type { YamlConfig } from '@modules/config';
-import type { IFileSystem } from '@modules/file-system';
-import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
-import type { ToolConfig } from '@types';
-import { always } from '@types';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
+import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
+import type { ToolConfig } from '@types';
+import { always } from '@types';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
-import { createSectionHeader, generateFileHeader, generateEndOfFile } from '../shellTemplates';
+import { createSectionHeader, generateEndOfFile, generateFileHeader } from '../shellTemplates';
 
 describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;
@@ -20,9 +26,9 @@ describe('ShellInitGenerator', () => {
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
     logger = new TestLogger();
-    
+
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-generator' });
-    
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
@@ -55,7 +61,7 @@ describe('ShellInitGenerator', () => {
       '',
       `export PATH="${testDirs.paths.binariesDir}:$PATH"`,
       '', // one empty line after path section
-      '',  // extra newline before end of file
+      '', // extra newline before end of file
       getExpectedFooter(),
     ].join('\n');
 
@@ -244,9 +250,7 @@ describe('ShellInitGenerator', () => {
 
     expect(content).toContain(createSectionHeader('zsh', 'Shell Completions Setup'));
     expect(content).toContain('typeset -U fpath');
-    expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`
-    );
+    expect(content).toContain(`fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`);
   });
 
   it('should not add "typeset -U fpath" if fpath is already managed in zshInit', async () => {
@@ -274,9 +278,7 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain('fpath=("/my/custom/fpath" $fpath)');
     // The completion specific fpath add should still be there for its own directory
-    expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`
-    );
+    expect(content).toContain(`fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`);
   });
 
   it('should handle mixed configurations for multiple tools', async () => {
@@ -339,12 +341,8 @@ describe('ShellInitGenerator', () => {
 
     // Completions
     expect(content).toContain('typeset -U fpath');
-    expect(content).toContain(
-      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`
-    ); // For alpha
-    expect(content).toContain(
-      `fpath=(${JSON.stringify('/usr/local/share/zsh/site-functions')} $fpath)`
-    ); // For gamma
+    expect(content).toContain(`fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`); // For alpha
+    expect(content).toContain(`fpath=(${JSON.stringify('/usr/local/share/zsh/site-functions')} $fpath)`); // For gamma
   });
 
   it('should correctly order the sections', async () => {

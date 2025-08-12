@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { NetworkError, NotFoundError, RateLimitError } from '@modules/downloader';
 import type { GitHubRelease } from '@types';
-import { NetworkError, RateLimitError, NotFoundError } from '@modules/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
+  createGitHubConfigOverride,
   type MockSetup,
   setupMockGitHubApiClient,
-  createGitHubConfigOverride
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
@@ -13,7 +13,9 @@ describe('GitHubApiClient', () => {
 
   beforeEach(async () => {
     // Explicitly disable API cache for these non-caching tests
-    mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false, githubToken: '' }));
+    mocks = await setupMockGitHubApiClient(
+      createGitHubConfigOverride({ githubApiCacheEnabled: false, githubToken: '' })
+    );
   });
 
   describe('getLatestRelease', () => {
@@ -48,7 +50,7 @@ describe('GitHubApiClient', () => {
     it('should return null if the release is not found (404)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader')),
+        new NotFoundError(mocks.logger, url, new Error('Original 404 from downloader'))
       );
 
       const release = await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
@@ -67,13 +69,11 @@ describe('GitHubApiClient', () => {
           'Forbidden',
           'Rate limit details', // responseBody
           {}, // headers
-          resetTimestamp,
-        ),
+          resetTimestamp
+        )
       );
 
-      expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        GitHubApiClientError
-      );
+      expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(GitHubApiClientError);
 
       try {
         await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
@@ -90,13 +90,9 @@ describe('GitHubApiClient', () => {
 
     it('should throw a GitHubApiClientError for other failures (NetworkError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases/latest';
-      mocks.mockDownloader.download.mockRejectedValue(
-        new NetworkError(mocks.logger, 'Connection lost', url),
-      );
+      mocks.mockDownloader.download.mockRejectedValue(new NetworkError(mocks.logger, 'Connection lost', url));
 
-      expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(
-        GitHubApiClientError
-      );
+      expect(mocks.apiClient.getLatestRelease('test-owner', 'test-repo')).rejects.toThrow(GitHubApiClientError);
 
       try {
         await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');

@@ -1,7 +1,7 @@
+import { beforeEach, test } from 'bun:test';
 import { MemFileSystem } from '@modules/file-system';
 import { TestLogger } from '@testing-helpers';
 import { SqliteFileRegistry, TrackedFileSystem } from '../index';
-import { test, beforeEach } from 'bun:test';
 
 let logger: TestLogger;
 let fs: MemFileSystem;
@@ -24,16 +24,12 @@ beforeEach(() => {
 test('should include tool name in filesystem operation logs', async () => {
   // Test directory creation first (which creates the parent directory)
   await trackedFs.mkdir('/test');
-  
+
   // Test file creation
   await trackedFs.writeFile('/test/file.txt', 'content');
 
   // Verify the logs include the tool name in sequence
-  logger.expect(
-    ['INFO'],
-    ['TrackedFileSystem'],
-    ['[nodejs] mkdir /test', '[nodejs] write /test/file.txt']
-  );
+  logger.expect(['INFO'], ['TrackedFileSystem'], ['[nodejs] mkdir /test', '[nodejs] write /test/file.txt']);
 });
 
 test('should show different tool names for different contexts', async () => {
@@ -49,7 +45,7 @@ test('should show different tool names for different contexts', async () => {
   // Create parent directories
   await trackedFs.mkdir('/nodejs');
   await curlTrackedFs.mkdir('/curl');
-  
+
   // Create files with different tools
   await trackedFs.writeFile('/nodejs/file.txt', 'content');
   await curlTrackedFs.writeFile('/curl/file.txt', 'content');
@@ -58,11 +54,6 @@ test('should show different tool names for different contexts', async () => {
   logger.expect(
     ['INFO'],
     ['TrackedFileSystem'],
-    [
-      '[nodejs] mkdir /nodejs',
-      '[curl] mkdir /curl',
-      '[nodejs] write /nodejs/file.txt',
-      '[curl] write /curl/file.txt'
-    ]
+    ['[nodejs] mkdir /nodejs', '[curl] mkdir /curl', '[nodejs] write /nodejs/file.txt', '[curl] write /curl/file.txt']
   );
 });

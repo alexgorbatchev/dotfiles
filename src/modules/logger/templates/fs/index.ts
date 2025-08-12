@@ -1,7 +1,7 @@
-import { fsErrorTemplates } from './error';
-import { fsWarningTemplates } from './warning';
-import { fsSuccessTemplates } from './success';
 import { fsDebugTemplates } from './debug';
+import { fsErrorTemplates } from './error';
+import { fsSuccessTemplates } from './success';
+import { fsWarningTemplates } from './warning';
 
 /**
  * File system operation templates grouped by log level

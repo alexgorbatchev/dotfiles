@@ -1,22 +1,16 @@
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
-import {
-  loadSingleToolConfig,
-} from '@modules/config-loader';
+import { loadSingleToolConfig } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import { logs } from '@modules/logger';
-import { VersionComparisonStatus, type IVersionChecker } from '@modules/version-checker';
-import { TestLogger } from '@testing-helpers';
-import { createCliTestSetup } from './createCliTestSetup';
+import { type IVersionChecker, VersionComparisonStatus } from '@modules/version-checker';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { TestLogger } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { registerUpdateCommand } from '../updateCommand';
-import {
-  createModuleMocker,
-  setupTestCleanup,
-  clearMockRegistry
-} from '@rageltd/bun-test-utils';
+import { createCliTestSetup } from './createCliTestSetup';
 
 // Setup cleanup once per file
 setupTestCleanup();
@@ -25,7 +19,6 @@ const mockModules = createModuleMocker();
 
 const mockActualLoadSingleToolConfig = mock(loadSingleToolConfig);
 const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
-
 
 describe('updateCommand', () => {
   let program: GlobalProgram;
@@ -85,7 +78,13 @@ describe('updateCommand', () => {
           getReleaseByTag: mock(async () => null),
           getAllReleases: mock(async () => []),
           getReleaseByConstraint: mock(async () => null),
-          getRateLimit: mock(async () => ({ remaining: 5000, limit: 5000, reset: Date.now() + 3600000, used: 0, resource: 'core' })),
+          getRateLimit: mock(async () => ({
+            remaining: 5000,
+            limit: 5000,
+            reset: Date.now() + 3600000,
+            used: 0,
+            resource: 'core',
+          })),
         },
         versionChecker: {
           checkVersionStatus: mock(async () => VersionComparisonStatus.NEWER_AVAILABLE),
@@ -111,7 +110,6 @@ describe('updateCommand', () => {
       loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
     }));
 
-
     registerUpdateCommand(logger, program, async () => setup.createServices());
   });
 
@@ -129,35 +127,36 @@ describe('updateCommand', () => {
       ...latestGitHubRelease,
       tag_name: 'v0.40.0',
     });
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.UP_TO_DATE
-    );
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['updateCommand'], [
-      'updates check for "fzf"',
-      'fzf (0.40.0) is up to date. Latest: 0.40.0',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['updateCommand'],
+      ['updates check for "fzf"', 'fzf (0.40.0) is up to date. Latest: 0.40.0']
+    );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
   test('update available, successful installation', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.NEWER_AVAILABLE
-    );
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
     (mockInstallerService.install as any).mockResolvedValue({ success: true, version: '0.41.0' });
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['updateCommand'], [
-      'updates check for "fzf"',
-      'Update available for fzf: 0.40.0 -> 0.41.0',
-      'fzf update from 0.40.0 to 0.41.0',
-      'Tool "fzf" updated from v0.40.0 to v0.41.0',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['updateCommand'],
+      [
+        'updates check for "fzf"',
+        'Update available for fzf: 0.40.0 -> 0.41.0',
+        'fzf update from 0.40.0 to 0.41.0',
+        'Tool "fzf" updated from v0.40.0 to v0.41.0',
+      ]
+    );
     expect(mockInstallerService.install).toHaveBeenCalledWith(
       'fzf',
       expect.objectContaining({ name: 'fzf', version: '0.41.0' }),
@@ -168,21 +167,15 @@ describe('updateCommand', () => {
   test('update available, installation fails', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.NEWER_AVAILABLE
-    );
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
     (mockInstallerService.install as any).mockResolvedValue({
       success: false,
       error: 'Install failed miserably',
     });
 
-    expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
-    );
+    expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['updateCommand'], [
-      logs.tool.error.updateFailed('fzf', 'Install failed miserably'),
-    ]);
+    logger.expect(['ERROR'], ['updateCommand'], [logs.tool.error.updateFailed('fzf', 'Install failed miserably')]);
   });
 
   test('tool config not found', async () => {
@@ -192,9 +185,11 @@ describe('updateCommand', () => {
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    logger.expect(['ERROR'], ['updateCommand'], [
-      logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir),
-    ]);
+    logger.expect(
+      ['ERROR'],
+      ['updateCommand'],
+      [logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+    );
   });
 
   test('unsupported installation method', async () => {
@@ -202,10 +197,14 @@ describe('updateCommand', () => {
 
     await program.parseAsync(['update', 'manualtool'], { from: 'user' });
 
-    logger.expect(['INFO'], ['updateCommand'], [
-      'updates check for "manualtool"',
-      'Update not yet supported (installation method: "manual" for tool "manualtool")',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['updateCommand'],
+      [
+        'updates check for "manualtool"',
+        'Update not yet supported (installation method: "manual" for tool "manualtool")',
+      ]
+    );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
@@ -215,9 +214,11 @@ describe('updateCommand', () => {
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['updateCommand'], [
-      logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API Down'),
-    ]);
+    logger.expect(
+      ['ERROR'],
+      ['updateCommand'],
+      [logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API Down')]
+    );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
@@ -231,10 +232,11 @@ describe('updateCommand', () => {
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['updateCommand'], [
-      'updates check for "fzf"',
-      'Tool "fzf" is configured to \'latest\'. The latest available version is 0.50.0',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['updateCommand'],
+      ['updates check for "fzf"', 'Tool "fzf" is configured to \'latest\'. The latest available version is 0.50.0']
+    );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
@@ -248,10 +250,11 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output instead of verbose template messages
-      logger.expect(['INFO'], ['updateCommand'], [
-        'Updating fzf from 0.40.0 to 0.41.0...',
-        'fzf successfully updated to 0.41.0',
-      ]);
+      logger.expect(
+        ['INFO'],
+        ['updateCommand'],
+        ['Updating fzf from 0.40.0 to 0.41.0...', 'fzf successfully updated to 0.41.0']
+      );
     });
 
     test('should show concise message when tool is already latest in shim mode', async () => {
@@ -265,9 +268,7 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(['INFO'], ['updateCommand'], [
-        'fzf is already on latest version (0.41.0)',
-      ]);
+      logger.expect(['INFO'], ['updateCommand'], ['fzf is already on latest version (0.41.0)']);
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -282,9 +283,7 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(['INFO'], ['updateCommand'], [
-        'fzf is already up to date (0.40.0)',
-      ]);
+      logger.expect(['INFO'], ['updateCommand'], ['fzf is already up to date (0.40.0)']);
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -299,13 +298,12 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should not include the "checking updates" message in shim mode
-      logger.expect(['INFO'], ['updateCommand'], [
-        'fzf is already up to date (0.40.0)',
-      ]);
-      // Ensure no "Checking for updates" message appears  
+      logger.expect(['INFO'], ['updateCommand'], ['fzf is already up to date (0.40.0)']);
+      // Ensure no "Checking for updates" message appears
       // Check that no log message contains "updates check for"
-      const logsContainCheckingMessage = logger.logs.some((log: any) => 
-        log['message'] && typeof log['message'] === 'string' && log['message'].includes('updates check for')
+      const logsContainCheckingMessage = logger.logs.some(
+        (log: any) =>
+          log['message'] && typeof log['message'] === 'string' && log['message'].includes('updates check for')
       );
       expect(logsContainCheckingMessage).toBe(false);
     });

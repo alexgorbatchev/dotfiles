@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from 'bun:test';
 import {
   ClientError,
   DownloaderError,
@@ -9,7 +10,6 @@ import {
   ServerError,
 } from '@modules/downloader/errors';
 import { TestLogger } from '@testing-helpers';
-import { beforeEach, describe, expect, it } from 'bun:test';
 
 describe('Downloader Errors', () => {
   let logger: TestLogger;
@@ -24,22 +24,14 @@ describe('Downloader Errors', () => {
     expect(err.name).toBe('DownloaderError');
     expect(err.message).toBe('message');
     expect(err.url).toBe('url');
-    logger.expect(
-      ['DEBUG'],
-      ['DownloaderError'],
-      ['DownloaderError created: message=message, url=url'],
-    );
+    logger.expect(['DEBUG'], ['DownloaderError'], ['DownloaderError created: message=message, url=url']);
   });
 
   it('NetworkError', () => {
     const err = new NetworkError(logger, 'message', 'url');
     expect(err).toBeInstanceOf(DownloaderError);
     expect(err.name).toBe('NetworkError');
-    logger.expect(
-      ['DEBUG'],
-      ['NetworkError'],
-      ['NetworkError created: message=message, url=url, originalError=%o'],
-    );
+    logger.expect(['DEBUG'], ['NetworkError'], ['NetworkError created: message=message, url=url, originalError=%o']);
   });
 
   it('HttpError', () => {
@@ -51,7 +43,7 @@ describe('Downloader Errors', () => {
       ['HttpError'],
       [
         'HttpError created: message=message, url=url, statusCode=400, statusText=Bad Request, responseBody=%o, responseHeaders=%o',
-      ],
+      ]
     );
   });
 
@@ -63,7 +55,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['NotFoundError'],
-      ['NotFoundError created: url=url, responseBody=%o, responseHeaders=%o'],
+      ['NotFoundError created: url=url, responseBody=%o, responseHeaders=%o']
     );
   });
 
@@ -75,7 +67,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['ForbiddenError'],
-      ['ForbiddenError created: url=url, responseBody=%o, responseHeaders=%o'],
+      ['ForbiddenError created: url=url, responseBody=%o, responseHeaders=%o']
     );
   });
 
@@ -89,7 +81,7 @@ describe('Downloader Errors', () => {
       ['RateLimitError'],
       [
         'RateLimitError created: message=message, url=url, statusCode=429, statusText=Too Many Requests, responseBody=%o, responseHeaders=%o, resetTimestamp=%d',
-      ],
+      ]
     );
   });
 
@@ -100,7 +92,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['ClientError'],
-      ['ClientError created: url=url, statusCode=400, statusText=Bad Request, responseBody=%o, responseHeaders=%o'],
+      ['ClientError created: url=url, statusCode=400, statusText=Bad Request, responseBody=%o, responseHeaders=%o']
     );
   });
 
@@ -113,7 +105,7 @@ describe('Downloader Errors', () => {
       ['ServerError'],
       [
         'ServerError created: url=url, statusCode=500, statusText=Internal Server Error, responseBody=%o, responseHeaders=%o',
-      ],
+      ]
     );
   });
 });

@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { PowerShellGenerator } from '../PowerShellGenerator';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
+import { PowerShellGenerator } from '../PowerShellGenerator';
 
 describe('PowerShellGenerator', () => {
   let generator: PowerShellGenerator;
@@ -66,19 +66,24 @@ describe('PowerShellGenerator', () => {
 
     const result = generator.processCompletions('test-tool', completions);
 
-    expect(result).toContain('if (Test-Path "/home/test/.dotfiles/.generated/shell-scripts/powershell/test-tool.ps1") { . "/home/test/.dotfiles/.generated/shell-scripts/powershell/test-tool.ps1" }');
+    expect(result).toContain(
+      'if (Test-Path "/home/test/.dotfiles/.generated/shell-scripts/powershell/test-tool.ps1") { . "/home/test/.dotfiles/.generated/shell-scripts/powershell/test-tool.ps1" }'
+    );
   });
 
   it('should generate complete file content with PowerShell syntax', () => {
     const toolContents = new Map([
-      ['tool1', {
-        toolInit: ['function t1 { tool1 }'],
-        pathModifications: ['$env:PATH = "/opt/tool1/bin;$env:PATH"'],
-        environmentVariables: ['$env:TOOL1_ENV = "value"'],
-        completionSetup: ['if (Test-Path "/completions/tool1.ps1") { . "/completions/tool1.ps1" }'],
-        onceScripts: [],
-        alwaysScripts: [],
-      }],
+      [
+        'tool1',
+        {
+          toolInit: ['function t1 { tool1 }'],
+          pathModifications: ['$env:PATH = "/opt/tool1/bin;$env:PATH"'],
+          environmentVariables: ['$env:TOOL1_ENV = "value"'],
+          completionSetup: ['if (Test-Path "/completions/tool1.ps1") { . "/completions/tool1.ps1" }'],
+          onceScripts: [],
+          alwaysScripts: [],
+        },
+      ],
     ]);
 
     const content = generator.generateFileContent(toolContents);
@@ -106,9 +111,9 @@ describe('PowerShellGenerator', () => {
       shellConfigs: {
         powershell: {
           environment: {
-            'TEST_TOOL_CONFIG_DIR': '/home/test/.config/test-tool',
-            'TEST_TOOL_DEBUG': 'true',
-            'TEST_TOOL_MODE': 'production'
+            TEST_TOOL_CONFIG_DIR: '/home/test/.config/test-tool',
+            TEST_TOOL_DEBUG: 'true',
+            TEST_TOOL_MODE: 'production',
           },
         },
       },
@@ -132,9 +137,9 @@ describe('PowerShellGenerator', () => {
       shellConfigs: {
         powershell: {
           aliases: {
-            'tt': 'test-tool',
-            'ttd': 'test-tool --debug',
-            'tts': 'test-tool status'
+            tt: 'test-tool',
+            ttd: 'test-tool --debug',
+            tts: 'test-tool status',
           },
         },
       },

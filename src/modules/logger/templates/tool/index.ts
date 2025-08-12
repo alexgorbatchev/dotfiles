@@ -1,6 +1,6 @@
 import { toolErrorTemplates } from './error';
-import { toolWarningTemplates } from './warning';
 import { toolSuccessTemplates } from './success';
+import { toolWarningTemplates } from './warning';
 
 /**
  * Tool lifecycle operation templates grouped by log level

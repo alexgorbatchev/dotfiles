@@ -1,12 +1,11 @@
 import path from 'node:path';
-import { type TsLogger, logs } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { ToolConfig } from '@types';
-import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 import { TrackedFileSystem } from '@modules/file-registry';
+import type { IFileSystem } from '@modules/file-system';
+import { logs, type TsLogger } from '@modules/logger';
+import type { ToolConfig } from '@types';
 import { dedentString, getCliBinPath } from '../../utils';
-
+import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 
 /**
  * Generates executable shims for tools.
@@ -31,15 +30,12 @@ export class ShimGenerator implements IShimGenerator {
     this.config = config;
   }
 
-  async generate(
-    toolConfigs: Record<string, ToolConfig>,
-    options?: GenerateShimsOptions
-  ): Promise<string[]> {
+  async generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]> {
     this.logger.debug(logs.shim.debug.generateDebug(), toolConfigs, options);
     const generatedShimPaths: string[] = [];
 
     for (const toolName in toolConfigs) {
-      if (Object.prototype.hasOwnProperty.call(toolConfigs, toolName)) {
+      if (Object.hasOwn(toolConfigs, toolName)) {
         const toolConfig = toolConfigs[toolName];
         if (toolConfig) {
           const shimPaths = await this.generateForTool(toolName, toolConfig, options);
@@ -52,15 +48,9 @@ export class ShimGenerator implements IShimGenerator {
     return generatedShimPaths;
   }
 
-  async generateForTool(
-    toolName: string,
-    toolConfig: ToolConfig,
-    options?: GenerateShimsOptions
-  ): Promise<string[]> {
+  async generateForTool(toolName: string, toolConfig: ToolConfig, options?: GenerateShimsOptions): Promise<string[]> {
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-    const toolFs = this.fs instanceof TrackedFileSystem 
-      ? this.fs.withToolName(toolName)
-      : this.fs;
+    const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
     this.logger.debug(logs.shim.debug.generateForToolDebug(), toolName, toolConfig, options, toolFs.constructor.name);
 
@@ -68,19 +58,11 @@ export class ShimGenerator implements IShimGenerator {
     const overwrite = options?.overwrite ?? false;
 
     // Get list of binaries to generate shims for
-    const binaryNames = toolConfig.binaries && toolConfig.binaries.length > 0 
-      ? toolConfig.binaries 
-      : [toolName]; // Fallback to toolName if no binaries specified
+    const binaryNames = toolConfig.binaries && toolConfig.binaries.length > 0 ? toolConfig.binaries : [toolName]; // Fallback to toolName if no binaries specified
 
     // Generate a shim for each binary
     for (const binaryName of binaryNames) {
-      const shimPath = await this.generateShimForBinary(
-        toolFs, 
-        toolName, 
-        toolConfig, 
-        binaryName, 
-        overwrite
-      );
+      const shimPath = await this.generateShimForBinary(toolFs, toolName, toolConfig, binaryName, overwrite);
       if (shimPath) {
         generatedShimPaths.push(shimPath);
       }
@@ -104,19 +86,19 @@ export class ShimGenerator implements IShimGenerator {
     if (await toolFs.exists(shimFilePath)) {
       // Check if the existing file is one of our shims
       const isOurShim = await this.isGeneratedShim(toolFs, shimFilePath);
-      
+
       if (!isOurShim) {
         // Not our shim - log error and skip
         this.logger.error(logs.tool.error.shimConflict(binaryName, shimFilePath));
         return null;
       }
-      
+
       if (!overwrite) {
         // It's our shim but overwrite is false - skip silently
         this.logger.debug(logs.shim.debug.shimExists(), shimFilePath);
         return null;
       }
-      
+
       // It's our shim and overwrite is true - continue to overwrite
     }
 
@@ -177,7 +159,7 @@ export class ShimGenerator implements IShimGenerator {
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     await toolFs.ensureDir(path.dirname(shimFilePath));
     await toolFs.writeFile(shimFilePath, shimContent);
-    
+
     // Only chmod if file doesn't already have the correct permissions
     const desiredMode = 0o755; // rwxr-xr-x
     try {

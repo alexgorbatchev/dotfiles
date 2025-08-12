@@ -1,7 +1,7 @@
+import type { YamlConfig } from '@modules/config';
+import type { $ } from 'zx';
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
-import type { YamlConfig } from '@modules/config';
-import { $ } from 'zx';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information

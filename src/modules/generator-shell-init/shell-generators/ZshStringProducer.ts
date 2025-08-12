@@ -1,9 +1,8 @@
 import path from 'node:path';
-import type { ToolConfig, CompletionConfig } from '@types';
-import type { ShellScript } from '@types';
 import type { YamlConfig } from '@modules/config';
-import type { IShellStringProducer } from './BaseShellGenerator';
+import type { CompletionConfig, ShellScript, ToolConfig } from '@types';
 import { generateCompletionSetup } from '../shellTemplates';
+import type { IShellStringProducer } from './BaseShellGenerator';
 
 /**
  * Zsh-specific string producer for shell initialization generation.
@@ -22,11 +21,11 @@ export class ZshStringProducer implements IShellStringProducer {
 
   processCompletions(_toolName: string, completions: CompletionConfig): string[] {
     const completionSetup: string[] = [];
-    
+
     if (completions.zsh) {
       const shellConfig = completions.zsh;
       const completionDir = shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'zsh');
-      
+
       // Add completion directory to fpath
       const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
       completionSetup.push(fpathAdd);
@@ -37,42 +36,42 @@ export class ZshStringProducer implements IShellStringProducer {
 
   processEnvironmentVariables(toolConfig: ToolConfig): string[] {
     const envVars: string[] = [];
-    
+
     if (toolConfig.shellConfigs?.zsh?.environment) {
       const environment = toolConfig.shellConfigs.zsh.environment;
       for (const [key, value] of Object.entries(environment)) {
         envVars.push(`export ${key}=${JSON.stringify(value)}`);
       }
     }
-    
+
     return envVars;
   }
 
   processAliases(toolConfig: ToolConfig): string[] {
     const aliases: string[] = [];
-    
+
     if (toolConfig.shellConfigs?.zsh?.aliases) {
       const aliasConfig = toolConfig.shellConfigs.zsh.aliases;
       for (const [alias, command] of Object.entries(aliasConfig)) {
         aliases.push(`alias ${alias}=${JSON.stringify(command)}`);
       }
     }
-    
+
     return aliases;
   }
 
   generateCompletionSetup(allCompletionSetup: string[], allToolInits: string[]): string[] {
     // Check if any tool already has typeset -U fpath in their tool init
-    const hasTypesetInToolInit = allToolInits.some(line => line.includes('typeset -U fpath'));
-    
+    const hasTypesetInToolInit = allToolInits.some((line) => line.includes('typeset -U fpath'));
+
     // Add shell-specific completion setup
     const shellCompletionSetup = generateCompletionSetup('zsh', path.join(this.appConfig.paths.shellScriptsDir, 'zsh'));
-    
+
     // If typeset is already in tool init, filter it out from shell completion setup
-    const filteredShellSetup = hasTypesetInToolInit 
-      ? shellCompletionSetup.filter(line => !line.includes('typeset -U fpath'))
+    const filteredShellSetup = hasTypesetInToolInit
+      ? shellCompletionSetup.filter((line) => !line.includes('typeset -U fpath'))
       : shellCompletionSetup;
-    
+
     const allSetup = [...filteredShellSetup, ...allCompletionSetup];
     return [...new Set(allSetup)];
   }

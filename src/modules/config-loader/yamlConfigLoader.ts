@@ -1,17 +1,16 @@
-import { yamlConfigSchema, type YamlConfig, type YamlConfigPartial } from '@modules/config';
-import { type IFileSystem } from '@modules/file-system';
-import { type TsLogger, logs } from '@modules/logger';
+import path from 'node:path';
+import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import { logs, type TsLogger } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
+import { expandHomePath } from '@utils';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
-import { expandHomePath } from '@utils';
 import { exitCli } from '../cli';
-import path from 'node:path';
-
 
 /**
  * Detects the current operating system
- * 
+ *
  * @param platform - The platform from NodeJS.Process
  * @returns The detected OS as a string ('macos', 'linux', or 'windows')
  */
@@ -52,15 +51,12 @@ export interface PlatformOverride {
 /**
  * Deep merges two objects, with values from the second object overriding those in the first.
  * This function creates a new object and does not modify the original objects.
- * 
+ *
  * @param target - The target object to merge into.
  * @param source - The source object to merge from.
  * @returns The merged object.
  */
-function deepMerge<T extends Record<string, unknown>>(
-  target: T,
-  source: Record<string, unknown>
-): T {
+function deepMerge<T extends Record<string, unknown>>(target: T, source: Record<string, unknown>): T {
   const output = { ...target } as Record<string, unknown>;
 
   for (const key in source) {
@@ -74,10 +70,7 @@ function deepMerge<T extends Record<string, unknown>>(
       typeof target[key] === 'object' &&
       !Array.isArray(target[key])
     ) {
-      output[key] = deepMerge(
-        target[key] as Record<string, unknown>,
-        source[key] as Record<string, unknown>
-      );
+      output[key] = deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
     } else {
       output[key] = source[key];
     }
@@ -88,7 +81,7 @@ function deepMerge<T extends Record<string, unknown>>(
 
 /**
  * Applies platform-specific overrides based on the current OS and architecture.
- * 
+ *
  * @param config - The configuration object to apply overrides to.
  * @param systemInfo - System information for platform detection.
  * @returns The configuration with platform-specific overrides applied.
@@ -110,26 +103,20 @@ function applyPlatformOverrides(
 
   logger.debug(logs.config.success.platformOverrides(currentPlatform, currentArch));
 
-  let result: Record<string, unknown> = deepMerge({}, config );
+  let result: Record<string, unknown> = deepMerge({}, config);
 
   for (const platformOverride of platformOverrides) {
-    if (
-      !platformOverride.match ||
-      !Array.isArray(platformOverride.match) ||
-      !platformOverride.config
-    ) {
+    if (!platformOverride.match || !Array.isArray(platformOverride.match) || !platformOverride.config) {
       continue;
     }
 
     const matches = platformOverride.match.some((match) => {
       const targetPlatform = match.os
-        ? { macos: Platform.MacOS, linux: Platform.Linux, windows: Platform.Windows }[match.os] ||
-          Platform.None
+        ? { macos: Platform.MacOS, linux: Platform.Linux, windows: Platform.Windows }[match.os] || Platform.None
         : Platform.None;
 
       const targetArch = match.arch
-        ? { x86_64: Architecture.X86_64, arm64: Architecture.Arm64 }[match.arch] ||
-          Architecture.None
+        ? { x86_64: Architecture.X86_64, arm64: Architecture.Arm64 }[match.arch] || Architecture.None
         : Architecture.None;
 
       const currentPlatformEnum =
@@ -140,8 +127,7 @@ function applyPlatformOverrides(
         }[currentPlatform] || Platform.None;
 
       const currentArchEnum =
-        { x86_64: Architecture.X86_64, arm64: Architecture.Arm64 }[currentArch] ||
-        Architecture.None;
+        { x86_64: Architecture.X86_64, arm64: Architecture.Arm64 }[currentArch] || Architecture.None;
 
       const osMatches = !match.os || hasPlatform(targetPlatform, currentPlatformEnum);
       const archMatches = !match.arch || hasArchitecture(targetArch, currentArchEnum);
@@ -160,7 +146,7 @@ function applyPlatformOverrides(
 
 /**
  * Recursively processes an object to expand home paths in string values.
- * 
+ *
  * @param target - The object to process.
  * @param systemInfo - System information containing the home directory.
  * @returns The object with home paths expanded.
@@ -188,7 +174,7 @@ function expandHomePathsInObject(target: unknown, homeDir: string): unknown {
 /**
  * Substitutes tokens in the configuration with values from environment variables and other config values.
  * Also expands home paths (~ character) in string values.
- * 
+ *
  * @param config - The configuration object to substitute tokens in.
  * @param env - Environment variables for substitution.
  * @param fullConfig - The full configuration object for reference substitution.
@@ -201,7 +187,7 @@ function substituteTokens(
   fullConfig: Record<string, unknown>,
   systemInfo: SystemInfo
 ): Record<string, unknown> {
-  const finalEnv = deepMerge( env, { HOME: systemInfo.homeDir } );
+  const finalEnv = deepMerge(env, { HOME: systemInfo.homeDir });
   let configStr = stringify(config);
   let previousConfigStr = '';
 
@@ -248,12 +234,7 @@ function processConfig(
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
-  const configWithTokens = substituteTokens(
-    configWithPlatformOverrides,
-    env,
-    configWithPlatformOverrides,
-    systemInfo
-  );
+  const configWithTokens = substituteTokens(configWithPlatformOverrides, env, configWithPlatformOverrides, systemInfo);
 
   const result = yamlConfigSchema.safeParse(configWithTokens);
 
@@ -282,9 +263,7 @@ export async function getDefaultConfig(
  * @param fileSystem - The file system interface for reading files.
  * @returns A promise that resolves to the raw YAML object.
  */
-export async function loadDefaultYamlConfigAsRecord(
-  _fileSystem: IFileSystem
-): Promise<Record<string, unknown>> {
+export async function loadDefaultYamlConfigAsRecord(_fileSystem: IFileSystem): Promise<Record<string, unknown>> {
   return yamlConfigSchema.parse({});
 }
 
@@ -315,7 +294,7 @@ export async function loadYamlConfig(
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   let userConfig = {};
 
-  if (!await fileSystem.exists(userConfigPath)) {
+  if (!(await fileSystem.exists(userConfigPath))) {
     logger.error(logs.fs.error.notFound('Config file', userConfigPath));
     exitCli(1);
   }
@@ -325,7 +304,9 @@ export async function loadYamlConfig(
     userConfig = parse(userConfigContent) || {};
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
-    logger.error(logs.config.error.parseErrors(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error)));
+    logger.error(
+      logs.config.error.parseErrors(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error))
+    );
   }
 
   return processConfig(parentLogger, defaultConfig, userConfig, systemInfo, env);

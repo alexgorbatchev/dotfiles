@@ -1,26 +1,26 @@
-import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
-import { TestLogger, createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
-import { HookExecutor } from '../HookExecutor';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { InstallHookContext, ToolConfig } from '@types';
-import path from 'path';
-import { tmpdir } from 'os';
-import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { realpathSync } from 'fs';
+import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import path from 'path';
+import { HookExecutor } from '../HookExecutor';
 
 // Helper to create a mock Shell instance that matches typeof $
 function createMockShell() {
   const mockShell = ((_command: TemplateStringsArray, ..._args: any[]) => {
     return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
   }) as any;
-  
+
   // Add required Shell properties to make it compatible with typeof $
   mockShell.sync = mockShell;
   mockShell.create = () => mockShell;
   mockShell.verbose = false;
   mockShell.quote = (str: string) => str;
   mockShell.spawn = () => ({});
-  mockShell.sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-  
+  mockShell.sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   return mockShell;
 }
 
@@ -35,11 +35,11 @@ describe('HookExecutor $ Integration', () => {
     logger = new TestLogger();
     hookExecutor = new HookExecutor(logger);
     memFs = await createMemFileSystem();
-    
+
     // Create a temporary directory for integration tests
     tempDir = await mkdtemp(path.join(tmpdir(), 'hook-executor-test-'));
     toolConfigPath = path.join(tempDir, 'test-tool.tool.ts');
-    
+
     // Create a dummy tool config file
     await writeFile(toolConfigPath, 'export default async (c) => { c.bin("test-tool"); };');
   });
@@ -73,20 +73,18 @@ describe('HookExecutor $ Integration', () => {
     };
 
     let actualCwd: string | undefined;
-    
+
     const hookThatUsesShell = async (ctx: InstallHookContext) => {
       // Use $ to get the current working directory
       const result = await (ctx.$ as any)`pwd`;
       actualCwd = result.stdout.trim();
-      
+
       // Verify we can access files relative to the tool config directory
       const configExists = await (ctx.$ as any)`test -f ./test-tool.tool.ts && echo "exists" || echo "missing"`;
       expect(configExists.stdout.trim()).toBe('exists');
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(
-      contextWithToolConfig, memFs.fs, logger
-    );
+    const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs, logger);
 
     await hookExecutor.executeHook('afterInstall', hookThatUsesShell, enhancedContext);
 
@@ -119,15 +117,13 @@ describe('HookExecutor $ Integration', () => {
     const hookThatCreatesFile = async (ctx: InstallHookContext) => {
       // Create a file relative to the tool config directory using $
       await (ctx.$ as any)`echo "test content" > ./created-by-hook.txt`;
-      
+
       // Verify the file was created
       const result = await (ctx.$ as any)`cat ./created-by-hook.txt`;
       expect(result.stdout.trim()).toBe('test content');
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(
-      contextWithToolConfig, memFs.fs, logger
-    );
+    const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs, logger);
 
     await hookExecutor.executeHook('afterInstall', hookThatCreatesFile, enhancedContext);
 
@@ -159,7 +155,7 @@ describe('HookExecutor $ Integration', () => {
     };
 
     let shellWorked = false;
-    
+
     const hookThatUsesShellFallback = async (ctx: InstallHookContext) => {
       // Should still be able to use $ even without configFilePath
       const result = await (ctx.$ as any)`echo "fallback works"`;
@@ -168,9 +164,7 @@ describe('HookExecutor $ Integration', () => {
       }
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(
-      contextWithoutConfigPath, memFs.fs, logger
-    );
+    const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs, logger);
 
     await hookExecutor.executeHook('afterInstall', hookThatUsesShellFallback, enhancedContext);
 

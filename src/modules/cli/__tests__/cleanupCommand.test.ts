@@ -1,11 +1,11 @@
-import type { GlobalProgram } from '@cli';
-import { type YamlConfig } from '@modules/config';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import { TestLogger, type MockedFileSystem } from '@testing-helpers';
-import { createCliTestSetup } from './createCliTestSetup';
-import type { GeneratedArtifactsManifest } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import type { GlobalProgram } from '@cli';
+import type { YamlConfig } from '@modules/config';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { MockedFileSystem, TestLogger } from '@testing-helpers';
+import type { GeneratedArtifactsManifest } from '@types';
 import { registerCleanupCommand } from '../cleanupCommand';
+import { createCliTestSetup } from './createCliTestSetup';
 
 setupTestCleanup();
 
@@ -105,7 +105,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
         '[cleanup] rm ~/.dotfiles/.generated',
         'Cleanup completed',
-      ],
+      ]
     );
   });
 
@@ -129,7 +129,7 @@ describe('cleanupCommand', () => {
         `Manifest file not found: ${mockYamlConfig.paths.manifestPath}`,
         '[cleanup] rm ~/.dotfiles/.generated',
         'Cleanup completed',
-      ],
+      ]
     );
   });
 
@@ -153,7 +153,7 @@ describe('cleanupCommand', () => {
         `Would delete: ${mockSymlinkTarget}`,
         `Would delete generated directory: ${mockYamlConfig.paths.generatedDir}`,
         'Dry run cleanup completed',
-      ],
+      ]
     );
   });
 });

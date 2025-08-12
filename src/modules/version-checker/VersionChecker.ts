@@ -1,7 +1,7 @@
-import { valid, gt, eq } from 'semver';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import { eq, gt, valid } from 'semver';
 import type { IVersionChecker } from './IVersionChecker.ts';
 import { VersionComparisonStatus } from './IVersionChecker.ts';
 
@@ -34,10 +34,7 @@ export class VersionChecker implements IVersionChecker {
     }
   }
 
-  async checkVersionStatus(
-    currentVersion: string,
-    latestVersion: string,
-  ): Promise<VersionComparisonStatus> {
+  async checkVersionStatus(currentVersion: string, latestVersion: string): Promise<VersionComparisonStatus> {
     const logger = this.logger.getSubLogger({ name: 'checkVersionStatus' });
     logger.debug(logs.versionChecker.debug.comparingVersions(), currentVersion, latestVersion);
 

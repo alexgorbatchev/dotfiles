@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { 
-  createInstallerTestSetup, 
+import {
   createBasicToolConfig,
+  createInstallerTestSetup,
   createTestContext,
-  setupFileSystemMocks,
   type InstallerTestSetup,
-  MOCK_TOOL_NAME
+  MOCK_TOOL_NAME,
+  setupFileSystemMocks,
 } from './installer-test-helpers';
 
 describe('Installer - installFromCurlScript', () => {

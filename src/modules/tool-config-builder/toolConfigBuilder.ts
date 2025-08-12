@@ -1,4 +1,4 @@
-import { type TsLogger, logs } from '@modules/logger';
+import { logs, type TsLogger } from '@modules/logger';
 import type {
   Architecture,
   AsyncInstallHook,
@@ -13,16 +13,16 @@ import type {
   GithubReleaseToolConfig,
   ManualInstallParams,
   ManualToolConfig,
+  Platform,
   PlatformConfigEntry,
-  ShellScript,
   ShellConfig,
   ShellConfigs,
+  ShellScript,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigInstallationMethod,
   ToolConfigInstallParams,
   ToolConfigUpdateCheck,
-  Platform,
 } from '@types';
 
 /**
@@ -50,14 +50,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public versionNum: string = 'latest';
   public currentInstallationMethod?: ToolConfigInstallationMethod;
   public currentInstallParams?: ToolConfigInstallParams;
-  
+
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
     zsh: { scripts: [], aliases: {}, environment: {} },
     bash: { scripts: [], aliases: {}, environment: {} },
-    powershell: { scripts: [], aliases: {}, environment: {} }
+    powershell: { scripts: [], aliases: {}, environment: {} },
   };
-  
+
   public symlinkPairs: { source: string; target: string }[] = [];
   public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -191,7 +191,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
-
   private buildShellConfigs(): ShellConfigs | undefined {
     const shellTypes = ['zsh', 'bash', 'powershell'] as const;
     const result: ShellConfigs = {};
@@ -207,7 +206,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         result[shellType] = {
           ...(hasScripts && { scripts: config.scripts }),
           ...(hasAliases && { aliases: config.aliases }),
-          ...(hasEnvironment && { environment: config.environment })
+          ...(hasEnvironment && { environment: config.environment }),
         };
         hasAnyConfig = true;
       }
@@ -274,7 +273,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const name = this.toolName;
     const binaries = this.binaries;
     const version = this.versionNum;
-    
+
     // Build organized shell configs
     const shellConfigs = this.buildShellConfigs();
     const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
@@ -286,11 +285,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         ? this.platformConfigEntries
         : undefined;
 
-    if (
-      this.currentInstallationMethod &&
-      this.currentInstallationMethod !== 'none' &&
-      this.currentInstallParams
-    ) {
+    if (this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams) {
       // Discriminated union: must match the correct type for each installationMethod
       const base = {
         name,
@@ -332,7 +327,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
             installationMethod: 'manual',
             installParams: this.currentInstallParams,
           } as ManualToolConfig;
-        default:
+        default: {
           const invalidMethodError = logs.config.error.invalid(
             'installationMethod',
             this.currentInstallationMethod!,
@@ -340,6 +335,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           );
           this.logger.error(invalidMethodError);
           throw new Error(invalidMethodError);
+        }
       }
     }
 

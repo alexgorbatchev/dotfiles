@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { ZshGenerator } from '../ZshGenerator';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
+import { ZshGenerator } from '../ZshGenerator';
 
 describe('ZshGenerator', () => {
   let generator: ZshGenerator;
@@ -70,22 +70,28 @@ describe('ZshGenerator', () => {
 
   it('should generate complete file content', () => {
     const toolContents = new Map([
-      ['tool1', {
-        toolInit: ['alias t1="tool1"'],
-        pathModifications: ['export PATH="/opt/tool1/bin:$PATH"'],
-        environmentVariables: ['export TOOL1_ENV="value"'],
-        completionSetup: ['fpath=("/completions/zsh" $fpath)'],
-        onceScripts: [],
-        alwaysScripts: [],
-      }],
-      ['tool2', {
-        toolInit: ['source ~/.tool2rc'],
-        pathModifications: [],
-        environmentVariables: ['export TOOL2_DEBUG=true'],
-        completionSetup: [],
-        onceScripts: [],
-        alwaysScripts: [],
-      }],
+      [
+        'tool1',
+        {
+          toolInit: ['alias t1="tool1"'],
+          pathModifications: ['export PATH="/opt/tool1/bin:$PATH"'],
+          environmentVariables: ['export TOOL1_ENV="value"'],
+          completionSetup: ['fpath=("/completions/zsh" $fpath)'],
+          onceScripts: [],
+          alwaysScripts: [],
+        },
+      ],
+      [
+        'tool2',
+        {
+          toolInit: ['source ~/.tool2rc'],
+          pathModifications: [],
+          environmentVariables: ['export TOOL2_DEBUG=true'],
+          completionSetup: [],
+          onceScripts: [],
+          alwaysScripts: [],
+        },
+      ],
     ]);
 
     const content = generator.generateFileContent(toolContents);
@@ -119,9 +125,9 @@ describe('ZshGenerator', () => {
       shellConfigs: {
         zsh: {
           environment: {
-            'TEST_TOOL_CONFIG_DIR': '/home/test/.config/test-tool',
-            'TEST_TOOL_DEBUG': 'true',
-            'TEST_TOOL_MODE': 'production'
+            TEST_TOOL_CONFIG_DIR: '/home/test/.config/test-tool',
+            TEST_TOOL_DEBUG: 'true',
+            TEST_TOOL_MODE: 'production',
           },
         },
       },
@@ -145,9 +151,9 @@ describe('ZshGenerator', () => {
       shellConfigs: {
         zsh: {
           aliases: {
-            'tt': 'test-tool',
-            'ttd': 'test-tool --debug',
-            'tts': 'test-tool status'
+            tt: 'test-tool',
+            ttd: 'test-tool --debug',
+            tts: 'test-tool status',
           },
         },
       },

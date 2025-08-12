@@ -11,14 +11,8 @@ function escapeRegexLiteral(value: any): string {
   return String(value).replace(/[-/\\^$*+?.()|[\]{}]/gm, '\\$&');
 }
 
-
 expect.extend({
-  toMatchLooseInlineSnapshot(
-    this: any,
-    received: unknown,
-    strings: TemplateStringsArray,
-    ...matchers: any[]
-  ) {
+  toMatchLooseInlineSnapshot(this: any, received: unknown, strings: TemplateStringsArray, ...matchers: any[]) {
     if (typeof received !== 'string') {
       return {
         pass: false,

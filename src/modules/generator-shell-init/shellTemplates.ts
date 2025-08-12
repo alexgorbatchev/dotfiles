@@ -34,23 +34,23 @@ export function commentLine(shellType: ShellType, value: string): string {
  */
 export function headerLine(shellType: ShellType, lineChar: string, title?: string): string {
   const totalWidth = 80;
-  
+
   if (!title) {
     return commentLine(shellType, lineChar.repeat(totalWidth - 2));
   }
-  
+
   const titleWithSpaces = ` ${title} `;
   const charsNeeded = Math.max(0, totalWidth - 1 - titleWithSpaces.length); // -1 for comment prefix
   const leftChars = lineChar.repeat(Math.floor(charsNeeded / 2));
   const rightChars = lineChar.repeat(Math.ceil(charsNeeded / 2));
-  
+
   return commentLine(shellType, `${leftChars}${titleWithSpaces}${rightChars}`);
 }
 
 /**
  * Creates a centered section header with triple equals signs spanning 80 characters total.
  * Format: # === Section Title ===
- * 
+ *
  * @param shellType - Type of shell for comment syntax
  * @param title - The section title to center
  * @returns A formatted header string
@@ -95,20 +95,14 @@ export function generateSectionHeader(shellType: ShellType, sectionTitle: string
  * @returns Tool header string
  */
 export function generateToolHeader(shellType: ShellType, toolName: string, configFilePath?: string): string {
-  const lines = [
-    '',
-    headerLine(shellType, '='),
-  ];
-  
+  const lines = ['', headerLine(shellType, '=')];
+
   if (configFilePath) {
     lines.push(commentLine(shellType, `Configuration from: ${configFilePath}`));
   }
-  
-  lines.push(
-    commentLine(shellType, `Tool: ${toolName}`),
-    headerLine(shellType, '=')
-  );
-  
+
+  lines.push(commentLine(shellType, `Tool: ${toolName}`), headerLine(shellType, '='));
+
   return lines.join('\n');
 }
 
@@ -121,7 +115,10 @@ export function generateToolHeader(shellType: ShellType, toolName: string, confi
  */
 export function generateHoistingExplanation(shellType: ShellType, sectionTitle: string): string {
   return [
-    commentLine(shellType, `The following ${sectionTitle.toLowerCase()} have been hoisted from tool-specific configurations`),
+    commentLine(
+      shellType,
+      `The following ${sectionTitle.toLowerCase()} have been hoisted from tool-specific configurations`
+    ),
     commentLine(shellType, 'for better organization and to avoid conflicts'),
     '',
   ].join('\n');
@@ -164,10 +161,7 @@ export function generateDefaultPathModification(shellType: ShellType, binariesDi
 export function generateCompletionSetup(shellType: ShellType, completionDir: string): string[] {
   switch (shellType) {
     case 'zsh':
-      return [
-        'typeset -U fpath',
-        `fpath=("${completionDir}" $fpath)`,
-      ];
+      return ['typeset -U fpath', `fpath=("${completionDir}" $fpath)`];
     case 'bash':
     case 'powershell':
     default:

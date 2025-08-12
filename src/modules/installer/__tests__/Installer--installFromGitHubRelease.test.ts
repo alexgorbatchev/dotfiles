@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import { createYamlConfigFromObject } from '@modules/config-loader';
-import { 
-  createInstallerTestSetup, 
-  createBasicToolConfig,
-  createTestContext,
-  setupFileSystemMocks,
-  type InstallerTestSetup,
-  MOCK_TOOL_NAME,
-  MOCK_TOOL_VERSION,
-  MOCK_TOOL_REPO,
-  MOCK_GITHUB_RELEASE,
-  MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS
-} from './installer-test-helpers';
 import { Installer } from '../Installer';
+import {
+  createBasicToolConfig,
+  createInstallerTestSetup,
+  createTestContext,
+  type InstallerTestSetup,
+  MOCK_GITHUB_RELEASE,
+  MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS,
+  MOCK_TOOL_NAME,
+  MOCK_TOOL_REPO,
+  MOCK_TOOL_VERSION,
+  setupFileSystemMocks,
+} from './installer-test-helpers';
 
 describe('Installer - installFromGitHubRelease', () => {
   let setup: InstallerTestSetup;
@@ -163,7 +163,7 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
-        testAppConfig,
+        testAppConfig
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -219,7 +219,7 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
-        testAppConfig,
+        testAppConfig
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -275,7 +275,7 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
-        testAppConfig,
+        testAppConfig
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),

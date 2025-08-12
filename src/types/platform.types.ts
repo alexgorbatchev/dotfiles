@@ -1,31 +1,29 @@
-
 /**
-* Enum representing different operating system platforms.
-* Values are bitwise, allowing for combinations.
-*/
+ * Enum representing different operating system platforms.
+ * Values are bitwise, allowing for combinations.
+ */
 export enum Platform {
- None = 0,
- Linux = 1 << 0, // 1
- MacOS = 1 << 1, // 2
- Windows = 1 << 2, // 4
- Unix = Platform.Linux | Platform.MacOS, // 3
- All = Platform.Linux | Platform.MacOS | Platform.Windows, // 7
+  None = 0,
+  Linux = 1 << 0, // 1
+  MacOS = 1 << 1, // 2
+  Windows = 1 << 2, // 4
+  Unix = Platform.Linux | Platform.MacOS, // 3
+  All = Platform.Linux | Platform.MacOS | Platform.Windows, // 7
 }
 
 /**
-* Enum representing different CPU architectures.
-* Values are bitwise, allowing for combinations.
-*/
+ * Enum representing different CPU architectures.
+ * Values are bitwise, allowing for combinations.
+ */
 export enum Architecture {
- None = 0,
- X86_64 = 1 << 0, // 1
- Arm64 = 1 << 1, // 2
- All = Architecture.X86_64 | Architecture.Arm64, // 3
+  None = 0,
+  X86_64 = 1 << 0, // 1
+  Arm64 = 1 << 1, // 2
+  All = Architecture.X86_64 | Architecture.Arm64, // 3
 }
 
-
 /**
-* Checks if a given platform is included in a set of target platforms.
+ * Checks if a given platform is included in a set of target platforms.
  * @param targetPlatforms - The bitmask of target platforms.
  * @param platform - The platform to check.
  * @returns True if the platform is included, false otherwise.
@@ -43,10 +41,7 @@ export function hasPlatform(targetPlatforms: Platform, platform: Platform): bool
  * @param architecture - The architecture to check.
  * @returns True if the architecture is included, false otherwise.
  */
-export function hasArchitecture(
-  targetArchitectures: Architecture,
-  architecture: Architecture,
-): boolean {
+export function hasArchitecture(targetArchitectures: Architecture, architecture: Architecture): boolean {
   if (architecture === Architecture.None) {
     return targetArchitectures === Architecture.None;
   }

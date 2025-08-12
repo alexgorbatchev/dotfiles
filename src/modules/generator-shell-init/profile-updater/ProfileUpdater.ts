@@ -1,8 +1,8 @@
 import path from 'node:path';
-import type { ShellType } from '@types';
 import type { IFileSystem } from '@modules/file-system';
+import type { ShellType } from '@types';
+import { generateProfileHeader, generateSourceLine } from '../shellTemplates';
 import type { IProfileUpdater, ProfileUpdateConfig, ProfileUpdateResult } from './IProfileUpdater';
-import { generateSourceLine, generateProfileHeader } from '../shellTemplates';
 
 /**
  * Implementation of profile file updater that manages sourcing generated shell scripts
@@ -19,12 +19,12 @@ export class ProfileUpdater implements IProfileUpdater {
 
   async updateProfiles(configs: ProfileUpdateConfig[]): Promise<ProfileUpdateResult[]> {
     const results: ProfileUpdateResult[] = [];
-    
+
     for (const config of configs) {
       const result = await this.updateProfile(config);
       results.push(result);
     }
-    
+
     return results;
   }
 
@@ -46,8 +46,8 @@ export class ProfileUpdater implements IProfileUpdater {
     try {
       const content = await this.fileSystem.readFile(profilePath);
       const sourcePatterns = this.getSourcePatterns(scriptPath);
-      
-      return sourcePatterns.some(pattern => content.includes(pattern));
+
+      return sourcePatterns.some((pattern) => content.includes(pattern));
     } catch (error) {
       // File doesn't exist or can't be read
       return false;
@@ -60,7 +60,7 @@ export class ProfileUpdater implements IProfileUpdater {
   private async updateProfile(config: ProfileUpdateConfig): Promise<ProfileUpdateResult> {
     const profilePath = this.getProfilePath(config.shellType);
     const fileExists = await this.fileSystem.exists(profilePath);
-    
+
     const result: ProfileUpdateResult = {
       shellType: config.shellType,
       profilePath,
@@ -86,7 +86,7 @@ export class ProfileUpdater implements IProfileUpdater {
     // Add or update the sourcing line
     await this.addSourceLine(profilePath, config);
     result.wasUpdated = true;
-    
+
     return result;
   }
 
@@ -96,9 +96,9 @@ export class ProfileUpdater implements IProfileUpdater {
   private async addSourceLine(profilePath: string, config: ProfileUpdateConfig): Promise<void> {
     const sourceLine = generateSourceLine(config.shellType, config.generatedScriptPath);
     const headerBlock = generateProfileHeader(config.shellType, config.yamlConfigPath);
-    
+
     let content = '';
-    
+
     // Read existing content if file exists
     try {
       content = await this.fileSystem.readFile(profilePath);
@@ -114,11 +114,11 @@ export class ProfileUpdater implements IProfileUpdater {
 
     // Add our sourcing section with enhanced header
     const newContent = content + '\n' + headerBlock + '\n' + sourceLine + '\n';
-    
+
     // Ensure parent directory exists
     const parentDir = path.dirname(profilePath);
     await this.fileSystem.ensureDir(parentDir);
-    
+
     // Write updated content
     await this.fileSystem.writeFile(profilePath, newContent);
   }

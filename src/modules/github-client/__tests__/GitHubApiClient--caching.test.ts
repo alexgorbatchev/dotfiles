@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GitHubRateLimit } from '@types';
 import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from './fixtures/cacheTestFixtures';
 import {
+  createGitHubConfigOverride,
   type MockSetup,
   setupMockGitHubApiClient,
-  createGitHubConfigOverride
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
@@ -13,7 +13,9 @@ describe('GitHubApiClient', () => {
 
     beforeEach(async () => {
       // Default setup for most caching tests, cache enabled.
-      mocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: true, githubToken: '' }));
+      mocks = await setupMockGitHubApiClient(
+        createGitHubConfigOverride({ githubApiCacheEnabled: true, githubToken: '' })
+      );
     });
 
     it('should return cached data for getLatestRelease when available', async () => {
@@ -35,9 +37,7 @@ describe('GitHubApiClient', () => {
       const release = await mocks.apiClient.getLatestRelease('test-owner', 'test-repo');
 
       expect(release).toEqual(FIXTURE_RELEASE);
-      expect(mocks.mockCache.get).toHaveBeenCalledWith(
-        'GET:/repos/test-owner/test-repo/releases/latest'
-      );
+      expect(mocks.mockCache.get).toHaveBeenCalledWith('GET:/repos/test-owner/test-repo/releases/latest');
       expect(mocks.mockDownloader.download).toHaveBeenCalled();
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
         'GET:/repos/test-owner/test-repo/releases/latest',
@@ -50,9 +50,7 @@ describe('GitHubApiClient', () => {
       // Specific setup for this test: cache disabled
       const localMocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheEnabled: false }));
 
-      localMocks.mockDownloader.download.mockResolvedValue(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASE))
-      );
+      localMocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
       await localMocks.apiClient.getLatestRelease('test-owner', 'test-repo');
 
       expect(localMocks.mockCache.get).not.toHaveBeenCalled();
@@ -77,21 +75,13 @@ describe('GitHubApiClient', () => {
       mocks.mockDownloader.download.mockReset(); // Reset to allow specific sequencing
 
       // 1. For getLatestRelease('owner1', 'repo1')
-      mocks.mockDownloader.download.mockResolvedValueOnce(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASE))
-      );
+      mocks.mockDownloader.download.mockResolvedValueOnce(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
       // 2. For getReleaseByTag('owner2', 'repo2', 'v1.0.0')
-      mocks.mockDownloader.download.mockResolvedValueOnce(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASE))
-      );
+      mocks.mockDownloader.download.mockResolvedValueOnce(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
       // 3. For getAllReleases('owner3', 'repo3', { perPage: 10 })
-      mocks.mockDownloader.download.mockResolvedValueOnce(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST))
-      );
+      mocks.mockDownloader.download.mockResolvedValueOnce(Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST)));
       // 4. For getAllReleases('owner3', 'repo3', { perPage: 30 })
-      mocks.mockDownloader.download.mockResolvedValueOnce(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST))
-      );
+      mocks.mockDownloader.download.mockResolvedValueOnce(Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST)));
 
       await mocks.apiClient.getLatestRelease('owner1', 'repo1');
       const key1 = mocks.mockCache.set.mock.calls[0]![0];
@@ -120,9 +110,7 @@ describe('GitHubApiClient', () => {
       const customTtl = 7200000; // 2 hours
       const localMocks = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubApiCacheTtl: customTtl }));
 
-      localMocks.mockDownloader.download.mockResolvedValue(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASE))
-      );
+      localMocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
       await localMocks.apiClient.getLatestRelease('test-owner', 'test-repo');
 
       expect(localMocks.mockCache.set).toHaveBeenCalledWith(
@@ -141,9 +129,7 @@ describe('GitHubApiClient', () => {
       const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
 
       expect(releases).toEqual(FIXTURE_RELEASES_LIST);
-      expect(mocks.mockCache.get).toHaveBeenCalledWith(
-        'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1'
-      );
+      expect(mocks.mockCache.get).toHaveBeenCalledWith('GET:/repos/test-owner/test-repo/releases?per_page=30&page=1');
       expect(mocks.mockCache.get).toHaveBeenCalledTimes(1);
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(1);
       expect(mocks.mockCache.set).toHaveBeenCalledWith(
@@ -156,22 +142,14 @@ describe('GitHubApiClient', () => {
 
     it('should cache getReleaseByConstraint responses (when not "latest")', async () => {
       mocks.mockCache.get.mockResolvedValue(null); // Cache miss for the page data
-      mocks.mockDownloader.download.mockResolvedValueOnce(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST))
-      );
+      mocks.mockDownloader.download.mockResolvedValueOnce(Buffer.from(JSON.stringify(FIXTURE_RELEASES_LIST)));
 
       const constraint = '^1.0.0';
       const expectedRelease = FIXTURE_RELEASES_LIST.find((r) => r.tag_name === 'v1.1.0-beta.1')!;
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        constraint
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', constraint);
 
       expect(release).toEqual(expectedRelease);
-      expect(mocks.mockCache.get).toHaveBeenCalledWith(
-        'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1'
-      );
+      expect(mocks.mockCache.get).toHaveBeenCalledWith('GET:/repos/test-owner/test-repo/releases?per_page=30&page=1');
       const relevantGetCalls = mocks.mockCache.get.mock.calls.filter(
         (call) => call[0] === 'GET:/repos/test-owner/test-repo/releases?per_page=30&page=1'
       );
@@ -203,9 +181,7 @@ describe('GitHubApiClient', () => {
           resource: 'core',
         },
       } as unknown as GitHubRateLimit;
-      mocks.mockDownloader.download.mockResolvedValue(
-        Buffer.from(JSON.stringify(mockRateLimitData))
-      );
+      mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(mockRateLimitData)));
 
       await mocks.apiClient.getRateLimit();
 
@@ -222,9 +198,7 @@ describe('GitHubApiClient', () => {
       const mocksWithToken = await setupMockGitHubApiClient(createGitHubConfigOverride({ githubToken: 'test-token' }));
       // mocks (without token) is from the outer beforeEach
 
-      mocksWithToken.mockDownloader.download.mockResolvedValue(
-        Buffer.from(JSON.stringify(FIXTURE_RELEASE))
-      );
+      mocksWithToken.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(FIXTURE_RELEASE)));
 
       // Request with token
@@ -239,9 +213,7 @@ describe('GitHubApiClient', () => {
       expect(mocks.mockCache.set).toHaveBeenCalledTimes(1);
 
       expect(keyWithToken).not.toEqual(keyWithoutToken);
-      expect(keyWithToken).toMatch(
-        /^GET:\/repos\/test-owner\/test-repo\/releases\/latest:[a-f0-9]{8}$/
-      );
+      expect(keyWithToken).toMatch(/^GET:\/repos\/test-owner\/test-repo\/releases\/latest:[a-f0-9]{8}$/);
       expect(keyWithoutToken).toBe('GET:/repos/test-owner/test-repo/releases/latest');
     });
   });

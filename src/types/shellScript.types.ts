@@ -19,7 +19,7 @@ export type ShellScript = OnceScript | AlwaysScript;
 
 /**
  * Tagged template function to mark scripts that should run only once after installation/updates
- * 
+ *
  * @example
  * ```typescript
  * c.zsh(once`
@@ -37,7 +37,7 @@ export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceS
 
 /**
  * Tagged template function to mark scripts that should run on every shell startup
- * 
+ *
  * @example
  * ```typescript
  * c.zsh(always`
@@ -62,7 +62,7 @@ export function isOnceScript(script: ShellScript): script is OnceScript {
 }
 
 /**
- * Type guard to check if a script is an AlwaysScript  
+ * Type guard to check if a script is an AlwaysScript
  */
 export function isAlwaysScript(script: ShellScript): script is AlwaysScript {
   return (script as AlwaysScript).__brand === 'always';

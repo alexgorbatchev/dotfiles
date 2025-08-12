@@ -1,4 +1,6 @@
-
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import * as path from 'node:path';
+import { NodeFileSystem } from '@modules/file-system';
 import {
   createFile,
   createMockGitHubServer,
@@ -6,16 +8,13 @@ import {
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
-  TestLogger,
   type MockGitHubServerResult,
   type TestDirectories,
+  TestLogger,
 } from '@testing-helpers';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import * as path from 'node:path';
 import { $ } from 'zx';
-import { NodeFileSystem } from '@modules/file-system';
 
-import '@testing-helpers/matchers'; 
+import '@testing-helpers/matchers';
 
 describe('E2E: bun run cli generate', () => {
   describe('generating shims, shell init, and symlinks', () => {
@@ -33,7 +32,7 @@ describe('E2E: bun run cli generate', () => {
     beforeAll(async () => {
       fs = new NodeFileSystem();
       const logger = new TestLogger();
-      testDirs = await createTestDirectories(logger, fs,{
+      testDirs = await createTestDirectories(logger, fs, {
         testName: 'cli-generate-e2e',
       });
 
@@ -41,12 +40,7 @@ describe('E2E: bun run cli generate', () => {
       fzfShimPath = path.join(testDirs.paths.targetDir, 'fzf');
       lazygitShimPath = path.join(testDirs.paths.targetDir, 'lazygit');
       zshInitFilePath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
-      lazygitSourceConfigPath = path.join(
-        testDirs.paths.toolConfigsDir,
-        '02-configs',
-        'lazygit',
-        'config.yml'
-      );
+      lazygitSourceConfigPath = path.join(testDirs.paths.toolConfigsDir, '02-configs', 'lazygit', 'config.yml');
 
       // Create mock lazygit config file at the location expected by the tool config
       await createFile(fs, lazygitSourceConfigPath, '# Sample lazygit config for E2E test');
@@ -240,7 +234,9 @@ describe('E2E: bun run cli generate', () => {
         expect(stat.isSymbolicLink()).toBeTrue();
 
         const symlinkTarget = await fs.readlink(parsedManifest.symlinks[0].targetPath);
-        expect(path.resolve(path.dirname(parsedManifest.symlinks[0].targetPath), symlinkTarget)).toBe(lazygitSourceConfigPath);
+        expect(path.resolve(path.dirname(parsedManifest.symlinks[0].targetPath), symlinkTarget)).toBe(
+          lazygitSourceConfigPath
+        );
       });
     });
   });
@@ -260,7 +256,7 @@ describe('E2E: bun run cli generate', () => {
     beforeAll(async () => {
       fs = new NodeFileSystem();
       const logger = new TestLogger();
-      testDirs = await createTestDirectories(logger, fs,{
+      testDirs = await createTestDirectories(logger, fs, {
         testName: 'cli-generate-shim-execution',
         additionalDirs: {
           'temp-archive-source': { path: 'temp-archive-source' },
@@ -352,7 +348,7 @@ describe('E2E: bun run cli generate', () => {
         customCmd: [fzfShimPath],
         env: {},
       });
-      
+
       expect(shimResult.stderr).toBe('');
       expect(shimResult.stdout).toContain(`Mock fzf v${mockToolVersion}`);
       expect(shimResult.exitCode).toBe(0);

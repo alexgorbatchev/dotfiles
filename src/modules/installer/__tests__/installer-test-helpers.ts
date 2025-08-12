@@ -1,3 +1,5 @@
+import { mock } from 'bun:test';
+import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
@@ -5,16 +7,14 @@ import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import {
   createMemFileSystem,
-  createTestDirectories,
   createMockYamlConfig,
+  createTestDirectories,
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
-import type { ExtractResult, GitHubRelease, BaseInstallContext } from '@types';
-import { mock } from 'bun:test';
-import path from 'node:path';
-import { Installer } from '../Installer';
+import type { BaseInstallContext, ExtractResult, GitHubRelease } from '@types';
 import type { ILogObj } from 'tslog';
+import { Installer } from '../Installer';
 
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
@@ -92,7 +92,7 @@ export interface InstallerTestSetup {
   fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
   testDirs: TestDirectories;
   mockToolBinaryPath: string;
-  
+
   // Individual mocks for fine-grained control
   mocks: {
     download: ReturnType<typeof mock>;
@@ -109,7 +109,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   const logger = new TestLogger();
   const { fs, spies } = await createMemFileSystem();
   const testDirs = await createTestDirectories(logger, fs, { testName: 'installer-tests' });
-  
+
   const mockToolBinaryPath = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
   // Setup mock downloader
@@ -128,9 +128,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     getReleaseByTag: mockGetReleaseByTag,
     getAllReleases: mock(() => Promise.resolve([MOCK_GITHUB_RELEASE])),
     getReleaseByConstraint: mock(() => Promise.resolve(MOCK_GITHUB_RELEASE)),
-    getRateLimit: mock(() =>
-      Promise.resolve({ limit: 5000, remaining: 4999, reset: 0, used: 1, resource: 'core' })
-    ),
+    getRateLimit: mock(() => Promise.resolve({ limit: 5000, remaining: 4999, reset: 0, used: 1, resource: 'core' })),
   };
 
   // Setup mock ArchiveExtractor
@@ -160,14 +158,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   });
 
   // Create installer instance
-  const installer = new Installer(
-    logger,
-    fs,
-    mockDownloader,
-    mockGitHubApiClient,
-    mockArchiveExtractor,
-    mockAppConfig,
-  );
+  const installer = new Installer(logger, fs, mockDownloader, mockGitHubApiClient, mockArchiveExtractor, mockAppConfig);
 
   return {
     logger,
@@ -203,14 +194,17 @@ export function createBasicToolConfig(overrides: any = {}): any {
     },
     ...overrides,
   };
-  
+
   return baseConfig;
 }
 
 /**
  * Creates a test context for installation
  */
-export function createTestContext(setup: InstallerTestSetup, overrides: Partial<BaseInstallContext> = {}): BaseInstallContext {
+export function createTestContext(
+  setup: InstallerTestSetup,
+  overrides: Partial<BaseInstallContext> = {}
+): BaseInstallContext {
   return {
     toolName: MOCK_TOOL_NAME,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),

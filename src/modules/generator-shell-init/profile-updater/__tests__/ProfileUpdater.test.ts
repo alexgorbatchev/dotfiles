@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { createMemFileSystem } from '@testing-helpers';
 import type { IFileSystem } from '@modules/file-system';
-import { ProfileUpdater } from '../ProfileUpdater';
-import type { ProfileUpdateConfig } from '../IProfileUpdater';
+import { createMemFileSystem } from '@testing-helpers';
 import { dedentString } from '@utils';
+import type { ProfileUpdateConfig } from '../IProfileUpdater';
+import { ProfileUpdater } from '../ProfileUpdater';
 
 describe('ProfileUpdater', () => {
   let mockFileSystem: IFileSystem;
@@ -51,10 +51,10 @@ describe('ProfileUpdater', () => {
         source "${scriptPath}"
         # More content
       `);
-      
+
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, content);
-      
+
       const result = await profileUpdater.hasSourceLine(profilePath, scriptPath);
       expect(result).toBe(true);
     });
@@ -65,10 +65,10 @@ describe('ProfileUpdater', () => {
         source '${scriptPath}'
         # More content
       `);
-      
+
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, content);
-      
+
       const result = await profileUpdater.hasSourceLine(profilePath, scriptPath);
       expect(result).toBe(true);
     });
@@ -79,10 +79,10 @@ describe('ProfileUpdater', () => {
         . "${scriptPath}"
         # More content
       `);
-      
+
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, content);
-      
+
       const result = await profileUpdater.hasSourceLine(profilePath, scriptPath);
       expect(result).toBe(true);
     });
@@ -93,10 +93,10 @@ describe('ProfileUpdater', () => {
         source "/different/script.zsh"
         # More content
       `);
-      
+
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, content);
-      
+
       const result = await profileUpdater.hasSourceLine(profilePath, scriptPath);
       expect(result).toBe(false);
     });
@@ -109,15 +109,17 @@ describe('ProfileUpdater', () => {
 
   describe('updateProfiles', () => {
     it('should skip updating if profile does not exist and onlyIfExists is true', async () => {
-      const configs: ProfileUpdateConfig[] = [{
-        shellType: 'zsh',
-        generatedScriptPath: '/path/to/script.zsh',
-        onlyIfExists: true,
-        yamlConfigPath: testYamlConfigPath,
-      }];
+      const configs: ProfileUpdateConfig[] = [
+        {
+          shellType: 'zsh',
+          generatedScriptPath: '/path/to/script.zsh',
+          onlyIfExists: true,
+          yamlConfigPath: testYamlConfigPath,
+        },
+      ];
 
       const results = await profileUpdater.updateProfiles(configs);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         shellType: 'zsh',
@@ -130,15 +132,17 @@ describe('ProfileUpdater', () => {
 
     it('should create profile file if it does not exist and onlyIfExists is false', async () => {
       const scriptPath = '/path/to/script.zsh';
-      const configs: ProfileUpdateConfig[] = [{
-        shellType: 'zsh',
-        generatedScriptPath: scriptPath,
-        onlyIfExists: false,
-        yamlConfigPath: testYamlConfigPath,
-      }];
+      const configs: ProfileUpdateConfig[] = [
+        {
+          shellType: 'zsh',
+          generatedScriptPath: scriptPath,
+          onlyIfExists: false,
+          yamlConfigPath: testYamlConfigPath,
+        },
+      ];
 
       const results = await profileUpdater.updateProfiles(configs);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         shellType: 'zsh',
@@ -151,7 +155,7 @@ describe('ProfileUpdater', () => {
       // Check that the file was created with correct content
       const profilePath = path.join(homeDir, '.zshrc');
       const content = await mockFileSystem.readFile(profilePath);
-      
+
       expect(content).toContain('# Generated via dotfiles generator - do not modify');
       expect(content).toContain('# /path/to/config.yaml');
       expect(content).toContain('# ------------------------------------------------------------------------------');
@@ -169,15 +173,17 @@ describe('ProfileUpdater', () => {
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, existingContent);
 
-      const configs: ProfileUpdateConfig[] = [{
-        shellType: 'zsh',
-        generatedScriptPath: scriptPath,
-        onlyIfExists: true,
-        yamlConfigPath: testYamlConfigPath,
-      }];
+      const configs: ProfileUpdateConfig[] = [
+        {
+          shellType: 'zsh',
+          generatedScriptPath: scriptPath,
+          onlyIfExists: true,
+          yamlConfigPath: testYamlConfigPath,
+        },
+      ];
 
       const results = await profileUpdater.updateProfiles(configs);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         shellType: 'zsh',
@@ -192,7 +198,9 @@ describe('ProfileUpdater', () => {
       expect(updatedContent).toContain(existingContent);
       expect(updatedContent).toContain('# Generated via dotfiles generator - do not modify');
       expect(updatedContent).toContain('# /path/to/config.yaml');
-      expect(updatedContent).toContain('# ------------------------------------------------------------------------------');
+      expect(updatedContent).toContain(
+        '# ------------------------------------------------------------------------------'
+      );
       expect(updatedContent).toContain(`source "${scriptPath}"`);
     });
 
@@ -208,15 +216,17 @@ describe('ProfileUpdater', () => {
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, existingContent);
 
-      const configs: ProfileUpdateConfig[] = [{
-        shellType: 'zsh',
-        generatedScriptPath: scriptPath,
-        onlyIfExists: true,
-        yamlConfigPath: testYamlConfigPath,
-      }];
+      const configs: ProfileUpdateConfig[] = [
+        {
+          shellType: 'zsh',
+          generatedScriptPath: scriptPath,
+          onlyIfExists: true,
+          yamlConfigPath: testYamlConfigPath,
+        },
+      ];
 
       const results = await profileUpdater.updateProfiles(configs);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         shellType: 'zsh',
@@ -234,7 +244,7 @@ describe('ProfileUpdater', () => {
     it('should handle multiple shell types', async () => {
       const zshScriptPath = '/path/to/script.zsh';
       const bashScriptPath = '/path/to/script.bash';
-      
+
       // Create existing bash profile
       const bashProfilePath = path.join(homeDir, '.bashrc');
       await mockFileSystem.ensureDir(path.dirname(bashProfilePath));
@@ -252,13 +262,13 @@ describe('ProfileUpdater', () => {
           generatedScriptPath: bashScriptPath,
           onlyIfExists: true,
           yamlConfigPath: testYamlConfigPath,
-        }
+        },
       ];
 
       const results = await profileUpdater.updateProfiles(configs);
-      
+
       expect(results).toHaveLength(2);
-      
+
       // Zsh profile doesn't exist, should be skipped
       expect(results[0]).toEqual({
         shellType: 'zsh',
@@ -285,16 +295,18 @@ describe('ProfileUpdater', () => {
     it('should handle powershell profile with correct syntax', async () => {
       const scriptPath = '/path/to/script.ps1';
       const profilePath = path.join(homeDir, '.config/powershell/profile.ps1');
-      
-      const configs: ProfileUpdateConfig[] = [{
-        shellType: 'powershell',
-        generatedScriptPath: scriptPath,
-        onlyIfExists: false,
-        yamlConfigPath: testYamlConfigPath,
-      }];
+
+      const configs: ProfileUpdateConfig[] = [
+        {
+          shellType: 'powershell',
+          generatedScriptPath: scriptPath,
+          onlyIfExists: false,
+          yamlConfigPath: testYamlConfigPath,
+        },
+      ];
 
       const results = await profileUpdater.updateProfiles(configs);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0]?.wasUpdated).toBe(true);
 

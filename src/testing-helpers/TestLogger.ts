@@ -1,5 +1,5 @@
 import { expect as bunExpect } from 'bun:test';
-import { Logger, type ILogObjMeta, type ISettingsParam } from 'tslog';
+import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import * as util from 'util';
 
 export type LogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
@@ -48,9 +48,7 @@ export class TestLogger<LogObj = any> extends Logger<LogObj> {
         return false;
       }
 
-      const logPath = [...(meta.parentNames ?? []), meta.name].filter(
-        (p) => typeof p === 'string' && p.length > 0
-      );
+      const logPath = [...(meta.parentNames ?? []), meta.name].filter((p) => typeof p === 'string' && p.length > 0);
 
       if (logPath.length !== path.length) {
         return false;

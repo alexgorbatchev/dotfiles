@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { expandToolConfigPath } from '../expandToolConfigPath';
-import type { SystemInfo } from '@types';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
-import { TestLogger, createMemFileSystem, createMockYamlConfig } from '@testing-helpers';
+import { createMemFileSystem, createMockYamlConfig, TestLogger } from '@testing-helpers';
+import type { SystemInfo } from '@types';
+import { expandToolConfigPath } from '../expandToolConfigPath';
 
 describe('expandToolConfigPath', () => {
   let mockYamlConfig: YamlConfig;
-  
+
   const mockSystemInfo: SystemInfo = {
     platform: 'darwin',
     arch: 'arm64',
     release: '10.0.0',
-    homeDir: '/Users/testuser'
+    homeDir: '/Users/testuser',
   };
 
   const toolConfigPath = '/Users/testuser/.dotfiles/configs/tools/lazygit.tool.ts';
@@ -19,10 +19,10 @@ describe('expandToolConfigPath', () => {
   beforeEach(async () => {
     const logger = new TestLogger();
     const memFs = await createMemFileSystem();
-    
+
     // Ensure /test directory exists in the memory filesystem
     await memFs.fs.ensureDir('/test');
-    
+
     mockYamlConfig = await createMockYamlConfig({
       config: {
         paths: {
@@ -31,57 +31,37 @@ describe('expandToolConfigPath', () => {
           generatedDir: '/Users/testuser/.dotfiles/.generated',
           targetDir: '/Users/testuser/.dotfiles/.generated/usr-local-bin',
           binariesDir: '/Users/testuser/.dotfiles/.generated/binaries',
-          toolConfigsDir: '/Users/testuser/.dotfiles/configs/tools'
-        }
+          toolConfigsDir: '/Users/testuser/.dotfiles/configs/tools',
+        },
       },
       filePath: '/test/config.yaml',
       fileSystem: memFs.fs,
       logger,
       systemInfo: mockSystemInfo,
-      env: {}
+      env: {},
     });
   });
 
   it('should handle absolute paths by returning them unchanged', () => {
-    const result = expandToolConfigPath(
-      toolConfigPath,
-      '/usr/local/bin/lazygit',
-      mockYamlConfig,
-      mockSystemInfo
-    );
+    const result = expandToolConfigPath(toolConfigPath, '/usr/local/bin/lazygit', mockYamlConfig, mockSystemInfo);
 
     expect(result).toBe('/usr/local/bin/lazygit');
   });
 
   it('should expand home directory paths', () => {
-    const result = expandToolConfigPath(
-      toolConfigPath,
-      '~/.config/lazygit/config.yml',
-      mockYamlConfig,
-      mockSystemInfo
-    );
+    const result = expandToolConfigPath(toolConfigPath, '~/.config/lazygit/config.yml', mockYamlConfig, mockSystemInfo);
 
     expect(result).toBe('/Users/testuser/.config/lazygit/config.yml');
   });
 
   it('should resolve relative paths relative to tool config file directory', () => {
-    const result = expandToolConfigPath(
-      toolConfigPath,
-      './config.yml',
-      mockYamlConfig,
-      mockSystemInfo
-    );
+    const result = expandToolConfigPath(toolConfigPath, './config.yml', mockYamlConfig, mockSystemInfo);
 
     expect(result).toBe('/Users/testuser/.dotfiles/configs/tools/config.yml');
   });
 
   it('should resolve relative paths without ./ prefix', () => {
-    const result = expandToolConfigPath(
-      toolConfigPath,
-      'config.yml',
-      mockYamlConfig,
-      mockSystemInfo
-    );
+    const result = expandToolConfigPath(toolConfigPath, 'config.yml', mockYamlConfig, mockSystemInfo);
 
     expect(result).toBe('/Users/testuser/.dotfiles/configs/tools/config.yml');
   });

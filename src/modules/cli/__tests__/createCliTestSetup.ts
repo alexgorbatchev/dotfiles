@@ -1,17 +1,17 @@
+import { mock } from 'bun:test';
+import path from 'node:path';
 import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
+import { VersionComparisonStatus } from '@modules/version-checker';
 import {
-  TestLogger,
   createMemFileSystem,
   createMockYamlConfig,
   createTestDirectories,
   type MemFileSystemReturn,
   type TestDirectories,
+  TestLogger,
 } from '@testing-helpers';
-import { mock } from 'bun:test';
-import path from 'node:path';
-import { VersionComparisonStatus } from '@modules/version-checker';
 
 /**
  * Options for creating customizable service mocks.
@@ -50,7 +50,7 @@ interface CliTestSetup {
 /**
  * Creates the common test setup used across CLI command tests.
  * Handles program, logger, file system, test directories, yaml config, and optional service mocks.
- * 
+ *
  * @example
  * // Use true for default mocks
  * const setup = await createCliTestSetup({
@@ -60,8 +60,8 @@ interface CliTestSetup {
  *     githubApiClient: true
  *   }
  * });
- * 
- * @example  
+ *
+ * @example
  * // Pass custom mocks directly
  * const setup = await createCliTestSetup({
  *   testName: 'my-test',
@@ -70,11 +70,11 @@ interface CliTestSetup {
  *     githubApiClient: { getLatestRelease: mock(async () => mockRelease) }
  *   }
  * });
- * 
+ *
  * @example
  * // Mix default and custom mocks
  * const setup = await createCliTestSetup({
- *   testName: 'my-test', 
+ *   testName: 'my-test',
  *   services: {
  *     installer: true, // default mock
  *     githubApiClient: { getLatestRelease: mock(async () => mockRelease) } // custom mock
@@ -84,11 +84,11 @@ interface CliTestSetup {
 export async function createCliTestSetup(options: CliTestSetupOptions): Promise<CliTestSetup> {
   const program = createProgram();
   const logger = new TestLogger();
-  
+
   const mockFs = await createMemFileSystem(options.memFileSystem || {});
-  
+
   const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: options.testName });
-  
+
   const mockYamlConfig = await createMockYamlConfig({
     config: {
       paths: testDirs.paths,
@@ -133,12 +133,20 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
               getReleaseByTag: mock(async () => null),
               getAllReleases: mock(async () => []),
               getReleaseByConstraint: mock(async () => null),
-              getRateLimit: mock(async () => ({ remaining: 5000, limit: 5000, reset: Date.now() + 3600000, used: 0, resource: 'core' })),
+              getRateLimit: mock(async () => ({
+                remaining: 5000,
+                limit: 5000,
+                reset: Date.now() + 3600000,
+                used: 0,
+                resource: 'core',
+              })),
             };
             break;
           case 'versionChecker':
             mockServices.versionChecker = {
-              checkVersionStatus: mock(async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.NEWER_AVAILABLE),
+              checkVersionStatus: mock(
+                async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.NEWER_AVAILABLE
+              ),
               getLatestToolVersion: mock(async () => '1.0.0'),
             };
             break;
@@ -150,11 +158,12 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
     }
   }
 
-  const createServices = (): Services => ({
-    yamlConfig: mockYamlConfig,
-    fs: mockFs.fs.asIFileSystem,
-    ...mockServices,
-  } as Services);
+  const createServices = (): Services =>
+    ({
+      yamlConfig: mockYamlConfig,
+      fs: mockFs.fs.asIFileSystem,
+      ...mockServices,
+    }) as Services;
 
   return {
     program,

@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { GitHubRelease } from '@types';
 import { NotFoundError } from '../../downloader/errors';
 import {
+  createGitHubConfigOverride,
   type MockSetup,
   setupMockGitHubApiClient,
-  createGitHubConfigOverride
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function
@@ -33,15 +33,9 @@ describe('GitHubApiClient', () => {
   describe('getReleaseByConstraint', () => {
     it("should call getLatestRelease if constraint is 'latest'", async () => {
       const mockLatestRelease = createMockRelease(10, 'v2.0.0');
-      mocks.mockDownloader.download.mockResolvedValue(
-        Buffer.from(JSON.stringify(mockLatestRelease))
-      );
+      mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(mockLatestRelease)));
 
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        'latest'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
       expect(release).toEqual(mockLatestRelease);
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
         'https://api.github.com/repos/test-owner/test-repo/releases/latest',
@@ -51,16 +45,9 @@ describe('GitHubApiClient', () => {
 
     it("should return null if constraint is 'latest' and getLatestRelease fails with NotFoundError from downloader", async () => {
       mocks.mockDownloader.download.mockRejectedValue(
-        new NotFoundError(
-          mocks.logger,
-          'https://api.github.com/repos/test-owner/test-repo/releases/latest',
-        ),
+        new NotFoundError(mocks.logger, 'https://api.github.com/repos/test-owner/test-repo/releases/latest')
       );
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        'latest'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
       expect(release).toBeNull();
     });
 
@@ -77,11 +64,7 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        '^1.1.0'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.1.0');
       expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.2.0')!);
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(1);
     });
@@ -97,38 +80,23 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        '>=1.1.0-alpha'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '>=1.1.0-alpha');
       expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.1.0-beta.1')!);
     });
 
     it('should return null if no releases satisfy the constraint', async () => {
-      const releasesList: GitHubRelease[] = [
-        createMockRelease(1, 'v1.0.0'),
-        createMockRelease(2, 'v0.9.0'),
-      ];
+      const releasesList: GitHubRelease[] = [createMockRelease(1, 'v1.0.0'), createMockRelease(2, 'v0.9.0')];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        '^2.0.0'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^2.0.0');
       expect(release).toBeNull();
     });
 
     it('should return null if getAllReleases returns an empty list', async () => {
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify([])));
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        '^1.0.0'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.0.0');
       expect(release).toBeNull();
     });
 
@@ -142,11 +110,7 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
 
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        '^1.0.0'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.0.0');
       expect(release).toEqual(releasesList.find((r) => r.tag_name === 'v1.0.0')!);
     });
 
@@ -169,20 +133,12 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page2Releases))) // Page 2
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([]))); // Page 3 (empty, to stop pagination)
 
-      const release = await mocks.apiClient.getReleaseByConstraint(
-        'test-owner',
-        'test-repo',
-        '^1.2.0'
-      );
+      const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', '^1.2.0');
       expect(release).toEqual(targetRelease);
       // Expect 2 calls: page 1, and page 2. The loop terminates after page 2 because releasesPage.length < perPage.
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(2);
-      expect(mocks.mockDownloader.download.mock.calls[0]?.[0]).toContain(
-        `per_page=${perPage}&page=1`
-      );
-      expect(mocks.mockDownloader.download.mock.calls[1]?.[0]).toContain(
-        `per_page=${perPage}&page=2`
-      );
+      expect(mocks.mockDownloader.download.mock.calls[0]?.[0]).toContain(`per_page=${perPage}&page=1`);
+      expect(mocks.mockDownloader.download.mock.calls[1]?.[0]).toContain(`per_page=${perPage}&page=2`);
     });
   });
 });

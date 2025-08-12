@@ -1,24 +1,24 @@
 export * from './createTsLogger';
 
-import { fs } from './templates/fs';
-import { tool } from './templates/tool';
-import { config } from './templates/config';
-import { service } from './templates/service';
-import { command } from './templates/command';
+import { architecture } from './templates/architecture';
 import { cache } from './templates/cache';
+import { command } from './templates/command';
+import { config } from './templates/config';
 import { downloader } from './templates/downloader';
 import { extractor } from './templates/extractor';
+import { fs } from './templates/fs';
+import { general } from './templates/general';
 import { generator } from './templates/generator';
-import { registry } from './templates/registry';
-import { shellInit } from './templates/shellInit';
 import { githubClient } from './templates/githubClient';
-import { versionChecker } from './templates/versionChecker';
 import { hookExecutor } from './templates/hookExecutor';
 import { installer } from './templates/installer';
-import { architecture } from './templates/architecture';
-import { general } from './templates/general';
-import { symlink } from './templates/symlink';
+import { registry } from './templates/registry';
+import { service } from './templates/service';
+import { shellInit } from './templates/shellInit';
 import { shim } from './templates/shim';
+import { symlink } from './templates/symlink';
+import { tool } from './templates/tool';
+import { versionChecker } from './templates/versionChecker';
 
 export const logs = {
   fs,

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { 
-  createInstallerTestSetup, 
+import {
   createBasicToolConfig,
+  createInstallerTestSetup,
   createTestContext,
   type InstallerTestSetup,
-  MOCK_TOOL_NAME
+  MOCK_TOOL_NAME,
 } from './installer-test-helpers';
 
 describe('Installer - installFromBrew', () => {
@@ -24,7 +24,7 @@ describe('Installer - installFromBrew', () => {
         tap: 'test-tap',
       },
     });
-    
+
     const context = createTestContext(setup, {
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
     });

@@ -1,12 +1,9 @@
-import { describe, it, expect, beforeEach, mock, afterAll } from 'bun:test';
-import { createCliTestSetup } from './createCliTestSetup';
-import { registerInitCommand } from '../initCommand';
+import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { TestLogger } from '@testing-helpers';
 import type { GlobalProgram } from '../../../cli';
-import { TestLogger } from '@testing-helpers';
-import {
-  createModuleMocker,
-  setupTestCleanup,
-} from '@rageltd/bun-test-utils';
+import { registerInitCommand } from '../initCommand';
+import { createCliTestSetup } from './createCliTestSetup';
 
 // Setup cleanup once per file
 setupTestCleanup();
@@ -62,18 +59,13 @@ describe('initCommand', () => {
 
   it('should create all required files in empty directory', async () => {
     await program.parseAsync(['node', 'test', 'init']);
-    
+
     // Verify all files were created using the filesystem service
     const services = setup.createServices();
     const { fs } = services;
-    
-    const expectedFiles = [
-      'generator.d.ts',
-      'tsconfig.json', 
-      'config.yaml',
-      'tools/fzf.tool.ts'
-    ];
-    
+
+    const expectedFiles = ['generator.d.ts', 'tsconfig.json', 'config.yaml', 'tools/fzf.tool.ts'];
+
     for (const file of expectedFiles) {
       expect(await fs.exists(file)).toBe(true);
     }
@@ -81,7 +73,7 @@ describe('initCommand', () => {
 
   it('should create generator.d.ts with proper TypeScript module declarations', async () => {
     await program.parseAsync(['node', 'test', 'init']);
-    
+
     const services = setup.createServices();
     const { fs } = services;
     const generatorDts = await fs.readFile('generator.d.ts', 'utf8');
@@ -93,7 +85,7 @@ describe('initCommand', () => {
 
   it('should create config.yaml with correct paths configuration', async () => {
     await program.parseAsync(['node', 'test', 'init']);
-    
+
     const services = setup.createServices();
     const { fs } = services;
     const configYaml = await fs.readFile('config.yaml', 'utf8');
@@ -104,12 +96,12 @@ describe('initCommand', () => {
 
   it('should create tsconfig.json with correct TypeScript configuration', async () => {
     await program.parseAsync(['node', 'test', 'init']);
-    
+
     const services = setup.createServices();
     const { fs } = services;
     const tsconfigContent = await fs.readFile('tsconfig.json', 'utf8');
     const tsconfig = JSON.parse(tsconfigContent);
-    
+
     expect(tsconfig.compilerOptions.strict).toBe(true);
     expect(tsconfig.compilerOptions.target).toBe('ESNext');
     expect(tsconfig.compilerOptions.moduleResolution).toBe('bundler');
@@ -119,16 +111,18 @@ describe('initCommand', () => {
 
   it('should create fzf.tool.ts with correct ToolConfigBuilder format', async () => {
     await program.parseAsync(['node', 'test', 'init']);
-    
+
     const services = setup.createServices();
     const { fs } = services;
     const fzfToolConfig = await fs.readFile('tools/fzf.tool.ts', 'utf8');
     expect(fzfToolConfig).toContain('import type { ToolConfigBuilder, ToolConfigContext }');
-    expect(fzfToolConfig).toContain('export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void>');
-    expect(fzfToolConfig).toContain('.bin(\'fzf\')');
-    expect(fzfToolConfig).toContain('.version(\'latest\')');
-    expect(fzfToolConfig).toContain('.install(\'github-release\'');
-    expect(fzfToolConfig).toContain('repo: \'junegunn/fzf\'');
+    expect(fzfToolConfig).toContain(
+      'export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void>'
+    );
+    expect(fzfToolConfig).toContain(".bin('fzf')");
+    expect(fzfToolConfig).toContain(".version('latest')");
+    expect(fzfToolConfig).toContain(".install('github-release'");
+    expect(fzfToolConfig).toContain("repo: 'junegunn/fzf'");
     expect(fzfToolConfig).toContain('.completions({');
     expect(fzfToolConfig).toContain('.zsh({');
   });
@@ -138,7 +132,7 @@ describe('initCommand', () => {
     const services = setup.createServices();
     const { fs } = services;
     await fs.writeFile('generator.d.ts', 'existing content');
-    
+
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
@@ -146,7 +140,7 @@ describe('initCommand', () => {
       threwError = true;
       expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
-    
+
     expect(threwError).toBe(true);
   });
 
@@ -155,7 +149,7 @@ describe('initCommand', () => {
     const services = setup.createServices();
     const { fs } = services;
     await fs.writeFile('tsconfig.json', '{}');
-    
+
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
@@ -163,7 +157,7 @@ describe('initCommand', () => {
       threwError = true;
       expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
-    
+
     expect(threwError).toBe(true);
   });
 
@@ -172,7 +166,7 @@ describe('initCommand', () => {
     const services = setup.createServices();
     const { fs } = services;
     await fs.writeFile('config.yaml', 'existing: config');
-    
+
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
@@ -180,7 +174,7 @@ describe('initCommand', () => {
       threwError = true;
       expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
-    
+
     expect(threwError).toBe(true);
   });
 
@@ -190,7 +184,7 @@ describe('initCommand', () => {
     const { fs } = services;
     await fs.ensureDir('tools');
     await fs.writeFile('tools/fzf.tool.ts', 'existing tool config');
-    
+
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
@@ -198,7 +192,7 @@ describe('initCommand', () => {
       threwError = true;
       expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
-    
+
     expect(threwError).toBe(true);
   });
 
@@ -208,7 +202,7 @@ describe('initCommand', () => {
     const { fs } = services;
     await fs.writeFile('generator.d.ts', 'existing content');
     await fs.writeFile('config.yaml', 'existing: config');
-    
+
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
@@ -216,7 +210,7 @@ describe('initCommand', () => {
       threwError = true;
       expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
-    
+
     expect(threwError).toBe(true);
   });
 });

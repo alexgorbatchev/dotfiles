@@ -1,10 +1,10 @@
+import path from 'node:path';
+import { TrackedFileSystem } from '@modules/file-registry';
+import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system';
-import type { AsyncInstallHook, InstallHookContext, BaseInstallContext } from '@types';
-import { TrackedFileSystem } from '@modules/file-registry';
+import type { AsyncInstallHook, BaseInstallContext, InstallHookContext } from '@types';
 import { $ } from 'zx';
-import path from 'node:path';
 
 /**
  * Enhanced context for installation hooks with additional utilities
@@ -104,13 +104,11 @@ export class HookExecutor {
       const durationMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      this.logger.error(
-        logs.tool.error.installFailed(`${hookName} hook`, context.toolName, errorMessage)
-      );
+      this.logger.error(logs.tool.error.installFailed(`${hookName} hook`, context.toolName, errorMessage));
 
       if (continueOnError) {
         this.logger.debug(logs.hookExecutor.debug.continuingDespiteFailure(), hookName);
-        
+
         return {
           success: false,
           error: errorMessage,
@@ -137,9 +135,8 @@ export class HookExecutor {
     logger: TsLogger
   ): EnhancedInstallHookContext {
     // Create a tool-specific TrackedFileSystem if we have one
-    const enhancedFileSystem = fileSystem instanceof TrackedFileSystem 
-      ? fileSystem.withToolName(baseContext.toolName)
-      : fileSystem;
+    const enhancedFileSystem =
+      fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
 
     // Extract appConfig and toolConfig from BaseInstallContext if available
     const appConfig = 'appConfig' in baseContext ? baseContext.appConfig : undefined;
@@ -165,7 +162,6 @@ export class HookExecutor {
       $: zxInstance,
     };
   }
-
 
   /**
    * Execute multiple hooks in sequence with proper logging and error handling

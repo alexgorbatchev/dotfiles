@@ -35,7 +35,7 @@ export interface CliCommandResult {
  * @returns Result of the command execution
  */
 export function executeCliCommand(options: CliCommandOptions): CliCommandResult {
-  const { command, env={}, cwd, homeDir, customCmd } = options;
+  const { command, env = {}, cwd, homeDir, customCmd } = options;
 
   // Prepare environment variables
   const execEnv: Record<string, string> = {

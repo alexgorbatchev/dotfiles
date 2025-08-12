@@ -1,9 +1,9 @@
-import type { ShellType } from '@types';
 import type { YamlConfig } from '@modules/config';
-import type { IShellGenerator } from './IShellGenerator';
-import { ZshGenerator } from './ZshGenerator';
+import type { ShellType } from '@types';
 import { BashGenerator } from './BashGenerator';
+import type { IShellGenerator } from './IShellGenerator';
 import { PowerShellGenerator } from './PowerShellGenerator';
+import { ZshGenerator } from './ZshGenerator';
 
 /**
  * Factory for creating shell-specific generators.
@@ -24,7 +24,7 @@ export class ShellGeneratorFactory {
    * @throws Error if the shell type is not supported
    */
   static createGenerator(shellType: ShellType, appConfig: YamlConfig): IShellGenerator {
-    const generatorFactory = this.generators.get(shellType);
+    const generatorFactory = ShellGeneratorFactory.generators.get(shellType);
     if (!generatorFactory) {
       throw new Error(`Unsupported shell type: ${shellType}`);
     }
@@ -36,7 +36,7 @@ export class ShellGeneratorFactory {
    * @returns Array of supported shell types
    */
   static getSupportedShellTypes(): ShellType[] {
-    return Array.from(this.generators.keys());
+    return Array.from(ShellGeneratorFactory.generators.keys());
   }
 
   /**
@@ -46,7 +46,7 @@ export class ShellGeneratorFactory {
    */
   static createAllGenerators(appConfig: YamlConfig): Map<ShellType, IShellGenerator> {
     const generators = new Map<ShellType, IShellGenerator>();
-    for (const [shellType, factory] of this.generators) {
+    for (const [shellType, factory] of ShellGeneratorFactory.generators) {
       generators.set(shellType, factory(appConfig));
     }
     return generators;
@@ -58,6 +58,6 @@ export class ShellGeneratorFactory {
    * @returns True if the shell type is supported
    */
   static isSupported(shellType: string): shellType is ShellType {
-    return this.generators.has(shellType as ShellType);
+    return ShellGeneratorFactory.generators.has(shellType as ShellType);
   }
 }

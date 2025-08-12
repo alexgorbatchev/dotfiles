@@ -1,3 +1,5 @@
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import path from 'node:path';
 import type { GlobalProgram } from '@cli';
 import { createProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
@@ -10,10 +12,14 @@ import { logs } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import { TestLogger, createMemFileSystem, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import path from 'node:path';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 
 // Set up test cleanup
@@ -72,7 +78,7 @@ describe('checkUpdatesCommand', () => {
     }));
 
     const mockFs = await createMemFileSystem({});
-    
+
     testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'check-updates-command' });
 
     mockYamlConfig = await createMockYamlConfig({
@@ -103,7 +109,7 @@ describe('checkUpdatesCommand', () => {
           assets: [],
           html_url: `https://github.com/${owner}/${repo}/releases/tag/1.0.0`,
           body: 'Release body',
-        }),
+        })
       ),
     };
 
@@ -130,17 +136,15 @@ describe('checkUpdatesCommand', () => {
     (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
       tag_name: 'v0.40.0',
     });
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.UP_TO_DATE,
-    );
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for fzf',
-      'fzf (0.40.0) is up to date. Latest: 0.40.0',
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      ['updates for fzf', 'fzf (0.40.0) is up to date. Latest: 0.40.0', 'Check-updates command completed']
+    );
   });
 
   test('should report an update is available', async () => {
@@ -149,17 +153,15 @@ describe('checkUpdatesCommand', () => {
       tag_name: 'v0.41.0',
     });
 
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(
-      VersionComparisonStatus.NEWER_AVAILABLE,
-    );
+    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for fzf',
-      'Update available for fzf: 0.40.0 -> 0.41.0',
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      ['updates for fzf', 'Update available for fzf: 0.40.0 -> 0.41.0', 'Check-updates command completed']
+    );
   });
 
   test('should check all tools: one up-to-date, one with update', async () => {
@@ -178,13 +180,17 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for fzf',
-      'fzf (0.40.0) is up to date. Latest: 0.40.0',
-      'updates for lazygit',
-      'Update available for lazygit: 0.35.0 -> 0.36.0',
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      [
+        'updates for fzf',
+        'fzf (0.40.0) is up to date. Latest: 0.40.0',
+        'updates for lazygit',
+        'Update available for lazygit: 0.35.0 -> 0.36.0',
+        'Check-updates command completed',
+      ]
+    );
   });
 
   test('should handle tool configured with "latest" version', async () => {
@@ -196,53 +202,59 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for fzf',
-      'Tool "fzf" is configured to \'latest\'. The latest available version is 0.42.0',
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      [
+        'updates for fzf',
+        'Tool "fzf" is configured to \'latest\'. The latest available version is 0.42.0',
+        'Check-updates command completed',
+      ]
+    );
   });
 
   test('should report unsupported installation method', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(manualToolConfig);
     await program.parseAsync(['check-updates', 'manualtool'], { from: 'user' });
 
-    logger.expect(['*'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'check-updates command action logic started. Tool: manualtool',
-      'updates for manualtool',
-      'Update checking for manualtool not yet supported (method: manual)',
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['*'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      [
+        'check-updates command action logic started. Tool: manualtool',
+        'updates for manualtool',
+        'Update checking for manualtool not yet supported (method: manual)',
+        'Check-updates command completed',
+      ]
+    );
   });
 
   test('should handle GitHub API error gracefully', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(
-      new Error('GitHub API unavailable'),
-    );
+    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(new Error('GitHub API unavailable'));
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO', 'ERROR', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for fzf',
-      logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API unavailable'),
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO', 'ERROR', 'INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      [
+        'updates for fzf',
+        logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API unavailable'),
+        'Check-updates command completed',
+      ]
+    );
   });
 
   test('should handle tool config not found for specific tool', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(undefined);
     // The action handler calls exitCli, which is mocked to throw in tests
-    expect(
-      program.parseAsync(['check-updates', 'nonexistenttool'], { from: 'user' }),
-    ).rejects.toThrow();
+    expect(program.parseAsync(['check-updates', 'nonexistenttool'], { from: 'user' })).rejects.toThrow();
 
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [
-        logs.tool.error.notFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir),
-      ],
+      [logs.tool.error.notFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -252,7 +264,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [`No tool configurations found in ${mockYamlConfig.paths.toolConfigsDir}`],
+      [`No tool configurations found in ${mockYamlConfig.paths.toolConfigsDir}`]
     );
   });
 
@@ -266,11 +278,15 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'invalidrepo'], { from: 'user' });
 
-    logger.expect(['INFO', 'WARN', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for invalidrepo',
-      logs.config.warning.invalid('repo format', 'justonename', 'owner/repo'),
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO', 'WARN', 'INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      [
+        'updates for invalidrepo',
+        logs.config.warning.invalid('repo format', 'justonename', 'owner/repo'),
+        'Check-updates command completed',
+      ]
+    );
   });
 
   test('should handle missing repo in github-release tool config', async () => {
@@ -283,11 +299,15 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'missingrepo'], { from: 'user' });
 
-    logger.expect(['INFO', 'WARN', 'INFO'], ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'], [
-      'updates for missingrepo',
-      logs.config.warning.ignored('repo', 'Tool "missingrepo" is \'github-release\' but missing \'repo\' parameter'),
-      'Check-updates command completed',
-    ]);
+    logger.expect(
+      ['INFO', 'WARN', 'INFO'],
+      ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
+      [
+        'updates for missingrepo',
+        logs.config.warning.ignored('repo', "Tool \"missingrepo\" is 'github-release' but missing 'repo' parameter"),
+        'Check-updates command completed',
+      ]
+    );
   });
 
   test('should handle error during loadToolConfigsFromDirectory', async () => {
@@ -297,20 +317,18 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [logs.config.error.loadFailed('tool configurations', errorMessage)],
+      [logs.config.error.loadFailed('tool configurations', errorMessage)]
     );
   });
 
   test('should handle error during loadSingleToolConfig', async () => {
     const errorMessage = 'FS read error single';
     mockLoadSingleToolConfig.mockRejectedValue(new Error(errorMessage));
-    expect(
-      program.parseAsync(['check-updates', 'sometool'], { from: 'user' }),
-    ).rejects.toThrow();
+    expect(program.parseAsync(['check-updates', 'sometool'], { from: 'user' })).rejects.toThrow();
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [logs.config.error.loadFailed('tool configurations', errorMessage)],
+      [logs.config.error.loadFailed('tool configurations', errorMessage)]
     );
   });
 });

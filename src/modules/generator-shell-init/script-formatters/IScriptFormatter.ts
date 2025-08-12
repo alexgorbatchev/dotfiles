@@ -18,7 +18,7 @@ export interface FormattedScriptOutput {
 export interface IScriptFormatter {
   /**
    * Formats a shell script for inclusion in shell initialization
-   * 
+   *
    * @param script - The branded shell script to format
    * @param toolName - Name of the tool the script belongs to
    * @param shellType - Type of shell (zsh, bash, powershell)

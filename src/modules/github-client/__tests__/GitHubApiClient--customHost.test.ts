@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { setupMockGitHubApiClient, createGitHubConfigOverride } from './helpers/sharedGitHubApiClientTestSetup';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { MockSetup } from './helpers/sharedGitHubApiClientTestSetup';
+import { createGitHubConfigOverride, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient with custom host', () => {
   let mocks: MockSetup;
@@ -155,9 +155,6 @@ describe('GitHubApiClient with custom host', () => {
     await mocks.apiClient.getRateLimit();
 
     // Verify the URL used in the request contains the custom host
-    expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
-      `${customHost}/rate_limit`,
-      expect.anything()
-    );
+    expect(mocks.mockDownloader.download).toHaveBeenCalledWith(`${customHost}/rate_limit`, expect.anything());
   });
 });

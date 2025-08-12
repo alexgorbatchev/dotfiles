@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import type { TsLogger } from '@modules/logger';
+import { TestLogger } from '@testing-helpers';
+import type { ArchitecturePatterns, SystemInfo } from '@types'; // Updated import path
 import {
-  getArchitecturePatterns,
+  type ArchitectureRegex,
   createArchitectureRegex,
+  getArchitecturePatterns,
   getArchitectureRegex,
   matchesArchitecture,
-  type ArchitectureRegex,
 } from '../getArchitectureRegex';
-import type { SystemInfo, ArchitecturePatterns } from '@types'; // Updated import path
-import { TestLogger } from '@testing-helpers';
-import { type TsLogger } from '@modules/logger';
 
 describe('getArchitecturePatterns', () => {
   let logger: TsLogger;
@@ -260,9 +260,7 @@ describe('getArchitectureRegex', () => {
 
     const regex = getArchitectureRegex(logger, systemInfo);
 
-    expect(regex.systemPattern).toBe(
-      '(apple|darwin|apple-darwin|dmg|mac|macos|mac-os|osx|os-x|os64x)'
-    );
+    expect(regex.systemPattern).toBe('(apple|darwin|apple-darwin|dmg|mac|macos|mac-os|osx|os-x|os64x)');
     expect(regex.cpuPattern).toBe('(arm64|aarch64|arm|aarch)');
     expect(regex.variantPattern).toBe('(darwin)');
   });
@@ -345,11 +343,7 @@ describe('matchesArchitecture', () => {
   });
 
   it('should handle case insensitive matching', () => {
-    const testCases = [
-      'Tool-Darwin-ARM64.TAR.GZ',
-      'TOOL-MACOS-AARCH64.ZIP',
-      'tool-APPLE-arm64.DMG',
-    ];
+    const testCases = ['Tool-Darwin-ARM64.TAR.GZ', 'TOOL-MACOS-AARCH64.ZIP', 'tool-APPLE-arm64.DMG'];
 
     testCases.forEach((asset) => {
       expect(matchesArchitecture(logger, asset, darwinArm64Regex)).toBe(true);
@@ -373,12 +367,8 @@ describe('matchesArchitecture', () => {
       variantPattern: '',
     };
 
-    expect(matchesArchitecture(logger, 'tool-linux-anything.tar.gz', partialRegex)).toBe(
-      true,
-    );
-    expect(matchesArchitecture(logger, 'tool-windows-anything.exe', partialRegex)).toBe(
-      false,
-    );
+    expect(matchesArchitecture(logger, 'tool-linux-anything.tar.gz', partialRegex)).toBe(true);
+    expect(matchesArchitecture(logger, 'tool-windows-anything.exe', partialRegex)).toBe(false);
   });
 
   it('should handle complex asset names', () => {

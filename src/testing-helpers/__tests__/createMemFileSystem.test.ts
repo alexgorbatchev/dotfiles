@@ -1,4 +1,4 @@
-import { describe, it, expect, mock } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
 import { createMemFileSystem } from '../createMemFileSystem';
 
 describe('createMemFileSystem', () => {
@@ -81,7 +81,7 @@ describe('createMemFileSystem', () => {
   it('should create symlinks when initialSymlinks is provided', async () => {
     const sourceFile = '/source/file.txt';
     const targetLink = '/target/link.txt';
-    
+
     // Create the file system with initialSymlinks
     const { fs, spies } = await createMemFileSystem({
       initialVolumeJson: {
@@ -95,19 +95,19 @@ describe('createMemFileSystem', () => {
     // Verify the symlink was created
     const exists = await fs.exists(targetLink);
     expect(exists).toBe(true);
-    
+
     // Verify the target directory was created
     const targetDirExists = await fs.exists('/target');
     expect(targetDirExists).toBe(true);
-    
+
     // Verify the symlink points to the correct source
     const linkTarget = await fs.readlink(targetLink);
     expect(linkTarget).toBe(sourceFile);
-    
+
     // Verify the ensureDir and symlink methods were called
     expect(spies.ensureDir).toHaveBeenCalledWith('/target');
-    expect(spies.symlink).toHaveBeenCalledWith( sourceFile, targetLink);
-    
+    expect(spies.symlink).toHaveBeenCalledWith(sourceFile, targetLink);
+
     // Verify we can read the content through the symlink
     const content = await fs.readFile(targetLink, 'utf8');
     expect(content).toBe('source content');

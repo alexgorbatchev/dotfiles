@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { ShellType } from '@types';
 import { dedentString } from '@utils';
-import type { IScriptInitializer, InitializationOutput } from './IScriptInitializer';
+import type { InitializationOutput, IScriptInitializer } from './IScriptInitializer';
 
 /**
  * Initializer for once scripts - adds sourcing loop to main shell file

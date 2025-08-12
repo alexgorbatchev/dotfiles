@@ -1,3 +1,6 @@
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import * as path from 'node:path';
+import { NodeFileSystem } from '@modules/file-system';
 import {
   createFile,
   createMockGitHubServer,
@@ -5,13 +8,10 @@ import {
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
-  TestLogger,
   type MockGitHubServerResult,
   type TestDirectories,
+  TestLogger,
 } from '@testing-helpers';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import * as path from 'node:path';
-import { NodeFileSystem } from '@modules/file-system';
 
 describe('E2E: Download Cache', () => {
   describe('cache validation with repeated installs', () => {
@@ -157,7 +157,7 @@ describe('E2E: Download Cache', () => {
       expect(metadataFiles.length).toBeGreaterThan(0);
 
       // Metadata files should be JSON files
-      const jsonMetadataFiles = metadataFiles.filter(file => file.endsWith('.json'));
+      const jsonMetadataFiles = metadataFiles.filter((file) => file.endsWith('.json'));
       expect(jsonMetadataFiles.length).toBeGreaterThan(0);
 
       // Verify binary files were created
@@ -176,7 +176,7 @@ describe('E2E: Download Cache', () => {
       expect(metadataFiles.length).toBeGreaterThan(0);
 
       // Check first metadata file structure
-      const firstMetadataFile = metadataFiles.find(file => file.endsWith('.json'));
+      const firstMetadataFile = metadataFiles.find((file) => file.endsWith('.json'));
       expect(firstMetadataFile).toBeDefined();
 
       if (firstMetadataFile) {
@@ -188,19 +188,19 @@ describe('E2E: Download Cache', () => {
         expect(cacheEntry).toHaveProperty('metadata');
         expect(cacheEntry).toHaveProperty('timestamp');
         expect(cacheEntry).toHaveProperty('expiresAt');
-        
+
         expect(typeof cacheEntry.data).toBe('string'); // Binary filename
         expect(typeof cacheEntry.metadata).toBe('object');
         expect(typeof cacheEntry.timestamp).toBe('number');
         expect(typeof cacheEntry.expiresAt).toBe('number');
         expect(cacheEntry.expiresAt).toBeGreaterThan(cacheEntry.timestamp);
-        
+
         // Check metadata structure
         expect(cacheEntry.metadata).toHaveProperty('url');
         expect(cacheEntry.metadata).toHaveProperty('size');
         expect(cacheEntry.metadata).toHaveProperty('binaryFilePath');
         expect(cacheEntry.metadata).toHaveProperty('contentHash');
-        
+
         expect(typeof cacheEntry.metadata.url).toBe('string');
         expect(typeof cacheEntry.metadata.size).toBe('number');
         expect(typeof cacheEntry.metadata.binaryFilePath).toBe('string');
@@ -243,7 +243,7 @@ describe('E2E: Download Cache', () => {
         env: {},
       });
 
-      // Remove binary to force fresh install  
+      // Remove binary to force fresh install
       const expectedBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
       if (await fs.exists(expectedBinaryPath)) {
         await fs.rm(expectedBinaryPath, { force: true });

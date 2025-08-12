@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { ToolConfigBuilder } from '../toolConfigBuilder';
-import { Architecture, Platform } from '../../../types/platform.types';
-import { TestLogger } from '@testing-helpers';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { logs } from '@modules/logger';
+import { TestLogger } from '@testing-helpers';
 import type { ManualInstallParams } from '@types';
+import { Architecture, Platform } from '../../../types/platform.types';
+import { ToolConfigBuilder } from '../toolConfigBuilder';
 
 describe('ToolConfigBuilder - Platform Support', () => {
   let builder: ToolConfigBuilder;
@@ -57,15 +57,16 @@ describe('ToolConfigBuilder - Platform Support', () => {
     builder.platform(Platform.Linux, (pb) => {
       pb.bin('linux-bin');
     });
-    builder.platform(Platform.MacOS, (pb) => { // Changed Darwin to MacOS
+    builder.platform(Platform.MacOS, (pb) => {
+      // Changed Darwin to MacOS
       pb.bin('darwin-bin');
     });
 
     const config = builder.build();
     expect(config.platformConfigs).toHaveLength(2);
 
-    const linuxConfig = config.platformConfigs!.find(p => p.platforms === Platform.Linux);
-    const darwinConfig = config.platformConfigs!.find(p => p.platforms === Platform.MacOS); // Changed Darwin to MacOS
+    const linuxConfig = config.platformConfigs!.find((p) => p.platforms === Platform.Linux);
+    const darwinConfig = config.platformConfigs!.find((p) => p.platforms === Platform.MacOS); // Changed Darwin to MacOS
 
     expect(linuxConfig).toBeDefined();
     expect(linuxConfig!.config.binaries).toEqual(['linux-bin']);
@@ -75,7 +76,8 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should create a configuration for multiple platforms via a single call with bitwise OR', () => {
-    builder.platform(Platform.Linux | Platform.MacOS, (pb) => { // Changed to bitwise OR and MacOS
+    builder.platform(Platform.Linux | Platform.MacOS, (pb) => {
+      // Changed to bitwise OR and MacOS
       pb.bin('multi-platform-bin');
     });
 
@@ -91,8 +93,8 @@ describe('ToolConfigBuilder - Platform Support', () => {
   it('should create a configuration with platform and architecture combinations using correct builder methods', () => {
     // Generic Linux config (optional, could be empty or have common settings)
     builder.platform(Platform.Linux, (pb) => {
-        pb.version('linux-common'); // Example common setting
-        pb.bin('linux-common-bin'); // Ensure at least one binary is set for platform config
+      pb.version('linux-common'); // Example common setting
+      pb.bin('linux-common-bin'); // Ensure at least one binary is set for platform config
     });
 
     // Linux X86_64 specific
@@ -109,10 +111,16 @@ describe('ToolConfigBuilder - Platform Support', () => {
 
     const config = builder.build();
     expect(config.platformConfigs).toBeDefined();
-    
-    const linuxCommonConfig = config.platformConfigs!.find(p => p.platforms === Platform.Linux && p.architectures === undefined);
-    const linuxX86Config = config.platformConfigs!.find(p => p.platforms === Platform.Linux && p.architectures === Architecture.X86_64);
-    const linuxArmConfig = config.platformConfigs!.find(p => p.platforms === Platform.Linux && p.architectures === Architecture.Arm64);
+
+    const linuxCommonConfig = config.platformConfigs!.find(
+      (p) => p.platforms === Platform.Linux && p.architectures === undefined
+    );
+    const linuxX86Config = config.platformConfigs!.find(
+      (p) => p.platforms === Platform.Linux && p.architectures === Architecture.X86_64
+    );
+    const linuxArmConfig = config.platformConfigs!.find(
+      (p) => p.platforms === Platform.Linux && p.architectures === Architecture.Arm64
+    );
 
     expect(linuxCommonConfig).toBeDefined();
     expect(linuxCommonConfig!.config.version).toBe('linux-common');
@@ -140,7 +148,9 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(config.version).toBe('1.0.0');
 
     expect(config.platformConfigs).toHaveLength(1);
-    const darwinArmConfig = config.platformConfigs!.find(p => p.platforms === Platform.MacOS && p.architectures === Architecture.Arm64);
+    const darwinArmConfig = config.platformConfigs!.find(
+      (p) => p.platforms === Platform.MacOS && p.architectures === Architecture.Arm64
+    );
     expect(darwinArmConfig).toBeDefined();
     expect(darwinArmConfig!.config.installationMethod).toBe('github-release');
     expect(darwinArmConfig!.config.binaries).toEqual(['darwin-arm64-app']);
@@ -149,11 +159,11 @@ describe('ToolConfigBuilder - Platform Support', () => {
   it('should log error when platform() called with architecture but no configure callback', () => {
     const testLogger = new TestLogger();
     const testBuilder = new ToolConfigBuilder(testLogger, 'test-tool');
-    
+
     let thrownError: Error | null = null;
     try {
       // Call platform with architecture but explicitly pass undefined as callback
-      (testBuilder ).platform(Platform.Linux, Architecture.X86_64, undefined);
+      testBuilder.platform(Platform.Linux, Architecture.X86_64, undefined);
     } catch (error) {
       thrownError = error as Error;
     }
@@ -161,12 +171,15 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(thrownError).toBeInstanceOf(Error);
     expect(thrownError!.message).toContain('Required configuration missing: configure callback');
 
-    testLogger.expect(['ERROR'], ['ToolConfigBuilder'], [
-      logs.config.error.required(
-        'configure callback',
-        'platform() called for tool "test-tool" with architectures but without a configure callback'
-      )
-    ]);
+    testLogger.expect(
+      ['ERROR'],
+      ['ToolConfigBuilder'],
+      [
+        logs.config.error.required(
+          'configure callback',
+          'platform() called for tool "test-tool" with architectures but without a configure callback'
+        ),
+      ]
+    );
   });
-
 });

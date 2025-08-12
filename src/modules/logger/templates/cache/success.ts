@@ -10,12 +10,8 @@ export const cacheSuccessTemplates = {
     const sizeStr = size !== undefined ? `, size: ${size} bytes` : '';
     return createSafeLogMessage(`Cached data for key: ${key} (${strategy})${sizeStr}, expires: ${expiresAt}`);
   },
-  removed: (key: string) => 
-    createSafeLogMessage(`Removed cache entry for key: ${key}`),
-  cleared: () => 
-    createSafeLogMessage('Removed entire cache directory'),
-  expiredCleared: (count: number) => 
-    createSafeLogMessage(`Removed ${count} expired cache entries`),
-  entryExists: (key: string) => 
-    createSafeLogMessage(`Valid cache entry exists for key: ${key}`),
+  removed: (key: string) => createSafeLogMessage(`Removed cache entry for key: ${key}`),
+  cleared: () => createSafeLogMessage('Removed entire cache directory'),
+  expiredCleared: (count: number) => createSafeLogMessage(`Removed ${count} expired cache entries`),
+  entryExists: (key: string) => createSafeLogMessage(`Valid cache entry exists for key: ${key}`),
 } satisfies SafeLogMessageMap;

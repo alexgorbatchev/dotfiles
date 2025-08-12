@@ -1,7 +1,6 @@
 import path from 'node:path';
-import type { ToolConfig, CompletionConfig } from '@types';
-import type { ShellScript } from '@types';
 import type { YamlConfig } from '@modules/config';
+import type { CompletionConfig, ShellScript, ToolConfig } from '@types';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
 /**
@@ -21,12 +20,12 @@ export class PowerShellStringProducer implements IShellStringProducer {
 
   processCompletions(toolName: string, completions: CompletionConfig): string[] {
     const completionSetup: string[] = [];
-    
+
     if (completions.powershell) {
       const shellConfig = completions.powershell;
       const completionDir = shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'powershell');
       const completionFile = path.join(completionDir, shellConfig.name ?? `${toolName}.ps1`);
-      
+
       // Source the completion file if it exists
       completionSetup.push(`if (Test-Path "${completionFile}") { . "${completionFile}" }`);
     }
@@ -36,27 +35,27 @@ export class PowerShellStringProducer implements IShellStringProducer {
 
   processEnvironmentVariables(toolConfig: ToolConfig): string[] {
     const envVars: string[] = [];
-    
+
     if (toolConfig.shellConfigs?.powershell?.environment) {
       const environment = toolConfig.shellConfigs.powershell.environment;
       for (const [key, value] of Object.entries(environment)) {
         envVars.push(`$env:${key} = ${JSON.stringify(value)}`);
       }
     }
-    
+
     return envVars;
   }
 
   processAliases(toolConfig: ToolConfig): string[] {
     const aliases: string[] = [];
-    
+
     if (toolConfig.shellConfigs?.powershell?.aliases) {
       const aliasConfig = toolConfig.shellConfigs.powershell.aliases;
       for (const [alias, command] of Object.entries(aliasConfig)) {
         aliases.push(`Set-Alias ${alias} ${JSON.stringify(command)}`);
       }
     }
-    
+
     return aliases;
   }
 }

@@ -6,11 +6,7 @@
       "request": "launch",
       "name": "Run Bun CLI Command",
       "runtimeExecutable": "bun",
-      "runtimeArgs": [
-        "run",
-        "test",
-        "${file}"
-      ],
+      "runtimeArgs": ["run", "test", "${file}"],
       "cwd": "${workspaceFolder}"
     }
   ]

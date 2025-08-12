@@ -1,23 +1,18 @@
-import type { IDownloader, DownloadOptions } from './IDownloader';
-import type { DownloadStrategy } from './DownloadStrategy';
-import { NodeFetchStrategy } from './NodeFetchStrategy';
-import { CachedDownloadStrategy } from './CachedDownloadStrategy';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { ICache } from '@modules/cache/ICache';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import { CachedDownloadStrategy } from './CachedDownloadStrategy';
+import type { DownloadStrategy } from './DownloadStrategy';
+import type { DownloadOptions, IDownloader } from './IDownloader';
+import { NodeFetchStrategy } from './NodeFetchStrategy';
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];
   private fs: IFileSystem;
   private logger: TsLogger;
 
-  constructor(
-    parentLogger: TsLogger,
-    fileSystem: IFileSystem,
-    strategies?: DownloadStrategy[],
-    cache?: ICache,
-  ) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, strategies?: DownloadStrategy[], cache?: ICache) {
     this.logger = parentLogger.getSubLogger({ name: 'Downloader' });
     this.fs = fileSystem;
 
@@ -27,7 +22,11 @@ export class Downloader implements IDownloader {
       // Create default strategy, optionally wrapped with cache
       const baseStrategy = new NodeFetchStrategy(this.logger, this.fs);
       if (cache) {
-        this.logger.debug(logs.downloader.debug.strategyCreated(), 'CachedDownloadStrategy', ' wrapping NodeFetchStrategy');
+        this.logger.debug(
+          logs.downloader.debug.strategyCreated(),
+          'CachedDownloadStrategy',
+          ' wrapping NodeFetchStrategy'
+        );
         this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, baseStrategy));
       } else {
         this.logger.debug(logs.downloader.debug.strategyCreated(), 'NodeFetchStrategy', ' (no cache)');
@@ -79,7 +78,7 @@ export class Downloader implements IDownloader {
 
     // Set destination path in options to indicate file download
     const fileOptions = { ...options, destinationPath: filePath };
-    
+
     if (this.strategies.length === 0) {
       throw new Error('No download strategies registered.');
     }

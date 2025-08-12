@@ -1,5 +1,5 @@
-import crypto from 'crypto';
 import type { DownloadOptions } from '@modules/downloader/IDownloader';
+import crypto from 'crypto';
 
 /**
  * Utilities for creating cache keys for download operations.

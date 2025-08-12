@@ -1,6 +1,6 @@
-import { generalWarningTemplates } from './warning';
-import { generalSuccessTemplates } from './success';
 import { generalErrorTemplates } from './error';
+import { generalSuccessTemplates } from './success';
+import { generalWarningTemplates } from './warning';
 
 /**
  * General templates grouped by log level

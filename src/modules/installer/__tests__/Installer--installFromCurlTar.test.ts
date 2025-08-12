@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
-import type { CurlTarToolConfig, BaseInstallContext } from '@types';
-import { 
-  createInstallerTestSetup, 
+import type { BaseInstallContext, CurlTarToolConfig } from '@types';
+import {
+  createInstallerTestSetup,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
-  MOCK_TOOL_VERSION
+  MOCK_TOOL_VERSION,
 } from './installer-test-helpers';
 
 describe('Installer - installFromCurlTar', () => {
@@ -35,7 +35,7 @@ describe('Installer - installFromCurlTar', () => {
       'temp-extract',
       'bin/tool' // This comes from toolConfig.installParams.extractPath
     );
-    
+
     // The binary should be copied to the final location
     const installDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_VERSION);
     const tempExtractDir = path.join(installDir, 'temp-extract');
@@ -55,13 +55,9 @@ describe('Installer - installFromCurlTar', () => {
     // Also create the binary at the tool name location (fallback path)
     await setup.mockFileSystem.writeFile(path.join(tempExtractDir, MOCK_TOOL_NAME), 'binary content');
 
-    mock.restore()
+    mock.restore();
 
-    const result = await setup.installer.installFromCurlTar(
-      MOCK_TOOL_NAME,
-      toolConfig,
-      context 
-    );
+    const result = await setup.installer.installFromCurlTar(MOCK_TOOL_NAME, toolConfig, context);
 
     expect(setup.mocks.download).toHaveBeenCalledWith(
       'https://example.com/archive.tar.gz',

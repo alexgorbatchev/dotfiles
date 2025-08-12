@@ -1,5 +1,5 @@
-import { createMemFileSystem, TestLogger } from '@testing-helpers';
 import { describe, expect, it } from 'bun:test';
+import { createMemFileSystem, TestLogger } from '@testing-helpers';
 import { loadYamlConfig } from '../yamlConfigLoader';
 
 describe('yamlConfigLoader', () => {
@@ -173,15 +173,9 @@ describe('yamlConfigLoader', () => {
     );
 
     expect(result.paths.generatedDir).toBe('/test/custom-dotfiles/.generated');
-    expect(result.paths.toolConfigsDir).toBe(
-      '/test/custom-dotfiles/generator/configs/tools'
-    );
-    expect(result.paths.shellScriptsDir).toBe(
-      '/test/custom-dotfiles/.generated/shell-scripts'
-    );
-    expect(result.paths.manifestPath).toBe(
-      '/test/custom-dotfiles/.generated/manifest.json'
-    );
+    expect(result.paths.toolConfigsDir).toBe('/test/custom-dotfiles/generator/configs/tools');
+    expect(result.paths.shellScriptsDir).toBe('/test/custom-dotfiles/.generated/shell-scripts');
+    expect(result.paths.manifestPath).toBe('/test/custom-dotfiles/.generated/manifest.json');
   });
 
   it('should throw an error when default config file does not exist', async () => {

@@ -1,16 +1,14 @@
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
-import {
-  loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
-} from '@modules/config-loader';
+import { loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory } from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { logs } from '@modules/logger';
-import { TestLogger, type MemFileSystemReturn } from '@testing-helpers';
-import { createCliTestSetup } from './createCliTestSetup';
-import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { MemFileSystemReturn, TestLogger } from '@testing-helpers';
+import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
 import { registerGenerateCommand } from '../generateCommand';
+import { createCliTestSetup } from './createCliTestSetup';
 
 setupTestCleanup();
 
@@ -112,10 +110,12 @@ describe('generateCommand', () => {
     const generationError = new Error('Generation failed');
     (mockGeneratorOrchestrator.generateAll as any).mockRejectedValue(generationError);
 
-    expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
-    );
+    expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['registerGenerateCommand'], [logs.command.error.executionFailed('generate', 1, 'Generation failed')]);
+    logger.expect(
+      ['ERROR'],
+      ['registerGenerateCommand'],
+      [logs.command.error.executionFailed('generate', 1, 'Generation failed')]
+    );
   });
 });

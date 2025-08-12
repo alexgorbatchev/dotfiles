@@ -1,24 +1,24 @@
 import path from 'node:path';
+import type { YamlConfig } from '@modules/config';
+import type { IDownloader } from '@modules/downloader/IDownloader';
+import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
+import { TrackedFileSystem } from '@modules/file-registry';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import type { IDownloader } from '@modules/downloader/IDownloader';
-import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
-import type { YamlConfig } from '@modules/config';
-import { TrackedFileSystem } from '@modules/file-registry';
 import type {
-  GithubReleaseToolConfig,
-  GitHubReleaseAsset,
   BaseInstallContext,
+  ExtractResult,
+  GitHubReleaseAsset,
+  GithubReleaseToolConfig,
   PostDownloadInstallContext,
   PostExtractInstallContext,
-  ExtractResult,
 } from '@types';
-import type { InstallOptions, InstallResult } from './IInstaller';
-import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
-import { HookExecutor } from './HookExecutor';
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from './BinarySetupService';
+import type { HookExecutor } from './HookExecutor';
+import type { InstallOptions, InstallResult } from './IInstaller';
 
 /**
  * Install a tool from GitHub releases
@@ -34,12 +34,10 @@ export async function installFromGitHubRelease(
   archiveExtractor: IArchiveExtractor,
   appConfig: YamlConfig,
   hookExecutor: HookExecutor,
-  parentLogger: TsLogger,
+  parentLogger: TsLogger
 ): Promise<InstallResult> {
   // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-  const toolFs = fs instanceof TrackedFileSystem 
-    ? fs.withToolName(toolName)
-    : fs;
+  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
   logger.debug(logs.command.debug.methodStarted(), toolName);
@@ -74,11 +72,7 @@ export async function installFromGitHubRelease(
       }
       release = await githubApiClient.getLatestRelease(owner, repoName);
     } else {
-      logger.debug(
-        logs.command.debug.gitHubReleaseDetails(),
-        version,
-        repo || toolName,
-      );
+      logger.debug(logs.command.debug.gitHubReleaseDetails(), version, repo || toolName);
       const [owner, repoName] = (repo || '').split('/');
       if (!owner || !repoName) {
         return {
@@ -93,7 +87,7 @@ export async function installFromGitHubRelease(
       return {
         success: false,
         error: `Failed to fetch release information for ${repo || toolName}`,
-        };
+      };
     }
 
     // Select the appropriate asset
@@ -120,11 +114,7 @@ export async function installFromGitHubRelease(
             : ['linux'];
 
       const archPatterns =
-        arch === 'x64'
-          ? ['x64', 'amd64', 'x86_64']
-          : arch === 'arm64'
-            ? ['arm64', 'aarch64']
-            : [arch];
+        arch === 'x64' ? ['x64', 'amd64', 'x86_64'] : arch === 'arm64' ? ['arm64', 'aarch64'] : [arch];
 
       asset = release.assets.find((a) => {
         const name = a.name.toLowerCase();
@@ -156,7 +146,7 @@ export async function installFromGitHubRelease(
       return {
         success: false,
         error: errorLines.join('\n'),
-        };
+      };
     }
 
     // Download the asset
@@ -164,11 +154,7 @@ export async function installFromGitHubRelease(
     const rawBrowserDownloadUrl = asset.browser_download_url;
     const customHost = appConfig.github.host;
 
-    logger.debug(
-      logs.command.debug.determiningDownloadUrl(),
-      rawBrowserDownloadUrl,
-      customHost,
-    );
+    logger.debug(logs.command.debug.determiningDownloadUrl(), rawBrowserDownloadUrl, customHost);
 
     try {
       // Check if rawBrowserDownloadUrl is an absolute URL
@@ -189,35 +175,21 @@ export async function installFromGitHubRelease(
         // The issue arises when appConfig.githubHost (e.g., api.github.com) is used to replace
         // the host of a perfectly valid github.com download URL.
         downloadUrl = rawBrowserDownloadUrl;
-        logger.debug(
-          logs.command.debug.usingAbsoluteUrl(),
-          downloadUrl,
-        );
+        logger.debug(logs.command.debug.usingAbsoluteUrl(), downloadUrl);
       } else if (rawBrowserDownloadUrl.startsWith('/')) {
         // Case: rawBrowserDownloadUrl is a relative path (e.g., "/owner/repo/releases/download/v1.0.0/asset.tar.gz")
         // Resolve it against the customHost or the default GitHub host for assets.
         // Assets are typically on "github.com", not "api.github.com".
-        let base =
-          customHost && !customHost.includes('api.github.com')
-            ? customHost
-            : 'https://github.com';
+        let base = customHost && !customHost.includes('api.github.com') ? customHost : 'https://github.com';
         if (!/^https?:\/\//.test(base)) {
           base = `https:${base.startsWith('//') ? '' : '//'}${base}`;
         }
         const finalUrl = new URL(rawBrowserDownloadUrl, base);
         downloadUrl = finalUrl.toString();
-        logger.debug(
-          logs.command.debug.resolvedRelativeUrl(),
-          base,
-          rawBrowserDownloadUrl,
-          downloadUrl,
-        );
+        logger.debug(logs.command.debug.resolvedRelativeUrl(), base, rawBrowserDownloadUrl, downloadUrl);
       } else {
         // Invalid or unsupported URL format
-        logger.debug(
-          logs.command.debug.invalidUrlFormat(),
-          rawBrowserDownloadUrl,
-        );
+        logger.debug(logs.command.debug.invalidUrlFormat(), rawBrowserDownloadUrl);
         return {
           success: false,
           error: `Invalid asset download URL format: ${rawBrowserDownloadUrl}`,
@@ -228,27 +200,28 @@ export async function installFromGitHubRelease(
         logs.command.debug.finalDownloadUrl(),
         rawBrowserDownloadUrl,
         customHost || '(public GitHub)',
-        downloadUrl,
+        downloadUrl
       );
     } catch (e) {
       logger.error(logs.service.error.network.invalidUrl(rawBrowserDownloadUrl));
-      logger.debug(logs.command.debug.downloadUrlError(),
+      logger.debug(
+        logs.command.debug.downloadUrlError(),
         rawBrowserDownloadUrl,
         customHost || '(public GitHub)',
-        (e as Error).message,
+        (e as Error).message
       );
       return {
         success: false,
         error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${customHost || '(public GitHub)'}, Error: ${(e as Error).message}`,
-        };
+      };
     }
 
     logger.debug(logs.command.debug.downloadingAsset(), downloadUrl);
     const downloadPath = path.join(context.installDir, asset.name);
-    
+
     const showProgress = shouldShowProgress(options?.quiet);
     const progressBar = new ProgressBar(asset.name, { enabled: showProgress });
-    
+
     try {
       await downloader.download(downloadUrl, {
         destinationPath: downloadPath,
@@ -267,32 +240,30 @@ export async function installFromGitHubRelease(
     // Run afterDownload hook if defined
     if (toolConfig.installParams?.hooks?.afterDownload) {
       logger.debug(logs.installer.debug.runningAfterDownloadHook());
-      
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        postDownloadContext, fs, logger
-      );
-      
+
+      const enhancedContext = hookExecutor.createEnhancedContext(postDownloadContext, fs, logger);
+
       const hookResult = await hookExecutor.executeHook(
         'afterDownload',
         toolConfig.installParams.hooks.afterDownload,
         enhancedContext
       );
-      
+
       if (!hookResult.success) {
         return {
           success: false,
           error: `afterDownload hook failed: ${hookResult.error}`,
         };
       }
-      
     }
 
     // Handle extraction if needed
-    const isArchive = asset.name.endsWith('.tar.gz') ||
-                      asset.name.endsWith('.tgz') ||
-                      asset.name.endsWith('.zip') ||
-                      asset.name.endsWith('.tar');
-    
+    const isArchive =
+      asset.name.endsWith('.tar.gz') ||
+      asset.name.endsWith('.tgz') ||
+      asset.name.endsWith('.zip') ||
+      asset.name.endsWith('.tar');
+
     if (isArchive) {
       logger.debug(logs.installer.debug.extractingArchive(), asset.name);
 
@@ -316,24 +287,21 @@ export async function installFromGitHubRelease(
       // Run afterExtract hook if defined
       if (toolConfig.installParams?.hooks?.afterExtract) {
         logger.debug(logs.installer.debug.runningAfterExtractHook());
-        
-        const enhancedContext = hookExecutor.createEnhancedContext(
-          postExtractContext, fs, logger
-        );
-        
+
+        const enhancedContext = hookExecutor.createEnhancedContext(postExtractContext, fs, logger);
+
         const hookResult = await hookExecutor.executeHook(
           'afterExtract',
           toolConfig.installParams.hooks.afterExtract,
           enhancedContext
         );
-        
+
         if (!hookResult.success) {
           return {
             success: false,
             error: `afterExtract hook failed: ${hookResult.error}`,
-            };
+          };
         }
-        
       }
 
       // Handle all binaries from extracted archive
@@ -347,10 +315,7 @@ export async function installFromGitHubRelease(
       await setupBinariesFromDirectDownload(toolFs, toolName, toolConfig, context, downloadPath, logger);
     }
 
-    logger.debug(
-      logs.installer.debug.githubReleaseFinalDestination(),
-      context.installDir,
-    );
+    logger.debug(logs.installer.debug.githubReleaseFinalDestination(), context.installDir);
 
     // Clean up downloaded archive if it was extracted
     if (

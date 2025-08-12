@@ -1,10 +1,9 @@
-import { describe, it, beforeEach, expect } from 'bun:test';
-import { TestLogger, createMemFileSystem, type MemFileSystemReturn } from '@testing-helpers';
-import { HookExecutor, type HookExecutionOptions } from '../HookExecutor';
-import type { InstallHookContext, ToolConfig } from '@types';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { TrackedFileSystem } from '@modules/file-registry';
-import { mock, spyOn } from 'bun:test';
 import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
+import type { InstallHookContext, ToolConfig } from '@types';
+import { type HookExecutionOptions, HookExecutor } from '../HookExecutor';
 
 // Helper function for tests to create SafeLogMessage
 function testLogMessage(message: string): SafeLogMessage {
@@ -25,7 +24,7 @@ describe('HookExecutor', () => {
   beforeEach(async () => {
     logger = new TestLogger();
     hookExecutor = new HookExecutor(logger);
-    
+
     memFs = await createMemFileSystem();
 
     // Create a proper TrackedFileSystem mock that will pass instanceof check
@@ -54,9 +53,7 @@ describe('HookExecutor', () => {
         expect((ctx as any).logger).toBeDefined();
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
@@ -70,9 +67,7 @@ describe('HookExecutor', () => {
         (ctx as any).logger.info(testLogMessage('Hook execution message'));
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const result = await hookExecutor.executeHook('afterInstall', mockHook, enhancedContext);
 
@@ -89,9 +84,7 @@ describe('HookExecutor', () => {
         throw new Error(errorMessage);
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
@@ -104,12 +97,10 @@ describe('HookExecutor', () => {
     it('should handle hook timeout', async () => {
       const mockHook = mock(async () => {
         // Simulate a slow hook that takes longer than timeout
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const options: HookExecutionOptions = { timeoutMs: 50 };
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
@@ -125,9 +116,7 @@ describe('HookExecutor', () => {
         throw new Error(errorMessage);
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const options: HookExecutionOptions = { continueOnError: true };
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
@@ -139,9 +128,7 @@ describe('HookExecutor', () => {
     it('should use default timeout when not specified', async () => {
       const mockHook = mock(async () => {});
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       // Spy on the internal setTimeout to verify default timeout is used
       const setTimeoutSpy = spyOn(global, 'setTimeout');
@@ -162,9 +149,7 @@ describe('HookExecutor', () => {
     };
 
     it('should create enhanced context with regular filesystem', () => {
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       expect(enhancedContext.toolName).toBe(baseContext.toolName);
       expect(enhancedContext.installDir).toBe(baseContext.installDir);
@@ -173,18 +158,14 @@ describe('HookExecutor', () => {
     });
 
     it('should create enhanced context with TrackedFileSystem and create tool-specific instance', () => {
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, mockTrackedFileSystem, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, mockTrackedFileSystem, logger);
 
       expect(enhancedContext.fileSystem).toBe(mockTrackedFileSystem);
       expect(mockTrackedFileSystem.withToolName).toHaveBeenCalledWith('test-tool');
     });
 
     it('should create sublogger with correct name', () => {
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       // Verify logger is a sublogger (should have the expected name in logs)
       enhancedContext.logger.info(testLogMessage('Test message'));
@@ -200,20 +181,18 @@ describe('HookExecutor', () => {
         installationMethod: 'none',
         installParams: undefined,
       };
-      
+
       const contextWithToolConfig = {
         ...baseContext,
         toolConfig: mockToolConfig,
       };
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        contextWithToolConfig, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs, logger);
 
       // Verify $ instance is created and configured
       expect(enhancedContext.$).toBeDefined();
       expect(typeof enhancedContext.$).toBe('function');
-      
+
       // Verify the $ instance has the correct cwd configuration
       // We can't directly test the cwd without executing commands, but we can verify it exists
       expect((enhancedContext.$ as any).bind).toBeDefined(); // $ should be a bound function
@@ -222,7 +201,7 @@ describe('HookExecutor', () => {
     it('should use fallback $ instance when configFilePath is missing', () => {
       const contextWithoutConfigPath = {
         ...baseContext,
-        toolConfig: { 
+        toolConfig: {
           name: 'test-tool',
           binaries: ['test-tool'],
           version: 'latest',
@@ -231,9 +210,7 @@ describe('HookExecutor', () => {
         } as ToolConfig, // No configFilePath
       };
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        contextWithoutConfigPath, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs, logger);
 
       // Verify $ instance is still created (fallback)
       expect(enhancedContext.$).toBeDefined();
@@ -249,18 +226,16 @@ describe('HookExecutor', () => {
         installationMethod: 'none',
         installParams: undefined,
       };
-      
+
       const mockAppConfig = { paths: { generatedDir: '/generated' } } as any;
-      
+
       const contextWithConfigs = {
         ...baseContext,
         toolConfig: mockToolConfig,
         appConfig: mockAppConfig,
       };
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        contextWithConfigs, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(contextWithConfigs, memFs.fs, logger);
 
       expect(enhancedContext.toolConfig).toBe(mockToolConfig);
       expect(enhancedContext.appConfig).toBe(mockAppConfig);
@@ -276,19 +251,17 @@ describe('HookExecutor', () => {
 
     it('should provide $ instance to hooks that can execute shell commands', async () => {
       let capturedDollar: any;
-      
+
       const hookThatUsesShell = mock(async (ctx: InstallHookContext) => {
         capturedDollar = ctx.$;
         expect(ctx.$).toBeDefined();
         expect(typeof ctx.$).toBe('function');
-        
+
         // Simulate using $ in the hook (but don't actually execute)
         // We just verify the function is available
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       await hookExecutor.executeHook('testShellHook', hookThatUsesShell, enhancedContext);
 
@@ -305,23 +278,21 @@ describe('HookExecutor', () => {
         installationMethod: 'none',
         installParams: undefined,
       };
-      
+
       const contextWithToolConfig = {
         ...baseContext,
         toolConfig: mockToolConfig,
       };
 
       let receivedDollar: any;
-      
+
       const hook = mock(async (ctx: InstallHookContext) => {
         receivedDollar = ctx.$;
         // The $ instance should be available and configured with correct cwd
         expect(ctx.$).toBeDefined();
       });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        contextWithToolConfig, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs, logger);
 
       await hookExecutor.executeHook('afterExtract', hook, enhancedContext);
 
@@ -338,9 +309,9 @@ describe('HookExecutor', () => {
         installationMethod: 'none',
         installParams: undefined,
       };
-      
+
       const toolConfig2: ToolConfig = {
-        configFilePath: '/path/to/configs/tool2/tool2.tool.ts', 
+        configFilePath: '/path/to/configs/tool2/tool2.tool.ts',
         name: 'tool2',
         binaries: ['tool2'],
         version: 'latest',
@@ -381,14 +352,12 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
 
       expect(results).toHaveLength(3);
-      expect(results.every(r => r.success)).toBe(true);
+      expect(results.every((r) => r.success)).toBe(true);
       expect(hook1).toHaveBeenCalledTimes(1);
       expect(hook2).toHaveBeenCalledTimes(1);
       expect(hook3).toHaveBeenCalledTimes(1);
@@ -396,7 +365,9 @@ describe('HookExecutor', () => {
 
     it('should stop execution on hook failure when continueOnError is false', async () => {
       const hook1 = mock(async () => {});
-      const hook2 = mock(async () => { throw new Error('Hook2 failed'); });
+      const hook2 = mock(async () => {
+        throw new Error('Hook2 failed');
+      });
       const hook3 = mock(async () => {});
 
       const hooks = [
@@ -405,9 +376,7 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
 
@@ -421,7 +390,9 @@ describe('HookExecutor', () => {
 
     it('should continue execution on hook failure when continueOnError is true', async () => {
       const hook1 = mock(async () => {});
-      const hook2 = mock(async () => { throw new Error('Hook2 failed'); });
+      const hook2 = mock(async () => {
+        throw new Error('Hook2 failed');
+      });
       const hook3 = mock(async () => {});
 
       const hooks = [
@@ -430,9 +401,7 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
 
@@ -446,8 +415,12 @@ describe('HookExecutor', () => {
     });
 
     it('should handle mixed hook options correctly', async () => {
-      const hook1 = mock(async () => { throw new Error('Hook1 failed'); });
-      const hook2 = mock(async () => { throw new Error('Hook2 failed'); });
+      const hook1 = mock(async () => {
+        throw new Error('Hook1 failed');
+      });
+      const hook2 = mock(async () => {
+        throw new Error('Hook2 failed');
+      });
       const hook3 = mock(async () => {});
 
       const hooks = [
@@ -456,9 +429,7 @@ describe('HookExecutor', () => {
         { name: 'hook3', hook: hook3 },
       ];
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const results = await hookExecutor.executeHooks(hooks, enhancedContext);
 
@@ -481,31 +452,21 @@ describe('HookExecutor', () => {
     it('should log debug messages during hook execution', async () => {
       const mockHook = mock(async () => {});
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
-      logger.expect(
-        ['DEBUG'],
-        ['HookExecutor'],
-        [/Executing testHook hook with \d+ms timeout/]
-      );
-      logger.expect(
-        ['DEBUG'],
-        ['HookExecutor'],
-        [expect.stringContaining('Hook testHook completed successfully in')]
-      );
+      logger.expect(['DEBUG'], ['HookExecutor'], [/Executing testHook hook with \d+ms timeout/]);
+      logger.expect(['DEBUG'], ['HookExecutor'], [expect.stringContaining('Hook testHook completed successfully in')]);
     });
 
     it('should log errors when hooks fail', async () => {
       const errorMessage = 'Test hook error';
-      const mockHook = mock(async () => { throw new Error(errorMessage); });
+      const mockHook = mock(async () => {
+        throw new Error(errorMessage);
+      });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
@@ -517,11 +478,11 @@ describe('HookExecutor', () => {
     });
 
     it('should handle non-Error exceptions', async () => {
-      const mockHook = mock(async () => { throw 'String error'; });
+      const mockHook = mock(async () => {
+        throw 'String error';
+      });
 
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        baseContext, memFs.fs, logger
-      );
+      const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
 
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 

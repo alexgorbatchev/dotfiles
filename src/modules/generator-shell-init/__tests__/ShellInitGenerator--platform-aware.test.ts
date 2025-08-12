@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { ToolConfig, SystemInfo } from '@types';
-import { Platform, Architecture, always } from '@types';
-import { ShellInitGenerator } from '../ShellInitGenerator';
+import type { IFileSystem } from '@modules/file-system';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
+import type { SystemInfo, ToolConfig } from '@types';
+import { Architecture, always, Platform } from '@types';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
-import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Platform-Aware Generation', () => {
   let mockFileSystem: IFileSystem;
@@ -19,9 +25,9 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
     logger = new TestLogger();
-    
+
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-platform-aware' });
-    
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
@@ -40,25 +46,34 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
     it('should generate shell code including macOS platform-specific content', async () => {
       const macosSystemInfo: SystemInfo = {
         platform: 'darwin',
-        arch: 'arm64', 
+        arch: 'arm64',
         homeDir: '/Users/test',
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
-        'aerospace': {
+        aerospace: {
           name: 'aerospace',
           version: 'latest',
           installationMethod: 'none',
           shellConfigs: { zsh: { scripts: [always`# Base aerospace init`] } },
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              installationMethod: 'brew',
-              installParams: { formula: 'nikitabobko/tap/aerospace', cask: true },
-              binaries: ['aerospace'],
-              shellConfigs: { zsh: { scripts: [always`# macOS aerospace init`, always`export AEROSPACE_CONFIG="~/.config/aerospace/aerospace.toml"`] } },
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                installationMethod: 'brew',
+                installParams: { formula: 'nikitabobko/tap/aerospace', cask: true },
+                binaries: ['aerospace'],
+                shellConfigs: {
+                  zsh: {
+                    scripts: [
+                      always`# macOS aerospace init`,
+                      always`export AEROSPACE_CONFIG="~/.config/aerospace/aerospace.toml"`,
+                    ],
+                  },
+                },
+              },
             },
-          }],
+          ],
         },
       };
 
@@ -71,10 +86,10 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
       expect(result).not.toBeNull();
       expect(result!.files.has('zsh')).toBe(true);
-      
+
       const generatedFilePath = result!.files.get('zsh')!;
       const generatedContent = await mockFileSystem.readFile(generatedFilePath);
-      
+
       // Should include both base and platform-specific zsh init
       expect(generatedContent).toContain('# Base aerospace init');
       expect(generatedContent).toContain('# macOS aerospace init');
@@ -89,18 +104,20 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       };
 
       const toolConfigs: Record<string, ToolConfig> = {
-        'aerospace': {
+        aerospace: {
           name: 'aerospace',
-          version: 'latest', 
+          version: 'latest',
           installationMethod: 'none',
           shellConfigs: { zsh: { scripts: [always`# Base aerospace init`] } },
-          platformConfigs: [{
-            platforms: Platform.MacOS, // Only for macOS
-            config: {
-              shellConfigs: { zsh: { scripts: [always`# macOS-only aerospace init`] } },
-              binaries: ['aerospace'],
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS, // Only for macOS
+              config: {
+                shellConfigs: { zsh: { scripts: [always`# macOS-only aerospace init`] } },
+                binaries: ['aerospace'],
+              },
             },
-          }],
+          ],
         },
       };
 
@@ -114,7 +131,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       expect(result).not.toBeNull();
       const generatedFilePath = result!.files.get('zsh')!;
       const generatedContent = await mockFileSystem.readFile(generatedFilePath);
-      
+
       // Should only include base init, not platform-specific
       expect(generatedContent).toContain('# Base aerospace init');
       expect(generatedContent).not.toContain('# macOS-only aerospace init');
@@ -166,12 +183,12 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       expect(generatedContent).toContain('# Base init');
       expect(generatedContent).toContain('# Unix common init');
       expect(generatedContent).toContain('# macOS specific init');
-      
+
       // Check order by finding indices
       const baseIndex = generatedContent.indexOf('# Base init');
       const unixIndex = generatedContent.indexOf('# Unix common init');
       const macosIndex = generatedContent.indexOf('# macOS specific init');
-      
+
       expect(baseIndex).toBeLessThan(unixIndex);
       expect(unixIndex).toBeLessThan(macosIndex);
     });
@@ -184,7 +201,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       };
 
       const macosIntelSystemInfo: SystemInfo = {
-        platform: 'darwin', 
+        platform: 'darwin',
         arch: 'x64',
         homeDir: '/Users/test',
       };
@@ -254,12 +271,14 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           installParams: { repo: 'test/repo' },
           binaries: ['platform-tool'],
           shellConfigs: { zsh: { scripts: [always`# Base init only`] } },
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              shellConfigs: { zsh: { scripts: [always`# This should not appear`] } },
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                shellConfigs: { zsh: { scripts: [always`# This should not appear`] } },
+              },
             },
-          }],
+          ],
         },
       };
 
@@ -291,17 +310,19 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
           name: 'tool-with-completions',
           version: 'latest',
           installationMethod: 'none',
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              binaries: ['completion-tool'],
-              completions: {
-                zsh: {
-                  source: 'completions/_completion-tool',
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                binaries: ['completion-tool'],
+                completions: {
+                  zsh: {
+                    source: 'completions/_completion-tool',
+                  },
                 },
               },
             },
-          }],
+          ],
         },
       };
 
@@ -341,28 +362,32 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         },
         'platform-tool': {
           name: 'platform-tool',
-          version: 'latest', 
+          version: 'latest',
           installationMethod: 'none',
           shellConfigs: { zsh: { scripts: [always`# Base platform init`] } },
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              shellConfigs: { zsh: { scripts: [always`# macOS platform init`] } },
-              binaries: ['macos-platform'],
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                shellConfigs: { zsh: { scripts: [always`# macOS platform init`] } },
+                binaries: ['macos-platform'],
+              },
             },
-          }],
+          ],
         },
         'linux-only-tool': {
           name: 'linux-only-tool',
           version: 'latest',
           installationMethod: 'none',
-          platformConfigs: [{
-            platforms: Platform.Linux,
-            config: {
-              shellConfigs: { zsh: { scripts: [always`# Linux only - should not appear`] } },
-              binaries: ['linux-only'],
+          platformConfigs: [
+            {
+              platforms: Platform.Linux,
+              config: {
+                shellConfigs: { zsh: { scripts: [always`# Linux only - should not appear`] } },
+                binaries: ['linux-only'],
+              },
             },
-          }],
+          ],
         },
       };
 
@@ -379,11 +404,11 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
       // Should include regular tool
       expect(generatedContent).toContain('# Regular tool init');
-      
+
       // Should include platform tool's base and macOS content
       expect(generatedContent).toContain('# Base platform init');
       expect(generatedContent).toContain('# macOS platform init');
-      
+
       // Should NOT include Linux-only content
       expect(generatedContent).not.toContain('# Linux only - should not appear');
     });

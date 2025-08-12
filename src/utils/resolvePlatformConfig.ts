@@ -1,5 +1,5 @@
-import type { ToolConfig, PlatformConfigEntry, SystemInfo } from '@types';
-import { Platform, Architecture, hasPlatform, hasArchitecture } from '@types';
+import type { PlatformConfigEntry, SystemInfo, ToolConfig } from '@types';
+import { Architecture, hasArchitecture, hasPlatform, Platform } from '@types';
 
 /**
  * Detects the current operating system using the same logic as yamlConfigLoader
@@ -14,7 +14,7 @@ function detectPlatformEnum(platform: string): Platform {
 }
 
 /**
- * Detects the current architecture using the same logic as yamlConfigLoader  
+ * Detects the current architecture using the same logic as yamlConfigLoader
  * @param arch - The architecture from SystemInfo (from NodeJS.Process)
  * @returns The detected architecture as an Architecture enum
  */
@@ -62,7 +62,7 @@ function matchesPlatform(entry: PlatformConfigEntry, systemInfo: SystemInfo): bo
 /**
  * Resolves platform-specific configurations for a tool based on system information.
  * Merges the base tool configuration with matching platform-specific overrides.
- * 
+ *
  * @param toolConfig - The base tool configuration
  * @param systemInfo - The current system information
  * @returns A resolved tool configuration with platform-specific overrides applied
@@ -74,9 +74,7 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
   }
 
   // Find matching platform configurations
-  const matchingConfigs = toolConfig.platformConfigs.filter(entry => 
-    matchesPlatform(entry, systemInfo)
-  );
+  const matchingConfigs = toolConfig.platformConfigs.filter((entry) => matchesPlatform(entry, systemInfo));
 
   // If no matches found, return the original config without platformConfigs
   if (matchingConfigs.length === 0) {
@@ -86,23 +84,33 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
   }
 
   // Start with a deep copy of the base config (excluding platformConfigs to avoid recursion)
-  const resolvedConfig = { 
+  const resolvedConfig = {
     ...toolConfig,
-    shellConfigs: toolConfig.shellConfigs ? {
-      ...toolConfig.shellConfigs,
-      zsh: toolConfig.shellConfigs.zsh ? {
-        ...toolConfig.shellConfigs.zsh,
-        scripts: toolConfig.shellConfigs.zsh.scripts ? [...toolConfig.shellConfigs.zsh.scripts] : undefined
-      } : undefined,
-      bash: toolConfig.shellConfigs.bash ? {
-        ...toolConfig.shellConfigs.bash,
-        scripts: toolConfig.shellConfigs.bash.scripts ? [...toolConfig.shellConfigs.bash.scripts] : undefined
-      } : undefined,
-      powershell: toolConfig.shellConfigs.powershell ? {
-        ...toolConfig.shellConfigs.powershell,
-        scripts: toolConfig.shellConfigs.powershell.scripts ? [...toolConfig.shellConfigs.powershell.scripts] : undefined
-      } : undefined,
-    } : undefined
+    shellConfigs: toolConfig.shellConfigs
+      ? {
+          ...toolConfig.shellConfigs,
+          zsh: toolConfig.shellConfigs.zsh
+            ? {
+                ...toolConfig.shellConfigs.zsh,
+                scripts: toolConfig.shellConfigs.zsh.scripts ? [...toolConfig.shellConfigs.zsh.scripts] : undefined,
+              }
+            : undefined,
+          bash: toolConfig.shellConfigs.bash
+            ? {
+                ...toolConfig.shellConfigs.bash,
+                scripts: toolConfig.shellConfigs.bash.scripts ? [...toolConfig.shellConfigs.bash.scripts] : undefined,
+              }
+            : undefined,
+          powershell: toolConfig.shellConfigs.powershell
+            ? {
+                ...toolConfig.shellConfigs.powershell,
+                scripts: toolConfig.shellConfigs.powershell.scripts
+                  ? [...toolConfig.shellConfigs.powershell.scripts]
+                  : undefined,
+              }
+            : undefined,
+        }
+      : undefined,
   };
   delete (resolvedConfig as any).platformConfigs;
 
@@ -114,7 +122,7 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
       if (!resolvedConfig.shellConfigs) {
         resolvedConfig.shellConfigs = {} as any;
       }
-      
+
       // Merge zsh scripts
       if (match.config.shellConfigs.zsh?.scripts) {
         if (!resolvedConfig.shellConfigs!.zsh) {
@@ -122,10 +130,10 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
         }
         resolvedConfig.shellConfigs!.zsh!.scripts = [
           ...(resolvedConfig.shellConfigs!.zsh!.scripts || []),
-          ...match.config.shellConfigs.zsh.scripts
+          ...match.config.shellConfigs.zsh.scripts,
         ];
       }
-      
+
       // Merge bash scripts
       if (match.config.shellConfigs.bash?.scripts) {
         if (!resolvedConfig.shellConfigs!.bash) {
@@ -133,10 +141,10 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
         }
         resolvedConfig.shellConfigs!.bash!.scripts = [
           ...(resolvedConfig.shellConfigs!.bash!.scripts || []),
-          ...match.config.shellConfigs.bash.scripts
+          ...match.config.shellConfigs.bash.scripts,
         ];
       }
-      
+
       // Merge powershell scripts
       if (match.config.shellConfigs.powershell?.scripts) {
         if (!resolvedConfig.shellConfigs!.powershell) {
@@ -144,10 +152,10 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
         }
         resolvedConfig.shellConfigs!.powershell!.scripts = [
           ...(resolvedConfig.shellConfigs!.powershell!.scripts || []),
-          ...match.config.shellConfigs.powershell.scripts
+          ...match.config.shellConfigs.powershell.scripts,
         ];
       }
-      
+
       // TODO: Also merge aliases and environment variables when those are implemented
     }
 

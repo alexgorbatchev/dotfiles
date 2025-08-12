@@ -1,10 +1,10 @@
-import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import type { IFileRegistry, FileOperation } from './IFileRegistry';
 import { logs } from '@modules/logger';
 import { contractHomePath, formatPermissions } from '@utils';
+import type { FileOperation, IFileRegistry } from './IFileRegistry';
 
 /**
  * Context for tracking filesystem operations.
@@ -90,8 +90,11 @@ export class TrackedFileSystem implements IFileSystem {
     return this.fs.readFile(filePath, encoding);
   }
 
-  async writeFile(filePath: string, content: string | NodeJS.ArrayBufferView, encoding?: BufferEncoding): Promise<void> {
-    
+  async writeFile(
+    filePath: string,
+    content: string | NodeJS.ArrayBufferView,
+    encoding?: BufferEncoding
+  ): Promise<void> {
     const fileExists = await this.fs.exists(filePath);
     let contentChanged = true;
 
@@ -141,7 +144,6 @@ export class TrackedFileSystem implements IFileSystem {
   // Note: appendFile is not in IFileSystem interface, removing it
 
   async copyFile(src: string, dest: string, flags?: number): Promise<void> {
-    
     // Perform the actual operation
     await this.fs.copyFile(src, dest, flags);
 
@@ -161,11 +163,16 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(logs.fs.success.copied(this.context.toolName, contractHomePath(this.homeDir, src), contractHomePath(this.homeDir, dest)));
+    this.logger.info(
+      logs.fs.success.copied(
+        this.context.toolName,
+        contractHomePath(this.homeDir, src),
+        contractHomePath(this.homeDir, dest)
+      )
+    );
   }
 
   async rename(oldPath: string, newPath: string): Promise<void> {
-    
     // Perform the actual operation
     await this.fs.rename(oldPath, newPath);
 
@@ -185,11 +192,16 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(logs.fs.success.moved(this.context.toolName, contractHomePath(this.homeDir, oldPath), contractHomePath(this.homeDir, newPath)));
+    this.logger.info(
+      logs.fs.success.moved(
+        this.context.toolName,
+        contractHomePath(this.homeDir, oldPath),
+        contractHomePath(this.homeDir, newPath)
+      )
+    );
   }
 
   async symlink(target: string, linkPath: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
-    
     // Perform the actual operation
     await this.fs.symlink(target, linkPath, type);
 
@@ -204,13 +216,18 @@ export class TrackedFileSystem implements IFileSystem {
       metadata: this.context.metadata,
     });
 
-    this.logger.info(logs.fs.success.symlinkCreated(this.context.toolName, contractHomePath(this.homeDir, linkPath), contractHomePath(this.homeDir, target)));
+    this.logger.info(
+      logs.fs.success.symlinkCreated(
+        this.context.toolName,
+        contractHomePath(this.homeDir, linkPath),
+        contractHomePath(this.homeDir, target)
+      )
+    );
   }
 
   async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
-    
     // If removing recursively, we need to track all files being removed
-    if (options?.recursive && await this.fs.exists(filePath)) {
+    if (options?.recursive && (await this.fs.exists(filePath))) {
       const stat = await this.fs.stat(filePath);
       if (stat.isDirectory()) {
         await this.trackDirectoryDeletion(filePath);
@@ -232,7 +249,6 @@ export class TrackedFileSystem implements IFileSystem {
   }
 
   async chmod(filePath: string, mode: string | number): Promise<void> {
-    
     // Perform the actual operation
     await this.fs.chmod(filePath, mode);
 
@@ -250,7 +266,13 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(logs.fs.success.permissionsChanged(this.context.toolName, contractHomePath(this.homeDir, filePath), formatPermissions(mode)));
+    this.logger.info(
+      logs.fs.success.permissionsChanged(
+        this.context.toolName,
+        contractHomePath(this.homeDir, filePath),
+        formatPermissions(mode)
+      )
+    );
   }
 
   // Non-modifying operations - these don't need tracking
@@ -275,9 +297,8 @@ export class TrackedFileSystem implements IFileSystem {
   }
 
   async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
-    
     const existed = await this.fs.exists(dirPath);
-    
+
     // Perform the actual operation
     await this.fs.mkdir(dirPath, options);
 
@@ -292,13 +313,15 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logger.info(logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(
+        logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath))
+      );
     }
   }
 
   async rmdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'rmdir' });
-    
+
     // Track directory deletion
     if (await this.fs.exists(dirPath)) {
       if (options?.recursive) {
@@ -315,9 +338,8 @@ export class TrackedFileSystem implements IFileSystem {
   }
 
   async ensureDir(dirPath: string): Promise<void> {
-    
     const existed = await this.fs.exists(dirPath);
-    
+
     // Perform the actual operation
     await this.fs.ensureDir(dirPath);
 
@@ -332,7 +354,9 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logger.info(logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
+      this.logger.info(
+        logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath))
+      );
     }
   }
 
@@ -371,18 +395,18 @@ export class TrackedFileSystem implements IFileSystem {
   private async trackDirectoryDeletion(dirPath: string): Promise<void> {
     try {
       const entries = await this.fs.readdir(dirPath);
-      
+
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry);
         const stat = await this.fs.stat(fullPath);
-        
+
         if (stat.isDirectory()) {
           await this.trackDirectoryDeletion(fullPath);
         } else {
           await this.trackFileDeletion(fullPath);
         }
       }
-      
+
       // Track the directory itself
       await this.trackFileDeletion(dirPath);
     } catch (error) {

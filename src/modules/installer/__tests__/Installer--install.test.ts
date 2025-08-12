@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
-import { 
-  createInstallerTestSetup, 
+import {
   createBasicToolConfig,
+  createInstallerTestSetup,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
-  MOCK_TOOL_REPO 
+  MOCK_TOOL_REPO,
 } from './installer-test-helpers';
 
 describe('Installer - install (orchestrator)', () => {
@@ -28,10 +28,10 @@ describe('Installer - install (orchestrator)', () => {
   it('should call the appropriate installation method based on installationMethod', async () => {
     const toolConfig = createBasicToolConfig();
 
-    const installFromGitHubReleaseSpy = spyOn(
-      setup.installer,
-      'installFromGitHubRelease'
-    ).mockResolvedValue({ success: true, binaryPath: setup.mockToolBinaryPath });
+    const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
+      success: true,
+      binaryPath: setup.mockToolBinaryPath,
+    });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
@@ -49,10 +49,7 @@ describe('Installer - install (orchestrator)', () => {
     const toolConfig = createBasicToolConfig();
 
     const error = new Error('Test error');
-    const installFromGitHubReleaseSpy = spyOn(
-      setup.installer,
-      'installFromGitHubRelease'
-    ).mockRejectedValue(error);
+    const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockRejectedValue(error);
 
     const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
@@ -78,10 +75,10 @@ describe('Installer - install (orchestrator)', () => {
       },
     });
 
-    const installFromGitHubReleaseSpy = spyOn(
-      setup.installer,
-      'installFromGitHubRelease'
-    ).mockResolvedValue({ success: true, binaryPath: setup.mockToolBinaryPath });
+    const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
+      success: true,
+      binaryPath: setup.mockToolBinaryPath,
+    });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 

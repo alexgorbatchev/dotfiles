@@ -48,8 +48,6 @@ export interface InstallResult {
    * Additional information about the installation
    */
   info?: Record<string, any>;
-
-
 }
 
 /**
@@ -64,9 +62,5 @@ export interface IInstaller {
    * @param options Installation options
    * @returns Promise resolving to the installation result
    */
-  install(
-    toolName: string,
-    toolConfig: ToolConfig,
-    options?: InstallOptions
-  ): Promise<InstallResult>;
+  install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult>;
 }

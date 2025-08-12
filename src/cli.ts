@@ -1,46 +1,35 @@
 #!/usr/bin/env bun
 
+import os from 'node:os';
+import path from 'node:path';
+import { FileCache, type ICache } from '@modules/cache';
 import {
   registerCheckUpdatesCommand,
   registerCleanupCommand,
   registerDetectConflictsCommand,
   registerFilesCommand,
   registerGenerateCommand,
+  registerInitCommand,
   registerInstallCommand,
   registerUpdateCommand,
-  registerInitCommand,
 } from '@modules/cli';
-import { type YamlConfig, OS_VALUES, ARCH_VALUES } from '@modules/config';
+import { ARCH_VALUES, OS_VALUES, type YamlConfig } from '@modules/config';
 import { loadYamlConfig } from '@modules/config-loader';
-import { FileCache, type ICache } from '@modules/cache';
 import { Downloader, type IDownloader } from '@modules/downloader';
 import { ArchiveExtractor, type IArchiveExtractor } from '@modules/extractor';
-import {
-  MemFileSystem,
-  NodeFileSystem,
-  type IFileSystem,
-} from '@modules/file-system';
-import {
-  GeneratorOrchestrator,
-  type IGeneratorOrchestrator,
-} from '@modules/generator-orchestrator';
-import { ShellInitGenerator, type IShellInitGenerator } from '@modules/generator-shell-init';
-import { ShimGenerator, type IShimGenerator } from '@modules/generator-shim';
-import { SymlinkGenerator, type ISymlinkGenerator } from '@modules/generator-symlink';
-import {
-  GitHubApiClient,
-  type IGitHubApiClient,
-} from '@modules/github-client';
-import { Installer, type IInstaller } from '@modules/installer';
-import { type TsLogger, createTsLogger, getLogLevelFromFlags } from '@modules/logger';
-import { SqliteFileRegistry, type IFileRegistry, TrackedFileSystem } from '@modules/file-registry';
-import { VersionChecker, type IVersionChecker } from '@modules/version-checker';
+import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@modules/file-registry';
+import { type IFileSystem, MemFileSystem, NodeFileSystem } from '@modules/file-system';
+import { GeneratorOrchestrator, type IGeneratorOrchestrator } from '@modules/generator-orchestrator';
+import { type IShellInitGenerator, ShellInitGenerator } from '@modules/generator-shell-init';
+import { type IShimGenerator, ShimGenerator } from '@modules/generator-shim';
+import { type ISymlinkGenerator, SymlinkGenerator } from '@modules/generator-symlink';
+import { GitHubApiClient, type IGitHubApiClient } from '@modules/github-client';
+import { type IInstaller, Installer } from '@modules/installer';
+import { createTsLogger, getLogLevelFromFlags, logs, type TsLogger } from '@modules/logger';
+import { type IVersionChecker, VersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
 import { contractHomePath } from '@utils';
 import { Command } from 'commander';
-import os from 'node:os';
-import path from 'node:path';
-import { logs } from '@modules/logger';
 
 export interface Services {
   yamlConfig: YamlConfig;
@@ -60,14 +49,11 @@ export interface Services {
 }
 
 type SetupServicesOptions = GlobalProgramOptions & {
- cwd: string; 
- env: NodeJS.ProcessEnv;
-}
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+};
 
-export async function setupServices(
-  parentLogger: TsLogger,
-  options: SetupServicesOptions
-): Promise<Services> {
+export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<Services> {
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
   logger.trace(logs.general.success.started('setupServices'), options);
   const { dryRun, env, config } = options;
@@ -98,14 +84,12 @@ export async function setupServices(
 
   // Default config path should be in the generator directory
   // If no config specified, look for config.yaml in the generator directory (one level up from src/)
-  const userConfigPath = config.length === 0 ? 
-    path.resolve(path.dirname(__dirname), 'config.yaml') : 
-    config;
-  
+  const userConfigPath = config.length === 0 ? path.resolve(path.dirname(__dirname), 'config.yaml') : config;
+
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
   // In tests, the config file should be loaded from the test filesystem (MemFileSystem)
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
-  const configFs = (dryRun && isRunningDirectly) ? new NodeFileSystem() : fs;
+  const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
   const yamlConfig = await loadYamlConfig(logger, configFs, userConfigPath, systemInfo, env);
 
   // console.log('yamlConfig', yamlConfig);
@@ -149,17 +133,16 @@ export async function setupServices(
   let downloadCache: ICache | undefined;
   if (yamlConfig.downloader.cache.enabled) {
     const cacheDir = path.join(yamlConfig.paths.generatedDir, 'cache', 'downloads');
-    downloadCache = new FileCache(
-      parentLogger,
-      fs,
-      {
-        enabled: true,
-        defaultTtl: yamlConfig.downloader.cache.ttl,
-        cacheDir,
-        storageStrategy: 'binary',
-      }
+    downloadCache = new FileCache(parentLogger, fs, {
+      enabled: true,
+      defaultTtl: yamlConfig.downloader.cache.ttl,
+      cacheDir,
+      storageStrategy: 'binary',
+    });
+    parentLogger.debug(
+      logs.general.success.cachingEnabled(),
+      `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`
     );
-    parentLogger.debug(logs.general.success.cachingEnabled(), `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`);
   } else {
     parentLogger.info(logs.general.success.cachingDisabled());
   }
@@ -218,7 +201,7 @@ export async function setupServices(
     systemInfo
   );
 
-  // Create tracked filesystem for installer binary operations  
+  // Create tracked filesystem for installer binary operations
   const installerTrackedFs = new TrackedFileSystem(
     parentLogger,
     fs,
@@ -234,7 +217,7 @@ export async function setupServices(
     downloader,
     githubApiClient,
     archiveExtractor,
-    yamlConfig,
+    yamlConfig
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
 
@@ -265,11 +248,7 @@ export function createProgram() {
     .option('--config <path>', 'Path to a configuration file', '')
     .option('--dry-run', 'Simulate all operations without making changes to the file system', false)
     .option('--verbose', 'Enable detailed debug messages.', false)
-    .option(
-      '--quiet',
-      'Suppress all informational and debug output. Errors are still displayed.',
-      false
-    )
+    .option('--quiet', 'Suppress all informational and debug output. Errors are still displayed.', false)
     .option('--platform <platform>', `Override the detected platform (${OS_VALUES.join(', ')})`)
     .option('--arch <arch>', `Override the detected architecture (${ARCH_VALUES.join(', ')})`);
 
@@ -277,8 +256,8 @@ export function createProgram() {
 }
 
 export function registerAllCommands(
-  parentLogger: TsLogger, 
-  program: GlobalProgram, 
+  parentLogger: TsLogger,
+  program: GlobalProgram,
   servicesFactory: () => Promise<Services>
 ) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
@@ -297,11 +276,11 @@ export type GlobalProgramOptions = ReturnType<GlobalProgram['opts']>;
 
 export async function main(argv: string[]) {
   const program = createProgram();
-  
+
   // Parse options first to get quiet/verbose flags
   program.parseOptions(argv);
   const options = program.opts();
-  
+
   // Create logger with appropriate level based on CLI flags
   const logLevel = getLogLevelFromFlags(options.quiet, options.verbose);
   const rootLogger = createTsLogger({ name: 'cli', minLevel: logLevel });

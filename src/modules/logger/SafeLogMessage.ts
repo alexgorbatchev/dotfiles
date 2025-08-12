@@ -16,9 +16,6 @@ export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessag
  */
 export function isSafeLogMessage(value: unknown): value is SafeLogMessage {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    '__brand' in value &&
-    (value as any).__brand === 'SafeLogMessage'
+    typeof value === 'object' && value !== null && '__brand' in value && (value as any).__brand === 'SafeLogMessage'
   );
 }

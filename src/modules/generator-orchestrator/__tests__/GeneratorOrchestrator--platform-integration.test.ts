@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { ToolConfig, SystemInfo, GeneratedArtifactsManifest } from '@types';
-import { Platform, always } from '@types';
-import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
-import type { IShimGenerator } from '@modules/generator-shim';
+import type { IFileSystem } from '@modules/file-system';
 import type { IShellInitGenerator, ShellInitGenerationResult } from '@modules/generator-shell-init';
+import type { IShimGenerator } from '@modules/generator-shim';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
-import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
+import type { GeneratedArtifactsManifest, SystemInfo, ToolConfig } from '@types';
+import { always, Platform } from '@types';
+import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let mockFileSystem: IFileSystem;
@@ -16,7 +22,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
   let mockShimGenerator: IShimGenerator;
-  let mockShellInitGenerator: IShellInitGenerator;  
+  let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
   let macosSystemInfo: SystemInfo;
   let linuxSystemInfo: SystemInfo;
@@ -26,9 +32,9 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
     logger = new TestLogger();
-    
+
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'orchestrator-platform-integration' });
-    
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
@@ -48,7 +54,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
 
     linuxSystemInfo = {
       platform: 'linux',
-      arch: 'x64', 
+      arch: 'x64',
       homeDir: testDirs.paths.homeDir,
     };
 
@@ -77,10 +83,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
           for (const [toolName, config] of Object.entries(toolConfigs)) {
             if (config.platformConfigs) {
               for (const platformConfig of config.platformConfigs) {
-                const isMatch = 
+                const isMatch =
                   (platformConfig.platforms & Platform.MacOS && options.systemInfo.platform === 'darwin') ||
                   (platformConfig.platforms & Platform.Linux && options.systemInfo.platform === 'linux');
-                
+
                 if (isMatch && platformConfig.config.shellConfigs?.zsh?.scripts) {
                   mockContent += `# Platform-specific content for ${toolName}: ${platformConfig.config.shellConfigs.zsh.scripts.join(' ')}\n`;
                 }
@@ -120,24 +126,26 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
-        'aerospace': {
+        aerospace: {
           name: 'aerospace',
           version: 'latest',
           installationMethod: 'none',
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              binaries: ['aerospace'],
-              shellConfigs: {
-                zsh: {
-                  scripts: [always`# macOS aerospace init`],
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                binaries: ['aerospace'],
+                shellConfigs: {
+                  zsh: {
+                    scripts: [always`# macOS aerospace init`],
+                  },
                 },
               },
             },
-          }],
+          ],
         },
         'regular-tool': {
-          name: 'regular-tool', 
+          name: 'regular-tool',
           version: 'latest',
           installationMethod: 'github-release',
           installParams: { repo: 'test/regular' },
@@ -217,7 +225,9 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
       expect(shellContent).toContain('# Platform: linux');
       expect(shellContent).toContain('# Arch: x64');
-      expect(shellContent).toContain('# Platform-specific content for cross-platform-tool: # Linux specific - should appear');
+      expect(shellContent).toContain(
+        '# Platform-specific content for cross-platform-tool: # Linux specific - should appear'
+      );
       expect(shellContent).not.toContain('# macOS specific - should not appear');
     });
 
@@ -284,20 +294,22 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
             },
           },
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              binaries: ['macos-binary'],
-              shellConfigs: {
-                zsh: {
-                  scripts: [always`# macOS shell init`],
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                binaries: ['macos-binary'],
+                shellConfigs: {
+                  zsh: {
+                    scripts: [always`# macOS shell init`],
+                  },
                 },
+                symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
+                installationMethod: 'brew',
+                installParams: { formula: 'test-formula' },
               },
-              symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
-              installationMethod: 'brew',
-              installParams: { formula: 'test-formula' },
             },
-          }],
+          ],
         },
       };
 

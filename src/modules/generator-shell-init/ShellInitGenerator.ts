@@ -1,13 +1,13 @@
 import path from 'node:path';
-import type { ToolConfig, ShellType } from '@types';
-import type { IFileSystem } from '@modules/file-system';
-import type { IShellInitGenerator, GenerateShellInitOptions, ShellInitGenerationResult } from './IShellInitGenerator';
-import type { TsLogger } from '@modules/logger';
 import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import { ShellGeneratorFactory, type ShellInitContent } from './shell-generators';
-import { ProfileUpdater, type ProfileUpdateConfig } from './profile-updater';
+import type { ShellType, ToolConfig } from '@types';
 import { resolvePlatformConfig } from '@utils';
+import type { GenerateShellInitOptions, IShellInitGenerator, ShellInitGenerationResult } from './IShellInitGenerator';
+import { type ProfileUpdateConfig, ProfileUpdater } from './profile-updater';
+import { ShellGeneratorFactory, type ShellInitContent } from './shell-generators';
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
@@ -26,7 +26,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     options?: GenerateShellInitOptions
   ): Promise<ShellInitGenerationResult | null> {
     this.logger.debug(logs.shellInit.debug.generateDebug(), toolConfigs, options, this.fs.constructor.name);
-    
+
     // Default to zsh for backward compatibility
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
     const generatedFiles = new Map<ShellType, string>();
@@ -36,12 +36,12 @@ export class ShellInitGenerator implements IShellInitGenerator {
       try {
         const generator = ShellGeneratorFactory.createGenerator(shellType, this.appConfig);
         const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
-        
+
         this.logger.debug(logs.shellInit.debug.outputPath(), outputPath);
 
         // Extract shell content from all tools
         const toolContents = new Map<string, ShellInitContent>();
-        
+
         for (const toolName in toolConfigs) {
           const config = toolConfigs[toolName];
           this.logger.debug(logs.shellInit.debug.processingTool(), toolName, config);
@@ -56,7 +56,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
           // Extract shell content using the generator
           const shellContent = generator.extractShellContent(toolName, resolvedConfig);
-          
+
           // Process completions if they exist
           if (resolvedConfig.completions) {
             const completionSetup = generator.processCompletions(toolName, resolvedConfig.completions);
@@ -70,7 +70,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
         // Generate file content using the shell-specific generator
         const fileContent = generator.generateFileContent(toolContents);
-        
+
         // Clean up once scripts directory before writing new ones
         await this.cleanupOnceScriptsDirectory(shellType);
 
@@ -82,19 +82,24 @@ export class ShellInitGenerator implements IShellInitGenerator {
           await this.fs.ensureDir(path.dirname(outputPath));
           await this.fs.writeFile(outputPath, fileContent);
           generatedFiles.set(shellType, outputPath);
-          
+
           // Set primary path to the first generated file (for backward compatibility)
           if (primaryPath === null) {
             primaryPath = outputPath;
           }
-          
+
           // Write additional files
           for (const additionalFile of additionalFiles) {
             try {
               await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
               await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
             } catch (error: any) {
-              this.logger.debug(logs.shellInit.debug.writeError(), additionalFile.outputPath, this.fs.constructor.name, error.message);
+              this.logger.debug(
+                logs.shellInit.debug.writeError(),
+                additionalFile.outputPath,
+                this.fs.constructor.name,
+                error.message
+              );
               // Continue with other additional files even if one fails
             }
           }
@@ -134,7 +139,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async updateProfileFiles(generatedFiles: Map<ShellType, string>) {
     const logger = this.logger.getSubLogger({ name: 'updateProfileFiles' });
     const profileUpdater = new ProfileUpdater(this.fs, this.appConfig.paths.homeDir);
-    
+
     const configs: ProfileUpdateConfig[] = [];
     for (const [shellType, scriptPath] of generatedFiles) {
       configs.push({
@@ -144,9 +149,12 @@ export class ShellInitGenerator implements IShellInitGenerator {
         yamlConfigPath: this.appConfig.userConfigPath,
       });
     }
-    
-    logger.debug(logs.shellInit.debug.updatingProfiles(), configs.map(c => ({ shellType: c.shellType, path: c.generatedScriptPath })));
-    
+
+    logger.debug(
+      logs.shellInit.debug.updatingProfiles(),
+      configs.map((c) => ({ shellType: c.shellType, path: c.generatedScriptPath }))
+    );
+
     return await profileUpdater.updateProfiles(configs);
   }
 
@@ -158,7 +166,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async cleanupOnceScriptsDirectory(shellType: ShellType): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'cleanupOnceScriptsDirectory' });
     const onceDir = path.join(this.appConfig.paths.shellScriptsDir, '.once');
-    
+
     try {
       const onceDirExists = await this.fs.exists(onceDir);
       if (!onceDirExists) {
@@ -168,10 +176,10 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
       // Get file extension for this shell type
       const extension = this.getShellExtension(shellType);
-      
+
       // Read all files in the once directory
       const files = await this.fs.readdir(onceDir);
-      
+
       // Filter to only files matching this shell type and remove them
       for (const file of files) {
         if (file.endsWith(`.${extension}`)) {

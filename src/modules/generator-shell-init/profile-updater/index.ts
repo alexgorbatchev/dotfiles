@@ -1,7 +1,7 @@
-export { ProfileUpdater } from './ProfileUpdater';
-export type { 
-  IProfileUpdater, 
-  IProfileUpdaterConstructor, 
-  ProfileUpdateConfig, 
-  ProfileUpdateResult 
+export type {
+  IProfileUpdater,
+  IProfileUpdaterConstructor,
+  ProfileUpdateConfig,
+  ProfileUpdateResult,
 } from './IProfileUpdater';
+export { ProfileUpdater } from './ProfileUpdater';

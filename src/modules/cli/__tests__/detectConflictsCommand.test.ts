@@ -1,16 +1,14 @@
-import type { GlobalProgram } from '@cli';
-import { type YamlConfig } from '@modules/config';
-import {
-  loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
-} from '@modules/config-loader';
-import { logs } from '@modules/logger';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import { TestLogger, type MemFileSystemReturn } from '@testing-helpers';
-import { createCliTestSetup } from './createCliTestSetup';
-import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
+import type { GlobalProgram } from '@cli';
+import type { YamlConfig } from '@modules/config';
+import { loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory } from '@modules/config-loader';
+import { logs } from '@modules/logger';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { MemFileSystemReturn, TestLogger } from '@testing-helpers';
+import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
 import { registerDetectConflictsCommand } from '../detectConflictsCommand';
+import { createCliTestSetup } from './createCliTestSetup';
 
 setupTestCleanup();
 const mockModules = createModuleMocker();
@@ -77,7 +75,7 @@ describe('detectConflictsCommand', () => {
     const command = program.commands.find((cmd) => cmd.name() === 'detect-conflicts');
     expect(command).toBeDefined();
     expect(command?.description()).toBe(
-      'Detects conflicts between potential generated artifacts and existing system files.',
+      'Detects conflicts between potential generated artifacts and existing system files.'
     );
   });
 
@@ -85,20 +83,18 @@ describe('detectConflictsCommand', () => {
     test('No tool configs found - should log info and exit 0', async () => {
       mockLoadToolConfigsFromDirectory.mockResolvedValue({});
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_0',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
 
       expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
         expect.any(Object),
         mockYamlConfig.paths.toolConfigsDir,
         mockFs.fs.asIFileSystem,
-        mockYamlConfig,
+        mockYamlConfig
       );
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [/No tool configurations found in .*\/configs\/tools/],
+        [/No tool configurations found in .*\/configs\/tools/]
       );
     });
 
@@ -106,14 +102,12 @@ describe('detectConflictsCommand', () => {
       const loadError = new Error('Failed to load configs');
       mockLoadToolConfigsFromDirectory.mockRejectedValue(loadError);
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       logger.expect(
         ['ERROR'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [logs.config.error.loadFailed('tool configurations', loadError.message)],
+        [logs.config.error.loadFailed('tool configurations', loadError.message)]
       );
     });
 
@@ -121,14 +115,12 @@ describe('detectConflictsCommand', () => {
       mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
       // No files or symlinks added to the filesystem
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_0',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
 
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No conflicts detected'],
+        ['No conflicts detected']
       );
     });
 
@@ -141,17 +133,14 @@ describe('detectConflictsCommand', () => {
         [shimPath]: 'some other content',
       });
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${shimPath} (exists but is not a generator shim)`;
-      const expectedMessageShim = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
-      logger.expect(
-        ['WARN'],
-        ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [expectedMessageShim],
+      const expectedMessageShim = logs.tool.warning.conflictsDetected(
+        'Conflicts detected with files not owned by the generator:',
+        conflictsMessage
       );
+      logger.expect(['WARN'], ['registerDetectConflictsCommand', 'detectConflictsActionLogic'], [expectedMessageShim]);
     });
 
     test('Shim path exists and IS a generator shim - should NOT log warning for this shim', async () => {
@@ -160,41 +149,36 @@ describe('detectConflictsCommand', () => {
 
       // Add a generator shim file
       await mockFs.addFiles({
-        [shimPath]:
-          '#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool\n# ...rest of shim...',
+        [shimPath]: '#!/usr/bin/env bash\n# Generated by Dotfiles Management Tool\n# ...rest of shim...',
       });
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_0',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No conflicts detected'],
+        ['No conflicts detected']
       );
     });
 
     test('Symlink target exists as a file - should log warning and exit 1', async () => {
       const toolASymlinks = toolAConfig.symlinks![0]!;
       const configPath = path.join(mockYamlConfig.paths.homeDir, toolASymlinks.target);
-      const symlinkedConfigPath = path.join(
-        mockYamlConfig.paths.dotfilesDir,
-        toolASymlinks.source,
-      );
+      const symlinkedConfigPath = path.join(mockYamlConfig.paths.dotfilesDir, toolASymlinks.source);
 
       mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
       mockFs.addFiles({ [configPath]: 'some content' });
       mockFs.addSymlinks({ [symlinkedConfigPath]: configPath });
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${configPath} (exists but is not a symlink)`;
-      const expectedMessageSymlinkFile = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
+      const expectedMessageSymlinkFile = logs.tool.warning.conflictsDetected(
+        'Conflicts detected with files not owned by the generator:',
+        conflictsMessage
+      );
       logger.expect(
         ['WARN'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [expectedMessageSymlinkFile],
+        [expectedMessageSymlinkFile]
       );
     });
 
@@ -210,17 +194,14 @@ describe('detectConflictsCommand', () => {
         [pointsToWrongAbsolutePath]: symlinkTargetPath,
       });
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
-      const expectedMessage = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
-      logger.expect(
-        ['WARN'],
-        ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [expectedMessage],
+      const expectedMessage = logs.tool.warning.conflictsDetected(
+        'Conflicts detected with files not owned by the generator:',
+        conflictsMessage
       );
+      logger.expect(['WARN'], ['registerDetectConflictsCommand', 'detectConflictsActionLogic'], [expectedMessage]);
     });
 
     test('Multiple conflicts (shim and symlink) - should log all warnings and exit 1', async () => {
@@ -240,16 +221,17 @@ describe('detectConflictsCommand', () => {
         [symlinkPathB]: 'regular file content',
       });
 
-      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow(
-        'MOCK_EXIT_CLI_CALLED_WITH_1',
-      );
+      expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
-      const expectedMessageMultiple = logs.tool.warning.conflictsDetected('Conflicts detected with files not owned by the generator:', conflictsMessage);
+      const expectedMessageMultiple = logs.tool.warning.conflictsDetected(
+        'Conflicts detected with files not owned by the generator:',
+        conflictsMessage
+      );
       logger.expect(
         ['WARN'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [expectedMessageMultiple],
+        [expectedMessageMultiple]
       );
     });
   });

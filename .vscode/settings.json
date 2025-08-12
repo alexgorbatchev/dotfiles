@@ -3,7 +3,7 @@
 
   "search.exclude": {
     "**/dist": true,
-    "**/.generated": true,
+    "**/.generated": true
   },
 
   "files.exclude": {

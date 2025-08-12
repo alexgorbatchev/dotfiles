@@ -1,34 +1,33 @@
-import path from 'node:path';
 import os from 'node:os';
-import type { TsLogger } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import type { IDownloader } from '@modules/downloader/IDownloader';
-import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
+import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
+import type { IDownloader } from '@modules/downloader/IDownloader';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import { TrackedFileSystem } from '@modules/file-registry';
-import type {
-  ToolConfig,
-  SystemInfo,
-  BrewToolConfig,
-  CurlTarToolConfig,
-  ManualToolConfig,
-  GithubReleaseToolConfig,
-  CurlScriptToolConfig,
-  BaseInstallContext,
-} from '@types';
-import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import type {
+  BaseInstallContext,
+  BrewToolConfig,
+  CurlScriptToolConfig,
+  CurlTarToolConfig,
+  GithubReleaseToolConfig,
+  ManualToolConfig,
+  SystemInfo,
+  ToolConfig,
+} from '@types';
 import { HookExecutor } from './HookExecutor';
-import { installFromGitHubRelease } from './installFromGitHubRelease';
+import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { installFromBrew } from './installFromBrew';
 import { installFromCurlScript } from './installFromCurlScript';
 import { installFromCurlTar } from './installFromCurlTar';
+import { installFromGitHubRelease } from './installFromGitHubRelease';
 import { installManually } from './installManually';
 
-
 /**
- * Orchestrates the tool installation process by coordinating services like `Downloader`, 
+ * Orchestrates the tool installation process by coordinating services like `Downloader`,
  * `ArchiveExtractor`, and `GitHubApiClient`. It manages the entire lifecycle, including
  * directory setup, hooks, and artifact tracking.
  *
@@ -70,7 +69,7 @@ export class Installer implements IInstaller {
     downloader: IDownloader,
     githubApiClient: IGitHubApiClient,
     archiveExtractor: IArchiveExtractor,
-    appConfig: YamlConfig,
+    appConfig: YamlConfig
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.logger.debug(
@@ -79,7 +78,7 @@ export class Installer implements IInstaller {
       downloader.constructor.name,
       githubApiClient.constructor.name,
       archiveExtractor.constructor.name,
-      appConfig,
+      appConfig
     );
     this.fs = fileSystem;
     this.downloader = downloader;
@@ -92,19 +91,13 @@ export class Installer implements IInstaller {
   /**
    * Install a tool based on its configuration
    */
-  async install(
-    toolName: string,
-    toolConfig: ToolConfig,
-    options?: InstallOptions,
-  ): Promise<InstallResult> {
+  async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
     logger.debug(logs.command.debug.methodDebugParams(), toolName, toolConfig, options);
-    
+
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-    const toolFs = this.fs instanceof TrackedFileSystem 
-      ? this.fs.withToolName(toolName)
-      : this.fs;
-    
+    const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
+
     try {
       // Create installation directory if it doesn't exist
       const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
@@ -125,24 +118,21 @@ export class Installer implements IInstaller {
       // Run beforeInstall hook if defined
       if (toolConfig.installParams?.hooks?.beforeInstall) {
         logger.debug(logs.command.debug.hookExecution('beforeInstall'));
-        
-        const enhancedContext = this.hookExecutor.createEnhancedContext(
-          context, toolFs, logger
-        );
-        
+
+        const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
+
         const result = await this.hookExecutor.executeHook(
           'beforeInstall',
           toolConfig.installParams.hooks.beforeInstall,
           enhancedContext
         );
-        
+
         if (!result.success) {
           return {
             success: false,
             error: `beforeInstall hook failed: ${result.error}`,
           };
         }
-        
       }
 
       // Install based on the installation method
@@ -173,27 +163,23 @@ export class Installer implements IInstaller {
       // Run afterInstall hook if defined
       if (toolConfig.installParams?.hooks?.afterInstall) {
         logger.debug(logs.command.debug.hookExecution('afterInstall'));
-        
+
         // Update context with final result information
         const finalContext = {
           ...context,
           binaryPath: result.binaryPath,
           version: result.version,
         };
-        
-        const enhancedContext = this.hookExecutor.createEnhancedContext(
-          finalContext, toolFs, logger
-        );
-        
+
+        const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs, logger);
+
         await this.hookExecutor.executeHook(
           'afterInstall',
           toolConfig.installParams.hooks.afterInstall,
           enhancedContext,
           { continueOnError: true } // Don't fail installation if afterInstall hook fails
         );
-        
       }
-
 
       return result;
     } catch (error) {
@@ -212,7 +198,7 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: InstallOptions
   ): Promise<InstallResult> {
     return installFromGitHubRelease(
       toolName,
@@ -225,7 +211,7 @@ export class Installer implements IInstaller {
       this.archiveExtractor,
       this.appConfig,
       this.hookExecutor,
-      this.logger,
+      this.logger
     );
   }
 
@@ -236,7 +222,7 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: BrewToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: InstallOptions
   ): Promise<InstallResult> {
     return installFromBrew(toolName, toolConfig, context, options, this.logger);
   }
@@ -248,7 +234,7 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: CurlScriptToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: InstallOptions
   ): Promise<InstallResult> {
     return installFromCurlScript(
       toolName,
@@ -258,7 +244,7 @@ export class Installer implements IInstaller {
       this.fs,
       this.downloader,
       this.hookExecutor,
-      this.logger,
+      this.logger
     );
   }
 
@@ -269,7 +255,7 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: CurlTarToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: InstallOptions
   ): Promise<InstallResult> {
     return installFromCurlTar(
       toolName,
@@ -280,7 +266,7 @@ export class Installer implements IInstaller {
       this.downloader,
       this.archiveExtractor,
       this.hookExecutor,
-      this.logger,
+      this.logger
     );
   }
 
@@ -291,7 +277,7 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: ManualToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: InstallOptions
   ): Promise<InstallResult> {
     return installManually(toolName, toolConfig, context, options, this.fs, this.logger);
   }
@@ -307,5 +293,4 @@ export class Installer implements IInstaller {
       homeDir: os.homedir(),
     };
   }
-
 }

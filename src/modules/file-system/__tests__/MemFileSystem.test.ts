@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { createMemFileSystem } from '@testing-helpers';
 import type { DirectoryJSON } from 'memfs';
 import type { IFileSystem } from '../IFileSystem'; // Keep IFileSystem for type annotation
-import { createMemFileSystem } from '@testing-helpers';
 
 describe('MemFileSystem', () => {
   let fileSystem: IFileSystem; // Changed to IFileSystem

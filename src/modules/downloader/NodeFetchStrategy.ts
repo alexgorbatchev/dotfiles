@@ -1,17 +1,17 @@
-import type { DownloadStrategy } from './DownloadStrategy';
-import type { DownloadOptions } from './IDownloader';
-import type { IFileSystem } from '@modules/file-system/IFileSystem'; 
-import {
-  NetworkError,
-  HttpError,
-  NotFoundError,
-  ForbiddenError,
-  RateLimitError,
-  ClientError,
-  ServerError,
-} from './errors';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import type { DownloadStrategy } from './DownloadStrategy';
+import {
+  ClientError,
+  ForbiddenError,
+  HttpError,
+  NetworkError,
+  NotFoundError,
+  RateLimitError,
+  ServerError,
+} from './errors';
+import type { DownloadOptions } from './IDownloader';
 
 export class NodeFetchStrategy implements DownloadStrategy {
   public readonly name = 'node-fetch';
@@ -66,14 +66,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
   }
 
   public async download(url: string, options: DownloadOptions): Promise<Buffer | void> {
-    const {
-      headers,
-      timeout,
-      onProgress,
-      destinationPath,
-      retryCount = 0,
-      retryDelay = 1000,
-    } = options;
+    const { headers, timeout, onProgress, destinationPath, retryCount = 0, retryDelay = 1000 } = options;
 
     let attempt = 0;
     while (attempt <= retryCount) {
@@ -224,13 +217,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
         this.logger.debug(logs.downloader.debug.downloadAttemptError(), attempt + 1, url, error);
         if (attempt < retryCount) {
           attempt++;
-          this.logger.debug(
-            logs.downloader.debug.retryingDownload(),
-            url,
-            attempt + 1,
-            retryCount + 1,
-            retryDelay
-          );
+          this.logger.debug(logs.downloader.debug.retryingDownload(), url, attempt + 1, retryCount + 1, retryDelay);
           if (onProgress) {
             // onProgress({ bytesDownloaded: 0, totalBytes: undefined, percentage: 0, status: `Retrying (${attempt}/${retryCount})...` });
           }
@@ -252,10 +239,6 @@ export class NodeFetchStrategy implements DownloadStrategy {
     }
     // Fallback, should ideally not be reached if retryCount >= 0
     this.logger.debug(logs.downloader.debug.exhaustedRetries(), url);
-    throw new NetworkError(
-      this.logger,
-      `Download failed for ${url} after ${retryCount} retries.`,
-      url,
-    );
+    throw new NetworkError(this.logger, `Download failed for ${url} after ${retryCount} retries.`, url);
   }
 }

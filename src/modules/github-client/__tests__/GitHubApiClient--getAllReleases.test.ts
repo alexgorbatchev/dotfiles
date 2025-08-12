@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { GitHubRelease } from '@types';
 import { RateLimitError, ServerError } from '@modules/downloader';
+import type { GitHubRelease } from '@types';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
+  createGitHubConfigOverride,
   type MockSetup,
   setupMockGitHubApiClient,
-  createGitHubConfigOverride
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function from original test file
@@ -49,15 +49,9 @@ describe('GitHubApiClient', () => {
       const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releases).toEqual([...page1Releases, ...page2Releases]);
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(3);
-      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[0]).toContain(
-        '/releases?per_page=30&page=1'
-      );
-      expect(mocks.mockDownloader.download.mock.calls?.[1]?.[0]).toContain(
-        '/releases?per_page=30&page=2'
-      );
-      expect(mocks.mockDownloader.download.mock.calls?.[2]?.[0]).toContain(
-        '/releases?per_page=30&page=3'
-      );
+      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[0]).toContain('/releases?per_page=30&page=1');
+      expect(mocks.mockDownloader.download.mock.calls?.[1]?.[0]).toContain('/releases?per_page=30&page=2');
+      expect(mocks.mockDownloader.download.mock.calls?.[2]?.[0]).toContain('/releases?per_page=30&page=3');
     });
 
     it('should fetch releases with custom perPage option', async () => {
@@ -129,13 +123,11 @@ describe('GitHubApiClient', () => {
           'Forbidden',
           {}, // responseBody
           {}, // headers
-          resetTimestamp,
-        ),
+          resetTimestamp
+        )
       );
 
-      expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
-        GitHubApiClientError
-      );
+      expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(GitHubApiClientError);
 
       try {
         await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
@@ -152,13 +144,9 @@ describe('GitHubApiClient', () => {
 
     it('should throw a GitHubApiClientError for other failures (ServerError)', async () => {
       const url = 'https://api.github.com/repos/test-owner/test-repo/releases?per_page=30&page=1';
-      mocks.mockDownloader.download.mockRejectedValue(
-        new ServerError(mocks.logger, url, 503, 'Service Unavailable'),
-      );
+      mocks.mockDownloader.download.mockRejectedValue(new ServerError(mocks.logger, url, 503, 'Service Unavailable'));
 
-      expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(
-        GitHubApiClientError
-      );
+      expect(mocks.apiClient.getAllReleases('test-owner', 'test-repo')).rejects.toThrow(GitHubApiClientError);
 
       try {
         await mocks.apiClient.getAllReleases('test-owner', 'test-repo');

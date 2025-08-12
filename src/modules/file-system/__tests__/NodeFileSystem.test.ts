@@ -1,13 +1,9 @@
-import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
-import { NodeFileSystem } from '../NodeFileSystem';
-import type { IFileSystem } from '../IFileSystem';
-import { promises as fsPromises, constants as fsConstants } from 'node:fs';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { Stats } from 'node:fs';
-import {
-  createModuleMocker,
-  setupTestCleanup,
-  clearMockRegistry
-} from '@rageltd/bun-test-utils';
+import { constants as fsConstants, promises as fsPromises } from 'node:fs';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { IFileSystem } from '../IFileSystem';
+import { NodeFileSystem } from '../NodeFileSystem';
 
 // Setup cleanup once per file
 setupTestCleanup();
@@ -54,7 +50,7 @@ describe('NodeFileSystem', () => {
         F_OK: 0, // Actual value doesn't matter much for mock, just needs to be defined
       },
     }));
-    
+
     fileSystem = new NodeFileSystem();
   });
 

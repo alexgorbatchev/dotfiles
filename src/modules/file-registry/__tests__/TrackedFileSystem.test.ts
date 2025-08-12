@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { TestLogger, createMemFileSystem } from '@testing-helpers';
-import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
-import { SqliteFileRegistry } from '../SqliteFileRegistry';
-import type { IFileSystem } from '@modules/file-system';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
 import { unlink } from 'node:fs/promises';
+import path from 'node:path';
+import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem, TestLogger } from '@testing-helpers';
+import { SqliteFileRegistry } from '../SqliteFileRegistry';
+import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
 
 describe('TrackedFileSystem', () => {
   let logger: TestLogger;
@@ -19,10 +19,10 @@ describe('TrackedFileSystem', () => {
     logger = new TestLogger();
     const { fs: memFs } = await createMemFileSystem();
     fs = memFs;
-    
+
     dbPath = path.join('/tmp', `test-tracked-fs-${randomUUID()}.db`);
     registry = new SqliteFileRegistry(logger, dbPath);
-    
+
     context = TrackedFileSystem.createContext('test-tool', 'shim');
     trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
   });
@@ -127,10 +127,10 @@ describe('TrackedFileSystem', () => {
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
-      
+
       // Create file first
       await fs.writeFile(filePath, content);
-      
+
       // Clear any tracked operations
       await registry.close();
       registry = new SqliteFileRegistry(logger, dbPath);
@@ -155,7 +155,7 @@ describe('TrackedFileSystem', () => {
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
-      
+
       // Create file first
       await fs.writeFile(filePath, originalContent);
 
@@ -178,11 +178,13 @@ describe('TrackedFileSystem', () => {
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
-      
+
       // Create file but make readFile fail by mocking
       await fs.writeFile(filePath, 'original');
       const originalReadFile = fs.readFile;
-      fs.readFile = async () => { throw new Error('Read failed'); };
+      fs.readFile = async () => {
+        throw new Error('Read failed');
+      };
 
       // Write content through tracked filesystem
       await trackedFs.writeFile(filePath, content);
@@ -203,7 +205,7 @@ describe('TrackedFileSystem', () => {
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
-      
+
       // Create file first
       await fs.writeFile(filePath, originalContent);
 
@@ -227,10 +229,10 @@ describe('TrackedFileSystem', () => {
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
-      
+
       // Create file first
       await fs.writeFile(filePath, content);
-      
+
       // Clear any tracked operations
       await registry.close();
       registry = new SqliteFileRegistry(logger, dbPath);
@@ -287,7 +289,7 @@ describe('TrackedFileSystem', () => {
       // Verify rename operation was tracked
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(1);
-      
+
       // Should have rename operation with target path
       const renameOp = operations[0];
       expect(renameOp).toBeDefined();
@@ -362,12 +364,8 @@ describe('TrackedFileSystem', () => {
       const operations = await registry.getOperations();
       expect(operations).toHaveLength(3); // 2 files + directory
 
-      const deletedPaths = operations.map(op => op.filePath).sort();
-      expect(deletedPaths).toEqual([
-        path.resolve(dirPath),
-        path.resolve(file1Path),
-        path.resolve(file2Path),
-      ]);
+      const deletedPaths = operations.map((op) => op.filePath).sort();
+      expect(deletedPaths).toEqual([path.resolve(dirPath), path.resolve(file1Path), path.resolve(file2Path)]);
     });
   });
 
@@ -499,7 +497,7 @@ describe('TrackedFileSystem', () => {
     it('should use different operation IDs for different contexts', async () => {
       const context1 = TrackedFileSystem.createContext('nodejs', 'shim');
       const context2 = TrackedFileSystem.createContext('python', 'binary');
-      
+
       const trackedFs1 = new TrackedFileSystem(logger, fs, registry, context1, '/home/test');
       const trackedFs2 = new TrackedFileSystem(logger, fs, registry, context2, '/home/test');
 

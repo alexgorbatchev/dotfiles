@@ -1,4 +1,4 @@
-export * from './IGitHubApiClient';
+export type { GitHubRateLimit, GitHubRelease } from '@types';
 export * from './GitHubApiClient';
 export * from './GitHubApiClientError';
-export type { GitHubRelease, GitHubRateLimit } from '@types';
+export * from './IGitHubApiClient';

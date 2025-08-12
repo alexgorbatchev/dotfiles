@@ -3,14 +3,14 @@ import { createYamlConfigFromObject } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { SystemInfo } from '@types';
-import { stringify } from 'yaml';
 import type { PartialDeep } from 'type-fest';
+import { stringify } from 'yaml';
 
 /**
  * Represents a deep partial version of `YamlConfig`, where all properties and sub-properties are optional.
  * This is useful for representing user-provided configuration fragments that will be merged with a default configuration.
  */
-export type PartialYamlConfig = PartialDeep<YamlConfig> ;
+export type PartialYamlConfig = PartialDeep<YamlConfig>;
 
 /**
  * Options for {@link createMockYamlConfig}.
@@ -52,7 +52,7 @@ export type CreateMockYamlConfigOptions = {
  * This function is a utility for creating mock YAML configuration files in tests.  It simplifies the process of
  * generating valid YAML content from a partial config object and writing it to a mock file system, making it easier to
  * set up test preconditions for modules that consume these configuration files.
- * 
+ *
  * Most commonly used together with `createTestingDirectories` and `createMemFileSystems`.
  */
 export async function createMockYamlConfig({

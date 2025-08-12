@@ -1,13 +1,6 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IFileSystem } from '@modules/file-system';
-import { createMemFileSystem, FetchMockHelper, TestLogger, type MemFileSystemReturn } from '@testing-helpers';
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-  mock
-} from 'bun:test';
-import { NodeFetchStrategy } from '../NodeFetchStrategy';
+import { createMemFileSystem, FetchMockHelper, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import {
   ClientError,
   ForbiddenError,
@@ -17,6 +10,7 @@ import {
   RateLimitError,
   ServerError,
 } from '../errors';
+import { NodeFetchStrategy } from '../NodeFetchStrategy';
 
 describe('NodeFetchStrategy', () => {
   let mockFileSystem: IFileSystem;
@@ -228,17 +222,13 @@ describe('NodeFetchStrategy', () => {
 
     it('should fail after all retries', async () => {
       fetchMockHelper.mockImplementation({ body: 'Server Error', status: 500 });
-      expect(strategy.download(testUrl, { retryCount: 2, retryDelay: 10 })).rejects.toThrow(
-        ServerError
-      );
+      expect(strategy.download(testUrl, { retryCount: 2, retryDelay: 10 })).rejects.toThrow(ServerError);
       expect(fetchMockHelper.getSpy().mock.calls.length).toBe(3);
     });
 
     it('should throw NetworkError if retries exhausted on non-HttpError', async () => {
       fetchMockHelper.mockImplementation({ error: new Error('Simulated network issue') });
-      expect(strategy.download(testUrl, { retryCount: 1, retryDelay: 10 })).rejects.toThrow(
-        NetworkError
-      );
+      expect(strategy.download(testUrl, { retryCount: 1, retryDelay: 10 })).rejects.toThrow(NetworkError);
 
       fetchMockHelper.reset();
       fetchMockHelper.mockImplementation({ error: new Error('Simulated network issue') });
@@ -461,9 +451,7 @@ describe('NodeFetchStrategy', () => {
         }),
         body: null, // ReadableStream or null
       };
-      fetchMockHelper
-        .getSpy()
-        .mockImplementationOnce((async () => mockBadResponse as unknown as Response) as any);
+      fetchMockHelper.getSpy().mockImplementationOnce((async () => mockBadResponse as unknown as Response) as any);
 
       try {
         await strategy.download(testUrl, {});

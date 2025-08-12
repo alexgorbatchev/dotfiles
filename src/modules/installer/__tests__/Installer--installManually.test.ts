@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, type mock } from 'bun:test';
 import path from 'node:path';
-import { 
-  createInstallerTestSetup, 
+import {
   createBasicToolConfig,
+  createInstallerTestSetup,
   type InstallerTestSetup,
-  MOCK_TOOL_NAME
+  MOCK_TOOL_NAME,
 } from './installer-test-helpers';
 
 describe('Installer - installManually', () => {
@@ -17,18 +17,18 @@ describe('Installer - installManually', () => {
   it('should check if binary exists', async () => {
     const manualBinaryPath = '/usr/local/bin/test-tool';
     const expectedFinalPath = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'unknown', MOCK_TOOL_NAME);
-    
+
     // Create the manual binary file in the mock filesystem
     await setup.mockFileSystem.ensureDir(path.dirname(manualBinaryPath));
     await setup.mockFileSystem.writeFile(manualBinaryPath, 'manual binary content');
-    
+
     const toolConfig = createBasicToolConfig({
       installationMethod: 'manual',
       installParams: {
         binaryPath: manualBinaryPath,
       },
     });
-    
+
     const context = {
       toolName: MOCK_TOOL_NAME,
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'unknown'),
@@ -60,7 +60,7 @@ describe('Installer - installManually', () => {
         binaryPath: manualBinaryPath,
       },
     });
-    
+
     const context = {
       toolName: MOCK_TOOL_NAME,
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -68,7 +68,7 @@ describe('Installer - installManually', () => {
       toolConfig,
       appConfig: setup.mockAppConfig,
     };
-    
+
     const result = await setup.installer.installManually(MOCK_TOOL_NAME, toolConfig, context);
 
     expect(result.success).toBe(false);

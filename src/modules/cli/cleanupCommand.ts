@@ -1,8 +1,8 @@
 import { exitCli } from '@modules/cli/exitCli';
-import { type TsLogger, logs } from '@modules/logger';
+import { logs, type TsLogger } from '@modules/logger';
 import type { GeneratedArtifactsManifest } from '@types';
-import { type GlobalProgram, type Services } from '../../cli';
 import { contractHomePath } from '@utils';
+import type { GlobalProgram, Services } from '../../cli';
 
 export interface CleanupCommandOptions {
   dryRun: boolean;
@@ -17,7 +17,7 @@ export interface CleanupCommandOptions {
 async function registryBasedCleanup(
   parentLogger: TsLogger,
   services: Services,
-  options: CleanupCommandOptions,
+  options: CleanupCommandOptions
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'registryBasedCleanup' });
   const { fs, fileRegistry } = services;
@@ -27,11 +27,11 @@ async function registryBasedCleanup(
     // Remove all tracked files
     logger.info(logs.general.success.cleanupAllTrackedFiles());
     const allTools = await fileRegistry.getRegisteredTools();
-    
+
     for (const toolName of allTools) {
       await cleanupToolFiles(logger, fs, fileRegistry, toolName, services.yamlConfig.paths.homeDir, undefined, dryRun);
     }
-    
+
     // Clean up the registry database itself
     if (!dryRun) {
       logger.info(logs.general.success.cleanupRegistryDatabase());
@@ -40,24 +40,22 @@ async function registryBasedCleanup(
     } else {
       logger.info(logs.general.success.cleanupRegistryDryRun());
     }
-    
   } else if (tool) {
     // Remove files for specific tool
     logger.info(logs.general.success.cleanupToolFiles(tool));
     await cleanupToolFiles(logger, fs, fileRegistry, tool, services.yamlConfig.paths.homeDir, type, dryRun);
-    
+
     if (!dryRun) {
       await fileRegistry.removeToolOperations(tool);
       logger.info(logs.general.success.cleanupRegistryTool(tool, false));
     } else {
       logger.info(logs.general.success.cleanupRegistryTool(tool, true));
     }
-    
   } else if (type) {
     // Remove files of specific type across all tools
     logger.info(logs.general.success.cleanupTypeFiles(type));
     const operations = await fileRegistry.getOperations({ fileType: type as any });
-    
+
     for (const operation of operations) {
       const fileState = await fileRegistry.getFileState(operation.filePath);
       if (fileState && fileState.lastOperation !== 'rm') {
@@ -65,7 +63,12 @@ async function registryBasedCleanup(
       }
     }
   } else {
-    logger.warn(logs.config.warning.ignored('cleanup options', 'Registry-based cleanup requires --all, --tool <name>, or --type <type> option'));
+    logger.warn(
+      logs.config.warning.ignored(
+        'cleanup options',
+        'Registry-based cleanup requires --all, --tool <name>, or --type <type> option'
+      )
+    );
   }
 }
 
@@ -76,19 +79,17 @@ async function cleanupToolFiles(
   toolName: string,
   homeDir: string,
   fileType?: string,
-  dryRun?: boolean,
+  dryRun?: boolean
 ): Promise<void> {
   const fileStates = await fileRegistry.getFileStatesForTool(toolName);
-  
-  const filteredStates = fileType
-    ? fileStates.filter((state: any) => state.fileType === fileType)
-    : fileStates;
-  
+
+  const filteredStates = fileType ? fileStates.filter((state: any) => state.fileType === fileType) : fileStates;
+
   logger.trace(logs.command.debug.foundFiles(filteredStates.length, toolName, fileType));
-  
+
   for (const fileState of filteredStates) {
     await removeFile(logger, fs, fileState.filePath, homeDir, dryRun);
-    
+
     if (fileState.targetPath) {
       await removeFile(logger, fs, fileState.targetPath, homeDir, dryRun);
     }
@@ -100,7 +101,7 @@ async function removeFile(
   fs: any,
   filePath: string,
   homeDir: string,
-  dryRun?: boolean,
+  dryRun?: boolean
 ): Promise<void> {
   try {
     if (await fs.exists(filePath)) {
@@ -121,7 +122,7 @@ async function removeFile(
 async function cleanupActionLogic(
   parentLogger: TsLogger,
   options: CleanupCommandOptions,
-  services: Services,
+  services: Services
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'cleanupActionLogic' });
   const { yamlConfig, fs } = services;
@@ -130,7 +131,9 @@ async function cleanupActionLogic(
   try {
     logger.trace(logs.command.debug.cleanupStarted(dryRun), options);
     logger.info(
-      dryRun ? logs.general.success.started('dry run cleanup (no files will be removed)') : logs.general.success.started('cleanup'),
+      dryRun
+        ? logs.general.success.started('dry run cleanup (no files will be removed)')
+        : logs.general.success.started('cleanup')
     );
 
     // If registry-based options are specified, use registry cleanup
@@ -156,7 +159,9 @@ async function cleanupActionLogic(
     } catch (error) {
       logger.debug(logs.command.debug.manifestError(), String(error));
       logger.error(logs.fs.error.readFailed('manifest file', String(error)));
-      logger.warn(logs.config.warning.ignored('manifest file', 'proceeding to delete generated directory despite manifest error'));
+      logger.warn(
+        logs.config.warning.ignored('manifest file', 'proceeding to delete generated directory despite manifest error')
+      );
     }
 
     if (manifest) {
@@ -168,7 +173,9 @@ async function cleanupActionLogic(
             if (await fs.exists(shimPath)) {
               if (!dryRun) {
                 await fs.rm(shimPath, { force: true });
-                logger.info(logs.fs.success.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, shimPath)));
+                logger.info(
+                  logs.fs.success.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, shimPath))
+                );
                 logger.debug(logs.command.debug.shimDeletion(shimPath, true, false));
               } else {
                 logger.info(logs.general.success.fileCleanupDryRun(shimPath));
@@ -192,7 +199,12 @@ async function cleanupActionLogic(
           if (await fs.exists(manifest.shellInit.path)) {
             if (!dryRun) {
               await fs.rm(manifest.shellInit.path, { force: true });
-              logger.info(logs.fs.success.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, manifest.shellInit.path)));
+              logger.info(
+                logs.fs.success.removed(
+                  'cleanup',
+                  contractHomePath(services.yamlConfig.paths.homeDir, manifest.shellInit.path)
+                )
+              );
               logger.debug(logs.command.debug.shellInitDeletion(manifest.shellInit.path, true, false));
             } else {
               logger.info(logs.general.success.fileCleanupDryRun(manifest.shellInit.path));
@@ -217,7 +229,12 @@ async function cleanupActionLogic(
               // Check if path exists (could be symlink or regular file if broken)
               if (!dryRun) {
                 await fs.rm(symlinkOp.targetPath, { force: true });
-                logger.info(logs.fs.success.removed('cleanup', contractHomePath(services.yamlConfig.paths.homeDir, symlinkOp.targetPath)));
+                logger.info(
+                  logs.fs.success.removed(
+                    'cleanup',
+                    contractHomePath(services.yamlConfig.paths.homeDir, symlinkOp.targetPath)
+                  )
+                );
                 logger.debug(logs.command.debug.symlinkDeletion(symlinkOp.targetPath, true, false));
               } else {
                 logger.info(logs.general.success.fileCleanupDryRun(symlinkOp.targetPath));
@@ -242,7 +259,10 @@ async function cleanupActionLogic(
         if (!dryRun) {
           await fs.rm(yamlConfig.paths.generatedDir, { recursive: true, force: true });
           logger.info(
-            logs.fs.success.removed('cleanup', contractHomePath(yamlConfig.paths.homeDir, yamlConfig.paths.generatedDir)),
+            logs.fs.success.removed(
+              'cleanup',
+              contractHomePath(yamlConfig.paths.homeDir, yamlConfig.paths.generatedDir)
+            )
           );
           logger.debug(logs.command.debug.fileDeletion(yamlConfig.paths.generatedDir, true, false));
         } else {
@@ -270,14 +290,12 @@ async function cleanupActionLogic(
 export function registerCleanupCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  servicesFactory: () => Promise<Services>,
+  servicesFactory: () => Promise<Services>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCleanupCommand' });
   program
     .command('cleanup')
-    .description(
-      'Remove all generated artifacts, including shims, shell configurations, and the .generated directory.',
-    )
+    .description('Remove all generated artifacts, including shims, shell configurations, and the .generated directory.')
     .option('--tool <name>', 'Remove files for specific tool only (registry-based)')
     .option('--type <type>', 'Remove files of specific type only (registry-based)')
     .option('--all', 'Remove all tracked files (registry-based)')

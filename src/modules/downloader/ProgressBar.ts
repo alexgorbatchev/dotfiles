@@ -1,5 +1,5 @@
 import * as cliProgress from 'cli-progress';
-import { type ProgressCallback } from './IDownloader';
+import type { ProgressCallback } from './IDownloader';
 
 export interface ProgressBarOptions {
   /** Whether progress bar should be shown at all */
@@ -11,7 +11,10 @@ export class ProgressBar {
   private enabled: boolean;
   private startTime: number = 0;
 
-  constructor(private filename: string, options: ProgressBarOptions = {}) {
+  constructor(
+    private filename: string,
+    options: ProgressBarOptions = {}
+  ) {
     this.enabled = options.enabled ?? true;
   }
 
@@ -27,30 +30,36 @@ export class ProgressBar {
       // Initialize progress bar on first call
       if (this.startTime === 0) {
         this.startTime = Date.now();
-        
+
         if (totalBytes) {
           // Create determinate progress bar
-          this.progressBar = new cliProgress.SingleBar({
-            format: `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
-            barCompleteChar: '█',
-            barIncompleteChar: '░',
-            hideCursor: true,
-            stream: process.stderr,
-          }, cliProgress.Presets.shades_classic);
-          
+          this.progressBar = new cliProgress.SingleBar(
+            {
+              format: `Downloading ${this.filename} |{bar}| {percentage}% | {value}/{total} | {speed} | ETA: {eta_formatted}`,
+              barCompleteChar: '█',
+              barIncompleteChar: '░',
+              hideCursor: true,
+              stream: process.stderr,
+            },
+            cliProgress.Presets.shades_classic
+          );
+
           this.progressBar.start(totalBytes, 0, {
             speed: '0 B/s',
           });
         } else {
           // Create indeterminate progress bar
-          this.progressBar = new cliProgress.SingleBar({
-            format: `Downloading ${this.filename} |{bar}| {value} | {speed}`,
-            barCompleteChar: '█',
-            barIncompleteChar: '░',
-            hideCursor: true,
-            stream: process.stderr,
-          }, cliProgress.Presets.shades_classic);
-          
+          this.progressBar = new cliProgress.SingleBar(
+            {
+              format: `Downloading ${this.filename} |{bar}| {value} | {speed}`,
+              barCompleteChar: '█',
+              barIncompleteChar: '░',
+              hideCursor: true,
+              stream: process.stderr,
+            },
+            cliProgress.Presets.shades_classic
+          );
+
           this.progressBar.start(100, 0, {
             speed: '0 B/s',
           });
@@ -60,20 +69,20 @@ export class ProgressBar {
       if (this.progressBar) {
         const elapsed = (Date.now() - this.startTime) / 1000;
         const speed = elapsed > 0 ? this.formatBytes(bytesDownloaded / elapsed) + '/s' : '0 B/s';
-        
+
         if (totalBytes) {
           // Update determinate progress bar
           this.progressBar.update(bytesDownloaded, {
             speed,
           });
-          
+
           // Complete the bar if done
           if (bytesDownloaded >= totalBytes) {
             this.progressBar.stop();
           }
         } else {
           // Update indeterminate progress bar - show spinning effect
-          const progress = (Math.floor(Date.now() / 100) % 100);
+          const progress = Math.floor(Date.now() / 100) % 100;
           this.progressBar.update(progress, {
             speed,
             value: this.formatBytes(bytesDownloaded),

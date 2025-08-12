@@ -1,2 +1,2 @@
-export * from './yamlConfigLoader';
 export * from './loadToolConfigs';
+export * from './yamlConfigLoader';

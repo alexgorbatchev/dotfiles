@@ -111,10 +111,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error`).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockTextResponseOnce(
-    text: string,
-    options: Omit<MockResponseOptions, 'body' | 'error'> = {}
-  ): void {
+  mockTextResponseOnce(text: string, options: Omit<MockResponseOptions, 'body' | 'error'> = {}): void {
     this.mockResponseOnce({
       body: text,
       ...options,

@@ -61,11 +61,7 @@ export interface ICompletionInstaller {
    *               the source completion files.
    * @returns A promise that resolves when all specified completions have been attempted to be installed.
    */
-  installCompletions(
-    toolName: string,
-    extractedDir: string,
-    config: CompletionConfig
-  ): Promise<void>;
+  installCompletions(toolName: string, extractedDir: string, config: CompletionConfig): Promise<void>;
 
   /**
    * Retrieves the paths to the installed completion files for a given tool.

@@ -1,5 +1,5 @@
-import type { SystemInfo, ArchitecturePatterns } from '@types';
-import { type TsLogger, logs } from '@modules/logger';
+import { logs, type TsLogger } from '@modules/logger';
+import type { ArchitecturePatterns, SystemInfo } from '@types';
 
 /**
  * Represents a set of regular expression patterns derived from {@link ArchitecturePatterns}.
@@ -34,10 +34,7 @@ export interface ArchitectureRegex {
  * @param systemInfo - System information from os module
  * @returns Architecture patterns for matching GitHub release assets
  */
-export function getArchitecturePatterns(
-  parentLogger: TsLogger,
-  systemInfo: SystemInfo,
-): ArchitecturePatterns {
+export function getArchitecturePatterns(parentLogger: TsLogger, systemInfo: SystemInfo): ArchitecturePatterns {
   const logger = parentLogger.getSubLogger({ name: 'getArchitecturePatterns' });
   logger.trace(logs.architecture.success.patterns(), systemInfo.platform, systemInfo.arch);
 
@@ -50,18 +47,7 @@ export function getArchitecturePatterns(
   // Handle OS/Platform patterns
   switch (systemInfo.platform.toLowerCase()) {
     case 'darwin':
-      patterns.system = [
-        'apple',
-        'darwin',
-        'apple-darwin',
-        'dmg',
-        'mac',
-        'macos',
-        'mac-os',
-        'osx',
-        'os-x',
-        'os64x',
-      ];
+      patterns.system = ['apple', 'darwin', 'apple-darwin', 'dmg', 'mac', 'macos', 'mac-os', 'osx', 'os-x', 'os64x'];
       patterns.variants = ['darwin'];
       break;
 
@@ -133,10 +119,7 @@ export function getArchitecturePatterns(
  * @param patterns - Architecture patterns from getArchitecturePatterns
  * @returns Combined regex patterns for asset matching
  */
-export function createArchitectureRegex(
-  parentLogger: TsLogger,
-  patterns: ArchitecturePatterns,
-): ArchitectureRegex {
+export function createArchitectureRegex(parentLogger: TsLogger, patterns: ArchitecturePatterns): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'createArchitectureRegex' });
   logger.trace(logs.architecture.success.regexCreation());
 
@@ -146,13 +129,11 @@ export function createArchitectureRegex(
   };
 
   // Create alternations for each pattern group
-  const systemPattern =
-    patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join('|')})` : '';
+  const systemPattern = patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join('|')})` : '';
 
   const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join('|')})` : '';
 
-  const variantPattern =
-    patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join('|')})` : '';
+  const variantPattern = patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join('|')})` : '';
 
   const result = {
     systemPattern,
@@ -172,10 +153,7 @@ export function createArchitectureRegex(
  * @param systemInfo - System information from os module
  * @returns Combined regex patterns for GitHub release asset matching
  */
-export function getArchitectureRegex(
-  parentLogger: TsLogger,
-  systemInfo: SystemInfo,
-): ArchitectureRegex {
+export function getArchitectureRegex(parentLogger: TsLogger, systemInfo: SystemInfo): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'getArchitectureRegex' });
   logger.trace(logs.general.success.started('architecture detection'), systemInfo.platform, systemInfo.arch);
 
@@ -197,7 +175,7 @@ export function getArchitectureRegex(
 export function matchesArchitecture(
   parentLogger: TsLogger,
   assetName: string,
-  architectureRegex: ArchitectureRegex,
+  architectureRegex: ArchitectureRegex
 ): boolean {
   const logger = parentLogger.getSubLogger({ name: 'matchesArchitecture' });
   logger.trace(logs.architecture.success.assetMatchCheck(assetName));

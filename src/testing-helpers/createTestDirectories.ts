@@ -1,7 +1,7 @@
-import * as path from 'path';
-import { type YamlConfigPaths } from '@modules/config';
+import type { YamlConfigPaths } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
+import * as path from 'path';
 import { getDefaultConfig } from '../modules/config-loader';
 
 type InternalYamlConfigPaths = Omit<YamlConfigPaths, 'manifestPath'>;
@@ -41,7 +41,7 @@ export interface TestDirectories {
 
 /**
  * Creates a temporary directory for tests.
- * 
+ *
  * @param name - The name of the temporary directory
  * @returns The path to the created temporary directory
  */
@@ -60,10 +60,17 @@ async function createTempDir(fs: IFileSystem, name: string) {
  * @param options - Options for creating test directories
  * @returns Object containing paths to created directories
  */
-export async function createTestDirectories(logger: TsLogger, fs: IFileSystem, options: TestDirectoryOptions): Promise<TestDirectories> {
-  const homeDir = await createTempDir(fs, 'createTestDirectories'+(options.testName !== undefined ? `--${options.testName}` : ''));
+export async function createTestDirectories(
+  logger: TsLogger,
+  fs: IFileSystem,
+  options: TestDirectoryOptions
+): Promise<TestDirectories> {
+  const homeDir = await createTempDir(
+    fs,
+    'createTestDirectories' + (options.testName !== undefined ? `--${options.testName}` : '')
+  );
   const defaultConfig = await getDefaultConfig(logger, fs, { homeDir } as any, { HOME: homeDir });
-  const paths = { ...(defaultConfig).paths, ...(options.paths || {}) };
+  const paths = { ...defaultConfig.paths, ...(options.paths || {}) };
 
   await fs.ensureDir(paths.homeDir);
   await fs.ensureDir(paths.dotfilesDir);
@@ -97,7 +104,7 @@ export async function createTestDirectories(logger: TsLogger, fs: IFileSystem, o
   if (options.additionalDirs) {
     for await (const [key, dirInfo] of Object.entries(options.additionalDirs)) {
       const relativeTo = dirInfo.relativeTo;
-      const baseDir= relativeTo && result.paths[relativeTo] || homeDir;
+      const baseDir = (relativeTo && result.paths[relativeTo]) || homeDir;
       const fullPath = path.join(baseDir, dirInfo.path);
       await fs.ensureDir(fullPath);
       result.additionalDirs[key] = fullPath;

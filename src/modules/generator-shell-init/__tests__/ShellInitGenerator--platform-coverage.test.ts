@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { ToolConfig, SystemInfo } from '@types';
-import { Platform, always } from '@types';
-import { ShellInitGenerator } from '../ShellInitGenerator';
+import type { IFileSystem } from '@modules/file-system';
+import {
+  createMemFileSystem,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+  TestLogger,
+} from '@testing-helpers';
+import type { SystemInfo, ToolConfig } from '@types';
+import { always, Platform } from '@types';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
-import { createMemFileSystem, TestLogger, createMockYamlConfig, createTestDirectories, type TestDirectories } from '@testing-helpers';
+import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Platform Coverage Tests', () => {
   let mockFileSystem: IFileSystem;
@@ -19,9 +25,9 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
     const { fs } = await createMemFileSystem({});
     mockFileSystem = fs;
     logger = new TestLogger();
-    
+
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-platform-coverage' });
-    
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
@@ -54,17 +60,19 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
             bash: { scripts: [always`# Base bash`] },
             powershell: { scripts: [always`# Base powershell`] },
           },
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              shellConfigs: {
-                zsh: { scripts: [always`# macOS zsh specific`] },
-                bash: { scripts: [always`# macOS bash specific`] },
-                powershell: { scripts: [always`# macOS powershell specific`] },
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                shellConfigs: {
+                  zsh: { scripts: [always`# macOS zsh specific`] },
+                  bash: { scripts: [always`# macOS bash specific`] },
+                  powershell: { scripts: [always`# macOS powershell specific`] },
+                },
+                binaries: ['macos-tool'],
               },
-              binaries: ['macos-tool'],
             },
-          }],
+          ],
         },
       };
 
@@ -83,7 +91,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       expect(zshContent).toContain('# Base zsh');
       expect(zshContent).toContain('# macOS zsh specific');
 
-      // Check bash file  
+      // Check bash file
       const bashContent = await mockFileSystem.readFile(result!.files.get('bash')!);
       expect(bashContent).toContain('# Base bash');
       expect(bashContent).toContain('# macOS bash specific');
@@ -110,13 +118,15 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           installationMethod: 'none',
           shellConfigs: { zsh: { scripts: [always`# Base init`] } },
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              shellConfigs: { zsh: { scripts: [always`# macOS init`] } },
-              symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                shellConfigs: { zsh: { scripts: [always`# macOS init`] } },
+                symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
+              },
             },
-          }],
+          ],
         },
       };
 
@@ -128,13 +138,13 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       const result = await generator.generate(toolConfigs, options);
 
       expect(result).not.toBeNull();
-      
-      // Shell generator doesn't directly process symlinks, but they should be 
+
+      // Shell generator doesn't directly process symlinks, but they should be
       // merged into the resolved config for other generators to use
       const generatedContent = await mockFileSystem.readFile(result!.files.get('zsh')!);
       expect(generatedContent).toContain('# Base init');
       expect(generatedContent).toContain('# macOS init');
-      
+
       // Symlinks aren't included in shell content, but the merging should work
       // (this would be tested in SymlinkGenerator tests instead)
     });
@@ -154,25 +164,31 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           version: 'latest',
           installationMethod: 'none',
           shellConfigs: {
-            zsh: { scripts: [
-              always`export BASE_VAR="base_value"`,
-              always`export PATH="/base/bin:$PATH"`,
-              always`# Some other init code`,
-            ] },
+            zsh: {
+              scripts: [
+                always`export BASE_VAR="base_value"`,
+                always`export PATH="/base/bin:$PATH"`,
+                always`# Some other init code`,
+              ],
+            },
           },
-          platformConfigs: [{
-            platforms: Platform.Linux,
-            config: {
-              shellConfigs: {
-                zsh: { scripts: [
-                  always`export LINUX_SPECIFIC="linux_value"`,
-                  always`export PATH="/linux/bin:$PATH"`,
-                  always`alias linux-cmd="some-command"`,
-                  always`fpath+="/linux/completions"`,
-                ] },
+          platformConfigs: [
+            {
+              platforms: Platform.Linux,
+              config: {
+                shellConfigs: {
+                  zsh: {
+                    scripts: [
+                      always`export LINUX_SPECIFIC="linux_value"`,
+                      always`export PATH="/linux/bin:$PATH"`,
+                      always`alias linux-cmd="some-command"`,
+                      always`fpath+="/linux/completions"`,
+                    ],
+                  },
+                },
               },
             },
-          }],
+          ],
         },
       };
 
@@ -191,7 +207,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       expect(generatedContent).toContain('export BASE_VAR="base_value"');
       expect(generatedContent).toContain('export LINUX_SPECIFIC="linux_value"');
 
-      // Should have PATH modifications section with both base and platform-specific  
+      // Should have PATH modifications section with both base and platform-specific
       expect(generatedContent).toContain('PATH Modifications');
       expect(generatedContent).toContain('export PATH="/base/bin:$PATH"');
       expect(generatedContent).toContain('export PATH="/linux/bin:$PATH"');
@@ -219,24 +235,26 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
       // Mimic the actual aerospace.tool.ts structure
       const toolConfigs: Record<string, ToolConfig> = {
-        'aerospace': {
+        aerospace: {
           name: 'aerospace',
           version: 'latest',
           installationMethod: 'none', // Base has no install method
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              binaries: ['aerospace'],
-              installationMethod: 'brew',
-              installParams: {
-                formula: 'nikitabobko/tap/aerospace',
-                cask: true,
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                binaries: ['aerospace'],
+                installationMethod: 'brew',
+                installParams: {
+                  formula: 'nikitabobko/tap/aerospace',
+                  cask: true,
+                },
+                symlinks: [{ source: './aerospace.toml', target: '~/.config/aerospace/aerospace.toml' }],
+                // Aerospace might have shell init for keybindings or env vars
+                shellConfigs: { zsh: { scripts: [always`# Aerospace window manager integration`] } },
               },
-              symlinks: [{ source: './aerospace.toml', target: '~/.config/aerospace/aerospace.toml' }],
-              // Aerospace might have shell init for keybindings or env vars
-              shellConfigs: { zsh: { scripts: [always`# Aerospace window manager integration`] } },
             },
-          }],
+          ],
         },
       };
 
@@ -251,7 +269,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       const macosContent = await mockFileSystem.readFile(macosResult!.files.get('zsh')!);
       expect(macosContent).toContain('# Aerospace window manager integration');
 
-      // Test on Linux - should not include aerospace  
+      // Test on Linux - should not include aerospace
       const linuxOptions: GenerateShellInitOptions = {
         systemInfo: linuxSystemInfo,
         shellTypes: ['zsh'],
@@ -283,16 +301,18 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
       // Mimic the actual eza.tool.ts structure
       const toolConfigs: Record<string, ToolConfig> = {
-        'eza': {
+        eza: {
           name: 'eza',
           version: 'latest',
           installationMethod: 'none',
           shellConfigs: {
-            zsh: { scripts: [
-              always`# Base eza aliases`,
-              always`alias ls="eza --group-directories-first --git"`,
-              always`alias ll="eza -la --group-directories-first --git"`,
-            ] },
+            zsh: {
+              scripts: [
+                always`# Base eza aliases`,
+                always`alias ls="eza --group-directories-first --git"`,
+                always`alias ll="eza -la --group-directories-first --git"`,
+              ],
+            },
           },
           platformConfigs: [
             {
@@ -325,7 +345,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       const macosResult = await generator.generate(toolConfigs, macosOptions);
       expect(macosResult).not.toBeNull();
       const macosContent = await mockFileSystem.readFile(macosResult!.files.get('zsh')!);
-      
+
       expect(macosContent).toContain('# Base eza aliases');
       expect(macosContent).toContain('alias ls="eza --group-directories-first --git"');
       expect(macosContent).toContain('# macOS specific eza setup');
@@ -340,7 +360,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       const linuxResult = await generator.generate(toolConfigs, linuxOptions);
       expect(linuxResult).not.toBeNull();
       const linuxContent = await mockFileSystem.readFile(linuxResult!.files.get('zsh')!);
-      
+
       expect(linuxContent).toContain('# Base eza aliases');
       expect(linuxContent).toContain('alias ls="eza --group-directories-first --git"');
       expect(linuxContent).toContain('# Linux specific eza setup');
@@ -352,7 +372,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
     it('should handle empty platform-specific shell init arrays', async () => {
       const macosSystemInfo: SystemInfo = {
         platform: 'darwin',
-        arch: 'arm64', 
+        arch: 'arm64',
         homeDir: '/Users/test',
       };
 
@@ -362,13 +382,15 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           version: 'latest',
           installationMethod: 'none',
           shellConfigs: { zsh: { scripts: [always`# Base init`] } },
-          platformConfigs: [{
-            platforms: Platform.MacOS,
-            config: {
-              shellConfigs: { zsh: { scripts: [] } }, // Empty array
-              binaries: ['empty-tool'],
+          platformConfigs: [
+            {
+              platforms: Platform.MacOS,
+              config: {
+                shellConfigs: { zsh: { scripts: [] } }, // Empty array
+                binaries: ['empty-tool'],
+              },
             },
-          }],
+          ],
         },
       };
 
@@ -398,13 +420,15 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
           version: 'latest',
           installationMethod: 'none',
           // No base zshInit
-          platformConfigs: [{
-            platforms: Platform.Windows,
-            config: {
-              shellConfigs: { zsh: { scripts: [always`# Windows-only init`] } },
-              binaries: ['win-tool.exe'],
+          platformConfigs: [
+            {
+              platforms: Platform.Windows,
+              config: {
+                shellConfigs: { zsh: { scripts: [always`# Windows-only init`] } },
+                binaries: ['win-tool.exe'],
+              },
             },
-          }],
+          ],
         },
       };
 

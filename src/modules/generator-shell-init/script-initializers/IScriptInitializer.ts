@@ -14,7 +14,7 @@ export interface InitializationOutput {
 export interface IScriptInitializer {
   /**
    * Generates initialization content for the main shell file
-   * 
+   *
    * @param shellType - Type of shell (zsh, bash, powershell)
    * @param shellScriptsDir - Directory where shell scripts are stored
    * @returns Initialization content to add to main shell file

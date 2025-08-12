@@ -1,5 +1,5 @@
-import type { ShellType } from '@types';
 import type { YamlConfig } from '@modules/config';
+import type { ShellType } from '@types';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { BashStringProducer } from './BashStringProducer';
 
@@ -15,5 +15,4 @@ export class BashGenerator extends BaseShellGenerator {
   constructor(appConfig: YamlConfig) {
     super(appConfig, new BashStringProducer(appConfig));
   }
-
 }

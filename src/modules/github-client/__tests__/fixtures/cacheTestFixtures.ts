@@ -45,8 +45,7 @@ export const FIXTURE_PRERELEASE: GitHubRelease = {
     {
       ...FIXTURE_RELEASE_ASSET,
       name: 'test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz',
-      browser_download_url:
-        'https://example.com/download/test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz',
+      browser_download_url: 'https://example.com/download/test-asset-v1.1.0-beta.1-darwin-amd64.tar.gz',
     },
   ],
   body: 'Beta release notes',

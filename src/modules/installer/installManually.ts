@@ -1,10 +1,10 @@
 import path from 'node:path';
+import { TrackedFileSystem } from '@modules/file-registry';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { BaseInstallContext, ManualToolConfig } from '@types';
 import { expandToolConfigPath } from '@utils';
-import { TrackedFileSystem } from '@modules/file-registry';
-import type { ManualToolConfig, BaseInstallContext } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
 
 /**
@@ -16,12 +16,10 @@ export async function installManually(
   context: BaseInstallContext,
   _options: InstallOptions | undefined,
   fs: IFileSystem,
-  parentLogger: TsLogger,
+  parentLogger: TsLogger
 ): Promise<InstallResult> {
   // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-  const toolFs = fs instanceof TrackedFileSystem 
-    ? fs.withToolName(toolName)
-    : fs;
+  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
   logger.debug(logs.installer.debug.installingManually(), toolName);
@@ -35,7 +33,12 @@ export async function installManually(
 
   const params = toolConfig.installParams;
   const rawBinaryPath = params.binaryPath as string;
-  const binaryPath = expandToolConfigPath(toolConfig.configFilePath, rawBinaryPath, context.appConfig, context.systemInfo);
+  const binaryPath = expandToolConfigPath(
+    toolConfig.configFilePath,
+    rawBinaryPath,
+    context.appConfig,
+    context.systemInfo
+  );
 
   try {
     // Check if the binary exists
@@ -44,7 +47,7 @@ export async function installManually(
       const binaryNames = toolConfig.binaries || [toolName];
       for (const binaryName of binaryNames) {
         const finalBinaryPath = path.join(context.installDir, binaryName);
-        
+
         // For manual installation, we create a symlink to the original binary
         // or copy it if the original path is specific to this binary
         if (binaryName === toolName || binaryNames.length === 1) {

@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { TestLogger, createMemFileSystem } from '@testing-helpers';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { CachedDownloadStrategy } from '@modules/downloader/CachedDownloadStrategy';
 import type { DownloadStrategy } from '@modules/downloader/DownloadStrategy';
 import type { DownloadOptions } from '@modules/downloader/IDownloader';
-import type { ICache } from '../ICache';
 import type { IFileSystem } from '@modules/file-system';
+import { createMemFileSystem, TestLogger } from '@testing-helpers';
+import type { ICache } from '../ICache';
 
 class MockDownloadStrategy implements DownloadStrategy {
   public readonly name = 'mock-strategy';
@@ -101,14 +101,13 @@ describe('CachedDownloadStrategy', () => {
     cachedStrategy = new CachedDownloadStrategy(logger, mockFileSystem, mockCache, mockStrategy, 60000);
   });
 
-
   describe('constructor', () => {
     it('should create CachedDownloadStrategy with correct name', () => {
       expect(cachedStrategy.name).toBe('cached-mock-strategy');
       logger.expect(
         ['DEBUG'],
         ['CachedDownloadStrategy'],
-        ['Wrapping strategy mock-strategy with cache, TTL: 60000 ms'],
+        ['Wrapping strategy mock-strategy with cache, TTL: 60000 ms']
       );
     });
   });
@@ -116,7 +115,7 @@ describe('CachedDownloadStrategy', () => {
   describe('isAvailable', () => {
     it('should delegate to underlying strategy', async () => {
       mockStrategy.isAvailableResult = true;
-      
+
       const result = await cachedStrategy.isAvailable();
 
       expect(result).toBe(true);
@@ -124,7 +123,7 @@ describe('CachedDownloadStrategy', () => {
 
     it('should return false when underlying strategy is not available', async () => {
       mockStrategy.isAvailableResult = false;
-      
+
       const result = await cachedStrategy.isAvailable();
 
       expect(result).toBe(false);
@@ -136,25 +135,21 @@ describe('CachedDownloadStrategy', () => {
       const options: DownloadOptions = {
         onProgress: () => {},
       };
-      
+
       const result = await cachedStrategy.download('https://example.com/file.txt', options);
 
       expect(result).toEqual(mockStrategy.downloadResult);
       expect(mockStrategy.downloadCalls).toHaveLength(1);
       expect(mockCache.getCalls).toHaveLength(0);
       expect(mockCache.setCalls).toHaveLength(0);
-      logger.expect(
-        ['TRACE'],
-        ['CachedDownloadStrategy', 'download'],
-        ['Cache disabled, caching for key:'],
-      );
+      logger.expect(['TRACE'], ['CachedDownloadStrategy', 'download'], ['Cache disabled, caching for key:']);
     });
 
     it('should use cache when destination path is provided', async () => {
       const options: DownloadOptions = {
         destinationPath: '/tmp/file.txt',
       };
-      
+
       const result = await cachedStrategy.download('https://example.com/file.txt', options);
 
       expect(result).toBeUndefined(); // Should return void for file downloads
@@ -165,20 +160,20 @@ describe('CachedDownloadStrategy', () => {
 
     it('should return cached data when available', async () => {
       const cachedData = Buffer.from('cached-data');
-      
+
       // Mock get to return cached data
       const originalGet = mockCache.get;
       mockCache.get = async <T>(key: string): Promise<T | null> => {
         mockCache.getCalls.push(key);
         return cachedData as T;
       };
-      
-      const result = await cachedStrategy.download('https://example.com/file.txt') as Buffer;
+
+      const result = (await cachedStrategy.download('https://example.com/file.txt')) as Buffer;
 
       expect(result).toEqual(Buffer.from('cached-data'));
       expect(mockStrategy.downloadCalls).toHaveLength(0); // Should not call underlying strategy
       expect(mockCache.getCalls).toHaveLength(1);
-      
+
       // Restore original get method
       mockCache.get = originalGet;
     });
@@ -186,14 +181,14 @@ describe('CachedDownloadStrategy', () => {
     it('should download and cache when cache miss occurs', async () => {
       const downloadResult = Buffer.from('downloaded-data');
       mockStrategy.downloadResult = downloadResult;
-      
+
       const result = await cachedStrategy.download('https://example.com/file.txt');
 
       expect(result).toEqual(downloadResult);
       expect(mockStrategy.downloadCalls).toHaveLength(1);
       expect(mockCache.getCalls).toHaveLength(1);
       expect(mockCache.setCalls).toHaveLength(1);
-      
+
       expect(mockCache.setCalls).toHaveLength(1);
       const setCall = mockCache.setCalls[0];
       expect(setCall).toBeDefined();
@@ -210,12 +205,12 @@ describe('CachedDownloadStrategy', () => {
     it('should include content type from Accept header in metadata', async () => {
       const options: DownloadOptions = {
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
       };
       const downloadResult = Buffer.from('{"data": "test"}');
       mockStrategy.downloadResult = downloadResult;
-      
+
       await cachedStrategy.download('https://example.com/file.json', options);
 
       const setCall = mockCache.setCalls[0];
@@ -232,14 +227,14 @@ describe('CachedDownloadStrategy', () => {
       mockCache.shouldFailGet = true;
       const downloadResult = Buffer.from('downloaded-data');
       mockStrategy.downloadResult = downloadResult;
-      
+
       const result = await cachedStrategy.download('https://example.com/file.txt');
 
       expect(result).toEqual(downloadResult);
       expect(mockStrategy.downloadCalls).toHaveLength(1);
       // Should still attempt to cache the result after download
       expect(mockCache.setCalls).toHaveLength(1);
-      
+
       // Check all logs in order
       logger.expect(
         ['TRACE'],
@@ -247,8 +242,8 @@ describe('CachedDownloadStrategy', () => {
         [
           /Error checking cache for key: download:[a-f0-9]{64}, error: Cache get failed/,
           /download from mock-strategy/,
-          /Cached data for key: download:[a-f0-9]{64} \(binary\), size: 15 bytes, expires: TTL-based/
-        ],
+          /Cached data for key: download:[a-f0-9]{64} \(binary\), size: 15 bytes, expires: TTL-based/,
+        ]
       );
     });
 
@@ -256,7 +251,7 @@ describe('CachedDownloadStrategy', () => {
       mockCache.shouldFailSet = true;
       const downloadResult = Buffer.from('downloaded-data');
       mockStrategy.downloadResult = downloadResult;
-      
+
       const result = await cachedStrategy.download('https://example.com/file.txt');
 
       expect(result).toEqual(downloadResult);
@@ -268,16 +263,15 @@ describe('CachedDownloadStrategy', () => {
         [
           /No cache entry found for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,
-          /Error caching data for key: download:[a-f0-9]{64}, error: Cache set failed/
-        ],
+          /Error caching data for key: download:[a-f0-9]{64}, error: Cache set failed/,
+        ]
       );
     });
 
     it('should propagate download errors from underlying strategy', async () => {
       mockStrategy.shouldFail = true;
-      
-      expect(cachedStrategy.download('https://example.com/file.txt'))
-        .rejects.toThrow('Mock download failed');
+
+      expect(cachedStrategy.download('https://example.com/file.txt')).rejects.toThrow('Mock download failed');
     });
 
     it('should handle different URLs with different cache keys', async () => {
@@ -296,8 +290,8 @@ describe('CachedDownloadStrategy', () => {
     });
 
     it('should handle headers affecting cache keys', async () => {
-      const options1: DownloadOptions = { headers: { 'Authorization': 'Bearer token1' } };
-      const options2: DownloadOptions = { headers: { 'Authorization': 'Bearer token2' } };
+      const options1: DownloadOptions = { headers: { Authorization: 'Bearer token1' } };
+      const options2: DownloadOptions = { headers: { Authorization: 'Bearer token2' } };
 
       await cachedStrategy.download('https://example.com/file.txt', options1);
       await cachedStrategy.download('https://example.com/file.txt', options2);

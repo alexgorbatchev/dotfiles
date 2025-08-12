@@ -45,8 +45,5 @@ export interface IVersionChecker {
    * @returns A promise that resolves to a `VersionComparisonStatus` indicating the relationship
    *          between the two versions.
    */
-  checkVersionStatus(
-    currentVersion: string,
-    latestVersion: string
-  ): Promise<VersionComparisonStatus>;
+  checkVersionStatus(currentVersion: string, latestVersion: string): Promise<VersionComparisonStatus>;
 }

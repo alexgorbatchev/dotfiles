@@ -1,14 +1,14 @@
 import type { CompletionConfig, ShellCompletionConfig } from './completion.types';
-import type { Platform, Architecture } from './platform.types';
-import type { ShellScript } from './shellScript.types';
 import type { AsyncInstallHook } from './installHooks.types';
-import type { 
-  GithubReleaseInstallParams,
+import type {
   BrewInstallParams,
   CurlScriptInstallParams,
   CurlTarInstallParams,
-  ManualInstallParams
+  GithubReleaseInstallParams,
+  ManualInstallParams,
 } from './installParams.types';
+import type { Architecture, Platform } from './platform.types';
+import type { ShellScript } from './shellScript.types';
 
 /**
  * Configuration for shell-specific properties.
@@ -19,23 +19,23 @@ export interface ShellConfig {
    * Shell command-line completion configuration.
    */
   completions?: ShellCompletionConfig;
-  
+
   /**
    * Shell initialization scripts (branded with timing).
    */
   shellInit?: ShellScript[];
-  
+
   /**
    * Shell aliases to define (alias name -> command).
    */
   aliases?: Record<string, string>;
-  
+
   /**
    * Environment variables to define (variable name -> value).
    * These will be automatically exported with shell-specific syntax.
    */
   environment?: Record<string, string>;
-  
+
   // Future extensibility for shell-specific features:
   // functions?: ShellFunction[];
   // keybindings?: KeyBinding[];
@@ -159,7 +159,7 @@ export interface ToolConfigBuilder {
    * Specifies the desired version of the tool to be installed.  This can be a specific version string (e.g., `'1.2.3'`),
    * a SemVer constraint (e.g., `'^1.0.0'`), or the keyword `'latest'` to always attempt to install the most recent
    * version.  This is analogous to Zinit's `ver` ice.
-   * 
+   *
    * @param version - The version string or constraint.
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @default 'latest'
@@ -277,7 +277,7 @@ export interface ToolConfigBuilder {
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
    * import { once, always } from '@types';
-   * 
+   *
    * c.zsh({
    *   completions: {
    *     source: 'completions/_tool',
@@ -306,7 +306,7 @@ export interface ToolConfigBuilder {
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
    * import { once, always } from '@types';
-   * 
+   *
    * c.bash({
    *   completions: {
    *     source: 'completions/tool.bash'
@@ -330,7 +330,7 @@ export interface ToolConfigBuilder {
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
    * import { once, always } from '@types';
-   * 
+   *
    * c.powershell({
    *   completions: {
    *     source: 'completions/tool.ps1'
@@ -379,15 +379,8 @@ export interface ToolConfigBuilder {
    *   builder.install('manual', { binaryPath: 'C:\\custom\\tool-arm64.exe' });
    * });
    */
-  platform(
-    platforms: Platform,
-    configure: (builder: PlatformConfigBuilder) => void,
-  ): this;
-  platform(
-    platforms: Platform,
-    architectures: Architecture,
-    configure: (builder: PlatformConfigBuilder) => void,
-  ): this;
+  platform(platforms: Platform, configure: (builder: PlatformConfigBuilder) => void): this;
+  platform(platforms: Platform, architectures: Architecture, configure: (builder: PlatformConfigBuilder) => void): this;
 
   /**
    * Configures shell command-line completions for the tool.

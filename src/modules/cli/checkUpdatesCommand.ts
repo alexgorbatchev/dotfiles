@@ -14,7 +14,7 @@ export interface CheckUpdatesCommandOptions {
 export async function checkUpdatesActionLogic(
   parentLogger: TsLogger,
   toolName: string | undefined,
-  services: Services,
+  services: Services
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'checkUpdatesActionLogic' });
   const { yamlConfig, fs, versionChecker, githubApiClient } = services;
@@ -65,18 +65,14 @@ export async function checkUpdatesActionLogic(
       }
       const [owner, repoName] = config.installParams.repo.split('/');
       if (!owner || !repoName) {
-        logger.warn(
-          logs.config.warning.invalid('repo format', config.installParams.repo, 'owner/repo')
-        );
+        logger.warn(logs.config.warning.invalid('repo format', config.installParams.repo, 'owner/repo'));
         continue;
       }
 
       try {
         const latestRelease = await githubApiClient.getLatestRelease(owner, repoName);
         if (!latestRelease || !latestRelease.tag_name) {
-          logger.warn(
-            logs.service.warning.github.notFound('release', `${config.name} latest release`)
-          );
+          logger.warn(logs.service.warning.github.notFound('release', `${config.name} latest release`));
           continue;
         }
         const latestVersion = latestRelease.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
@@ -87,10 +83,7 @@ export async function checkUpdatesActionLogic(
           logger.info(logs.general.success.toolOnLatest(config.name, latestVersion));
         } else {
           const currentVersionToCompare = configuredVersion.replace(/^v/, '');
-          const status = await versionChecker.checkVersionStatus(
-            currentVersionToCompare,
-            latestVersion,
-          );
+          const status = await versionChecker.checkVersionStatus(currentVersionToCompare, latestVersion);
 
           if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
             logger.info(logs.general.success.updateAvailable(config.name, currentVersionToCompare, latestVersion));
@@ -99,9 +92,7 @@ export async function checkUpdatesActionLogic(
           } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
             logger.info(logs.general.success.toolAhead(config.name, currentVersionToCompare, latestVersion));
           } else {
-            logger.warn(
-              logs.tool.warning.versionComparisonFailed(config.name, currentVersionToCompare, latestVersion)
-            );
+            logger.warn(logs.tool.warning.versionComparisonFailed(config.name, currentVersionToCompare, latestVersion));
           }
         }
       } catch (error) {
@@ -109,7 +100,12 @@ export async function checkUpdatesActionLogic(
         logger.debug(logs.command.debug.githubApiError(config.name), error);
       }
     } else {
-      logger.warn(logs.general.warning.unsupportedOperation(`Update checking for ${config.name}`, `method: ${config.installationMethod}`));
+      logger.warn(
+        logs.general.warning.unsupportedOperation(
+          `Update checking for ${config.name}`,
+          `method: ${config.installationMethod}`
+        )
+      );
     }
   }
   logger.info(logs.general.success.completed('Check-updates command'));
@@ -118,14 +114,12 @@ export async function checkUpdatesActionLogic(
 export function registerCheckUpdatesCommand(
   parentLogger: TsLogger,
   program: GlobalProgram,
-  servicesFactory: () => Promise<Services>,
+  servicesFactory: () => Promise<Services>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
   program
     .command('check-updates [toolName]')
-    .description(
-      'Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.',
-    )
+    .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
 

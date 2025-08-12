@@ -1,3 +1,6 @@
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import * as path from 'node:path';
+import { NodeFileSystem } from '@modules/file-system';
 import {
   createFile,
   createMockGitHubServer,
@@ -5,14 +8,11 @@ import {
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
-  TestLogger,
   type MockGitHubServerResult,
   type TestDirectories,
+  TestLogger,
 } from '@testing-helpers';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import * as path from 'node:path';
 import { $ } from 'zx';
-import { NodeFileSystem } from '@modules/file-system';
 
 describe('E2E: bun run cli install', () => {
   describe('downloaded direct binary (GitHub Release with Mock Server)', () => {
@@ -30,13 +30,8 @@ describe('E2E: bun run cli install', () => {
     beforeAll(async () => {
       fs = new NodeFileSystem();
       const logger = new TestLogger();
-      testDirs = await createTestDirectories(logger, fs,{ testName: 'cli-install-direct-binary-mock' });
-      expectedInstalledBinaryPath = path.join(
-        testDirs.paths.binariesDir,
-        mockToolName,
-        mockToolVersion,
-        mockToolName
-      );
+      testDirs = await createTestDirectories(logger, fs, { testName: 'cli-install-direct-binary-mock' });
+      expectedInstalledBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
 
       localMockBinaryFilePath = await createFile(
         fs,
@@ -113,7 +108,7 @@ describe('E2E: bun run cli install', () => {
       expect((await fs.stat(expectedInstalledBinaryPath)).mode & 0o100).toBeGreaterThan(0);
     });
 
-    it('should verify the downloaded file content',async () => {
+    it('should verify the downloaded file content', async () => {
       const binaryContent = await fs.readFile(expectedInstalledBinaryPath, 'utf8');
       expect(binaryContent).toEqual(mockBinaryContent);
     });
@@ -147,11 +142,7 @@ describe('E2E: bun run cli install', () => {
         mockArchiveToolName
       );
 
-      await createFile(
-        fs,
-        path.join(testDirs.getDir('temp-archive-source'), mockArchiveToolName),
-        mockBinaryContent,
-      );
+      await createFile(fs, path.join(testDirs.getDir('temp-archive-source'), mockArchiveToolName), mockBinaryContent);
 
       localArchiveFilePath = path.join(testDirs.paths.homeDir, mockArchiveFileName);
       await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} ${mockArchiveToolName}`.quiet();
@@ -162,18 +153,14 @@ describe('E2E: bun run cli install', () => {
             path: `/repos/mock-owner/archive-repo/releases/tags/v${mockArchiveToolVersion}`,
             response: {
               tag_name: `v${mockArchiveToolVersion}`,
-              assets: [
-                { name: mockArchiveFileName, browser_download_url: `/${mockArchiveFileName}` },
-              ],
+              assets: [{ name: mockArchiveFileName, browser_download_url: `/${mockArchiveFileName}` }],
             },
           },
           {
             path: `/repos/mock-owner/archive-repo/releases/latest`,
             response: {
               tag_name: `v${mockArchiveToolVersion}`,
-              assets: [
-                { name: mockArchiveFileName, browser_download_url: `/${mockArchiveFileName}` },
-              ],
+              assets: [{ name: mockArchiveFileName, browser_download_url: `/${mockArchiveFileName}` }],
             },
           },
         ],
@@ -190,7 +177,7 @@ describe('E2E: bun run cli install', () => {
           downloader: {
             cache: {
               enabled: false,
-            }
+            },
           },
           github: {
             host: mockServer.baseUrl,
@@ -233,11 +220,9 @@ describe('E2E: bun run cli install', () => {
 
     it('should clean up downloaded archive after extraction', async () => {
       // Archive should be cleaned up after extraction
-      expect(
-        await fs.exists(
-          path.join(testDirs.paths.binariesDir, mockArchiveToolName, mockArchiveFileName)
-        )
-      ).toBe(false);
+      expect(await fs.exists(path.join(testDirs.paths.binariesDir, mockArchiveToolName, mockArchiveFileName))).toBe(
+        false
+      );
     });
 
     it('should move binary to the direct location', async () => {
@@ -248,7 +233,7 @@ describe('E2E: bun run cli install', () => {
       expect((await fs.stat(expectedBinaryPath)).mode & 0o100).toBeGreaterThan(0);
     });
 
-    it('should verify the downloaded file content',async () => {
+    it('should verify the downloaded file content', async () => {
       const binaryContent = await fs.readFile(expectedBinaryPath, 'utf8');
       expect(binaryContent).toEqual(mockBinaryContent);
     });

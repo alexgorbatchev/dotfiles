@@ -1,5 +1,5 @@
-import type { GitHubReleaseAsset } from './githubApi.types';
 import type { SystemInfo } from './common.types';
+import type { GitHubReleaseAsset } from './githubApi.types';
 import type { AsyncInstallHook } from './installHooks.types';
 
 /**
@@ -109,10 +109,7 @@ export interface GithubReleaseInstallParams extends BaseInstallParams {
    *   );
    * }
    */
-  assetSelector?: (
-    assets: GitHubReleaseAsset[],
-    systemInfo: SystemInfo
-  ) => GitHubReleaseAsset | undefined;
+  assetSelector?: (assets: GitHubReleaseAsset[], systemInfo: SystemInfo) => GitHubReleaseAsset | undefined;
   /**
    * The number of leading directory components to strip from file paths during archive extraction.
    * For example, if an archive contains `tool-v1.0/bin/tool` and `stripComponents` is 1,

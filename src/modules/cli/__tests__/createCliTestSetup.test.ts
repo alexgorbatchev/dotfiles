@@ -65,7 +65,7 @@ describe('createCliTestSetup', () => {
     });
 
     const services = setup.createServices();
-    
+
     expect(services.yamlConfig).toBeDefined();
     expect(services.fs).toBeDefined();
     expect(services.installer).toBe(setup.mockServices.installer!);

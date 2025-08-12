@@ -1,10 +1,10 @@
 import type { ShellScript, ShellType } from '@types';
 import { getScriptContent, isAlwaysScript } from '@types';
 import { dedentString } from '@utils';
-import type { IScriptFormatter, FormattedScriptOutput } from './IScriptFormatter';
+import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
- * Formatter for always scripts - wraps them in self-executing functions 
+ * Formatter for always scripts - wraps them in self-executing functions
  * that are automatically unset to prevent variable pollution
  */
 export class AlwaysScriptFormatter implements IScriptFormatter {
@@ -15,7 +15,7 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
 
     const scriptContent = getScriptContent(script);
     const functionName = `__dotfiles_${toolName}_always`;
-    
+
     const formattedContent = this.generateFormattedScript(scriptContent, functionName, shellType);
 
     return {
@@ -40,7 +40,7 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
     // Indent the script content for proper function formatting
     const indentedContent = scriptContent
       .split('\n')
-      .map(line => line.trim() ? `  ${line}` : line)
+      .map((line) => (line.trim() ? `  ${line}` : line))
       .join('\n');
 
     return dedentString(`
@@ -56,7 +56,7 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
     // Indent the script content for proper function formatting
     const indentedContent = scriptContent
       .split('\n')
-      .map(line => line.trim() ? `  ${line}` : line)
+      .map((line) => (line.trim() ? `  ${line}` : line))
       .join('\n');
 
     return dedentString(`

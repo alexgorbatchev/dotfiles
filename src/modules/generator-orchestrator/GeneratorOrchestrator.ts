@@ -1,16 +1,12 @@
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system';
 import type { YamlConfig } from '@modules/config';
-import type { GeneratedArtifactsManifest, ToolConfig, SystemInfo } from '@types';
-import type { IShimGenerator, GenerateShimsOptions } from '@modules/generator-shim';
-import type { IShellInitGenerator, GenerateShellInitOptions } from '@modules/generator-shell-init';
-import type {
-  ISymlinkGenerator,
-  GenerateSymlinksOptions,
-  SymlinkOperationResult,
-} from '@modules/generator-symlink';
-import type { IGeneratorOrchestrator, GenerateAllOptions } from './IGeneratorOrchestrator';
-import { type TsLogger, logs } from '@modules/logger';
+import type { IFileSystem } from '@modules/file-system';
+import type { GenerateShellInitOptions, IShellInitGenerator } from '@modules/generator-shell-init';
+import type { GenerateShimsOptions, IShimGenerator } from '@modules/generator-shim';
+import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
+import { logs, type TsLogger } from '@modules/logger';
+import type { GeneratedArtifactsManifest, SystemInfo, ToolConfig } from '@types';
+import type { GenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly logger: TsLogger;
@@ -61,9 +57,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     if (!this.appConfig.paths.manifestPath) {
       logger.debug(logs.generator.debug.pathsCritical());
-      throw new Error(
-        'GeneratorOrchestrator: YamlConfig.paths.manifestPath is missing.'
-      );
+      throw new Error('GeneratorOrchestrator: YamlConfig.paths.manifestPath is missing.');
     }
     const manifestPath = this.appConfig.paths.manifestPath;
     logger.debug(logs.generator.debug.manifestPathDetermined(), manifestPath);
@@ -91,7 +85,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         };
       }
     } catch (error) {
-      logger.debug(logs.generator.debug.manifestReadError(), manifestPath, error instanceof Error ? error.message : String(error));
+      logger.debug(
+        logs.generator.debug.manifestReadError(),
+        manifestPath,
+        error instanceof Error ? error.message : String(error)
+      );
       currentManifest = {
         lastGenerated: '', // Will be updated
         shims: [],
@@ -112,15 +110,12 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     // 2. Generate Shell Init for all supported shells
     // dryRun is removed; IFileSystem handles behavior
-    const shellInitOptions: GenerateShellInitOptions = { 
+    const shellInitOptions: GenerateShellInitOptions = {
       shellTypes: ['zsh', 'bash', 'powershell'],
-      systemInfo: this.systemInfo
+      systemInfo: this.systemInfo,
     };
     logger.debug(logs.generator.debug.shellGenerate(), shellInitOptions);
-    const shellInitResult = await this.shellInitGenerator.generate(
-      toolConfigs,
-      shellInitOptions
-    );
+    const shellInitResult = await this.shellInitGenerator.generate(toolConfigs, shellInitOptions);
     currentManifest.shellInit = { path: shellInitResult?.primaryPath ?? null };
     logger.debug(logs.generator.debug.shellInitComplete(), currentManifest.shellInit?.path ?? 'null');
 
@@ -128,10 +123,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     // dryRun is removed; IFileSystem handles behavior
     const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
     logger.debug(logs.generator.debug.symlinkGenerate(), symlinkOptions);
-    const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
-      toolConfigs,
-      symlinkOptions
-    );
+    const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(toolConfigs, symlinkOptions);
     currentManifest.symlinks = symlinkResults;
     logger.debug(logs.generator.debug.symlinkGenerationComplete(), currentManifest.symlinks?.length ?? 0);
 
@@ -146,7 +138,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       await this.fs.writeFile(manifestPath, JSON.stringify(currentManifest, null, 2));
       logger.debug(logs.generator.debug.manifestWritten());
     } catch (error) {
-      logger.debug(logs.generator.debug.manifestWriteFailed(), manifestPath, error instanceof Error ? error.message : String(error));
+      logger.debug(
+        logs.generator.debug.manifestWriteFailed(),
+        manifestPath,
+        error instanceof Error ? error.message : String(error)
+      );
       // Potentially re-throw or handle more gracefully depending on requirements
     }
 

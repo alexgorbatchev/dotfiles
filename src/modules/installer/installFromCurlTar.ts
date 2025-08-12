@@ -1,21 +1,21 @@
 import path from 'node:path';
-import type { TsLogger } from '@modules/logger';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IDownloader } from '@modules/downloader/IDownloader';
+import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import { TrackedFileSystem } from '@modules/file-registry';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { TsLogger } from '@modules/logger';
+import { logs } from '@modules/logger';
 import type {
-  CurlTarToolConfig,
   BaseInstallContext,
+  CurlTarToolConfig,
+  ExtractResult,
   PostDownloadInstallContext,
   PostExtractInstallContext,
-  ExtractResult,
 } from '@types';
-import type { InstallOptions, InstallResult } from './IInstaller';
-import { logs } from '@modules/logger';
-import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
-import { HookExecutor } from './HookExecutor';
 import { setupBinariesFromArchive } from './BinarySetupService';
+import type { HookExecutor } from './HookExecutor';
+import type { InstallOptions, InstallResult } from './IInstaller';
 
 /**
  * Install a tool from a tarball using curl
@@ -29,12 +29,10 @@ export async function installFromCurlTar(
   downloader: IDownloader,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
-  parentLogger: TsLogger,
+  parentLogger: TsLogger
 ): Promise<InstallResult> {
   // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-  const toolFs = fs instanceof TrackedFileSystem 
-    ? fs.withToolName(toolName)
-    : fs;
+  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
 
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
   logger.debug(logs.installer.debug.installingFromCurlTar(), toolName);
@@ -58,10 +56,10 @@ export async function installFromCurlTar(
     // Download the tarball
     logger.debug(logs.installer.debug.downloadingTarball(), url);
     const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`); // Assuming .tar.gz, adjust if needed
-    
+
     const showProgress = shouldShowProgress(options?.quiet);
     const progressBar = new ProgressBar(`${toolName}.tar.gz`, { enabled: showProgress });
-    
+
     try {
       await downloader.download(url, {
         destinationPath: tarballPath,
@@ -80,24 +78,21 @@ export async function installFromCurlTar(
     // Run afterDownload hook if defined
     if (toolConfig.installParams?.hooks?.afterDownload) {
       logger.debug(logs.installer.debug.runningAfterDownloadHook());
-      
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        postDownloadContext, fs, logger
-      );
-      
+
+      const enhancedContext = hookExecutor.createEnhancedContext(postDownloadContext, fs, logger);
+
       const hookResult = await hookExecutor.executeHook(
         'afterDownload',
         toolConfig.installParams.hooks.afterDownload,
         enhancedContext
       );
-      
+
       if (!hookResult.success) {
         return {
           success: false,
           error: `afterDownload hook failed: ${hookResult.error}`,
         };
       }
-      
     }
 
     // Extract the tarball to temporary directory
@@ -121,27 +116,24 @@ export async function installFromCurlTar(
     // Run afterExtract hook if defined
     if (toolConfig.installParams?.hooks?.afterExtract) {
       logger.debug(logs.installer.debug.runningAfterExtractHook());
-      
-      const enhancedContext = hookExecutor.createEnhancedContext(
-        postExtractContext, fs, logger
-      );
-      
+
+      const enhancedContext = hookExecutor.createEnhancedContext(postExtractContext, fs, logger);
+
       const hookResult = await hookExecutor.executeHook(
         'afterExtract',
         toolConfig.installParams.hooks.afterExtract,
         enhancedContext
       );
-      
+
       if (!hookResult.success) {
         return {
           success: false,
           error: `afterExtract hook failed: ${hookResult.error}`,
         };
       }
-      
     }
 
-    // Handle all binaries from extracted archive  
+    // Handle all binaries from extracted archive
     await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
 
     // Clean up temp extract directory
