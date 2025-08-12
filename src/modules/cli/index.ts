@@ -6,3 +6,4 @@ export * from './installCommand';
 export * from './cleanupCommand';
 export * from './checkUpdatesCommand';
 export * from './filesCommand';
+export * from './initCommand';

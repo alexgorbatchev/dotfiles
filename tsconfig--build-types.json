@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "AMD",
+    "moduleResolution": "node",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outFile": "./dist/generator.d.ts",
+    "strict": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["bun-types", "node"],
+    "paths": {
+      "@*": ["./src/*"]
+    }
+  },
+  "include": ["src/types/**/*"],
+  "exclude": ["src/**/*.test.ts", "src/**/__tests__/**", "src/tmp/**"]
+}

@@ -8,6 +8,7 @@ import {
   registerGenerateCommand,
   registerInstallCommand,
   registerUpdateCommand,
+  registerInitCommand,
 } from '@modules/cli';
 import { type YamlConfig, OS_VALUES, ARCH_VALUES } from '@modules/config';
 import { loadYamlConfig } from '@modules/config-loader';
@@ -281,6 +282,7 @@ export function registerAllCommands(
   servicesFactory: () => Promise<Services>
 ) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
+  registerInitCommand(logger, program, servicesFactory);
   registerInstallCommand(logger, program, servicesFactory);
   registerGenerateCommand(logger, program, servicesFactory);
   registerCleanupCommand(logger, program, servicesFactory);
