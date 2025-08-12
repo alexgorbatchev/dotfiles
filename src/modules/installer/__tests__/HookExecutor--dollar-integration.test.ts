@@ -7,6 +7,23 @@ import { tmpdir } from 'os';
 import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { realpathSync } from 'fs';
 
+// Helper to create a mock Shell instance that matches typeof $
+function createMockShell() {
+  const mockShell = ((_command: TemplateStringsArray, ..._args: any[]) => {
+    return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+  }) as any;
+  
+  // Add required Shell properties to make it compatible with typeof $
+  mockShell.sync = mockShell;
+  mockShell.create = () => mockShell;
+  mockShell.verbose = false;
+  mockShell.quote = (str: string) => str;
+  mockShell.spawn = () => ({});
+  mockShell.sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  return mockShell;
+}
+
 describe('HookExecutor $ Integration', () => {
   let logger: TestLogger;
   let hookExecutor: HookExecutor;
@@ -47,7 +64,7 @@ describe('HookExecutor $ Integration', () => {
     const baseContext: InstallHookContext = {
       toolName: 'test-tool',
       installDir: '/test/install/dir',
-      $: () => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 }) as any,
+      $: createMockShell(),
     };
 
     const contextWithToolConfig = {
@@ -91,7 +108,7 @@ describe('HookExecutor $ Integration', () => {
     const baseContext: InstallHookContext = {
       toolName: 'file-creator-tool',
       installDir: '/test/install/dir',
-      $: () => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 }) as any,
+      $: createMockShell(),
     };
 
     const contextWithToolConfig = {
@@ -133,7 +150,7 @@ describe('HookExecutor $ Integration', () => {
     const baseContext: InstallHookContext = {
       toolName: 'fallback-tool',
       installDir: '/test/install/dir',
-      $: () => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 }) as any,
+      $: createMockShell(),
     };
 
     const contextWithoutConfigPath = {

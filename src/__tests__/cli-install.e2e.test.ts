@@ -65,14 +65,16 @@ describe('E2E: bun run cli install', () => {
         binaryPaths: [{ path: `/${mockAssetFileName}`, filePath: localMockBinaryFilePath }],
       });
 
+      const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
           paths: testDirs.paths,
           github: {
             host: mockServer.baseUrl,
           },
+          userConfigPath: configFilePath,
         },
-        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: configFilePath,
         logger,
         fileSystem: fs,
         systemInfo: {
@@ -90,7 +92,7 @@ describe('E2E: bun run cli install', () => {
       });
 
       const result = executeCliCommand({
-        command: ['install', mockToolName],
+        command: ['install', mockToolName, '--config', 'config.yaml'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
@@ -178,6 +180,7 @@ describe('E2E: bun run cli install', () => {
         binaryPaths: [{ path: `/${mockArchiveFileName}`, filePath: localArchiveFilePath }],
       });
 
+      const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
           paths: testDirs.paths,
@@ -195,8 +198,9 @@ describe('E2E: bun run cli install', () => {
               enabled: false,
             },
           },
+          userConfigPath: configFilePath,
         },
-        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: configFilePath,
         fileSystem: fs,
         logger,
         systemInfo: {
@@ -214,7 +218,7 @@ describe('E2E: bun run cli install', () => {
       });
 
       const result = executeCliCommand({
-        command: ['install', mockArchiveToolName],
+        command: ['install', mockArchiveToolName, '--config', 'config.yaml'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });

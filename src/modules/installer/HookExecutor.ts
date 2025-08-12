@@ -23,8 +23,6 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   appConfig?: import('@modules/config').YamlConfig;
   /** The full tool configuration being processed (available in all hooks) */
   toolConfig?: import('@types').ToolConfig;
-  /** ZX shell executor with cwd set to the .tool.ts file directory */
-  $: typeof $;
 }
 
 /**
@@ -148,9 +146,10 @@ export class HookExecutor {
     const toolConfig = 'toolConfig' in baseContext ? baseContext.toolConfig : undefined;
 
     // Create ZX $ instance with cwd set to the directory of the .tool.ts file
-    let zxInstance: ReturnType<typeof $>;
+    let zxInstance: typeof $;
     if (toolConfig?.configFilePath) {
       const toolConfigDir = path.dirname(toolConfig.configFilePath);
+      // Create a new $ instance with the specified cwd
       zxInstance = $({ cwd: toolConfigDir });
     } else {
       // Fallback to default $ instance if no config file path is available
@@ -166,6 +165,7 @@ export class HookExecutor {
       $: zxInstance,
     };
   }
+
 
   /**
    * Execute multiple hooks in sequence with proper logging and error handling

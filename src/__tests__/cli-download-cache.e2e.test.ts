@@ -77,6 +77,7 @@ describe('E2E: Download Cache', () => {
       });
 
       // Create config with cache enabled
+      const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
           paths: testDirs.paths,
@@ -92,8 +93,9 @@ describe('E2E: Download Cache', () => {
               ttl: 60000, // 1 minute for testing
             },
           },
+          userConfigPath: configFilePath,
         },
-        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: configFilePath,
         fileSystem: fs,
         logger: new TestLogger(),
         systemInfo: {
@@ -131,7 +133,7 @@ describe('E2E: Download Cache', () => {
 
       // Install tool - should create cache
       const result = executeCliCommand({
-        command: ['install', mockToolName],
+        command: ['install', mockToolName, '--config', 'config.yaml'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
@@ -212,6 +214,7 @@ describe('E2E: Download Cache', () => {
 
     it('should work when cache is disabled', async () => {
       // Create config with cache DISABLED
+      const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
           paths: testDirs.paths,
@@ -227,8 +230,9 @@ describe('E2E: Download Cache', () => {
               ttl: 60000,
             },
           },
+          userConfigPath: configFilePath,
         },
-        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: configFilePath,
         fileSystem: fs,
         logger: new TestLogger(),
         systemInfo: {
@@ -247,7 +251,7 @@ describe('E2E: Download Cache', () => {
 
       // Install with cache disabled
       const result = executeCliCommand({
-        command: ['install', mockToolName],
+        command: ['install', mockToolName, '--config', 'config.yaml'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });

@@ -95,8 +95,17 @@ export async function setupServices(
     logger.warn(logs.config.warning.overridden('arch', options.arch));
   }
 
-  const userConfigPath = config.length === 0 ? path.resolve(options.cwd, 'config.yaml') : config;
-  const yamlConfig = await loadYamlConfig(logger, fs, userConfigPath, systemInfo, env);
+  // Default config path should be in the generator directory
+  // If no config specified, look for config.yaml in the generator directory (one level up from src/)
+  const userConfigPath = config.length === 0 ? 
+    path.resolve(path.dirname(__dirname), 'config.yaml') : 
+    config;
+  
+  // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
+  // In tests, the config file should be loaded from the test filesystem (MemFileSystem)
+  const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
+  const configFs = (dryRun && isRunningDirectly) ? new NodeFileSystem() : fs;
+  const yamlConfig = await loadYamlConfig(logger, configFs, userConfigPath, systemInfo, env);
 
   // console.log('yamlConfig', yamlConfig);
 

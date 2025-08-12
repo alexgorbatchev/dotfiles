@@ -51,11 +51,13 @@ describe('E2E: bun run cli generate', () => {
       // Create mock lazygit config file at the location expected by the tool config
       await createFile(fs, lazygitSourceConfigPath, '# Sample lazygit config for E2E test');
 
+      const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
           paths: testDirs.paths,
+          userConfigPath: configFilePath,
         },
-        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: configFilePath,
         fileSystem: fs,
         logger,
         systemInfo: {
@@ -80,7 +82,7 @@ describe('E2E: bun run cli generate', () => {
 
       // Execute CLI command
       const result = executeCliCommand({
-        command: ['generate'],
+        command: ['generate', '--config', 'config.yaml'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
@@ -119,7 +121,7 @@ describe('E2E: bun run cli generate', () => {
         BINARY_NAME="fzf"
         TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/fzf/latest/fzf"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
-        CONFIG_PATH="${testDirs.paths.dotfilesDir}/config.yaml"
+        CONFIG_PATH="config.yaml"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
@@ -167,7 +169,7 @@ describe('E2E: bun run cli generate', () => {
         BINARY_NAME="lazygit"
         TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/lazygit/latest/lazygit"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
-        CONFIG_PATH="${testDirs.paths.dotfilesDir}/config.yaml"
+        CONFIG_PATH="config.yaml"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
@@ -301,6 +303,7 @@ describe('E2E: bun run cli generate', () => {
       });
 
       // 3. Create mock YAML config
+      const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
           paths: {
@@ -310,8 +313,9 @@ describe('E2E: bun run cli generate', () => {
           github: {
             host: mockServer.baseUrl,
           },
+          userConfigPath: configFilePath,
         },
-        filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+        filePath: configFilePath,
         fileSystem: fs,
         logger,
         systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir },
@@ -327,7 +331,7 @@ describe('E2E: bun run cli generate', () => {
 
       // 5. Generate shims and symlinks
       const generateResult = executeCliCommand({
-        command: ['generate'],
+        command: ['generate', '--config', 'config.yaml'],
         cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
       });
@@ -343,7 +347,7 @@ describe('E2E: bun run cli generate', () => {
     it('should automatically install and execute the tool when it is not present', async () => {
       const shimResult = executeCliCommand({
         command: ['--version'],
-        cwd: testDirs.paths.homeDir,
+        cwd: testDirs.paths.dotfilesDir,
         homeDir: testDirs.paths.homeDir,
         customCmd: [fzfShimPath],
         env: {},
