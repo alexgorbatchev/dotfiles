@@ -7,6 +7,91 @@ import type { AsyncConfigureTool, AsyncConfigureToolWithReturn, ToolConfig, Tool
 import { toolConfigSchema } from '@types';
 
 /**
+ * Validates a tool configuration with Zod schema and logs errors if validation fails.
+ * @param config The configuration to validate
+ * @param logger The logger instance
+ * @param filePath The file path for error reporting
+ * @param context Description of what's being validated
+ * @returns The validated config or null if validation failed
+ */
+function validateToolConfig(config: unknown, logger: TsLogger, filePath: string, context: string): ToolConfig | null {
+  const validationResult = toolConfigSchema.safeParse(config);
+  if (validationResult.success) {
+    return validationResult.data;
+  }
+
+  logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', `${context} validation failed`));
+  logger.zodErrors(validationResult.error);
+  return null;
+}
+
+/**
+ * Processes a function-based tool configuration export.
+ * @param configureToolFn The configuration function
+ * @param logger The logger instance
+ * @param toolName The tool name
+ * @param filePath The file path
+ * @param yamlConfig The YAML configuration
+ * @returns The processed tool config or null
+ */
+async function processFunctionExport(
+  configureToolFn: AsyncConfigureTool | AsyncConfigureToolWithReturn,
+  logger: TsLogger,
+  toolName: string,
+  filePath: string,
+  yamlConfig: YamlConfig
+): Promise<ToolConfig | null> {
+  const builder = new ToolConfigBuilder(logger, toolName);
+  const context = createToolConfigContext(yamlConfig, toolName);
+  const result = await configureToolFn(builder, context);
+
+  // Check if the function returned a ToolConfig object
+  if (result && typeof result === 'object' && 'name' in result) {
+    const validatedConfig = validateToolConfig(result, logger, filePath, 'Function return');
+    if (validatedConfig) {
+      logger.trace(logs.config.success.loaded(filePath, 1));
+    }
+    return validatedConfig;
+  }
+
+  // Function didn't return an object, use builder pattern
+  const builtConfig = builder.build();
+  const validatedConfig = validateToolConfig(builtConfig, logger, filePath, 'Builder');
+  if (validatedConfig) {
+    logger.trace(logs.config.success.loaded(filePath, 1));
+  }
+  return validatedConfig;
+}
+
+/**
+ * Processes a direct object export tool configuration.
+ * @param exportedObject The exported object
+ * @param logger The logger instance
+ * @param filePath The file path
+ * @param toolName The expected tool name
+ * @returns The processed tool config or null
+ */
+function processDirectExport(
+  exportedObject: unknown,
+  logger: TsLogger,
+  filePath: string,
+  toolName: string
+): ToolConfig | null {
+  const validatedConfig = validateToolConfig(exportedObject, logger, filePath, 'Direct export');
+  if (validatedConfig) {
+    logger.trace(logs.config.success.validated(filePath));
+    // Ensure the toolConfig.name matches the filename if it's a direct object export
+    if (validatedConfig.name !== toolName) {
+      logger.warn(
+        logs.config.warning.invalid('tool config object name', validatedConfig.name, `filename: ${toolName}`),
+        filePath
+      );
+    }
+  }
+  return validatedConfig;
+}
+
+/**
  * Creates a ToolConfigContext from YamlConfig for the specified tool.
  * @param yamlConfig The application configuration containing path information.
  * @param currentToolName The name of the tool currently being configured.
@@ -78,59 +163,14 @@ async function loadToolConfigFromModule(
       return null;
     }
 
-    let toolConfig: ToolConfig | undefined;
+    let toolConfig: ToolConfig | null;
 
     if (typeof module.default === 'function') {
       logger.trace(logs.config.success.validated(filePath));
       const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
-      const builder = new ToolConfigBuilder(logger, toolName);
-      const context = createToolConfigContext(yamlConfig, toolName);
-      const result = await configureToolFn(builder, context);
-
-      // Check if the function returned a ToolConfig object
-      if (result && typeof result === 'object' && 'name' in result) {
-        // Validate the returned object with Zod schema
-        const validationResult = toolConfigSchema.safeParse(result);
-        if (validationResult.success) {
-          toolConfig = validationResult.data;
-          logger.trace(logs.config.success.loaded(filePath, 1));
-        } else {
-          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Validation failed'));
-          logger.zodErrors(validationResult.error);
-          return null;
-        }
-      } else {
-        // Function didn't return an object, use builder pattern
-        const builtConfig = builder.build();
-        // Validate the built config with Zod schema
-        const validationResult = toolConfigSchema.safeParse(builtConfig);
-        if (validationResult.success) {
-          toolConfig = validationResult.data;
-          logger.trace(logs.config.success.loaded(filePath, 1));
-        } else {
-          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Builder validation failed'));
-          logger.zodErrors(validationResult.error);
-          return null;
-        }
-      }
+      toolConfig = await processFunctionExport(configureToolFn, logger, toolName, filePath, yamlConfig);
     } else {
-      // Direct object export - validate with Zod schema
-      const validationResult = toolConfigSchema.safeParse(module.default);
-      if (validationResult.success) {
-        toolConfig = validationResult.data;
-        logger.trace(logs.config.success.validated(filePath));
-        // Ensure the toolConfig.name matches the filename if it's a direct object export
-        if (toolConfig.name !== toolName) {
-          logger.warn(
-            logs.config.warning.invalid('tool config object name', toolConfig.name, `filename: ${toolName}`),
-            filePath
-          );
-        }
-      } else {
-        logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Direct export validation failed'));
-        logger.zodErrors(validationResult.error);
-        return null;
-      }
+      toolConfig = processDirectExport(module.default, logger, filePath, toolName);
     }
 
     // Set the config file path after building/loading
@@ -138,7 +178,7 @@ async function loadToolConfigFromModule(
       toolConfig.configFilePath = filePath;
     }
 
-    return toolConfig || null;
+    return toolConfig;
   } catch (e) {
     logger.error(logs.config.error.loadFailed(filePath, String(e)), e);
     return null;
@@ -232,86 +272,49 @@ export async function loadSingleToolConfig(
   const logger = parentLogger.getSubLogger({ name: 'loadSingleToolConfig' });
   logger.debug(logs.config.success.singleToolConfigLoad(toolName, toolConfigsDir));
   const toolFileName = `${toolName}.tool.ts`;
-  const filePath = path.resolve(toolConfigsDir, toolFileName); // Absolute path for import
+  const filePath = path.resolve(toolConfigsDir, toolFileName);
 
   try {
-    // Check existence using the provided fs. This is useful if fs is MemFileSystem
-    // and we want to ensure it's aware of the file before attempting import.
+    // Check existence using the provided fs
     if (!(await fs.exists(filePath))) {
       logger.debug(logs.fs.error.notFound('Tool config file', filePath), fs.constructor.name, filePath);
       return undefined;
     }
 
-    // Dynamic import() will use the host's file system.
-    // This relies on filePath being an actual file on disk.
     const module = await import(filePath);
-    if (module.default) {
-      let toolConfig: ToolConfig | undefined;
-      const toolNameFromFile = path.basename(filePath, '.tool.ts');
-
-      if (typeof module.default === 'function') {
-        logger.trace(logs.config.success.validated(filePath));
-        const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
-        const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
-        const context = createToolConfigContext(yamlConfig, toolNameFromFile);
-        const result = await configureToolFn(builder, context);
-
-        // Check if the function returned a ToolConfig object
-        if (result && typeof result === 'object' && 'name' in result) {
-          // Validate the returned object with Zod schema
-          const validationResult = toolConfigSchema.safeParse(result);
-          if (validationResult.success) {
-            toolConfig = validationResult.data;
-            logger.trace(logs.config.success.loaded(filePath, 1));
-          } else {
-            logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Validation failed'));
-            logger.zodErrors(validationResult.error);
-            return undefined;
-          }
-        } else {
-          // Function didn't return an object, use builder pattern
-          const builtConfig = builder.build();
-          // Validate the built config with Zod schema
-          const validationResult = toolConfigSchema.safeParse(builtConfig);
-          if (validationResult.success) {
-            toolConfig = validationResult.data;
-            logger.trace(logs.config.success.loaded(filePath, 1));
-          } else {
-            logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Builder validation failed'));
-            logger.zodErrors(validationResult.error);
-            return undefined;
-          }
-        }
-      } else {
-        // Direct object export - validate with Zod schema
-        const validationResult = toolConfigSchema.safeParse(module.default);
-        if (validationResult.success) {
-          toolConfig = validationResult.data;
-          logger.trace(logs.config.success.validated(filePath));
-        } else {
-          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Direct export validation failed'));
-          logger.zodErrors(validationResult.error);
-          return undefined;
-        }
-      }
-
-      // Set the config file path after building/loading
-      if (toolConfig) {
-        toolConfig.configFilePath = filePath;
-      }
-
-      if (toolConfig && toolConfig.name === toolName) {
-        logger.debug(logs.config.success.loaded(filePath, 1), toolConfig.name);
-        return toolConfig;
-      } else if (toolConfig) {
-        logger.warn(
-          logs.config.warning.invalid('single tool config name', toolConfig.name, `requested: ${toolName}`),
-          filePath
-        );
-        return undefined; // Strict: only return if names match
-      }
+    if (!module.default) {
+      logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'no default export or failed to process'));
+      return undefined;
     }
-    logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'no default export or failed to process'));
+
+    const toolNameFromFile = path.basename(filePath, '.tool.ts');
+    let toolConfig: ToolConfig | null;
+
+    if (typeof module.default === 'function') {
+      logger.trace(logs.config.success.validated(filePath));
+      const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
+      toolConfig = await processFunctionExport(configureToolFn, logger, toolNameFromFile, filePath, yamlConfig);
+    } else {
+      toolConfig = processDirectExport(module.default, logger, filePath, toolNameFromFile);
+    }
+
+    // Set the config file path after building/loading
+    if (toolConfig) {
+      toolConfig.configFilePath = filePath;
+    }
+
+    if (toolConfig && toolConfig.name === toolName) {
+      logger.debug(logs.config.success.loaded(filePath, 1), toolConfig.name);
+      return toolConfig;
+    }
+
+    if (toolConfig) {
+      logger.warn(
+        logs.config.warning.invalid('single tool config name', toolConfig.name, `requested: ${toolName}`),
+        filePath
+      );
+    }
+
     return undefined;
   } catch (e) {
     logger.error(logs.config.error.loadFailed(filePath, String(e)), e);
