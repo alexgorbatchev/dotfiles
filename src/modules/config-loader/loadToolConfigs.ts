@@ -3,7 +3,8 @@ import type { YamlConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
 import { logs, type TsLogger } from '@modules/logger';
 import { ToolConfigBuilder } from '@modules/tool-config-builder';
-import type { AsyncConfigureTool, ToolConfig, ToolConfigContext } from '@types';
+import type { AsyncConfigureTool, AsyncConfigureToolWithReturn, ToolConfig, ToolConfigContext } from '@types';
+import { toolConfigSchema } from './toolConfig.schema';
 
 /**
  * Creates a ToolConfigContext from YamlConfig for the specified tool.
@@ -81,12 +82,34 @@ async function loadToolConfigFromModule(
 
     if (typeof module.default === 'function') {
       logger.trace(logs.config.success.validated(filePath));
-      const configureToolFn = module.default as AsyncConfigureTool;
+      const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
       const builder = new ToolConfigBuilder(logger, toolName);
       const context = createToolConfigContext(yamlConfig, toolName);
-      await configureToolFn(builder, context);
-      toolConfig = builder.build();
-      logger.trace(logs.config.success.loaded(filePath, 1));
+      const result = await configureToolFn(builder, context);
+
+      // Check if the function returned a ToolConfig object
+      if (result && typeof result === 'object' && 'name' in result) {
+        // Validate the returned object with Zod schema
+        const validationResult = toolConfigSchema.safeParse(result);
+        if (validationResult.success) {
+          // Cast back to the proper TypeScript type since Zod validation passed
+          toolConfig = result as ToolConfig;
+          logger.trace(logs.config.success.loaded(filePath, 1));
+        } else {
+          logger.error(
+            logs.config.error.parseErrors(
+              filePath,
+              'ToolConfig',
+              `Validation failed: ${validationResult.error.message}`
+            )
+          );
+          return null;
+        }
+      } else {
+        // Function didn't return an object, use builder pattern
+        toolConfig = builder.build();
+        logger.trace(logs.config.success.loaded(filePath, 1));
+      }
     } else {
       logger.trace(logs.config.success.validated(filePath));
       toolConfig = module.default as ToolConfig;
@@ -217,12 +240,34 @@ export async function loadSingleToolConfig(
 
       if (typeof module.default === 'function') {
         logger.trace(logs.config.success.validated(filePath));
-        const configureToolFn = module.default as AsyncConfigureTool;
+        const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
         const builder = new ToolConfigBuilder(logger, toolNameFromFile); // Pass logger and tool name to builder
         const context = createToolConfigContext(yamlConfig, toolNameFromFile);
-        await configureToolFn(builder, context);
-        toolConfig = builder.build();
-        logger.trace(logs.config.success.loaded(filePath, 1));
+        const result = await configureToolFn(builder, context);
+
+        // Check if the function returned a ToolConfig object
+        if (result && typeof result === 'object' && 'name' in result) {
+          // Validate the returned object with Zod schema
+          const validationResult = toolConfigSchema.safeParse(result);
+          if (validationResult.success) {
+            // Cast back to the proper TypeScript type since Zod validation passed
+            toolConfig = result as ToolConfig;
+            logger.trace(logs.config.success.loaded(filePath, 1));
+          } else {
+            logger.error(
+              logs.config.error.parseErrors(
+                filePath,
+                'ToolConfig',
+                `Validation failed: ${validationResult.error.message}`
+              )
+            );
+            return undefined;
+          }
+        } else {
+          // Function didn't return an object, use builder pattern
+          toolConfig = builder.build();
+          logger.trace(logs.config.success.loaded(filePath, 1));
+        }
       } else {
         logger.trace(logs.config.success.validated(filePath));
         toolConfig = module.default as ToolConfig;

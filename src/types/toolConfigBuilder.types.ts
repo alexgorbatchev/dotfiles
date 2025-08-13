@@ -8,6 +8,7 @@ import type {
   ManualInstallParams,
 } from './installParams.types';
 import type { Architecture, Platform } from './platform.types';
+import type { ToolConfig } from './resolvedToolConfig.types';
 import type { ShellScript } from './shellScript.types';
 
 /**
@@ -466,6 +467,12 @@ export interface ToolConfigContext {
  * ```
  */
 export type AsyncConfigureTool = (c: ToolConfigBuilder, ctx: ToolConfigContext) => Promise<void>;
+
+/**
+ * Alternative configuration function type that returns a ToolConfig object instead of using the builder pattern.
+ * This allows for more flexible configuration where the function can access the context and return a complete config.
+ */
+export type AsyncConfigureToolWithReturn = (c: ToolConfigBuilder, ctx: ToolConfigContext) => Promise<ToolConfig>;
 
 export type ToolConfigUpdateCheck = {
   /**
