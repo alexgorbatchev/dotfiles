@@ -1,0 +1,31 @@
+export * from './baseInstallParamsSchema';
+export * from './baseToolConfigPropertiesSchema';
+export * from './brewInstallParamsSchema';
+export * from './brewToolConfigSchema';
+export * from './completionConfigSchema';
+export * from './curlScriptInstallParamsSchema';
+export * from './curlScriptToolConfigSchema';
+export * from './curlTarInstallParamsSchema';
+export * from './curlTarToolConfigSchema';
+export * from './githubReleaseInstallParamsSchema';
+export * from './githubReleaseToolConfigSchema';
+export * from './installHookSchema';
+export * from './installParams';
+export * from './manualInstallParamsSchema';
+export * from './manualToolConfigSchema';
+export * from './noInstallToolConfigSchema';
+export * from './platformConfigEntrySchema';
+export * from './platformConfigSchema';
+export * from './shellCompletionConfigSchema';
+export * from './shellConfigsSchema';
+export * from './shellScriptSchema';
+
+export * from './shellType';
+export * from './shellTypeConfigSchema';
+export * from './symlinkConfigSchema';
+export * from './toolConfigSchema';
+export * from './toolConfigUpdateCheckSchema';
+
+import type { ToolConfig } from './toolConfigSchema';
+export type ToolConfigInstallationMethod = ToolConfig['installationMethod'];
+export type ToolConfigInstallParams = ToolConfig['installParams'];

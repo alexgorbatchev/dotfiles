@@ -1,6 +1,8 @@
 import { expect as bunExpect } from 'bun:test';
 import * as util from 'node:util';
+import { formatZodErrors } from '@modules/logger';
 import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
+import type { ZodError } from 'zod';
 
 export type LogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
@@ -34,6 +36,17 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
       this.logs
     );
     return subLogger;
+  }
+
+  /**
+   * Logs Zod validation errors in a readable format using error level logging.
+   * @param error The Zod error object
+   */
+  zodErrors(error: ZodError): void {
+    const messages = formatZodErrors(error);
+    for (const message of messages) {
+      this.error(message as string & LogObj);
+    }
   }
 
   private getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] {

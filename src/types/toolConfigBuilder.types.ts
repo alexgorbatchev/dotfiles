@@ -1,15 +1,16 @@
-import type { CompletionConfig, ShellCompletionConfig } from './completion.types';
 import type { AsyncInstallHook } from './installHooks.types';
+import type { Architecture, Platform } from './platform.types';
+import type { ShellScript } from './shellScript.types';
 import type {
   BrewInstallParams,
+  CompletionConfig,
   CurlScriptInstallParams,
   CurlTarInstallParams,
   GithubReleaseInstallParams,
   ManualInstallParams,
-} from './installParams.types';
-import type { Architecture, Platform } from './platform.types';
-import type { ToolConfig } from './resolvedToolConfig.types';
-import type { ShellScript } from './shellScript.types';
+  ShellCompletionConfig,
+  ToolConfig,
+} from './tool-config';
 
 /**
  * Configuration for shell-specific properties.

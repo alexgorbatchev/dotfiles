@@ -1,5 +1,7 @@
 import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
+import type { ZodError } from 'zod';
 import type { SafeLogMessage } from './SafeLogMessage';
+import { formatZodErrors } from './zodErrorFormatter';
 
 export type TsLogger = SafeLogger<ILogObj>;
 
@@ -48,6 +50,17 @@ class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
       ...settings,
       parentNames,
     });
+  }
+
+  /**
+   * Logs Zod validation errors in a readable format using error level logging.
+   * @param error The Zod error object
+   */
+  zodErrors(error: ZodError): void {
+    const messages = formatZodErrors(error);
+    for (const message of messages) {
+      this.error(message as SafeLogMessage);
+    }
   }
 }
 

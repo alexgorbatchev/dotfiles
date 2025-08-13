@@ -4,7 +4,7 @@ import type { TsLogger } from '@modules/logger';
 import type { $ } from 'zx';
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
-import type { ToolConfig } from './resolvedToolConfig.types';
+import type { ToolConfig } from './tool-config';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information

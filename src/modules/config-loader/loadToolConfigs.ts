@@ -4,7 +4,7 @@ import type { IFileSystem } from '@modules/file-system';
 import { logs, type TsLogger } from '@modules/logger';
 import { ToolConfigBuilder } from '@modules/tool-config-builder';
 import type { AsyncConfigureTool, AsyncConfigureToolWithReturn, ToolConfig, ToolConfigContext } from '@types';
-import { toolConfigSchema } from './toolConfig.schema';
+import { toolConfigSchema } from '@types';
 
 /**
  * Creates a ToolConfigContext from YamlConfig for the specified tool.
@@ -92,33 +92,44 @@ async function loadToolConfigFromModule(
         // Validate the returned object with Zod schema
         const validationResult = toolConfigSchema.safeParse(result);
         if (validationResult.success) {
-          // Cast back to the proper TypeScript type since Zod validation passed
-          toolConfig = result as ToolConfig;
+          toolConfig = validationResult.data;
           logger.trace(logs.config.success.loaded(filePath, 1));
         } else {
-          logger.error(
-            logs.config.error.parseErrors(
-              filePath,
-              'ToolConfig',
-              `Validation failed: ${validationResult.error.message}`
-            )
-          );
+          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Validation failed'));
+          logger.zodErrors(validationResult.error);
           return null;
         }
       } else {
         // Function didn't return an object, use builder pattern
-        toolConfig = builder.build();
-        logger.trace(logs.config.success.loaded(filePath, 1));
+        const builtConfig = builder.build();
+        // Validate the built config with Zod schema
+        const validationResult = toolConfigSchema.safeParse(builtConfig);
+        if (validationResult.success) {
+          toolConfig = validationResult.data;
+          logger.trace(logs.config.success.loaded(filePath, 1));
+        } else {
+          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Builder validation failed'));
+          logger.zodErrors(validationResult.error);
+          return null;
+        }
       }
     } else {
-      logger.trace(logs.config.success.validated(filePath));
-      toolConfig = module.default as ToolConfig;
-      // Ensure the toolConfig.name matches the filename if it's a direct object export
-      if (toolConfig.name !== toolName) {
-        logger.warn(
-          logs.config.warning.invalid('tool config object name', toolConfig.name, `filename: ${toolName}`),
-          filePath
-        );
+      // Direct object export - validate with Zod schema
+      const validationResult = toolConfigSchema.safeParse(module.default);
+      if (validationResult.success) {
+        toolConfig = validationResult.data;
+        logger.trace(logs.config.success.validated(filePath));
+        // Ensure the toolConfig.name matches the filename if it's a direct object export
+        if (toolConfig.name !== toolName) {
+          logger.warn(
+            logs.config.warning.invalid('tool config object name', toolConfig.name, `filename: ${toolName}`),
+            filePath
+          );
+        }
+      } else {
+        logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Direct export validation failed'));
+        logger.zodErrors(validationResult.error);
+        return null;
       }
     }
 
@@ -250,27 +261,38 @@ export async function loadSingleToolConfig(
           // Validate the returned object with Zod schema
           const validationResult = toolConfigSchema.safeParse(result);
           if (validationResult.success) {
-            // Cast back to the proper TypeScript type since Zod validation passed
-            toolConfig = result as ToolConfig;
+            toolConfig = validationResult.data;
             logger.trace(logs.config.success.loaded(filePath, 1));
           } else {
-            logger.error(
-              logs.config.error.parseErrors(
-                filePath,
-                'ToolConfig',
-                `Validation failed: ${validationResult.error.message}`
-              )
-            );
+            logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Validation failed'));
+            logger.zodErrors(validationResult.error);
             return undefined;
           }
         } else {
           // Function didn't return an object, use builder pattern
-          toolConfig = builder.build();
-          logger.trace(logs.config.success.loaded(filePath, 1));
+          const builtConfig = builder.build();
+          // Validate the built config with Zod schema
+          const validationResult = toolConfigSchema.safeParse(builtConfig);
+          if (validationResult.success) {
+            toolConfig = validationResult.data;
+            logger.trace(logs.config.success.loaded(filePath, 1));
+          } else {
+            logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Builder validation failed'));
+            logger.zodErrors(validationResult.error);
+            return undefined;
+          }
         }
       } else {
-        logger.trace(logs.config.success.validated(filePath));
-        toolConfig = module.default as ToolConfig;
+        // Direct object export - validate with Zod schema
+        const validationResult = toolConfigSchema.safeParse(module.default);
+        if (validationResult.success) {
+          toolConfig = validationResult.data;
+          logger.trace(logs.config.success.validated(filePath));
+        } else {
+          logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'Direct export validation failed'));
+          logger.zodErrors(validationResult.error);
+          return undefined;
+        }
       }
 
       // Set the config file path after building/loading

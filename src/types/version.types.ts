@@ -1,4 +1,4 @@
-import type { ToolConfig } from './resolvedToolConfig.types';
+import type { ToolConfig } from './tool-config';
 
 /**
  * Contains information about an available update for a tool.

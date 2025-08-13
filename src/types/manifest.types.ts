@@ -1,5 +1,5 @@
-import type { SymlinkOperationResult } from '@modules/generator-symlink/ISymlinkGenerator';
-import type { ShellType } from './completion.types';
+import type { SymlinkOperationResult } from '@modules/generator-symlink';
+import type { ShellType } from './tool-config';
 
 /**
  * Represents a single entry in the main tool manifest file (`manifest.json`).

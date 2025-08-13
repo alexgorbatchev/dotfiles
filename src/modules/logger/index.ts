@@ -1,4 +1,5 @@
 export * from './createTsLogger';
+export * from './zodErrorFormatter';
 
 import { architecture } from './templates/architecture';
 import { cache } from './templates/cache';
