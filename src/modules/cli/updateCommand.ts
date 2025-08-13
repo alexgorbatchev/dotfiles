@@ -8,7 +8,7 @@ import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { GithubReleaseInstallParams, ToolConfig } from '@types';
-import { exitCli } from './exitCli';
+import { ExitCode, exitCli } from './exitCli';
 
 export interface UpdateCommandOptions {
   yes?: boolean;
@@ -23,7 +23,7 @@ async function loadToolConfigSafely(
   toolConfigsDir: string,
   fs: IFileSystem,
   yamlConfig: YamlConfig
-): Promise<ToolConfig> {
+): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
   try {
     const toolConfig = await loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
     logger.debug(logs.command.debug.errorDetails(), toolName);
@@ -31,15 +31,15 @@ async function loadToolConfigSafely(
     if (!toolConfig) {
       logger.debug(logs.command.debug.errorDetails(), toolName);
       logger.error(logs.tool.error.notFound(toolName, toolConfigsDir));
-      exitCli(1);
+      return { toolConfig: null, exitCode: ExitCode.ERROR };
     }
 
-    return toolConfig;
+    return { toolConfig, exitCode: ExitCode.SUCCESS };
   } catch (error) {
     logger.debug(logs.command.debug.errorDetails(), toolName, (error as Error).message);
     logger.error(logs.config.error.loadFailed(`tool "${toolName}"`, (error as Error).message));
     logger.debug(logs.command.debug.errorDetails(), error);
-    exitCli(1);
+    return { toolConfig: null, exitCode: ExitCode.ERROR };
   }
 }
 
@@ -123,7 +123,7 @@ async function performUpdate(
   latestVersion: string,
   configuredVersion: string,
   shimMode: boolean
-): Promise<void> {
+): Promise<ExitCode> {
   if (shimMode) {
     logger.info(logs.general.success.shimUpdateStarting(toolName, configuredVersion, latestVersion));
   } else {
@@ -144,9 +144,10 @@ async function performUpdate(
       logger.info(logs.tool.success.updated(toolName, configuredVersion, latestVersion));
     }
     logger.debug(logs.command.debug.errorDetails());
+    return ExitCode.SUCCESS;
   } else {
     logger.error(logs.tool.error.updateFailed(toolName, installResult.error || 'Unknown error'));
-    exitCli(1);
+    return ExitCode.ERROR;
   }
 }
 
@@ -179,7 +180,18 @@ async function handleGitHubReleaseUpdate(
   const status = await services.versionChecker.checkVersionStatus(configuredVersion, latestVersion);
 
   if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-    await performUpdate(logger, services.installer, toolName, toolConfig, latestVersion, configuredVersion, shimMode);
+    const updateExitCode = await performUpdate(
+      logger,
+      services.installer,
+      toolName,
+      toolConfig,
+      latestVersion,
+      configuredVersion,
+      shimMode
+    );
+    if (updateExitCode !== ExitCode.SUCCESS) {
+      exitCli(updateExitCode);
+    }
   } else {
     logUpdateStatus(logger, status, toolName, configuredVersion, latestVersion, shimMode);
   }
@@ -207,13 +219,20 @@ export function registerUpdateCommand(
       try {
         actionLogger.debug(logs.command.debug.errorDetails(), toolName);
 
-        const toolConfig = await loadToolConfigSafely(
+        const toolConfigResult = await loadToolConfigSafely(
           actionLogger,
           toolName,
           yamlConfig.paths.toolConfigsDir,
           fs,
           yamlConfig
         );
+
+        if (toolConfigResult.exitCode !== ExitCode.SUCCESS) {
+          exitCli(toolConfigResult.exitCode);
+          return;
+        }
+
+        const toolConfig = toolConfigResult.toolConfig!;
 
         if (!combinedOptions.shimMode) {
           logger.info(logs.general.success.checkingUpdatesFor(toolName));
@@ -231,15 +250,9 @@ export function registerUpdateCommand(
         }
       } catch (error) {
         actionLogger.debug(logs.command.debug.errorDetails(), error);
-        if (error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')) {
-          throw error;
-        } else {
-          logger.error(logs.command.error.executionFailed('update', 1, (error as Error).message));
-          logger.debug(logs.command.debug.errorDetails(), error);
-        }
-        if (!(error instanceof Error && error.message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_'))) {
-          exitCli(1);
-        }
+        logger.error(logs.command.error.executionFailed('update', ExitCode.ERROR, (error as Error).message));
+        logger.debug(logs.command.debug.errorDetails(), error);
+        exitCli(ExitCode.ERROR);
       }
     });
 }

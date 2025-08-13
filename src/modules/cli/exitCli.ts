@@ -1,3 +1,10 @@
+export const ExitCode = {
+  SUCCESS: 0,
+  ERROR: 1,
+} as const;
+
+export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode];
+
 export function exitCli(exitCode: number): never {
   if (process.env.NODE_ENV !== 'test') {
     process.exit(exitCode);

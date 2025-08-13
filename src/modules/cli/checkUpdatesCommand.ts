@@ -8,7 +8,7 @@ import { logs } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import type { GithubReleaseInstallParams, ToolConfig } from '@types';
-import { exitCli } from './exitCli';
+import { ExitCode, exitCli } from './exitCli';
 
 export interface CheckUpdatesCommandOptions {
   verbose?: boolean;
@@ -20,7 +20,7 @@ async function loadToolConfigs(
   toolName: string | undefined,
   yamlConfig: YamlConfig,
   fs: IFileSystem
-): Promise<{ toolConfigs: Record<string, ToolConfig>; specificToolNotFound: boolean }> {
+): Promise<{ toolConfigs: Record<string, ToolConfig>; specificToolNotFound: boolean; exitCode: ExitCode }> {
   let toolConfigs: Record<string, ToolConfig> = {};
   let specificToolNotFound = false;
 
@@ -37,16 +37,16 @@ async function loadToolConfigs(
       toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
       if (Object.keys(toolConfigs).length === 0) {
         logger.info(logs.general.success.noToolsFound(yamlConfig.paths.toolConfigsDir));
-        return { toolConfigs: {}, specificToolNotFound: false };
+        return { toolConfigs: {}, specificToolNotFound: false, exitCode: ExitCode.SUCCESS };
       }
     }
   } catch (error) {
     logger.error(logs.config.error.loadFailed('tool configurations', (error as Error).message));
     logger.debug(logs.command.debug.configErrorDetails(), error);
-    exitCli(1);
+    return { toolConfigs: {}, specificToolNotFound: false, exitCode: ExitCode.ERROR };
   }
 
-  return { toolConfigs, specificToolNotFound };
+  return { toolConfigs, specificToolNotFound, exitCode: ExitCode.SUCCESS };
 }
 
 function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
@@ -135,10 +135,15 @@ export async function checkUpdatesActionLogic(
 
   logger.trace(logs.command.debug.actionStarted('check-updates', toolName || 'all'));
 
-  const { toolConfigs, specificToolNotFound } = await loadToolConfigs(logger, toolName, yamlConfig, fs);
+  const { toolConfigs, specificToolNotFound, exitCode } = await loadToolConfigs(logger, toolName, yamlConfig, fs);
+
+  if (exitCode !== ExitCode.SUCCESS) {
+    exitCli(exitCode);
+    return;
+  }
 
   if (specificToolNotFound) {
-    exitCli(1);
+    exitCli(ExitCode.ERROR);
     return;
   }
 
@@ -182,9 +187,9 @@ export function registerCheckUpdatesCommand(
         await checkUpdatesActionLogic(logger, toolName, services);
       } catch (error) {
         logger.debug(logs.command.debug.unhandledError(), error);
-        logger.error(logs.command.error.executionFailed('check-updates', 1, (error as Error).message));
+        logger.error(logs.command.error.executionFailed('check-updates', ExitCode.ERROR, (error as Error).message));
         logger.debug(logs.command.debug.errorDetails(), error);
-        exitCli(1);
+        exitCli(ExitCode.ERROR);
       }
     });
 }

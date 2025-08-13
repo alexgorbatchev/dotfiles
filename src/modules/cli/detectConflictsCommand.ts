@@ -6,9 +6,13 @@ import type { IFileSystem, Stats } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { ToolConfig } from '@types';
-import { exitCli } from './exitCli';
+import { ExitCode, exitCli } from './exitCli';
 
-async function loadToolConfigs(logger: TsLogger, yamlConfig: YamlConfig, fs: IFileSystem): Promise<ToolConfig[]> {
+async function loadToolConfigs(
+  logger: TsLogger,
+  yamlConfig: YamlConfig,
+  fs: IFileSystem
+): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
   try {
     const toolConfigsRecord = await loadToolConfigsFromDirectory(
       logger,
@@ -16,10 +20,10 @@ async function loadToolConfigs(logger: TsLogger, yamlConfig: YamlConfig, fs: IFi
       fs,
       yamlConfig
     );
-    return Object.values(toolConfigsRecord);
+    return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
     logger.error(logs.config.error.loadFailed('tool configurations', (error as Error).message));
-    exitCli(1);
+    return { toolConfigs: [], exitCode: ExitCode.ERROR };
   }
 }
 
@@ -85,15 +89,15 @@ async function checkSymlinkConflicts(
   }
 }
 
-function reportConflicts(logger: TsLogger, conflictMessages: string[]): void {
+function reportConflicts(logger: TsLogger, conflictMessages: string[]): ExitCode {
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
     logger.warn(logs.tool.warning.conflictsDetected(header, formattedConflicts));
-    exitCli(1);
+    return ExitCode.ERROR;
   } else {
     logger.info(logs.general.success.noConflictsDetected());
-    exitCli(0);
+    return ExitCode.SUCCESS;
   }
 }
 
@@ -101,16 +105,22 @@ export async function detectConflictsActionLogic(
   parentLogger: TsLogger,
   _options: Record<string, unknown>, // No specific options for this command yet
   services: Services
-): Promise<void> {
+): Promise<ExitCode> {
   const logger = parentLogger.getSubLogger({ name: 'detectConflictsActionLogic' });
   const { yamlConfig, fs } = services;
   const conflictMessages: string[] = [];
 
-  const toolConfigsArray = await loadToolConfigs(logger, yamlConfig, fs);
+  const toolConfigsResult = await loadToolConfigs(logger, yamlConfig, fs);
+
+  if (toolConfigsResult.exitCode !== ExitCode.SUCCESS) {
+    return toolConfigsResult.exitCode;
+  }
+
+  const toolConfigsArray = toolConfigsResult.toolConfigs;
 
   if (toolConfigsArray.length === 0) {
     logger.info(logs.general.success.noToolsFound(yamlConfig.paths.toolConfigsDir));
-    exitCli(0);
+    return ExitCode.SUCCESS;
   }
 
   for (const toolConfig of toolConfigsArray) {
@@ -128,7 +138,7 @@ export async function detectConflictsActionLogic(
     );
   }
 
-  reportConflicts(logger, conflictMessages);
+  return reportConflicts(logger, conflictMessages);
 }
 
 export function registerDetectConflictsCommand(
@@ -143,20 +153,17 @@ export function registerDetectConflictsCommand(
     .action(async (options) => {
       const combinedOptions = { ...options, ...program.opts() };
       logger.debug(logs.command.debug.errorDetails(), combinedOptions);
+
+      let exitCode: ExitCode;
       try {
         const services = await servicesFactory();
-        await detectConflictsActionLogic(logger, combinedOptions, services);
+        exitCode = await detectConflictsActionLogic(logger, combinedOptions, services);
       } catch (error) {
-        // If this is an error from exitCli, rethrow it to preserve the exit code
-        if ((error as Error).message.startsWith('MOCK_EXIT_CLI_CALLED_WITH_')) {
-          throw error;
-        }
-
-        logger.fatal(logs.command.error.executionFailed('detect-conflicts', 1, 'Unhandled error in action handler'));
+        logger.error(logs.command.error.executionFailed('detect-conflicts', ExitCode.ERROR, (error as Error).message));
         logger.debug(logs.command.debug.errorDetails(), error);
-        logger.error(logs.command.error.executionFailed('detect-conflicts', 1, (error as Error).message));
-        logger.debug(logs.command.debug.errorDetails(), error);
-        exitCli(1);
+        exitCode = ExitCode.ERROR;
       }
+
+      exitCli(exitCode);
     });
 }

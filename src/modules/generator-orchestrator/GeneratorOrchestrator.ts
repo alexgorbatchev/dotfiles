@@ -50,7 +50,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.debug(logs.generator.debug.parsedOptions(), generatorVersion, toolConfigsCount);
 
     const manifestPath = this.validateConfig(logger);
-    
+
     const currentManifest = await this.loadOrCreateManifest(manifestPath, logger);
     if (generatorVersion) {
       currentManifest.generatorVersion = generatorVersion;
@@ -143,7 +143,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
   }
 
-  private async saveManifest(manifest: GeneratedArtifactsManifest, manifestPath: string, logger: TsLogger): Promise<void> {
+  private async saveManifest(
+    manifest: GeneratedArtifactsManifest,
+    manifestPath: string,
+    logger: TsLogger
+  ): Promise<void> {
     // Manifest writing behavior is now solely determined by the injected IFileSystem type
     try {
       logger.debug(logs.generator.debug.writingManifest(), manifestPath, this.fs.constructor.name);

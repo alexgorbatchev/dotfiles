@@ -1,5 +1,5 @@
 import type { GlobalProgram, Services } from '@cli';
-import { exitCli } from '@modules/cli/exitCli';
+import { ExitCode, exitCli } from '@modules/cli/exitCli';
 import type { YamlConfig } from '@modules/config';
 import type { FileOperation, IFileRegistry } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system';
@@ -16,7 +16,10 @@ export interface FilesCommandOptions {
   since?: string;
 }
 
-function buildOperationsFilter(options: FilesCommandOptions, logger: TsLogger): Record<string, unknown> {
+function buildOperationsFilter(
+  options: FilesCommandOptions,
+  logger: TsLogger
+): { filter: Record<string, unknown>; exitCode: ExitCode } {
   const { tool, type, since } = options;
   const filter: Record<string, unknown> = {};
 
@@ -32,12 +35,12 @@ function buildOperationsFilter(options: FilesCommandOptions, logger: TsLogger): 
     const sinceDate = new Date(since);
     if (Number.isNaN(sinceDate.getTime())) {
       logger.error(logs.config.error.invalid('date format for --since', since, 'ISO format like "2025-08-01"'));
-      exitCli(1);
+      return { filter: {}, exitCode: ExitCode.ERROR };
     }
     filter['createdAfter'] = sinceDate.getTime();
   }
 
-  return filter;
+  return { filter, exitCode: ExitCode.SUCCESS };
 }
 
 async function showFileStates(
@@ -239,13 +242,17 @@ async function filesActionLogic(
       return;
     }
 
-    const filter = buildOperationsFilter(options, logger);
-    const operations = await fileRegistry.getOperations(filter);
+    const filterResult = buildOperationsFilter(options, logger);
+    if (filterResult.exitCode !== ExitCode.SUCCESS) {
+      exitCli(filterResult.exitCode);
+      return;
+    }
+    const operations = await fileRegistry.getOperations(filterResult.filter);
     await showOperations(logger, operations, yamlConfig);
   } catch (error) {
-    logger.error(logs.command.error.executionFailed('files', 1, (error as Error).message));
+    logger.error(logs.command.error.executionFailed('files', ExitCode.ERROR, (error as Error).message));
     logger.debug(logs.command.debug.errorDetails(), error);
-    exitCli(1);
+    exitCli(ExitCode.ERROR);
   }
 }
 
