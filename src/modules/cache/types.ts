@@ -1,13 +1,7 @@
 /**
- * Represents a cached entry with metadata.
- * @template T The type of data being cached
+ * Base interface for all cache entries
  */
-export interface CacheEntry<T> {
-  /**
-   * The actual cached data
-   */
-  data: T;
-
+interface BaseCacheEntry {
   /**
    * Timestamp when the entry was created (milliseconds since epoch)
    */
@@ -17,12 +11,56 @@ export interface CacheEntry<T> {
    * Timestamp when the entry expires (milliseconds since epoch)
    */
   expiresAt: number;
-
-  /**
-   * Optional metadata associated with the cache entry
-   */
-  metadata?: Record<string, unknown>;
 }
+
+/**
+ * Cache entry for JSON data (API responses, configuration, etc.)
+ */
+export interface JsonCacheEntry<T> extends BaseCacheEntry {
+  type: 'json';
+  /**
+   * The actual cached data
+   */
+  data: T;
+}
+
+/**
+ * Cache entry for binary data (downloaded files, archives, etc.)
+ */
+export interface BinaryCacheEntry extends BaseCacheEntry {
+  type: 'binary';
+  /**
+   * Filename of the binary file (without path)
+   */
+  binaryFileName: string;
+  /**
+   * SHA-256 hash of the binary content for integrity verification
+   */
+  contentHash: string;
+  /**
+   * Size of the binary data in bytes
+   */
+  size: number;
+}
+
+/**
+ * Cache entry for downloaded content with additional metadata
+ */
+export interface DownloadCacheEntry extends BinaryCacheEntry {
+  /**
+   * Original URL the content was downloaded from
+   */
+  url: string;
+  /**
+   * Content type from HTTP headers
+   */
+  contentType?: string;
+}
+
+/**
+ * Union type for all possible cache entry types
+ */
+export type CacheEntry<T = unknown> = JsonCacheEntry<T> | BinaryCacheEntry | DownloadCacheEntry;
 
 /**
  * Configuration for the cache.
@@ -63,15 +101,25 @@ export interface ICache {
   get<T>(key: string): Promise<T | null>;
 
   /**
-   * Stores data in the cache with TTL and optional metadata.
+   * Stores data in the cache with TTL.
    * @template T The type of data to store
    * @param key The cache key
    * @param data The data to cache
    * @param ttlMs TTL in milliseconds (uses default if not specified)
-   * @param metadata Optional metadata to store with the cache entry
    * @returns A promise that resolves when the data has been cached
    */
-  set<T>(key: string, data: T, ttlMs?: number, metadata?: Record<string, unknown>): Promise<void>;
+  set<T>(key: string, data: T, ttlMs?: number): Promise<void>;
+
+  /**
+   * Stores downloaded binary data in the cache with additional metadata.
+   * @param key The cache key
+   * @param data The binary data to cache
+   * @param ttlMs TTL in milliseconds (uses default if not specified)
+   * @param url The original URL the content was downloaded from
+   * @param contentType Optional content type from HTTP headers
+   * @returns A promise that resolves when the data has been cached
+   */
+  setDownload(key: string, data: Buffer, ttlMs: number | undefined, url: string, contentType?: string): Promise<void>;
 
   /**
    * Checks if a key exists in the cache and is not expired.

@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { FileCache } from '@modules/cache/FileCache';
-import type { CacheConfig } from '@modules/cache/ICache';
+import type { CacheConfig } from '@modules/cache';
+import { FileCache } from '@modules/cache';
 import { createMemFileSystem, FetchMockHelper, TestLogger } from '@testing-helpers';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { Downloader } from '../Downloader';
 
 describe('Downloader with Cache', () => {

@@ -1,5 +1,5 @@
-import { DownloadCacheUtils } from '@modules/cache/DownloadCacheUtils';
-import type { ICache } from '@modules/cache/ICache';
+import type { ICache } from '@modules/cache';
+import { DownloadCacheUtils } from '@modules/cache';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
@@ -127,10 +127,13 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     if (bufferToCache) {
       // Cache the result
       try {
-        await this.cache.set(cacheKey, bufferToCache, this.cacheTtl, {
+        await this.cache.setDownload(
+          cacheKey,
+          bufferToCache,
+          this.cacheTtl,
           url,
-          contentType: this.extractContentTypeFromHeaders(options.headers),
-        });
+          this.extractContentTypeFromHeaders(options.headers)
+        );
         logger.trace(logs.cache.success.stored(cacheKey, 'binary', 'TTL-based', bufferToCache.length), { url });
       } catch (error) {
         logger.trace(logs.cache.error.storageFailed(cacheKey, (error as Error).message), { url });

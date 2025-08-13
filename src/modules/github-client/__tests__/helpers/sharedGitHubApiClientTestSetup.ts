@@ -46,6 +46,7 @@ export const createMockDownloader = (): IDownloader & {
 export const createMockGitHubApiCache = (): ICache & {
   get: ReturnType<typeof mock<ICache['get']>>;
   set: ReturnType<typeof mock<ICache['set']>>;
+  setDownload: ReturnType<typeof mock<ICache['setDownload']>>;
   has: ReturnType<typeof mock<ICache['has']>>;
   delete: ReturnType<typeof mock<ICache['delete']>>;
   clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;
@@ -54,6 +55,7 @@ export const createMockGitHubApiCache = (): ICache & {
   return {
     get: mock(async () => null), // Default to cache miss
     set: mock(async () => {}), // Default no-op
+    setDownload: mock(async () => {}), // Default no-op
     has: mock(async () => false),
     delete: mock(async () => {}),
     clearExpired: mock(async () => {}),
@@ -69,6 +71,7 @@ export interface MockSetup {
   mockCache: ICache & {
     get: ReturnType<typeof mock<ICache['get']>>;
     set: ReturnType<typeof mock<ICache['set']>>;
+    setDownload: ReturnType<typeof mock<ICache['setDownload']>>;
     has: ReturnType<typeof mock<ICache['has']>>;
     delete: ReturnType<typeof mock<ICache['delete']>>;
     clearExpired: ReturnType<typeof mock<ICache['clearExpired']>>;

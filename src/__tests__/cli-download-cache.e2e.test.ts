@@ -183,31 +183,26 @@ describe('E2E: Download Cache', () => {
         const metadataContent = await fs.readFile(path.join(metadataDir, firstMetadataFile), 'utf8');
         const cacheEntry = JSON.parse(metadataContent);
 
-        // Verify cache entry structure for the new FileCache
-        expect(cacheEntry).toHaveProperty('data');
-        expect(cacheEntry).toHaveProperty('metadata');
+        // Verify cache entry structure for the new strongly typed FileCache
+        expect(cacheEntry).toHaveProperty('type');
+        expect(cacheEntry).toHaveProperty('binaryFileName');
+        expect(cacheEntry).toHaveProperty('contentHash');
+        expect(cacheEntry).toHaveProperty('size');
+        expect(cacheEntry).toHaveProperty('url');
         expect(cacheEntry).toHaveProperty('timestamp');
         expect(cacheEntry).toHaveProperty('expiresAt');
 
-        expect(typeof cacheEntry.data).toBe('string'); // Binary filename
-        expect(typeof cacheEntry.metadata).toBe('object');
+        expect(cacheEntry.type).toBe('binary');
+        expect(typeof cacheEntry.binaryFileName).toBe('string');
+        expect(typeof cacheEntry.contentHash).toBe('string');
+        expect(typeof cacheEntry.size).toBe('number');
+        expect(typeof cacheEntry.url).toBe('string');
         expect(typeof cacheEntry.timestamp).toBe('number');
         expect(typeof cacheEntry.expiresAt).toBe('number');
         expect(cacheEntry.expiresAt).toBeGreaterThan(cacheEntry.timestamp);
 
-        // Check metadata structure
-        expect(cacheEntry.metadata).toHaveProperty('url');
-        expect(cacheEntry.metadata).toHaveProperty('size');
-        expect(cacheEntry.metadata).toHaveProperty('binaryFilePath');
-        expect(cacheEntry.metadata).toHaveProperty('contentHash');
-
-        expect(typeof cacheEntry.metadata.url).toBe('string');
-        expect(typeof cacheEntry.metadata.size).toBe('number');
-        expect(typeof cacheEntry.metadata.binaryFilePath).toBe('string');
-        expect(typeof cacheEntry.metadata.contentHash).toBe('string');
-
         // Verify the binary file exists
-        const binaryPath = path.join(binariesDir, cacheEntry.metadata.binaryFilePath);
+        const binaryPath = path.join(binariesDir, cacheEntry.binaryFileName);
         expect(await fs.exists(binaryPath)).toBe(true);
       }
     });

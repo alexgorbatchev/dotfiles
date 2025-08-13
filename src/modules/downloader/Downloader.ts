@@ -1,5 +1,5 @@
-import type { ICache } from '@modules/cache/ICache';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { ICache } from '@modules/cache';
+import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
