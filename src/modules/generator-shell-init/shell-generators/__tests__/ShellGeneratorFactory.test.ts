@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
+import type { ShellType } from '@types';
 import { BashGenerator } from '../BashGenerator';
 import { PowerShellGenerator } from '../PowerShellGenerator';
-import { ShellGeneratorFactory } from '../ShellGeneratorFactory';
+import * as ShellGeneratorFactory from '../ShellGeneratorFactory';
 import { ZshGenerator } from '../ZshGenerator';
 
 describe('ShellGeneratorFactory', () => {
@@ -41,7 +42,7 @@ describe('ShellGeneratorFactory', () => {
   });
 
   it('should throw error for unsupported shell type', () => {
-    expect(() => ShellGeneratorFactory.createGenerator('fish' as any, mockAppConfig)).toThrow(
+    expect(() => ShellGeneratorFactory.createGenerator('fish' as ShellType, mockAppConfig)).toThrow(
       'Unsupported shell type: fish'
     );
   });

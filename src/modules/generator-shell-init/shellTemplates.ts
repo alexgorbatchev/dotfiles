@@ -145,8 +145,6 @@ export function generateDefaultPathModification(shellType: ShellType, binariesDi
   switch (shellType) {
     case 'powershell':
       return `$env:PATH = "${binariesDir};$env:PATH"`;
-    case 'zsh':
-    case 'bash':
     default:
       return `export PATH="${binariesDir}:$PATH"`;
   }
@@ -162,8 +160,6 @@ export function generateCompletionSetup(shellType: ShellType, completionDir: str
   switch (shellType) {
     case 'zsh':
       return ['typeset -U fpath', `fpath=("${completionDir}" $fpath)`];
-    case 'bash':
-    case 'powershell':
     default:
       // Bash and PowerShell completions are handled per-tool
       return [];

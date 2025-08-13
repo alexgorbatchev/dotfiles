@@ -223,6 +223,7 @@ describe('ToolConfigContext', () => {
       };
 
       // This should not throw an error, even though the function signature doesn't include context
+      // biome-ignore lint/suspicious/noExplicitAny: Testing backward compatibility with old function signatures
       await (oldStyleConfigureToolFn as any)(builder, createToolConfigContext(mockYamlConfig, 'old-style-tool'));
       const toolConfig = builder.build();
 

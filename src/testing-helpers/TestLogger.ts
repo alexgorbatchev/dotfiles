@@ -1,10 +1,10 @@
 import { expect as bunExpect } from 'bun:test';
-import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
-import * as util from 'util';
+import * as util from 'node:util';
+import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 
 export type LogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
-export class TestLogger<LogObj = any> extends Logger<LogObj> {
+export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
   public readonly logs: ILogObjMeta[] = [];
 
   constructor(settings?: ISettingsParam<LogObj>, logs: ILogObjMeta[] = []) {
@@ -62,7 +62,7 @@ export class TestLogger<LogObj = any> extends Logger<LogObj> {
         return true;
       }
 
-      const firstArg = log[0] as any;
+      const firstArg = log[0] as unknown;
       if (typeof firstArg === 'string' && typeof matcher === 'string') {
         return firstArg.includes(matcher);
       }
@@ -129,8 +129,8 @@ function formatLogMessage(log: ILogObjMeta): string | undefined {
   return util.format(message, ...args);
 }
 
-function getIndexedProperties(obj: any): any[] {
-  const properties: any[] = [];
+function getIndexedProperties(obj: ILogObjMeta): unknown[] {
+  const properties: unknown[] = [];
   let index = 0;
 
   while (true) {

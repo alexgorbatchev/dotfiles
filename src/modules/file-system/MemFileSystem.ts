@@ -68,7 +68,7 @@ export class MemFileSystem implements IFileSystem {
     try {
       await this.vol.promises.access(path);
       return true;
-    } catch (e) {
+    } catch (_e) {
       // memfs throws an error if path does not exist, similar to Node's fs.promises.access
       return false;
     }
@@ -91,9 +91,10 @@ export class MemFileSystem implements IFileSystem {
     // The `recursive` option is needed for directories.
     try {
       await this.vol.promises.rm(path, options);
-    } catch (e: any) {
+    } catch (e: unknown) {
       // If force is true and error is ENOENT, suppress it. Otherwise, rethrow.
-      if (options?.force && e?.code === 'ENOENT') {
+      const error = e as NodeJS.ErrnoException;
+      if (options?.force && error?.code === 'ENOENT') {
         return;
       }
       throw e;

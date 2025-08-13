@@ -30,8 +30,9 @@ export type ShellScript = OnceScript | AlwaysScript;
  */
 export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceScript {
   const content = String.raw(strings, ...values);
-  const script = new String(content) as any;
-  script.__brand = 'once';
+  const script = new String(content) as OnceScript;
+  // Intentionally augmenting String object for branded type
+  (script as OnceScript & { __brand: string }).__brand = 'once';
   return script as OnceScript;
 }
 
@@ -49,8 +50,9 @@ export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceS
  */
 export function always(strings: TemplateStringsArray, ...values: unknown[]): AlwaysScript {
   const content = String.raw(strings, ...values);
-  const script = new String(content) as any;
-  script.__brand = 'always';
+  const script = new String(content) as AlwaysScript;
+  // Intentionally augmenting String object for branded type
+  (script as AlwaysScript & { __brand: string }).__brand = 'always';
   return script as AlwaysScript;
 }
 

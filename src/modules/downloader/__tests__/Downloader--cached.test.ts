@@ -1,12 +1,13 @@
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import type { CacheConfig } from '@modules/cache';
 import { FileCache } from '@modules/cache';
+import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, FetchMockHelper, TestLogger } from '@testing-helpers';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { Downloader } from '../Downloader';
 
 describe('Downloader with Cache', () => {
   let logger: TestLogger;
-  let mockFileSystem: any;
+  let mockFileSystem: IFileSystem;
   let cache: FileCache;
   let downloader: Downloader;
   let cacheConfig: CacheConfig;
@@ -105,6 +106,9 @@ describe('Downloader with Cache', () => {
 
       // Verify fetch was called twice (cache bypassed)
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(2);
+
+      // Verify progress callback was called
+      expect(progressCallCount).toBeGreaterThan(0);
     });
 
     it('should work with disabled cache', async () => {

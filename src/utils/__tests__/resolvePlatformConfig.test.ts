@@ -326,7 +326,7 @@ describe('resolvePlatformConfig', () => {
 
       expect(result.version).toBe('2.0.0-macos');
       expect(result.installationMethod).toBe('brew');
-      expect((result as any).installParams).toEqual({ formula: 'test-tool' });
+      expect(result.installParams).toEqual({ formula: 'test-tool' });
     });
 
     it('should merge array properties (zshInit, bashInit, symlinks)', () => {

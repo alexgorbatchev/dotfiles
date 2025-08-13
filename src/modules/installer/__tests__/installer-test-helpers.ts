@@ -12,7 +12,15 @@ import {
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
-import type { BaseInstallContext, ExtractResult, GitHubRelease } from '@types';
+import type {
+  BaseInstallContext,
+  BrewToolConfig,
+  CurlScriptToolConfig,
+  ExtractResult,
+  GitHubRelease,
+  GithubReleaseToolConfig,
+  ManualToolConfig,
+} from '@types';
 import type { ILogObj } from 'tslog';
 import { Installer } from '../Installer';
 
@@ -113,7 +121,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   const mockToolBinaryPath = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
   // Setup mock downloader
-  const mockDownload = mock(() => Promise.resolve());
+  const mockDownload = mock(() => Promise.resolve(Buffer.from('mock data')));
   const mockDownloader: IDownloader = {
     download: mockDownload,
     registerStrategy: mock(() => {}),
@@ -181,16 +189,73 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
 }
 
 /**
- * Creates a basic tool config for testing
+ * Creates a GitHub release tool config for testing
  */
-export function createBasicToolConfig(overrides: any = {}): any {
-  const baseConfig = {
+export function createGithubReleaseToolConfig(
+  overrides: Partial<GithubReleaseToolConfig> = {}
+): GithubReleaseToolConfig {
+  const baseConfig: GithubReleaseToolConfig = {
     name: MOCK_TOOL_NAME,
     binaries: [MOCK_TOOL_NAME],
     version: MOCK_TOOL_VERSION,
-    installationMethod: 'github-release' as const,
+    installationMethod: 'github-release',
     installParams: {
       repo: MOCK_TOOL_REPO,
+    },
+    ...overrides,
+  };
+
+  return baseConfig;
+}
+
+/**
+ * Creates a brew tool config for testing
+ */
+export function createBrewToolConfig(overrides: Partial<BrewToolConfig> = {}): BrewToolConfig {
+  const baseConfig: BrewToolConfig = {
+    name: MOCK_TOOL_NAME,
+    binaries: [MOCK_TOOL_NAME],
+    version: MOCK_TOOL_VERSION,
+    installationMethod: 'brew',
+    installParams: {
+      formula: MOCK_TOOL_NAME,
+    },
+    ...overrides,
+  };
+
+  return baseConfig;
+}
+
+/**
+ * Creates a curl script tool config for testing
+ */
+export function createCurlScriptToolConfig(overrides: Partial<CurlScriptToolConfig> = {}): CurlScriptToolConfig {
+  const baseConfig: CurlScriptToolConfig = {
+    name: MOCK_TOOL_NAME,
+    binaries: [MOCK_TOOL_NAME],
+    version: MOCK_TOOL_VERSION,
+    installationMethod: 'curl-script',
+    installParams: {
+      url: 'https://example.com/install.sh',
+      shell: 'bash',
+    },
+    ...overrides,
+  };
+
+  return baseConfig;
+}
+
+/**
+ * Creates a manual tool config for testing
+ */
+export function createManualToolConfig(overrides: Partial<ManualToolConfig> = {}): ManualToolConfig {
+  const baseConfig: ManualToolConfig = {
+    name: MOCK_TOOL_NAME,
+    binaries: [MOCK_TOOL_NAME],
+    version: MOCK_TOOL_VERSION,
+    installationMethod: 'manual',
+    installParams: {
+      binaryPath: `/usr/local/bin/${MOCK_TOOL_NAME}`,
     },
     ...overrides,
   };
@@ -209,7 +274,7 @@ export function createTestContext(
     toolName: MOCK_TOOL_NAME,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
     systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
-    toolConfig: createBasicToolConfig(),
+    toolConfig: createGithubReleaseToolConfig(),
     appConfig: setup.mockAppConfig,
     ...overrides,
   };

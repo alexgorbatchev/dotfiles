@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import {
-  createBasicToolConfig,
+  createCurlScriptToolConfig,
   createInstallerTestSetup,
   createTestContext,
   type InstallerTestSetup,
@@ -17,8 +17,7 @@ describe('Installer - installFromCurlScript', () => {
   });
 
   it('should download and execute script', async () => {
-    const toolConfig = createBasicToolConfig({
-      installationMethod: 'curl-script',
+    const toolConfig = createCurlScriptToolConfig({
       installParams: {
         url: 'https://example.com/install.sh',
         shell: 'bash',

@@ -47,7 +47,7 @@ export interface InstallResult {
   /**
    * Additional information about the installation
    */
-  info?: Record<string, any>;
+  info?: Record<string, unknown>;
 }
 
 /**

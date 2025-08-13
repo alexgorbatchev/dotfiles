@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { exitCli } from '@modules/cli';
 import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
 import { logs, type TsLogger } from '@modules/logger';
@@ -6,7 +7,6 @@ import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo }
 import { expandHomePath } from '@utils';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
-import { exitCli } from '../cli';
 
 /**
  * Detects the current operating system
@@ -171,6 +171,52 @@ function expandHomePathsInObject(target: unknown, homeDir: string): unknown {
   return target;
 }
 
+function resolveNestedConfigValue(varName: string, fullConfig: Record<string, unknown>): string | null {
+  const parts = varName.split('.');
+  let value: unknown = fullConfig;
+
+  for (const part of parts) {
+    if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
+      value = (value as Record<string, unknown>)[part];
+    } else {
+      return null;
+    }
+  }
+
+  return typeof value === 'string' ? value : null;
+}
+
+function replaceConfigTokens(
+  configStr: string,
+  finalEnv: Record<string, string | undefined>,
+  fullConfig: Record<string, unknown>
+): string {
+  return configStr.replace(/\${([^}]+)}/g, (match, varName) => {
+    if (varName.includes('.')) {
+      const resolvedValue = resolveNestedConfigValue(varName, fullConfig);
+      return resolvedValue !== null ? resolvedValue : match;
+    }
+
+    return finalEnv[varName] !== undefined ? finalEnv[varName] : match;
+  });
+}
+
+function performTokenSubstitution(
+  configStr: string,
+  finalEnv: Record<string, string | undefined>,
+  fullConfig: Record<string, unknown>
+): string {
+  let currentConfigStr = configStr;
+  let previousConfigStr = '';
+
+  while (previousConfigStr !== currentConfigStr) {
+    previousConfigStr = currentConfigStr;
+    currentConfigStr = replaceConfigTokens(currentConfigStr, finalEnv, fullConfig);
+  }
+
+  return currentConfigStr;
+}
+
 /**
  * Substitutes tokens in the configuration with values from environment variables and other config values.
  * Also expands home paths (~ character) in string values.
@@ -188,36 +234,18 @@ function substituteTokens(
   systemInfo: SystemInfo
 ): Record<string, unknown> {
   const finalEnv = deepMerge(env, { HOME: systemInfo.homeDir });
-  let configStr = stringify(config);
-  let previousConfigStr = '';
+  const configStr = stringify(config);
 
-  while (previousConfigStr !== configStr) {
-    previousConfigStr = configStr;
-
-    configStr = configStr.replace(/\${([^}]+)}/g, (match, varName) => {
-      if (varName.includes('.')) {
-        const parts = varName.split('.');
-        let value: unknown = fullConfig;
-        for (const part of parts) {
-          if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
-            value = (value as Record<string, unknown>)[part];
-          } else {
-            return match;
-          }
-        }
-        return typeof value === 'string' ? value : match;
-      }
-
-      return finalEnv[varName] !== undefined ? finalEnv[varName] : match;
-    });
-  }
+  const substitutedConfigStr = performTokenSubstitution(configStr, finalEnv, fullConfig);
 
   // Parse the config string back to an object
-  const parsedConfig = parse(configStr) as Record<string, unknown>;
+  const parsedConfig = parse(substitutedConfigStr) as Record<string, unknown>;
 
   // Expand home paths in the config
-  // Use config file directory as base for relative paths, fall back to system homeDir if no config path
-  const userConfigPath = (fullConfig as any).userConfigPath as string | undefined;
+  const userConfigPath =
+    'userConfigPath' in fullConfig && typeof fullConfig['userConfigPath'] === 'string'
+      ? fullConfig['userConfigPath']
+      : undefined;
   const baseDir = userConfigPath ? path.dirname(userConfigPath) : systemInfo.homeDir;
   return expandHomePathsInObject(parsedConfig, baseDir) as Record<string, unknown>;
 }

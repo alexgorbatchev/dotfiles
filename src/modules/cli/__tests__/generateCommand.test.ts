@@ -108,7 +108,8 @@ describe('generateCommand', () => {
 
   test('should handle errors during artifact generation', async () => {
     const generationError = new Error('Generation failed');
-    (mockGeneratorOrchestrator.generateAll as any).mockRejectedValue(generationError);
+    const mockGenerateAll = mockGeneratorOrchestrator.generateAll as ReturnType<typeof mock>;
+    mockGenerateAll.mockRejectedValue(generationError);
 
     expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 

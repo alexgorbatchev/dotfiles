@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'bun:test';
+import type { Services } from '@cli';
+import { createProgram } from '@cli';
 import { TestLogger } from '@testing-helpers';
-import { createProgram } from '../../../cli';
 import { registerFilesCommand } from '../filesCommand';
 
 describe('filesCommand', () => {
   it('should register files command successfully', () => {
     const logger = new TestLogger();
     const program = createProgram();
-    const servicesFactory = () => Promise.resolve({} as any);
+    const servicesFactory = () => Promise.resolve({} as Services);
 
     registerFilesCommand(logger, program, servicesFactory);
 

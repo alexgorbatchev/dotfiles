@@ -79,4 +79,7 @@ export const commandDebugTemplates = {
   platformInfo: () => createSafeLogMessage('Platform: %s, Architecture: %s'),
   assetFound: () => createSafeLogMessage('Found matching asset: %s'),
   downloadProgress: () => createSafeLogMessage('Downloading %s to %s'),
+  // File operation history templates
+  fileOperationHistory: (timestamp: string, operation: string, metadata: string) =>
+    createSafeLogMessage(`${timestamp} ${operation}${metadata ? ` ${metadata}` : ''}`),
 } satisfies SafeLogMessageMap;

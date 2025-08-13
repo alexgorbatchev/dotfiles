@@ -154,7 +154,7 @@ export function processBunTestOutput(output: string): string {
 
     if (line.startsWith('(fail)')) {
       const failMatch = failTestRegex.exec(line);
-      const testDescription = failMatch && failMatch[1] ? failMatch[1].trim() : `raw:${line.substring(0, 50)}`;
+      const testDescription = failMatch?.[1] ? failMatch[1].trim() : `raw:${line.substring(0, 50)}`;
       const detailKey = `${currentFilePath || 'unknown-file'}::${testDescription}`;
 
       if (!globallyPrintedFailingTestDetails.has(detailKey)) {
@@ -202,9 +202,10 @@ async function main() {
     const processedOutput = processBunTestOutput(combinedOutput);
 
     process.stdout.write(processedOutput);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // This catch block might be redundant with nothrow(), but it's good for safety.
-    console.error('Bun Test Runner Script Error:', error.stack || error);
+    const err = error as Error;
+    console.error('Bun Test Runner Script Error:', err.stack || err);
     process.exit(1);
   }
 }

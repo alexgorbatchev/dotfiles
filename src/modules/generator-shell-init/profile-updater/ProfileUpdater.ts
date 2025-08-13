@@ -48,7 +48,7 @@ export class ProfileUpdater implements IProfileUpdater {
       const sourcePatterns = this.getSourcePatterns(scriptPath);
 
       return sourcePatterns.some((pattern) => content.includes(pattern));
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist or can't be read
       return false;
     }
@@ -102,7 +102,7 @@ export class ProfileUpdater implements IProfileUpdater {
     // Read existing content if file exists
     try {
       content = await this.fileSystem.readFile(profilePath);
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist, start with empty content
       content = '';
     }
@@ -113,7 +113,7 @@ export class ProfileUpdater implements IProfileUpdater {
     }
 
     // Add our sourcing section with enhanced header
-    const newContent = content + '\n' + headerBlock + '\n' + sourceLine + '\n';
+    const newContent = `${content}\n${headerBlock}\n${sourceLine}\n`;
 
     // Ensure parent directory exists
     const parentDir = path.dirname(profilePath);

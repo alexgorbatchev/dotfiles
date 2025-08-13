@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test';
+import type { GlobalProgram } from '@cli';
 import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@testing-helpers';
-import type { GlobalProgram } from '../../../cli';
 import { registerInitCommand } from '../initCommand';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -136,9 +136,9 @@ describe('initCommand', () => {
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
-    } catch (error: any) {
+    } catch (error: unknown) {
       threwError = true;
-      expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect((error as Error).message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
 
     expect(threwError).toBe(true);
@@ -153,9 +153,9 @@ describe('initCommand', () => {
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
-    } catch (error: any) {
+    } catch (error: unknown) {
       threwError = true;
-      expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect((error as Error).message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
 
     expect(threwError).toBe(true);
@@ -170,9 +170,9 @@ describe('initCommand', () => {
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
-    } catch (error: any) {
+    } catch (error: unknown) {
       threwError = true;
-      expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect((error as Error).message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
 
     expect(threwError).toBe(true);
@@ -188,9 +188,9 @@ describe('initCommand', () => {
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
-    } catch (error: any) {
+    } catch (error: unknown) {
       threwError = true;
-      expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect((error as Error).message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
 
     expect(threwError).toBe(true);
@@ -206,9 +206,9 @@ describe('initCommand', () => {
     let threwError = false;
     try {
       await program.parseAsync(['node', 'test', 'init']);
-    } catch (error: any) {
+    } catch (error: unknown) {
       threwError = true;
-      expect(error.message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
+      expect((error as Error).message).toContain('MOCK_EXIT_CLI_CALLED_WITH_1');
     }
 
     expect(threwError).toBe(true);

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createYamlConfigFromObject } from '@modules/config-loader';
 import { Installer } from '../Installer';
 import {
-  createBasicToolConfig,
+  createGithubReleaseToolConfig,
   createInstallerTestSetup,
   createTestContext,
   type InstallerTestSetup,
@@ -23,7 +23,7 @@ describe('Installer - installFromGitHubRelease', () => {
   });
 
   it('should download and install from GitHub release', async () => {
-    const toolConfig = createBasicToolConfig({
+    const toolConfig = createGithubReleaseToolConfig({
       installParams: {
         repo: MOCK_TOOL_REPO,
         version: 'latest', // Explicitly set to use latest version
@@ -50,7 +50,7 @@ describe('Installer - installFromGitHubRelease', () => {
   });
 
   it('should handle invalid repository format', async () => {
-    const toolConfig = createBasicToolConfig({
+    const toolConfig = createGithubReleaseToolConfig({
       installParams: {
         repo: 'invalid-repo',
       },
@@ -66,7 +66,7 @@ describe('Installer - installFromGitHubRelease', () => {
   });
 
   it('should handle missing asset', async () => {
-    const toolConfig = createBasicToolConfig({
+    const toolConfig = createGithubReleaseToolConfig({
       installParams: {
         repo: MOCK_TOOL_REPO,
         assetPattern: 'non-existent-pattern',
@@ -88,7 +88,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
   describe('URL Construction', () => {
     it('should use absolute browser_download_url directly', async () => {
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           assetPattern: 'test-tool-linux-amd64',
@@ -122,7 +122,7 @@ describe('Installer - installFromGitHubRelease', () => {
     });
 
     it('should construct URL with default github.com for relative browser_download_url', async () => {
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           assetPattern: 'test-tool-linux-amd64',
@@ -179,7 +179,7 @@ describe('Installer - installFromGitHubRelease', () => {
     });
 
     it('should construct URL with custom githubHost for relative browser_download_url', async () => {
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           assetPattern: 'test-tool-linux-amd64',
@@ -235,7 +235,7 @@ describe('Installer - installFromGitHubRelease', () => {
     });
 
     it('should use default GitHub host if custom githubHost is api.github.com for relative URL', async () => {
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           assetPattern: 'test-tool-linux-amd64',
@@ -295,7 +295,7 @@ describe('Installer - installFromGitHubRelease', () => {
   describe('Enhanced Error Message', () => {
     it('should list available assets when no match found with assetPattern', async () => {
       setup.mocks.getLatestRelease.mockResolvedValue(MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS);
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           assetPattern: 'non-existent-asset-pattern',
@@ -319,7 +319,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
     it('should list available assets when no match found with default platform/arch detection', async () => {
       setup.mocks.getLatestRelease.mockResolvedValue(MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS);
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           // No assetPattern, no assetSelector, rely on platform/arch
@@ -355,7 +355,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
     it('should list available assets when assetSelector returns undefined', async () => {
       setup.mocks.getLatestRelease.mockResolvedValue(MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS);
-      const toolConfig = createBasicToolConfig({
+      const toolConfig = createGithubReleaseToolConfig({
         installParams: {
           repo: MOCK_TOOL_REPO,
           assetSelector: () => undefined, // Selector that finds nothing

@@ -24,13 +24,6 @@ export class FetchMockHelper {
   private spyFetch: ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> | null = null;
 
   /**
-   * Constructs a new FetchMockHelper.
-   */
-  constructor() {
-    // Constructor for FetchMockHelper
-  }
-
-  /**
    * Sets up the spy on `globalThis.fetch`.
    * This method should typically be called in a `beforeAll` or `beforeEach` block in tests.
    * It replaces the global fetch with a spy that can be controlled for testing purposes.
@@ -81,10 +74,10 @@ export class FetchMockHelper {
     const { body = '', status = 200, statusText = 'OK', headers = {}, error } = options;
 
     if (error) {
-      this.spyFetch.mockImplementationOnce((() => Promise.reject(error)) as any);
+      this.spyFetch.mockImplementationOnce((() => Promise.reject(error)) as unknown as typeof fetch);
     } else {
       this.spyFetch.mockImplementationOnce((() =>
-        Promise.resolve(new Response(body, { status, statusText, headers }))) as any);
+        Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch);
     }
   }
 
@@ -95,7 +88,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error` as they are handled by this method).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockJsonResponseOnce(data: any, options: Omit<MockResponseOptions, 'body' | 'error'> = {}): void {
+  mockJsonResponseOnce(data: unknown, options: Omit<MockResponseOptions, 'body' | 'error'> = {}): void {
     const responseHeaders = new Headers(options.headers);
     responseHeaders.set('Content-Type', 'application/json');
     this.mockResponseOnce({
@@ -141,10 +134,10 @@ export class FetchMockHelper {
     const { body = '', status = 200, statusText = 'OK', headers = {}, error } = options;
 
     if (error) {
-      this.spyFetch.mockImplementation((() => Promise.reject(error)) as any);
+      this.spyFetch.mockImplementation((() => Promise.reject(error)) as unknown as typeof fetch);
     } else {
       this.spyFetch.mockImplementation((() =>
-        Promise.resolve(new Response(body, { status, statusText, headers }))) as any);
+        Promise.resolve(new Response(body, { status, statusText, headers }))) as unknown as typeof fetch);
     }
   }
 

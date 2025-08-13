@@ -8,6 +8,19 @@ import { logs } from '@modules/logger';
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 
+interface ExecError extends Error {
+  code?: number;
+  stdout?: string;
+  stderr?: string;
+}
+
+interface AugmentedExecError extends Error {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  originalError: ExecError;
+}
+
 /**
  * Implements the IArchiveExtractor interface using system commands.
  *
@@ -43,54 +56,83 @@ export class ArchiveExtractor implements IArchiveExtractor {
       logger.debug(logs.extractor.debug.commandExecution(), command);
       const { stdout, stderr } = await this.promisedExec(command);
       return { stdout, stderr, exitCode: 0 };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const execError = error as ExecError;
       // Augment the error object with stdio and exit code
-      const execError = new Error(
-        `Command failed with exit code ${error.code || 'unknown'}: ${command}\nStderr: ${error.stderr?.trim() || 'N/A'}\nStdout: ${error.stdout?.trim() || 'N/A'}\n${error.message}`
-      ) as any;
-      execError.stdout = error.stdout || '';
-      execError.stderr = error.stderr || '';
-      execError.exitCode = typeof error.code === 'number' ? error.code : 1;
-      execError.originalError = error; // Keep original error if needed
-      logger.debug(logs.extractor.debug.commandError(), execError);
-      throw execError;
+      const augmentedError: AugmentedExecError = new Error(
+        `Command failed with exit code ${execError.code || 'unknown'}: ${command}\nStderr: ${execError.stderr?.trim() || 'N/A'}\nStdout: ${execError.stdout?.trim() || 'N/A'}\n${execError.message}`
+      ) as AugmentedExecError;
+      augmentedError.stdout = execError.stdout || '';
+      augmentedError.stderr = execError.stderr || '';
+      augmentedError.exitCode = typeof execError.code === 'number' ? execError.code : 1;
+      augmentedError.originalError = execError; // Keep original error if needed
+      logger.debug(logs.extractor.debug.commandError(), augmentedError);
+      throw augmentedError;
     }
   }
 
-  public async detectFormat(filePath: string): Promise<ArchiveFormat> {
-    const logger = this.logger.getSubLogger({ name: 'detectFormat' });
-    const fileName = basename(filePath).toLowerCase();
-    if (fileName.endsWith('.tar.gz') || fileName.endsWith('.tgz')) return 'tar.gz';
-    if (fileName.endsWith('.tar.bz2') || fileName.endsWith('.tbz2') || fileName.endsWith('.tbz')) return 'tar.bz2';
-    if (fileName.endsWith('.tar.xz') || fileName.endsWith('.txz')) return 'tar.xz';
-    if (fileName.endsWith('.tar.lzma')) return 'tar.lzma';
-    if (fileName.endsWith('.tar')) return 'tar';
-    if (fileName.endsWith('.zip')) return 'zip';
-    if (fileName.endsWith('.rar')) return 'rar';
-    if (fileName.endsWith('.7z')) return '7z';
-    if (fileName.endsWith('.deb')) return 'deb';
-    if (fileName.endsWith('.rpm')) return 'rpm';
-    if (fileName.endsWith('.dmg')) return 'dmg';
+  private detectFormatByExtension(fileName: string): ArchiveFormat | null {
+    const lowerFileName = fileName.toLowerCase();
 
-    // Fallback to 'file' command
+    if (lowerFileName.endsWith('.tar.gz') || lowerFileName.endsWith('.tgz')) return 'tar.gz';
+    if (lowerFileName.endsWith('.tar.bz2') || lowerFileName.endsWith('.tbz2') || lowerFileName.endsWith('.tbz'))
+      return 'tar.bz2';
+    if (lowerFileName.endsWith('.tar.xz') || lowerFileName.endsWith('.txz')) return 'tar.xz';
+    if (lowerFileName.endsWith('.tar.lzma')) return 'tar.lzma';
+    if (lowerFileName.endsWith('.tar')) return 'tar';
+    if (lowerFileName.endsWith('.zip')) return 'zip';
+    if (lowerFileName.endsWith('.rar')) return 'rar';
+    if (lowerFileName.endsWith('.7z')) return '7z';
+    if (lowerFileName.endsWith('.deb')) return 'deb';
+    if (lowerFileName.endsWith('.rpm')) return 'rpm';
+    if (lowerFileName.endsWith('.dmg')) return 'dmg';
+
+    return null;
+  }
+
+  private detectFormatByMimeType(mimeOutput: string): ArchiveFormat | null {
+    if (mimeOutput.includes('gzip')) return 'tar.gz';
+    if (mimeOutput.includes('zip')) return 'zip';
+    if (mimeOutput.includes('x-bzip2')) return 'tar.bz2';
+    if (mimeOutput.includes('x-xz')) return 'tar.xz';
+    if (mimeOutput.includes('x-tar')) return 'tar';
+    if (mimeOutput.includes('x-7z-compressed')) return '7z';
+    if (mimeOutput.includes('x-rar-compressed')) return 'rar';
+    if (mimeOutput.includes('x-debian-package')) return 'deb';
+    if (mimeOutput.includes('x-rpm')) return 'rpm';
+    if (mimeOutput.includes('x-apple-diskimage')) return 'dmg';
+
+    return null;
+  }
+
+  private async detectFormatUsingFileCommand(filePath: string, logger: TsLogger): Promise<ArchiveFormat | null> {
     try {
       // Basic single quoting for shell safety.
       const safeFilePath = `'${filePath.replace(/'/g, "'\\''")}'`;
       const { stdout } = await this.executeShellCommand(`file -b --mime-type ${safeFilePath}`);
       const output = stdout.trim();
 
-      if (output.includes('gzip')) return 'tar.gz';
-      if (output.includes('zip')) return 'zip';
-      if (output.includes('x-bzip2')) return 'tar.bz2';
-      if (output.includes('x-xz')) return 'tar.xz';
-      if (output.includes('x-tar')) return 'tar';
-      if (output.includes('x-7z-compressed')) return '7z';
-      if (output.includes('x-rar-compressed')) return 'rar';
-      if (output.includes('x-debian-package')) return 'deb';
-      if (output.includes('x-rpm')) return 'rpm';
-      if (output.includes('x-apple-diskimage')) return 'dmg';
+      return this.detectFormatByMimeType(output);
     } catch (error) {
       logger.debug(logs.extractor.debug.fileCommandFailed(), error);
+      return null;
+    }
+  }
+
+  public async detectFormat(filePath: string): Promise<ArchiveFormat> {
+    const logger = this.logger.getSubLogger({ name: 'detectFormat' });
+    const fileName = basename(filePath);
+
+    // Try detection by file extension first
+    const formatByExtension = this.detectFormatByExtension(fileName);
+    if (formatByExtension) {
+      return formatByExtension;
+    }
+
+    // Fallback to 'file' command
+    const formatByMimeType = await this.detectFormatUsingFileCommand(filePath, logger);
+    if (formatByMimeType) {
+      return formatByMimeType;
     }
 
     throw new Error(`Unsupported or undetectable archive format for: ${filePath}`);
@@ -108,13 +150,86 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return supportedFormats.includes(format);
   }
 
+  private buildTarCommand(
+    archivePath: string,
+    tempExtractDir: string,
+    format: string,
+    stripComponents: number
+  ): string {
+    let flag: string;
+    switch (format) {
+      case 'tar.gz':
+        flag = '-xzf';
+        break;
+      case 'tar.bz2':
+        flag = '-xjf';
+        break;
+      case 'tar.xz':
+        flag = '-xJf';
+        break;
+      case 'tar':
+        flag = '-xf';
+        break;
+      default:
+        throw new Error(`Unsupported tar format: ${format}`);
+    }
+
+    let command = `tar ${flag} '${archivePath}' -C '${tempExtractDir}'`;
+    if (stripComponents > 0) {
+      command += ` --strip-components=${stripComponents}`;
+    }
+    return command;
+  }
+
+  private async extractArchiveByFormat(
+    format: ArchiveFormat,
+    archivePath: string,
+    tempExtractDir: string,
+    stripComponents: number,
+    logger: TsLogger
+  ): Promise<void> {
+    switch (format) {
+      case 'tar.gz':
+      case 'tar.bz2':
+      case 'tar.xz':
+      case 'tar': {
+        const command = this.buildTarCommand(archivePath, tempExtractDir, format, stripComponents);
+        await this.executeShellCommand(command);
+        break;
+      }
+      case 'zip': {
+        // unzip doesn't have a direct --strip-components.
+        if (stripComponents > 0) {
+          logger.debug(logs.extractor.debug.zipStripComponents());
+        }
+        const command = `unzip -qo '${archivePath}' -d '${tempExtractDir}'`;
+        await this.executeShellCommand(command);
+        break;
+      }
+      default:
+        throw new Error(`Extraction for format ${format} not implemented.`);
+    }
+  }
+
+  private async moveExtractedFiles(tempExtractDir: string, targetDir: string): Promise<void> {
+    const extractedItems = await this.fs.readdir(tempExtractDir);
+    for (const item of extractedItems) {
+      await this.fs.rename(join(tempExtractDir, item), join(targetDir, item));
+    }
+  }
+
+  private async cleanupTempDir(tempExtractDir: string, logger: TsLogger): Promise<void> {
+    await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
+      logger.debug(logs.extractor.debug.cleanupError(), cleanupErr);
+    });
+  }
+
   public async extract(archivePath: string, options: ExtractOptions = {}): Promise<ExtractResult> {
     const logger = this.logger.getSubLogger({ name: 'extract' });
     const {
       format: explicitFormat,
       stripComponents = 0,
       targetDir = '.', // Default to current directory if not specified
-      // preservePermissions = false, // TODO: Implement if needed via tar/unzip options
       detectExecutables = true,
     } = options;
 
@@ -133,98 +248,25 @@ export class ArchiveExtractor implements IArchiveExtractor {
     await this.fs.mkdir(tempExtractDir, { recursive: true });
 
     try {
-      switch (format) {
-        case 'tar.gz': {
-          // Handles .tgz as detectFormat resolves it to 'tar.gz'
-          let command = `tar -xzf '${archivePath}' -C '${tempExtractDir}'`;
-          if (stripComponents > 0) {
-            command += ` --strip-components=${stripComponents}`;
-          }
-          await this.executeShellCommand(command);
-          break;
-        }
-        case 'tar.bz2': {
-          // Handles .tbz2, .tbz as detectFormat resolves them
-          let command = `tar -xjf '${archivePath}' -C '${tempExtractDir}'`;
-          if (stripComponents > 0) {
-            command += ` --strip-components=${stripComponents}`;
-          }
-          await this.executeShellCommand(command);
-          break;
-        }
-        case 'tar.xz': {
-          // Handles .txz as detectFormat resolves it
-          let command = `tar -xJf '${archivePath}' -C '${tempExtractDir}'`;
-          if (stripComponents > 0) {
-            command += ` --strip-components=${stripComponents}`;
-          }
-          await this.executeShellCommand(command);
-          break;
-        }
-        case 'tar': {
-          let command = `tar -xf '${archivePath}' -C '${tempExtractDir}'`;
-          if (stripComponents > 0) {
-            command += ` --strip-components=${stripComponents}`;
-          }
-          await this.executeShellCommand(command);
-          break;
-        }
-        case 'zip': {
-          // unzip doesn't have a direct --strip-components.
-          // If needed, would require extracting to a subdir and then moving.
-          // For now, we ignore stripComponents for zip or require user to handle.
-          if (stripComponents > 0) {
-            logger.debug(logs.extractor.debug.zipStripComponents());
-            // A more complex solution would be to extract to a temporary unique dir inside tempExtractDir,
-            // then list contents, find the common base (if stripComponents=1 and it's a single dir), and move.
-          }
-          const command = `unzip -qo '${archivePath}' -d '${tempExtractDir}'`;
-          await this.executeShellCommand(command);
-          break;
-        }
-        // TODO: Implement other formats (rar, 7z, deb, rpm, dmg)
-        // case '7z':
-        //   await $`7z x ${archivePath} -o${tempExtractDir} -y`;
-        //   break;
-        default:
-          throw new Error(`Extraction for format ${format} not implemented.`);
-      }
-
-      // Move contents from tempExtractDir to targetDir if stripComponents was handled by tar
-      // or if it's a simple extraction.
-      // If stripComponents was > 0 for zip, this part needs more complex logic.
-      // For now, assume files are where they should be relative to tempExtractDir.
-      const extractedItems = await this.fs.readdir(tempExtractDir);
-      for (const item of extractedItems) {
-        await this.fs.rename(join(tempExtractDir, item), join(targetDir, item));
-      }
-
-      // Clean up the (now empty) temporary extraction directory after successful move
+      await this.extractArchiveByFormat(format, archivePath, tempExtractDir, stripComponents, logger);
+      await this.moveExtractedFiles(tempExtractDir, targetDir);
       await this.fs.rm(tempExtractDir, { recursive: true, force: true });
 
       const result: ExtractResult = {
-        extractedFiles: await this.fs.readdir(targetDir), // Re-read targetDir for final list
+        extractedFiles: await this.fs.readdir(targetDir),
         executables: [],
-        // rootDir logic might be complex if stripComponents is involved.
       };
 
       if (detectExecutables) {
         result.executables = await this.detectAndSetExecutables(targetDir, result.extractedFiles);
       }
+
       return result;
     } catch (error) {
-      // Ensure tempExtractDir is cleaned up even if an error occurs during extraction or moving files.
-      // This was previously handled by the finally block, but since the Installer
-      // now needs tempExtractDir to exist *after* this method returns successfully,
-      // we only clean up here on error within this method's scope.
-      // The Installer is responsible for cleanup on successful return.
       logger.debug(logs.extractor.debug.extractErrorCleanup(), tempExtractDir, error);
-      await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
-        logger.debug(logs.extractor.debug.cleanupError(), cleanupErr);
-      });
-      throw error; // Re-throw the original error
+      await this.cleanupTempDir(tempExtractDir, logger);
+      throw error;
     }
-    // The finally block was removed. Cleanup on successful completion is handled by the caller.
   }
 
   private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {

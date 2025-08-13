@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'bun:test';
 import type { DownloadOptions } from '@modules/downloader/IDownloader';
-import { DownloadCacheUtils } from '../DownloadCacheUtils';
+import { createApiCacheKey, createCacheKey, isApiKey, isDownloadKey } from '../DownloadCacheUtils';
 
-describe('DownloadCacheUtils', () => {
+describe('DownloadCacheUtils functions', () => {
   describe('createCacheKey', () => {
     it('should create consistent cache key for same URL', () => {
-      const key1 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt');
-      const key2 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt');
+      const key1 = createCacheKey('https://example.com/file.txt');
+      const key2 = createCacheKey('https://example.com/file.txt');
 
       expect(key1).toBe(key2);
       expect(key1).toStartWith('download:');
     });
 
     it('should create different cache keys for different URLs', () => {
-      const key1 = DownloadCacheUtils.createCacheKey('https://example.com/file1.txt');
-      const key2 = DownloadCacheUtils.createCacheKey('https://example.com/file2.txt');
+      const key1 = createCacheKey('https://example.com/file1.txt');
+      const key2 = createCacheKey('https://example.com/file2.txt');
 
       expect(key1).not.toBe(key2);
     });
@@ -27,8 +27,8 @@ describe('DownloadCacheUtils', () => {
         headers: { Authorization: 'Bearer token2' },
       };
 
-      const key1 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt', options1);
-      const key2 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt', options2);
+      const key1 = createCacheKey('https://example.com/file.txt', options1);
+      const key2 = createCacheKey('https://example.com/file.txt', options2);
 
       expect(key1).not.toBe(key2);
     });
@@ -45,21 +45,21 @@ describe('DownloadCacheUtils', () => {
         onProgress: () => {},
       };
 
-      const key1 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt', options1);
-      const key2 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt', options2);
+      const key1 = createCacheKey('https://example.com/file.txt', options1);
+      const key2 = createCacheKey('https://example.com/file.txt', options2);
 
       expect(key1).toBe(key2);
     });
 
     it('should handle empty options', () => {
-      const key1 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt');
-      const key2 = DownloadCacheUtils.createCacheKey('https://example.com/file.txt', {});
+      const key1 = createCacheKey('https://example.com/file.txt');
+      const key2 = createCacheKey('https://example.com/file.txt', {});
 
       expect(key1).toBe(key2);
     });
 
     it('should create valid filename-safe cache key', () => {
-      const key = DownloadCacheUtils.createCacheKey('https://example.com/file with spaces & symbols!.txt');
+      const key = createCacheKey('https://example.com/file with spaces & symbols!.txt');
 
       expect(key).toMatch(/^download:[a-f0-9]{64}$/);
       expect(key).not.toContain(' ');
@@ -70,16 +70,16 @@ describe('DownloadCacheUtils', () => {
 
   describe('createApiCacheKey', () => {
     it('should create consistent cache key for same API URL', () => {
-      const key1 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users');
-      const key2 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users');
+      const key1 = createApiCacheKey('https://api.example.com/users');
+      const key2 = createApiCacheKey('https://api.example.com/users');
 
       expect(key1).toBe(key2);
       expect(key1).toStartWith('api:');
     });
 
     it('should create different cache keys for different API URLs', () => {
-      const key1 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users');
-      const key2 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/posts');
+      const key1 = createApiCacheKey('https://api.example.com/users');
+      const key2 = createApiCacheKey('https://api.example.com/posts');
 
       expect(key1).not.toBe(key2);
     });
@@ -88,21 +88,21 @@ describe('DownloadCacheUtils', () => {
       const headers1 = { Authorization: 'Bearer token1' };
       const headers2 = { Authorization: 'Bearer token2' };
 
-      const key1 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users', headers1);
-      const key2 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users', headers2);
+      const key1 = createApiCacheKey('https://api.example.com/users', headers1);
+      const key2 = createApiCacheKey('https://api.example.com/users', headers2);
 
       expect(key1).not.toBe(key2);
     });
 
     it('should handle undefined headers', () => {
-      const key1 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users');
-      const key2 = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users', undefined);
+      const key1 = createApiCacheKey('https://api.example.com/users');
+      const key2 = createApiCacheKey('https://api.example.com/users', undefined);
 
       expect(key1).toBe(key2);
     });
 
     it('should create valid filename-safe API cache key', () => {
-      const key = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users?filter=name with spaces');
+      const key = createApiCacheKey('https://api.example.com/users?filter=name with spaces');
 
       expect(key).toMatch(/^api:[a-f0-9]{64}$/);
       expect(key).not.toContain(' ');
@@ -113,35 +113,35 @@ describe('DownloadCacheUtils', () => {
 
   describe('isDownloadKey', () => {
     it('should return true for download keys', () => {
-      const downloadKey = DownloadCacheUtils.createCacheKey('https://example.com/file.txt');
-      expect(DownloadCacheUtils.isDownloadKey(downloadKey)).toBe(true);
+      const downloadKey = createCacheKey('https://example.com/file.txt');
+      expect(isDownloadKey(downloadKey)).toBe(true);
     });
 
     it('should return false for API keys', () => {
-      const apiKey = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users');
-      expect(DownloadCacheUtils.isDownloadKey(apiKey)).toBe(false);
+      const apiKey = createApiCacheKey('https://api.example.com/users');
+      expect(isDownloadKey(apiKey)).toBe(false);
     });
 
     it('should return false for other keys', () => {
-      expect(DownloadCacheUtils.isDownloadKey('random-key')).toBe(false);
-      expect(DownloadCacheUtils.isDownloadKey('other:hash123')).toBe(false);
+      expect(isDownloadKey('random-key')).toBe(false);
+      expect(isDownloadKey('other:hash123')).toBe(false);
     });
   });
 
   describe('isApiKey', () => {
     it('should return true for API keys', () => {
-      const apiKey = DownloadCacheUtils.createApiCacheKey('https://api.example.com/users');
-      expect(DownloadCacheUtils.isApiKey(apiKey)).toBe(true);
+      const apiKey = createApiCacheKey('https://api.example.com/users');
+      expect(isApiKey(apiKey)).toBe(true);
     });
 
     it('should return false for download keys', () => {
-      const downloadKey = DownloadCacheUtils.createCacheKey('https://example.com/file.txt');
-      expect(DownloadCacheUtils.isApiKey(downloadKey)).toBe(false);
+      const downloadKey = createCacheKey('https://example.com/file.txt');
+      expect(isApiKey(downloadKey)).toBe(false);
     });
 
     it('should return false for other keys', () => {
-      expect(DownloadCacheUtils.isApiKey('random-key')).toBe(false);
-      expect(DownloadCacheUtils.isApiKey('other:hash123')).toBe(false);
+      expect(isApiKey('random-key')).toBe(false);
+      expect(isApiKey('other:hash123')).toBe(false);
     });
   });
 });

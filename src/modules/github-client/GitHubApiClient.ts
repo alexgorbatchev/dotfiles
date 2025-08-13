@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import type { ICache } from '@modules/cache';
 import type { YamlConfig } from '@modules/config';
 import {
@@ -13,7 +14,6 @@ import {
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { GitHubRateLimit, GitHubRelease } from '@types';
-import crypto from 'crypto';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiClient } from './IGitHubApiClient';

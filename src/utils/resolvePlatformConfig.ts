@@ -1,4 +1,4 @@
-import type { PlatformConfigEntry, SystemInfo, ToolConfig } from '@types';
+import type { PlatformConfig, PlatformConfigEntry, ShellScript, SystemInfo, ToolConfig } from '@types';
 import { Architecture, hasArchitecture, hasPlatform, Platform } from '@types';
 
 /**
@@ -59,6 +59,108 @@ function matchesPlatform(entry: PlatformConfigEntry, systemInfo: SystemInfo): bo
   return true;
 }
 
+function deepCopyShellConfigs(shellConfigs: ToolConfig['shellConfigs']): ToolConfig['shellConfigs'] {
+  if (!shellConfigs) return undefined;
+
+  return {
+    zsh: shellConfigs.zsh
+      ? {
+          ...shellConfigs.zsh,
+          scripts: shellConfigs.zsh.scripts ? [...shellConfigs.zsh.scripts] : undefined,
+        }
+      : undefined,
+    bash: shellConfigs.bash
+      ? {
+          ...shellConfigs.bash,
+          scripts: shellConfigs.bash.scripts ? [...shellConfigs.bash.scripts] : undefined,
+        }
+      : undefined,
+    powershell: shellConfigs.powershell
+      ? {
+          ...shellConfigs.powershell,
+          scripts: shellConfigs.powershell.scripts ? [...shellConfigs.powershell.scripts] : undefined,
+        }
+      : undefined,
+  };
+}
+
+function initializeShellConfigs(finalConfig: ToolConfig): void {
+  if (!finalConfig.shellConfigs) {
+    finalConfig.shellConfigs = {
+      zsh: undefined,
+      bash: undefined,
+      powershell: undefined,
+    };
+  }
+}
+
+function mergeShellScripts(
+  finalConfig: ToolConfig,
+  shellType: 'zsh' | 'bash' | 'powershell',
+  scripts: ShellScript[]
+): void {
+  initializeShellConfigs(finalConfig);
+  // shellConfigs is guaranteed to exist after initializeShellConfigs
+  // biome-ignore lint/style/noNonNullAssertion: shellConfigs is guaranteed to exist after initializeShellConfigs
+  const shellConfigs = finalConfig.shellConfigs!;
+
+  if (!shellConfigs[shellType]) {
+    shellConfigs[shellType] = { scripts: undefined };
+  }
+
+  const shellConfig = shellConfigs[shellType];
+  if (shellConfig) {
+    shellConfig.scripts = [...(shellConfig.scripts || []), ...scripts];
+  }
+}
+
+function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolConfig['shellConfigs']): void {
+  if (!platformShellConfigs) return;
+
+  if (platformShellConfigs.zsh?.scripts) {
+    mergeShellScripts(finalConfig, 'zsh', platformShellConfigs.zsh.scripts);
+  }
+
+  if (platformShellConfigs.bash?.scripts) {
+    mergeShellScripts(finalConfig, 'bash', platformShellConfigs.bash.scripts);
+  }
+
+  if (platformShellConfigs.powershell?.scripts) {
+    mergeShellScripts(finalConfig, 'powershell', platformShellConfigs.powershell.scripts);
+  }
+}
+
+function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: PlatformConfig): void {
+  if (platformConfig.binaries !== undefined) {
+    finalConfig.binaries = platformConfig.binaries;
+  }
+  if (platformConfig.version !== undefined) {
+    finalConfig.version = platformConfig.version;
+  }
+  if (platformConfig.installationMethod !== undefined) {
+    finalConfig.installationMethod = platformConfig.installationMethod;
+  }
+  if (platformConfig.installParams !== undefined) {
+    finalConfig.installParams = platformConfig.installParams;
+  }
+  if (platformConfig.completions !== undefined) {
+    finalConfig.completions = platformConfig.completions;
+  }
+  if (platformConfig.updateCheck !== undefined) {
+    finalConfig.updateCheck = platformConfig.updateCheck;
+  }
+}
+
+function createBaseResolvedConfig(toolConfig: ToolConfig): ToolConfig {
+  const resolvedConfig = {
+    ...toolConfig,
+    shellConfigs: deepCopyShellConfigs(toolConfig.shellConfigs),
+  };
+
+  const { platformConfigs, ...configWithoutPlatforms } = resolvedConfig;
+  return configWithoutPlatforms;
+}
+
 /**
  * Resolves platform-specific configurations for a tool based on system information.
  * Merges the base tool configuration with matching platform-specific overrides.
@@ -78,112 +180,26 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
 
   // If no matches found, return the original config without platformConfigs
   if (matchingConfigs.length === 0) {
-    const configWithoutPlatforms = { ...toolConfig };
-    delete (configWithoutPlatforms as any).platformConfigs;
+    const { platformConfigs, ...configWithoutPlatforms } = toolConfig;
     return configWithoutPlatforms;
   }
 
   // Start with a deep copy of the base config (excluding platformConfigs to avoid recursion)
-  const resolvedConfig = {
-    ...toolConfig,
-    shellConfigs: toolConfig.shellConfigs
-      ? {
-          ...toolConfig.shellConfigs,
-          zsh: toolConfig.shellConfigs.zsh
-            ? {
-                ...toolConfig.shellConfigs.zsh,
-                scripts: toolConfig.shellConfigs.zsh.scripts ? [...toolConfig.shellConfigs.zsh.scripts] : undefined,
-              }
-            : undefined,
-          bash: toolConfig.shellConfigs.bash
-            ? {
-                ...toolConfig.shellConfigs.bash,
-                scripts: toolConfig.shellConfigs.bash.scripts ? [...toolConfig.shellConfigs.bash.scripts] : undefined,
-              }
-            : undefined,
-          powershell: toolConfig.shellConfigs.powershell
-            ? {
-                ...toolConfig.shellConfigs.powershell,
-                scripts: toolConfig.shellConfigs.powershell.scripts
-                  ? [...toolConfig.shellConfigs.powershell.scripts]
-                  : undefined,
-              }
-            : undefined,
-        }
-      : undefined,
-  };
-  delete (resolvedConfig as any).platformConfigs;
+  const finalConfig = createBaseResolvedConfig(toolConfig);
 
   // Apply each matching platform config in order
   for (const match of matchingConfigs) {
     // Merge shell configs
-    if (match.config.shellConfigs) {
-      // Ensure resolvedConfig.shellConfigs exists
-      if (!resolvedConfig.shellConfigs) {
-        resolvedConfig.shellConfigs = {} as any;
-      }
-
-      // Merge zsh scripts
-      if (match.config.shellConfigs.zsh?.scripts) {
-        if (!resolvedConfig.shellConfigs!.zsh) {
-          resolvedConfig.shellConfigs!.zsh = { scripts: undefined };
-        }
-        resolvedConfig.shellConfigs!.zsh!.scripts = [
-          ...(resolvedConfig.shellConfigs!.zsh!.scripts || []),
-          ...match.config.shellConfigs.zsh.scripts,
-        ];
-      }
-
-      // Merge bash scripts
-      if (match.config.shellConfigs.bash?.scripts) {
-        if (!resolvedConfig.shellConfigs!.bash) {
-          resolvedConfig.shellConfigs!.bash = { scripts: undefined };
-        }
-        resolvedConfig.shellConfigs!.bash!.scripts = [
-          ...(resolvedConfig.shellConfigs!.bash!.scripts || []),
-          ...match.config.shellConfigs.bash.scripts,
-        ];
-      }
-
-      // Merge powershell scripts
-      if (match.config.shellConfigs.powershell?.scripts) {
-        if (!resolvedConfig.shellConfigs!.powershell) {
-          resolvedConfig.shellConfigs!.powershell = { scripts: undefined };
-        }
-        resolvedConfig.shellConfigs!.powershell!.scripts = [
-          ...(resolvedConfig.shellConfigs!.powershell!.scripts || []),
-          ...match.config.shellConfigs.powershell.scripts,
-        ];
-      }
-
-      // TODO: Also merge aliases and environment variables when those are implemented
-    }
+    mergeShellConfigs(finalConfig, match.config.shellConfigs);
 
     // Merge symlinks arrays
     if (match.config.symlinks) {
-      resolvedConfig.symlinks = [...(resolvedConfig.symlinks || []), ...match.config.symlinks];
+      finalConfig.symlinks = [...(finalConfig.symlinks || []), ...match.config.symlinks];
     }
 
     // Override other properties
-    if (match.config.binaries !== undefined) {
-      (resolvedConfig as any).binaries = match.config.binaries;
-    }
-    if (match.config.version !== undefined) {
-      resolvedConfig.version = match.config.version;
-    }
-    if (match.config.installationMethod !== undefined) {
-      (resolvedConfig as any).installationMethod = match.config.installationMethod;
-    }
-    if (match.config.installParams !== undefined) {
-      (resolvedConfig as any).installParams = match.config.installParams;
-    }
-    if (match.config.completions !== undefined) {
-      resolvedConfig.completions = match.config.completions;
-    }
-    if (match.config.updateCheck !== undefined) {
-      resolvedConfig.updateCheck = match.config.updateCheck;
-    }
+    applyPlatformOverrides(finalConfig, match.config);
   }
 
-  return resolvedConfig;
+  return finalConfig;
 }

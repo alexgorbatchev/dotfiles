@@ -204,8 +204,10 @@ describe('ToolConfigBuilder', () => {
     const testLogger = new TestLogger();
     const builder = new ToolConfigBuilder(testLogger, 'test-tool');
     builder.bin(['test-binary']);
-    // Manually set an invalid installation method to test the switch default case
-    (builder as any).currentInstallationMethod = 'invalid-method';
+    // Test error handling by forcing an invalid installation method
+    // This simulates a corrupted state that should never occur in normal usage
+    // @ts-expect-error - Intentionally setting invalid state for error testing
+    builder.currentInstallationMethod = 'invalid-method';
     builder.currentInstallParams = { repo: 'test/repo' };
 
     let thrownError: Error | null = null;

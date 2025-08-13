@@ -68,7 +68,7 @@ export class ProgressBar {
 
       if (this.progressBar) {
         const elapsed = (Date.now() - this.startTime) / 1000;
-        const speed = elapsed > 0 ? this.formatBytes(bytesDownloaded / elapsed) + '/s' : '0 B/s';
+        const speed = elapsed > 0 ? `${this.formatBytes(bytesDownloaded / elapsed)}/s` : '0 B/s';
 
         if (totalBytes) {
           // Update determinate progress bar

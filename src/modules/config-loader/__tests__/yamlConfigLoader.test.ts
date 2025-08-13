@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'bun:test';
 import { createMemFileSystem, TestLogger } from '@testing-helpers';
+import type { SystemInfo } from '@types';
 import { loadYamlConfig } from '../yamlConfigLoader';
 
 describe('yamlConfigLoader', () => {
   const USER_CONFIG_PATH = '/test/config.yaml';
+
+  const mockSystemInfo: SystemInfo = {
+    platform: 'darwin',
+    arch: 'arm64',
+    homeDir: '/Users/testuser',
+  };
 
   const MOCK_USER_CONFIG = `
     paths:
@@ -147,7 +154,7 @@ describe('yamlConfigLoader', () => {
     const { fs: fileSystem } = await createMemFileSystem();
 
     const logger = new TestLogger();
-    expect(loadYamlConfig(logger, fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow(
+    expect(loadYamlConfig(logger, fileSystem, USER_CONFIG_PATH, mockSystemInfo, {})).rejects.toThrow(
       /MOCK_EXIT_CLI_CALLED_WITH_1/
     );
   });
@@ -182,7 +189,7 @@ describe('yamlConfigLoader', () => {
     const { fs: fileSystem } = await createMemFileSystem({});
 
     const logger = new TestLogger();
-    expect(loadYamlConfig(logger, fileSystem, USER_CONFIG_PATH, {} as any, {})).rejects.toThrow();
+    expect(loadYamlConfig(logger, fileSystem, USER_CONFIG_PATH, mockSystemInfo, {})).rejects.toThrow();
   });
 
   it('should handle validation errors from yamlConfigSchema', async () => {

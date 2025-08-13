@@ -1,7 +1,10 @@
 import type { YamlConfig } from '@modules/config';
+import type { IFileSystem } from '@modules/file-system';
+import type { TsLogger } from '@modules/logger';
 import type { $ } from 'zx';
 import type { ExtractResult } from './archive.types';
 import type { SystemInfo } from './common.types';
+import type { ToolConfig } from './resolvedToolConfig.types';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information
@@ -46,6 +49,26 @@ export interface InstallHookContext {
 }
 
 /**
+ * Enhanced context for installation hooks with additional utilities.
+ * This extends the standard InstallHookContext with extra development conveniences.
+ * This is the actual context type that hooks receive when executed.
+ */
+export interface EnhancedInstallHookContext extends InstallHookContext {
+  /** File system instance for performing file operations */
+  fileSystem: IFileSystem;
+  /** Logger instance for structured logging */
+  logger: TsLogger;
+  /** Binary path (available in afterInstall hook) */
+  binaryPath?: string;
+  /** Version of the installed tool (available in afterInstall hook) */
+  version?: string;
+  /** The user's application configuration (available in all hooks) */
+  appConfig?: YamlConfig;
+  /** The full tool configuration being processed (available in all hooks) */
+  toolConfig?: ToolConfig;
+}
+
+/**
  * Base install context used internally by the installer.
  * All fields are required as they represent the minimum context available.
  */
@@ -57,7 +80,7 @@ export interface BaseInstallContext {
   /** System information for the installation environment */
   systemInfo: SystemInfo;
   /** The full tool configuration being processed */
-  toolConfig: any; // Forward reference - will be ToolConfig once main file is updated
+  toolConfig: ToolConfig;
   /** The user's application configuration (YAML config) */
   appConfig: YamlConfig;
 }
@@ -119,4 +142,4 @@ export interface FinalInstallContext extends BaseInstallContext {
  * };
  * ```
  */
-export type AsyncInstallHook = (context: InstallHookContext) => Promise<void>;
+export type AsyncInstallHook = (context: EnhancedInstallHookContext) => Promise<void>;

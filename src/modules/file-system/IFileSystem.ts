@@ -1,4 +1,4 @@
-import type { Stats as NodeStats } from 'fs'; // Changed from 'node:fs', aliased to avoid conflict if re-exporting
+import type { Stats as NodeStats } from 'node:fs'; // Changed from 'node:fs', aliased to avoid conflict if re-exporting
 
 export type { NodeStats as Stats }; // Re-exporting Stats for consumers
 export interface IFileSystem {

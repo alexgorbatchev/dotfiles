@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
-import type { ShellScript, ShellType, ToolConfig } from '@types';
+import type { CompletionConfig, ShellScript, ShellType, ToolConfig } from '@types';
 import { getScriptContent, isAlwaysScript, isOnceScript } from '@types';
 import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
@@ -28,7 +28,7 @@ export interface IShellStringProducer {
   /**
    * Processes completions configuration into shell-specific setup strings.
    */
-  processCompletions(toolName: string, completions: any): string[];
+  processCompletions(toolName: string, completions: CompletionConfig): string[];
 
   /**
    * Processes environment variables into shell-specific export statements.
@@ -94,7 +94,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     return content;
   }
 
-  processCompletions(toolName: string, completions: any): string[] {
+  processCompletions(toolName: string, completions: CompletionConfig): string[] {
     return this.stringProducer.processCompletions(toolName, completions);
   }
 
@@ -136,12 +136,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       }
     }
 
-    let fileContent = generateFileHeader(this.shellType, this.appConfig.paths.dotfilesDir) + '\n';
+    let fileContent = `${generateFileHeader(this.shellType, this.appConfig.paths.dotfilesDir)}\n`;
 
     // Add once script initialization if any tools use once scripts
     if (hasOnceScripts) {
       const initialization = onceInitializer.initialize(this.shellType, this.appConfig.paths.shellScriptsDir);
-      fileContent += initialization.content + '\n\n';
+      fileContent += `${initialization.content}\n\n`;
     }
 
     // Add PATH modifications section with hoisting comments
@@ -163,7 +163,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     // Add formatted always scripts section
     if (formattedAlwaysScripts.length > 0) {
       fileContent += `${generateSectionHeader(this.shellType, 'Always Scripts')}\n`;
-      fileContent += formattedAlwaysScripts.join('\n\n') + '\n\n';
+      fileContent += `${formattedAlwaysScripts.join('\n\n')}\n\n`;
     }
 
     // Add tool-specific initializations section with file headers
@@ -178,7 +178,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         ? this.stringProducer.generateCompletionSetup(allCompletionSetup, allToolInits)
         : [...new Set(allCompletionSetup)];
 
-      fileContent += completionSetupStrings.join('\n') + '\n\n';
+      fileContent += `${completionSetupStrings.join('\n')}\n\n`;
     }
 
     fileContent += `\n${generateEndOfFile(this.shellType)}`;
@@ -199,10 +199,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         const script = content.onceScripts[i];
         if (script) {
           const formatted = onceFormatter.format(script, toolName, this.shellType, i);
-          additionalFiles.push({
-            content: formatted.content,
-            outputPath: formatted.outputPath!,
-          });
+          if (formatted.outputPath) {
+            additionalFiles.push({
+              content: formatted.content,
+              outputPath: formatted.outputPath,
+            });
+          }
         }
       }
     }
@@ -243,14 +245,14 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     let section = `${generateSectionHeader(this.shellType, sectionTitle)}\n`;
 
     // Add hoisting explanation comment
-    section += generateHoistingExplanation(this.shellType, sectionTitle) + '\n';
+    section += `${generateHoistingExplanation(this.shellType, sectionTitle)}\n`;
 
     // For PATH modifications, ensure generated bin directory is first
     if (sectionTitle === 'PATH Modifications') {
       const uniquePaths = [...new Set(items)];
       const generatedBinPathLine = uniquePaths.find((p) => p.includes(this.appConfig.paths.binariesDir));
       if (generatedBinPathLine) {
-        section += generatedBinPathLine + '\n';
+        section += `${generatedBinPathLine}\n`;
         uniquePaths.splice(uniquePaths.indexOf(generatedBinPathLine), 1);
       }
 
@@ -259,9 +261,9 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         const sourceTools = this.findSourceTools(item, toolContents, contentType);
         const attribution = generateHoistingAttribution(this.shellType, sourceTools);
         if (attribution) {
-          section += attribution + '\n';
+          section += `${attribution}\n`;
         }
-        section += item + '\n';
+        section += `${item}\n`;
       }
     } else {
       // For other sections, add items with source attribution
@@ -270,13 +272,13 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         const sourceTools = this.findSourceTools(item, toolContents, contentType);
         const attribution = generateHoistingAttribution(this.shellType, sourceTools);
         if (attribution) {
-          section += attribution + '\n';
+          section += `${attribution}\n`;
         }
-        section += item + '\n';
+        section += `${item}\n`;
       }
     }
 
-    return section + '\n';
+    return `${section}\n`;
   }
 
   /**
@@ -302,11 +304,11 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     // Generate content for each tool with proper headers
     for (const [toolName, { content, filePath }] of toolGroups) {
       const toolHeader = generateToolHeader(this.shellType, toolName, filePath);
-      section += toolHeader + '\n';
-      section += content.join('\n') + '\n';
+      section += `${toolHeader}\n`;
+      section += `${content.join('\n')}\n`;
     }
 
-    return section + '\n';
+    return `${section}\n`;
   }
 
   /**

@@ -11,6 +11,7 @@ import { logs } from '@modules/logger';
 import type {
   BaseInstallContext,
   ExtractResult,
+  GitHubRelease,
   GitHubReleaseAsset,
   GithubReleaseToolConfig,
   PostDownloadInstallContext,
@@ -60,7 +61,7 @@ export async function installFromGitHubRelease(
 
   try {
     // Get the release from GitHub
-    let release;
+    let release: GitHubRelease | null;
     if (version === 'latest') {
       logger.debug(logs.command.debug.gitHubReleaseLatest(), repo || toolName);
       const [owner, repoName] = (repo || '').split('/');

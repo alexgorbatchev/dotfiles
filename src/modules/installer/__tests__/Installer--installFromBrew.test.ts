@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import {
-  createBasicToolConfig,
+  createBrewToolConfig,
   createInstallerTestSetup,
   createTestContext,
   type InstallerTestSetup,
@@ -16,8 +16,7 @@ describe('Installer - installFromBrew', () => {
   });
 
   it('should simulate brew installation', async () => {
-    const toolConfig = createBasicToolConfig({
-      installationMethod: 'brew',
+    const toolConfig = createBrewToolConfig({
       installParams: {
         formula: 'test-formula',
         cask: true,

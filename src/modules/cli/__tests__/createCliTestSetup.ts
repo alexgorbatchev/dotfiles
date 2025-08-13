@@ -152,8 +152,10 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
             break;
         }
       } else {
-        // Use provided mock directly
-        mockServices[serviceName as keyof Services] = serviceConfig as any;
+        // Use provided mock directly - bypass strict typing for test setup
+        const serviceKey = serviceName as keyof Services;
+        // @ts-expect-error - Test utility needs to bypass strict service typing
+        mockServices[serviceKey] = serviceConfig;
       }
     }
   }

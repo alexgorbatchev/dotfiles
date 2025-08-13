@@ -5,6 +5,20 @@ import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { FileOperation, FileOperationFilter, FileState, IFileRegistry } from './IFileRegistry';
 
+interface DatabaseRow {
+  id: number;
+  tool_name: string;
+  operation_type: FileOperation['operationType'];
+  file_path: string;
+  target_path: string | null;
+  file_type: FileOperation['fileType'];
+  metadata: string | null;
+  size_bytes: number | null;
+  permissions: string | null;
+  created_at: string;
+  operation_id: string;
+}
+
 /**
  * SQLite-based implementation of the file registry.
  * Uses append-only design for crash safety.
@@ -20,7 +34,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const dbDir = dirname(dbPath);
     try {
       mkdirSync(dbDir, { recursive: true });
-    } catch (error) {
+    } catch (_error) {
       // Directory might already exist, which is fine
     }
 
@@ -107,7 +121,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     sql += ' ORDER BY created_at DESC, id DESC';
 
     const stmt = this.db.prepare(sql);
-    const rows = params.length > 0 ? (stmt.all(...params) as any[]) : (stmt.all() as any[]);
+    const rows = params.length > 0 ? (stmt.all(...params) as DatabaseRow[]) : (stmt.all() as DatabaseRow[]);
 
     logger.debug(logs.registry.debug.operationsRetrieved(), rows.length, filter);
 
@@ -116,12 +130,12 @@ export class SqliteFileRegistry implements IFileRegistry {
       toolName: row.tool_name,
       operationType: row.operation_type,
       filePath: row.file_path,
-      targetPath: row.target_path,
+      targetPath: row.target_path ?? undefined,
       fileType: row.file_type,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
-      sizeBytes: row.size_bytes,
-      permissions: row.permissions,
-      createdAt: row.created_at,
+      sizeBytes: row.size_bytes ?? undefined,
+      permissions: row.permissions ? parseInt(row.permissions, 8) : undefined,
+      createdAt: parseInt(row.created_at),
       operationId: row.operation_id,
     }));
   }

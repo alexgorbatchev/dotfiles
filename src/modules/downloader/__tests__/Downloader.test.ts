@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
 import { Downloader } from '@modules/downloader';
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem, TestLogger } from '@testing-helpers';
@@ -180,7 +180,10 @@ describe('Downloader', () => {
     expect(downloader.download(url)).rejects.toThrowError(
       'An unknown error occurred during download: {"message":"simulated non-error object","code":123}'
     );
-    expect((nonErrorObjectThrowingStrategy.download as any).mock.calls.length).toBe(1);
+    expect(
+      (nonErrorObjectThrowingStrategy.download as Mock<typeof nonErrorObjectThrowingStrategy.download>).mock.calls
+        .length
+    ).toBe(1);
   });
 
   it('should handle strings thrown by a strategy and re-throw as an Error with the string as message', async () => {
@@ -188,7 +191,10 @@ describe('Downloader', () => {
     const url = 'http://example.com/file.txt';
 
     expect(downloader.download(url)).rejects.toThrowError(new Error('simulated string error'));
-    expect((nonErrorStringThrowingStrategy.download as any).mock.calls.length).toBe(1);
+    expect(
+      (nonErrorStringThrowingStrategy.download as Mock<typeof nonErrorStringThrowingStrategy.download>).mock.calls
+        .length
+    ).toBe(1);
   });
 
   describe('onProgress callback', () => {

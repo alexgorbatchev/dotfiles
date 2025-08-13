@@ -1,6 +1,6 @@
+import type { GlobalProgram, Services } from '@cli';
 import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
 import { logs, type TsLogger } from '@modules/logger';
-import type { GlobalProgram, Services } from '../../cli';
 import { exitCli } from './exitCli';
 
 export interface GenerateCommandOptions {

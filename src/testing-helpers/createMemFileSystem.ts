@@ -1,7 +1,7 @@
 import { type Mock, mock } from 'bun:test';
+import path from 'node:path';
 import { type IFileSystem, MemFileSystem } from '@modules/file-system';
 import type { DirectoryJSON } from 'memfs';
-import path from 'path';
 
 /**
  * Options for creating a customizable in-memory file system.
@@ -40,7 +40,7 @@ export type FileSystemSpies = {
  * Type for the collection of spies/mocks on the file system methods.
  */
 export type MockedFileSystem = IFileSystem & { asIFileSystem: IFileSystem } & {
-  [K in keyof IFileSystem as IFileSystem[K] extends (...args: any[]) => any ? K : never]: Mock<IFileSystem[K]>;
+  [K in keyof IFileSystem as IFileSystem[K] extends (...args: unknown[]) => unknown ? K : never]: Mock<IFileSystem[K]>;
 };
 
 /**

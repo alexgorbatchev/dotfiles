@@ -24,5 +24,5 @@ export interface DownloadStrategy {
    * @returns A promise that resolves with a Buffer containing the downloaded file content, or void if writing to a destinationPath.
    * @throws Will throw an error if the download fails (e.g., network error, HTTP error, timeout).
    */
-  download(url: string, options: DownloadOptions): Promise<Buffer | void>;
+  download(url: string, options: DownloadOptions): Promise<Buffer | undefined>;
 }

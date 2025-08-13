@@ -210,7 +210,10 @@ describe('E2E: bun run cli generate', () => {
     });
 
     describe('manifest file', () => {
-      let parsedManifest: any;
+      let parsedManifest: {
+        symlinks: Array<{ sourcePath: string; targetPath: string }>;
+        shims: string[];
+      };
 
       beforeAll(async () => {
         parsedManifest = JSON.parse(await fs.readFile(testDirs.paths.manifestPath));
@@ -218,23 +221,23 @@ describe('E2E: bun run cli generate', () => {
       });
 
       it('should verify symlinks in the manifest', async () => {
-        expect(parsedManifest.symlinks.length).toBeGreaterThan(0);
-        expect(parsedManifest.symlinks[0].sourcePath).toBe(lazygitSourceConfigPath);
+        expect(parsedManifest.symlinks!.length).toBeGreaterThan(0);
+        expect(parsedManifest.symlinks![0]!.sourcePath).toBe(lazygitSourceConfigPath);
       });
 
       it('should generate a manifest file with correct entries', async () => {
-        expect(parsedManifest.shims).toContain(fzfShimPath);
-        expect(parsedManifest.shims).toContain(lazygitShimPath);
-        expect(parsedManifest.symlinks[0].sourcePath).toBe(lazygitSourceConfigPath);
-        expect(parsedManifest.symlinks[0].targetPath).toContain('lazygit/config.yml');
+        expect(parsedManifest.shims!).toContain(fzfShimPath);
+        expect(parsedManifest.shims!).toContain(lazygitShimPath);
+        expect(parsedManifest.symlinks![0]!.sourcePath).toBe(lazygitSourceConfigPath);
+        expect(parsedManifest.symlinks![0]!.targetPath).toContain('lazygit/config.yml');
       });
 
       it('should verify the symlink', async () => {
-        const stat = await fs.lstat(parsedManifest.symlinks[0].targetPath);
+        const stat = await fs.lstat(parsedManifest.symlinks![0]!.targetPath);
         expect(stat.isSymbolicLink()).toBeTrue();
 
-        const symlinkTarget = await fs.readlink(parsedManifest.symlinks[0].targetPath);
-        expect(path.resolve(path.dirname(parsedManifest.symlinks[0].targetPath), symlinkTarget)).toBe(
+        const symlinkTarget = await fs.readlink(parsedManifest.symlinks![0]!.targetPath);
+        expect(path.resolve(path.dirname(parsedManifest.symlinks![0]!.targetPath), symlinkTarget)).toBe(
           lazygitSourceConfigPath
         );
       });

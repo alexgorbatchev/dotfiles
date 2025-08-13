@@ -46,6 +46,7 @@ export interface Services {
   installer: IInstaller;
   archiveExtractor: IArchiveExtractor;
   versionChecker: IVersionChecker;
+  systemInfo: SystemInfo;
 }
 
 type SetupServicesOptions = GlobalProgramOptions & {
@@ -53,12 +54,7 @@ type SetupServicesOptions = GlobalProgramOptions & {
   env: NodeJS.ProcessEnv;
 };
 
-export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<Services> {
-  const logger = parentLogger.getSubLogger({ name: 'setupServices' });
-  logger.trace(logs.general.success.started('setupServices'), options);
-  const { dryRun, env, config } = options;
-
-  // Initialize filesystem first
+function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   let fs: IFileSystem;
   if (dryRun) {
     logger.trace(logs.general.success.dryRunEnabled());
@@ -66,9 +62,11 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   } else {
     fs = new NodeFileSystem();
   }
-
   logger.trace(logs.general.success.initialized('filesystem'), fs.constructor.name);
+  return fs;
+}
 
+function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): SystemInfo {
   const systemInfo: SystemInfo = {
     platform: options.platform || process.platform,
     arch: options.arch || process.arch,
@@ -82,70 +80,150 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     logger.warn(logs.config.warning.overridden('arch', options.arch));
   }
 
+  return systemInfo;
+}
+
+async function copyToolConfigFile(
+  logger: TsLogger,
+  fs: IFileSystem,
+  nodeFs: NodeFileSystem,
+  filePath: string,
+  systemInfo: SystemInfo
+): Promise<void> {
+  try {
+    const content = await nodeFs.readFile(filePath, 'utf8');
+    await fs.ensureDir(path.dirname(filePath));
+    await fs.writeFile(filePath, content);
+    logger.trace(logs.fs.success.created('memfs', contractHomePath(systemInfo.homeDir, filePath)));
+  } catch (readError: unknown) {
+    const errorMessage = readError instanceof Error ? readError.message : String(readError);
+    logger.warn(logs.fs.warning.readFailed(filePath, errorMessage));
+    logger.error(logs.fs.error.readFailed(filePath, String(readError)), readError);
+  }
+}
+
+async function loadToolConfigsForDryRun(
+  logger: TsLogger,
+  fs: IFileSystem,
+  yamlConfig: YamlConfig,
+  systemInfo: SystemInfo
+): Promise<void> {
+  logger.trace(logs.general.success.toolConfigsForDryRun());
+  const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
+  const nodeFs = new NodeFileSystem();
+
+  try {
+    if (!(await nodeFs.exists(realToolConfigsDir))) {
+      logger.warn(logs.fs.warning.notFound('Tool configs directory', realToolConfigsDir));
+      return;
+    }
+
+    logger.trace(logs.config.success.loaded(realToolConfigsDir, 0));
+    const filesInDir = await nodeFs.readdir(realToolConfigsDir);
+
+    for (const fileName of filesInDir) {
+      if (fileName.endsWith('.tool.ts')) {
+        const filePath = path.join(realToolConfigsDir, fileName);
+        await copyToolConfigFile(logger, fs, nodeFs, filePath, systemInfo);
+      }
+    }
+  } catch (_error) {
+    logger.error(logs.fs.error.accessDenied('accessing', realToolConfigsDir));
+  }
+}
+
+function initializeDownloadCache(parentLogger: TsLogger, fs: IFileSystem, yamlConfig: YamlConfig): ICache | undefined {
+  if (!yamlConfig.downloader.cache.enabled) {
+    parentLogger.info(logs.general.success.cachingDisabled());
+    return undefined;
+  }
+
+  const cacheDir = path.join(yamlConfig.paths.generatedDir, 'cache', 'downloads');
+  const downloadCache = new FileCache(parentLogger, fs, {
+    enabled: true,
+    defaultTtl: yamlConfig.downloader.cache.ttl,
+    cacheDir,
+    storageStrategy: 'binary',
+  });
+
+  parentLogger.debug(
+    logs.general.success.cachingEnabled(),
+    `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`
+  );
+
+  return downloadCache;
+}
+
+function createTrackedFileSystems(
+  parentLogger: TsLogger,
+  fs: IFileSystem,
+  fileRegistry: IFileRegistry,
+  systemInfo: SystemInfo
+): {
+  shimTrackedFs: TrackedFileSystem;
+  shellInitTrackedFs: TrackedFileSystem;
+  symlinkTrackedFs: TrackedFileSystem;
+  installerTrackedFs: TrackedFileSystem;
+} {
+  const shimTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'shim'),
+    systemInfo.homeDir
+  );
+
+  const shellInitTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'init'),
+    systemInfo.homeDir
+  );
+
+  const symlinkTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'symlink'),
+    systemInfo.homeDir
+  );
+
+  const installerTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'binary'),
+    systemInfo.homeDir
+  );
+
+  return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs };
+}
+
+export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<Services> {
+  const logger = parentLogger.getSubLogger({ name: 'setupServices' });
+  logger.trace(logs.general.success.started('setupServices'), options);
+  const { dryRun, env, config } = options;
+
+  // Initialize filesystem first
+  const fs = initializeFileSystem(logger, dryRun);
+  const systemInfo = createSystemInfo(options, logger);
+
   // Default config path should be in the generator directory
-  // If no config specified, look for config.yaml in the generator directory (one level up from src/)
   const userConfigPath = config.length === 0 ? path.resolve(path.dirname(__dirname), 'config.yaml') : config;
 
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
-  // In tests, the config file should be loaded from the test filesystem (MemFileSystem)
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
   const yamlConfig = await loadYamlConfig(logger, configFs, userConfigPath, systemInfo, env);
 
-  // console.log('yamlConfig', yamlConfig);
-
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    logger.trace(logs.general.success.toolConfigsForDryRun());
-    const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
-    const nodeFs = new NodeFileSystem();
-
-    try {
-      if (await nodeFs.exists(realToolConfigsDir)) {
-        logger.trace(logs.config.success.loaded(realToolConfigsDir, 0));
-        const filesInDir = await nodeFs.readdir(realToolConfigsDir);
-
-        for (const fileName of filesInDir) {
-          if (fileName.endsWith('.tool.ts')) {
-            const filePath = path.join(realToolConfigsDir, fileName);
-            try {
-              const content = await nodeFs.readFile(filePath, 'utf8');
-              await fs.ensureDir(realToolConfigsDir);
-              await fs.writeFile(filePath, content);
-              logger.trace(logs.fs.success.created('memfs', contractHomePath(systemInfo.homeDir, filePath)));
-            } catch (readError: any) {
-              logger.warn(logs.fs.warning.readFailed(filePath, readError.message));
-              logger.error(logs.fs.error.readFailed(filePath, String(readError)), readError);
-              // Optionally, decide whether to throw or continue. For now, logging and continuing.
-            }
-          }
-        }
-      } else {
-        logger.warn(logs.fs.warning.notFound('Tool configs directory', realToolConfigsDir));
-      }
-    } catch (error) {
-      logger.error(logs.fs.error.accessDenied('accessing', realToolConfigsDir));
-      // Optionally, decide whether to throw or continue.
-    }
+    await loadToolConfigsForDryRun(logger, fs, yamlConfig, systemInfo);
   }
 
   // Initialize download cache if enabled
-  let downloadCache: ICache | undefined;
-  if (yamlConfig.downloader.cache.enabled) {
-    const cacheDir = path.join(yamlConfig.paths.generatedDir, 'cache', 'downloads');
-    downloadCache = new FileCache(parentLogger, fs, {
-      enabled: true,
-      defaultTtl: yamlConfig.downloader.cache.ttl,
-      cacheDir,
-      storageStrategy: 'binary',
-    });
-    parentLogger.debug(
-      logs.general.success.cachingEnabled(),
-      `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`
-    );
-  } else {
-    parentLogger.info(logs.general.success.cachingDisabled());
-  }
+  const downloadCache = initializeDownloadCache(parentLogger, fs, yamlConfig);
 
   // Initialize file registry
   const registryPath = path.join(yamlConfig.paths.generatedDir, 'registry.db');
@@ -165,26 +243,11 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
 
   // Create tracked filesystem instances for each generator
-  const shimTrackedFs = new TrackedFileSystem(
+  const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs } = createTrackedFileSystems(
     parentLogger,
     fs,
     fileRegistry,
-    TrackedFileSystem.createContext('system', 'shim'),
-    systemInfo.homeDir
-  );
-  const shellInitTrackedFs = new TrackedFileSystem(
-    parentLogger,
-    fs,
-    fileRegistry,
-    TrackedFileSystem.createContext('system', 'init'),
-    systemInfo.homeDir
-  );
-  const symlinkTrackedFs = new TrackedFileSystem(
-    parentLogger,
-    fs,
-    fileRegistry,
-    TrackedFileSystem.createContext('system', 'symlink'),
-    systemInfo.homeDir
+    systemInfo
   );
 
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, yamlConfig);
@@ -199,15 +262,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     fs,
     yamlConfig,
     systemInfo
-  );
-
-  // Create tracked filesystem for installer binary operations
-  const installerTrackedFs = new TrackedFileSystem(
-    parentLogger,
-    fs,
-    fileRegistry,
-    TrackedFileSystem.createContext('system', 'binary'),
-    systemInfo.homeDir
   );
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, fs);
@@ -237,6 +291,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     installer,
     archiveExtractor,
     versionChecker,
+    systemInfo,
   };
 }
 

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, type mock } from 'bun:test';
 import path from 'node:path';
 import {
-  createBasicToolConfig,
   createInstallerTestSetup,
+  createManualToolConfig,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
 } from './installer-test-helpers';
@@ -22,8 +22,7 @@ describe('Installer - installManually', () => {
     await setup.mockFileSystem.ensureDir(path.dirname(manualBinaryPath));
     await setup.mockFileSystem.writeFile(manualBinaryPath, 'manual binary content');
 
-    const toolConfig = createBasicToolConfig({
-      installationMethod: 'manual',
+    const toolConfig = createManualToolConfig({
       installParams: {
         binaryPath: manualBinaryPath,
       },
@@ -54,8 +53,7 @@ describe('Installer - installManually', () => {
   it('should return error if binary does not exist', async () => {
     (setup.fileSystemMocks.exists as ReturnType<typeof mock>).mockResolvedValue(false);
     const manualBinaryPath = '/usr/local/bin/non-existent-tool';
-    const toolConfig = createBasicToolConfig({
-      installationMethod: 'manual',
+    const toolConfig = createManualToolConfig({
       installParams: {
         binaryPath: manualBinaryPath,
       },

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system';
+import type { IFileSystem, Stats } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import { contractHomePath, formatPermissions } from '@utils';
@@ -280,11 +280,11 @@ export class TrackedFileSystem implements IFileSystem {
     return this.fs.exists(filePath);
   }
 
-  async stat(filePath: string): Promise<any> {
+  async stat(filePath: string): Promise<Stats> {
     return this.fs.stat(filePath);
   }
 
-  async lstat(filePath: string): Promise<any> {
+  async lstat(filePath: string): Promise<Stats> {
     return this.fs.lstat(filePath);
   }
 

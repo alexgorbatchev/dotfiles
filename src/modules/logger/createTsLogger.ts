@@ -1,7 +1,7 @@
-import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
+import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import type { SafeLogMessage } from './SafeLogMessage';
 
-export type TsLogger = SafeLogger<any>;
+export type TsLogger = SafeLogger<ILogObj>;
 
 export interface LoggerConfig {
   name: string;
@@ -12,32 +12,28 @@ export interface LoggerConfig {
  * Type-safe logger that extends Logger and overrides methods to only accept SafeLogMessage objects.
  * This prevents raw strings from being passed to log methods.
  */
-class SafeLogger<LogObj = any> extends Logger<LogObj> {
-  constructor(settings?: ISettingsParam<LogObj>) {
-    super(settings);
-  }
-
-  override trace(message: SafeLogMessage, ...args: any[]): (LogObj & ILogObjMeta) | undefined {
+class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
+  override trace(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.trace(message as string, ...args);
   }
 
-  override debug(message: SafeLogMessage, ...args: any[]): (LogObj & ILogObjMeta) | undefined {
+  override debug(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.debug(message as string, ...args);
   }
 
-  override info(message: SafeLogMessage, ...args: any[]): (LogObj & ILogObjMeta) | undefined {
+  override info(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.info(message as string, ...args);
   }
 
-  override warn(message: SafeLogMessage, ...args: any[]): (LogObj & ILogObjMeta) | undefined {
+  override warn(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.warn(message as string, ...args);
   }
 
-  override error(message: SafeLogMessage, ...args: any[]): (LogObj & ILogObjMeta) | undefined {
+  override error(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.error(message as string, ...args);
   }
 
-  override fatal(message: SafeLogMessage, ...args: any[]): (LogObj & ILogObjMeta) | undefined {
+  override fatal(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.fatal(message as string, ...args);
   }
 

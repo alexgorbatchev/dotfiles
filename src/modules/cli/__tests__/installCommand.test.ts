@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { GlobalProgram } from '@cli';
+import type { GlobalProgram, Services } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
@@ -23,7 +23,7 @@ describe('installCommand', () => {
   let mockInstaller: IInstaller;
   let mockYamlConfig: YamlConfig;
   let testLogger: TestLogger;
-  let mockServices: any;
+  let mockServices: Services;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -111,7 +111,8 @@ describe('installCommand', () => {
 
   test('should output error to stderr in shim mode when installation fails', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
-    (mockInstaller.install as any).mockResolvedValueOnce({
+    const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
+    mockInstall.mockResolvedValueOnce({
       success: false,
       error: 'Download failed: Network timeout',
     });
@@ -119,7 +120,7 @@ describe('installCommand', () => {
     // Mock console.error
     const mockConsoleError = mock(() => {});
     const originalConsoleError = console.error;
-    console.error = mockConsoleError as any;
+    console.error = mockConsoleError as typeof console.error;
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
@@ -139,7 +140,7 @@ describe('installCommand', () => {
     // Mock console.error
     const mockConsoleError = mock(() => {});
     const originalConsoleError = console.error;
-    console.error = mockConsoleError as any;
+    console.error = mockConsoleError as typeof console.error;
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
@@ -169,7 +170,8 @@ describe('installCommand', () => {
 
   test('should exit with error if installation fails', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
-    (mockInstaller.install as any).mockResolvedValue({
+    const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
+    mockInstall.mockResolvedValue({
       success: false,
       error: 'Installation failed',
     });

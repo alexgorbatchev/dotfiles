@@ -39,7 +39,20 @@ export class Downloader implements IDownloader {
     this.strategies.unshift(strategy);
   }
 
-  public async download(url: string, options: DownloadOptions = {}): Promise<Buffer | void> {
+  private async tryDownloadWithStrategy(
+    strategy: DownloadStrategy,
+    url: string,
+    options: DownloadOptions
+  ): Promise<{ success: boolean; result?: Buffer }> {
+    if (!(await strategy.isAvailable())) {
+      return { success: false };
+    }
+
+    const result = await strategy.download(url, options);
+    return { success: true, result };
+  }
+
+  public async download(url: string, options: DownloadOptions = {}): Promise<Buffer | undefined> {
     const logger = this.logger.getSubLogger({ name: 'download' });
     logger.debug(logs.downloader.debug.downloadStarted(), url);
 
@@ -50,18 +63,13 @@ export class Downloader implements IDownloader {
     let lastError: Error | undefined;
 
     for (const strategy of this.strategies) {
-      if (await strategy.isAvailable()) {
-        try {
-          return await strategy.download(url, options);
-        } catch (error) {
-          if (error instanceof Error) {
-            lastError = error;
-          } else if (typeof error === 'string') {
-            lastError = new Error(error);
-          } else {
-            lastError = new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
-          }
+      try {
+        const { success, result } = await this.tryDownloadWithStrategy(strategy, url, options);
+        if (success) {
+          return result;
         }
+      } catch (error) {
+        lastError = this.normalizeError(error);
       }
     }
 
@@ -70,6 +78,32 @@ export class Downloader implements IDownloader {
     }
 
     throw new Error(`No available download strategy succeeded for ${url}.`);
+  }
+
+  private async tryDownloadToFileWithStrategy(
+    strategy: DownloadStrategy,
+    url: string,
+    fileOptions: DownloadOptions
+  ): Promise<boolean> {
+    if (!(await strategy.isAvailable())) {
+      return false;
+    }
+
+    const result = await strategy.download(url, fileOptions);
+    if (result === undefined) {
+      return true; // Successfully saved to file
+    }
+    throw new Error('Strategy returned Buffer instead of void for downloadToFile method');
+  }
+
+  private normalizeError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error;
+    } else if (typeof error === 'string') {
+      return new Error(error);
+    } else {
+      return new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
+    }
   }
 
   public async downloadToFile(url: string, filePath: string, options: DownloadOptions = {}): Promise<void> {
@@ -86,22 +120,13 @@ export class Downloader implements IDownloader {
     let lastError: Error | undefined;
 
     for (const strategy of this.strategies) {
-      if (await strategy.isAvailable()) {
-        try {
-          const result = await strategy.download(url, fileOptions);
-          if (result === undefined) {
-            return; // Successfully saved to file
-          }
-          throw new Error('Strategy returned Buffer instead of void for downloadToFile method');
-        } catch (error) {
-          if (error instanceof Error) {
-            lastError = error;
-          } else if (typeof error === 'string') {
-            lastError = new Error(error);
-          } else {
-            lastError = new Error(`An unknown error occurred during download: ${JSON.stringify(error)}`);
-          }
+      try {
+        const success = await this.tryDownloadToFileWithStrategy(strategy, url, fileOptions);
+        if (success) {
+          return;
         }
+      } catch (error) {
+        lastError = this.normalizeError(error);
       }
     }
 

@@ -49,53 +49,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     logger.debug(logs.generator.debug.parsedOptions(), generatorVersion, toolConfigsCount);
 
-    if (!this.appConfig) {
-      logger.debug(logs.generator.debug.configCritical());
-      throw new Error('GeneratorOrchestrator: AppConfig is not available.');
-    }
-    logger.debug(logs.generator.debug.yamlConfigAvailable(), this.appConfig.paths.manifestPath);
-
-    if (!this.appConfig.paths.manifestPath) {
-      logger.debug(logs.generator.debug.pathsCritical());
-      throw new Error('GeneratorOrchestrator: YamlConfig.paths.manifestPath is missing.');
-    }
-    const manifestPath = this.appConfig.paths.manifestPath;
-    logger.debug(logs.generator.debug.manifestPathDetermined(), manifestPath);
-
-    let currentManifest: GeneratedArtifactsManifest;
-
-    logger.debug(logs.generator.debug.manifestRead(), this.fs.constructor.name);
-    try {
-      const manifestFileExists = await this.fs.exists(manifestPath);
-      logger.debug(logs.generator.debug.fsExistsCompleted(), manifestFileExists);
-
-      if (manifestFileExists) {
-        logger.debug(logs.generator.debug.existingManifestFound(), manifestPath);
-        const fileContent = await this.fs.readFile(manifestPath);
-        logger.debug(logs.generator.debug.readFileCompleted());
-        currentManifest = JSON.parse(fileContent) as GeneratedArtifactsManifest;
-        logger.debug(logs.generator.debug.existingManifest());
-      } else {
-        logger.debug(logs.generator.debug.noExistingManifest(), manifestPath);
-        currentManifest = {
-          lastGenerated: '', // Will be updated
-          shims: [],
-          symlinks: [],
-          // shellInit will be populated by sub-generator
-        };
-      }
-    } catch (error) {
-      logger.debug(
-        logs.generator.debug.manifestReadError(),
-        manifestPath,
-        error instanceof Error ? error.message : String(error)
-      );
-      currentManifest = {
-        lastGenerated: '', // Will be updated
-        shims: [],
-        symlinks: [],
-      };
-    }
+    const manifestPath = this.validateConfig(logger);
+    
+    const currentManifest = await this.loadOrCreateManifest(manifestPath, logger);
     if (generatorVersion) {
       currentManifest.generatorVersion = generatorVersion;
     }
@@ -130,12 +86,70 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     // Update timestamp
     currentManifest.lastGenerated = new Date().toISOString(); // Use new field name
 
+    await this.saveManifest(currentManifest, manifestPath, logger);
+
+    logger.debug(logs.generator.debug.orchestrationComplete(), this.fs.constructor.name);
+    return currentManifest;
+  }
+
+  private validateConfig(logger: TsLogger): string {
+    if (!this.appConfig) {
+      logger.debug(logs.generator.debug.configCritical());
+      throw new Error('GeneratorOrchestrator: AppConfig is not available.');
+    }
+    logger.debug(logs.generator.debug.yamlConfigAvailable(), this.appConfig.paths.manifestPath);
+
+    if (!this.appConfig.paths.manifestPath) {
+      logger.debug(logs.generator.debug.pathsCritical());
+      throw new Error('GeneratorOrchestrator: YamlConfig.paths.manifestPath is missing.');
+    }
+    logger.debug(logs.generator.debug.manifestPathDetermined(), this.appConfig.paths.manifestPath);
+    return this.appConfig.paths.manifestPath;
+  }
+
+  private async loadOrCreateManifest(manifestPath: string, logger: TsLogger): Promise<GeneratedArtifactsManifest> {
+    logger.debug(logs.generator.debug.manifestRead(), this.fs.constructor.name);
+    try {
+      const manifestFileExists = await this.fs.exists(manifestPath);
+      logger.debug(logs.generator.debug.fsExistsCompleted(), manifestFileExists);
+
+      if (manifestFileExists) {
+        logger.debug(logs.generator.debug.existingManifestFound(), manifestPath);
+        const fileContent = await this.fs.readFile(manifestPath);
+        logger.debug(logs.generator.debug.readFileCompleted());
+        const manifest = JSON.parse(fileContent) as GeneratedArtifactsManifest;
+        logger.debug(logs.generator.debug.existingManifest());
+        return manifest;
+      } else {
+        logger.debug(logs.generator.debug.noExistingManifest(), manifestPath);
+        return {
+          lastGenerated: '', // Will be updated
+          shims: [],
+          symlinks: [],
+          // shellInit will be populated by sub-generator
+        };
+      }
+    } catch (error) {
+      logger.debug(
+        logs.generator.debug.manifestReadError(),
+        manifestPath,
+        error instanceof Error ? error.message : String(error)
+      );
+      return {
+        lastGenerated: '', // Will be updated
+        shims: [],
+        symlinks: [],
+      };
+    }
+  }
+
+  private async saveManifest(manifest: GeneratedArtifactsManifest, manifestPath: string, logger: TsLogger): Promise<void> {
     // Manifest writing behavior is now solely determined by the injected IFileSystem type
     try {
       logger.debug(logs.generator.debug.writingManifest(), manifestPath, this.fs.constructor.name);
       const manifestDir = path.dirname(manifestPath);
       await this.fs.ensureDir(manifestDir);
-      await this.fs.writeFile(manifestPath, JSON.stringify(currentManifest, null, 2));
+      await this.fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
       logger.debug(logs.generator.debug.manifestWritten());
     } catch (error) {
       logger.debug(
@@ -145,8 +159,5 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       );
       // Potentially re-throw or handle more gracefully depending on requirements
     }
-
-    logger.debug(logs.generator.debug.orchestrationComplete(), this.fs.constructor.name);
-    return currentManifest;
   }
 }

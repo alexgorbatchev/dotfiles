@@ -1,25 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { realpathSync } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { InstallHookContext, ToolConfig } from '@types';
-import { realpathSync } from 'fs';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
-import { tmpdir } from 'os';
-import path from 'path';
+import type { $ } from 'zx';
 import { HookExecutor } from '../HookExecutor';
 
 // Helper to create a mock Shell instance that matches typeof $
 function createMockShell() {
-  const mockShell = ((_command: TemplateStringsArray, ..._args: any[]) => {
+  const mockShell = ((_command: TemplateStringsArray, ..._args: unknown[]) => {
     return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-  }) as any;
+  }) as unknown;
 
   // Add required Shell properties to make it compatible with typeof $
-  mockShell.sync = mockShell;
-  mockShell.create = () => mockShell;
-  mockShell.verbose = false;
-  mockShell.quote = (str: string) => str;
-  mockShell.spawn = () => ({});
-  mockShell.sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const shell = mockShell as Record<string, unknown>;
+  shell['sync'] = mockShell;
+  shell['create'] = () => mockShell;
+  shell['verbose'] = false;
+  shell['quote'] = (str: string) => str;
+  shell['spawn'] = () => ({});
+  shell['sleep'] = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   return mockShell;
 }
@@ -64,7 +66,7 @@ describe('HookExecutor $ Integration', () => {
     const baseContext: InstallHookContext = {
       toolName: 'test-tool',
       installDir: '/test/install/dir',
-      $: createMockShell(),
+      $: createMockShell() as unknown as typeof $,
     };
 
     const contextWithToolConfig = {
@@ -76,11 +78,21 @@ describe('HookExecutor $ Integration', () => {
 
     const hookThatUsesShell = async (ctx: InstallHookContext) => {
       // Use $ to get the current working directory
-      const result = await (ctx.$ as any)`pwd`;
+      const result = await (ctx.$ as unknown as (
+        template: TemplateStringsArray,
+        ...args: unknown[]
+      ) => Promise<{ stdout: string; stderr: string; exitCode: number }>)`pwd`;
       actualCwd = result.stdout.trim();
 
       // Verify we can access files relative to the tool config directory
-      const configExists = await (ctx.$ as any)`test -f ./test-tool.tool.ts && echo "exists" || echo "missing"`;
+      const configExists = await (ctx.$ as unknown as (
+        template: TemplateStringsArray,
+        ...args: unknown[]
+      ) => Promise<{
+        stdout: string;
+        stderr: string;
+        exitCode: number;
+      }>)`test -f ./test-tool.tool.ts && echo "exists" || echo "missing"`;
       expect(configExists.stdout.trim()).toBe('exists');
     };
 
@@ -106,7 +118,7 @@ describe('HookExecutor $ Integration', () => {
     const baseContext: InstallHookContext = {
       toolName: 'file-creator-tool',
       installDir: '/test/install/dir',
-      $: createMockShell(),
+      $: createMockShell() as unknown as typeof $,
     };
 
     const contextWithToolConfig = {
@@ -116,10 +128,16 @@ describe('HookExecutor $ Integration', () => {
 
     const hookThatCreatesFile = async (ctx: InstallHookContext) => {
       // Create a file relative to the tool config directory using $
-      await (ctx.$ as any)`echo "test content" > ./created-by-hook.txt`;
+      await (ctx.$ as unknown as (
+        template: TemplateStringsArray,
+        ...args: unknown[]
+      ) => Promise<{ stdout: string; stderr: string; exitCode: number }>)`echo "test content" > ./created-by-hook.txt`;
 
       // Verify the file was created
-      const result = await (ctx.$ as any)`cat ./created-by-hook.txt`;
+      const result = await (ctx.$ as unknown as (
+        template: TemplateStringsArray,
+        ...args: unknown[]
+      ) => Promise<{ stdout: string; stderr: string; exitCode: number }>)`cat ./created-by-hook.txt`;
       expect(result.stdout.trim()).toBe('test content');
     };
 
@@ -129,7 +147,7 @@ describe('HookExecutor $ Integration', () => {
 
     // Verify the file exists in the expected location
     const createdFilePath = path.join(tempDir, 'created-by-hook.txt');
-    const fs = require('fs');
+    const fs = require('node:fs');
     expect(fs.existsSync(createdFilePath)).toBe(true);
   });
 
@@ -146,7 +164,7 @@ describe('HookExecutor $ Integration', () => {
     const baseContext: InstallHookContext = {
       toolName: 'fallback-tool',
       installDir: '/test/install/dir',
-      $: createMockShell(),
+      $: createMockShell() as unknown as typeof $,
     };
 
     const contextWithoutConfigPath = {
@@ -158,7 +176,10 @@ describe('HookExecutor $ Integration', () => {
 
     const hookThatUsesShellFallback = async (ctx: InstallHookContext) => {
       // Should still be able to use $ even without configFilePath
-      const result = await (ctx.$ as any)`echo "fallback works"`;
+      const result = await (ctx.$ as unknown as (
+        template: TemplateStringsArray,
+        ...args: unknown[]
+      ) => Promise<{ stdout: string; stderr: string; exitCode: number }>)`echo "fallback works"`;
       if (result.stdout.includes('fallback works')) {
         shellWorked = true;
       }

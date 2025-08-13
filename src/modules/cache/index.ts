@@ -1,3 +1,3 @@
-export { DownloadCacheUtils } from './DownloadCacheUtils';
+export { createApiCacheKey, createCacheKey, isApiKey, isDownloadKey } from './DownloadCacheUtils';
 export { FileCache } from './FileCache';
-export type { CacheConfig, CacheEntry, JsonCacheEntry, BinaryCacheEntry, DownloadCacheEntry, ICache } from './types';
+export type { BinaryCacheEntry, CacheConfig, CacheEntry, DownloadCacheEntry, ICache, JsonCacheEntry } from './types';

@@ -71,20 +71,40 @@ describe('FetchMockHelper', () => {
   });
 
   describe('Error Handling for uninitialized spy', () => {
-    const methodsToTest: (keyof FetchMockHelper)[] = [
-      'mockResponseOnce',
-      'mockJsonResponseOnce',
-      'mockTextResponseOnce',
-      'mockErrorOnce',
-      'mockImplementation',
-      'getSpy',
-    ];
+    it('mockResponseOnce() should throw if setup() has not been called', () => {
+      expect(() => {
+        fetchMockHelper.mockResponseOnce();
+      }).toThrow(/FetchMockHelper not setup/);
+    });
 
-    methodsToTest.forEach((methodName) => {
-      it(`${methodName}() should throw if setup() has not been called`, () => {
-        // Need to cast to any to call methods with potentially wrong arguments for the test
-        expect(() => (fetchMockHelper as any)[methodName]()).toThrow(/FetchMockHelper not setup/);
-      });
+    it('mockJsonResponseOnce() should throw if setup() has not been called', () => {
+      expect(() => {
+        fetchMockHelper.mockJsonResponseOnce({});
+      }).toThrow(/FetchMockHelper not setup/);
+    });
+
+    it('mockTextResponseOnce() should throw if setup() has not been called', () => {
+      expect(() => {
+        fetchMockHelper.mockTextResponseOnce('test');
+      }).toThrow(/FetchMockHelper not setup/);
+    });
+
+    it('mockErrorOnce() should throw if setup() has not been called', () => {
+      expect(() => {
+        fetchMockHelper.mockErrorOnce();
+      }).toThrow(/FetchMockHelper not setup/);
+    });
+
+    it('mockImplementation() should throw if setup() has not been called', () => {
+      expect(() => {
+        fetchMockHelper.mockImplementation();
+      }).toThrow(/FetchMockHelper not setup/);
+    });
+
+    it('getSpy() should throw if setup() has not been called', () => {
+      expect(() => {
+        fetchMockHelper.getSpy();
+      }).toThrow(/FetchMockHelper not setup/);
     });
   });
 
@@ -276,7 +296,7 @@ describe('FetchMockHelper', () => {
     it('should return the spy instance after setup', () => {
       fetchMockHelper.setup();
       const spy = fetchMockHelper.getSpy();
-      expect((spy as any)._isMockFunction).toBe(true); // Using as any for type assertion
+      expect((spy as unknown as Record<string, unknown>)['_isMockFunction']).toBe(true);
     });
 
     it('returned spy can be used for assertions', async () => {

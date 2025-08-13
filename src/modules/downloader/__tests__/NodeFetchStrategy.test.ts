@@ -200,10 +200,13 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockErrorOnce(new DOMException('Aborted', 'AbortError'));
       try {
         await strategy.download(testUrl, { timeout: 50 });
-      } catch (e: any) {
-        expect(e.message).toMatch(/Download timed out/);
-        expect(e.url).toBe(testUrl);
-        expect(e.originalError?.name).toBe('AbortError');
+      } catch (e: unknown) {
+        // Extract first, check second - verify it's our custom error type
+        expect(e).toBeInstanceOf(NetworkError);
+        const error = e as NetworkError;
+        expect(error.message).toMatch(/Download timed out/);
+        expect(error.url).toBe(testUrl);
+        expect(error.originalError?.name).toBe('AbortError');
       }
     });
   });
@@ -234,10 +237,12 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockImplementation({ error: new Error('Simulated network issue') });
       try {
         await strategy.download(testUrl, { retryCount: 1, retryDelay: 10 });
-      } catch (e: any) {
-        expect(e.message).toBe('Simulated network issue');
-        expect(e.url).toBe(testUrl);
-        expect(e.originalError).toBeInstanceOf(Error);
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(NetworkError);
+        const error = e as NetworkError;
+        expect(error.message).toBe('Simulated network issue');
+        expect(error.url).toBe(testUrl);
+        expect(error.originalError).toBeInstanceOf(Error);
       }
       expect(fetchMockHelper.getSpy().mock.calls.length).toBe(2);
     });
@@ -253,10 +258,13 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockErrorOnce(originalError);
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.message).toBe('Connection refused');
-        expect(e.url).toBe(testUrl);
-        expect(e.originalError).toBe(originalError);
+      } catch (e: unknown) {
+        // Extract first, check second - verify it's our custom error type
+        expect(e).toBeInstanceOf(NetworkError);
+        const error = e as NetworkError;
+        expect(error.message).toBe('Connection refused');
+        expect(error.url).toBe(testUrl);
+        expect(error.originalError).toBe(originalError);
       }
     });
 
@@ -267,9 +275,11 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: 'Not Here', status: 404 });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(404);
-        expect(e.responseBody).toBe('Not Here');
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(NotFoundError);
+        const error = e as NotFoundError;
+        expect(error.statusCode).toBe(404);
+        expect(error.responseBody).toBe('Not Here');
       }
     });
 
@@ -288,10 +298,12 @@ describe('NodeFetchStrategy', () => {
       });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(429);
-        expect(e.responseBody).toBe('Too Fast');
-        expect(e.resetTimestamp).toBeGreaterThan(Date.now());
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(RateLimitError);
+        const error = e as RateLimitError;
+        expect(error.statusCode).toBe(429);
+        expect(error.responseBody).toBe('Too Fast');
+        expect(error.resetTimestamp).toBeGreaterThan(Date.now());
       }
     });
 
@@ -311,10 +323,12 @@ describe('NodeFetchStrategy', () => {
       });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(403);
-        expect(e.responseBody).toBe('Rate Limited');
-        expect(e.resetTimestamp).toBe(resetTime * 1000);
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(RateLimitError);
+        const error = e as RateLimitError;
+        expect(error.statusCode).toBe(403);
+        expect(error.responseBody).toBe('Rate Limited');
+        expect(error.resetTimestamp).toBe(resetTime * 1000);
       }
     });
 
@@ -333,10 +347,12 @@ describe('NodeFetchStrategy', () => {
       });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(403);
-        expect(e.resetTimestamp).toBeGreaterThan(Date.now() + 119000);
-        expect(e.resetTimestamp).toBeLessThanOrEqual(Date.now() + 120000 + 2000);
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(RateLimitError);
+        const error = e as RateLimitError;
+        expect(error.statusCode).toBe(403);
+        expect(error.resetTimestamp).toBeGreaterThan(Date.now() + 119000);
+        expect(error.resetTimestamp).toBeLessThanOrEqual(Date.now() + 120000 + 2000);
       }
     });
 
@@ -356,10 +372,12 @@ describe('NodeFetchStrategy', () => {
       });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(403);
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(RateLimitError);
+        const error = e as RateLimitError;
+        expect(error.statusCode).toBe(403);
         const expectedTimestamp = Math.floor(retryDate.getTime() / 1000) * 1000;
-        expect(e.resetTimestamp).toBe(expectedTimestamp);
+        expect(error.resetTimestamp).toBe(expectedTimestamp);
       }
     });
 
@@ -370,9 +388,11 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: 'Forbidden Access', status: 403 });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(403);
-        expect(e.responseBody).toBe('Forbidden Access');
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(ForbiddenError);
+        const error = e as ForbiddenError;
+        expect(error.statusCode).toBe(403);
+        expect(error.responseBody).toBe('Forbidden Access');
       }
     });
 
@@ -383,9 +403,11 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: 'Bad Request', status: 400 });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(400);
-        expect(e.responseBody).toBe('Bad Request');
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(ClientError);
+        const error = e as ClientError;
+        expect(error.statusCode).toBe(400);
+        expect(error.responseBody).toBe('Bad Request');
       }
     });
 
@@ -396,9 +418,11 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: 'Service Unavailable', status: 503 });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(503);
-        expect(e.responseBody).toBe('Service Unavailable');
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(ServerError);
+        const error = e as ServerError;
+        expect(error.statusCode).toBe(503);
+        expect(error.responseBody).toBe('Service Unavailable');
       }
     });
 
@@ -409,9 +433,11 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: 'Temporary Redirect', status: 307 });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.statusCode).toBe(307);
-        expect(e.responseBody).toBe('Temporary Redirect');
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(HttpError);
+        const error = e as HttpError;
+        expect(error.statusCode).toBe(307);
+        expect(error.responseBody).toBe('Temporary Redirect');
       }
     });
 
@@ -422,8 +448,10 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: null, status: 200 });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
-        expect(e.message).toBe('Response body is not readable.');
+      } catch (e: unknown) {
+        expect(e).toBeInstanceOf(NetworkError);
+        const error = e as NetworkError;
+        expect(error.message).toBe('Response body is not readable.');
       }
     });
 
@@ -432,11 +460,12 @@ describe('NodeFetchStrategy', () => {
       fetchMockHelper.mockResponseOnce({ body: 'Bad Request', status: 400, headers });
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
+      } catch (e: unknown) {
         expect(e).toBeInstanceOf(ClientError);
-        expect(e.responseHeaders).toBeDefined();
-        expect(e.responseHeaders['content-type']).toBe('application/json');
-        expect(e.responseHeaders['x-custom-header']).toBe('CustomValue');
+        const error = e as ClientError;
+        expect(error.responseHeaders).toBeDefined();
+        expect(error.responseHeaders!['content-type']).toBe('application/json');
+        expect(error.responseHeaders!['x-custom-header']).toBe('CustomValue');
       }
     });
 
@@ -451,13 +480,16 @@ describe('NodeFetchStrategy', () => {
         }),
         body: null, // ReadableStream or null
       };
-      fetchMockHelper.getSpy().mockImplementationOnce((async () => mockBadResponse as unknown as Response) as any);
+      fetchMockHelper
+        .getSpy()
+        .mockImplementationOnce((async () => mockBadResponse as unknown as Response) as unknown as typeof fetch);
 
       try {
         await strategy.download(testUrl, {});
-      } catch (e: any) {
+      } catch (e: unknown) {
         expect(e).toBeInstanceOf(ServerError);
-        expect(e.responseBody).toBeUndefined();
+        const error = e as ServerError;
+        expect(error.responseBody).toBeUndefined();
       }
     });
   });
@@ -467,7 +499,10 @@ describe('NodeFetchStrategy', () => {
       const headers = new Headers();
       headers.append('Content-Type', 'application/json');
       headers.append('X-Test', 'TestValue');
-      const result = (strategy as any).getResponseHeaders(headers);
+      // Testing private method - legitimate use of type assertion for internal testing
+      const result = (
+        strategy as unknown as { getResponseHeaders: (headers: Headers) => Record<string, string> }
+      ).getResponseHeaders(headers);
       expect(result).toEqual({
         'content-type': 'application/json',
         'x-test': 'TestValue',
@@ -480,14 +515,14 @@ describe('NodeFetchStrategy', () => {
       const headers = new Headers();
       const futureTimeSec = Math.floor(Date.now() / 1000) + 60;
       headers.append('X-RateLimit-Reset', String(futureTimeSec));
-      const result = (strategy as any).parseRateLimitReset(headers);
+      const result = strategy.parseRateLimitReset(headers);
       expect(result).toBe(futureTimeSec * 1000);
     });
 
     it('should parse Retry-After (seconds)', () => {
       const headers = new Headers();
       headers.append('Retry-After', '120');
-      const result = (strategy as any).parseRateLimitReset(headers);
+      const result = strategy.parseRateLimitReset(headers);
       expect(result).toBeGreaterThanOrEqual(Date.now() + 120 * 1000 - 500);
       expect(result).toBeLessThanOrEqual(Date.now() + 120 * 1000 + 500);
     });
@@ -496,19 +531,19 @@ describe('NodeFetchStrategy', () => {
       const headers = new Headers();
       const retryDate = new Date(Date.now() + 5 * 60 * 1000);
       headers.append('Retry-After', retryDate.toUTCString());
-      const result = (strategy as any).parseRateLimitReset(headers);
+      const result = strategy.parseRateLimitReset(headers);
       const expectedTimestamp = Math.floor(retryDate.getTime() / 1000) * 1000;
       expect(result).toBe(expectedTimestamp);
     });
 
     it('should return undefined if headers are not present or invalid', () => {
-      expect((strategy as any).parseRateLimitReset(new Headers())).toBeUndefined();
+      expect(strategy.parseRateLimitReset(new Headers())).toBeUndefined();
       const h2 = new Headers();
       h2.append('X-RateLimit-Reset', 'invalid');
-      expect((strategy as any).parseRateLimitReset(h2)).toBeUndefined();
+      expect(strategy.parseRateLimitReset(h2)).toBeUndefined();
       const h3 = new Headers();
       h3.append('Retry-After', 'invalid');
-      expect((strategy as any).parseRateLimitReset(h3)).toBeUndefined();
+      expect(strategy.parseRateLimitReset(h3)).toBeUndefined();
     });
   });
 });

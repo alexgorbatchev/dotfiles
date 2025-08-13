@@ -77,7 +77,8 @@ describe('NodeFileSystem', () => {
   });
 
   it('should call fsPromises.access for exists and return true if access succeeds', async () => {
-    (fsPromises.access as any).mockResolvedValueOnce(undefined); // Ensure this call succeeds
+    const mockAccess = fsPromises.access as ReturnType<typeof mock>;
+    mockAccess.mockResolvedValueOnce(undefined); // Ensure this call succeeds
     const filePath = 'test.txt';
     const result = await fileSystem.exists(filePath);
     expect(fsPromises.access).toHaveBeenCalledWith(filePath, fsConstants.F_OK);
@@ -85,7 +86,8 @@ describe('NodeFileSystem', () => {
   });
 
   it('should call fsPromises.access for exists and return false if access fails', async () => {
-    (fsPromises.access as any).mockRejectedValueOnce(new Error('File not found')); // Ensure this call fails
+    const mockAccess = fsPromises.access as ReturnType<typeof mock>;
+    mockAccess.mockRejectedValueOnce(new Error('File not found')); // Ensure this call fails
     const filePath = 'nonexistent.txt';
     const result = await fileSystem.exists(filePath);
     expect(fsPromises.access).toHaveBeenCalledWith(filePath, fsConstants.F_OK);

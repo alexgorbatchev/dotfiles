@@ -3,16 +3,16 @@ import { dedentString } from '@utils';
 
 declare module 'bun:test' {
   interface Matchers<T> {
-    toMatchLooseInlineSnapshot(strings: TemplateStringsArray, ...matchers: any[]): T;
+    toMatchLooseInlineSnapshot(strings: TemplateStringsArray, ...matchers: unknown[]): T;
   }
 }
 
-function escapeRegexLiteral(value: any): string {
+function escapeRegexLiteral(value: unknown): string {
   return String(value).replace(/[-/\\^$*+?.()|[\]{}]/gm, '\\$&');
 }
 
 expect.extend({
-  toMatchLooseInlineSnapshot(this: any, received: unknown, strings: TemplateStringsArray, ...matchers: any[]) {
+  toMatchLooseInlineSnapshot(this: unknown, received: unknown, strings: TemplateStringsArray, ...matchers: unknown[]) {
     if (typeof received !== 'string') {
       return {
         pass: false,
@@ -23,7 +23,10 @@ expect.extend({
     let pattern = '';
 
     for (let i = 0; i < strings.length; i++) {
-      pattern += escapeRegexLiteral(strings[i]!);
+      const str = strings[i];
+      if (str !== undefined) {
+        pattern += escapeRegexLiteral(str);
+      }
 
       if (i < matchers.length) {
         const matcher = matchers[i];

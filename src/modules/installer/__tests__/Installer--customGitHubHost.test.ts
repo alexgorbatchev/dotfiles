@@ -30,9 +30,9 @@ describe('Installer with custom GitHub host', () => {
   let directories: TestDirectories;
   let logger: TestLogger;
 
-  let mockDownload: Mock<any>;
-  let mockGetLatestRelease: Mock<any>;
-  let mockExtract: Mock<any>;
+  let mockDownload: Mock<() => Promise<Buffer | undefined>>;
+  let mockGetLatestRelease: Mock<() => Promise<unknown>>;
+  let mockExtract: Mock<() => Promise<unknown>>;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem();
@@ -41,7 +41,7 @@ describe('Installer with custom GitHub host', () => {
     mockFileSystem = fs;
 
     // Setup mock downloader
-    mockDownload = mock(() => Promise.resolve());
+    mockDownload = mock(() => Promise.resolve(Buffer.from('mock content')));
     mockDownloader = {
       download: mockDownload,
       registerStrategy: mock(() => {}),
@@ -75,7 +75,7 @@ describe('Installer with custom GitHub host', () => {
     );
 
     mockGitHubApiClient = {
-      getLatestRelease: mockGetLatestRelease,
+      getLatestRelease: mockGetLatestRelease as (owner: string, repo: string) => Promise<GitHubRelease | null>,
       getReleaseByTag: mock(() => Promise.resolve(null)),
       getAllReleases: mock(() => Promise.resolve([])),
       getReleaseByConstraint: mock(() => Promise.resolve(null)),
@@ -91,7 +91,7 @@ describe('Installer with custom GitHub host', () => {
         })
     );
     mockArchiveExtractor = {
-      extract: mockExtract,
+      extract: mockExtract as (archivePath: string, options?: unknown) => Promise<ExtractResult>,
       detectFormat: mock(async () => 'tar.gz' as const),
       isSupported: mock(() => true),
     };

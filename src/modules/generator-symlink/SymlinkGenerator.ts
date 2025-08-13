@@ -110,7 +110,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
                 continue;
               }
             }
-          } catch (error) {
+          } catch (_error) {
             // If we can't check the symlink, proceed with normal logic
           }
 
@@ -136,9 +136,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
               }
               await toolFs.rename(targetAbsPath, backupPath);
               currentStatus = 'backed_up';
-            } catch (e: any) {
+            } catch (e: unknown) {
               currentStatus = 'failed';
-              const errorMsg = logs.fs.error.writeFailed(`backup of ${targetAbsPath}`, e.message);
+              const errorMsg = logs.fs.error.writeFailed(`backup of ${targetAbsPath}`, (e as Error).message);
               currentError = errorMsg;
               logger.error(errorMsg);
             }
@@ -153,9 +153,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
                 await toolFs.rm(targetAbsPath, { force: true });
               }
               // Status remains 'updated_target'
-            } catch (e: any) {
+            } catch (e: unknown) {
               currentStatus = 'failed';
-              const errorMsg = logs.fs.error.deleteFailed(targetAbsPath, e.message);
+              const errorMsg = logs.fs.error.deleteFailed(targetAbsPath, (e as Error).message);
               currentError = errorMsg;
               logger.error(errorMsg);
             }
@@ -176,9 +176,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         // ensureDir behavior determined by IFileSystem
         try {
           await toolFs.ensureDir(targetDir);
-        } catch (e: any) {
+        } catch (e: unknown) {
           currentStatus = 'failed';
-          const errorMsg = logs.fs.error.directoryCreateFailed(targetDir, e.message);
+          const errorMsg = logs.fs.error.directoryCreateFailed(targetDir, (e as Error).message);
           currentError = errorMsg;
           logger.error(errorMsg);
         }
@@ -188,7 +188,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
           try {
             await toolFs.symlink(sourceAbsPath, targetAbsPath);
             // currentStatus is already 'created', 'updated_target', or 'backed_up'
-          } catch (e: any) {
+          } catch (e: unknown) {
             currentStatus = 'failed';
             const errorMsg = logs.fs.error.symlinkFailed(sourceAbsPath, targetAbsPath, (e as Error).message);
             currentError = errorMsg;

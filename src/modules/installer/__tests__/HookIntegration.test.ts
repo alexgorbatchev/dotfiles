@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
-import type { IDownloader } from '@modules/downloader';
-import type { IArchiveExtractor } from '@modules/extractor';
+import type { DownloadOptions, IDownloader } from '@modules/downloader';
+import type { ExtractOptions, IArchiveExtractor } from '@modules/extractor';
 import type { IGitHubApiClient } from '@modules/github-client';
+import type { TsLogger } from '@modules/logger';
 import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
 import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
-import type { GithubReleaseToolConfig } from '@types';
-import type { EnhancedInstallHookContext } from '../HookExecutor';
+import type { AsyncInstallHook, EnhancedInstallHookContext, GithubReleaseToolConfig } from '@types';
 import { Installer } from '../Installer';
 
 // Helper function for tests to create SafeLogMessage
@@ -33,7 +33,7 @@ describe('Hook Integration Tests', () => {
     memFs = await createMemFileSystem();
 
     // Setup filesystem to track operations
-    const fileSystemOperations: Array<{ operation: string; args: any[] }> = [];
+    const fileSystemOperations: Array<{ operation: string; args: unknown[] }> = [];
 
     // Wrap filesystem operations to track them
     const originalEnsureDir = memFs.spies.ensureDir;
@@ -62,10 +62,10 @@ describe('Hook Integration Tests', () => {
     });
 
     // Store operations for test assertions
-    (memFs.fs as any).operations = fileSystemOperations;
+    (memFs.fs as unknown as Record<string, unknown>)['operations'] = fileSystemOperations;
 
     mockDownloader = {
-      download: mock(async (_url: string, options?: any) => {
+      download: mock(async (_url: string, options?: DownloadOptions) => {
         // Mock the actual download by creating the destination file
         if (options?.destinationPath) {
           await memFs.fs.writeFile(options.destinationPath, 'mock-downloaded-file-content');
@@ -108,7 +108,7 @@ describe('Hook Integration Tests', () => {
     } as IGitHubApiClient;
 
     mockArchiveExtractor = {
-      extract: mock(async (_archivePath: string, options?: any) => {
+      extract: mock(async (_archivePath: string, options?: ExtractOptions) => {
         // Mock the extraction by creating extracted files in the target directory
         const targetDir = options?.targetDir;
         if (targetDir) {
@@ -165,7 +165,7 @@ describe('Hook Integration Tests', () => {
               }
 
               context.logger.info(testLogMessage('Configuration setup completed'));
-            }) as any,
+            }) as AsyncInstallHook,
           },
         },
       };
@@ -231,7 +231,7 @@ describe('Hook Integration Tests', () => {
               }
 
               context.logger.info(testLogMessage('Binary organization completed'));
-            }) as any,
+            }) as AsyncInstallHook,
           },
         },
       };
@@ -299,7 +299,7 @@ describe('Hook Integration Tests', () => {
               } else {
                 context.logger.info(testLogMessage('Pre-compiled binary distribution detected'));
               }
-            }) as any,
+            }) as AsyncInstallHook,
           },
         },
       };
@@ -338,10 +338,10 @@ describe('Hook Integration Tests', () => {
         installParams: {
           repo: 'example/failing-tool',
           hooks: {
-            afterDownload: (async (context: EnhancedInstallHookContext) => {
+            afterDownload: (async (context) => {
               context.logger.error(testLogMessage('Validation failed'));
               throw new Error('Downloaded file validation failed: checksum mismatch');
-            }) as any,
+            }) as AsyncInstallHook,
           },
         },
       };
@@ -363,7 +363,7 @@ describe('Hook Integration Tests', () => {
     });
 
     it('should provide hooks with proper logging context', async () => {
-      let capturedLogger: any;
+      let capturedLogger: TsLogger | undefined;
 
       const toolConfig: GithubReleaseToolConfig = {
         name: 'logging-test-tool',
@@ -378,7 +378,7 @@ describe('Hook Integration Tests', () => {
               context.logger.info(testLogMessage('Hook execution message'));
               context.logger.debug(testLogMessage('Debug information'));
               context.logger.error(testLogMessage('Error message from hook'));
-            }) as any,
+            }) as AsyncInstallHook,
           },
         },
       };
@@ -392,9 +392,11 @@ describe('Hook Integration Tests', () => {
       expect(capturedLogger).toBeDefined();
       // Check if logger has proper context (logger structure may vary)
       // The new naming format is toolName--hookName
-      expect(capturedLogger.settings?.name || capturedLogger._name || capturedLogger.name).toMatch(
-        /logging-test-tool--afterInstall/
-      );
+      if (capturedLogger) {
+        const logger = capturedLogger as unknown as Record<string, unknown>;
+        const loggerName = logger['settings'] as Record<string, unknown> | undefined;
+        expect(loggerName?.['name'] || logger['_name'] || logger['name']).toMatch(/logging-test-tool--afterInstall/);
+      }
 
       // Verify hook execution completed
     });

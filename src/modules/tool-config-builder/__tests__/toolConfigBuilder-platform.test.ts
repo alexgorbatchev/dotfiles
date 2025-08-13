@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { logs } from '@modules/logger';
 import { TestLogger } from '@testing-helpers';
 import type { ManualInstallParams } from '@types';
-import { Architecture, Platform } from '../../../types/platform.types';
+import { Architecture, Platform } from '@types';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 
 describe('ToolConfigBuilder - Platform Support', () => {

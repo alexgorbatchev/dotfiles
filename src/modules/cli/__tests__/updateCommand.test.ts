@@ -64,7 +64,7 @@ describe('updateCommand', () => {
       services: {
         installer: {
           install: mock(
-            async (toolName: string, tc: ToolConfig, _opts?: any): Promise<InstallResult> => ({
+            async (toolName: string, tc: ToolConfig, _opts?: unknown): Promise<InstallResult> => ({
               success: true,
               binaryPath: `${setup.mockYamlConfig.paths.binariesDir}/${toolName}`,
               version: tc.version || 'installed-version',
@@ -123,11 +123,13 @@ describe('updateCommand', () => {
 
   test('tool is up-to-date', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+    const mockGetLatestRelease = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+    mockGetLatestRelease.mockResolvedValue({
       ...latestGitHubRelease,
       tag_name: 'v0.40.0',
     });
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+    const mockCheckVersionStatus = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
+    mockCheckVersionStatus.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
@@ -141,9 +143,12 @@ describe('updateCommand', () => {
 
   test('update available, successful installation', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
-    (mockInstallerService.install as any).mockResolvedValue({ success: true, version: '0.41.0' });
+    const mockGetLatestRelease2 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+    mockGetLatestRelease2.mockResolvedValue(latestGitHubRelease);
+    const mockCheckVersionStatus2 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
+    mockCheckVersionStatus2.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+    const mockInstall = mockInstallerService.install as ReturnType<typeof mock>;
+    mockInstall.mockResolvedValue({ success: true, version: '0.41.0' });
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
@@ -166,9 +171,12 @@ describe('updateCommand', () => {
 
   test('update available, installation fails', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
-    (mockInstallerService.install as any).mockResolvedValue({
+    const mockGetLatestRelease3 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+    mockGetLatestRelease3.mockResolvedValue(latestGitHubRelease);
+    const mockCheckVersionStatus3 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
+    mockCheckVersionStatus3.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+    const mockInstall2 = mockInstallerService.install as ReturnType<typeof mock>;
+    mockInstall2.mockResolvedValue({
       success: false,
       error: 'Install failed miserably',
     });
@@ -187,7 +195,7 @@ describe('updateCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['updateCommand'],
+      ['updateCommand', 'action'],
       [logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
@@ -210,7 +218,8 @@ describe('updateCommand', () => {
 
   test('GitHub API error when fetching latest release', async () => {
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(new Error('GitHub API Down'));
+    const mockGetLatestRelease4 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+    mockGetLatestRelease4.mockRejectedValue(new Error('GitHub API Down'));
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
@@ -225,7 +234,8 @@ describe('updateCommand', () => {
   test('tool configured with "latest" version', async () => {
     const fzfLatestConfig = { ...fzfToolConfig, version: 'latest' };
     mockActualLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+    const mockGetLatestRelease5 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+    mockGetLatestRelease5.mockResolvedValue({
       ...latestGitHubRelease,
       tag_name: 'v0.50.0',
     });
@@ -243,9 +253,12 @@ describe('updateCommand', () => {
   describe('shim mode', () => {
     test('should use concise output when --shim-mode flag is provided', async () => {
       mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue(latestGitHubRelease);
-      (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
-      (mockInstallerService.install as any).mockResolvedValue({ success: true });
+      const mockGetLatestRelease6 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+      mockGetLatestRelease6.mockResolvedValue(latestGitHubRelease);
+      const mockCheckVersionStatus4 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
+      mockCheckVersionStatus4.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+      const mockInstall3 = mockInstallerService.install as ReturnType<typeof mock>;
+      mockInstall3.mockResolvedValue({ success: true });
 
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
@@ -260,7 +273,8 @@ describe('updateCommand', () => {
     test('should show concise message when tool is already latest in shim mode', async () => {
       const fzfLatestConfig = { ...fzfToolConfig, version: 'latest' };
       mockActualLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
-      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+      const mockGetLatestRelease7 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+      mockGetLatestRelease7.mockResolvedValue({
         ...latestGitHubRelease,
         tag_name: 'v0.41.0',
       });
@@ -274,11 +288,13 @@ describe('updateCommand', () => {
 
     test('should show concise message when tool is already up to date in shim mode', async () => {
       mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+      const mockGetLatestRelease8 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+      mockGetLatestRelease8.mockResolvedValue({
         ...latestGitHubRelease,
         tag_name: 'v0.40.0', // Same as configured version
       });
-      (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+      const mockCheckVersionStatus5 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
+      mockCheckVersionStatus5.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
 
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
@@ -289,23 +305,25 @@ describe('updateCommand', () => {
 
     test('should skip "checking updates" message in shim mode', async () => {
       mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-      (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+      const mockGetLatestRelease9 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
+      mockGetLatestRelease9.mockResolvedValue({
         ...latestGitHubRelease,
         tag_name: 'v0.40.0',
       });
-      (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+      const mockCheckVersionStatus6 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
+      mockCheckVersionStatus6.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
 
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should not include the "checking updates" message in shim mode
       logger.expect(['INFO'], ['updateCommand'], ['fzf is already up to date (0.40.0)']);
-      // Ensure no "Checking for updates" message appears
-      // Check that no log message contains "updates check for"
-      const logsContainCheckingMessage = logger.logs.some(
-        (log: any) =>
-          log['message'] && typeof log['message'] === 'string' && log['message'].includes('updates check for')
-      );
-      expect(logsContainCheckingMessage).toBe(false);
+
+      // Verify that exactly one log message was generated (no "updates check for" message)
+      const updateCommandInfoLogs = logger.logs.filter((log) => {
+        const meta = log['_meta'];
+        return meta && meta.logLevelName === 'INFO' && meta.name === 'updateCommand';
+      });
+      expect(updateCommandInfoLogs).toHaveLength(1);
     });
   });
 });

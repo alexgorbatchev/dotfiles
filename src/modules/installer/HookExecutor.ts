@@ -3,27 +3,8 @@ import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { AsyncInstallHook, BaseInstallContext, InstallHookContext } from '@types';
+import type { AsyncInstallHook, BaseInstallContext, EnhancedInstallHookContext, InstallHookContext } from '@types';
 import { $ } from 'zx';
-
-/**
- * Enhanced context for installation hooks with additional utilities
- * This extends the standard InstallHookContext with extra development conveniences
- */
-export interface EnhancedInstallHookContext extends InstallHookContext {
-  /** File system instance for performing file operations */
-  fileSystem: IFileSystem;
-  /** Logger instance for structured logging */
-  logger: TsLogger;
-  /** Binary path (available in afterInstall hook) */
-  binaryPath?: string;
-  /** Version of the installed tool (available in afterInstall hook) */
-  version?: string;
-  /** The user's application configuration (available in all hooks) */
-  appConfig?: import('@modules/config').YamlConfig;
-  /** The full tool configuration being processed (available in all hooks) */
-  toolConfig?: import('@types').ToolConfig;
-}
 
 /**
  * Options for hook execution

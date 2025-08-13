@@ -452,7 +452,7 @@ describe('SymlinkGenerator', () => {
     };
     await mockFs.addFiles({ [sourceFullPath]: 'content' });
 
-    mockFs.fs.symlink.mockImplementationOnce(() => {
+    mockFs.spies.symlink.mockImplementationOnce(() => {
       throw new Error('Symlink failed');
     });
 

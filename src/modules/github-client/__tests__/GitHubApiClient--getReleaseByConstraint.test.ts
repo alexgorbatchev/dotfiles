@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { NotFoundError } from '@modules/downloader';
 import type { GitHubRelease } from '@types';
-import { NotFoundError } from '../../downloader/errors';
 import {
   createGitHubConfigOverride,
   type MockSetup,
@@ -126,7 +126,7 @@ describe('GitHubApiClient', () => {
         createMockRelease(perPage + 1, 'v1.1.0'),
         targetRelease,
         createMockRelease(perPage + 3, 'v1.2.3'),
-      ].sort((a, b) => (new Date(b.published_at) as any) - (new Date(a.published_at) as any)); // Simulate API sort
+      ].sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()); // Simulate API sort
 
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(page1Releases))) // Page 1

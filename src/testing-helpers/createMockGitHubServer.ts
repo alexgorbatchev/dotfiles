@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import type { Server } from 'node:http';
+import * as path from 'node:path';
 import type { Express } from 'express';
 import express from 'express';
-import * as path from 'path';
 
 /**
  * Configuration for an API path in the mock GitHub server

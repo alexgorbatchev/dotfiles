@@ -1,7 +1,71 @@
+import type { GlobalProgram, Services } from '@cli';
+import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
+import type { IFileSystem } from '@modules/file-system';
 import { logs, type TsLogger } from '@modules/logger';
-import type { GlobalProgram, Services } from '../../cli';
+import type { ToolConfig } from '@types';
 import { exitCli } from './exitCli';
+
+async function loadToolConfigSafely(
+  logger: TsLogger,
+  toolName: string,
+  toolConfigsDir: string,
+  fs: IFileSystem,
+  yamlConfig: YamlConfig
+): Promise<ToolConfig | null> {
+  const toolConfig = await loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+
+  if (!toolConfig) {
+    logger.error(logs.tool.error.notFound(toolName, toolConfigsDir));
+    return null;
+  }
+
+  return toolConfig;
+}
+
+function handleInstallationResult(
+  logger: TsLogger,
+  result: { success: boolean; version?: string; error?: string },
+  toolName: string,
+  shimMode: boolean
+): number | null {
+  if (result.success) {
+    if (shimMode) {
+      // In shim mode, exit silently on success
+      return 0;
+    } else {
+      // Normal mode: log success message and continue (don't exit)
+      logger.info(logs.tool.success.installed(toolName, result.version || 'unknown', 'CLI'));
+      return null; // Don't exit on success in normal mode
+    }
+  } else {
+    logger.debug(logs.command.debug.actionStarted('install-failed', toolName), result.error);
+
+    if (shimMode) {
+      // In shim mode, output user-friendly error message to stderr
+      console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
+      return 1;
+    } else {
+      // Normal mode: use logger
+      logger.error(logs.tool.error.installFailed('unknown', toolName, result.error || 'Unknown error'));
+      return 1;
+    }
+  }
+}
+
+function handleInstallationError(logger: TsLogger, error: Error, toolName: string, shimMode: boolean): number {
+  logger.debug(logs.command.debug.unhandledError(), error);
+
+  if (shimMode) {
+    // In shim mode, output user-friendly error message to stderr
+    console.error(`Failed to install '${toolName}': ${error.message}`);
+    return 1;
+  } else {
+    // Normal mode: use logger
+    logger.error(logs.command.error.executionFailed('install', 1, error.message));
+    return 1;
+  }
+}
 
 export function registerInstallCommand(
   parentLogger: TsLogger,
@@ -29,17 +93,16 @@ export function registerInstallCommand(
           yamlConfig.paths.toolConfigsDir,
           fs.constructor.name
         );
-        const toolConfig = await loadSingleToolConfig(
+
+        const toolConfig = await loadToolConfigSafely(
           logger,
           toolName,
           yamlConfig.paths.toolConfigsDir,
           fs,
           yamlConfig
         );
-        // Tool configuration loaded, proceeding with installation
 
         if (!toolConfig) {
-          logger.error(logs.tool.error.notFound(toolName, yamlConfig.paths.toolConfigsDir));
           shouldExitWithCode = 1;
         } else {
           // Starting installation process
@@ -48,45 +111,10 @@ export function registerInstallCommand(
             verbose: combinedOptions.verbose,
           });
 
-          if (result.success) {
-            // Installation successful
-            if (combinedOptions.shimMode) {
-              // In shim mode, exit silently on success
-              shouldExitWithCode = 0;
-            } else {
-              // Normal mode: log success message
-              logger.info(logs.tool.success.installed(toolName, result.version || 'unknown', 'CLI'));
-            }
-          } else {
-            logger.debug(logs.command.debug.actionStarted('install-failed', toolName), result.error);
-
-            if (combinedOptions.shimMode) {
-              // In shim mode, output user-friendly error message to stderr
-              // NOTE: Using console.error instead of logger here because shims need clean,
-              // unformatted error messages for end users (no timestamps, log levels, etc.)
-              console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
-              shouldExitWithCode = 1;
-            } else {
-              // Normal mode: use logger
-              logger.error(logs.tool.error.installFailed('unknown', toolName, result.error || 'Unknown error'));
-              shouldExitWithCode = 1;
-            }
-          }
+          shouldExitWithCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
         }
       } catch (error) {
-        logger.debug(logs.command.debug.unhandledError(), error);
-
-        if (combinedOptions.shimMode) {
-          // In shim mode, output user-friendly error message to stderr
-          // NOTE: Using console.error instead of logger here because shims need clean,
-          // unformatted error messages for end users (no timestamps, log levels, etc.)
-          console.error(`Failed to install '${toolName}': ${(error as Error).message}`);
-          shouldExitWithCode = 1;
-        } else {
-          // Normal mode: use logger
-          logger.error(logs.command.error.executionFailed('install', 1, (error as Error).message));
-          shouldExitWithCode = 1;
-        }
+        shouldExitWithCode = handleInstallationError(logger, error as Error, toolName, combinedOptions.shimMode);
       }
 
       if (shouldExitWithCode !== null) {

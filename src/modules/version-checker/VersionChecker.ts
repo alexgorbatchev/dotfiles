@@ -20,7 +20,7 @@ export class VersionChecker implements IVersionChecker {
     logger.debug(logs.versionChecker.debug.fetchingLatest(), owner, repo);
     try {
       const release = await this.githubClient.getLatestRelease(owner, repo);
-      if (release && release.tag_name) {
+      if (release?.tag_name) {
         // Remove 'v' prefix if present, common in tags
         const version = release.tag_name.replace(/^v/, '');
         logger.debug(logs.versionChecker.debug.latestReleaseFound(), version);

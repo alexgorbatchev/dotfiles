@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
-import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
-import type { InstallHookContext, ToolConfig } from '@types';
+import { createMemFileSystem, createMockYamlConfig, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
+import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@types';
+import type { $ } from 'zx';
 import { type HookExecutionOptions, HookExecutor } from '../HookExecutor';
 
 // Helper function for tests to create SafeLogMessage
@@ -12,7 +13,8 @@ function testLogMessage(message: string): SafeLogMessage {
 
 // Helper function to create mock $ instance
 function createMock$() {
-  return mock(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })) as any;
+  // Mock shell execution function
+  return mock(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })) as unknown as typeof $;
 }
 
 describe('HookExecutor', () => {
@@ -46,11 +48,11 @@ describe('HookExecutor', () => {
     };
 
     it('should execute hook successfully and return correct result', async () => {
-      const mockHook = mock(async (ctx: InstallHookContext) => {
+      const mockHook: AsyncInstallHook = mock(async (ctx) => {
         expect(ctx.toolName).toBe('test-tool');
-        // These properties are added by the enhanced context but typed as InstallHookContext
-        expect((ctx as any).fileSystem).toBeDefined();
-        expect((ctx as any).logger).toBeDefined();
+        // These properties are available in the enhanced context
+        expect(ctx.fileSystem).toBeDefined();
+        expect(ctx.logger).toBeDefined();
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
@@ -62,9 +64,9 @@ describe('HookExecutor', () => {
     });
 
     it('should create hook-specific logger with correct naming format', async () => {
-      const mockHook = mock(async (ctx: InstallHookContext) => {
+      const mockHook: AsyncInstallHook = mock(async (ctx) => {
         // Log a message using the hook-specific logger
-        (ctx as any).logger.info(testLogMessage('Hook execution message'));
+        ctx.logger.info(testLogMessage('Hook execution message'));
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
@@ -195,7 +197,7 @@ describe('HookExecutor', () => {
 
       // Verify the $ instance has the correct cwd configuration
       // We can't directly test the cwd without executing commands, but we can verify it exists
-      expect((enhancedContext.$ as any).bind).toBeDefined(); // $ should be a bound function
+      expect(enhancedContext.$.bind).toBeDefined(); // $ should be a bound function
     });
 
     it('should use fallback $ instance when configFilePath is missing', () => {
@@ -217,7 +219,7 @@ describe('HookExecutor', () => {
       expect(typeof enhancedContext.$).toBe('function');
     });
 
-    it('should preserve toolConfig and appConfig in enhanced context', () => {
+    it('should preserve toolConfig and appConfig in enhanced context', async () => {
       const mockToolConfig: ToolConfig = {
         configFilePath: '/path/to/configs/tool.tool.ts',
         name: 'test-tool',
@@ -227,7 +229,16 @@ describe('HookExecutor', () => {
         installParams: undefined,
       };
 
-      const mockAppConfig = { paths: { generatedDir: '/generated' } } as any;
+      await memFs.fs.ensureDir('/test');
+
+      const mockAppConfig = await createMockYamlConfig({
+        config: { paths: { generatedDir: '/generated' } },
+        filePath: '/test/config.yaml',
+        fileSystem: memFs.fs,
+        logger,
+        systemInfo: { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
+        env: {},
+      });
 
       const contextWithConfigs = {
         ...baseContext,
@@ -250,7 +261,7 @@ describe('HookExecutor', () => {
     };
 
     it('should provide $ instance to hooks that can execute shell commands', async () => {
-      let capturedDollar: any;
+      let capturedDollar: typeof $ | undefined;
 
       const hookThatUsesShell = mock(async (ctx: InstallHookContext) => {
         capturedDollar = ctx.$;
@@ -284,7 +295,7 @@ describe('HookExecutor', () => {
         toolConfig: mockToolConfig,
       };
 
-      let receivedDollar: any;
+      let receivedDollar: typeof $ | undefined;
 
       const hook = mock(async (ctx: InstallHookContext) => {
         receivedDollar = ctx.$;

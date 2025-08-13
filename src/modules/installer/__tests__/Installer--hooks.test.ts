@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import type { YamlConfig } from '@modules/config';
-import type { IDownloader } from '@modules/downloader';
+import type { DownloadOptions, IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
+import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
-import type { GithubReleaseToolConfig } from '@types';
+import type { ExtractOptions, GithubReleaseToolConfig } from '@types';
 import { Installer } from '../Installer';
 
 describe('Installer - Enhanced Hooks', () => {
@@ -25,7 +26,7 @@ describe('Installer - Enhanced Hooks', () => {
     memFs = await createMemFileSystem();
 
     mockDownloader = {
-      download: mock(async (_url: string, options?: any) => {
+      download: mock(async (_url: string, options?: DownloadOptions) => {
         // Mock the actual download by creating the destination file
         if (options?.destinationPath) {
           await memFs.fs.writeFile(options.destinationPath, 'mock-downloaded-file-content');
@@ -69,7 +70,7 @@ describe('Installer - Enhanced Hooks', () => {
     } as IGitHubApiClient;
 
     mockArchiveExtractor = {
-      extract: mock(async (_archivePath: string, options?: any) => {
+      extract: mock(async (_archivePath: string, options?: ExtractOptions) => {
         // Mock the extraction by creating extracted files in the target directory
         const targetDir = options?.targetDir;
         if (targetDir) {
@@ -171,8 +172,9 @@ describe('Installer - Enhanced Hooks', () => {
         },
       };
 
-      // Mock HookExecutor to use short timeout
-      const hookExecutorSpy = spyOn(installer['hookExecutor'], 'executeHook').mockResolvedValue({
+      // Testing private hookExecutor property - legitimate test access to internal implementation
+      // biome-ignore lint/suspicious/noExplicitAny: Testing private property access
+      const hookExecutorSpy = spyOn((installer as any)['hookExecutor'], 'executeHook').mockResolvedValue({
         success: false,
         error: 'Hook timed out after 50ms',
         durationMs: 50,
@@ -446,7 +448,7 @@ describe('Installer - Enhanced Hooks', () => {
 
   describe('hook context filesystem operations', () => {
     it('should allow hooks to perform filesystem operations that are tracked', async () => {
-      let capturedFileSystem: any;
+      let capturedFileSystem: IFileSystem | undefined;
 
       const afterExtractHook = mock(async (context) => {
         capturedFileSystem = context.fileSystem;
@@ -472,8 +474,8 @@ describe('Installer - Enhanced Hooks', () => {
 
       expect(result.success).toBe(true);
       expect(capturedFileSystem).toBeDefined();
-      expect(capturedFileSystem.writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
-      expect(capturedFileSystem.chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
+      expect(capturedFileSystem!.writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
+      expect(capturedFileSystem!.chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
     });
   });
 });

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import path from 'node:path';
-import type { GlobalProgram } from '@cli';
+import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import {
@@ -21,6 +21,22 @@ import {
 } from '@testing-helpers';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@types';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
+
+// Helper function to create mock GitHubRelease objects
+function createMockRelease(tagName: string, id = 123): GitHubRelease {
+  return {
+    id,
+    tag_name: tagName,
+    name: `Release ${tagName}`,
+    draft: false,
+    prerelease: false,
+    created_at: new Date().toISOString(),
+    published_at: new Date().toISOString(),
+    assets: [],
+    html_url: `https://github.com/owner/repo/releases/tag/${tagName}`,
+    body: 'Release body',
+  };
+}
 
 // Set up test cleanup
 setupTestCleanup();
@@ -62,8 +78,12 @@ describe('checkUpdatesCommand', () => {
   let program: GlobalProgram;
   let logger: TestLogger;
   let testDirs: TestDirectories;
-  let mockGitHubApiClient: Partial<IGitHubApiClient>;
-  let mockVersionChecker: Partial<IVersionChecker>;
+  let mockGitHubApiClient: Partial<IGitHubApiClient> & {
+    getLatestRelease: ReturnType<typeof mock<IGitHubApiClient['getLatestRelease']>>;
+  };
+  let mockVersionChecker: Partial<IVersionChecker> & {
+    checkVersionStatus: ReturnType<typeof mock<IVersionChecker['checkVersionStatus']>>;
+  };
 
   beforeEach(async () => {
     mock.restore();
@@ -98,29 +118,18 @@ describe('checkUpdatesCommand', () => {
 
     mockGitHubApiClient = {
       getLatestRelease: mock(
-        async (owner: string, repo: string): Promise<GitHubRelease | null> => ({
-          id: 123,
-          tag_name: '1.0.0',
-          name: 'Release 1.0.0',
-          draft: false,
-          prerelease: false,
-          created_at: new Date().toISOString(),
-          published_at: new Date().toISOString(),
-          assets: [],
-          html_url: `https://github.com/${owner}/${repo}/releases/tag/1.0.0`,
-          body: 'Release body',
-        })
+        async (_owner: string, _repo: string): Promise<GitHubRelease | null> => createMockRelease('1.0.0')
       ),
     };
 
-    const mockServices = {
+    const mockServices: Partial<Services> = {
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
       versionChecker: mockVersionChecker as IVersionChecker,
       githubApiClient: mockGitHubApiClient as IGitHubApiClient,
     };
 
-    registerCheckUpdatesCommand(logger, program, async () => mockServices as any);
+    registerCheckUpdatesCommand(logger, program, async () => mockServices as Services);
   });
 
   afterEach(() => {
@@ -133,10 +142,19 @@ describe('checkUpdatesCommand', () => {
 
   test('should report a tool is up-to-date', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+    mockGitHubApiClient.getLatestRelease.mockResolvedValue({
+      id: 456,
       tag_name: 'v0.40.0',
+      name: 'Release v0.40.0',
+      draft: false,
+      prerelease: false,
+      created_at: new Date().toISOString(),
+      published_at: new Date().toISOString(),
+      assets: [],
+      html_url: 'https://github.com/junegunn/fzf/releases/tag/v0.40.0',
+      body: 'Release body',
     });
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
@@ -149,11 +167,20 @@ describe('checkUpdatesCommand', () => {
 
   test('should report an update is available', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
+    mockGitHubApiClient.getLatestRelease.mockResolvedValue({
+      id: 789,
       tag_name: 'v0.41.0',
+      name: 'Release v0.41.0',
+      draft: false,
+      prerelease: false,
+      created_at: new Date().toISOString(),
+      published_at: new Date().toISOString(),
+      assets: [],
+      html_url: 'https://github.com/junegunn/fzf/releases/tag/v0.41.0',
+      body: 'Release body',
     });
 
-    (mockVersionChecker.checkVersionStatus as any).mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
@@ -170,11 +197,11 @@ describe('checkUpdatesCommand', () => {
       lazygit: lazygitToolConfig,
     });
 
-    (mockGitHubApiClient.getLatestRelease as any)
-      .mockResolvedValueOnce({ tag_name: 'v0.40.0' })
-      .mockResolvedValueOnce({ tag_name: 'v0.36.0' });
+    (mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>)
+      .mockResolvedValueOnce(createMockRelease('v0.40.0', 456))
+      .mockResolvedValueOnce(createMockRelease('v0.36.0', 457));
 
-    (mockVersionChecker.checkVersionStatus as any)
+    mockVersionChecker.checkVersionStatus
       .mockResolvedValueOnce(VersionComparisonStatus.UP_TO_DATE)
       .mockResolvedValueOnce(VersionComparisonStatus.NEWER_AVAILABLE);
 
@@ -196,9 +223,7 @@ describe('checkUpdatesCommand', () => {
   test('should handle tool configured with "latest" version', async () => {
     const fzfLatestConfig: GithubReleaseToolConfig = { ...fzfToolConfig, version: 'latest' };
     mockLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockResolvedValue({
-      tag_name: 'v0.42.0',
-    });
+    mockGitHubApiClient.getLatestRelease.mockResolvedValue(createMockRelease('v0.42.0', 999));
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
@@ -231,7 +256,9 @@ describe('checkUpdatesCommand', () => {
 
   test('should handle GitHub API error gracefully', async () => {
     mockLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-    (mockGitHubApiClient.getLatestRelease as any).mockRejectedValue(new Error('GitHub API unavailable'));
+    (mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>).mockRejectedValue(
+      new Error('GitHub API unavailable')
+    );
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 

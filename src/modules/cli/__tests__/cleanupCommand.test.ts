@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import type { MockedFileSystem, TestLogger } from '@testing-helpers';
+import type { FileSystemSpies, MockedFileSystem, TestLogger } from '@testing-helpers';
 import type { GeneratedArtifactsManifest } from '@types';
 import { registerCleanupCommand } from '../cleanupCommand';
 import { createCliTestSetup } from './createCliTestSetup';
@@ -15,6 +15,7 @@ describe('cleanupCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
   let mockFs: MockedFileSystem;
+  let mockFsSpies: FileSystemSpies;
   let logger: TestLogger;
   let mockShim1 = '';
   let mockShim2 = '';
@@ -33,6 +34,7 @@ describe('cleanupCommand', () => {
     program = setup.program;
     logger = setup.logger;
     mockFs = setup.mockFs.fs;
+    mockFsSpies = setup.mockFs.spies;
     mockYamlConfig = setup.mockYamlConfig;
 
     const { addFiles, addSymlinks } = setup.mockFs;
@@ -110,8 +112,8 @@ describe('cleanupCommand', () => {
   });
 
   it('should cleanup generated directory if manifest file does not exist', async () => {
-    mockFs.exists.mockImplementation(async (p: string) => p !== mockYamlConfig.paths.manifestPath);
-    mockFs.readFile.mockClear();
+    mockFsSpies.exists.mockImplementation(async (p: string) => p !== mockYamlConfig.paths.manifestPath);
+    mockFsSpies.readFile.mockClear();
 
     await runCommand([]);
 

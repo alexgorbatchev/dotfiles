@@ -1,5 +1,5 @@
 import type { ICache } from '@modules/cache';
-import { DownloadCacheUtils } from '@modules/cache';
+import { createCacheKey } from '@modules/cache';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
@@ -51,13 +51,93 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     return await this.underlyingStrategy.isAvailable();
   }
 
+  private async handleCacheHit(
+    logger: TsLogger,
+    cachedBuffer: Buffer,
+    cacheKey: string,
+    url: string,
+    options: DownloadOptions
+  ): Promise<Buffer | undefined> {
+    logger.trace(logs.cache.success.hit(cacheKey, 'binary', cachedBuffer.length), { url });
+
+    // If destinationPath is specified, write cached data to file and return void
+    if (options.destinationPath) {
+      await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
+      logger.trace(logs.fs.success.created('CachedDownloadStrategy', options.destinationPath));
+      return; // Return void for file downloads
+    }
+
+    return cachedBuffer;
+  }
+
+  private async readFileForCaching(logger: TsLogger, destinationPath: string): Promise<Buffer | null> {
+    logger.trace(logs.downloader.success.readFileForCaching(destinationPath));
+
+    try {
+      const fileExists = await this.fileSystem.exists(destinationPath);
+      logger.trace(logs.downloader.debug.fileExists(fileExists), { path: destinationPath });
+
+      if (fileExists) {
+        const fileContent = await this.fileSystem.readFile(destinationPath);
+        const bufferToCache = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
+        logger.trace(logs.downloader.debug.fileCached(), {
+          path: destinationPath,
+          size: bufferToCache.length,
+        });
+        return bufferToCache;
+      } else {
+        logger.trace(logs.fs.error.notFound('Downloaded file', destinationPath));
+        return null;
+      }
+    } catch (error) {
+      logger.trace(logs.fs.error.readFailed(destinationPath, (error as Error).message));
+      return null;
+    }
+  }
+
+  private async determineBufferToCache(
+    logger: TsLogger,
+    result: Buffer | undefined,
+    options: DownloadOptions
+  ): Promise<Buffer | null> {
+    if (result instanceof Buffer) {
+      return result;
+    } else if (options.destinationPath && result === undefined) {
+      // For file downloads that return void, we need to read the file to cache it
+      return await this.readFileForCaching(logger, options.destinationPath);
+    }
+    return null;
+  }
+
+  private async cacheResult(
+    logger: TsLogger,
+    bufferToCache: Buffer,
+    cacheKey: string,
+    url: string,
+    options: DownloadOptions
+  ): Promise<void> {
+    try {
+      await this.cache.setDownload(
+        cacheKey,
+        bufferToCache,
+        this.cacheTtl,
+        url,
+        this.extractContentTypeFromHeaders(options.headers)
+      );
+      logger.trace(logs.cache.success.stored(cacheKey, 'binary', 'TTL-based', bufferToCache.length), { url });
+    } catch (error) {
+      logger.trace(logs.cache.error.storageFailed(cacheKey, (error as Error).message), { url });
+      // Don't fail the download if caching fails
+    }
+  }
+
   /**
    * Downloads a file from the given URL, checking cache first.
    * @param url The URL of the file to download
    * @param options The download options
    * @returns A promise that resolves with a Buffer containing the downloaded file's content
    */
-  async download(url: string, options: DownloadOptions = {}): Promise<Buffer | void> {
+  async download(url: string, options: DownloadOptions = {}): Promise<Buffer | undefined> {
     const logger = this.logger.getSubLogger({ name: 'download' });
 
     // Don't cache downloads with progress callbacks as they are meant to be streamed
@@ -68,22 +148,13 @@ export class CachedDownloadStrategy implements DownloadStrategy {
       return await this.underlyingStrategy.download(url, options);
     }
 
-    const cacheKey = DownloadCacheUtils.createCacheKey(url, options);
+    const cacheKey = createCacheKey(url, options);
 
     try {
       // Check cache first
       const cachedBuffer = await this.cache.get<Buffer>(cacheKey);
       if (cachedBuffer) {
-        logger.trace(logs.cache.success.hit(cacheKey, 'binary', cachedBuffer.length), { url });
-
-        // If destinationPath is specified, write cached data to file and return void
-        if (options.destinationPath) {
-          await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
-          logger.trace(logs.fs.success.created('CachedDownloadStrategy', options.destinationPath));
-          return; // Return void for file downloads
-        }
-
-        return cachedBuffer;
+        return await this.handleCacheHit(logger, cachedBuffer, cacheKey, url, options);
       }
 
       logger.trace(logs.cache.debug.notFound(cacheKey), { url });
@@ -96,49 +167,11 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     logger.trace(logs.downloader.success.downloadFrom(this.underlyingStrategy.name), { url });
     const result = await this.underlyingStrategy.download(url, options);
 
-    // Cache the result if it's a Buffer or if we can extract it from void result
-    let bufferToCache: Buffer | null = null;
-
-    if (result instanceof Buffer) {
-      bufferToCache = result;
-    } else if (options.destinationPath && result === undefined) {
-      // For file downloads that return void, we need to read the file to cache it
-      // This is a trade-off - we read the file after writing to cache it for future use
-      logger.trace(logs.downloader.success.readFileForCaching(options.destinationPath));
-      try {
-        const fileExists = await this.fileSystem.exists(options.destinationPath);
-        logger.trace(logs.downloader.debug.fileExists(fileExists), { path: options.destinationPath });
-
-        if (fileExists) {
-          const fileContent = await this.fileSystem.readFile(options.destinationPath);
-          bufferToCache = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
-          logger.trace(logs.downloader.debug.fileCached(), {
-            path: options.destinationPath,
-            size: bufferToCache.length,
-          });
-        } else {
-          logger.trace(logs.fs.error.notFound('Downloaded file', options.destinationPath));
-        }
-      } catch (error) {
-        logger.trace(logs.fs.error.readFailed(options.destinationPath, (error as Error).message));
-      }
-    }
+    // Cache the result if possible
+    const bufferToCache = await this.determineBufferToCache(logger, result, options);
 
     if (bufferToCache) {
-      // Cache the result
-      try {
-        await this.cache.setDownload(
-          cacheKey,
-          bufferToCache,
-          this.cacheTtl,
-          url,
-          this.extractContentTypeFromHeaders(options.headers)
-        );
-        logger.trace(logs.cache.success.stored(cacheKey, 'binary', 'TTL-based', bufferToCache.length), { url });
-      } catch (error) {
-        logger.trace(logs.cache.error.storageFailed(cacheKey, (error as Error).message), { url });
-        // Don't fail the download if caching fails
-      }
+      await this.cacheResult(logger, bufferToCache, cacheKey, url, options);
     }
 
     return result;

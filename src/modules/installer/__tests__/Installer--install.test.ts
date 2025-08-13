@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import {
-  createBasicToolConfig,
+  createGithubReleaseToolConfig,
   createInstallerTestSetup,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
@@ -16,7 +16,7 @@ describe('Installer - install (orchestrator)', () => {
   });
 
   it('should create installation directory', async () => {
-    const toolConfig = createBasicToolConfig();
+    const toolConfig = createGithubReleaseToolConfig();
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
@@ -26,7 +26,7 @@ describe('Installer - install (orchestrator)', () => {
   });
 
   it('should call the appropriate installation method based on installationMethod', async () => {
-    const toolConfig = createBasicToolConfig();
+    const toolConfig = createGithubReleaseToolConfig();
 
     const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
       success: true,
@@ -46,7 +46,7 @@ describe('Installer - install (orchestrator)', () => {
   });
 
   it('should handle errors during installation', async () => {
-    const toolConfig = createBasicToolConfig();
+    const toolConfig = createGithubReleaseToolConfig();
 
     const error = new Error('Test error');
     const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockRejectedValue(error);
@@ -65,7 +65,7 @@ describe('Installer - install (orchestrator)', () => {
     const beforeInstallHook = mock(() => Promise.resolve());
     const afterInstallHook = mock(() => Promise.resolve());
 
-    const toolConfig = createBasicToolConfig({
+    const toolConfig = createGithubReleaseToolConfig({
       installParams: {
         repo: MOCK_TOOL_REPO,
         hooks: {

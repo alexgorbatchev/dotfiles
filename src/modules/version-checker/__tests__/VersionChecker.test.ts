@@ -96,8 +96,8 @@ describe('VersionChecker', () => {
 
     it('should return null if GitHub client returns release with no tag_name', async () => {
       mockGithubClient.getLatestRelease.mockResolvedValueOnce({
-        // biome-ignore lint/suspicious/noExplicitAny: For testing purposes
-        tag_name: undefined as any,
+        // Testing invalid state - release without tag_name
+        tag_name: '' as string, // Empty string instead of undefined
         assets: [],
         body: '',
         name: '',

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
-import { exec as actualExecCallbackSignature } from 'node:child_process'; // Renamed for clarity
+import { exec as actualExecCallbackSignature } from 'node:child_process';
 import * as nodePath from 'node:path';
 import { promisify } from 'node:util'; // Import promisify
 import { type IFileSystem, NodeFileSystem } from '@modules/file-system';
@@ -9,6 +9,13 @@ import { $ } from 'zx'; // For creating test archives
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
 
+// Interface for augmented exec errors in tests
+interface TestExecError extends Error {
+  stdout?: string;
+  stderr?: string;
+  code?: number;
+}
+
 // Setup cleanup once per file
 setupTestCleanup();
 
@@ -17,12 +24,17 @@ const realPromisedExecViaUtil = promisify(actualExecCallbackSignature);
 
 // mockExecCallback must always adhere to the node-style callback signature,
 // because ArchiveExtractor does `promisify(execCallback)` where execCallback is this mock.
-const mockExecCallback = mock((command: string, optionsOrCallback: any, callback?: any) => {
-  const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
-  // Default behavior: successful mock, for tests NOT needing real execution
-  // console.log(`Default mockExecCallback for command: ${command}`);
-  cb(null, { stdout: `Mocked stdout for ${command}`, stderr: 'Mocked stderr' });
-});
+type ExecCallback = (error: Error | null, result: { stdout: string; stderr: string }) => void;
+type ExecOptions = { cwd?: string; env?: Record<string, string> };
+
+const mockExecCallback = mock(
+  (command: string, optionsOrCallback: ExecOptions | ExecCallback, callback?: ExecCallback) => {
+    const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+    // Default behavior: successful mock, for tests NOT needing real execution
+    // console.log(`Default mockExecCallback for command: ${command}`);
+    cb!(null, { stdout: `Mocked stdout for ${command}`, stderr: 'Mocked stderr' });
+  }
+);
 
 const mockModules = createModuleMocker();
 
@@ -51,10 +63,13 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     extractor = new ArchiveExtractor(logger, nodeFsInstance);
 
     // Default mock implementation for exec (simulates success)
-    mockExecCallback.mockImplementation((command: string, optionsOrCallback: any, callback?: any) => {
-      const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
-      cb(null, { stdout: `stdout for ${command}`, stderr: '' });
-    });
+    mockExecCallback.mockImplementation(
+      (command: string, optionsOrCallback: ExecOptions | ExecCallback, callback?: ExecCallback) => {
+        const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        if (!cb || typeof cb !== 'function') return;
+        cb!(null, { stdout: `stdout for ${command}`, stderr: '' });
+      }
+    );
 
     await mockModules.mock('node:child_process', () => ({
       exec: mockExecCallback, // ArchiveExtractor will get this via its import
@@ -79,11 +94,11 @@ describe('ArchiveExtractor (with NodeFS)', () => {
 
     it('should use "file" command as fallback for .tar.gz', async () => {
       mockExecCallback.mockImplementationOnce((command, opts, cb) => {
-        if (typeof opts === 'function') cb = opts;
+        const callback = typeof opts === 'function' ? opts : cb;
         if (command.includes('file -b --mime-type')) {
-          cb(null, { stdout: 'application/gzip', stderr: '' });
+          callback!(null, { stdout: 'application/gzip', stderr: '' });
         } else {
-          cb(new Error('Unexpected command for file mock'));
+          callback!(new Error('Unexpected command for file mock'), { stdout: '', stderr: '' });
         }
       });
       const filePathWithoutExtension = nodePath.join(testDirs.paths.homeDir, 'mysterious_archive_is_tar_gz');
@@ -100,8 +115,8 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     it('should throw for unsupported or undetectable format after "file" fallback', async () => {
       mockExecCallback.mockImplementationOnce((_command, opts, cb) => {
         // Prefixed command with _
-        if (typeof opts === 'function') cb = opts;
-        cb(null, { stdout: 'application/octet-stream', stderr: '' });
+        const callback = typeof opts === 'function' ? opts : cb;
+        callback!(null, { stdout: 'application/octet-stream', stderr: '' });
       });
       const dummyFilePath = nodePath.join(testDirs.paths.homeDir, 'archive.unknown');
       await nodeFs.writeFile(dummyFilePath, 'dummy data'); // file command needs a real file
@@ -169,8 +184,10 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     it('should extract a .tar.gz archive using real tar', async () => {
       // For this test, make mockExecCallback use the real promisified exec internally
       // and translate its promise result back to a callback for the outer promisify.
-      mockExecCallback.mockImplementation((command: string, optionsOrCallback: any, callback?: any) => {
+      mockExecCallback.mockImplementation((command: string, optionsOrCallback: unknown, callback?: unknown) => {
         const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        if (!cb || typeof cb !== 'function') return;
+        if (!cb) return;
         // console.log(`Real-exec mock implementation for command: ${command}`);
         realPromisedExecViaUtil(command)
           .then(({ stdout, stderr }) => {
@@ -179,10 +196,10 @@ describe('ArchiveExtractor (with NodeFS)', () => {
           })
           .catch((error) => {
             // console.error(`Real-exec error for ${command}:`, error);
-            const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
-            (err as any).stdout = error.stdout;
-            (err as any).stderr = error.stderr;
-            (err as any).code = error.code || error.exitCode;
+            const err: TestExecError = new Error(error.message || 'Error in realPromisedExecViaUtil');
+            err.stdout = error.stdout;
+            err.stderr = error.stderr;
+            err.code = error.code || error.exitCode;
             cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
           });
       });
@@ -203,15 +220,16 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     });
 
     it('should use --strip-components for tar archives if specified using real tar', async () => {
-      mockExecCallback.mockImplementation((command: string, optionsOrCallback: any, callback?: any) => {
+      mockExecCallback.mockImplementation((command: string, optionsOrCallback: unknown, callback?: unknown) => {
         const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        if (!cb || typeof cb !== 'function') return;
         realPromisedExecViaUtil(command)
           .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
           .catch((error) => {
-            const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
-            (err as any).stdout = error.stdout;
-            (err as any).stderr = error.stderr;
-            (err as any).code = error.code || error.exitCode;
+            const err: TestExecError = new Error(error.message || 'Error in realPromisedExecViaUtil');
+            err.stdout = error.stdout;
+            err.stderr = error.stderr;
+            err.code = error.code || error.exitCode;
             cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
           });
       });
@@ -233,15 +251,16 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     });
 
     it('should extract a .zip archive using real unzip', async () => {
-      mockExecCallback.mockImplementation((command: string, optionsOrCallback: any, callback?: any) => {
+      mockExecCallback.mockImplementation((command: string, optionsOrCallback: unknown, callback?: unknown) => {
         const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        if (!cb || typeof cb !== 'function') return;
         realPromisedExecViaUtil(command)
           .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
           .catch((error) => {
-            const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
-            (err as any).stdout = error.stdout;
-            (err as any).stderr = error.stderr;
-            (err as any).code = error.code || error.exitCode;
+            const err: TestExecError = new Error(error.message || 'Error in realPromisedExecViaUtil');
+            err.stdout = error.stdout;
+            err.stderr = error.stderr;
+            err.code = error.code || error.exitCode;
             cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
           });
       });
@@ -261,15 +280,16 @@ describe('ArchiveExtractor (with NodeFS)', () => {
     });
 
     it('should clean up temporary extraction directory on success (real FS)', async () => {
-      mockExecCallback.mockImplementation((command: string, optionsOrCallback: any, callback?: any) => {
+      mockExecCallback.mockImplementation((command: string, optionsOrCallback: unknown, callback?: unknown) => {
         const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        if (!cb || typeof cb !== 'function') return;
         realPromisedExecViaUtil(command)
           .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
           .catch((error) => {
-            const err = new Error(error.message || 'Error in realPromisedExecViaUtil');
-            (err as any).stdout = error.stdout;
-            (err as any).stderr = error.stderr;
-            (err as any).code = error.code || error.exitCode;
+            const err: TestExecError = new Error(error.message || 'Error in realPromisedExecViaUtil');
+            err.stdout = error.stdout;
+            err.stderr = error.stderr;
+            err.code = error.code || error.exitCode;
             cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
           });
       });
@@ -289,8 +309,9 @@ describe('ArchiveExtractor (with NodeFS)', () => {
 
     it('should clean up temporary extraction directory on failure (mocked exec fail)', async () => {
       // This test WILL use the mocked exec to simulate failure
-      mockExecCallback.mockImplementationOnce((command: string, optionsOrCallback: any, callback?: any) => {
+      mockExecCallback.mockImplementationOnce((command: string, optionsOrCallback: unknown, callback?: unknown) => {
         const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+        if (!cb || typeof cb !== 'function') return;
         if (command.includes('tar -xzf')) {
           cb(new Error('Mocked tar failure'), { stdout: '', stderr: 'Mocked tar stderr' });
         } else {

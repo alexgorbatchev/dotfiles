@@ -330,7 +330,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
         default: {
           const invalidMethodError = logs.config.error.invalid(
             'installationMethod',
-            this.currentInstallationMethod!,
+            this.currentInstallationMethod ?? 'unknown',
             'github-release | brew | curl-script | curl-tar | manual'
           );
           this.logger.error(invalidMethodError);

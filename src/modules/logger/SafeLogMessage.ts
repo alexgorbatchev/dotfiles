@@ -9,6 +9,7 @@ export type SafeLogMessage = string & {
   readonly __brand: 'SafeLogMessage';
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: Template functions need varying parameter types
 export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessage>;
 
 /**
@@ -16,6 +17,9 @@ export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessag
  */
 export function isSafeLogMessage(value: unknown): value is SafeLogMessage {
   return (
-    typeof value === 'object' && value !== null && '__brand' in value && (value as any).__brand === 'SafeLogMessage'
+    typeof value === 'object' &&
+    value !== null &&
+    '__brand' in value &&
+    (value as { __brand: unknown }).__brand === 'SafeLogMessage'
   );
 }

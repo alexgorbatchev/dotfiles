@@ -59,7 +59,7 @@ export interface IDownloader {
    * @throws {ClientError} If a generic client-side HTTP error occurs (4xx).
    * @throws {ServerError} If a server-side HTTP error occurs (5xx).
    */
-  download(url: string, options?: DownloadOptions): Promise<Buffer | void>;
+  download(url: string, options?: DownloadOptions): Promise<Buffer | undefined>;
 
   /**
    * Downloads a file from the given URL and saves it directly to the specified file path.

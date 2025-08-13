@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import { createMemFileSystem } from '@testing-helpers';
+import type { ShellType } from '@types';
 import { dedentString } from '@utils';
 import type { ProfileUpdateConfig } from '../IProfileUpdater';
 import { ProfileUpdater } from '../ProfileUpdater';
@@ -36,7 +37,7 @@ describe('ProfileUpdater', () => {
 
     it('should throw error for unsupported shell type', () => {
       expect(() => {
-        profileUpdater.getProfilePath('fish' as any);
+        profileUpdater.getProfilePath('fish' as ShellType);
       }).toThrow('Unsupported shell type: fish');
     });
   });

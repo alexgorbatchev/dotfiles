@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { BaseInstallContext, ExtractResult, ToolConfig } from '@types';
+import type { BaseInstallContext, ExtractResult, InstallParams, ToolConfig } from '@types';
 
 /**
  * Setup binaries from extracted archive - handles all binaries in toolConfig.binaries[]
@@ -17,15 +17,15 @@ export async function setupBinariesFromArchive(
   extractResult?: ExtractResult
 ): Promise<void> {
   const binaryNames = toolConfig.binaries || [toolName];
-  const installParams = toolConfig.installParams as any;
+  const installParams: InstallParams | undefined = toolConfig.installParams;
 
   // Determine the primary binary source path using the same logic as original
   let primarySourcePath: string;
 
-  if (installParams?.binaryPath) {
-    // Use explicit binaryPath from toolConfig.installParams (GitHub releases)
+  if (installParams && 'binaryPath' in installParams && installParams.binaryPath) {
+    // Use explicit binaryPath from toolConfig.installParams (GitHub releases or manual)
     primarySourcePath = path.join(extractDir, installParams.binaryPath);
-  } else if (installParams?.extractPath) {
+  } else if (installParams && 'extractPath' in installParams && installParams.extractPath) {
     // Use extractPath from toolConfig.installParams (curl-tar)
     primarySourcePath = path.join(extractDir, installParams.extractPath);
   } else if (extractResult?.executables && extractResult.executables.length > 0) {
@@ -34,15 +34,25 @@ export async function setupBinariesFromArchive(
     if (exeMatchingToolName) {
       primarySourcePath = path.join(extractDir, exeMatchingToolName);
     } else if (extractResult.executables.length) {
-      primarySourcePath = path.join(extractDir, extractResult.executables[0] as string);
+      const firstExecutable = extractResult.executables[0];
+      if (firstExecutable) {
+        primarySourcePath = path.join(extractDir, firstExecutable);
+      } else {
+        primarySourcePath = path.join(extractDir, toolName);
+      }
     } else {
       primarySourcePath = path.join(extractDir, toolName);
     }
     logger.debug(logs.installer.debug.foundExecutable(), primarySourcePath);
   } else if (extractResult?.extractedFiles && extractResult.extractedFiles.length === 1) {
     // If only one file was extracted, assume it's the binary
-    primarySourcePath = path.join(extractDir, extractResult.extractedFiles[0] as string);
-    logger.debug(logs.installer.debug.assumingSingleBinary(), primarySourcePath);
+    const singleFile = extractResult.extractedFiles[0];
+    if (singleFile) {
+      primarySourcePath = path.join(extractDir, singleFile);
+      logger.debug(logs.installer.debug.assumingSingleBinary(), primarySourcePath);
+    } else {
+      primarySourcePath = path.join(extractDir, toolName);
+    }
   } else if (extractResult?.extractedFiles) {
     // Fallback: attempt to find a file named like the tool
     const potentialBinary = extractResult.extractedFiles.find((f) => f.includes(toolName));

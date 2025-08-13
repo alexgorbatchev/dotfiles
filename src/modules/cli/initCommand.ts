@@ -1,8 +1,8 @@
+import { join } from 'node:path';
+import type { GlobalProgram, Services } from '@cli';
 import { logs, type TsLogger } from '@modules/logger';
 import { dedentString } from '@utils';
 import { getCliBinPath } from '@utils/getCliBinPath';
-import { join } from 'path';
-import type { GlobalProgram, Services } from '../../cli';
 import { exitCli } from './exitCli';
 
 export function registerInitCommand(

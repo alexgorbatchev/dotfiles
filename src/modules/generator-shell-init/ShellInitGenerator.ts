@@ -7,7 +7,7 @@ import type { ShellType, ToolConfig } from '@types';
 import { resolvePlatformConfig } from '@utils';
 import type { GenerateShellInitOptions, IShellInitGenerator, ShellInitGenerationResult } from './IShellInitGenerator';
 import { type ProfileUpdateConfig, ProfileUpdater } from './profile-updater';
-import { ShellGeneratorFactory, type ShellInitContent } from './shell-generators';
+import { createGenerator, type ShellInitContent } from './shell-generators';
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
@@ -34,7 +34,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
     for (const shellType of shellTypes) {
       try {
-        const generator = ShellGeneratorFactory.createGenerator(shellType, this.appConfig);
+        const generator = createGenerator(shellType, this.appConfig);
         const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
 
         this.logger.debug(logs.shellInit.debug.outputPath(), outputPath);
@@ -93,22 +93,32 @@ export class ShellInitGenerator implements IShellInitGenerator {
             try {
               await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
               await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
-            } catch (error: any) {
+            } catch (error: unknown) {
               this.logger.debug(
                 logs.shellInit.debug.writeError(),
                 additionalFile.outputPath,
                 this.fs.constructor.name,
-                error.message
+                (error as Error).message
               );
               // Continue with other additional files even if one fails
             }
           }
-        } catch (error: any) {
-          this.logger.debug(logs.shellInit.debug.writeError(), outputPath, this.fs.constructor.name, error.message);
+        } catch (error: unknown) {
+          this.logger.debug(
+            logs.shellInit.debug.writeError(),
+            outputPath,
+            this.fs.constructor.name,
+            (error as Error).message
+          );
           // Continue with other shell types even if one fails
         }
-      } catch (error: any) {
-        this.logger.debug(logs.shellInit.debug.writeError(), shellType, this.fs.constructor.name, error.message);
+      } catch (error: unknown) {
+        this.logger.debug(
+          logs.shellInit.debug.writeError(),
+          shellType,
+          this.fs.constructor.name,
+          (error as Error).message
+        );
         // Continue with other shell types even if one fails
       }
     }
@@ -188,8 +198,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
           logger.debug(logs.shellInit.debug.outputPath(), `Removed stale once script: ${filePath}`);
         }
       }
-    } catch (error: any) {
-      logger.debug(logs.shellInit.debug.writeError(), onceDir, this.fs.constructor.name, error.message);
+    } catch (error: unknown) {
+      logger.debug(logs.shellInit.debug.writeError(), onceDir, this.fs.constructor.name, (error as Error).message);
       // Continue generation even if cleanup fails
     }
   }

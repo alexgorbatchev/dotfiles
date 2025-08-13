@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { CacheConfig, CacheEntry, ICache, JsonCacheEntry, BinaryCacheEntry, DownloadCacheEntry } from './types';
+import type { BinaryCacheEntry, CacheConfig, CacheEntry, DownloadCacheEntry, ICache, JsonCacheEntry } from './types';
 
 /**
  * File-based cache implementation that supports both JSON and binary storage strategies.
@@ -166,7 +166,13 @@ export class FileCache implements ICache {
     }
   }
 
-  async setDownload(key: string, data: Buffer, ttlMs: number | undefined, url: string, contentType?: string): Promise<void> {
+  async setDownload(
+    key: string,
+    data: Buffer,
+    ttlMs: number | undefined,
+    url: string,
+    contentType?: string
+  ): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'setDownload' });
     if (!this.config.enabled) {
       logger.debug(logs.cache.debug.disabled('skipping setDownload', key));
