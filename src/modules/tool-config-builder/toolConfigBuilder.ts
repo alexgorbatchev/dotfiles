@@ -269,101 +269,113 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   build(): ToolConfig {
-    // Always return a valid ToolConfig, even for platform scope
-    const name = this.toolName;
-    const binaries = this.binaries;
-    const version = this.versionNum;
+    const baseConfig = this.buildBaseConfig();
 
-    // Build organized shell configs
-    const shellConfigs = this.buildShellConfigs();
-    const symlinks = this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined;
-    const completions = this.completionSettings;
-    const updateCheck = this.updateCheckConfig;
-    const platformConfigs = this.isPlatformScope
-      ? undefined
-      : this.platformConfigEntries.length > 0
-        ? this.platformConfigEntries
-        : undefined;
-
-    if (this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams) {
-      // Discriminated union: must match the correct type for each installationMethod
-      const base = {
-        name,
-        binaries: binaries && binaries.length > 0 ? binaries : [],
-        version,
-        shellConfigs,
-        symlinks,
-        completions,
-        updateCheck,
-      };
-      switch (this.currentInstallationMethod) {
-        case 'github-release':
-          return {
-            ...base,
-            installationMethod: 'github-release',
-            installParams: this.currentInstallParams,
-          } as GithubReleaseToolConfig;
-        case 'brew':
-          return {
-            ...base,
-            installationMethod: 'brew',
-            installParams: this.currentInstallParams,
-          } as BrewToolConfig;
-        case 'curl-script':
-          return {
-            ...base,
-            installationMethod: 'curl-script',
-            installParams: this.currentInstallParams,
-          } as CurlScriptToolConfig;
-        case 'curl-tar':
-          return {
-            ...base,
-            installationMethod: 'curl-tar',
-            installParams: this.currentInstallParams,
-          } as CurlTarToolConfig;
-        case 'manual':
-          return {
-            ...base,
-            installationMethod: 'manual',
-            installParams: this.currentInstallParams,
-          } as ManualToolConfig;
-        default: {
-          const invalidMethodError = logs.config.error.invalid(
-            'installationMethod',
-            this.currentInstallationMethod ?? 'unknown',
-            'github-release | brew | curl-script | curl-tar | manual'
-          );
-          this.logger.error(invalidMethodError);
-          throw new Error(invalidMethodError);
-        }
-      }
+    if (this.hasInstallationMethod()) {
+      return this.buildInstallableToolConfig(baseConfig);
     }
 
-    const finalBinaries = binaries && binaries.length > 0 ? binaries : [];
+    this.validateConfigurationOnly(baseConfig);
+    return this.buildConfigurationOnlyTool(baseConfig);
+  }
 
-    if (
-      finalBinaries.length === 0 &&
-      !shellConfigs &&
-      !symlinks &&
-      (!platformConfigs || platformConfigs.length === 0)
-    ) {
+  private buildBaseConfig() {
+    return {
+      name: this.toolName,
+      binaries: this.binaries,
+      version: this.versionNum,
+      shellConfigs: this.buildShellConfigs(),
+      symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
+      completions: this.completionSettings,
+      updateCheck: this.updateCheckConfig,
+      platformConfigs: this.isPlatformScope
+        ? undefined
+        : this.platformConfigEntries.length > 0
+          ? this.platformConfigEntries
+          : undefined,
+    };
+  }
+
+  private hasInstallationMethod(): boolean {
+    return Boolean(
+      this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams
+    );
+  }
+
+  private buildInstallableToolConfig(baseConfig: ReturnType<typeof this.buildBaseConfig>): ToolConfig {
+    const installableBase = {
+      ...baseConfig,
+      binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
+    };
+
+    switch (this.currentInstallationMethod) {
+      case 'github-release':
+        return {
+          ...installableBase,
+          installationMethod: 'github-release',
+          installParams: this.currentInstallParams,
+        } as GithubReleaseToolConfig;
+      case 'brew':
+        return {
+          ...installableBase,
+          installationMethod: 'brew',
+          installParams: this.currentInstallParams,
+        } as BrewToolConfig;
+      case 'curl-script':
+        return {
+          ...installableBase,
+          installationMethod: 'curl-script',
+          installParams: this.currentInstallParams,
+        } as CurlScriptToolConfig;
+      case 'curl-tar':
+        return {
+          ...installableBase,
+          installationMethod: 'curl-tar',
+          installParams: this.currentInstallParams,
+        } as CurlTarToolConfig;
+      case 'manual':
+        return {
+          ...installableBase,
+          installationMethod: 'manual',
+          installParams: this.currentInstallParams,
+        } as ManualToolConfig;
+      default:
+        return this.throwInvalidMethodError();
+    }
+  }
+
+  private throwInvalidMethodError(): never {
+    const invalidMethodError = logs.config.error.invalid(
+      'installationMethod',
+      this.currentInstallationMethod ?? 'unknown',
+      'github-release | brew | curl-script | curl-tar | manual'
+    );
+    this.logger.error(invalidMethodError);
+    throw new Error(invalidMethodError);
+  }
+
+  private validateConfigurationOnly(baseConfig: ReturnType<typeof this.buildBaseConfig>): void {
+    const finalBinaries = baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [];
+    const hasContent =
+      finalBinaries.length > 0 ||
+      baseConfig.shellConfigs ||
+      baseConfig.symlinks ||
+      (baseConfig.platformConfigs && baseConfig.platformConfigs.length > 0);
+
+    if (!hasContent) {
       const requiredConfigError = logs.config.error.required(
         'tool definition',
-        `Tool "${name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
+        `Tool "${baseConfig.name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
       );
       this.logger.error(requiredConfigError);
       throw new Error(requiredConfigError);
     }
+  }
 
+  private buildConfigurationOnlyTool(baseConfig: ReturnType<typeof this.buildBaseConfig>): ToolConfig {
     return {
-      name,
-      binaries: finalBinaries,
-      version,
-      shellConfigs,
-      symlinks,
-      completions,
-      updateCheck,
-      platformConfigs,
+      ...baseConfig,
+      binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
       installationMethod: 'none',
       installParams: undefined,
     };

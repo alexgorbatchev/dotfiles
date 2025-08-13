@@ -29,181 +29,250 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     logger.debug(logs.symlink.debug.generateStart(), options, this.fs.constructor.name);
     const results: SymlinkOperationResult[] = [];
-    const { overwrite = false, backup = false } = options;
 
     for (const toolName in toolConfigs) {
-      // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-      const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
-
       const toolConfig = toolConfigs[toolName];
-      if (!toolConfig) {
-        logger.debug(logs.symlink.debug.toolConfigUndefined(), toolName);
-        continue;
-      }
-      if (!toolConfig.symlinks || toolConfig.symlinks.length === 0) {
-        logger.debug(logs.symlink.debug.noSymlinks(), toolName);
+      if (!this.shouldProcessTool(toolConfig, toolName, logger)) {
         continue;
       }
 
+      const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
       logger.debug(logs.symlink.debug.processingTool(), toolName);
+
       for (const symlinkConfig of toolConfig.symlinks) {
-        const sourceRelPath = symlinkConfig.source;
-        const targetRelPath = symlinkConfig.target;
-        const sourceAbsPath = expandToolConfigPath(
-          toolConfig.configFilePath,
-          sourceRelPath,
-          this.yamlConfig,
-          this.systemInfo
-        );
-        const targetAbsPath = expandToolConfigPath(
-          toolConfig.configFilePath,
-          targetRelPath,
-          this.yamlConfig,
-          this.systemInfo
-        );
+        const result = await this.processSymlink(toolConfig, symlinkConfig, toolFs, options, logger);
+        results.push(result);
+      }
+    }
 
-        logger.debug(
-          logs.symlink.debug.processingSymlink(),
-          sourceRelPath,
-          sourceAbsPath,
-          targetRelPath,
-          targetAbsPath
-        );
-
-        let currentStatus: SymlinkOperationResult['status'] = 'created'; // Optimistic default
-        let currentError: string | undefined;
-
-        if (!(await toolFs.exists(sourceAbsPath))) {
-          currentStatus = 'skipped_source_missing';
-          logger.warn(logs.fs.warning.notFound('Source file', sourceAbsPath));
-          results.push({
-            sourcePath: sourceAbsPath,
-            targetPath: targetAbsPath,
-            status: currentStatus,
-          });
-          continue;
-        }
-
-        const targetExists = await toolFs.exists(targetAbsPath);
-        const targetIsDir = targetExists ? (await toolFs.stat(targetAbsPath)).isDirectory() : false;
-
-        if (targetExists) {
-          logger.debug(logs.symlink.debug.targetExists(), targetAbsPath);
-
-          // Check if target is already a symlink pointing to the correct source
-          try {
-            const targetStat = await toolFs.lstat(targetAbsPath);
-            if (targetStat.isSymbolicLink()) {
-              const currentTarget = await toolFs.readlink(targetAbsPath);
-              // Resolve both paths to handle relative vs absolute comparisons
-              const resolvedCurrentTarget = path.resolve(path.dirname(targetAbsPath), currentTarget);
-              const resolvedSourcePath = path.resolve(sourceAbsPath);
-
-              if (resolvedCurrentTarget === resolvedSourcePath) {
-                // Symlink already points to correct target, skip
-                currentStatus = 'skipped_correct';
-                results.push({
-                  sourcePath: sourceAbsPath,
-                  targetPath: targetAbsPath,
-                  status: currentStatus,
-                });
-                continue;
-              }
-            }
-          } catch (_error) {
-            // If we can't check the symlink, proceed with normal logic
-          }
-
-          if (!overwrite) {
-            currentStatus = 'skipped_exists';
-            logger.debug(logs.symlink.debug.skipTargetExists(), targetAbsPath);
-            results.push({
-              sourcePath: sourceAbsPath,
-              targetPath: targetAbsPath,
-              status: currentStatus,
-            });
-            continue;
-          }
-
-          // Overwrite is true
-          currentStatus = 'updated_target'; // Tentative status
-          if (backup) {
-            const backupPath = `${targetAbsPath}.bak`;
-            // Backup behavior determined by IFileSystem
-            try {
-              if (await toolFs.exists(backupPath)) {
-                await toolFs.rm(backupPath, { recursive: true, force: true });
-              }
-              await toolFs.rename(targetAbsPath, backupPath);
-              currentStatus = 'backed_up';
-            } catch (e: unknown) {
-              currentStatus = 'failed';
-              const errorMsg = logs.fs.error.writeFailed(`backup of ${targetAbsPath}`, (e as Error).message);
-              currentError = errorMsg;
-              logger.error(errorMsg);
-            }
-          }
-
-          if (currentStatus !== 'failed' && currentStatus !== 'backed_up') {
-            // Only delete if we didn't back up (backup already moved the file)
-            try {
-              if (targetIsDir) {
-                await toolFs.rm(targetAbsPath, { recursive: true, force: true });
-              } else {
-                await toolFs.rm(targetAbsPath, { force: true });
-              }
-              // Status remains 'updated_target'
-            } catch (e: unknown) {
-              currentStatus = 'failed';
-              const errorMsg = logs.fs.error.deleteFailed(targetAbsPath, (e as Error).message);
-              currentError = errorMsg;
-              logger.error(errorMsg);
-            }
-          }
-        } // End if (targetExists && overwrite)
-
-        if (currentStatus === 'failed') {
-          results.push({
-            sourcePath: sourceAbsPath,
-            targetPath: targetAbsPath,
-            status: currentStatus,
-            error: currentError,
-          });
-          continue;
-        }
-
-        const targetDir = path.dirname(targetAbsPath);
-        // ensureDir behavior determined by IFileSystem
-        try {
-          await toolFs.ensureDir(targetDir);
-        } catch (e: unknown) {
-          currentStatus = 'failed';
-          const errorMsg = logs.fs.error.directoryCreateFailed(targetDir, (e as Error).message);
-          currentError = errorMsg;
-          logger.error(errorMsg);
-        }
-
-        if (currentStatus !== 'failed') {
-          // Symlink creation behavior determined by IFileSystem
-          try {
-            await toolFs.symlink(sourceAbsPath, targetAbsPath);
-            // currentStatus is already 'created', 'updated_target', or 'backed_up'
-          } catch (e: unknown) {
-            currentStatus = 'failed';
-            const errorMsg = logs.fs.error.symlinkFailed(sourceAbsPath, targetAbsPath, (e as Error).message);
-            currentError = errorMsg;
-            logger.error(errorMsg);
-          }
-        }
-        results.push({
-          sourcePath: sourceAbsPath,
-          targetPath: targetAbsPath,
-          status: currentStatus,
-          error: currentError,
-        });
-      } // End for symlinkConfig
-    } // End for toolName
     logger.debug(logs.symlink.debug.generationComplete(), results);
     return results;
+  }
+
+  private shouldProcessTool(
+    toolConfig: ToolConfig | undefined,
+    toolName: string,
+    logger: TsLogger
+  ): toolConfig is ToolConfig & { symlinks: NonNullable<ToolConfig['symlinks']> } {
+    if (!toolConfig) {
+      logger.debug(logs.symlink.debug.toolConfigUndefined(), toolName);
+      return false;
+    }
+    if (!toolConfig.symlinks || toolConfig.symlinks.length === 0) {
+      logger.debug(logs.symlink.debug.noSymlinks(), toolName);
+      return false;
+    }
+    return true;
+  }
+
+  private async processSymlink(
+    toolConfig: ToolConfig,
+    symlinkConfig: { source: string; target: string },
+    toolFs: IFileSystem,
+    options: GenerateSymlinksOptions,
+    logger: TsLogger
+  ): Promise<SymlinkOperationResult> {
+    const { overwrite = false, backup = false } = options;
+    const sourceAbsPath = expandToolConfigPath(
+      toolConfig.configFilePath,
+      symlinkConfig.source,
+      this.yamlConfig,
+      this.systemInfo
+    );
+    const targetAbsPath = expandToolConfigPath(
+      toolConfig.configFilePath,
+      symlinkConfig.target,
+      this.yamlConfig,
+      this.systemInfo
+    );
+
+    logger.debug(
+      logs.symlink.debug.processingSymlink(),
+      symlinkConfig.source,
+      sourceAbsPath,
+      symlinkConfig.target,
+      targetAbsPath
+    );
+
+    if (!(await toolFs.exists(sourceAbsPath))) {
+      logger.warn(logs.fs.warning.notFound('Source file', sourceAbsPath));
+      return {
+        sourcePath: sourceAbsPath,
+        targetPath: targetAbsPath,
+        status: 'skipped_source_missing',
+      };
+    }
+
+    const targetHandlingResult = await this.handleExistingTarget(
+      sourceAbsPath,
+      targetAbsPath,
+      toolFs,
+      { overwrite, backup },
+      logger
+    );
+
+    if (targetHandlingResult.shouldSkip) {
+      return {
+        sourcePath: sourceAbsPath,
+        targetPath: targetAbsPath,
+        status: targetHandlingResult.status,
+        error: targetHandlingResult.error,
+      };
+    }
+
+    return await this.createSymlink(sourceAbsPath, targetAbsPath, toolFs, targetHandlingResult.status, logger);
+  }
+
+  private async handleExistingTarget(
+    sourceAbsPath: string,
+    targetAbsPath: string,
+    toolFs: IFileSystem,
+    options: { overwrite: boolean; backup: boolean },
+    logger: TsLogger
+  ): Promise<{ shouldSkip: boolean; status: SymlinkOperationResult['status']; error?: string }> {
+    const targetExists = await toolFs.exists(targetAbsPath);
+
+    if (!targetExists) {
+      return { shouldSkip: false, status: 'created' };
+    }
+
+    logger.debug(logs.symlink.debug.targetExists(), targetAbsPath);
+
+    const correctSymlinkResult = await this.checkCorrectSymlink(sourceAbsPath, targetAbsPath, toolFs);
+    if (correctSymlinkResult.isCorrect) {
+      return { shouldSkip: true, status: 'skipped_correct' };
+    }
+
+    if (!options.overwrite) {
+      logger.debug(logs.symlink.debug.skipTargetExists(), targetAbsPath);
+      return { shouldSkip: true, status: 'skipped_exists' };
+    }
+
+    return await this.handleOverwrite(targetAbsPath, toolFs, options.backup, logger);
+  }
+
+  private async checkCorrectSymlink(
+    sourceAbsPath: string,
+    targetAbsPath: string,
+    toolFs: IFileSystem
+  ): Promise<{ isCorrect: boolean }> {
+    try {
+      const targetStat = await toolFs.lstat(targetAbsPath);
+      if (targetStat.isSymbolicLink()) {
+        const currentTarget = await toolFs.readlink(targetAbsPath);
+        const resolvedCurrentTarget = path.resolve(path.dirname(targetAbsPath), currentTarget);
+        const resolvedSourcePath = path.resolve(sourceAbsPath);
+        return { isCorrect: resolvedCurrentTarget === resolvedSourcePath };
+      }
+    } catch {
+      // If we can't check the symlink, proceed with normal logic
+    }
+    return { isCorrect: false };
+  }
+
+  private async handleOverwrite(
+    targetAbsPath: string,
+    toolFs: IFileSystem,
+    backup: boolean,
+    logger: TsLogger
+  ): Promise<{ shouldSkip: boolean; status: SymlinkOperationResult['status']; error?: string }> {
+    let status: SymlinkOperationResult['status'] = 'updated_target';
+
+    if (backup) {
+      const backupResult = await this.createBackup(targetAbsPath, toolFs, logger);
+      if (backupResult.failed) {
+        return { shouldSkip: true, status: 'failed', error: backupResult.error };
+      }
+      status = 'backed_up';
+    } else {
+      const deleteResult = await this.deleteTarget(targetAbsPath, toolFs, logger);
+      if (deleteResult.failed) {
+        return { shouldSkip: true, status: 'failed', error: deleteResult.error };
+      }
+    }
+
+    return { shouldSkip: false, status };
+  }
+
+  private async createBackup(
+    targetAbsPath: string,
+    toolFs: IFileSystem,
+    logger: TsLogger
+  ): Promise<{ failed: boolean; error?: string }> {
+    const backupPath = `${targetAbsPath}.bak`;
+    try {
+      if (await toolFs.exists(backupPath)) {
+        await toolFs.rm(backupPath, { recursive: true, force: true });
+      }
+      await toolFs.rename(targetAbsPath, backupPath);
+      return { failed: false };
+    } catch (error) {
+      const errorMsg = logs.fs.error.writeFailed(`backup of ${targetAbsPath}`, (error as Error).message);
+      logger.error(errorMsg);
+      return { failed: true, error: errorMsg };
+    }
+  }
+
+  private async deleteTarget(
+    targetAbsPath: string,
+    toolFs: IFileSystem,
+    logger: TsLogger
+  ): Promise<{ failed: boolean; error?: string }> {
+    try {
+      const targetStat = await toolFs.stat(targetAbsPath);
+      const isDirectory = targetStat.isDirectory();
+
+      if (isDirectory) {
+        await toolFs.rm(targetAbsPath, { recursive: true, force: true });
+      } else {
+        await toolFs.rm(targetAbsPath, { force: true });
+      }
+      return { failed: false };
+    } catch (error) {
+      const errorMsg = logs.fs.error.deleteFailed(targetAbsPath, (error as Error).message);
+      logger.error(errorMsg);
+      return { failed: true, error: errorMsg };
+    }
+  }
+
+  private async createSymlink(
+    sourceAbsPath: string,
+    targetAbsPath: string,
+    toolFs: IFileSystem,
+    status: SymlinkOperationResult['status'],
+    logger: TsLogger
+  ): Promise<SymlinkOperationResult> {
+    const targetDir = path.dirname(targetAbsPath);
+
+    try {
+      await toolFs.ensureDir(targetDir);
+    } catch (error) {
+      const errorMsg = logs.fs.error.directoryCreateFailed(targetDir, (error as Error).message);
+      logger.error(errorMsg);
+      return {
+        sourcePath: sourceAbsPath,
+        targetPath: targetAbsPath,
+        status: 'failed',
+        error: errorMsg,
+      };
+    }
+
+    try {
+      await toolFs.symlink(sourceAbsPath, targetAbsPath);
+      return {
+        sourcePath: sourceAbsPath,
+        targetPath: targetAbsPath,
+        status,
+      };
+    } catch (error) {
+      const errorMsg = logs.fs.error.symlinkFailed(sourceAbsPath, targetAbsPath, (error as Error).message);
+      logger.error(errorMsg);
+      return {
+        sourcePath: sourceAbsPath,
+        targetPath: targetAbsPath,
+        status: 'failed',
+        error: errorMsg,
+      };
+    }
   }
 }

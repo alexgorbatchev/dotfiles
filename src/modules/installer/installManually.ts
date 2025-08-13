@@ -18,9 +18,7 @@ export async function installManually(
   fs: IFileSystem,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
-  // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
   const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
-
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
   logger.debug(logs.installer.debug.installingManually(), toolName);
 
@@ -32,59 +30,62 @@ export async function installManually(
   }
 
   const params = toolConfig.installParams;
-  const rawBinaryPath = params.binaryPath as string;
   const binaryPath = expandToolConfigPath(
     toolConfig.configFilePath,
-    rawBinaryPath,
+    params.binaryPath as string,
     context.appConfig,
     context.systemInfo
   );
 
   try {
-    // Check if the binary exists
-    if (await toolFs.exists(binaryPath)) {
-      // Handle all binaries by creating symlinks or copies to versioned directory
-      const binaryNames = toolConfig.binaries || [toolName];
-      for (const binaryName of binaryNames) {
-        const finalBinaryPath = path.join(context.installDir, binaryName);
-
-        // For manual installation, we create a symlink to the original binary
-        // or copy it if the original path is specific to this binary
-        if (binaryName === toolName || binaryNames.length === 1) {
-          // Use the provided binaryPath for the primary binary or if only one binary
-          await toolFs.ensureDir(path.dirname(finalBinaryPath));
-          await toolFs.copyFile(binaryPath, finalBinaryPath);
-          await toolFs.chmod(finalBinaryPath, 0o755);
-        } else {
-          // For additional binaries, they would need to be specified separately
-          // This is a limitation of the current manual installation approach
-          logger.debug(logs.installer.debug.manualMultipleBinariesNotSupported(), binaryName);
-        }
-      }
-
-      // Return path to first binary for compatibility
-      const primaryBinary = toolConfig.binaries?.[0] || toolName;
-      const primaryBinaryPath = path.join(context.installDir, primaryBinary);
-
-      return {
-        success: true,
-        binaryPath: primaryBinaryPath,
-        info: {
-          manualInstall: true,
-          originalPath: binaryPath,
-        },
-      };
-    } else {
+    if (!(await toolFs.exists(binaryPath))) {
       return {
         success: false,
         error: `Binary not found at ${binaryPath}`,
       };
     }
+
+    await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
+
+    const primaryBinary = toolConfig.binaries?.[0] || toolName;
+    const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+
+    return {
+      success: true,
+      binaryPath: primaryBinaryPath,
+      info: {
+        manualInstall: true,
+        originalPath: binaryPath,
+      },
+    };
   } catch (error) {
     logger.error(logs.tool.error.installFailed('manual', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+async function installBinariesManually(
+  toolConfig: ManualToolConfig,
+  toolName: string,
+  context: BaseInstallContext,
+  toolFs: IFileSystem,
+  binaryPath: string,
+  logger: TsLogger
+): Promise<void> {
+  const binaryNames = toolConfig.binaries || [toolName];
+
+  for (const binaryName of binaryNames) {
+    const finalBinaryPath = path.join(context.installDir, binaryName);
+
+    if (binaryName === toolName || binaryNames.length === 1) {
+      await toolFs.ensureDir(path.dirname(finalBinaryPath));
+      await toolFs.copyFile(binaryPath, finalBinaryPath);
+      await toolFs.chmod(finalBinaryPath, 0o755);
+    } else {
+      logger.debug(logs.installer.debug.manualMultipleBinariesNotSupported(), binaryName);
+    }
   }
 }

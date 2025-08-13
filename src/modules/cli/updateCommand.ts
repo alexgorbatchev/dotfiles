@@ -232,7 +232,13 @@ export function registerUpdateCommand(
           return;
         }
 
-        const toolConfig = toolConfigResult.toolConfig!;
+        if (!toolConfigResult.toolConfig) {
+          logger.error(logs.tool.error.notFound(toolName, yamlConfig.paths.toolConfigsDir));
+          exitCli(ExitCode.ERROR);
+          return;
+        }
+
+        const toolConfig = toolConfigResult.toolConfig;
 
         if (!combinedOptions.shimMode) {
           logger.info(logs.general.success.checkingUpdatesFor(toolName));

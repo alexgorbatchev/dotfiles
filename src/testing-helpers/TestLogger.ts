@@ -43,36 +43,51 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
         return false;
       }
 
-      const levelMatch = levels.includes('*') || levels.includes(meta.logLevelName as LogLevel);
-      if (!levelMatch) {
+      if (!this.isLevelMatch(levels, meta)) {
         return false;
       }
 
-      const logPath = [...(meta.parentNames ?? []), meta.name].filter((p) => typeof p === 'string' && p.length > 0);
-
-      if (logPath.length !== path.length) {
+      if (!this.isPathMatch(path, meta)) {
         return false;
       }
 
-      if (!path.every((part, i) => part === logPath[i])) {
-        return false;
-      }
-
-      if (matcher === undefined) {
-        return true;
-      }
-
-      const firstArg = log[0] as unknown;
-      if (typeof firstArg === 'string' && typeof matcher === 'string') {
-        return firstArg.includes(matcher);
-      }
-
-      if (typeof firstArg === 'string' && matcher instanceof RegExp) {
-        return matcher.test(firstArg);
-      }
-
-      return false;
+      return this.isMatcherMatch(log, matcher);
     });
+  }
+
+  private isLevelMatch(levels: LogLevel[], meta: ILogObjMeta['_meta']): boolean {
+    return levels.includes('*') || levels.includes(meta.logLevelName as LogLevel);
+  }
+
+  private isPathMatch(path: string[], meta: ILogObjMeta['_meta']): boolean {
+    const logPath = [...(meta.parentNames ?? []), meta.name].filter((p) => typeof p === 'string' && p.length > 0);
+
+    if (logPath.length !== path.length) {
+      return false;
+    }
+
+    return path.every((part, i) => part === logPath[i]);
+  }
+
+  private isMatcherMatch(log: ILogObjMeta, matcher?: string | RegExp): boolean {
+    if (matcher === undefined) {
+      return true;
+    }
+
+    const firstArg = log[0] as unknown;
+    if (typeof firstArg !== 'string') {
+      return false;
+    }
+
+    if (typeof matcher === 'string') {
+      return firstArg.includes(matcher);
+    }
+
+    if (matcher instanceof RegExp) {
+      return matcher.test(firstArg);
+    }
+
+    return false;
   }
 
   printLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): void {
@@ -86,41 +101,58 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
   expect(levels: LogLevel[], path: string[], matchers: (string | RegExp)[]): void {
     const logs = this.getLogs(levels, path);
 
-    const fail = () => {
-      const results: string[] = ['Expected logs:'];
-      for (const matcher of matchers) {
-        results.push(`  - ${matcher}`);
-      }
-      results.push(`Actual logs:`);
-      for (const log of logs) {
-        results.push(`  - ${formatLogMessage(log)}`);
-      }
-
-      bunExpect().fail(results.join('\n'));
-    };
-
     if (logs.length < matchers.length) {
-      fail();
+      this.failExpectation(logs, matchers);
     }
 
+    this.validateMatchers(logs, matchers);
+  }
+
+  private failExpectation(logs: ILogObjMeta[], matchers: (string | RegExp)[]): never {
+    const results: string[] = ['Expected logs:'];
+    for (const matcher of matchers) {
+      results.push(`  - ${matcher}`);
+    }
+    results.push(`Actual logs:`);
+    for (const log of logs) {
+      results.push(`  - ${formatLogMessage(log)}`);
+    }
+
+    bunExpect().fail(results.join('\n'));
+    throw new Error('Test failed'); // This line will never be reached but satisfies TypeScript
+  }
+
+  private validateMatchers(logs: ILogObjMeta[], matchers: (string | RegExp)[]): void {
     for (let i = 0; i < matchers.length; i++) {
       const log = logs[i];
+      const matcher = matchers[i];
 
-      if (typeof log === 'undefined') {
-        fail();
-      } else {
-        const logMessage = formatLogMessage(log);
-        const matcher = matchers[i];
+      if (!log) {
+        this.failExpectation(logs, matchers);
+        return; // This will never be reached but satisfies TypeScript
+      }
 
-        if (typeof logMessage === 'undefined') {
-          fail();
-        } else if (typeof matcher === 'string') {
-          if (!logMessage.includes(matcher)) fail();
-        } else if (matcher instanceof RegExp) {
-          if (!matcher.test(logMessage)) fail();
-        }
+      const logMessage = formatLogMessage(log);
+      if (!logMessage) {
+        this.failExpectation(logs, matchers);
+        return; // This will never be reached but satisfies TypeScript
+      }
+
+      if (matcher && !this.isMessageMatch(logMessage, matcher)) {
+        this.failExpectation(logs, matchers);
+        return; // This will never be reached but satisfies TypeScript
       }
     }
+  }
+
+  private isMessageMatch(logMessage: string, matcher: string | RegExp): boolean {
+    if (typeof matcher === 'string') {
+      return logMessage.includes(matcher);
+    }
+    if (matcher instanceof RegExp) {
+      return matcher.test(logMessage);
+    }
+    return false;
   }
 }
 

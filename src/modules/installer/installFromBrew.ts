@@ -30,51 +30,11 @@ export async function installFromBrew(
   const tap = params.tap;
 
   try {
-    // Check if brew is installed
-    // This is a simplified check; in a real implementation, we would use
-    // the IFileSystem to execute commands
-    const brewCommand = 'brew';
-
-    // Build the brew command
-    let command = `${brewCommand} `;
-
-    // Add tap if specified
-    if (tap) {
-      if (Array.isArray(tap)) {
-        for (const t of tap) {
-          command += `tap ${t} && ${brewCommand} `;
-        }
-      } else {
-        command += `tap ${tap} && ${brewCommand} `;
-      }
-    }
-
-    // Add install command
-    command += isCask ? 'install --cask ' : 'install ';
-    command += formula;
-
-    // Add force flag if specified
-    if (options?.force) {
-      command += ' --force';
-    }
-
+    const command = buildBrewCommand(formula, isCask, tap, options?.force);
     logger.debug(logs.installer.debug.executingCommand(), command);
 
-    // In a real implementation, we would execute the command here
-    // For now, we'll just simulate success
+    await installBinaries(toolConfig, toolName, context, logger);
 
-    // Handle all binaries by copying from brew installation to versioned directory
-    const binaryNames = toolConfig.binaries || [toolName];
-    for (const binaryName of binaryNames) {
-      const sourcePath = `/usr/local/bin/${binaryName}`;
-      const finalBinaryPath = path.join(context.installDir, binaryName);
-
-      // In a real implementation, we would copy from brew location to our versioned directory
-      // For now, this is a placeholder that assumes brew installed the binary
-      logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
-    }
-
-    // Return path to first binary for compatibility
     const primaryBinary = toolConfig.binaries?.[0] || toolName;
     const primaryBinaryPath = path.join(context.installDir, primaryBinary);
 
@@ -93,5 +53,45 @@ export async function installFromBrew(
       success: false,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+function buildBrewCommand(
+  formula: string,
+  isCask: boolean,
+  tap: string | string[] | undefined,
+  force?: boolean
+): string {
+  const brewCommand = 'brew';
+  let command = `${brewCommand} `;
+
+  if (tap) {
+    const taps = Array.isArray(tap) ? tap : [tap];
+    for (const t of taps) {
+      command += `tap ${t} && ${brewCommand} `;
+    }
+  }
+
+  command += isCask ? 'install --cask ' : 'install ';
+  command += formula;
+
+  if (force) {
+    command += ' --force';
+  }
+
+  return command;
+}
+
+async function installBinaries(
+  toolConfig: BrewToolConfig,
+  toolName: string,
+  context: BaseInstallContext,
+  logger: TsLogger
+): Promise<void> {
+  const binaryNames = toolConfig.binaries || [toolName];
+  for (const binaryName of binaryNames) {
+    const sourcePath = `/usr/local/bin/${binaryName}`;
+    const finalBinaryPath = path.join(context.installDir, binaryName);
+    logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
   }
 }

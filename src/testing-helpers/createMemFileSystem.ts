@@ -88,7 +88,26 @@ export async function createMemFileSystem(options: MemFileSystemOptions = {}): P
   const { initialVolumeJson, initialSymlinks, ...mocks } = options;
   const memFs = new MemFileSystem(initialVolumeJson);
 
-  const spies: FileSystemSpies = {
+  const spies = createFileSystemSpies(memFs, mocks);
+  const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem };
+
+  const addSymlinks = createSymlinkAdder(spies);
+  const addFiles = createFileAdder(spies);
+
+  if (initialSymlinks) {
+    await addSymlinks(initialSymlinks);
+  }
+
+  return {
+    fs,
+    spies,
+    addFiles,
+    addSymlinks,
+  };
+}
+
+function createFileSystemSpies(memFs: MemFileSystem, mocks: Partial<IFileSystem>): FileSystemSpies {
+  return {
     ensureDir: mock(mocks.ensureDir ?? memFs.ensureDir.bind(memFs)),
     chmod: mock(mocks.chmod ?? memFs.chmod.bind(memFs)),
     exists: mock(mocks.exists ?? memFs.exists.bind(memFs)),
@@ -105,32 +124,22 @@ export async function createMemFileSystem(options: MemFileSystemOptions = {}): P
     rename: mock(mocks.rename ?? memFs.rename.bind(memFs)),
     rmdir: mock(mocks.rmdir ?? memFs.rmdir.bind(memFs)),
   };
+}
 
-  const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem };
-
-  const addSymlinks = async (symlinks: Record<string, string>) => {
-    // ln -s [realFile:source] [symlinkPath:target]
+function createSymlinkAdder(spies: FileSystemSpies) {
+  return async (symlinks: Record<string, string>) => {
     for (const [target, source] of Object.entries(symlinks)) {
       await spies.ensureDir(path.dirname(source));
       await spies.symlink(target, source);
     }
   };
+}
 
-  const addFiles = async (files: Record<string, string>) => {
+function createFileAdder(spies: FileSystemSpies) {
+  return async (files: Record<string, string>) => {
     for (const [filePath, contents] of Object.entries(files)) {
       await spies.ensureDir(path.dirname(filePath));
       await spies.writeFile(filePath, contents);
     }
-  };
-
-  if (initialSymlinks) {
-    await addSymlinks(initialSymlinks);
-  }
-
-  return {
-    fs,
-    spies,
-    addFiles,
-    addSymlinks,
   };
 }

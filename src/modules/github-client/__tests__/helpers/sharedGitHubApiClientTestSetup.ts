@@ -98,6 +98,79 @@ export const setupMockGitHubApiClient = async (configOverrides: PartialYamlConfi
   };
 };
 
+// Helper function to check if any GitHub config is provided
+function hasGitHubConfig({
+  githubToken,
+  githubHost,
+  githubClientUserAgent,
+  githubApiCacheEnabled,
+  githubApiCacheTtl,
+}: {
+  githubToken?: string;
+  githubHost?: string;
+  githubClientUserAgent?: string;
+  githubApiCacheEnabled?: boolean;
+  githubApiCacheTtl?: number;
+}): boolean {
+  return (
+    githubToken !== undefined ||
+    githubHost !== undefined ||
+    githubClientUserAgent !== undefined ||
+    githubApiCacheEnabled !== undefined ||
+    githubApiCacheTtl !== undefined
+  );
+}
+
+// Helper function to set basic GitHub config properties
+function setBasicGitHubConfig(
+  config: NonNullable<PartialYamlConfig['github']>,
+  {
+    githubToken,
+    githubHost,
+    githubClientUserAgent,
+  }: {
+    githubToken?: string;
+    githubHost?: string;
+    githubClientUserAgent?: string;
+  }
+): void {
+  if (githubToken !== undefined) {
+    config.token = githubToken;
+  }
+  if (githubHost !== undefined) {
+    config.host = githubHost;
+  }
+  if (githubClientUserAgent !== undefined) {
+    config.userAgent = githubClientUserAgent;
+  }
+}
+
+// Helper function to set GitHub cache config
+function setGitHubCacheConfig(
+  config: NonNullable<PartialYamlConfig['github']>,
+  {
+    githubApiCacheEnabled,
+    githubApiCacheTtl,
+  }: {
+    githubApiCacheEnabled?: boolean;
+    githubApiCacheTtl?: number;
+  }
+): void {
+  if (githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
+    config.cache = {
+      enabled: true,
+      ttl: 3600000,
+    };
+
+    if (githubApiCacheEnabled !== undefined) {
+      config.cache.enabled = githubApiCacheEnabled;
+    }
+    if (githubApiCacheTtl !== undefined) {
+      config.cache.ttl = githubApiCacheTtl;
+    }
+  }
+}
+
 /**
  * Helper function to create GitHub-specific config overrides
  * for backward compatibility with test files still using the old AppConfig structure
@@ -117,42 +190,18 @@ export const createGitHubConfigOverride = ({
 } = {}): PartialYamlConfig => {
   const overrides: PartialYamlConfig = {};
 
-  if (
-    githubToken !== undefined ||
-    githubHost !== undefined ||
-    githubClientUserAgent !== undefined ||
-    githubApiCacheEnabled !== undefined ||
-    githubApiCacheTtl !== undefined
-  ) {
+  const params = {
+    githubToken,
+    githubHost,
+    githubClientUserAgent,
+    githubApiCacheEnabled,
+    githubApiCacheTtl,
+  };
+
+  if (hasGitHubConfig(params)) {
     overrides.github = {};
-
-    if (githubToken !== undefined) {
-      overrides.github.token = githubToken;
-    }
-
-    if (githubHost !== undefined) {
-      overrides.github.host = githubHost;
-    }
-
-    if (githubClientUserAgent !== undefined) {
-      overrides.github.userAgent = githubClientUserAgent;
-    }
-
-    if (githubApiCacheEnabled !== undefined || githubApiCacheTtl !== undefined) {
-      // Initialize with default values from the schema
-      overrides.github.cache = {
-        enabled: true,
-        ttl: 3600000,
-      };
-
-      if (githubApiCacheEnabled !== undefined) {
-        overrides.github.cache.enabled = githubApiCacheEnabled;
-      }
-
-      if (githubApiCacheTtl !== undefined) {
-        overrides.github.cache.ttl = githubApiCacheTtl;
-      }
-    }
+    setBasicGitHubConfig(overrides.github, params);
+    setGitHubCacheConfig(overrides.github, params);
   }
 
   return overrides;

@@ -16,6 +16,40 @@ import type { GeneratedArtifactsManifest, SystemInfo, ToolConfig } from '@types'
 import { always, Platform } from '@types';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
+// Helper function to generate platform-specific content
+function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, systemInfo: SystemInfo): string {
+  let content = '';
+
+  for (const [toolName, config] of Object.entries(toolConfigs)) {
+    if (config.platformConfigs) {
+      for (const platformConfig of config.platformConfigs) {
+        const isMatch =
+          (platformConfig.platforms & Platform.MacOS && systemInfo.platform === 'darwin') ||
+          (platformConfig.platforms & Platform.Linux && systemInfo.platform === 'linux');
+
+        if (isMatch && platformConfig.config.shellConfigs?.zsh?.scripts) {
+          content += `# Platform-specific content for ${toolName}: ${platformConfig.config.shellConfigs.zsh.scripts.join(' ')}\n`;
+        }
+      }
+    }
+  }
+
+  return content;
+}
+
+// Helper function to create mock shell content
+function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemInfo?: SystemInfo): string {
+  let mockContent = '# Generated shell init\n';
+
+  if (systemInfo) {
+    mockContent += `# Platform: ${systemInfo.platform}\n`;
+    mockContent += `# Arch: ${systemInfo.arch}\n`;
+    mockContent += generatePlatformContent(toolConfigs, systemInfo);
+  }
+
+  return mockContent;
+}
+
 describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let mockFileSystem: IFileSystem;
   let mockAppConfig: YamlConfig;
@@ -66,34 +100,13 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
 
     mockShellInitGenerator = {
       generate: async (toolConfigs, options) => {
-        // Mock shell generator that checks if systemInfo was passed
         const shellFilePath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
         const mockResult: ShellInitGenerationResult = {
           files: new Map([['zsh', shellFilePath]]),
           primaryPath: shellFilePath,
         };
 
-        // Write mock content that includes platform info for verification
-        let mockContent = '# Generated shell init\n';
-        if (options?.systemInfo) {
-          mockContent += `# Platform: ${options.systemInfo.platform}\n`;
-          mockContent += `# Arch: ${options.systemInfo.arch}\n`;
-
-          // Check if any tools have platform configs for this system
-          for (const [toolName, config] of Object.entries(toolConfigs)) {
-            if (config.platformConfigs) {
-              for (const platformConfig of config.platformConfigs) {
-                const isMatch =
-                  (platformConfig.platforms & Platform.MacOS && options.systemInfo.platform === 'darwin') ||
-                  (platformConfig.platforms & Platform.Linux && options.systemInfo.platform === 'linux');
-
-                if (isMatch && platformConfig.config.shellConfigs?.zsh?.scripts) {
-                  mockContent += `# Platform-specific content for ${toolName}: ${platformConfig.config.shellConfigs.zsh.scripts.join(' ')}\n`;
-                }
-              }
-            }
-          }
-        }
+        const mockContent = createMockShellContent(toolConfigs, options?.systemInfo);
 
         await mockFileSystem.ensureDir(testDirs.paths.shellScriptsDir);
         await mockFileSystem.writeFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'), mockContent);

@@ -467,8 +467,11 @@ describe('HookExecutor', () => {
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
-      logger.expect(['DEBUG'], ['HookExecutor'], [/Executing testHook hook with \d+ms timeout/]);
-      logger.expect(['DEBUG'], ['HookExecutor'], [expect.stringContaining('Hook testHook completed successfully in')]);
+      logger.expect(
+        ['DEBUG'],
+        ['HookExecutor'],
+        [/Executing testHook hook with \d+ms timeout/, 'Hook testHook completed successfully in']
+      );
     });
 
     it('should log errors when hooks fail', async () => {

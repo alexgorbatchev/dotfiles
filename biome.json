@@ -14,7 +14,8 @@
       "!**/node_modules/**",
       "!**/tmp/**",
       "!**/*.snap",
-      "!**/bun.lock"
+      "!**/bun.lock",
+      "!**/bun-test-runner.ts"
     ]
   },
   "formatter": {
@@ -71,6 +72,9 @@
       "includes": ["**/*.test.ts", "**/__tests__/**/*.ts"],
       "linter": {
         "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
           "style": {
             "noNonNullAssertion": "off"
           },

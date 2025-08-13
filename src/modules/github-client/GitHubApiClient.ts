@@ -112,23 +112,43 @@ export class GitHubApiClient implements IGitHubApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const cacheKey = this.generateCacheKey(endpoint, method);
 
-    // Check cache first if enabled and it's a GET request
-    if (this.cache && this.cacheEnabled && method === 'GET') {
-      try {
-        const cachedData = await this.cache.get<T>(cacheKey);
-        if (cachedData) {
-          this.logger.debug(logs.githubClient.debug.cacheHit(), method, url);
-          return cachedData;
-        }
-        this.logger.debug(logs.githubClient.debug.cacheMiss(), method, url);
-      } catch (error) {
-        // Log cache error but continue with the request
-        this.logger.debug(logs.githubClient.debug.cacheError(), method, url, (error as Error).message);
-      }
+    const cachedResult = await this.tryGetFromCache<T>(cacheKey, method, url);
+    if (cachedResult) {
+      return cachedResult;
     }
 
     this.logger.debug(logs.githubClient.debug.makingRequest(), method, url);
+    const headers = this.buildRequestHeaders();
 
+    try {
+      const data = await this.performRequest<T>(url, headers);
+      await this.tryCacheResponse(cacheKey, data, method, url);
+      return data;
+    } catch (error) {
+      return this.handleRequestError(error, url);
+    }
+  }
+
+  private async tryGetFromCache<T>(cacheKey: string, method: string, url: string): Promise<T | null> {
+    if (!this.cache || !this.cacheEnabled || method !== 'GET') {
+      return null;
+    }
+
+    try {
+      const cachedData = await this.cache.get<T>(cacheKey);
+      if (cachedData) {
+        this.logger.debug(logs.githubClient.debug.cacheHit(), method, url);
+        return cachedData;
+      }
+      this.logger.debug(logs.githubClient.debug.cacheMiss(), method, url);
+    } catch (error) {
+      this.logger.debug(logs.githubClient.debug.cacheError(), method, url, (error as Error).message);
+    }
+
+    return null;
+  }
+
+  private buildRequestHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': this.userAgent,
@@ -138,93 +158,122 @@ export class GitHubApiClient implements IGitHubApiClient {
       headers['Authorization'] = `token ${this.githubToken}`;
     }
 
-    try {
-      const responseBuffer = await this.downloader.download(url, { headers });
-      if (!responseBuffer || responseBuffer.length === 0) {
-        this.logger.debug(logs.githubClient.debug.emptyResponse(), url);
-        // This case might indicate a successful download of an empty file,
-        // or an issue with the downloader not throwing an error for an empty response
-        // when it should have. For API calls, an empty buffer is usually an error.
-        throw new NetworkError(this.logger, 'Empty response received from API', url);
-      }
-      const responseText = responseBuffer.toString('utf-8');
-      const data = JSON.parse(responseText) as T;
+    return headers;
+  }
 
-      // Cache the response if enabled and it's a GET request
-      if (this.cache && this.cacheEnabled && method === 'GET') {
-        try {
-          await this.cache.set<T>(cacheKey, data, this.cacheTtlMs);
-          this.logger.debug(logs.githubClient.debug.cachedResponse(), method, url);
-        } catch (error) {
-          // Log cache error but don't fail the request
-          this.logger.debug(logs.githubClient.debug.cacheStoreError(), method, url, (error as Error).message);
-        }
-      }
-
-      return data;
-    } catch (error) {
-      this.logger.debug(logs.githubClient.debug.requestError(), url, error);
-
-      if (error instanceof NotFoundError) {
-        this.logger.debug(logs.githubClient.debug.notFound(), url, error.responseBody);
-        throw new Error(`GitHub resource not found: ${url}. Status: ${error.statusCode}`);
-      }
-      if (error instanceof RateLimitError) {
-        const resetTime = error.resetTimestamp ? new Date(error.resetTimestamp).toISOString() : 'N/A';
-        this.logger.debug(logs.githubClient.debug.rateLimitError(), url, resetTime, error.responseBody);
-        throw new GitHubApiClientError(
-          `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`,
-          error.statusCode,
-          error
-        );
-      }
-      if (error instanceof ForbiddenError) {
-        this.logger.debug(logs.githubClient.debug.forbidden(), url, error.responseBody);
-        throw new GitHubApiClientError(
-          `GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`,
-          error.statusCode,
-          error
-        );
-      }
-      if (error instanceof ClientError) {
-        this.logger.debug(logs.githubClient.debug.clientError(), url, error.statusCode, error.responseBody);
-        throw new GitHubApiClientError(
-          `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
-          error.statusCode,
-          error
-        );
-      }
-      if (error instanceof ServerError) {
-        this.logger.debug(logs.githubClient.debug.serverError(), url, error.statusCode, error.responseBody);
-        throw new GitHubApiClientError(
-          `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
-          error.statusCode,
-          error
-        );
-      }
-      if (error instanceof HttpError) {
-        this.logger.debug(logs.githubClient.debug.requestError(), url, error);
-        throw new GitHubApiClientError(
-          `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
-          error.statusCode,
-          error
-        );
-      }
-      if (error instanceof NetworkError) {
-        this.logger.debug(logs.githubClient.debug.networkError(), url, error.message);
-        throw new GitHubApiClientError(`Network error while requesting ${url}: ${error.message}`, undefined, error);
-      }
-      // Fallback for unknown errors
-      this.logger.debug(logs.githubClient.debug.unknownError(), url, error);
-      if (error instanceof Error) {
-        throw new GitHubApiClientError(
-          `Unknown error during GitHub API request to ${url}: ${error.message}`,
-          undefined,
-          error
-        );
-      }
-      throw new GitHubApiClientError(`Unknown error during GitHub API request to ${url}`);
+  private async performRequest<T>(url: string, headers: Record<string, string>): Promise<T> {
+    const responseBuffer = await this.downloader.download(url, { headers });
+    if (!responseBuffer || responseBuffer.length === 0) {
+      this.logger.debug(logs.githubClient.debug.emptyResponse(), url);
+      throw new NetworkError(this.logger, 'Empty response received from API', url);
     }
+    const responseText = responseBuffer.toString('utf-8');
+    return JSON.parse(responseText) as T;
+  }
+
+  private async tryCacheResponse<T>(cacheKey: string, data: T, method: string, url: string): Promise<void> {
+    if (!this.cache || !this.cacheEnabled || method !== 'GET') {
+      return;
+    }
+
+    try {
+      await this.cache.set<T>(cacheKey, data, this.cacheTtlMs);
+      this.logger.debug(logs.githubClient.debug.cachedResponse(), method, url);
+    } catch (error) {
+      this.logger.debug(logs.githubClient.debug.cacheStoreError(), method, url, (error as Error).message);
+    }
+  }
+
+  private handleRequestError(error: unknown, url: string): never {
+    this.logger.debug(logs.githubClient.debug.requestError(), url, error);
+
+    if (error instanceof NotFoundError) {
+      this.logger.debug(logs.githubClient.debug.notFound(), url, error.responseBody);
+      throw new Error(`GitHub resource not found: ${url}. Status: ${error.statusCode}`);
+    }
+    if (error instanceof RateLimitError) {
+      return this.handleRateLimitError(error, url);
+    }
+    if (error instanceof ForbiddenError) {
+      return this.handleForbiddenError(error, url);
+    }
+    if (error instanceof ClientError) {
+      return this.handleClientError(error, url);
+    }
+    if (error instanceof ServerError) {
+      return this.handleServerError(error, url);
+    }
+    if (error instanceof HttpError) {
+      return this.handleHttpError(error, url);
+    }
+    if (error instanceof NetworkError) {
+      return this.handleNetworkError(error, url);
+    }
+
+    return this.handleUnknownError(error, url);
+  }
+
+  private handleRateLimitError(error: RateLimitError, url: string): never {
+    const resetTime = error.resetTimestamp ? new Date(error.resetTimestamp).toISOString() : 'N/A';
+    this.logger.debug(logs.githubClient.debug.rateLimitError(), url, resetTime, error.responseBody);
+    throw new GitHubApiClientError(
+      `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`,
+      error.statusCode,
+      error
+    );
+  }
+
+  private handleForbiddenError(error: ForbiddenError, url: string): never {
+    this.logger.debug(logs.githubClient.debug.forbidden(), url, error.responseBody);
+    throw new GitHubApiClientError(
+      `GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`,
+      error.statusCode,
+      error
+    );
+  }
+
+  private handleClientError(error: ClientError, url: string): never {
+    this.logger.debug(logs.githubClient.debug.clientError(), url, error.statusCode, error.responseBody);
+    throw new GitHubApiClientError(
+      `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
+      error.statusCode,
+      error
+    );
+  }
+
+  private handleServerError(error: ServerError, url: string): never {
+    this.logger.debug(logs.githubClient.debug.serverError(), url, error.statusCode, error.responseBody);
+    throw new GitHubApiClientError(
+      `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
+      error.statusCode,
+      error
+    );
+  }
+
+  private handleHttpError(error: HttpError, url: string): never {
+    this.logger.debug(logs.githubClient.debug.requestError(), url, error);
+    throw new GitHubApiClientError(
+      `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
+      error.statusCode,
+      error
+    );
+  }
+
+  private handleNetworkError(error: NetworkError, url: string): never {
+    this.logger.debug(logs.githubClient.debug.networkError(), url, error.message);
+    throw new GitHubApiClientError(`Network error while requesting ${url}: ${error.message}`, undefined, error);
+  }
+
+  private handleUnknownError(error: unknown, url: string): never {
+    this.logger.debug(logs.githubClient.debug.unknownError(), url, error);
+    if (error instanceof Error) {
+      throw new GitHubApiClientError(
+        `Unknown error during GitHub API request to ${url}: ${error.message}`,
+        undefined,
+        error
+      );
+    }
+    throw new GitHubApiClientError(`Unknown error during GitHub API request to ${url}`);
   }
 
   async getLatestRelease(owner: string, repo: string): Promise<GitHubRelease | null> {
@@ -297,81 +346,129 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   async getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null> {
     this.logger.debug(logs.githubClient.debug.constraintSearch(), constraint, owner, repo);
-    // For simplicity in this initial implementation, if constraint is 'latest', use getLatestRelease.
+
     if (constraint === 'latest') {
-      try {
-        return await this.getLatestRelease(owner, repo);
-      } catch (e) {
-        const error = e as Error;
-        this.logger.debug(logs.githubClient.debug.constraintLatestError(), error.message);
-        return null;
-      }
+      return await this.handleLatestConstraint(owner, repo);
     }
 
+    return await this.findReleaseByVersionConstraint(owner, repo, constraint);
+  }
+
+  private async handleLatestConstraint(owner: string, repo: string): Promise<GitHubRelease | null> {
+    try {
+      return await this.getLatestRelease(owner, repo);
+    } catch (error) {
+      this.logger.debug(logs.githubClient.debug.constraintLatestError(), (error as Error).message);
+      return null;
+    }
+  }
+
+  private async findReleaseByVersionConstraint(
+    owner: string,
+    repo: string,
+    constraint: string
+  ): Promise<GitHubRelease | null> {
     this.logger.debug(logs.githubClient.debug.constraintPageFetch(), constraint);
+
     let latestSatisfyingRelease: GitHubRelease | null = null;
     let latestSatisfyingVersionClean: string | null = null;
     let page = 1;
-    const perPage = 30; // Standard page size, could be configurable if needed
-    let keepFetching = true;
+    const perPage = 30;
+    const maxPages = 100;
 
-    while (keepFetching) {
-      const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
-      this.logger.debug(logs.githubClient.debug.constraintFetchingPage(), page, owner, repo);
-      let releasesPage: GitHubRelease[];
-      try {
-        releasesPage = await this.request<GitHubRelease[]>(endpoint);
-      } catch (error) {
-        this.logger.debug(logs.githubClient.debug.constraintError(), constraint, owner, repo, (error as Error).message);
-        // If a page fetch fails, we can't reliably determine the latest, so return what we have or null.
-        // For simplicity, we'll break and return the best found so far. A more robust solution might retry.
+    while (page <= maxPages) {
+      const releasesPage = await this.fetchReleasesPage(owner, repo, page, perPage, constraint);
+      if (!releasesPage) {
         break;
       }
 
       if (releasesPage.length === 0) {
-        keepFetching = false; // No more releases to fetch
         break;
       }
 
-      for (const release of releasesPage) {
-        if (!release.tag_name) {
-          continue;
-        }
-        const cleanVersion = release.tag_name.startsWith('v') ? release.tag_name.substring(1) : release.tag_name;
+      const bestFromPage = this.findBestReleaseFromPage(
+        releasesPage,
+        constraint,
+        latestSatisfyingRelease,
+        latestSatisfyingVersionClean
+      );
 
-        if (semver.valid(cleanVersion) && semver.satisfies(cleanVersion, constraint, { includePrerelease: true })) {
-          if (
-            !latestSatisfyingRelease ||
-            (latestSatisfyingVersionClean && semver.gt(cleanVersion, latestSatisfyingVersionClean))
-          ) {
-            latestSatisfyingRelease = release;
-            latestSatisfyingVersionClean = cleanVersion;
-            this.logger.debug(logs.githubClient.debug.constraintBestCandidate(), release.tag_name, cleanVersion);
-          }
-        }
+      if (bestFromPage.release) {
+        latestSatisfyingRelease = bestFromPage.release;
+        latestSatisfyingVersionClean = bestFromPage.version;
       }
 
-      // Optimization: If the current page is not full, it's the last page with data.
       if (releasesPage.length < perPage) {
-        keepFetching = false;
+        break;
       }
-      // More aggressive optimization could be added here if needed, e.g., if oldest on page is too old.
-      // For now, this ensures we check all potentially relevant pages.
 
       page++;
-      if (page > 100) {
-        // Safety break for very deep pagination, GitHub usually limits to around this.
-        this.logger.debug(logs.githubClient.debug.constraintPageLimit());
-        keepFetching = false;
+    }
+
+    this.logConstraintResult(constraint, latestSatisfyingRelease);
+    return latestSatisfyingRelease;
+  }
+
+  private async fetchReleasesPage(
+    owner: string,
+    repo: string,
+    page: number,
+    perPage: number,
+    constraint: string
+  ): Promise<GitHubRelease[] | null> {
+    const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
+    this.logger.debug(logs.githubClient.debug.constraintFetchingPage(), page, owner, repo);
+
+    try {
+      return await this.request<GitHubRelease[]>(endpoint);
+    } catch (error) {
+      this.logger.debug(logs.githubClient.debug.constraintError(), constraint, owner, repo, (error as Error).message);
+      return null;
+    }
+  }
+
+  private findBestReleaseFromPage(
+    releasesPage: GitHubRelease[],
+    constraint: string,
+    currentBest: GitHubRelease | null,
+    currentBestVersion: string | null
+  ): { release: GitHubRelease | null; version: string | null } {
+    let bestRelease = currentBest;
+    let bestVersion = currentBestVersion;
+
+    for (const release of releasesPage) {
+      if (!release.tag_name) {
+        continue;
+      }
+
+      const cleanVersion = release.tag_name.startsWith('v') ? release.tag_name.substring(1) : release.tag_name;
+
+      if (this.isVersionSatisfying(cleanVersion, constraint)) {
+        if (this.isBetterVersion(cleanVersion, bestVersion)) {
+          bestRelease = release;
+          bestVersion = cleanVersion;
+          this.logger.debug(logs.githubClient.debug.constraintBestCandidate(), release.tag_name, cleanVersion);
+        }
       }
     }
 
-    if (latestSatisfyingRelease) {
-      this.logger.debug(logs.githubClient.debug.constraintFinalResult(), constraint, latestSatisfyingRelease.tag_name);
+    return { release: bestRelease, version: bestVersion };
+  }
+
+  private isVersionSatisfying(version: string, constraint: string): boolean {
+    return Boolean(semver.valid(version)) && semver.satisfies(version, constraint, { includePrerelease: true });
+  }
+
+  private isBetterVersion(newVersion: string, currentBestVersion: string | null): boolean {
+    return !currentBestVersion || semver.gt(newVersion, currentBestVersion);
+  }
+
+  private logConstraintResult(constraint: string, result: GitHubRelease | null): void {
+    if (result) {
+      this.logger.debug(logs.githubClient.debug.constraintFinalResult(), constraint, result.tag_name);
     } else {
       this.logger.debug(logs.githubClient.debug.constraintNotFound(), constraint);
     }
-    return latestSatisfyingRelease;
   }
 
   async getRateLimit(): Promise<GitHubRateLimit> {

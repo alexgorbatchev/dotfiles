@@ -7,7 +7,12 @@ import type { ShellType, ToolConfig } from '@types';
 import { resolvePlatformConfig } from '@utils';
 import type { GenerateShellInitOptions, IShellInitGenerator, ShellInitGenerationResult } from './IShellInitGenerator';
 import { type ProfileUpdateConfig, ProfileUpdater } from './profile-updater';
-import { createGenerator, type ShellInitContent } from './shell-generators';
+import {
+  type AdditionalShellFile,
+  createGenerator,
+  type IShellGenerator,
+  type ShellInitContent,
+} from './shell-generators';
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
@@ -27,99 +32,17 @@ export class ShellInitGenerator implements IShellInitGenerator {
   ): Promise<ShellInitGenerationResult | null> {
     this.logger.debug(logs.shellInit.debug.generateDebug(), toolConfigs, options, this.fs.constructor.name);
 
-    // Default to zsh for backward compatibility
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
     const generatedFiles = new Map<ShellType, string>();
     let primaryPath: string | null = null;
 
     for (const shellType of shellTypes) {
-      try {
-        const generator = createGenerator(shellType, this.appConfig);
-        const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
-
-        this.logger.debug(logs.shellInit.debug.outputPath(), outputPath);
-
-        // Extract shell content from all tools
-        const toolContents = new Map<string, ShellInitContent>();
-
-        for (const toolName in toolConfigs) {
-          const config = toolConfigs[toolName];
-          this.logger.debug(logs.shellInit.debug.processingTool(), toolName, config);
-
-          if (!config) {
-            this.logger.debug(logs.shellInit.debug.skippingUndefined(), toolName);
-            continue;
-          }
-
-          // Resolve platform-specific configuration if systemInfo is provided
-          const resolvedConfig = options?.systemInfo ? resolvePlatformConfig(config, options.systemInfo) : config;
-
-          // Extract shell content using the generator
-          const shellContent = generator.extractShellContent(toolName, resolvedConfig);
-
-          // Process completions if they exist
-          if (resolvedConfig.completions) {
-            const completionSetup = generator.processCompletions(toolName, resolvedConfig.completions);
-            shellContent.completionSetup.push(...completionSetup);
-          }
-
-          if (this.hasContent(shellContent)) {
-            toolContents.set(toolName, shellContent);
-          }
+      const result = await this.generateForShellType(shellType, toolConfigs, options);
+      if (result) {
+        generatedFiles.set(shellType, result.outputPath);
+        if (primaryPath === null) {
+          primaryPath = result.outputPath;
         }
-
-        // Generate file content using the shell-specific generator
-        const fileContent = generator.generateFileContent(toolContents);
-
-        // Clean up once scripts directory before writing new ones
-        await this.cleanupOnceScriptsDirectory(shellType);
-
-        // Get additional files (e.g., once scripts)
-        const additionalFiles = generator.getAdditionalFiles(toolContents);
-
-        // Write the main file
-        try {
-          await this.fs.ensureDir(path.dirname(outputPath));
-          await this.fs.writeFile(outputPath, fileContent);
-          generatedFiles.set(shellType, outputPath);
-
-          // Set primary path to the first generated file (for backward compatibility)
-          if (primaryPath === null) {
-            primaryPath = outputPath;
-          }
-
-          // Write additional files
-          for (const additionalFile of additionalFiles) {
-            try {
-              await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
-              await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
-            } catch (error: unknown) {
-              this.logger.debug(
-                logs.shellInit.debug.writeError(),
-                additionalFile.outputPath,
-                this.fs.constructor.name,
-                (error as Error).message
-              );
-              // Continue with other additional files even if one fails
-            }
-          }
-        } catch (error: unknown) {
-          this.logger.debug(
-            logs.shellInit.debug.writeError(),
-            outputPath,
-            this.fs.constructor.name,
-            (error as Error).message
-          );
-          // Continue with other shell types even if one fails
-        }
-      } catch (error: unknown) {
-        this.logger.debug(
-          logs.shellInit.debug.writeError(),
-          shellType,
-          this.fs.constructor.name,
-          (error as Error).message
-        );
-        // Continue with other shell types even if one fails
       }
     }
 
@@ -132,13 +55,112 @@ export class ShellInitGenerator implements IShellInitGenerator {
       primaryPath,
     };
 
-    // Update profile files if requested (defaults to true)
     const shouldUpdateProfiles = options?.updateProfileFiles ?? true;
     if (shouldUpdateProfiles) {
       result.profileUpdates = await this.updateProfileFiles(generatedFiles);
     }
 
     return result;
+  }
+
+  private async generateForShellType(
+    shellType: ShellType,
+    toolConfigs: Record<string, ToolConfig>,
+    options?: GenerateShellInitOptions
+  ): Promise<{ outputPath: string } | null> {
+    try {
+      const generator = createGenerator(shellType, this.appConfig);
+      const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
+      this.logger.debug(logs.shellInit.debug.outputPath(), outputPath);
+
+      const toolContents = await this.extractToolContents(toolConfigs, generator, options);
+      const fileContent = generator.generateFileContent(toolContents);
+
+      await this.cleanupOnceScriptsDirectory(shellType);
+      const additionalFiles = generator.getAdditionalFiles(toolContents);
+
+      const writeResult = await this.writeShellFiles(outputPath, fileContent, additionalFiles);
+      return writeResult ? { outputPath } : null;
+    } catch (error: unknown) {
+      this.logger.debug(
+        logs.shellInit.debug.writeError(),
+        shellType,
+        this.fs.constructor.name,
+        (error as Error).message
+      );
+      return null;
+    }
+  }
+
+  private async extractToolContents(
+    toolConfigs: Record<string, ToolConfig>,
+    generator: IShellGenerator,
+    options?: GenerateShellInitOptions
+  ): Promise<Map<string, ShellInitContent>> {
+    const toolContents = new Map<string, ShellInitContent>();
+
+    for (const toolName in toolConfigs) {
+      const config = toolConfigs[toolName];
+      this.logger.debug(logs.shellInit.debug.processingTool(), toolName, config);
+
+      if (!config) {
+        this.logger.debug(logs.shellInit.debug.skippingUndefined(), toolName);
+        continue;
+      }
+
+      const resolvedConfig = options?.systemInfo ? resolvePlatformConfig(config, options.systemInfo) : config;
+      const shellContent = generator.extractShellContent(toolName, resolvedConfig);
+
+      if (resolvedConfig.completions) {
+        const completionSetup = generator.processCompletions(toolName, resolvedConfig.completions);
+        shellContent.completionSetup.push(...completionSetup);
+      }
+
+      if (this.hasContent(shellContent)) {
+        toolContents.set(toolName, shellContent);
+      }
+    }
+
+    return toolContents;
+  }
+
+  private async writeShellFiles(
+    outputPath: string,
+    fileContent: string,
+    additionalFiles: AdditionalShellFile[]
+  ): Promise<boolean> {
+    try {
+      await this.fs.ensureDir(path.dirname(outputPath));
+      await this.fs.writeFile(outputPath, fileContent);
+
+      for (const additionalFile of additionalFiles) {
+        await this.writeAdditionalFile(additionalFile);
+      }
+
+      return true;
+    } catch (error: unknown) {
+      this.logger.debug(
+        logs.shellInit.debug.writeError(),
+        outputPath,
+        this.fs.constructor.name,
+        (error as Error).message
+      );
+      return false;
+    }
+  }
+
+  private async writeAdditionalFile(additionalFile: AdditionalShellFile): Promise<void> {
+    try {
+      await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
+      await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
+    } catch (error: unknown) {
+      this.logger.debug(
+        logs.shellInit.debug.writeError(),
+        additionalFile.outputPath,
+        this.fs.constructor.name,
+        (error as Error).message
+      );
+    }
   }
 
   /**
