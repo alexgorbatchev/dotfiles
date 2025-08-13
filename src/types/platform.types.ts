@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Enum representing different operating system platforms.
  * Values are bitwise, allowing for combinations.
@@ -21,6 +23,48 @@ export enum Architecture {
   Arm64 = 1 << 1, // 2
   All = Architecture.X86_64 | Architecture.Arm64, // 3
 }
+
+/**
+ * Zod schema for Platform enum values.
+ * Validates that a number is a valid Platform bitmask.
+ */
+export const platformSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(Platform.All)
+  .refine(
+    (value) => {
+      // Check if the value is a valid combination of Platform enum values
+      const validBits = Platform.All;
+      return (value & ~validBits) === 0;
+    },
+    {
+      message:
+        'Must be a valid Platform value. Use: Platform.None, Platform.Linux, Platform.MacOS, Platform.Windows, Platform.Unix, or Platform.All. You can combine values with bitwise OR (e.g., Platform.Linux | Platform.MacOS).',
+    }
+  );
+
+/**
+ * Zod schema for Architecture enum values.
+ * Validates that a number is a valid Architecture bitmask.
+ */
+export const architectureSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(Architecture.All)
+  .refine(
+    (value) => {
+      // Check if the value is a valid combination of Architecture enum values
+      const validBits = Architecture.All;
+      return (value & ~validBits) === 0;
+    },
+    {
+      message:
+        'Must be a valid Architecture value. Use: Architecture.None, Architecture.X86_64, Architecture.Arm64, or Architecture.All. You can combine values with bitwise OR (e.g., Architecture.X86_64 | Architecture.Arm64).',
+    }
+  );
 
 /**
  * Checks if a given platform is included in a set of target platforms.
