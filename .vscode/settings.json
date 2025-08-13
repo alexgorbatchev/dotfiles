@@ -1,5 +1,7 @@
 {
   "editor.formatOnSave": false,
+  "eslint.enable": false,
+  "prettier.enable": false,
 
   "search.exclude": {
     "**/dist": true,
