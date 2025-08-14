@@ -7,21 +7,21 @@ import { githubReleaseInstallParamsSchema } from './githubReleaseInstallParamsSc
 import { manualInstallParamsSchema } from './manualInstallParamsSchema';
 
 export const platformConfigSchema = commonToolConfigPropertiesSchema
-	.extend({
-		/** The installation method to use */
-		installationMethod: z.enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'manual', 'none']).optional(),
-		/** Parameters specific to the installation method */
-		installParams: z
-			.union([
-				githubReleaseInstallParamsSchema,
-				brewInstallParamsSchema,
-				curlScriptInstallParamsSchema,
-				curlTarInstallParamsSchema,
-				manualInstallParamsSchema,
-			])
-			.optional(),
-	})
-	.strict();
+  .extend({
+    /** The installation method to use */
+    installationMethod: z.enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'manual', 'none']).optional(),
+    /** Parameters specific to the installation method */
+    installParams: z
+      .union([
+        githubReleaseInstallParamsSchema,
+        brewInstallParamsSchema,
+        curlScriptInstallParamsSchema,
+        curlTarInstallParamsSchema,
+        manualInstallParamsSchema,
+      ])
+      .optional(),
+  })
+  .strict();
 
 /**
  * Configuration overrides that can be applied in platform-specific configurations.

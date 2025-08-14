@@ -4,19 +4,19 @@ import { getBinaryNames, getBinaryPaths, normalizeBinaries } from '../index';
 describe('normalizeBinaries', () => {
   test('should handle undefined binaries with fallback', () => {
     const result = normalizeBinaries(undefined, 'mytool');
-    expect(result).toEqual([{ name: 'mytool', pattern: 'mytool' }]);
+    expect(result).toEqual([{ name: 'mytool', pattern: '*/mytool' }]);
   });
 
   test('should handle empty array with fallback', () => {
     const result = normalizeBinaries([], 'mytool');
-    expect(result).toEqual([{ name: 'mytool', pattern: 'mytool' }]);
+    expect(result).toEqual([{ name: 'mytool', pattern: '*/mytool' }]);
   });
 
   test('should convert string array to BinaryConfig array', () => {
     const result = normalizeBinaries(['tool1', 'tool2'], 'mytool');
     expect(result).toEqual([
-      { name: 'tool1', pattern: 'tool1' },
-      { name: 'tool2', pattern: 'tool2' },
+      { name: 'tool1', pattern: '*/tool1' },
+      { name: 'tool2', pattern: '*/tool2' },
     ]);
   });
 
@@ -33,7 +33,7 @@ describe('normalizeBinaries', () => {
     const input = ['tool1', { name: 'tool2', pattern: '*/tool2' }];
     const result = normalizeBinaries(input, 'mytool');
     expect(result).toEqual([
-      { name: 'tool1', pattern: 'tool1' },
+      { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: '*/tool2' },
     ]);
   });
