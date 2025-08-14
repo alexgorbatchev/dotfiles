@@ -305,7 +305,7 @@ describe('Hook Integration Tests', () => {
       };
 
       // Mock filesystem to simulate extracted Makefile existence
-      const extractDir = '/app/generated/binaries/source-tool/latest/temp-extract';
+      const extractDir = '/app/generated/binaries/source-tool/latest';
       await memFs.fs.ensureDir(extractDir);
       await memFs.fs.writeFile(`${extractDir}/Makefile`, 'CC=gcc\nall:\n\tgcc -o source-tool source-tool.c');
       await memFs.fs.writeFile(`${extractDir}/source-tool.c`, '#include <stdio.h>\nint main() { return 0; }');

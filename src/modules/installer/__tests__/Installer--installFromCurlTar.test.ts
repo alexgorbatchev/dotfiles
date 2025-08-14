@@ -27,18 +27,16 @@ describe('Installer - installFromCurlTar', () => {
       },
     };
 
-    // Setup mockExists for the path of the binary within the temp extraction directory
-    const expectedTempExtractedBinaryPath = path.join(
+    // Setup mockExists for the path of the binary within the install directory
+    const expectedExtractedBinaryPath = path.join(
       setup.testDirs.paths.binariesDir,
       MOCK_TOOL_NAME,
       MOCK_TOOL_VERSION,
-      'temp-extract',
       'bin/tool' // This comes from toolConfig.installParams.extractPath
     );
 
     // The binary should be copied to the final location
     const installDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_VERSION);
-    const tempExtractDir = path.join(installDir, 'temp-extract');
     const context: BaseInstallContext = {
       // context is defined here
       toolName: MOCK_TOOL_NAME,
@@ -48,12 +46,11 @@ describe('Installer - installFromCurlTar', () => {
       appConfig: setup.mockAppConfig,
     };
 
-    // Create the temp extract directory and binary file in the mock filesystem
-    await setup.mockFileSystem.ensureDir(tempExtractDir);
-    await setup.mockFileSystem.ensureDir(path.dirname(expectedTempExtractedBinaryPath));
-    await setup.mockFileSystem.writeFile(expectedTempExtractedBinaryPath, 'binary content');
+    // Create the binary file in the mock filesystem (directly in install directory)
+    await setup.mockFileSystem.ensureDir(path.dirname(expectedExtractedBinaryPath));
+    await setup.mockFileSystem.writeFile(expectedExtractedBinaryPath, 'binary content');
     // Also create the binary at the tool name location (fallback path)
-    await setup.mockFileSystem.writeFile(path.join(tempExtractDir, MOCK_TOOL_NAME), 'binary content');
+    await setup.mockFileSystem.writeFile(path.join(installDir, MOCK_TOOL_NAME), 'binary content');
 
     mock.restore();
 

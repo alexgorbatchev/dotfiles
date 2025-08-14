@@ -420,17 +420,14 @@ async function processArchiveInstallation(
 ): Promise<OperationResult<void>> {
   logger.debug(logs.installer.debug.extractingArchive(), asset.name);
 
-  const tempExtractDir = path.join(context.installDir, 'temp-extract');
-  await toolFs.ensureDir(tempExtractDir);
-
   const extractResult: ExtractResult = await archiveExtractor.extract(downloadPath, {
-    targetDir: tempExtractDir,
+    targetDir: context.installDir,
   });
   logger.debug(logs.installer.debug.archiveExtracted(), extractResult);
 
   const postExtractContext = {
     ...postDownloadContext,
-    extractDir: tempExtractDir,
+    extractDir: context.installDir,
     extractResult,
   };
 
@@ -439,10 +436,7 @@ async function processArchiveInstallation(
     return hookResult;
   }
 
-  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
-
-  logger.debug(logs.installer.debug.cleaningExtractDir(), tempExtractDir);
-  await toolFs.rm(tempExtractDir, { recursive: true, force: true });
+  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger, extractResult);
 
   if (await toolFs.exists(downloadPath)) {
     logger.debug(logs.installer.debug.cleaningArchive(), downloadPath);

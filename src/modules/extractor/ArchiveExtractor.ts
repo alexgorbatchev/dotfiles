@@ -211,19 +211,6 @@ export class ArchiveExtractor implements IArchiveExtractor {
     }
   }
 
-  private async moveExtractedFiles(tempExtractDir: string, targetDir: string): Promise<void> {
-    const extractedItems = await this.fs.readdir(tempExtractDir);
-    for (const item of extractedItems) {
-      await this.fs.rename(join(tempExtractDir, item), join(targetDir, item));
-    }
-  }
-
-  private async cleanupTempDir(tempExtractDir: string, logger: TsLogger): Promise<void> {
-    await this.fs.rm(tempExtractDir, { recursive: true, force: true }).catch((cleanupErr) => {
-      logger.debug(logs.extractor.debug.cleanupError(), cleanupErr);
-    });
-  }
-
   public async extract(archivePath: string, options: ExtractOptions = {}): Promise<ExtractResult> {
     const logger = this.logger.getSubLogger({ name: 'extract' });
     const {
@@ -244,29 +231,28 @@ export class ArchiveExtractor implements IArchiveExtractor {
     // Ensure target directory exists
     await this.fs.ensureDir(targetDir);
 
-    const tempExtractDir = join(targetDir, `_extract_${Date.now()}`);
-    await this.fs.mkdir(tempExtractDir, { recursive: true });
+    // Get the list of files before extraction
+    const filesBefore: string[] = await this.fs.readdir(targetDir).catch(() => []);
 
-    try {
-      await this.extractArchiveByFormat(format, archivePath, tempExtractDir, stripComponents, logger);
-      await this.moveExtractedFiles(tempExtractDir, targetDir);
-      await this.fs.rm(tempExtractDir, { recursive: true, force: true });
+    // Extract directly to target directory
+    await this.extractArchiveByFormat(format, archivePath, targetDir, stripComponents, logger);
 
-      const result: ExtractResult = {
-        extractedFiles: await this.fs.readdir(targetDir),
-        executables: [],
-      };
+    // Get the list of files after extraction
+    const filesAfter = await this.fs.readdir(targetDir);
 
-      if (detectExecutables) {
-        result.executables = await this.detectAndSetExecutables(targetDir, result.extractedFiles);
-      }
+    // Find the newly extracted files (files that weren't there before)
+    const extractedFiles = filesAfter.filter((file) => !filesBefore.includes(file));
 
-      return result;
-    } catch (error) {
-      logger.debug(logs.extractor.debug.extractErrorCleanup(), tempExtractDir, error);
-      await this.cleanupTempDir(tempExtractDir, logger);
-      throw error;
+    const result: ExtractResult = {
+      extractedFiles,
+      executables: [],
+    };
+
+    if (detectExecutables) {
+      result.executables = await this.detectAndSetExecutables(targetDir, extractedFiles);
     }
+
+    return result;
   }
 
   private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {

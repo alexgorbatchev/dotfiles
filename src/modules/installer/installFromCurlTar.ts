@@ -95,13 +95,11 @@ export async function installFromCurlTar(
       }
     }
 
-    // Extract the tarball to temporary directory
+    // Extract the tarball directly to install directory
     logger.debug(logs.installer.debug.extractingTarball());
-    const tempExtractDir = path.join(context.installDir, 'temp-extract');
-    await toolFs.ensureDir(tempExtractDir);
 
     const extractResult: ExtractResult = await archiveExtractor.extract(tarballPath, {
-      targetDir: tempExtractDir,
+      targetDir: context.installDir,
       stripComponents: params.stripComponents, // from CurlTarInstallParams
     });
     logger.debug(logs.installer.debug.tarballExtracted(), extractResult);
@@ -109,7 +107,7 @@ export async function installFromCurlTar(
     // Update context with extract directory and result
     postExtractContext = {
       ...postDownloadContext,
-      extractDir: tempExtractDir,
+      extractDir: context.installDir,
       extractResult,
     };
 
@@ -134,11 +132,7 @@ export async function installFromCurlTar(
     }
 
     // Handle all binaries from extracted archive
-    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, tempExtractDir, logger, extractResult);
-
-    // Clean up temp extract directory
-    logger.debug(logs.installer.debug.cleaningExtractDir(), tempExtractDir);
-    await toolFs.rm(tempExtractDir, { recursive: true, force: true });
+    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger, extractResult);
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
