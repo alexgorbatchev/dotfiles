@@ -211,15 +211,15 @@ function createAssetNotFoundError(
   context: BaseInstallContext
 ): string {
   const availableAssetNames = release.assets.map((a) => a.name);
+  const platform = context.systemInfo.platform.toLowerCase();
+  const arch = context.systemInfo.arch.toLowerCase();
   let searchedForMessage = '';
 
   if (params.assetSelector) {
-    searchedForMessage = 'using a custom assetSelector function.';
+    searchedForMessage = `using a custom assetSelector function for ${platform}/${arch}.`;
   } else if (params.assetPattern) {
-    searchedForMessage = `for asset pattern: "${params.assetPattern}".`;
+    searchedForMessage = `for asset pattern: "${params.assetPattern}" for ${platform}/${arch}.`;
   } else {
-    const platform = context.systemInfo.platform.toLowerCase();
-    const arch = context.systemInfo.arch.toLowerCase();
     searchedForMessage = `for platform "${platform}" and architecture "${arch}".`;
   }
 

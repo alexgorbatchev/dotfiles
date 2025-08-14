@@ -80,7 +80,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain(
-      `No suitable asset found in release "${MOCK_TOOL_VERSION}" for asset pattern: "non-existent-pattern".`
+      `No suitable asset found in release "${MOCK_TOOL_VERSION}" for asset pattern: "non-existent-pattern" for linux/x64.`
     );
     expect(result.error).toContain(`Available assets in release "${MOCK_TOOL_VERSION}":`);
     expect(result.error).toContain('- test-tool-linux-amd64');
@@ -309,7 +309,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain(
-        `No suitable asset found in release "${MOCK_TOOL_VERSION}" for asset pattern: "non-existent-asset-pattern".`
+        `No suitable asset found in release "${MOCK_TOOL_VERSION}" for asset pattern: "non-existent-asset-pattern" for linux/x64.`
       );
       expect(result.error).toContain(`Available assets in release "${MOCK_TOOL_VERSION}":`);
       expect(result.error).toContain('- test-tool-linux-amd64');
@@ -369,7 +369,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain(
-        `No suitable asset found in release "${MOCK_TOOL_VERSION}" using a custom assetSelector function.`
+        `No suitable asset found in release "${MOCK_TOOL_VERSION}" using a custom assetSelector function for linux/x64.`
       );
       expect(result.error).toContain(`Available assets in release "${MOCK_TOOL_VERSION}":`);
       expect(result.error).toContain('- test-tool-darwin-arm64.zip');
