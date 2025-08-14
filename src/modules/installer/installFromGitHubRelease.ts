@@ -19,6 +19,7 @@ import type {
   PostExtractInstallContext,
   SystemInfo,
 } from '@types';
+import { minimatch } from 'minimatch';
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
@@ -171,8 +172,8 @@ async function selectAsset(
     asset = params.assetSelector(release.assets, context.systemInfo);
   } else if (params.assetPattern) {
     logger.debug(logs.command.debug.assetPatternMatch(), params.assetPattern);
-    const regex = new RegExp(params.assetPattern);
-    asset = release.assets.find((a) => regex.test(a.name));
+    const pattern = params.assetPattern;
+    asset = release.assets.find((a) => minimatch(a.name, pattern));
   } else {
     logger.debug(logs.command.debug.assetPlatformMatch());
     asset = findPlatformAsset(release.assets, context.systemInfo);
