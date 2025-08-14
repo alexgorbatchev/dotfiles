@@ -90,6 +90,11 @@ export class TrackedFileSystem implements IFileSystem {
     return this.fs.readFile(filePath, encoding);
   }
 
+  async readFileBuffer(filePath: string): Promise<Buffer> {
+    // Read operations are not tracked since they don't modify the filesystem
+    return this.fs.readFileBuffer(filePath);
+  }
+
   async writeFile(
     filePath: string,
     content: string | NodeJS.ArrayBufferView,

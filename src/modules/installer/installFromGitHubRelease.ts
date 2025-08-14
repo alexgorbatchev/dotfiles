@@ -116,7 +116,6 @@ export async function installFromGitHubRelease(
       },
     };
   } catch (error) {
-    logger.error(logs.tool.error.installFailed('github-release', toolName, (error as Error).message));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

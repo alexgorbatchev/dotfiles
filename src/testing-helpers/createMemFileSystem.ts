@@ -19,6 +19,7 @@ export interface MemFileSystemOptions {
   symlink?: IFileSystem['symlink'];
   rm?: IFileSystem['rm'];
   readFile?: IFileSystem['readFile'];
+  readFileBuffer?: IFileSystem['readFileBuffer'];
   writeFile?: IFileSystem['writeFile'];
   mkdir?: IFileSystem['mkdir'];
   readdir?: IFileSystem['readdir'];
@@ -106,6 +107,7 @@ export async function createMemFileSystem(options: MemFileSystemOptions = {}): P
   };
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Test helper function with many mock bindings
 function createFileSystemSpies(memFs: MemFileSystem, mocks: Partial<IFileSystem>): FileSystemSpies {
   return {
     ensureDir: mock(mocks.ensureDir ?? memFs.ensureDir.bind(memFs)),
@@ -115,6 +117,7 @@ function createFileSystemSpies(memFs: MemFileSystem, mocks: Partial<IFileSystem>
     symlink: mock(mocks.symlink ?? memFs.symlink.bind(memFs)),
     rm: mock(mocks.rm ?? memFs.rm.bind(memFs)),
     readFile: mock(mocks.readFile ?? memFs.readFile.bind(memFs)),
+    readFileBuffer: mock(mocks.readFileBuffer ?? memFs.readFileBuffer.bind(memFs)),
     writeFile: mock(mocks.writeFile ?? memFs.writeFile.bind(memFs)),
     mkdir: mock(mocks.mkdir ?? memFs.mkdir.bind(memFs)),
     readdir: mock(mocks.readdir ?? memFs.readdir.bind(memFs)),

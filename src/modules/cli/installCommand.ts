@@ -42,14 +42,13 @@ function handleInstallationResult(
     logger.debug(logs.command.debug.actionStarted('install-failed', toolName), result.error);
 
     if (shimMode) {
-      // In shim mode, output user-friendly error message to stderr
+      // In shim mode, output user-friendly error message to stderr only
       console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
-      return 1;
     } else {
-      // Normal mode: use logger
+      // Normal mode: use logger only
       logger.error(logs.tool.error.installFailed('unknown', toolName, result.error || 'Unknown error'));
-      return 1;
     }
+    return 1;
   }
 }
 
@@ -57,14 +56,13 @@ function handleInstallationError(logger: TsLogger, error: Error, toolName: strin
   logger.debug(logs.command.debug.unhandledError(), error);
 
   if (shimMode) {
-    // In shim mode, output user-friendly error message to stderr
+    // In shim mode, output user-friendly error message to stderr only
     console.error(`Failed to install '${toolName}': ${error.message}`);
-    return 1;
   } else {
-    // Normal mode: use logger
+    // Normal mode: use logger only
     logger.error(logs.command.error.executionFailed('install', 1, error.message));
-    return 1;
   }
+  return 1;
 }
 
 export function registerInstallCommand(

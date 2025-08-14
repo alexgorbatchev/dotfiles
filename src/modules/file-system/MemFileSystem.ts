@@ -45,6 +45,12 @@ export class MemFileSystem implements IFileSystem {
     return content as string; // Ensure it's treated as string, as per memfs behavior with encoding.
   }
 
+  public async readFileBuffer(path: string): Promise<Buffer> {
+    // memfs vol.promises.readFile returns a Buffer when no encoding is provided
+    const content = await this.vol.promises.readFile(path);
+    return content as Buffer;
+  }
+
   public async writeFile(
     path: string,
     content: string | NodeJS.ArrayBufferView,

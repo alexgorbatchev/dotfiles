@@ -11,6 +11,13 @@ export interface IFileSystem {
   readFile(path: string, encoding?: BufferEncoding): Promise<string>;
 
   /**
+   * Reads the content of a file as a Buffer.
+   * @param path The path to the file.
+   * @returns A promise that resolves with the file content as a Buffer.
+   */
+  readFileBuffer(path: string): Promise<Buffer>;
+
+  /**
    * Writes content to a file.
    * @param path The path to the file.
    * @param content The content to write.

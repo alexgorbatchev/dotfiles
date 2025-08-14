@@ -116,8 +116,11 @@ describe('ShimGenerator', () => {
           # Tool not found, try to install it
           # Capture both stdout and stderr from the install command
           # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          # Temporarily disable set -e to handle install failures gracefully
+          set +e
           install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
           install_exit_code=$?
+          set -e
           
           if [ $install_exit_code -eq 0 ]; then
             # Installation successful, try to execute binary again

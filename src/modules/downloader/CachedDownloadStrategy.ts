@@ -78,8 +78,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
       logger.trace(logs.downloader.debug.fileExists(fileExists), { path: destinationPath });
 
       if (fileExists) {
-        const fileContent = await this.fileSystem.readFile(destinationPath);
-        const bufferToCache = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
+        const bufferToCache = await this.fileSystem.readFileBuffer(destinationPath);
         logger.trace(logs.downloader.debug.fileCached(), {
           path: destinationPath,
           size: bufferToCache.length,

@@ -7,6 +7,10 @@ export class NodeFileSystem implements IFileSystem {
     return fsPromises.readFile(path, { encoding });
   }
 
+  public async readFileBuffer(path: string): Promise<Buffer> {
+    return fsPromises.readFile(path);
+  }
+
   public async writeFile(
     path: string,
     content: string | NodeJS.ArrayBufferView,
