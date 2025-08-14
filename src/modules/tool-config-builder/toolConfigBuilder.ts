@@ -246,7 +246,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
     const platformBuilder = new ToolConfigBuilder(this.logger, this.toolName, true);
     configureFn(platformBuilder);
-    const platformConfig = platformBuilder.build();
+    const platformConfig = platformBuilder.buildPlatformConfig();
 
     this.platformConfigEntries.push({
       platforms,
@@ -294,6 +294,36 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           ? this.platformConfigEntries
           : undefined,
     };
+  }
+
+  /**
+   * Builds a platform config object that excludes name and platformConfigs fields.
+   * This is used when creating platform-specific configurations to avoid circular references.
+   */
+  private buildPlatformConfig() {
+    const config: Record<string, unknown> = {
+      binaries: this.binaries.length > 0 ? this.binaries : undefined,
+      version: this.versionNum !== 'latest' ? this.versionNum : undefined,
+      shellConfigs: this.buildShellConfigs(),
+      symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
+      completions: this.completionSettings,
+      updateCheck: this.updateCheckConfig,
+    };
+
+    // Add installation method and params if they exist
+    if (this.hasInstallationMethod()) {
+      config['installationMethod'] = this.currentInstallationMethod;
+      config['installParams'] = this.currentInstallParams;
+    }
+
+    // Remove undefined values to keep the config clean
+    Object.keys(config).forEach((key) => {
+      if (config[key] === undefined) {
+        delete config[key];
+      }
+    });
+
+    return config;
   }
 
   private hasInstallationMethod(): boolean {
