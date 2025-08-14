@@ -52,4 +52,6 @@ export const installerDebugTemplates = {
     createSafeLogMessage(
       'Direct download only provides one binary, but %s were configured. Only %s will be available.'
     ),
+  strippingComponent: () => createSafeLogMessage('Stripping component %s: navigating into %s'),
+  stripComponentsSkipped: () => createSafeLogMessage('Skipping strip component %s: %s'),
 } satisfies SafeLogMessageMap;

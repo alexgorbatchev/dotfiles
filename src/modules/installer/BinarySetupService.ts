@@ -19,40 +19,130 @@ export async function setupBinariesFromArchive(
   const binaryNames = toolConfig.binaries || [toolName];
   const installParams: InstallParams | undefined = toolConfig.installParams;
 
-  const primarySourcePath = determinePrimaryBinaryPath(extractDir, toolName, installParams, extractResult, logger);
+  const primarySourcePath = await determinePrimaryBinaryPath(
+    fs,
+    extractDir,
+    toolName,
+    installParams,
+    extractResult,
+    logger
+  );
 
   await validateAndCopyPrimaryBinary(fs, primarySourcePath, binaryNames, context, extractResult, logger);
   await copyAdditionalBinaries(fs, binaryNames, extractDir, context, logger);
 }
 
-function determinePrimaryBinaryPath(
+async function applyStripComponents(
+  fs: IFileSystem,
+  extractDir: string,
+  extractedFiles: string[],
+  stripComponents: number,
+  logger: TsLogger
+): Promise<string> {
+  let currentDir = extractDir;
+  let currentFiles = extractedFiles;
+
+  for (let i = 0; i < stripComponents; i++) {
+    // If there's exactly one item and it's a directory, navigate into it
+    if (currentFiles.length === 1 && currentFiles[0]) {
+      const nextPath = path.join(currentDir, currentFiles[0]);
+      const stat = await fs.stat(nextPath);
+
+      if (stat.isDirectory()) {
+        logger.debug(logs.installer.debug.strippingComponent(), i + 1, nextPath);
+        currentDir = nextPath;
+        currentFiles = await fs.readdir(currentDir);
+      } else {
+        logger.debug(logs.installer.debug.stripComponentsSkipped(), i + 1, 'not a directory');
+        break;
+      }
+    } else {
+      logger.debug(logs.installer.debug.stripComponentsSkipped(), i + 1, `${currentFiles.length} files`);
+      break;
+    }
+  }
+
+  return currentDir;
+}
+
+async function handleStrippedComponents(
+  fs: IFileSystem,
+  extractDir: string,
+  toolName: string,
+  extractedFiles: string[],
+  stripComponents: number,
+  logger: TsLogger
+): Promise<string | null> {
+  const searchDir = await applyStripComponents(fs, extractDir, extractedFiles, stripComponents, logger);
+  const strippedFiles = await fs.readdir(searchDir);
+
+  if (strippedFiles.length === 0) {
+    return null;
+  }
+
+  // Look for the binary directly in the stripped directory
+  const binaryInStrippedDir = strippedFiles.find((file) => path.basename(file) === toolName);
+  if (binaryInStrippedDir) {
+    return path.join(searchDir, binaryInStrippedDir);
+  }
+
+  // If no exact match, try the first file that looks like an executable
+  const executableFile = strippedFiles.find((file) => {
+    const ext = path.extname(file);
+    return ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext);
+  });
+
+  return executableFile ? path.join(searchDir, executableFile) : null;
+}
+
+async function determinePrimaryBinaryPath(
+  fs: IFileSystem,
   extractDir: string,
   toolName: string,
   installParams: InstallParams | undefined,
   extractResult: ExtractResult | undefined,
   logger: TsLogger
-): string {
+): Promise<string> {
+  let searchDir = extractDir;
+  const stripComponents = installParams && 'stripComponents' in installParams ? installParams.stripComponents : 0;
+
+  // Handle stripComponents first - navigate into nested directories
+  if (stripComponents && stripComponents > 0 && extractResult?.extractedFiles) {
+    const strippedPath = await handleStrippedComponents(
+      fs,
+      extractDir,
+      toolName,
+      extractResult.extractedFiles,
+      stripComponents,
+      logger
+    );
+    if (strippedPath) {
+      return strippedPath;
+    }
+    searchDir = await applyStripComponents(fs, extractDir, extractResult.extractedFiles, stripComponents, logger);
+  }
+
   if (installParams && 'binaryPath' in installParams && installParams.binaryPath) {
-    return path.join(extractDir, installParams.binaryPath);
+    return path.join(searchDir, installParams.binaryPath);
   }
 
   if (installParams && 'extractPath' in installParams && installParams.extractPath) {
-    return path.join(extractDir, installParams.extractPath);
+    return path.join(searchDir, installParams.extractPath);
   }
 
   if (extractResult?.executables && extractResult.executables.length > 0) {
-    return findExecutablePath(extractDir, toolName, extractResult.executables, logger);
+    return findExecutablePath(searchDir, toolName, extractResult.executables, logger);
   }
 
   if (extractResult?.extractedFiles && extractResult.extractedFiles.length === 1) {
-    return handleSingleExtractedFile(extractDir, toolName, extractResult.extractedFiles, logger);
+    return handleSingleExtractedFile(searchDir, toolName, extractResult.extractedFiles, logger);
   }
 
   if (extractResult?.extractedFiles) {
-    return findFallbackBinary(extractDir, toolName, extractResult.extractedFiles, logger);
+    return findFallbackBinary(searchDir, toolName, extractResult.extractedFiles, logger);
   }
 
-  return path.join(extractDir, toolName);
+  return path.join(searchDir, toolName);
 }
 
 function findExecutablePath(extractDir: string, toolName: string, executables: string[], logger: TsLogger): string {

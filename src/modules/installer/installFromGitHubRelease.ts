@@ -425,7 +425,6 @@ async function processArchiveInstallation(
 
   const extractResult: ExtractResult = await archiveExtractor.extract(downloadPath, {
     targetDir: tempExtractDir,
-    stripComponents: toolConfig.installParams?.stripComponents,
   });
   logger.debug(logs.installer.debug.archiveExtracted(), extractResult);
 
