@@ -1,6 +1,6 @@
 import type { GlobalProgram, Services } from '@cli';
 import type { YamlConfig } from '@modules/config';
-import { loadSingleToolConfig, loadToolConfigsFromDirectory } from '@modules/config-loader';
+import { loadToolConfigs as loadAllToolConfigs, loadSingleToolConfig } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
 import type { TsLogger } from '@modules/logger';
@@ -34,7 +34,7 @@ async function loadToolConfigs(
         logger.error(logs.tool.error.notFound(toolName, yamlConfig.paths.toolConfigsDir));
       }
     } else {
-      toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+      toolConfigs = await loadAllToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
       if (Object.keys(toolConfigs).length === 0) {
         logger.info(logs.general.success.noToolsFound(yamlConfig.paths.toolConfigsDir));
         return { toolConfigs: {}, specificToolNotFound: false, exitCode: ExitCode.SUCCESS };

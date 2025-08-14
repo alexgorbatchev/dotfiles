@@ -180,7 +180,8 @@ async function loadToolConfigFromModule(
 
     return toolConfig;
   } catch (e) {
-    logger.error(logs.config.error.loadFailed(filePath, String(e)), e);
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    logger.error(logs.config.error.loadFailed(filePath, errorMessage));
     return null;
   }
 }
@@ -202,65 +203,120 @@ function validateAndStoreToolConfig(
 }
 
 /**
- * Loads all tool configurations from *.tool.ts files in a given directory.
- * Uses dynamic import() to load the TypeScript modules.
- * @param toolConfigsDir The directory containing .tool.ts files.
- * @param fs The file system implementation to use for reading directory and checking file existence.
- * @param yamlConfig The application configuration containing path information.
- * @returns A promise that resolves to a record of tool configurations, keyed by tool name.
+ * Filters files based on toolName if provided.
  */
-export async function loadToolConfigsFromDirectory(
+function filterFilesForTool(files: string[], toolName?: string): string[] {
+  if (!toolName) {
+    return files;
+  }
+
+  return files.filter((file) => {
+    // Match either flat structure (toolName.tool.ts) or nested structure (toolName/)
+    return file === `${toolName}.tool.ts` || file === toolName;
+  });
+}
+
+/**
+ * Processes a single file and loads its tool configuration.
+ */
+async function processToolConfigFile(
+  file: string,
+  toolConfigsDir: string,
+  fs: IFileSystem,
+  logger: TsLogger,
+  yamlConfig: YamlConfig,
+  toolConfigs: Record<string, ToolConfig>,
+  targetToolName?: string
+): Promise<void> {
+  // Validate directory structure first
+  if (!(await validateDirectoryStructure(fs, toolConfigsDir, file))) {
+    return;
+  }
+
+  const fileInfo = determineToolFilePath(toolConfigsDir, file);
+  if (!fileInfo) {
+    return;
+  }
+
+  // If looking for a specific tool, ensure the toolName matches
+  if (targetToolName && fileInfo.toolName !== targetToolName) {
+    return;
+  }
+
+  const { filePath, toolName: discoveredToolName } = fileInfo;
+  logger.trace(logs.config.success.toolConfigLoad(filePath));
+
+  const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, yamlConfig);
+  validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
+}
+
+/**
+ * Loads tool configurations from a directory, optionally filtering by tool name.
+ * @param parentLogger The parent logger instance.
+ * @param toolConfigsDir The directory containing .tool.ts files.
+ * @param fs The file system implementation.
+ * @param yamlConfig The YAML configuration.
+ * @param toolName Optional tool name to load. If not provided, loads all tools.
+ * @returns A record of tool configurations.
+ */
+export async function loadToolConfigs(
   parentLogger: TsLogger,
   toolConfigsDir: string,
   fs: IFileSystem,
-  yamlConfig: YamlConfig
+  yamlConfig: YamlConfig,
+  toolName?: string
 ): Promise<Record<string, ToolConfig>> {
-  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigsFromDirectory' });
+  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
   const toolConfigs: Record<string, ToolConfig> = {};
-  logger.debug(logs.config.success.toolConfigLoading(toolConfigsDir));
+
+  if (toolName) {
+    logger.debug(logs.config.success.singleToolConfigLoad(toolName, toolConfigsDir));
+  } else {
+    logger.debug(logs.config.success.toolConfigLoading(toolConfigsDir));
+  }
 
   try {
     if (!(await fs.exists(toolConfigsDir))) {
       logger.debug(logs.fs.error.notFound('tool configs directory', toolConfigsDir));
-      return {}; // Return empty if directory doesn't exist
+      return {};
     }
 
     const files = await fs.readdir(toolConfigsDir);
     logger.trace(logs.config.success.directoryScan(toolConfigsDir), files);
 
-    for (const file of files) {
-      // Validate directory structure first
-      if (!(await validateDirectoryStructure(fs, toolConfigsDir, file))) {
-        continue; // Skip invalid files/directories
-      }
+    const filesToProcess = filterFilesForTool(files, toolName);
 
-      const fileInfo = determineToolFilePath(toolConfigsDir, file);
-      if (!fileInfo) {
-        continue;
-      }
-
-      const { filePath, toolName } = fileInfo;
-      logger.trace(logs.config.success.toolConfigLoad(filePath));
-
-      const toolConfig = await loadToolConfigFromModule(logger, filePath, toolName, yamlConfig);
-      validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
+    for (const file of filesToProcess) {
+      await processToolConfigFile(file, toolConfigsDir, fs, logger, yamlConfig, toolConfigs, toolName);
     }
   } catch (e) {
-    logger.error(logs.fs.error.readFailed(toolConfigsDir, String(e)), e);
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    logger.error(logs.fs.error.readFailed(toolConfigsDir, errorMessage));
     return {};
   }
 
-  logger.debug(logs.general.success.completed('tool config loading'), Object.keys(toolConfigs).length);
+  const configCount = Object.keys(toolConfigs).length;
+  if (toolName) {
+    logger.debug(
+      configCount > 0
+        ? logs.config.success.loaded('single tool config', 1)
+        : logs.fs.error.notFound('Tool config', toolName)
+    );
+  } else {
+    logger.debug(logs.general.success.completed('tool config loading'), configCount);
+  }
+
   return toolConfigs;
 }
 
 /**
  * Loads a single tool configuration for a specific tool name.
+ * @param parentLogger The parent logger instance.
  * @param toolName The name of the tool to load.
  * @param toolConfigsDir The directory containing .tool.ts files.
- * @param fs The file system implementation (primarily for fs.exists check).
- * @param yamlConfig The application configuration containing path information.
- * @returns A promise that resolves to the ToolConfig if found, otherwise undefined.
+ * @param fs The file system implementation.
+ * @param yamlConfig The YAML configuration.
+ * @returns The tool configuration or undefined if not found.
  */
 export async function loadSingleToolConfig(
   parentLogger: TsLogger,
@@ -269,55 +325,6 @@ export async function loadSingleToolConfig(
   fs: IFileSystem,
   yamlConfig: YamlConfig
 ): Promise<ToolConfig | undefined> {
-  const logger = parentLogger.getSubLogger({ name: 'loadSingleToolConfig' });
-  logger.debug(logs.config.success.singleToolConfigLoad(toolName, toolConfigsDir));
-  const toolFileName = `${toolName}.tool.ts`;
-  const filePath = path.resolve(toolConfigsDir, toolFileName);
-
-  try {
-    // Check existence using the provided fs
-    if (!(await fs.exists(filePath))) {
-      logger.debug(logs.fs.error.notFound('Tool config file', filePath), fs.constructor.name, filePath);
-      return undefined;
-    }
-
-    const module = await import(filePath);
-    if (!module.default) {
-      logger.error(logs.config.error.parseErrors(filePath, 'ToolConfig', 'no default export or failed to process'));
-      return undefined;
-    }
-
-    const toolNameFromFile = path.basename(filePath, '.tool.ts');
-    let toolConfig: ToolConfig | null;
-
-    if (typeof module.default === 'function') {
-      logger.trace(logs.config.success.validated(filePath));
-      const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
-      toolConfig = await processFunctionExport(configureToolFn, logger, toolNameFromFile, filePath, yamlConfig);
-    } else {
-      toolConfig = processDirectExport(module.default, logger, filePath, toolNameFromFile);
-    }
-
-    // Set the config file path after building/loading
-    if (toolConfig) {
-      toolConfig.configFilePath = filePath;
-    }
-
-    if (toolConfig && toolConfig.name === toolName) {
-      logger.debug(logs.config.success.loaded(filePath, 1), toolConfig.name);
-      return toolConfig;
-    }
-
-    if (toolConfig) {
-      logger.warn(
-        logs.config.warning.invalid('single tool config name', toolConfig.name, `requested: ${toolName}`),
-        filePath
-      );
-    }
-
-    return undefined;
-  } catch (e) {
-    logger.error(logs.config.error.loadFailed(filePath, String(e)), e);
-    return undefined;
-  }
+  const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, yamlConfig, toolName);
+  return configs[toolName];
 }

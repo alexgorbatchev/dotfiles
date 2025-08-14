@@ -1,5 +1,5 @@
 import type { GlobalProgram, Services } from '@cli';
-import { loadToolConfigsFromDirectory } from '@modules/config-loader/loadToolConfigs';
+import { loadToolConfigs } from '@modules/config-loader/loadToolConfigs';
 import { logs, type TsLogger } from '@modules/logger';
 import { exitCli } from './exitCli';
 
@@ -27,7 +27,7 @@ export function registerGenerateCommand(
 
       try {
         logger.debug(logs.config.success.toolConfigLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
-        const toolConfigs = await loadToolConfigsFromDirectory(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+        const toolConfigs = await loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
         logger.debug(logs.config.success.loaded('tool configs', Object.keys(toolConfigs).length));
 
         const manifest = await generatorOrchestrator.generateAll(toolConfigs, {});

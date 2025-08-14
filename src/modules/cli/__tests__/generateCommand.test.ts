@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
-import { loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory } from '@modules/config-loader';
+import { loadToolConfigs as actualLoadToolConfigs } from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { logs } from '@modules/logger';
 import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
@@ -19,8 +19,8 @@ describe('generateCommand', () => {
   let mockFs: MemFileSystemReturn;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
   const mockModules = createModuleMocker();
-  const createMockLoadToolConfigsFromDirectory = () => mock(actualLoadToolConfigsFromDirectory);
-  let mockLoadToolConfigsFromDirectory: ReturnType<typeof createMockLoadToolConfigsFromDirectory>;
+  const createMockLoadToolConfigs = () => mock(actualLoadToolConfigs);
+  let mockLoadToolConfigs: ReturnType<typeof createMockLoadToolConfigs>;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -39,11 +39,11 @@ describe('generateCommand', () => {
     mockFs = setup.mockFs;
     mockYamlConfig = setup.mockYamlConfig;
 
-    mockLoadToolConfigsFromDirectory = createMockLoadToolConfigsFromDirectory();
-    mockLoadToolConfigsFromDirectory.mockResolvedValue({ toolA: toolAConfig });
+    mockLoadToolConfigs = createMockLoadToolConfigs();
+    mockLoadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
 
     await mockModules.mock('@modules/config-loader', () => ({
-      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      loadToolConfigs: mockLoadToolConfigs,
       loadSingleToolConfig: mock(async () => ({})),
     }));
 
@@ -81,7 +81,7 @@ describe('generateCommand', () => {
   test('should successfully generate artifacts', async () => {
     await program.parseAsync(['generate'], { from: 'user' });
 
-    expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
+    expect(mockLoadToolConfigs).toHaveBeenCalledWith(
       expect.any(Object),
       mockYamlConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,
@@ -95,7 +95,7 @@ describe('generateCommand', () => {
   test('should successfully generate artifacts in dry run mode', async () => {
     await program.parseAsync(['generate', '--dry-run'], { from: 'user' });
 
-    expect(mockLoadToolConfigsFromDirectory).toHaveBeenCalledWith(
+    expect(mockLoadToolConfigs).toHaveBeenCalledWith(
       expect.any(Object),
       mockYamlConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,

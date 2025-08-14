@@ -60,7 +60,7 @@ describe('installCommand', () => {
     // Set up mocks
     await mockModules.mock('@modules/config-loader', () => ({
       loadSingleToolConfig: mockLoadSingleToolConfig,
-      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      loadToolConfigs: mockLoadToolConfigsFromDirectory,
     }));
 
     registerInstallCommand(testLogger, program, async () => mockServices);

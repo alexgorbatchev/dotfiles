@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { GlobalProgram, Services } from '@cli';
 import type { YamlConfig } from '@modules/config';
-import { loadToolConfigsFromDirectory } from '@modules/config-loader';
+import { loadToolConfigs as loadAllToolConfigs } from '@modules/config-loader';
 import type { IFileSystem, Stats } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
@@ -14,12 +14,7 @@ async function loadToolConfigs(
   fs: IFileSystem
 ): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
   try {
-    const toolConfigsRecord = await loadToolConfigsFromDirectory(
-      logger,
-      yamlConfig.paths.toolConfigsDir,
-      fs,
-      yamlConfig
-    );
+    const toolConfigsRecord = await loadAllToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
     logger.error(logs.config.error.loadFailed('tool configurations', (error as Error).message));

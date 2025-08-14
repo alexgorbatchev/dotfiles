@@ -107,7 +107,7 @@ describe('updateCommand', () => {
     // Set up mocks
     await mockModules.mock('@modules/config-loader/loadToolConfigs', () => ({
       loadSingleToolConfig: mockActualLoadSingleToolConfig,
-      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      loadToolConfigs: mockLoadToolConfigsFromDirectory,
     }));
 
     registerUpdateCommand(logger, program, async () => setup.createServices());

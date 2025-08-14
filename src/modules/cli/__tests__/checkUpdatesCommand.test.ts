@@ -5,7 +5,7 @@ import { createProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
-  loadToolConfigsFromDirectory as actualLoadToolConfigsFromDirectory,
+  loadToolConfigs as actualLoadToolConfigs,
 } from '@modules/config-loader';
 import type { IGitHubApiClient } from '@modules/github-client';
 import { logs } from '@modules/logger';
@@ -47,7 +47,7 @@ const mockModules = createModuleMocker();
 let mockYamlConfig: YamlConfig;
 
 const mockLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
-const mockLoadToolConfigsFromDirectory = mock(actualLoadToolConfigsFromDirectory);
+const mockLoadToolConfigs = mock(actualLoadToolConfigs);
 const mockGetDefaultConfigPath = mock(() => '/test/default-config.yaml');
 
 const fzfToolConfig: GithubReleaseToolConfig = {
@@ -92,7 +92,7 @@ describe('checkUpdatesCommand', () => {
 
     // Set up mocks
     await mockModules.mock('@modules/config-loader', () => ({
-      loadToolConfigsFromDirectory: mockLoadToolConfigsFromDirectory,
+      loadToolConfigs: mockLoadToolConfigs,
       loadSingleToolConfig: mockLoadSingleToolConfig,
       getDefaultConfigPath: mockGetDefaultConfigPath,
     }));
@@ -192,7 +192,7 @@ describe('checkUpdatesCommand', () => {
   });
 
   test('should check all tools: one up-to-date, one with update', async () => {
-    mockLoadToolConfigsFromDirectory.mockResolvedValue({
+    mockLoadToolConfigs.mockResolvedValue({
       fzf: fzfToolConfig,
       lazygit: lazygitToolConfig,
     });
@@ -286,7 +286,7 @@ describe('checkUpdatesCommand', () => {
   });
 
   test('should handle no tool configurations found when checking all', async () => {
-    mockLoadToolConfigsFromDirectory.mockResolvedValue({});
+    mockLoadToolConfigs.mockResolvedValue({});
     await program.parseAsync(['check-updates'], { from: 'user' });
     logger.expect(
       ['INFO'],
@@ -337,9 +337,9 @@ describe('checkUpdatesCommand', () => {
     );
   });
 
-  test('should handle error during loadToolConfigsFromDirectory', async () => {
+  test('should handle error during loadToolConfigs', async () => {
     const errorMessage = 'FS read error';
-    mockLoadToolConfigsFromDirectory.mockRejectedValue(new Error(errorMessage));
+    mockLoadToolConfigs.mockRejectedValue(new Error(errorMessage));
     expect(program.parseAsync(['check-updates'], { from: 'user' })).rejects.toThrow();
     logger.expect(
       ['ERROR'],
