@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { baseToolConfigPropertiesSchema } from './baseToolConfigPropertiesSchema';
+import { binaryConfigSchema } from './binaryConfigSchema';
 import { brewInstallParamsSchema } from './brewInstallParamsSchema';
 
 export const brewToolConfigSchema = baseToolConfigPropertiesSchema.extend({
@@ -8,7 +9,7 @@ export const brewToolConfigSchema = baseToolConfigPropertiesSchema.extend({
   /** Homebrew installation parameters */
   installParams: brewInstallParamsSchema,
   /** Binaries are typically required for this installation method */
-  binaries: z.array(z.string().min(1)).min(1),
+  binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).min(1),
 });
 
 /** Resolved tool configuration for the 'brew' installation method. */

@@ -6,6 +6,7 @@ import { logs } from '@modules/logger';
 import type { BaseInstallContext, ManualToolConfig } from '@types';
 import { expandToolConfigPath } from '@utils';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { getBinaryNames, getBinaryPaths } from './utils';
 
 /**
  * Install a tool manually
@@ -47,8 +48,7 @@ export async function installManually(
 
     await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
 
-    const binaries = toolConfig.binaries || [toolName];
-    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
     return {
       success: true,
@@ -75,7 +75,7 @@ async function installBinariesManually(
   binaryPath: string,
   logger: TsLogger
 ): Promise<void> {
-  const binaryNames = toolConfig.binaries || [toolName];
+  const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
 
   for (const binaryName of binaryNames) {
     const finalBinaryPath = path.join(context.installDir, binaryName);

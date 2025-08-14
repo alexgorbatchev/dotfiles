@@ -16,6 +16,7 @@ import type {
 import { setupBinariesFromArchive } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { getBinaryPaths } from './utils';
 
 /**
  * Install a tool from a tarball using curl
@@ -130,7 +131,7 @@ export async function installFromCurlTar(
     }
 
     // Handle all binaries from extracted archive
-    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger, extractResult);
+    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
@@ -139,8 +140,7 @@ export async function installFromCurlTar(
     }
 
     // Return paths to all binaries
-    const binaries = toolConfig.binaries || [toolName];
-    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
     return {
       success: true,

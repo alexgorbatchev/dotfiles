@@ -2,8 +2,9 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { BaseInstallContext, BinaryConfig, ExtractResult, ToolConfig } from '@types';
-import { createAllBinarySymlinks, createBinarySymlink } from '@utils';
+import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@types';
+import { createBinarySymlink } from '@utils';
+import { normalizeBinaries } from './utils';
 
 /**
  * Setup binaries from extracted archive - creates symlinks for all binaries using their patterns
@@ -14,36 +15,12 @@ export async function setupBinariesFromArchive(
   toolConfig: ToolConfig,
   context: BaseInstallContext,
   extractDir: string,
-  logger: TsLogger,
-  extractResult?: ExtractResult
+  logger: TsLogger
 ): Promise<void> {
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
+  const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
-  // Use new pattern-based approach if available
-  if (toolConfig.binaryConfigs && toolConfig.binaryConfigs.length > 0) {
-    await setupBinariesUsingPatterns(
-      fs,
-      toolName,
-      toolConfig.binaryConfigs,
-      context.timestamp,
-      extractDir,
-      binariesDir,
-      logger
-    );
-    return;
-  }
-
-  // Fallback to legacy approach for backward compatibility
-  const binaryNames = toolConfig.binaries || [toolName];
-
-  // Find where binaries are located within the extracted archive
-  const binaryBasePath = await determineBinaryBasePath(fs, extractDir, logger);
-
-  // Validate that all binaries exist
-  await validateBinariesExist(fs, extractDir, binaryBasePath, binaryNames, extractResult, logger);
-
-  // Create symlinks for all binaries
-  await createAllBinarySymlinks(fs, toolName, binaryNames, context.timestamp, binaryBasePath, binariesDir, logger);
+  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, context.timestamp, extractDir, binariesDir, logger);
 }
 
 /**
@@ -183,53 +160,6 @@ async function findBinaryWithDirectPath(fs: IFileSystem, extractDir: string, pat
 }
 
 /**
- * Determine the base path where binaries are located within the extracted archive
- * This checks for a bin directory and returns the directory containing binaries
- * Returns a path relative to the timestamped directory
- */
-async function determineBinaryBasePath(fs: IFileSystem, extractDir: string, logger: TsLogger): Promise<string> {
-  let searchDir = extractDir;
-
-  // Check if there's a bin directory that might contain the binaries
-  const binDir = path.join(searchDir, 'bin');
-  if (await fs.exists(binDir)) {
-    const binDirStat = await fs.stat(binDir);
-    if (binDirStat.isDirectory()) {
-      logger.debug(logs.installer.debug.foundBinDirectory(), binDir);
-      searchDir = binDir;
-    }
-  }
-
-  // Return the search directory relative to extractDir
-  return path.relative(extractDir, searchDir);
-}
-
-/**
- * Validate that all required binaries exist in the determined location
- */
-async function validateBinariesExist(
-  fs: IFileSystem,
-  extractDir: string,
-  binaryBasePath: string,
-  binaryNames: string[],
-  extractResult: ExtractResult | undefined,
-  logger: TsLogger
-): Promise<void> {
-  const absoluteBasePath = path.join(extractDir, binaryBasePath);
-
-  for (const binaryName of binaryNames) {
-    const binaryPath = path.join(absoluteBasePath, binaryName);
-    if (!(await fs.exists(binaryPath))) {
-      const errorMsg = `Binary "${binaryName}" not found at expected path: ${binaryPath}${
-        extractResult?.extractedFiles ? `. Extracted files: ${extractResult.extractedFiles.join(', ')}` : ''
-      }`;
-      throw new Error(errorMsg);
-    }
-    logger.debug(logs.installer.debug.foundExecutable(), binaryPath);
-  }
-}
-
-/**
  * Setup binaries from direct download - handles all binaries in toolConfig.binaries[]
  */
 export async function setupBinariesFromDirectDownload(
@@ -240,23 +170,17 @@ export async function setupBinariesFromDirectDownload(
   downloadPath: string,
   logger: TsLogger
 ): Promise<void> {
-  const binaryNames = toolConfig.binaries || [toolName];
+  const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
+  const primaryBinary = binaryConfigs[0]?.name || toolName;
 
-  // For direct downloads, we only have one file, so use it for the first binary
-  const primaryBinary = binaryNames[0] || toolName;
-
-  // Make the downloaded file executable
   await fs.chmod(downloadPath, 0o755);
 
-  // Create symlink to the downloaded file
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const downloadFileName = path.basename(downloadPath);
 
   await createBinarySymlink(fs, toolName, primaryBinary, context.timestamp, downloadFileName, binariesDir, logger);
 
-  // For direct downloads with multiple binary names, we can't provide them all
-  // Log a warning if multiple binaries were requested
-  if (binaryNames.length > 1) {
-    logger.debug(logs.installer.debug.directDownloadSingleBinary(), binaryNames.length.toString(), primaryBinary);
+  if (binaryConfigs.length > 1) {
+    logger.debug(logs.installer.debug.directDownloadSingleBinary(), binaryConfigs.length.toString(), primaryBinary);
   }
 }

@@ -23,6 +23,7 @@ import { minimatch } from 'minimatch';
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { getBinaryPaths } from './utils';
 
 /**
  * Install a tool from GitHub releases
@@ -103,8 +104,7 @@ export async function installFromGitHubRelease(
       return installResult;
     }
 
-    const binaries = toolConfig.binaries || [toolName];
-    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
     return {
       success: true,
@@ -438,7 +438,7 @@ async function processArchiveInstallation(
     return hookResult;
   }
 
-  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger, extractResult);
+  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
 
   if (await toolFs.exists(downloadPath)) {
     logger.debug(logs.installer.debug.cleaningArchive(), downloadPath);

@@ -288,8 +288,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private buildBaseConfig() {
     return {
       name: this.toolName,
-      binaries: this.binaries.map((b) => b.name),
-      binaryConfigs: this.binaries.length > 0 ? this.binaries : undefined,
+      binaries:
+        this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
       version: this.versionNum,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
@@ -309,8 +309,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   private buildPlatformConfig() {
     const config: Record<string, unknown> = {
-      binaries: this.binaries.length > 0 ? this.binaries.map((b) => b.name) : undefined,
-      binaryConfigs: this.binaries.length > 0 ? this.binaries : undefined,
+      binaries:
+        this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
       version: this.versionNum !== 'latest' ? this.versionNum : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,

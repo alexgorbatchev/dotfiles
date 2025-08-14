@@ -58,7 +58,8 @@ export class ShimGenerator implements IShimGenerator {
     const overwrite = options?.overwrite ?? false;
 
     // Get list of binaries to generate shims for
-    const binaryNames = toolConfig.binaries && toolConfig.binaries.length > 0 ? toolConfig.binaries : [toolName]; // Fallback to toolName if no binaries specified
+    const binaries = toolConfig.binaries && toolConfig.binaries.length > 0 ? toolConfig.binaries : [toolName]; // Fallback to toolName if no binaries specified
+    const binaryNames = binaries.map((binary) => (typeof binary === 'string' ? binary : binary.name));
 
     // Generate a shim for each binary
     for (const binaryName of binaryNames) {

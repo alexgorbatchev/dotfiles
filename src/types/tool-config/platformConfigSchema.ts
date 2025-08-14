@@ -12,10 +12,8 @@ import { toolConfigUpdateCheckSchema } from './toolConfigUpdateCheckSchema';
 
 export const platformConfigSchema = z
   .object({
-    /** An array of binary names that should have shims generated for this tool */
-    binaries: z.array(z.string().min(1)).optional(),
-    /** Binary configurations with patterns for locating binaries within archives */
-    binaryConfigs: z.array(binaryConfigSchema).optional(),
+    /** An array of binary names or configurations that should have shims generated for this tool */
+    binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).optional(),
     /** The desired version of the tool */
     version: z.string().optional(),
     /** Shell configurations organized by shell type */

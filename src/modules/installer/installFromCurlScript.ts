@@ -8,6 +8,7 @@ import { logs } from '@modules/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@types';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { getBinaryNames, getBinaryPaths } from './utils';
 
 /**
  * Install a tool using a curl script
@@ -88,23 +89,20 @@ export async function installFromCurlScript(
     // Execute the script
     logger.debug(logs.installer.debug.executingScript(), shell);
 
-    // In a real implementation, we would execute the script here
+    // [TODO] In a real implementation, we would execute the script here
     // For now, we'll just simulate success
 
     // Handle all binaries by copying from script installation to versioned directory
-    const binaryNames = toolConfig.binaries || [toolName];
+    const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
     for (const binaryName of binaryNames) {
-      const sourcePath = path.join('/usr/local/bin', binaryName); // Placeholder location
+      const sourcePath = path.join('/usr/local/bin', binaryName);
       const finalBinaryPath = path.join(context.installDir, binaryName);
 
-      // In a real implementation, we would copy from script installation location to our versioned directory
-      // For now, this is a placeholder that assumes script installed the binary
       logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
     }
 
     // Return paths to all binaries
-    const binaries = toolConfig.binaries || [toolName];
-    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
     return {
       success: true,

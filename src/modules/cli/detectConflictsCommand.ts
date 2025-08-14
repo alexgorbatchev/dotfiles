@@ -31,7 +31,8 @@ async function checkShimConflicts(
 ): Promise<void> {
   if (!toolConfig.binaries) return;
 
-  for (const binaryName of toolConfig.binaries) {
+  for (const binary of toolConfig.binaries) {
+    const binaryName = typeof binary === 'string' ? binary : binary.name;
     const shimPath = path.join(targetDir, binaryName);
     if (await fs.exists(shimPath)) {
       try {

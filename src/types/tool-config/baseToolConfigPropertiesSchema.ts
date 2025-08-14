@@ -11,15 +11,11 @@ export const baseToolConfigPropertiesSchema = z
     /** The unique name of the tool, as defined by `c.name()`. */
     name: z.string().min(1),
     /**
-     * An array of binary names that should have shims generated for this tool.
+     * An array of binary names or configurations that should have shims generated for this tool.
+     * Can be simple strings for basic binaries or BinaryConfig objects for pattern-based location.
      * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
      */
-    binaries: z.array(z.string().min(1)).optional(),
-    /**
-     * Binary configurations with patterns for locating binaries within archives.
-     * Maps binary names to their glob patterns for location within extracted archives.
-     */
-    binaryConfigs: z.array(binaryConfigSchema).optional(),
+    binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).optional(),
     /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
     version: z.string(),
     /** The absolute path to the tool configuration file that defined this configuration. */

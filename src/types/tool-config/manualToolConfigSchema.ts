@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { baseToolConfigPropertiesSchema } from './baseToolConfigPropertiesSchema';
+import { binaryConfigSchema } from './binaryConfigSchema';
 import { manualInstallParamsSchema } from './manualInstallParamsSchema';
 
 export const manualToolConfigSchema = baseToolConfigPropertiesSchema.extend({
@@ -8,7 +9,7 @@ export const manualToolConfigSchema = baseToolConfigPropertiesSchema.extend({
   /** Manual installation parameters */
   installParams: manualInstallParamsSchema,
   /** Binaries are typically required for this installation method */
-  binaries: z.array(z.string().min(1)).min(1),
+  binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).min(1),
 });
 
 /** Resolved tool configuration for the 'manual' installation method. */

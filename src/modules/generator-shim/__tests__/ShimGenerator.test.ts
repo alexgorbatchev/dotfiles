@@ -69,8 +69,10 @@ describe('ShimGenerator', () => {
     let expectedBinaryPath: string;
 
     beforeEach(() => {
-      expectedShimPath = path.join(mockConfig.paths.targetDir, toolConfig.binaries![0]!);
-      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, toolConfig.binaries![0]!);
+      const firstBinary = toolConfig.binaries![0]!;
+      const binaryName = typeof firstBinary === 'string' ? firstBinary : firstBinary.name;
+      expectedShimPath = path.join(mockConfig.paths.targetDir, binaryName);
+      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, binaryName);
     });
 
     it('should generate correct shim content, write file, and return shim path', async () => {
