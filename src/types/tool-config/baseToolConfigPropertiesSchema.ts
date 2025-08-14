@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { binaryConfigSchema } from './binaryConfigSchema';
 import { completionConfigSchema } from './completionConfigSchema';
 import { platformConfigEntrySchema } from './platformConfigEntrySchema';
 import { shellConfigsSchema } from './shellConfigsSchema';
@@ -14,6 +15,11 @@ export const baseToolConfigPropertiesSchema = z
      * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
      */
     binaries: z.array(z.string().min(1)).optional(),
+    /**
+     * Binary configurations with patterns for locating binaries within archives.
+     * Maps binary names to their glob patterns for location within extracted archives.
+     */
+    binaryConfigs: z.array(binaryConfigSchema).optional(),
     /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
     version: z.string(),
     /** The absolute path to the tool configuration file that defined this configuration. */

@@ -52,6 +52,10 @@ export const installerDebugTemplates = {
     createSafeLogMessage(
       'Direct download only provides one binary, but %s were configured. Only %s will be available.'
     ),
-  strippingComponent: () => createSafeLogMessage('Stripping component %s: navigating into %s'),
-  stripComponentsSkipped: () => createSafeLogMessage('Skipping strip component %s: %s'),
+  foundBinDirectory: () => createSafeLogMessage('Found bin directory, using as binary base path: %s'),
+  searchingWithPattern: () => createSafeLogMessage('Searching for binary using pattern %s in directory %s'),
+  noPatternMatch: () => createSafeLogMessage('No matches found for pattern %s in directory %s'),
+  patternPathNotFound: () => createSafeLogMessage('Pattern path does not exist: %s'),
+  removingOldSymlink: () => createSafeLogMessage('Removing old symlink: %s'),
+  creatingSymlink: () => createSafeLogMessage('Creating symlink: %s -> %s'),
 } satisfies SafeLogMessageMap;

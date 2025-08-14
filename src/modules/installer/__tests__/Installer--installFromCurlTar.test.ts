@@ -23,34 +23,23 @@ describe('Installer - installFromCurlTar', () => {
       installationMethod: 'curl-tar',
       installParams: {
         url: 'https://example.com/archive.tar.gz',
-        extractPath: 'bin/tool',
       },
     };
 
-    // Setup mockExists for the path of the binary within the install directory
-    const expectedExtractedBinaryPath = path.join(
-      setup.testDirs.paths.binariesDir,
-      MOCK_TOOL_NAME,
-      MOCK_TOOL_VERSION,
-      'bin/tool' // This comes from toolConfig.installParams.extractPath
-    );
-
     // The binary should be copied to the final location
-    const installDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_VERSION);
+    const installDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, '2024-08-13-16-45-23');
     const context: BaseInstallContext = {
       // context is defined here
       toolName: MOCK_TOOL_NAME,
       installDir,
+      timestamp: '2024-08-13-16-45-23',
       systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
       appConfig: setup.mockAppConfig,
     };
 
-    // Create the binary file in the mock filesystem (directly in install directory)
-    await setup.mockFileSystem.ensureDir(path.dirname(expectedExtractedBinaryPath));
-    await setup.mockFileSystem.writeFile(expectedExtractedBinaryPath, 'binary content');
-    // Also create the binary at the tool name location (fallback path)
-    await setup.mockFileSystem.writeFile(path.join(installDir, MOCK_TOOL_NAME), 'binary content');
+    // The mock extractor will create files in the installDir, which is the timestamped directory
+    // No need to manually create files - the mock extractor handles this
 
     mock.restore();
 
@@ -66,8 +55,10 @@ describe('Installer - installFromCurlTar', () => {
     expect(setup.fileSystemMocks.ensureDir).toHaveBeenCalled();
     // chmod should NOT be called for archive extraction (archives preserve permissions)
     expect(setup.fileSystemMocks.chmod).not.toHaveBeenCalled();
-    // copyFile should be called to move binary from temp extract to final location
-    expect(setup.fileSystemMocks.copyFile).toHaveBeenCalled();
+    // copyFile should NOT be called - we use symlinks now
+    expect(setup.fileSystemMocks.copyFile).not.toHaveBeenCalled();
+    // symlink should be called to create binary symlinks
+    expect(setup.fileSystemMocks.symlink).toHaveBeenCalled();
     expect(result.success).toBe(true);
     expect(result.info).toEqual({
       tarballUrl: 'https://example.com/archive.tar.gz',

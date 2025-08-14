@@ -26,6 +26,7 @@ import { type ISymlinkGenerator, SymlinkGenerator } from '@modules/generator-sym
 import { GitHubApiClient, type IGitHubApiClient } from '@modules/github-client';
 import { type IInstaller, Installer } from '@modules/installer';
 import { createTsLogger, getLogLevelFromFlags, logs, type TsLogger } from '@modules/logger';
+import { type IToolInstallationRegistry, SqliteToolInstallationRegistry } from '@modules/tool-installation-registry';
 import { type IVersionChecker, VersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
 import { contractHomePath } from '@utils';
@@ -35,6 +36,7 @@ export interface Services {
   yamlConfig: YamlConfig;
   fs: IFileSystem;
   fileRegistry: IFileRegistry;
+  toolInstallationRegistry: IToolInstallationRegistry;
   downloadCache: ICache | undefined;
   downloader: IDownloader;
   githubApiCache: ICache;
@@ -230,6 +232,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const fileRegistry = new SqliteFileRegistry(parentLogger, registryPath);
   parentLogger.debug(logs.registry.success.initialized(registryPath));
 
+  // Initialize tool installation registry (uses same database file)
+  const toolInstallationRegistry = new SqliteToolInstallationRegistry(parentLogger, registryPath);
+
   // Initialize services with yamlConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
 
@@ -271,7 +276,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     downloader,
     githubApiClient,
     archiveExtractor,
-    yamlConfig
+    yamlConfig,
+    toolInstallationRegistry
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
 
@@ -280,6 +286,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     yamlConfig,
     fs,
     fileRegistry,
+    toolInstallationRegistry,
     downloadCache,
     downloader,
     githubApiCache,

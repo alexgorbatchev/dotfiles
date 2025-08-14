@@ -2,10 +2,11 @@ import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { BaseInstallContext, ExtractResult, InstallParams, ToolConfig } from '@types';
+import type { BaseInstallContext, BinaryConfig, ExtractResult, ToolConfig } from '@types';
+import { createAllBinarySymlinks, createBinarySymlink } from '@utils';
 
 /**
- * Setup binaries from extracted archive - handles all binaries in toolConfig.binaries[]
+ * Setup binaries from extracted archive - creates symlinks for all binaries using their patterns
  */
 export async function setupBinariesFromArchive(
   fs: IFileSystem,
@@ -16,222 +17,215 @@ export async function setupBinariesFromArchive(
   logger: TsLogger,
   extractResult?: ExtractResult
 ): Promise<void> {
+  const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
+
+  // Use new pattern-based approach if available
+  if (toolConfig.binaryConfigs && toolConfig.binaryConfigs.length > 0) {
+    await setupBinariesUsingPatterns(
+      fs,
+      toolName,
+      toolConfig.binaryConfigs,
+      context.timestamp,
+      extractDir,
+      binariesDir,
+      logger
+    );
+    return;
+  }
+
+  // Fallback to legacy approach for backward compatibility
   const binaryNames = toolConfig.binaries || [toolName];
-  const installParams: InstallParams | undefined = toolConfig.installParams;
 
-  const primarySourcePath = await determinePrimaryBinaryPath(
-    fs,
-    extractDir,
-    toolName,
-    installParams,
-    extractResult,
-    logger
-  );
+  // Find where binaries are located within the extracted archive
+  const binaryBasePath = await determineBinaryBasePath(fs, extractDir, logger);
 
-  await validateAndCopyPrimaryBinary(fs, primarySourcePath, binaryNames, context, extractResult, logger);
-  await copyAdditionalBinaries(fs, binaryNames, extractDir, context, logger);
+  // Validate that all binaries exist
+  await validateBinariesExist(fs, extractDir, binaryBasePath, binaryNames, extractResult, logger);
+
+  // Create symlinks for all binaries
+  await createAllBinarySymlinks(fs, toolName, binaryNames, context.timestamp, binaryBasePath, binariesDir, logger);
 }
 
-async function applyStripComponents(
+/**
+ * Setup binaries using pattern-based location (new approach)
+ */
+async function setupBinariesUsingPatterns(
+  fs: IFileSystem,
+  toolName: string,
+  binaryConfigs: BinaryConfig[],
+  timestamp: string,
+  extractDir: string,
+  binariesDir: string,
+  logger: TsLogger
+): Promise<void> {
+  for (const binaryConfig of binaryConfigs) {
+    const { name: binaryName, pattern } = binaryConfig;
+
+    // Find the binary using its pattern
+    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, logger);
+
+    if (!binaryPath) {
+      logger.error(logs.installer.debug.binaryNotFound(), binaryName, pattern);
+      continue;
+    }
+
+    // Create symlink for this binary
+    const relativePath = path.relative(extractDir, binaryPath);
+    await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, logger);
+  }
+}
+
+/**
+ * Find a binary using a glob pattern within the extract directory
+ */
+/**
+ * Find a binary using a glob pattern
+ */
+async function findBinaryUsingPattern(
   fs: IFileSystem,
   extractDir: string,
-  extractedFiles: string[],
-  stripComponents: number,
+  pattern: string,
   logger: TsLogger
-): Promise<string> {
+): Promise<string | null> {
+  logger.debug(logs.installer.debug.searchingWithPattern(), pattern, extractDir);
+
+  // Try the primary pattern first
+  let result: string | null = null;
+
+  if (pattern.includes('*')) {
+    result = await findBinaryWithWildcards(fs, extractDir, pattern, logger);
+  } else {
+    result = await findBinaryWithDirectPath(fs, extractDir, pattern);
+  }
+
+  // If primary pattern failed and it's a wildcard pattern like '*/tool', try fallback patterns
+  if (!result && pattern.startsWith('*/')) {
+    const toolName = pattern.substring(2); // Remove '*/' prefix
+    logger.debug(logs.installer.debug.searchingWithPattern(), `Trying fallback pattern: ${toolName}`, extractDir);
+
+    // Try direct path as fallback
+    result = await findBinaryWithDirectPath(fs, extractDir, toolName);
+  }
+
+  return result;
+}
+
+/**
+ * Handle patterns with wildcards like 'ripgrep-star/rg' or 'star/bin/kubectl'
+ */
+async function findBinaryWithWildcards(
+  fs: IFileSystem,
+  extractDir: string,
+  pattern: string,
+  logger: TsLogger
+): Promise<string | null> {
+  const parts = pattern.split('/');
   let currentDir = extractDir;
-  let currentFiles = extractedFiles;
 
-  for (let i = 0; i < stripComponents; i++) {
-    // If there's exactly one item and it's a directory, navigate into it
-    if (currentFiles.length === 1 && currentFiles[0]) {
-      const nextPath = path.join(currentDir, currentFiles[0]);
-      const stat = await fs.stat(nextPath);
+  for (const part of parts) {
+    if (!part) continue;
 
-      if (stat.isDirectory()) {
-        logger.debug(logs.installer.debug.strippingComponent(), i + 1, nextPath);
-        currentDir = nextPath;
-        currentFiles = await fs.readdir(currentDir);
-      } else {
-        logger.debug(logs.installer.debug.stripComponentsSkipped(), i + 1, 'not a directory');
-        break;
+    if (part.includes('*')) {
+      const matchedDir = await findWildcardMatch(fs, currentDir, part, logger);
+      if (!matchedDir) {
+        return null;
       }
+      currentDir = matchedDir;
     } else {
-      logger.debug(logs.installer.debug.stripComponentsSkipped(), i + 1, `${currentFiles.length} files`);
-      break;
+      currentDir = path.join(currentDir, part);
+    }
+
+    if (!(await fs.exists(currentDir))) {
+      logger.debug(logs.installer.debug.patternPathNotFound(), currentDir);
+      return null;
     }
   }
 
   return currentDir;
 }
 
-async function handleStrippedComponents(
+/**
+ * Find the first directory/file matching a wildcard pattern
+ */
+async function findWildcardMatch(
   fs: IFileSystem,
-  extractDir: string,
-  toolName: string,
-  extractedFiles: string[],
-  stripComponents: number,
+  currentDir: string,
+  wildcardPart: string,
   logger: TsLogger
 ): Promise<string | null> {
-  const searchDir = await applyStripComponents(fs, extractDir, extractedFiles, stripComponents, logger);
-  const strippedFiles = await fs.readdir(searchDir);
+  const entries = await fs.readdir(currentDir);
+  const regex = new RegExp(`^${wildcardPart.replace(/\*/g, '.*')}$`);
+  const matches = entries.filter((entry) => regex.test(entry));
 
-  if (strippedFiles.length === 0) {
+  if (matches.length === 0) {
+    logger.debug(logs.installer.debug.noPatternMatch(), wildcardPart, currentDir);
     return null;
   }
 
-  // Look for the binary directly in the stripped directory
-  const binaryInStrippedDir = strippedFiles.find((file) => path.basename(file) === toolName);
-  if (binaryInStrippedDir) {
-    return path.join(searchDir, binaryInStrippedDir);
+  const firstMatch = matches[0];
+  if (!firstMatch) {
+    logger.debug(logs.installer.debug.noPatternMatch(), wildcardPart, currentDir);
+    return null;
   }
 
-  // If no exact match, try the first file that looks like an executable
-  const executableFile = strippedFiles.find((file) => {
-    const ext = path.extname(file);
-    return ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext);
-  });
-
-  return executableFile ? path.join(searchDir, executableFile) : null;
+  return path.join(currentDir, firstMatch);
 }
 
-async function determinePrimaryBinaryPath(
-  fs: IFileSystem,
-  extractDir: string,
-  toolName: string,
-  installParams: InstallParams | undefined,
-  extractResult: ExtractResult | undefined,
-  logger: TsLogger
-): Promise<string> {
+/**
+ * Handle direct path patterns without wildcards
+ */
+async function findBinaryWithDirectPath(fs: IFileSystem, extractDir: string, pattern: string): Promise<string | null> {
+  const directPath = path.join(extractDir, pattern);
+  if (await fs.exists(directPath)) {
+    return directPath;
+  }
+  return null;
+}
+
+/**
+ * Determine the base path where binaries are located within the extracted archive
+ * This checks for a bin directory and returns the directory containing binaries
+ * Returns a path relative to the timestamped directory
+ */
+async function determineBinaryBasePath(fs: IFileSystem, extractDir: string, logger: TsLogger): Promise<string> {
   let searchDir = extractDir;
-  const stripComponents = installParams && 'stripComponents' in installParams ? installParams.stripComponents : 0;
 
-  // Handle stripComponents first - navigate into nested directories
-  if (stripComponents && stripComponents > 0 && extractResult?.extractedFiles) {
-    const strippedPath = await handleStrippedComponents(
-      fs,
-      extractDir,
-      toolName,
-      extractResult.extractedFiles,
-      stripComponents,
-      logger
-    );
-    if (strippedPath) {
-      return strippedPath;
+  // Check if there's a bin directory that might contain the binaries
+  const binDir = path.join(searchDir, 'bin');
+  if (await fs.exists(binDir)) {
+    const binDirStat = await fs.stat(binDir);
+    if (binDirStat.isDirectory()) {
+      logger.debug(logs.installer.debug.foundBinDirectory(), binDir);
+      searchDir = binDir;
     }
-    searchDir = await applyStripComponents(fs, extractDir, extractResult.extractedFiles, stripComponents, logger);
   }
 
-  if (installParams && 'binaryPath' in installParams && installParams.binaryPath) {
-    return path.join(searchDir, installParams.binaryPath);
-  }
-
-  if (installParams && 'extractPath' in installParams && installParams.extractPath) {
-    return path.join(searchDir, installParams.extractPath);
-  }
-
-  if (extractResult?.executables && extractResult.executables.length > 0) {
-    return findExecutablePath(searchDir, toolName, extractResult.executables, logger);
-  }
-
-  if (extractResult?.extractedFiles && extractResult.extractedFiles.length === 1) {
-    return handleSingleExtractedFile(searchDir, toolName, extractResult.extractedFiles, logger);
-  }
-
-  if (extractResult?.extractedFiles) {
-    return findFallbackBinary(searchDir, toolName, extractResult.extractedFiles, logger);
-  }
-
-  return path.join(searchDir, toolName);
+  // Return the search directory relative to extractDir
+  return path.relative(extractDir, searchDir);
 }
 
-function findExecutablePath(extractDir: string, toolName: string, executables: string[], logger: TsLogger): string {
-  const exeMatchingToolName = executables.find((exe) => path.basename(exe) === toolName);
-  if (exeMatchingToolName) {
-    const primarySourcePath = path.join(extractDir, exeMatchingToolName);
-    logger.debug(logs.installer.debug.foundExecutable(), primarySourcePath);
-    return primarySourcePath;
-  }
-
-  const firstExecutable = executables[0];
-  if (firstExecutable) {
-    const primarySourcePath = path.join(extractDir, firstExecutable);
-    logger.debug(logs.installer.debug.foundExecutable(), primarySourcePath);
-    return primarySourcePath;
-  }
-
-  return path.join(extractDir, toolName);
-}
-
-function handleSingleExtractedFile(
-  extractDir: string,
-  toolName: string,
-  extractedFiles: string[],
-  logger: TsLogger
-): string {
-  const singleFile = extractedFiles[0];
-  if (singleFile) {
-    const primarySourcePath = path.join(extractDir, singleFile);
-    logger.debug(logs.installer.debug.assumingSingleBinary(), primarySourcePath);
-    return primarySourcePath;
-  }
-  return path.join(extractDir, toolName);
-}
-
-function findFallbackBinary(extractDir: string, toolName: string, extractedFiles: string[], logger: TsLogger): string {
-  const potentialBinary = extractedFiles.find((f) => f.includes(toolName));
-  if (potentialBinary) {
-    const primarySourcePath = path.join(extractDir, potentialBinary);
-    logger.debug(logs.installer.debug.attemptingFallback(), primarySourcePath);
-    return primarySourcePath;
-  }
-
-  logger.debug(logs.installer.debug.noExecutableFound(), extractedFiles);
-  return path.join(extractDir, toolName);
-}
-
-async function validateAndCopyPrimaryBinary(
+/**
+ * Validate that all required binaries exist in the determined location
+ */
+async function validateBinariesExist(
   fs: IFileSystem,
-  primarySourcePath: string,
+  extractDir: string,
+  binaryBasePath: string,
   binaryNames: string[],
-  context: BaseInstallContext,
   extractResult: ExtractResult | undefined,
   logger: TsLogger
 ): Promise<void> {
-  if (!(await fs.exists(primarySourcePath))) {
-    const errorMsg = `Binary not found at expected path after extraction: ${primarySourcePath}${
-      extractResult?.extractedFiles ? `. Extracted files: ${extractResult.extractedFiles.join(', ')}` : ''
-    }`;
-    throw new Error(errorMsg);
-  }
+  const absoluteBasePath = path.join(extractDir, binaryBasePath);
 
-  const primaryBinary = binaryNames[0] || context.toolName;
-  const finalPrimaryPath = path.join(context.installDir, primaryBinary);
-
-  logger.debug(logs.installer.debug.movingBinary(), primarySourcePath, finalPrimaryPath);
-  await fs.copyFile(primarySourcePath, finalPrimaryPath);
-}
-
-async function copyAdditionalBinaries(
-  fs: IFileSystem,
-  binaryNames: string[],
-  extractDir: string,
-  context: BaseInstallContext,
-  logger: TsLogger
-): Promise<void> {
-  for (let i = 1; i < binaryNames.length; i++) {
-    const binaryName = binaryNames[i];
-    if (binaryName) {
-      const additionalSourcePath = path.join(extractDir, binaryName);
-      const additionalFinalPath = path.join(context.installDir, binaryName);
-
-      if (await fs.exists(additionalSourcePath)) {
-        logger.debug(logs.installer.debug.movingBinary(), additionalSourcePath, additionalFinalPath);
-        await fs.copyFile(additionalSourcePath, additionalFinalPath);
-      } else {
-        logger.debug(logs.installer.debug.binaryNotFound(), binaryName, additionalSourcePath);
-      }
+  for (const binaryName of binaryNames) {
+    const binaryPath = path.join(absoluteBasePath, binaryName);
+    if (!(await fs.exists(binaryPath))) {
+      const errorMsg = `Binary "${binaryName}" not found at expected path: ${binaryPath}${
+        extractResult?.extractedFiles ? `. Extracted files: ${extractResult.extractedFiles.join(', ')}` : ''
+      }`;
+      throw new Error(errorMsg);
     }
+    logger.debug(logs.installer.debug.foundExecutable(), binaryPath);
   }
 }
 
@@ -250,19 +244,15 @@ export async function setupBinariesFromDirectDownload(
 
   // For direct downloads, we only have one file, so use it for the first binary
   const primaryBinary = binaryNames[0] || toolName;
-  const finalBinaryPath = path.join(context.installDir, primaryBinary);
 
-  logger.debug(logs.installer.debug.movingBinary(), downloadPath, finalBinaryPath);
-  await fs.copyFile(downloadPath, finalBinaryPath);
+  // Make the downloaded file executable
+  await fs.chmod(downloadPath, 0o755);
 
-  // Make binary executable for direct downloads (may not preserve permissions)
-  await fs.chmod(finalBinaryPath, 0o755);
+  // Create symlink to the downloaded file
+  const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
+  const downloadFileName = path.basename(downloadPath);
 
-  // Clean up original downloaded file if it was renamed
-  if (downloadPath !== finalBinaryPath && (await fs.exists(downloadPath))) {
-    logger.debug(logs.installer.debug.cleaningArchive(), downloadPath);
-    await fs.rm(downloadPath);
-  }
+  await createBinarySymlink(fs, toolName, primaryBinary, context.timestamp, downloadFileName, binariesDir, logger);
 
   // For direct downloads with multiple binary names, we can't provide them all
   // Log a warning if multiple binaries were requested

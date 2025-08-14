@@ -103,17 +103,19 @@ export async function installFromGitHubRelease(
       return installResult;
     }
 
-    const primaryBinary = toolConfig.binaries?.[0] || toolName;
-    const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+    const binaries = toolConfig.binaries || [toolName];
+    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
 
     return {
       success: true,
-      binaryPath: primaryBinaryPath,
+      binaryPaths,
       version: release.data.tag_name,
       info: {
         releaseUrl: release.data.html_url,
         publishedAt: release.data.published_at,
         releaseName: release.data.name,
+        downloadUrl: downloadUrl.data,
+        assetName: asset.data.name,
       },
     };
   } catch (error) {

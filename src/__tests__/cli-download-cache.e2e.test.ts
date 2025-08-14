@@ -126,7 +126,7 @@ describe('E2E: Download Cache', () => {
       }
 
       // Remove any existing binary to force fresh install
-      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
+      const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolName);
       if (await fs.exists(binaryPath)) {
         await fs.rm(binaryPath, { force: true });
       }
@@ -239,7 +239,7 @@ describe('E2E: Download Cache', () => {
       });
 
       // Remove binary to force fresh install
-      const expectedBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
+      const expectedBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolName);
       if (await fs.exists(expectedBinaryPath)) {
         await fs.rm(expectedBinaryPath, { force: true });
       }

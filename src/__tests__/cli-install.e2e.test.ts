@@ -31,7 +31,7 @@ describe('E2E: bun run cli install', () => {
       fs = new NodeFileSystem();
       const logger = new TestLogger();
       testDirs = await createTestDirectories(logger, fs, { testName: 'cli-install-direct-binary-mock' });
-      expectedInstalledBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolVersion, mockToolName);
+      expectedInstalledBinaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolName);
 
       localMockBinaryFilePath = await createFile(
         fs,
@@ -135,17 +135,18 @@ describe('E2E: bun run cli install', () => {
           'temp-archive-source': { path: 'temp-archive-source' },
         },
       });
-      expectedBinaryPath = path.join(
-        testDirs.paths.binariesDir,
-        mockArchiveToolName,
-        mockArchiveToolVersion,
-        mockArchiveToolName
-      );
+      expectedBinaryPath = path.join(testDirs.paths.binariesDir, mockArchiveToolName, mockArchiveToolName);
 
-      await createFile(fs, path.join(testDirs.getDir('temp-archive-source'), mockArchiveToolName), mockBinaryContent);
+      // Create archive with realistic directory structure
+      const archiveSourceDir = path.join(
+        testDirs.getDir('temp-archive-source'),
+        `${mockArchiveToolName}-v${mockArchiveToolVersion}`
+      );
+      await fs.ensureDir(archiveSourceDir);
+      await createFile(fs, path.join(archiveSourceDir, mockArchiveToolName), mockBinaryContent, true);
 
       localArchiveFilePath = path.join(testDirs.paths.homeDir, mockArchiveFileName);
-      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} ${mockArchiveToolName}`.quiet();
+      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} ${mockArchiveToolName}-v${mockArchiveToolVersion}`.quiet();
 
       mockServer = await createMockGitHubServer({
         apiPaths: [

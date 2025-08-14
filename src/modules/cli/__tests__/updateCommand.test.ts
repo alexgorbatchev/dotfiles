@@ -66,7 +66,7 @@ describe('updateCommand', () => {
           install: mock(
             async (toolName: string, tc: ToolConfig, _opts?: unknown): Promise<InstallResult> => ({
               success: true,
-              binaryPath: `${setup.mockYamlConfig.paths.binariesDir}/${toolName}`,
+              binaryPaths: [`${setup.mockYamlConfig.paths.binariesDir}/${toolName}`],
               version: tc.version || 'installed-version',
             })
           ),

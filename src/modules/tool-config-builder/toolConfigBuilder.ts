@@ -43,10 +43,15 @@ interface InternalShellConfigs {
   powershell: ShellStorage;
 }
 
+export interface BinaryConfig {
+  name: string;
+  pattern: string;
+}
+
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
   public toolName: string;
-  public binaries: string[] = [];
+  public binaries: BinaryConfig[] = [];
   public versionNum: string = 'latest';
   public currentInstallationMethod?: ToolConfigInstallationMethod;
   public currentInstallParams?: ToolConfigInstallParams;
@@ -75,8 +80,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this.internalShellConfigs;
   }
 
-  bin(names: string | string[]): this {
-    this.binaries = Array.isArray(names) ? names : [names];
+  bin(name: string, pattern?: string): this {
+    const binaryPattern = pattern || `*/${name}`;
+    this.binaries.push({ name, pattern: binaryPattern });
     return this;
   }
 
@@ -282,7 +288,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private buildBaseConfig() {
     return {
       name: this.toolName,
-      binaries: this.binaries,
+      binaries: this.binaries.map((b) => b.name),
+      binaryConfigs: this.binaries.length > 0 ? this.binaries : undefined,
       version: this.versionNum,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
@@ -302,7 +309,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   private buildPlatformConfig() {
     const config: Record<string, unknown> = {
-      binaries: this.binaries.length > 0 ? this.binaries : undefined,
+      binaries: this.binaries.length > 0 ? this.binaries.map((b) => b.name) : undefined,
+      binaryConfigs: this.binaries.length > 0 ? this.binaries : undefined,
       version: this.versionNum !== 'latest' ? this.versionNum : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,

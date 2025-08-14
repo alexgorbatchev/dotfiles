@@ -5,6 +5,7 @@ import { Installer } from '../Installer';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
+  createMockToolInstallationRegistry,
   createTestContext,
   type InstallerTestSetup,
   MOCK_GITHUB_RELEASE,
@@ -31,7 +32,7 @@ describe('Installer - installFromGitHubRelease', () => {
       },
     });
     const context = createTestContext(setup, {
-      installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+      installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, '2024-08-13-16-45-23'),
     });
 
     // Mock filesystem operations to avoid errors on non-existent files from mock downloader
@@ -163,7 +164,8 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
-        testAppConfig
+        testAppConfig,
+        createMockToolInstallationRegistry()
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -219,7 +221,8 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
-        testAppConfig
+        testAppConfig,
+        createMockToolInstallationRegistry()
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -275,7 +278,8 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
-        testAppConfig
+        testAppConfig,
+        createMockToolInstallationRegistry()
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),

@@ -70,12 +70,7 @@ describe('ShimGenerator', () => {
 
     beforeEach(() => {
       expectedShimPath = path.join(mockConfig.paths.targetDir, toolConfig.binaries![0]!);
-      expectedBinaryPath = path.join(
-        mockConfig.paths.binariesDir,
-        toolConfig.name,
-        toolConfig.version,
-        toolConfig.binaries![0]!
-      );
+      expectedBinaryPath = path.join(mockConfig.paths.binariesDir, toolConfig.name, toolConfig.binaries![0]!);
     });
 
     it('should generate correct shim content, write file, and return shim path', async () => {
@@ -147,12 +142,7 @@ describe('ShimGenerator', () => {
         installationMethod: 'none',
         installParams: undefined,
       };
-      const expectedBinaryPathFallback = path.join(
-        mockConfig.paths.binariesDir,
-        configNoBinaries.name,
-        configNoBinaries.version,
-        toolName
-      );
+      const expectedBinaryPathFallback = path.join(mockConfig.paths.binariesDir, configNoBinaries.name, toolName);
       const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
       const fallbackShimPath = path.join(mockConfig.paths.targetDir, toolName);
 
@@ -174,7 +164,6 @@ describe('ShimGenerator', () => {
       const expectedBinaryPathFallback = path.join(
         mockConfig.paths.binariesDir,
         configUndefinedBinaries.name,
-        configUndefinedBinaries.version,
         toolName
       );
       const result = await shimGenerator.generateForTool(toolName, configUndefinedBinaries);

@@ -7,6 +7,7 @@ import type { IGitHubApiClient } from '@modules/github-client';
 import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { ExtractOptions, GithubReleaseToolConfig } from '@types';
 import { Installer } from '../Installer';
+import { createMockToolInstallationRegistry } from './installer-test-helpers';
 
 describe('Installer - Enhanced Hooks', () => {
   let logger: TestLogger;
@@ -96,7 +97,15 @@ describe('Installer - Enhanced Hooks', () => {
       },
     } as YamlConfig;
 
-    installer = new Installer(logger, memFs.fs, mockDownloader, mockGitHubClient, mockArchiveExtractor, mockConfig);
+    installer = new Installer(
+      logger,
+      memFs.fs,
+      mockDownloader,
+      mockGitHubClient,
+      mockArchiveExtractor,
+      mockConfig,
+      createMockToolInstallationRegistry()
+    );
   });
 
   describe('beforeInstall hook', () => {

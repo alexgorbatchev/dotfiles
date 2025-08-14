@@ -27,11 +27,14 @@ describe('ToolConfigBuilder', () => {
   test('bin method sets binaries correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
-    expect(builder.binaries).toEqual(['test-bin']);
+    expect(builder.binaries).toEqual([{ name: 'test-bin', pattern: '*/test-bin' }]);
 
     const builder2 = new ToolConfigBuilder(logger, 'test-tool');
-    builder2.bin(['bin1', 'bin2']);
-    expect(builder2.binaries).toEqual(['bin1', 'bin2']);
+    builder2.bin('bin1').bin('bin2');
+    expect(builder2.binaries).toEqual([
+      { name: 'bin1', pattern: '*/bin1' },
+      { name: 'bin2', pattern: '*/bin2' },
+    ]);
   });
 
   test('version method sets version correctly', () => {
@@ -42,7 +45,7 @@ describe('ToolConfigBuilder', () => {
 
   test('install method sets installation method and params correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.bin(['test-bin']); // Add bin to make build valid
+    builder.bin('test-bin'); // Add bin to make build valid
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     builder.install('github-release', installParams);
     const config = builder.build();
@@ -55,7 +58,7 @@ describe('ToolConfigBuilder', () => {
 
   test('hooks method sets hooks correctly on installParams', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.bin(['test-bin']); // Add bin to make build valid
+    builder.bin('test-bin'); // Add bin to make build valid
     const mockHook: AsyncInstallHook = async () => {};
     const hooks = { beforeInstall: mockHook };
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
@@ -127,7 +130,7 @@ describe('ToolConfigBuilder', () => {
     const completionConfig = { bash: { source: 'completion.bash' } };
 
     builder
-      .bin(['tool-bin'])
+      .bin('tool-bin')
       .version('1.0.0')
       .install('github-release', installParams)
       .hooks(hooks)
@@ -151,7 +154,7 @@ describe('ToolConfigBuilder', () => {
 
   test('build method returns NoInstallToolConfig if binaries are specified but no installation method', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.bin(['test-bin']);
+    builder.bin('test-bin');
     const config = builder.build();
     expect(config.name).toBe('test-tool');
     expect(config.binaries).toEqual(['test-bin']);
@@ -193,7 +196,7 @@ describe('ToolConfigBuilder', () => {
 
   test('build method returns NoInstallToolConfig with binaries if set, but no install method', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.bin(['my-binary']);
+    builder.bin('my-binary');
     const config = builder.build();
     expect(config.installationMethod).toBe('none'); // Should be 'none'
     expect(config.installParams).toBeUndefined();
@@ -203,7 +206,7 @@ describe('ToolConfigBuilder', () => {
   test('build method should log error when invalid installation method is set', () => {
     const testLogger = new TestLogger();
     const builder = new ToolConfigBuilder(testLogger, 'test-tool');
-    builder.bin(['test-binary']);
+    builder.bin('test-binary');
     // Test error handling by forcing an invalid installation method
     // This simulates a corrupted state that should never occur in normal usage
     // @ts-expect-error - Intentionally setting invalid state for error testing

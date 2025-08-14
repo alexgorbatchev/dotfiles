@@ -50,7 +50,6 @@ export async function installFromCurlTar(
 
   const params = toolConfig.installParams;
   const url = params.url;
-  // extractPath is now handled as extractPathInArchive below
 
   try {
     // Download the tarball
@@ -100,7 +99,6 @@ export async function installFromCurlTar(
 
     const extractResult: ExtractResult = await archiveExtractor.extract(tarballPath, {
       targetDir: context.installDir,
-      stripComponents: params.stripComponents, // from CurlTarInstallParams
     });
     logger.debug(logs.installer.debug.tarballExtracted(), extractResult);
 
@@ -140,13 +138,13 @@ export async function installFromCurlTar(
       await toolFs.rm(tarballPath);
     }
 
-    // Return path to first binary for compatibility
-    const primaryBinary = toolConfig.binaries?.[0] || toolName;
-    const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+    // Return paths to all binaries
+    const binaries = toolConfig.binaries || [toolName];
+    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
 
     return {
       success: true,
-      binaryPath: primaryBinaryPath,
+      binaryPaths,
       info: {
         tarballUrl: url,
       },

@@ -219,37 +219,6 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       expect(await nodeFs.readFile(extractedFilePath, 'utf-8')).toBe(fileContent);
     });
 
-    it('should use --strip-components for tar archives if specified using real tar', async () => {
-      mockExecCallback.mockImplementation((command: string, optionsOrCallback: unknown, callback?: unknown) => {
-        const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
-        if (!cb || typeof cb !== 'function') return;
-        realPromisedExecViaUtil(command)
-          .then(({ stdout, stderr }) => cb(null, { stdout, stderr }))
-          .catch((error) => {
-            const err: TestExecError = new Error(error.message || 'Error in realPromisedExecViaUtil');
-            err.stdout = error.stdout;
-            err.stderr = error.stderr;
-            err.code = error.code || error.exitCode;
-            cb(err, { stdout: error.stdout || '', stderr: error.stderr || '' });
-          });
-      });
-
-      const archiveName = 'test-strip.tar.gz';
-      const fileName = 'testfile.txt';
-      const fileContent = 'Strip me!';
-      const subDir = 'dir1/dir2';
-      const realArchivePath = await createTestTarGzUtil(archiveName, fileName, fileContent, subDir);
-      const outputDir = nodePath.join(testDirs.paths.homeDir, 'output-strip');
-      await nodeFs.mkdir(outputDir);
-
-      await extractor.extract(realArchivePath, { targetDir: outputDir, stripComponents: 2 });
-
-      const extractedFilePath = nodePath.join(outputDir, fileName);
-      expect(await nodeFs.exists(extractedFilePath)).toBe(true);
-      expect(await nodeFs.readFile(extractedFilePath, 'utf-8')).toBe(fileContent);
-      expect(await nodeFs.exists(nodePath.join(outputDir, 'dir1'))).toBe(false);
-    });
-
     it('should extract a .zip archive using real unzip', async () => {
       mockExecCallback.mockImplementation((command: string, optionsOrCallback: unknown, callback?: unknown) => {
         const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;

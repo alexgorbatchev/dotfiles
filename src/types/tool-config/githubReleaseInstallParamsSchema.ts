@@ -22,34 +22,7 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    * ```
    */
   assetPattern: z.string().optional(),
-  /**
-   * The path to the executable binary within the extracted archive.
-   * For example, if an archive extracts to `fzf-0.30.0/` and the binary is `fzf-0.30.0/bin/fzf`,
-   * this would be `bin/fzf` (relative to the archive's root after stripping components).
-   * If not provided, the system may try to auto-detect the binary.
-   * Similar to Zinit's `pick'{file}'` ice.
-   * @example Zinit `pick`:
-   * ```zsh
-   * zinit ice from"gh-r" pick"mytool-*\/bin/mytool"
-   * zinit light "user/mytool"
-   * ```
-   */
-  binaryPath: z.string().optional(),
-  /** Target path where the binary should be moved after extraction */
-  moveBinaryTo: z.string().optional(),
-  /**
-   * The number of leading directory components to strip from file paths during archive extraction.
-   * For example, if an archive contains `tool-v1.0/bin/tool` and `stripComponents` is 1,
-   * the extracted path will be `bin/tool`.
-   * This is similar to `tar --strip-components=N` and Zinit's `extract` ice capabilities (though Zinit's `extract` is more complex).
-   * @example Zinit conceptual `extract` with stripping:
-   * ```zsh
-   * zinit ice extract"strip_components=1" # Conceptual, Zinit's actual mechanism is part of `ziextract`
-   * zinit light "user/archived-tool"
-   * ```
-   * @default 0
-   */
-  stripComponents: z.number().int().min(0).optional(),
+
   /**
    * A specific version string (e.g., `v1.2.3`, `0.48.0`) or a SemVer constraint
    * (e.g., `^1.0.0`, `~2.3.x`) for the release to target.

@@ -41,12 +41,6 @@ export interface ExtractOptions {
    */
   format?: ArchiveFormat;
   /**
-   * The number of leading directory components to strip from file paths during extraction.
-   * For example, if an archive contains `dir1/dir2/file.txt` and `stripComponents` is 1,
-   * the file will be extracted as `dir2/file.txt`.
-   */
-  stripComponents?: number;
-  /**
    * The directory where the archive contents should be extracted.
    * If not specified, a temporary directory might be used or extraction might occur in place,
    * depending on the extractor implementation.

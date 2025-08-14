@@ -31,6 +31,7 @@ describe('Installer - installManually', () => {
     const context = {
       toolName: MOCK_TOOL_NAME,
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'unknown'),
+      timestamp: '2024-08-13-16-45-23',
       systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
       appConfig: setup.mockAppConfig,
@@ -43,7 +44,7 @@ describe('Installer - installManually', () => {
     expect(setup.fileSystemMocks.copyFile).toHaveBeenCalledWith(manualBinaryPath, expectedFinalPath);
     expect(setup.fileSystemMocks.chmod).not.toHaveBeenCalledWith();
     expect(result.success).toBe(true);
-    expect(result.binaryPath).toBe(expectedFinalPath);
+    expect(result.binaryPaths).toEqual([expectedFinalPath]);
     expect(result.info).toEqual({
       manualInstall: true,
       originalPath: manualBinaryPath,
@@ -62,6 +63,7 @@ describe('Installer - installManually', () => {
     const context = {
       toolName: MOCK_TOOL_NAME,
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+      timestamp: '2024-08-13-16-45-23',
       systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
       appConfig: setup.mockAppConfig,

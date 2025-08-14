@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { binaryConfigSchema } from './binaryConfigSchema';
 import { brewInstallParamsSchema } from './brewInstallParamsSchema';
 import { completionConfigSchema } from './completionConfigSchema';
 import { curlScriptInstallParamsSchema } from './curlScriptInstallParamsSchema';
@@ -13,6 +14,8 @@ export const platformConfigSchema = z
   .object({
     /** An array of binary names that should have shims generated for this tool */
     binaries: z.array(z.string().min(1)).optional(),
+    /** Binary configurations with patterns for locating binaries within archives */
+    binaryConfigs: z.array(binaryConfigSchema).optional(),
     /** The desired version of the tool */
     version: z.string().optional(),
     /** Shell configurations organized by shell type */

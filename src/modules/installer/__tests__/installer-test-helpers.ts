@@ -27,6 +27,18 @@ import { Installer } from '../Installer';
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
 export const MOCK_TOOL_REPO = 'owner/repo';
+
+export function createMockToolInstallationRegistry() {
+  return {
+    recordToolInstallation: mock(async () => {}),
+    getToolInstallation: mock(async () => null),
+    getAllToolInstallations: mock(async () => []),
+    updateToolInstallation: mock(async () => {}),
+    removeToolInstallation: mock(async () => {}),
+    isToolInstalled: mock(async () => false),
+    close: mock(async () => {}),
+  };
+}
 export const MOCK_TOOL_VERSION = '1.0.0';
 
 export const MOCK_GITHUB_RELEASE: GitHubRelease = {
@@ -121,7 +133,14 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   const mockToolBinaryPath = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
   // Setup mock downloader
-  const mockDownload = mock(() => Promise.resolve(Buffer.from('mock data')));
+  const mockDownload = mock(async (_url: string, options?: { destinationPath?: string }) => {
+    // Create the file in the mock filesystem if destinationPath is provided
+    if (options?.destinationPath) {
+      await fs.ensureDir(path.dirname(options.destinationPath));
+      await fs.writeFile(options.destinationPath, 'mock binary content');
+    }
+    return Promise.resolve(Buffer.from('mock data'));
+  });
   const mockDownloader: IDownloader = {
     download: mockDownload,
     registerStrategy: mock(() => {}),
@@ -140,13 +159,18 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   };
 
   // Setup mock ArchiveExtractor
-  const mockExtract = mock(
-    (): Promise<ExtractResult> =>
-      Promise.resolve({
-        extractedFiles: ['test-tool-linux-amd64'],
-        executables: ['test-tool-linux-amd64'],
-      })
-  );
+  const mockExtract = mock(async (_archivePath: string, options?: { targetDir?: string }): Promise<ExtractResult> => {
+    // Create the extracted files in the target directory
+    if (options?.targetDir) {
+      await fs.ensureDir(options.targetDir);
+      await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), 'mock-binary-content');
+      await fs.writeFile(path.join(options.targetDir, 'README.md'), 'mock-readme');
+    }
+    return {
+      extractedFiles: [MOCK_TOOL_NAME, 'README.md'],
+      executables: [MOCK_TOOL_NAME],
+    };
+  });
   const mockArchiveExtractor: IArchiveExtractor = {
     extract: mockExtract,
     detectFormat: mock(async () => 'tar.gz' as const),
@@ -166,7 +190,16 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   });
 
   // Create installer instance
-  const installer = new Installer(logger, fs, mockDownloader, mockGitHubApiClient, mockArchiveExtractor, mockAppConfig);
+  const mockToolInstallationRegistry = createMockToolInstallationRegistry();
+  const installer = new Installer(
+    logger,
+    fs,
+    mockDownloader,
+    mockGitHubApiClient,
+    mockArchiveExtractor,
+    mockAppConfig,
+    mockToolInstallationRegistry
+  );
 
   return {
     logger,
@@ -273,6 +306,7 @@ export function createTestContext(
   return {
     toolName: MOCK_TOOL_NAME,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+    timestamp: '2024-08-13-16-45-23',
     systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
     appConfig: setup.mockAppConfig,
@@ -285,7 +319,28 @@ export function createTestContext(
  */
 export function setupFileSystemMocks(setup: InstallerTestSetup): void {
   setup.fileSystemMocks.chmod.mockResolvedValue(undefined);
-  setup.fileSystemMocks.symlink.mockResolvedValue(undefined);
+
+  // Mock symlink to actually create the symlink in the mock filesystem
+  setup.fileSystemMocks.symlink.mockImplementation(async (target: string, linkPath: string) => {
+    // Create the parent directory if it doesn't exist
+    const parentDir = path.dirname(linkPath);
+    await setup.mockFileSystem.ensureDir(parentDir);
+
+    // Create a mock symlink by writing a special file that indicates it's a symlink
+    await setup.mockFileSystem.writeFile(linkPath, `SYMLINK:${target}`);
+
+    // Override the readlink method for this specific path
+    const originalReadlink = setup.fileSystemMocks.readlink;
+    setup.fileSystemMocks.readlink.mockImplementation(async (symlinkPath: string) => {
+      if (symlinkPath === linkPath) {
+        return target;
+      }
+      return originalReadlink(symlinkPath);
+    });
+
+    return undefined;
+  });
+
   setup.fileSystemMocks.copyFile.mockResolvedValue(undefined);
   setup.fileSystemMocks.rm.mockResolvedValue(undefined);
 }

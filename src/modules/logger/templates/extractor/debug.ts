@@ -8,7 +8,7 @@ export const extractorDebugTemplates = {
   extractionStart: () => createSafeLogMessage('Starting extraction of %s to %s'),
   extractionProgress: () => createSafeLogMessage('Extraction progress: %d files processed'),
   extractionComplete: () => createSafeLogMessage('Extraction completed: %d files extracted to %s'),
-  stripComponents: () => createSafeLogMessage('Stripping %d path components during extraction'),
+
   extractStarted: () => createSafeLogMessage('Extracting %s using format %s'),
   extractionCompleted: () => createSafeLogMessage('Extraction completed in %s ms'),
   fileExecutableCheck: () => createSafeLogMessage('Checking if file is executable: %s'),

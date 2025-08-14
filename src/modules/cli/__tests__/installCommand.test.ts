@@ -39,7 +39,7 @@ describe('installCommand', () => {
       install: mock(
         async (): Promise<InstallResult> => ({
           success: true,
-          binaryPath: '/fake/bin/toolA',
+          binaryPaths: ['/fake/bin/toolA'],
           version: '1.0.0',
         })
       ),

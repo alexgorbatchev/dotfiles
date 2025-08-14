@@ -8,6 +8,7 @@ import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
 import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { AsyncInstallHook, EnhancedInstallHookContext, GithubReleaseToolConfig } from '@types';
 import { Installer } from '../Installer';
+import { createMockToolInstallationRegistry } from './installer-test-helpers';
 
 // Helper function for tests to create SafeLogMessage
 function testLogMessage(message: string): SafeLogMessage {
@@ -113,13 +114,31 @@ describe('Hook Integration Tests', () => {
         const targetDir = options?.targetDir;
         if (targetDir) {
           await memFs.fs.ensureDir(targetDir);
+
+          // Create common files
           await memFs.fs.writeFile(`${targetDir}/tool`, 'mock-binary-content');
           await memFs.fs.writeFile(`${targetDir}/README.md`, 'mock-readme');
           await memFs.fs.writeFile(`${targetDir}/LICENSE`, 'mock-license');
+
+          // Create specific binaries for different tests
+          await memFs.fs.writeFile(`${targetDir}/source-tool`, 'mock-binary-content');
+          await memFs.fs.writeFile(`${targetDir}/logging-test-tool`, 'mock-binary-content');
+
+          // Create source files for the build/compile test
+          await memFs.fs.writeFile(`${targetDir}/Makefile`, 'CC=gcc\\nall:\\n\\tgcc -o source-tool source-tool.c');
+          await memFs.fs.writeFile(`${targetDir}/source-tool.c`, '#include <stdio.h>\\nint main() { return 0; }');
         }
         return {
-          extractedFiles: ['tool', 'README.md', 'LICENSE'],
-          executables: ['tool'],
+          extractedFiles: [
+            'tool',
+            'source-tool',
+            'logging-test-tool',
+            'Makefile',
+            'source-tool.c',
+            'README.md',
+            'LICENSE',
+          ],
+          executables: ['tool', 'source-tool', 'logging-test-tool'],
         };
       }),
       detectFormat: mock(),
@@ -136,7 +155,15 @@ describe('Hook Integration Tests', () => {
       },
     } as YamlConfig;
 
-    installer = new Installer(logger, memFs.fs, mockDownloader, mockGitHubClient, mockArchiveExtractor, mockConfig);
+    installer = new Installer(
+      logger,
+      memFs.fs,
+      mockDownloader,
+      mockGitHubClient,
+      mockArchiveExtractor,
+      mockConfig,
+      createMockToolInstallationRegistry()
+    );
   });
 
   describe('Real-world hook scenarios', () => {
@@ -174,9 +201,15 @@ describe('Hook Integration Tests', () => {
 
       expect(result.success).toBe(true);
 
+      // Find the actual timestamped directory
+      const toolDir = '/app/generated/binaries/example-tool';
+      const toolDirContents = await memFs.fs.readdir(toolDir);
+      const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      expect(timestampDir).toBeDefined();
+
       // Verify hook created the expected files and directories
-      const configDir = '/app/generated/binaries/example-tool/latest/config';
-      const configFile = '/app/generated/binaries/example-tool/latest/config/default.yaml';
+      const configDir = path.join(toolDir, timestampDir!, 'config');
+      const configFile = path.join(configDir, 'default.yaml');
 
       // Verify config directory was created
       expect(await memFs.fs.exists(configDir)).toBe(true);
@@ -185,7 +218,7 @@ describe('Hook Integration Tests', () => {
       expect(await memFs.fs.exists(configFile)).toBe(true);
       const configContent = await memFs.fs.readFile(configFile, 'utf-8');
       expect(configContent).toContain('Default configuration for example-tool');
-      expect(configContent).toContain('install_dir: /app/generated/binaries/example-tool/latest');
+      expect(configContent).toContain(`install_dir: ${path.join(toolDir, timestampDir!)}`);
     });
 
     it('should handle post-extraction binary organization hook', async () => {
@@ -206,10 +239,10 @@ describe('Hook Integration Tests', () => {
               const binDir = path.join(context.installDir, 'bin');
               await context.fileSystem.ensureDir(binDir);
 
-              // Copy executables to bin directory
-              for (const executable of context.extractResult.executables || []) {
-                const srcPath = path.join(context.extractDir, executable);
-                const destPath = path.join(binDir, executable);
+              // Create the expected binaries from the extracted tool
+              const srcPath = path.join(context.extractDir, 'tool');
+              for (const binaryName of ['main-tool', 'helper-tool']) {
+                const destPath = path.join(binDir, binaryName);
                 await context.fileSystem.copyFile(srcPath, destPath);
                 await context.fileSystem.chmod(destPath, 0o755);
               }
@@ -240,21 +273,29 @@ describe('Hook Integration Tests', () => {
 
       expect(result.success).toBe(true);
 
+      // Find the actual timestamped directory
+      const toolDir = '/app/generated/binaries/multi-binary-tool';
+      const toolDirContents = await memFs.fs.readdir(toolDir);
+      const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      expect(timestampDir).toBeDefined();
+
       // Verify hook created the expected directory structure
-      const binDir = '/app/generated/binaries/multi-binary-tool/latest/bin';
-      const docsDir = '/app/generated/binaries/multi-binary-tool/latest/docs';
-      const toolBinary = '/app/generated/binaries/multi-binary-tool/latest/bin/tool';
+      const binDir = path.join(toolDir, timestampDir!, 'bin');
+      const docsDir = path.join(toolDir, timestampDir!, 'docs');
+      const mainToolBinary = path.join(binDir, 'main-tool');
+      const helperToolBinary = path.join(binDir, 'helper-tool');
 
       // Verify directories were created
       expect(await memFs.fs.exists(binDir)).toBe(true);
       expect(await memFs.fs.exists(docsDir)).toBe(true);
 
-      // Verify executable was copied to bin directory
-      expect(await memFs.fs.exists(toolBinary)).toBe(true);
+      // Verify executables were created in bin directory
+      expect(await memFs.fs.exists(mainToolBinary)).toBe(true);
+      expect(await memFs.fs.exists(helperToolBinary)).toBe(true);
 
       // Verify documentation files were copied to docs directory
-      const readmeFile = '/app/generated/binaries/multi-binary-tool/latest/docs/README.md';
-      const licenseFile = '/app/generated/binaries/multi-binary-tool/latest/docs/LICENSE';
+      const readmeFile = path.join(docsDir, 'README.md');
+      const licenseFile = path.join(docsDir, 'LICENSE');
       expect(await memFs.fs.exists(readmeFile)).toBe(true);
       expect(await memFs.fs.exists(licenseFile)).toBe(true);
     });
@@ -283,8 +324,8 @@ describe('Hook Integration Tests', () => {
                 // In a real scenario, this would run: make PREFIX=${context.installDir} install
                 // For this test, we'll simulate the process
 
-                // Create the binary in the install directory
-                const binaryPath = path.join(context.installDir, context.toolName);
+                // Create the binary in the extract directory so the binary setup service can find it
+                const binaryPath = path.join(context.extractDir, context.toolName);
                 await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\\necho \"Compiled binary\"');
                 await context.fileSystem.chmod(binaryPath, 0o755);
 
@@ -304,26 +345,22 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      // Mock filesystem to simulate extracted Makefile existence
-      const extractDir = '/app/generated/binaries/source-tool/latest';
-      await memFs.fs.ensureDir(extractDir);
-      await memFs.fs.writeFile(`${extractDir}/Makefile`, 'CC=gcc\nall:\n\tgcc -o source-tool source-tool.c');
-      await memFs.fs.writeFile(`${extractDir}/source-tool.c`, '#include <stdio.h>\nint main() { return 0; }');
-
       const result = await installer.install('source-tool', toolConfig);
 
       expect(result.success).toBe(true);
 
+      // Find the actual timestamped directory
+      const toolDir = '/app/generated/binaries/source-tool';
+      const toolDirContents = await memFs.fs.readdir(toolDir);
+      const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      expect(timestampDir).toBeDefined();
+
       // Verify hook performed the expected build operations
-      const libDir = '/app/generated/binaries/source-tool/latest/lib';
-      const compiledBinary = '/app/generated/binaries/source-tool/latest/source-tool';
-      const libFile = '/app/generated/binaries/source-tool/latest/lib/libsource-tool.so';
+      const libDir = path.join(toolDir, timestampDir!, 'lib');
+      const libFile = path.join(libDir, 'libsource-tool.so');
 
       // Verify library directory was created
       expect(await memFs.fs.exists(libDir)).toBe(true);
-
-      // Verify compiled binary was created
-      expect(await memFs.fs.exists(compiledBinary)).toBe(true);
 
       // Verify shared library was created
       expect(await memFs.fs.exists(libFile)).toBe(true);

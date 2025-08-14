@@ -74,7 +74,7 @@ export class ShimGenerator implements IShimGenerator {
   private async generateShimForBinary(
     toolFs: IFileSystem,
     toolName: string,
-    toolConfig: ToolConfig,
+    _toolConfig: ToolConfig,
     binaryName: string,
     overwrite: boolean
   ): Promise<string | null> {
@@ -102,9 +102,8 @@ export class ShimGenerator implements IShimGenerator {
       // It's our shim and overwrite is true - continue to overwrite
     }
 
-    // Resolve binary path at generation time in TypeScript
-    const versionDir = toolConfig.version || 'unknown';
-    const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, versionDir, binaryName);
+    // Use the new symlink-based path structure
+    const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, binaryName);
 
     this.logger.debug(logs.shim.debug.toolBinPath(), toolBinaryPath, '(resolved at generation time)');
 

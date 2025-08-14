@@ -30,9 +30,14 @@ export interface InstallResult {
   success: boolean;
 
   /**
-   * The path to the installed binary
+   * All binary paths for the installed tool
    */
-  binaryPath?: string;
+  binaryPaths?: string[];
+
+  /**
+   * The installation path (timestamped directory)
+   */
+  installPath?: string;
 
   /**
    * The version of the installed tool
@@ -43,6 +48,11 @@ export interface InstallResult {
    * Error message if installation failed
    */
   error?: string;
+
+  /**
+   * Success message for the installation
+   */
+  message?: string;
 
   /**
    * Additional information about the installation

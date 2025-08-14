@@ -77,6 +77,8 @@ export interface BaseInstallContext {
   toolName: string;
   /** The target directory where the tool's primary binary/executable should be installed */
   installDir: string;
+  /** The timestamp for this installation (YYYY-MM-DD-HH-MM-SS) */
+  timestamp: string;
   /** System information for the installation environment */
   systemInfo: SystemInfo;
   /** The full tool configuration being processed */

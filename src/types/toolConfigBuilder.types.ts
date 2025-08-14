@@ -62,7 +62,7 @@ export interface PlatformConfigBuilder {
    * @param names - A single binary name or an array of binary names.
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
-  bin(names: string | string[]): this;
+  bin(name: string, pattern?: string): this;
 
   /**
    * Specifies the desired version of the tool for this specific platform configuration.
@@ -155,7 +155,7 @@ export interface ToolConfigBuilder {
    * zinit light "user/repo"
    * ```
    */
-  bin(names: string | string[]): this;
+  bin(name: string, pattern?: string): this;
 
   /**
    * Specifies the desired version of the tool to be installed.  This can be a specific version string (e.g., `'1.2.3'`),
@@ -210,7 +210,7 @@ export interface ToolConfigBuilder {
    * ```
    *
    * ## Curl Tarball Method (`'curl-tar'`)
-   * Downloads and extracts a tarball. Requires `url`. Can specify `extractPath` within the tarball
+   * Downloads and extracts a tarball. Requires `url`. Binaries are located using patterns defined by `c.bin(name, pattern?)`.
    * for the final binary location. Similar to Zinit's `dl` for archives, combined with `extract` and `pick`.
    * See {@link CurlTarInstallParams}.
    *

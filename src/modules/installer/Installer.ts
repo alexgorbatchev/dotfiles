@@ -8,6 +8,7 @@ import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
+import type { IToolInstallationRegistry } from '@modules/tool-installation-registry';
 import type {
   BaseInstallContext,
   BrewToolConfig,
@@ -18,6 +19,7 @@ import type {
   SystemInfo,
   ToolConfig,
 } from '@types';
+import { generateTimestamp } from '@utils';
 import { HookExecutor } from './HookExecutor';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { installFromBrew } from './installFromBrew';
@@ -62,6 +64,7 @@ export class Installer implements IInstaller {
   private readonly archiveExtractor: IArchiveExtractor;
   private readonly appConfig: YamlConfig;
   private readonly hookExecutor: HookExecutor;
+  private readonly toolInstallationRegistry: IToolInstallationRegistry;
 
   constructor(
     parentLogger: TsLogger,
@@ -69,7 +72,8 @@ export class Installer implements IInstaller {
     downloader: IDownloader,
     githubApiClient: IGitHubApiClient,
     archiveExtractor: IArchiveExtractor,
-    appConfig: YamlConfig
+    appConfig: YamlConfig,
+    toolInstallationRegistry: IToolInstallationRegistry
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.logger.debug(
@@ -86,6 +90,7 @@ export class Installer implements IInstaller {
     this.archiveExtractor = archiveExtractor;
     this.appConfig = appConfig;
     this.hookExecutor = new HookExecutor(parentLogger);
+    this.toolInstallationRegistry = toolInstallationRegistry;
   }
 
   /**
@@ -99,10 +104,35 @@ export class Installer implements IInstaller {
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
     try {
-      // Create installation directory if it doesn't exist
+      // Check if tool is already installed (unless force option is used)
+      if (!options?.force) {
+        const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
+        if (existingInstallation) {
+          // Get the version that would be installed
+          const targetVersion = await this.getTargetVersion(toolName, toolConfig);
+
+          if (targetVersion && existingInstallation.version === targetVersion) {
+            logger.debug(logs.tool.success.installed(toolName, targetVersion, 'already-installed'));
+            return {
+              success: true,
+              message: `Tool ${toolName} version ${targetVersion} is already installed`,
+              installPath: existingInstallation.installPath,
+              version: existingInstallation.version,
+              binaryPaths: existingInstallation.binaryPaths,
+            };
+          }
+
+          logger.debug(
+            logs.tool.warning.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown')
+          );
+        }
+      }
+
+      // Create timestamped installation directory
       const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
-      const versionDir = toolConfig.version || 'unknown';
-      const installDir = path.join(binariesDir, toolName, versionDir);
+      const timestamp = generateTimestamp();
+      const installDir = path.join(binariesDir, toolName, timestamp);
+
       await toolFs.ensureDir(installDir);
       logger.debug(logs.command.debug.directoryCreated(), installDir);
 
@@ -110,6 +140,7 @@ export class Installer implements IInstaller {
       const context: BaseInstallContext = {
         toolName,
         installDir,
+        timestamp,
         systemInfo: this.getSystemInfo(),
         toolConfig,
         appConfig: this.appConfig,
@@ -167,7 +198,7 @@ export class Installer implements IInstaller {
         // Update context with final result information
         const finalContext = {
           ...context,
-          binaryPath: result.binaryPath,
+          binaryPaths: result.binaryPaths,
           version: result.version,
         };
 
@@ -179,6 +210,27 @@ export class Installer implements IInstaller {
           enhancedContext,
           { continueOnError: true } // Don't fail installation if afterInstall hook fails
         );
+      }
+
+      // Record successful installation in the registry
+      if (result.success && result.binaryPaths && result.version) {
+        try {
+          await this.toolInstallationRegistry.recordToolInstallation({
+            toolName,
+            version: result.version,
+            installPath: context.installDir,
+            timestamp: context.timestamp,
+            binaryPaths: result.binaryPaths,
+            downloadUrl: result.info?.['downloadUrl'] as string | undefined,
+            assetName: result.info?.['assetName'] as string | undefined,
+            configuredVersion:
+              toolConfig.installationMethod === 'github-release' ? toolConfig.installParams.version : undefined,
+          });
+          logger.debug(logs.tool.success.installed(toolName, result.version, 'registry-recorded'));
+        } catch (registryError) {
+          logger.error(logs.tool.error.installFailed('registry-record', toolName, (registryError as Error).message));
+          // Don't fail the installation if registry recording fails
+        }
       }
 
       return result;
@@ -280,6 +332,45 @@ export class Installer implements IInstaller {
     options?: InstallOptions
   ): Promise<InstallResult> {
     return installManually(toolName, toolConfig, context, options, this.fs, this.logger);
+  }
+
+  /**
+   * Get the target version that would be installed for a tool
+   */
+  private async getTargetVersion(toolName: string, toolConfig: ToolConfig): Promise<string | null> {
+    try {
+      switch (toolConfig.installationMethod) {
+        case 'github-release':
+          if (toolConfig.installParams.version === 'latest') {
+            const [owner, repo] = toolConfig.installParams.repo.split('/');
+            if (!owner || !repo) {
+              return null;
+            }
+            const release = await this.githubApiClient.getLatestRelease(owner, repo);
+            return release?.tag_name || null;
+          }
+          return toolConfig.installParams.version || null;
+
+        case 'brew':
+        case 'curl-script':
+        case 'curl-tar':
+        case 'manual':
+          // For these methods, we can't easily determine the target version
+          // so we'll just return null and skip the version check
+          return null;
+
+        default:
+          return null;
+      }
+    } catch (error) {
+      this.logger.debug(
+        logs.general.warning.unsupportedOperation(
+          'get-target-version',
+          `Failed to get target version for ${toolName}: ${error}`
+        )
+      );
+      return null;
+    }
   }
 
   /**

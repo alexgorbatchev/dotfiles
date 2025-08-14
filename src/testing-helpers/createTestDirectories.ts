@@ -46,7 +46,8 @@ export interface TestDirectories {
  * @returns The path to the created temporary directory
  */
 async function createTempDir(fs: IFileSystem, name: string) {
-  const tempDir = path.join(__dirname, '../tmp', name);
+  const currentDir = path.dirname(new URL(import.meta.url).pathname);
+  const tempDir = path.join(currentDir, '../tmp', name);
   if (await fs.exists(tempDir)) {
     await fs.rm(tempDir, { recursive: true, force: true });
   }

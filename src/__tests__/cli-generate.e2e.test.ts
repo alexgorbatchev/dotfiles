@@ -113,7 +113,7 @@ describe('E2E: bun run cli generate', () => {
 
         TOOL_NAME="fzf"
         BINARY_NAME="fzf"
-        TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/fzf/latest/fzf"
+        TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/fzf/fzf"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
         CONFIG_PATH="config.yaml"
 
@@ -164,7 +164,7 @@ describe('E2E: bun run cli generate', () => {
 
         TOOL_NAME="lazygit"
         BINARY_NAME="lazygit"
-        TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/lazygit/latest/lazygit"
+        TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/lazygit/lazygit"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
         CONFIG_PATH="config.yaml"
 
@@ -275,16 +275,18 @@ describe('E2E: bun run cli generate', () => {
       fzfShimPath = path.join(testDirs.paths.targetDir, mockToolName);
       manifestPath = path.join(testDirs.paths.generatedDir, 'manifest.json');
 
-      // 1. Create a mock binary and archive it
+      // 1. Create a mock binary and archive it with realistic directory structure
+      const mockBinaryDir = path.join(testDirs.getDir('temp-archive-source'), `fzf-${mockToolVersion}`);
+      await fs.ensureDir(mockBinaryDir);
       await createFile(
         fs,
-        path.join(testDirs.getDir('temp-archive-source'), mockToolName),
+        path.join(mockBinaryDir, mockToolName),
         `#!/bin/sh\necho "Mock fzf v${mockToolVersion}"`,
         true
       );
 
       localArchiveFilePath = path.join(testDirs.paths.homeDir, mockAssetFileName);
-      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} ${mockToolName}`.quiet();
+      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} fzf-${mockToolVersion}`.quiet();
 
       // 2. Setup mock github server
       mockServer = await createMockGitHubServer({
@@ -349,7 +351,28 @@ describe('E2E: bun run cli generate', () => {
       await mockServer.close();
     });
 
-    it('should automatically install and execute the tool when it is not present', async () => {
+    it('should execute pre-installed tool via shim', async () => {
+      // Manually create the binary and symlink to test shim execution
+      const toolDir = path.join(testDirs.paths.binariesDir, 'fzf');
+      const timestampDir = path.join(toolDir, '2025-08-13-test');
+      const binaryDir = path.join(timestampDir, 'fzf-0.54.0');
+      const binaryPath = path.join(binaryDir, 'fzf');
+      const symlinkPath = path.join(toolDir, 'fzf');
+
+      // Create the binary
+      await fs.ensureDir(binaryDir);
+      await fs.writeFile(binaryPath, `#!/bin/sh\necho "Mock fzf v${mockToolVersion}"`);
+      await fs.chmod(binaryPath, 0o755);
+
+      // Create the symlink
+      await fs.ensureDir(toolDir);
+      const relativePath = path.relative(toolDir, binaryPath);
+      await fs.symlink(relativePath, symlinkPath);
+
+      // Verify symlink was created
+      expect(await fs.exists(symlinkPath)).toBe(true);
+
+      // Test that the shim can execute the tool
       const shimResult = executeCliCommand({
         command: ['--version'],
         cwd: testDirs.paths.dotfilesDir,

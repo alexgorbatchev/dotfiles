@@ -35,12 +35,12 @@ export async function installFromBrew(
 
     await installBinaries(toolConfig, toolName, context, logger);
 
-    const primaryBinary = toolConfig.binaries?.[0] || toolName;
-    const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+    const binaries = toolConfig.binaries || [toolName];
+    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
 
     return {
       success: true,
-      binaryPath: primaryBinaryPath,
+      binaryPaths,
       info: {
         formula,
         isCask,

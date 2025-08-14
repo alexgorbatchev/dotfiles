@@ -102,13 +102,13 @@ export async function installFromCurlScript(
       logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
     }
 
-    // Return path to first binary for compatibility
-    const primaryBinary = toolConfig.binaries?.[0] || toolName;
-    const primaryBinaryPath = path.join(context.installDir, primaryBinary);
+    // Return paths to all binaries
+    const binaries = toolConfig.binaries || [toolName];
+    const binaryPaths = binaries.map((binary) => path.join(context.installDir, binary));
 
     return {
       success: true,
-      binaryPath: primaryBinaryPath,
+      binaryPaths,
       info: {
         scriptUrl: url,
         shell,

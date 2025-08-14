@@ -27,10 +27,6 @@ interface AugmentedExecError extends Error {
  * @remarks
  * This module has a hard dependency on system commands like `tar`, `unzip`,
  * and `file` being available on the system's PATH.
- *
- * The `stripComponents` option is only effective for `tar`-based archives
- * and is ignored for `.zip` files due to limitations of the standard `unzip`
- * command.
  */
 export class ArchiveExtractor implements IArchiveExtractor {
   private readonly fs: IFileSystem;
@@ -150,12 +146,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return supportedFormats.includes(format);
   }
 
-  private buildTarCommand(
-    archivePath: string,
-    tempExtractDir: string,
-    format: string,
-    stripComponents: number
-  ): string {
+  private buildTarCommand(archivePath: string, tempExtractDir: string, format: string): string {
     let flag: string;
     switch (format) {
       case 'tar.gz':
@@ -174,34 +165,24 @@ export class ArchiveExtractor implements IArchiveExtractor {
         throw new Error(`Unsupported tar format: ${format}`);
     }
 
-    let command = `tar ${flag} '${archivePath}' -C '${tempExtractDir}'`;
-    if (stripComponents > 0) {
-      command += ` --strip-components=${stripComponents}`;
-    }
-    return command;
+    return `tar ${flag} '${archivePath}' -C '${tempExtractDir}'`;
   }
 
   private async extractArchiveByFormat(
     format: ArchiveFormat,
     archivePath: string,
-    tempExtractDir: string,
-    stripComponents: number,
-    logger: TsLogger
+    tempExtractDir: string
   ): Promise<void> {
     switch (format) {
       case 'tar.gz':
       case 'tar.bz2':
       case 'tar.xz':
       case 'tar': {
-        const command = this.buildTarCommand(archivePath, tempExtractDir, format, stripComponents);
+        const command = this.buildTarCommand(archivePath, tempExtractDir, format);
         await this.executeShellCommand(command);
         break;
       }
       case 'zip': {
-        // unzip doesn't have a direct --strip-components.
-        if (stripComponents > 0) {
-          logger.debug(logs.extractor.debug.zipStripComponents());
-        }
         const command = `unzip -qo '${archivePath}' -d '${tempExtractDir}'`;
         await this.executeShellCommand(command);
         break;
@@ -215,7 +196,6 @@ export class ArchiveExtractor implements IArchiveExtractor {
     const logger = this.logger.getSubLogger({ name: 'extract' });
     const {
       format: explicitFormat,
-      stripComponents = 0,
       targetDir = '.', // Default to current directory if not specified
       detectExecutables = true,
     } = options;
@@ -235,7 +215,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
     const filesBefore: string[] = await this.fs.readdir(targetDir).catch(() => []);
 
     // Extract directly to target directory
-    await this.extractArchiveByFormat(format, archivePath, targetDir, stripComponents, logger);
+    await this.extractArchiveByFormat(format, archivePath, targetDir);
 
     // Get the list of files after extraction
     const filesAfter = await this.fs.readdir(targetDir);

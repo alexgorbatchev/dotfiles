@@ -14,6 +14,7 @@ import {
 } from '@testing-helpers';
 import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
 import { Installer } from '../Installer';
+import { createMockToolInstallationRegistry } from './installer-test-helpers';
 
 describe('Installer with custom GitHub host', () => {
   const toolName = 'test-tool';
@@ -118,7 +119,8 @@ describe('Installer with custom GitHub host', () => {
       mockDownloader,
       mockGitHubApiClient,
       mockArchiveExtractor,
-      mockAppConfig
+      mockAppConfig,
+      createMockToolInstallationRegistry()
     );
   });
 
@@ -187,7 +189,8 @@ describe('Installer with custom GitHub host', () => {
       mockDownloader,
       mockGitHubApiClientWithDifferentUrl,
       mockArchiveExtractor,
-      mockAppConfig
+      mockAppConfig,
+      createMockToolInstallationRegistry()
     );
 
     const toolConfig: ToolConfig = {

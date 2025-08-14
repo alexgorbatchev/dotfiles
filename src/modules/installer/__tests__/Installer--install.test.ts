@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import path from 'node:path';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -20,9 +19,12 @@ describe('Installer - install (orchestrator)', () => {
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
-    expect(setup.fileSystemMocks.ensureDir).toHaveBeenCalledWith(
-      path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, toolConfig.version)
+    // Check that ensureDir was called with a timestamped directory
+    const ensureDirCalls = setup.fileSystemMocks.ensureDir.mock.calls;
+    const installDirCall = ensureDirCalls.find(
+      (call) => call[0].includes(MOCK_TOOL_NAME) && call[0].match(/\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/)
     );
+    expect(installDirCall).toBeDefined();
   });
 
   it('should call the appropriate installation method based on installationMethod', async () => {
@@ -30,7 +32,7 @@ describe('Installer - install (orchestrator)', () => {
 
     const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
       success: true,
-      binaryPath: setup.mockToolBinaryPath,
+      binaryPaths: [setup.mockToolBinaryPath],
     });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
@@ -77,7 +79,7 @@ describe('Installer - install (orchestrator)', () => {
 
     const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
       success: true,
-      binaryPath: setup.mockToolBinaryPath,
+      binaryPaths: [setup.mockToolBinaryPath],
     });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
