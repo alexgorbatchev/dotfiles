@@ -1,6 +1,4 @@
-import { Database } from 'bun:sqlite';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { FileOperation, FileOperationFilter, FileState, IFileRegistry } from './IFileRegistry';
@@ -27,20 +25,10 @@ export class SqliteFileRegistry implements IFileRegistry {
   private readonly db: Database;
   private readonly logger: TsLogger;
 
-  constructor(parentLogger: TsLogger, dbPath: string) {
+  constructor(parentLogger: TsLogger, db: Database) {
     this.logger = parentLogger.getSubLogger({ name: 'SqliteFileRegistry' });
-
-    // Ensure the parent directory exists
-    const dbDir = dirname(dbPath);
-    try {
-      mkdirSync(dbDir, { recursive: true });
-    } catch (_error) {
-      // Directory might already exist, which is fine
-    }
-
-    this.db = new Database(dbPath);
+    this.db = db;
     this.initializeSchema();
-    this.logger.debug(logs.registry.debug.initialized(), dbPath);
   }
 
   async recordOperation(operation: Omit<FileOperation, 'id' | 'createdAt'>): Promise<void> {

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
+import { RegistryDatabase } from '@modules/registry-database';
 import { createMemFileSystem, TestLogger } from '@testing-helpers';
 import { SqliteFileRegistry } from '../SqliteFileRegistry';
 import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
@@ -11,6 +12,7 @@ describe('TrackedFileSystem', () => {
   let logger: TestLogger;
   let fs: IFileSystem;
   let registry: SqliteFileRegistry;
+  let registryDatabase: RegistryDatabase;
   let trackedFs: TrackedFileSystem;
   let context: TrackingContext;
   let dbPath: string;
@@ -21,7 +23,8 @@ describe('TrackedFileSystem', () => {
     fs = memFs;
 
     dbPath = path.join('/tmp', `test-tracked-fs-${randomUUID()}.db`);
-    registry = new SqliteFileRegistry(logger, dbPath);
+    registryDatabase = new RegistryDatabase(logger, dbPath);
+    registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
 
     context = TrackedFileSystem.createContext('test-tool', 'shim');
     trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
@@ -29,6 +32,7 @@ describe('TrackedFileSystem', () => {
 
   afterEach(async () => {
     await registry.close();
+    registryDatabase.close();
     try {
       await unlink(dbPath);
     } catch {
@@ -133,7 +137,9 @@ describe('TrackedFileSystem', () => {
 
       // Clear any tracked operations
       await registry.close();
-      registry = new SqliteFileRegistry(logger, dbPath);
+      registryDatabase.close();
+      registryDatabase = new RegistryDatabase(logger, dbPath);
+      registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
       trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
 
       // Try to write identical content
@@ -235,7 +241,9 @@ describe('TrackedFileSystem', () => {
 
       // Clear any tracked operations
       await registry.close();
-      registry = new SqliteFileRegistry(logger, dbPath);
+      registryDatabase.close();
+      registryDatabase = new RegistryDatabase(logger, dbPath);
+      registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
       trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
 
       // Try to write identical buffer content

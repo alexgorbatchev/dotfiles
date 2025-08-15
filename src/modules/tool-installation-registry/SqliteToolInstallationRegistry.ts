@@ -1,4 +1,4 @@
-import Database from 'bun:sqlite';
+import type { Database } from 'bun:sqlite';
 import { logs, type TsLogger } from '@modules/logger';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import type { ToolInstallation, ToolInstallationInput } from './types';
@@ -20,9 +20,9 @@ export class SqliteToolInstallationRegistry implements IToolInstallationRegistry
   private db: Database;
   private logger: TsLogger;
 
-  constructor(parentLogger: TsLogger, dbPath: string) {
+  constructor(parentLogger: TsLogger, db: Database) {
     this.logger = parentLogger.getSubLogger({ name: 'SqliteToolInstallationRegistry' });
-    this.db = new Database(dbPath);
+    this.db = db;
     this.initializeDatabase();
   }
 

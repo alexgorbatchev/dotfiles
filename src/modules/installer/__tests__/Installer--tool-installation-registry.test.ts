@@ -2,22 +2,26 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { RegistryDatabase } from '@modules/registry-database';
 import { SqliteToolInstallationRegistry } from '@modules/tool-installation-registry';
 import { TestLogger } from '@testing-helpers';
 
 describe('Installer Integration - Tool Installation Registry', () => {
   let logger: TestLogger;
   let toolInstallationRegistry: SqliteToolInstallationRegistry;
+  let registryDatabase: RegistryDatabase;
   let dbPath: string;
 
   beforeEach(async () => {
     logger = new TestLogger();
     dbPath = path.join('/tmp', `test-installer-registry-${randomUUID()}.db`);
-    toolInstallationRegistry = new SqliteToolInstallationRegistry(logger, dbPath);
+    registryDatabase = new RegistryDatabase(logger, dbPath);
+    toolInstallationRegistry = new SqliteToolInstallationRegistry(logger, registryDatabase.getConnection());
   });
 
   afterEach(async () => {
     await toolInstallationRegistry.close();
+    registryDatabase.close();
     try {
       await unlink(dbPath);
     } catch {

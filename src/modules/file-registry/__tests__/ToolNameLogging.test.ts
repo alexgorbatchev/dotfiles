@@ -1,17 +1,20 @@
 import { beforeEach, test } from 'bun:test';
 import { MemFileSystem } from '@modules/file-system';
+import { RegistryDatabase } from '@modules/registry-database';
 import { TestLogger } from '@testing-helpers';
 import { SqliteFileRegistry, TrackedFileSystem } from '../index';
 
 let logger: TestLogger;
 let fs: MemFileSystem;
 let registry: SqliteFileRegistry;
+let registryDatabase: RegistryDatabase;
 let trackedFs: TrackedFileSystem;
 
 beforeEach(() => {
   logger = new TestLogger();
   fs = new MemFileSystem({});
-  registry = new SqliteFileRegistry(logger, ':memory:');
+  registryDatabase = new RegistryDatabase(logger, ':memory:');
+  registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
   trackedFs = new TrackedFileSystem(
     logger,
     fs,

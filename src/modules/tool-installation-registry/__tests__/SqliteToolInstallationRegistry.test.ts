@@ -2,22 +2,26 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { RegistryDatabase } from '@modules/registry-database';
 import { TestLogger } from '@testing-helpers';
 import { SqliteToolInstallationRegistry } from '../SqliteToolInstallationRegistry';
 import type { ToolInstallationInput } from '../types';
 
 describe('SqliteToolInstallationRegistry', () => {
   let registry: SqliteToolInstallationRegistry;
+  let registryDatabase: RegistryDatabase;
   let logger: TestLogger;
   let dbPath: string;
 
   beforeEach(() => {
     logger = new TestLogger();
     dbPath = path.join('/tmp', `test-tool-registry-${randomUUID()}.db`);
-    registry = new SqliteToolInstallationRegistry(logger, dbPath);
+    registryDatabase = new RegistryDatabase(logger, dbPath);
+    registry = new SqliteToolInstallationRegistry(logger, registryDatabase.getConnection());
   });
 
   afterEach(async () => {
+    registryDatabase.close();
     await registry.close();
     try {
       await unlink(dbPath);
@@ -301,7 +305,8 @@ describe('SqliteToolInstallationRegistry', () => {
       await registry.recordToolInstallation(installation);
       await registry.close();
 
-      const newRegistry = new SqliteToolInstallationRegistry(logger, dbPath);
+      const newRegistryDatabase = new RegistryDatabase(logger, dbPath);
+      const newRegistry = new SqliteToolInstallationRegistry(logger, newRegistryDatabase.getConnection());
       const retrieved = await newRegistry.getToolInstallation('persistent-tool');
 
       expect(retrieved).toMatchObject(installation);

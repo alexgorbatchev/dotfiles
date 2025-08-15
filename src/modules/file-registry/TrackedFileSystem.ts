@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { IFileSystem, Stats } from '@modules/file-system';
-import type { TsLogger } from '@modules/logger';
+import type { SafeLogMessage, TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import { contractHomePath, formatPermissions } from '@utils';
 import type { FileOperation, IFileRegistry } from './IFileRegistry';
@@ -31,6 +31,7 @@ export class TrackedFileSystem implements IFileSystem {
   private readonly logger: TsLogger;
   private readonly context: TrackingContext;
   private readonly homeDir: string;
+  private suppressLogging = false;
 
   constructor(
     parentLogger: TsLogger,
@@ -74,7 +75,26 @@ export class TrackedFileSystem implements IFileSystem {
       ...context,
     };
 
-    return new TrackedFileSystem(this.logger, this.fs, this.registry, newContext, this.homeDir);
+    const newInstance = new TrackedFileSystem(this.logger, this.fs, this.registry, newContext, this.homeDir);
+    // Preserve the suppressLogging setting
+    newInstance.setSuppressLogging(this.suppressLogging);
+    return newInstance;
+  }
+
+  /**
+   * Temporarily suppress logging for this TrackedFileSystem instance
+   */
+  setSuppressLogging(suppress: boolean): void {
+    this.suppressLogging = suppress;
+  }
+
+  /**
+   * Log info message only if logging is not suppressed
+   */
+  private logInfo(message: SafeLogMessage): void {
+    if (!this.suppressLogging) {
+      this.logger.info(message);
+    }
   }
 
   /**
@@ -83,19 +103,6 @@ export class TrackedFileSystem implements IFileSystem {
    */
   withToolName(toolName: string): TrackedFileSystem {
     return this.withContext({ toolName });
-  }
-
-  /**
-   * Creates a new TrackedFileSystem for a specific tool with a suppressed logger.
-   * Used in shim mode to reduce log output.
-   */
-  withToolNameAndSuppressedLogger(toolName: string, suppressedLogger: TsLogger): TrackedFileSystem {
-    const newContext: TrackingContext = {
-      ...this.context,
-      toolName,
-    };
-
-    return new TrackedFileSystem(suppressedLogger, this.fs, this.registry, newContext, this.homeDir);
   }
 
   async readFile(filePath: string, encoding?: BufferEncoding): Promise<string> {
@@ -153,9 +160,9 @@ export class TrackedFileSystem implements IFileSystem {
 
     // Log user-facing filesystem changes
     if (!fileExists) {
-      this.logger.info(logs.fs.success.created(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logInfo(logs.fs.success.created(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
-      this.logger.info(logs.fs.success.updated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logInfo(logs.fs.success.updated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     }
   }
 
@@ -181,7 +188,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(
+    this.logInfo(
       logs.fs.success.copied(
         this.context.toolName,
         contractHomePath(this.homeDir, src),
@@ -210,7 +217,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(
+    this.logInfo(
       logs.fs.success.moved(
         this.context.toolName,
         contractHomePath(this.homeDir, oldPath),
@@ -234,7 +241,7 @@ export class TrackedFileSystem implements IFileSystem {
       metadata: this.context.metadata,
     });
 
-    this.logger.info(
+    this.logInfo(
       logs.fs.success.symlinkCreated(
         this.context.toolName,
         contractHomePath(this.homeDir, linkPath),
@@ -260,9 +267,9 @@ export class TrackedFileSystem implements IFileSystem {
     await this.fs.rm(filePath, options);
 
     if (options?.recursive) {
-      this.logger.info(logs.fs.success.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logInfo(logs.fs.success.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
-      this.logger.info(logs.fs.success.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logInfo(logs.fs.success.removed(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     }
   }
 
@@ -284,7 +291,7 @@ export class TrackedFileSystem implements IFileSystem {
       permissions: stats?.permissions,
     });
 
-    this.logger.info(
+    this.logInfo(
       logs.fs.success.permissionsChanged(
         this.context.toolName,
         contractHomePath(this.homeDir, filePath),
@@ -331,9 +338,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logger.info(
-        logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath))
-      );
+      this.logInfo(logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -372,9 +377,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logger.info(
-        logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath))
-      );
+      this.logInfo(logs.fs.success.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 

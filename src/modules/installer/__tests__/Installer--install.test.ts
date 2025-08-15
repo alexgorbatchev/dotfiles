@@ -42,7 +42,8 @@ describe('Installer - install (orchestrator)', () => {
       toolConfig,
       expect.objectContaining({ toolName: MOCK_TOOL_NAME }),
       undefined,
-      expect.any(Object) // logger parameter
+      expect.any(Object), // logger parameter
+      expect.any(Object) // toolFs parameter
     );
 
     installFromGitHubReleaseSpy.mockRestore();

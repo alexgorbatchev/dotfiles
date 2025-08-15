@@ -26,6 +26,7 @@ import { type ISymlinkGenerator, SymlinkGenerator } from '@modules/generator-sym
 import { GitHubApiClient, type IGitHubApiClient } from '@modules/github-client';
 import { type IInstaller, Installer } from '@modules/installer';
 import { createTsLogger, getLogLevelFromFlags, logs, type TsLogger } from '@modules/logger';
+import { RegistryDatabase } from '@modules/registry-database';
 import { type IToolInstallationRegistry, SqliteToolInstallationRegistry } from '@modules/tool-installation-registry';
 import { type IVersionChecker, VersionChecker } from '@modules/version-checker';
 import type { SystemInfo } from '@types';
@@ -227,13 +228,17 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // Initialize download cache if enabled
   const downloadCache = initializeDownloadCache(parentLogger, fs, yamlConfig);
 
-  // Initialize file registry
+  // Initialize shared registry database
   const registryPath = path.join(yamlConfig.paths.generatedDir, 'registry.db');
-  const fileRegistry = new SqliteFileRegistry(parentLogger, registryPath);
+  const registryDatabase = new RegistryDatabase(parentLogger, registryPath);
+  const db = registryDatabase.getConnection();
+
+  // Initialize file registry with shared database connection
+  const fileRegistry = new SqliteFileRegistry(parentLogger, db);
   parentLogger.debug(logs.registry.success.initialized(registryPath));
 
-  // Initialize tool installation registry (uses same database file)
-  const toolInstallationRegistry = new SqliteToolInstallationRegistry(parentLogger, registryPath);
+  // Initialize tool installation registry with shared database connection
+  const toolInstallationRegistry = new SqliteToolInstallationRegistry(parentLogger, db);
 
   // Initialize services with yamlConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);

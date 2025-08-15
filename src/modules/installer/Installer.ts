@@ -105,17 +105,11 @@ export class Installer implements IInstaller {
     logger.debug(logs.command.debug.methodDebugParams(), toolName, toolConfig, options);
 
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-    let toolFs: IFileSystem;
-    if (this.fs instanceof TrackedFileSystem) {
-      if (options?.shimMode) {
-        // In shim mode, create TrackedFileSystem with suppressed logger
-        const suppressedLogger = this.logger.getSubLogger({ name: 'TrackedFileSystem', minLevel: 4 });
-        toolFs = this.fs.withToolNameAndSuppressedLogger(toolName, suppressedLogger);
-      } else {
-        toolFs = this.fs.withToolName(toolName);
-      }
-    } else {
-      toolFs = this.fs;
+    const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
+
+    // Suppress logging in TrackedFileSystem if in shim mode
+    if (options?.shimMode && toolFs instanceof TrackedFileSystem) {
+      toolFs.setSuppressLogging(true);
     }
 
     try {
@@ -185,7 +179,7 @@ export class Installer implements IInstaller {
       let result: InstallResult;
       switch (toolConfig.installationMethod) {
         case 'github-release':
-          result = await this.installFromGitHubRelease(toolName, toolConfig, context, options, logger);
+          result = await this.installFromGitHubRelease(toolName, toolConfig, context, options, logger, toolFs);
           break;
         case 'brew':
           result = await this.installFromBrew(toolName, toolConfig, context, options);
@@ -266,15 +260,11 @@ export class Installer implements IInstaller {
     toolConfig: GithubReleaseToolConfig,
     context: BaseInstallContext,
     options?: InstallOptions,
-    logger?: TsLogger
+    logger?: TsLogger,
+    providedToolFs?: IFileSystem
   ): Promise<InstallResult> {
-    // Use the appropriate filesystem (may be suppressed TrackedFileSystem in shim mode)
-    const toolFs =
-      this.fs instanceof TrackedFileSystem
-        ? options?.shimMode
-          ? this.fs.withToolNameAndSuppressedLogger(toolName, logger || this.logger)
-          : this.fs.withToolName(toolName)
-        : this.fs;
+    // Use the provided filesystem or create a tool-specific one
+    const toolFs = providedToolFs || (this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs);
 
     return installFromGitHubRelease(
       toolName,

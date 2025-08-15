@@ -2,22 +2,26 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { RegistryDatabase } from '@modules/registry-database';
 import { TestLogger } from '@testing-helpers';
 import { SqliteFileRegistry } from '../SqliteFileRegistry';
 
 describe('SqliteFileRegistry', () => {
   let logger: TestLogger;
   let registry: SqliteFileRegistry;
+  let registryDatabase: RegistryDatabase;
   let dbPath: string;
 
   beforeEach(async () => {
     logger = new TestLogger();
     dbPath = path.join('/tmp', `test-registry-${randomUUID()}.db`);
-    registry = new SqliteFileRegistry(logger, dbPath);
+    registryDatabase = new RegistryDatabase(logger, dbPath);
+    registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
   });
 
   afterEach(async () => {
     await registry.close();
+    registryDatabase.close();
     try {
       await unlink(dbPath);
     } catch {
