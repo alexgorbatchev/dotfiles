@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
-import { createMemFileSystem, createMockYamlConfig, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
+import {
+  createMemFileSystem,
+  createMock$,
+  createMockYamlConfig,
+  type MemFileSystemReturn,
+  TestLogger,
+} from '@testing-helpers';
 import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@types';
 import type { $ } from 'zx';
 import { type HookExecutionOptions, HookExecutor } from '../HookExecutor';
@@ -9,12 +15,6 @@ import { type HookExecutionOptions, HookExecutor } from '../HookExecutor';
 // Helper function for tests to create SafeLogMessage
 function testLogMessage(message: string): SafeLogMessage {
   return message as SafeLogMessage;
-}
-
-// Helper function to create mock $ instance
-function createMock$() {
-  // Mock shell execution function
-  return mock(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })) as unknown as typeof $;
 }
 
 describe('HookExecutor', () => {

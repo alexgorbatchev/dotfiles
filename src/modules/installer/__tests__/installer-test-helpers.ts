@@ -8,6 +8,7 @@ import type { IGitHubApiClient } from '@modules/github-client';
 import type { TsLogger } from '@modules/logger';
 import {
   createMemFileSystem,
+  createMock$,
   createMockYamlConfig,
   createTestDirectories,
   type TestDirectories,
@@ -23,14 +24,8 @@ import type {
   ManualToolConfig,
 } from '@types';
 import type { ILogObj } from 'tslog';
-import type { $ } from 'zx';
 import type { HookExecutor } from '../HookExecutor';
 import { Installer } from '../Installer';
-
-// Helper function to create mock $ instance
-function createMock$() {
-  return mock(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })) as unknown as typeof $;
-}
 
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
