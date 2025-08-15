@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { baseInstallParamsSchema } from './baseInstallParamsSchema';
-import { installHookSchema } from './installHookSchema';
 
 /**
  * Zod schema for Cargo installation parameters
@@ -47,16 +46,4 @@ export const cargoInstallParamsSchema = baseInstallParamsSchema.extend({
    * Whether to fallback to source compilation if binary not available
    */
   allowSourceFallback: z.boolean().optional(),
-
-  /**
-   * Installation hooks
-   */
-  hooks: z
-    .object({
-      beforeInstall: installHookSchema.optional(),
-      afterDownload: installHookSchema.optional(),
-      afterExtract: installHookSchema.optional(),
-      afterInstall: installHookSchema.optional(),
-    })
-    .optional(),
 });
