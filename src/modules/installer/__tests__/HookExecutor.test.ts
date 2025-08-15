@@ -26,7 +26,6 @@ describe('HookExecutor', () => {
   beforeEach(async () => {
     logger = new TestLogger();
     hookExecutor = new HookExecutor(logger);
-
     memFs = await createMemFileSystem();
 
     // Create a proper TrackedFileSystem mock that will pass instanceof check
@@ -87,7 +86,6 @@ describe('HookExecutor', () => {
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
-
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
@@ -103,7 +101,6 @@ describe('HookExecutor', () => {
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
-
       const options: HookExecutionOptions = { timeoutMs: 50 };
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
 
@@ -119,7 +116,6 @@ describe('HookExecutor', () => {
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
-
       const options: HookExecutionOptions = { continueOnError: true };
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
 
@@ -129,10 +125,7 @@ describe('HookExecutor', () => {
 
     it('should use default timeout when not specified', async () => {
       const mockHook = mock(async () => {});
-
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs, logger);
-
-      // Spy on the internal setTimeout to verify default timeout is used
       const setTimeoutSpy = spyOn(global, 'setTimeout');
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);

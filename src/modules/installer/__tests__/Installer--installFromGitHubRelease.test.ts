@@ -41,12 +41,15 @@ describe('Installer - installFromGitHubRelease', () => {
     const result = await setup.installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, context);
 
     expect(setup.mocks.getLatestRelease).toHaveBeenCalledWith('owner', 'repo');
-    expect(setup.mocks.download).toHaveBeenCalledWith(
+    expect(setup.mocks.downloader.download).toHaveBeenCalledWith(
       'https://example.com/test-tool-linux-amd64',
       expect.objectContaining({
         destinationPath: expect.stringContaining('test-tool-linux-amd64'),
       })
     );
+    if (!result.success) {
+      throw new Error(`GitHub release test failed: ${result.error}`);
+    }
     expect(result.success).toBe(true);
   });
 
@@ -148,7 +151,7 @@ describe('Installer - installFromGitHubRelease', () => {
       // Ensure appConfig.github.host is undefined or not api.github.com
       const testAppConfig = await createYamlConfigFromObject(
         setup.logger,
-        setup.mockFileSystem,
+        setup.fs,
         {
           paths: {
             ...setup.testDirs.paths,
@@ -160,7 +163,7 @@ describe('Installer - installFromGitHubRelease', () => {
       );
       const tempInstaller = new Installer(
         setup.logger,
-        setup.mockFileSystem,
+        setup.fs,
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
@@ -205,7 +208,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
       const testAppConfig = await createYamlConfigFromObject(
         setup.logger,
-        setup.mockFileSystem,
+        setup.fs,
         {
           paths: {
             ...setup.testDirs.paths,
@@ -217,7 +220,7 @@ describe('Installer - installFromGitHubRelease', () => {
       );
       const tempInstaller = new Installer(
         setup.logger,
-        setup.mockFileSystem,
+        setup.fs,
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
@@ -262,7 +265,7 @@ describe('Installer - installFromGitHubRelease', () => {
 
       const testAppConfig = await createYamlConfigFromObject(
         setup.logger,
-        setup.mockFileSystem,
+        setup.fs,
         {
           paths: {
             ...setup.testDirs.paths,
@@ -274,7 +277,7 @@ describe('Installer - installFromGitHubRelease', () => {
       ); // API host
       const tempInstaller = new Installer(
         setup.logger,
-        setup.mockFileSystem,
+        setup.fs,
         setup.mockDownloader,
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,

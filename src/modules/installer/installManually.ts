@@ -1,12 +1,11 @@
 import path from 'node:path';
-import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { BaseInstallContext, ManualToolConfig } from '@types';
 import { expandToolConfigPath } from '@utils';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { getBinaryNames, getBinaryPaths } from './utils';
+import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from './utils';
 
 /**
  * Install a tool manually
@@ -19,7 +18,7 @@ export async function installManually(
   fs: IFileSystem,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
-  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
+  const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
   logger.debug(logs.installer.debug.installingManually(), toolName);
 
@@ -38,7 +37,7 @@ export async function installManually(
     context.systemInfo
   );
 
-  try {
+  const operation = async (): Promise<InstallResult> => {
     if (!(await toolFs.exists(binaryPath))) {
       return {
         success: false,
@@ -58,13 +57,9 @@ export async function installManually(
         originalPath: binaryPath,
       },
     };
-  } catch (error) {
-    logger.error(logs.tool.error.installFailed('manual', toolName, (error as Error).message));
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+  };
+
+  return withInstallErrorHandling('manual', toolName, logger, operation) as Promise<InstallResult>;
 }
 
 async function installBinariesManually(

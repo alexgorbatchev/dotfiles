@@ -3,7 +3,7 @@ import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { getBinaryPaths } from './utils';
+import { getBinaryPaths, withInstallErrorHandling } from './utils';
 
 /**
  * Install a tool using Homebrew
@@ -30,7 +30,7 @@ export async function installFromBrew(
   const isCask = params.cask || false;
   const tap = params.tap;
 
-  try {
+  const operation = async (): Promise<InstallResult> => {
     const command = buildBrewCommand(formula, isCask, tap, options?.force);
     logger.debug(logs.installer.debug.executingCommand(), command);
 
@@ -47,13 +47,9 @@ export async function installFromBrew(
         tap,
       },
     };
-  } catch (error) {
-    logger.error(logs.tool.error.installFailed('brew', toolName, (error as Error).message));
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+  };
+
+  return withInstallErrorHandling('brew', toolName, logger, operation) as Promise<InstallResult>;
 }
 
 function buildBrewCommand(

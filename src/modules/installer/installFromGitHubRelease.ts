@@ -1,7 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader/IDownloader';
-import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
@@ -22,7 +21,12 @@ import { minimatch } from 'minimatch';
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { getBinaryPaths } from './utils';
+import {
+  downloadWithProgress,
+  executeAfterDownloadHook as executeAfterDownloadHookUtil,
+  executeAfterExtractHook as executeAfterExtractHookUtil,
+  getBinaryPaths,
+} from './utils';
 
 /**
  * Install a tool from GitHub releases
@@ -80,7 +84,7 @@ export async function installFromGitHubRelease(
       downloadPath: downloadResult.data.downloadPath,
     };
 
-    const hookResult = await executeAfterDownloadHook(toolConfig, postDownloadContext, toolFs, hookExecutor, logger);
+    const hookResult = await executeAfterDownloadHook(toolConfig, postDownloadContext, hookExecutor, toolFs, logger);
     if (!hookResult.success) {
       return hookResult;
     }
@@ -318,52 +322,28 @@ async function downloadAsset(
   logger.debug(logs.command.debug.downloadingAsset(), downloadUrl);
   const downloadPath = path.join(context.installDir, asset.name);
 
-  const showProgress = shouldShowProgress(options?.quiet);
-  const progressBar = new ProgressBar(asset.name, { enabled: showProgress });
-
   try {
-    await downloader.download(downloadUrl, {
-      destinationPath: downloadPath,
-      onProgress: progressBar.createCallback(),
-    });
+    await downloadWithProgress(downloadUrl, downloadPath, asset.name, downloader, options);
     return { success: true, data: { downloadPath } };
   } catch (error) {
     return {
       success: false,
       error: `Download failed: ${(error as Error).message}`,
     };
-  } finally {
-    progressBar.finish();
   }
 }
 
 async function executeAfterDownloadHook(
   toolConfig: GithubReleaseToolConfig,
   postDownloadContext: PostDownloadInstallContext,
-  fs: IFileSystem,
   hookExecutor: HookExecutor,
+  fs: IFileSystem,
   logger: TsLogger
 ): Promise<OperationResult<void>> {
-  if (!toolConfig.installParams?.hooks?.afterDownload) {
-    return { success: true, data: undefined };
-  }
-
-  logger.debug(logs.installer.debug.runningAfterDownloadHook());
-  const enhancedContext = hookExecutor.createEnhancedContext(postDownloadContext, fs, logger);
-  const hookResult = await hookExecutor.executeHook(
-    'afterDownload',
-    toolConfig.installParams.hooks.afterDownload,
-    enhancedContext
-  );
-
-  if (!hookResult.success) {
-    return {
-      success: false,
-      error: `afterDownload hook failed: ${hookResult.error}`,
-    };
-  }
-
-  return { success: true, data: undefined };
+  const result = await executeAfterDownloadHookUtil(toolConfig, postDownloadContext, hookExecutor, fs, logger);
+  return result.success
+    ? { success: true, data: undefined }
+    : { success: false, error: result.error || 'Hook execution failed' };
 }
 
 function isArchiveFile(filename: string): boolean {
@@ -453,24 +433,8 @@ async function executeAfterExtractHook(
   hookExecutor: HookExecutor,
   logger: TsLogger
 ): Promise<OperationResult<void>> {
-  if (!toolConfig.installParams?.hooks?.afterExtract) {
-    return { success: true, data: undefined };
-  }
-
-  logger.debug(logs.installer.debug.runningAfterExtractHook());
-  const enhancedContext = hookExecutor.createEnhancedContext(postExtractContext, fs, logger);
-  const hookResult = await hookExecutor.executeHook(
-    'afterExtract',
-    toolConfig.installParams.hooks.afterExtract,
-    enhancedContext
-  );
-
-  if (!hookResult.success) {
-    return {
-      success: false,
-      error: `afterExtract hook failed: ${hookResult.error}`,
-    };
-  }
-
-  return { success: true, data: undefined };
+  const result = await executeAfterExtractHookUtil(toolConfig, postExtractContext, hookExecutor, fs, logger);
+  return result.success
+    ? { success: true, data: undefined }
+    : { success: false, error: result.error || 'Hook execution failed' };
 }

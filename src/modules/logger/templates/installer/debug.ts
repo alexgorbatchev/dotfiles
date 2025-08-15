@@ -58,4 +58,11 @@ export const installerDebugTemplates = {
   patternPathNotFound: () => createSafeLogMessage('Pattern path does not exist: %s'),
   removingOldSymlink: () => createSafeLogMessage('Removing old symlink: %s'),
   creatingSymlink: () => createSafeLogMessage('Creating symlink: %s -> %s'),
+  pipelineStarting: () => createSafeLogMessage('Starting installation pipeline for %s with %s steps'),
+  pipelineStepExecuting: () => createSafeLogMessage('Executing step %s/%s: %s'),
+  pipelineStepFailed: () => createSafeLogMessage('Step %s failed: %s'),
+  pipelineStepCompleted: () => createSafeLogMessage('Step %s completed successfully'),
+  pipelineCompleted: () => createSafeLogMessage('Installation pipeline completed successfully for %s'),
+  binarySetupStarting: () => createSafeLogMessage('Setting up binaries for %s (%s)'),
+  hookExecuting: () => createSafeLogMessage('Executing %s hook'),
 } satisfies SafeLogMessageMap;

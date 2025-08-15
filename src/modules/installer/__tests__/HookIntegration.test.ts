@@ -1,14 +1,8 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { YamlConfig } from '@modules/config';
-import type { DownloadOptions, IDownloader } from '@modules/downloader';
-import type { ExtractOptions, IArchiveExtractor } from '@modules/extractor';
-import type { IGitHubApiClient } from '@modules/github-client';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { TsLogger } from '@modules/logger';
 import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
-import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { AsyncInstallHook, EnhancedInstallHookContext, GithubReleaseToolConfig } from '@types';
-import { Installer } from '../Installer';
-import { createMockToolInstallationRegistry } from './installer-test-helpers';
+import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 // Helper function for tests to create SafeLogMessage
 function testLogMessage(message: string): SafeLogMessage {
@@ -21,153 +15,40 @@ import path from 'node:path';
  * Integration tests demonstrating real-world hook usage scenarios
  */
 describe('Hook Integration Tests', () => {
-  let logger: TestLogger;
-  let installer: Installer;
-  let memFs: MemFileSystemReturn;
-  let mockDownloader: IDownloader;
-  let mockGitHubClient: IGitHubApiClient;
-  let mockArchiveExtractor: IArchiveExtractor;
-  let mockConfig: YamlConfig;
+  let setup: InstallerTestSetup;
 
   beforeEach(async () => {
-    logger = new TestLogger();
-    memFs = await createMemFileSystem();
-
-    // Setup filesystem to track operations
-    const fileSystemOperations: Array<{ operation: string; args: unknown[] }> = [];
-
-    // Wrap filesystem operations to track them
-    const originalEnsureDir = memFs.spies.ensureDir;
-    const originalWriteFile = memFs.spies.writeFile;
-    const originalCopyFile = memFs.spies.copyFile;
-    const originalChmod = memFs.spies.chmod;
-
-    memFs.spies.ensureDir = mock(async (path) => {
-      fileSystemOperations.push({ operation: 'ensureDir', args: [path] });
-      return originalEnsureDir(path);
-    });
-
-    memFs.spies.writeFile = mock(async (path, content) => {
-      fileSystemOperations.push({ operation: 'writeFile', args: [path, content] });
-      return originalWriteFile(path, content);
-    });
-
-    memFs.spies.copyFile = mock(async (src, dest) => {
-      fileSystemOperations.push({ operation: 'copyFile', args: [src, dest] });
-      return originalCopyFile(src, dest);
-    });
-
-    memFs.spies.chmod = mock(async (path, mode) => {
-      fileSystemOperations.push({ operation: 'chmod', args: [path, mode] });
-      return originalChmod(path, mode);
-    });
-
-    // Store operations for test assertions
-    (memFs.fs as unknown as Record<string, unknown>)['operations'] = fileSystemOperations;
-
-    mockDownloader = {
-      download: mock(async (_url: string, options?: DownloadOptions) => {
-        // Mock the actual download by creating the destination file
-        if (options?.destinationPath) {
-          await memFs.fs.writeFile(options.destinationPath, 'mock-downloaded-file-content');
-        }
-      }),
-      registerStrategy: mock(),
-      downloadToFile: mock(),
-    } as IDownloader;
-
-    mockGitHubClient = {
-      getLatestRelease: mock(() =>
-        Promise.resolve({
-          id: 12345,
-          tag_name: '1.2.3',
-          html_url: 'https://github.com/example/tool/releases/tag/v1.2.3',
-          published_at: '2023-01-01T00:00:00Z',
-          created_at: '2023-01-01T00:00:00Z',
-          name: 'Release v1.2.3',
-          draft: false,
-          prerelease: false,
-          assets: [
-            {
-              id: 123,
-              name: 'tool-darwin-arm64.tar.gz',
-              browser_download_url: 'https://github.com/example/tool/releases/download/v1.2.3/tool-darwin-arm64.tar.gz',
-              size: 1024000,
-              content_type: 'application/gzip',
-              state: 'uploaded',
-              download_count: 42,
-              created_at: '2023-01-01T00:00:00Z',
-              updated_at: '2023-01-01T00:00:00Z',
-            },
-          ],
-        })
-      ),
-      getReleaseByTag: mock(),
-      getAllReleases: mock(),
-      getReleaseByConstraint: mock(),
-      getRateLimit: mock(),
-    } as IGitHubApiClient;
-
-    mockArchiveExtractor = {
-      extract: mock(async (_archivePath: string, options?: ExtractOptions) => {
-        // Mock the extraction by creating extracted files in the target directory
-        const targetDir = options?.targetDir;
-        if (targetDir) {
-          await memFs.fs.ensureDir(targetDir);
-
-          // Create common files
-          await memFs.fs.writeFile(`${targetDir}/tool`, 'mock-binary-content');
-          await memFs.fs.writeFile(`${targetDir}/README.md`, 'mock-readme');
-          await memFs.fs.writeFile(`${targetDir}/LICENSE`, 'mock-license');
-
-          // Create specific binaries for different tests
-          await memFs.fs.writeFile(`${targetDir}/source-tool`, 'mock-binary-content');
-          await memFs.fs.writeFile(`${targetDir}/logging-test-tool`, 'mock-binary-content');
-
-          // Create source files for the build/compile test
-          await memFs.fs.writeFile(`${targetDir}/Makefile`, 'CC=gcc\\nall:\\n\\tgcc -o source-tool source-tool.c');
-          await memFs.fs.writeFile(`${targetDir}/source-tool.c`, '#include <stdio.h>\\nint main() { return 0; }');
-        }
-        return {
-          extractedFiles: [
-            'tool',
-            'source-tool',
-            'logging-test-tool',
-            'Makefile',
-            'source-tool.c',
-            'README.md',
-            'LICENSE',
-          ],
-          executables: ['tool', 'source-tool', 'logging-test-tool'],
-        };
-      }),
-      detectFormat: mock(),
-      isSupported: mock(),
-    } as IArchiveExtractor;
-
-    mockConfig = {
-      paths: {
-        generatedDir: '/app/generated',
-        binariesDir: '/app/generated/binaries',
-      },
-      github: {
-        host: 'github.com',
-      },
-    } as YamlConfig;
-
-    installer = new Installer(
-      logger,
-      memFs.fs,
-      mockDownloader,
-      mockGitHubClient,
-      mockArchiveExtractor,
-      mockConfig,
-      createMockToolInstallationRegistry()
-    );
+    setup = await createInstallerTestSetup();
+    setupFileSystemMocks(setup);
   });
 
   describe('Real-world hook scenarios', () => {
     it('should handle configuration setup hook that creates config files', async () => {
+      // Override the GitHub client mock for this specific test
+      setup.mocks.getLatestRelease.mockResolvedValueOnce({
+        id: 123,
+        tag_name: '1.0.0',
+        name: 'Test Release',
+        draft: false,
+        prerelease: false,
+        created_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        assets: [
+          {
+            name: 'example-tool-darwin-arm64.tar.gz',
+            browser_download_url:
+              'https://github.com/example/tool/releases/download/v1.0.0/example-tool-darwin-arm64.tar.gz',
+            size: 1000,
+            content_type: 'application/gzip',
+            state: 'uploaded',
+            download_count: 100,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+          },
+        ],
+        html_url: 'https://github.com/example/tool/releases/tag/1.0.0',
+      });
+
       const toolConfig: GithubReleaseToolConfig = {
         name: 'example-tool',
         binaries: ['tool'],
@@ -197,13 +78,16 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await installer.install('example-tool', toolConfig);
+      const result = await setup.installer.install('example-tool', toolConfig);
 
       expect(result.success).toBe(true);
+      if (!result.success) {
+        throw new Error(`Installation failed: ${result.error}`);
+      }
 
       // Find the actual timestamped directory
-      const toolDir = '/app/generated/binaries/example-tool';
-      const toolDirContents = await memFs.fs.readdir(toolDir);
+      const toolDir = `${setup.testDirs.paths.binariesDir}/example-tool`;
+      const toolDirContents = await setup.fs.readdir(toolDir);
       const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
       expect(timestampDir).toBeDefined();
 
@@ -212,16 +96,41 @@ describe('Hook Integration Tests', () => {
       const configFile = path.join(configDir, 'default.yaml');
 
       // Verify config directory was created
-      expect(await memFs.fs.exists(configDir)).toBe(true);
+      expect(await setup.fs.exists(configDir)).toBe(true);
 
       // Verify config file was created with correct content
-      expect(await memFs.fs.exists(configFile)).toBe(true);
-      const configContent = await memFs.fs.readFile(configFile, 'utf-8');
+      expect(await setup.fs.exists(configFile)).toBe(true);
+      const configContent = await setup.fs.readFile(configFile, 'utf-8');
       expect(configContent).toContain('Default configuration for example-tool');
       expect(configContent).toContain(`install_dir: ${path.join(toolDir, timestampDir!)}`);
     });
 
     it('should handle post-extraction binary organization hook', async () => {
+      // Override the GitHub client mock for this specific test
+      setup.mocks.getLatestRelease.mockResolvedValueOnce({
+        id: 123,
+        tag_name: '1.0.0',
+        name: 'Test Release',
+        draft: false,
+        prerelease: false,
+        created_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        assets: [
+          {
+            name: 'multi-binary-tool-darwin-arm64.tar.gz',
+            browser_download_url:
+              'https://github.com/example/multi-binary-tool/releases/download/v1.0.0/multi-binary-tool-darwin-arm64.tar.gz',
+            size: 1000,
+            content_type: 'application/gzip',
+            state: 'uploaded',
+            download_count: 100,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+          },
+        ],
+        html_url: 'https://github.com/example/multi-binary-tool/releases/tag/1.0.0',
+      });
+
       const toolConfig: GithubReleaseToolConfig = {
         name: 'multi-binary-tool',
         binaries: ['main-tool', 'helper-tool'],
@@ -269,38 +178,78 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await installer.install('multi-binary-tool', toolConfig);
+      const result = await setup.installer.install('multi-binary-tool', toolConfig);
 
+      if (!result.success) {
+        throw new Error(`Installation failed: ${result.error}`);
+      }
       expect(result.success).toBe(true);
 
       // Find the actual timestamped directory
-      const toolDir = '/app/generated/binaries/multi-binary-tool';
-      const toolDirContents = await memFs.fs.readdir(toolDir);
+      const toolDir = `${setup.testDirs.paths.binariesDir}/multi-binary-tool`;
+
+      // Debug: Check if tool directory exists
+      const toolDirExists = await setup.fs.exists(toolDir);
+      if (!toolDirExists) {
+        throw new Error(`Tool directory does not exist: ${toolDir}`);
+      }
+
+      const toolDirContents = await setup.fs.readdir(toolDir);
+      console.log('Tool directory contents:', toolDirContents);
+
       const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
-      expect(timestampDir).toBeDefined();
+      if (!timestampDir) {
+        throw new Error(`No timestamp directory found in: ${toolDirContents}`);
+      }
 
       // Verify hook created the expected directory structure
-      const binDir = path.join(toolDir, timestampDir!, 'bin');
-      const docsDir = path.join(toolDir, timestampDir!, 'docs');
+      const timestampedPath = `${toolDir}/${timestampDir}`;
+      const binDir = path.join(timestampedPath, 'bin');
+      const docsDir = path.join(timestampedPath, 'docs');
       const mainToolBinary = path.join(binDir, 'main-tool');
       const helperToolBinary = path.join(binDir, 'helper-tool');
 
       // Verify directories were created
-      expect(await memFs.fs.exists(binDir)).toBe(true);
-      expect(await memFs.fs.exists(docsDir)).toBe(true);
+      expect(await setup.fs.exists(binDir)).toBe(true);
+      expect(await setup.fs.exists(docsDir)).toBe(true);
 
       // Verify executables were created in bin directory
-      expect(await memFs.fs.exists(mainToolBinary)).toBe(true);
-      expect(await memFs.fs.exists(helperToolBinary)).toBe(true);
+      expect(await setup.fs.exists(mainToolBinary)).toBe(true);
+      expect(await setup.fs.exists(helperToolBinary)).toBe(true);
 
       // Verify documentation files were copied to docs directory
       const readmeFile = path.join(docsDir, 'README.md');
       const licenseFile = path.join(docsDir, 'LICENSE');
-      expect(await memFs.fs.exists(readmeFile)).toBe(true);
-      expect(await memFs.fs.exists(licenseFile)).toBe(true);
+      expect(await setup.fs.exists(readmeFile)).toBe(true);
+      expect(await setup.fs.exists(licenseFile)).toBe(true);
     });
 
     it('should handle build/compile hook that processes source code', async () => {
+      // Override the GitHub client mock for this specific test
+      setup.mocks.getLatestRelease.mockResolvedValueOnce({
+        id: 123,
+        tag_name: '1.0.0',
+        name: 'Test Release',
+        draft: false,
+        prerelease: false,
+        created_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        assets: [
+          {
+            name: 'source-tool-darwin-arm64.tar.gz',
+            browser_download_url:
+              'https://github.com/example/source-tool/releases/download/v1.0.0/source-tool-darwin-arm64.tar.gz',
+            size: 1000,
+            content_type: 'application/gzip',
+            state: 'uploaded',
+            download_count: 100,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+          },
+        ],
+        html_url: 'https://github.com/example/source-tool/releases/tag/1.0.0',
+      });
+
       const toolConfig: GithubReleaseToolConfig = {
         name: 'source-tool',
         binaries: ['source-tool'],
@@ -345,13 +294,13 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await installer.install('source-tool', toolConfig);
+      const result = await setup.installer.install('source-tool', toolConfig);
 
       expect(result.success).toBe(true);
 
       // Find the actual timestamped directory
-      const toolDir = '/app/generated/binaries/source-tool';
-      const toolDirContents = await memFs.fs.readdir(toolDir);
+      const toolDir = `${setup.testDirs.paths.binariesDir}/source-tool`;
+      const toolDirContents = await setup.fs.readdir(toolDir);
       const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
       expect(timestampDir).toBeDefined();
 
@@ -360,13 +309,38 @@ describe('Hook Integration Tests', () => {
       const libFile = path.join(libDir, 'libsource-tool.so');
 
       // Verify library directory was created
-      expect(await memFs.fs.exists(libDir)).toBe(true);
+      expect(await setup.fs.exists(libDir)).toBe(true);
 
       // Verify shared library was created
-      expect(await memFs.fs.exists(libFile)).toBe(true);
+      expect(await setup.fs.exists(libFile)).toBe(true);
     });
 
     it('should handle hook failure gracefully with detailed error information', async () => {
+      // Override the GitHub client mock for this specific test
+      setup.mocks.getLatestRelease.mockResolvedValueOnce({
+        id: 123,
+        tag_name: '1.0.0',
+        name: 'Test Release',
+        draft: false,
+        prerelease: false,
+        created_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        assets: [
+          {
+            name: 'failing-tool-darwin-arm64.tar.gz',
+            browser_download_url:
+              'https://github.com/example/failing-tool/releases/download/v1.0.0/failing-tool-darwin-arm64.tar.gz',
+            size: 1000,
+            content_type: 'application/gzip',
+            state: 'uploaded',
+            download_count: 100,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+          },
+        ],
+        html_url: 'https://github.com/example/failing-tool/releases/tag/1.0.0',
+      });
+
       const toolConfig: GithubReleaseToolConfig = {
         name: 'failing-tool',
         binaries: ['failing-tool'],
@@ -383,14 +357,14 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await installer.install('failing-tool', toolConfig);
+      const result = await setup.installer.install('failing-tool', toolConfig);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('afterDownload hook failed');
       expect(result.error).toContain('Downloaded file validation failed: checksum mismatch');
 
       // Verify that the hook failure was logged appropriately
-      logger.expect(
+      setup.logger.expect(
         ['ERROR'],
         ['HookExecutor'],
         [
@@ -400,6 +374,31 @@ describe('Hook Integration Tests', () => {
     });
 
     it('should provide hooks with proper logging context', async () => {
+      // Override the GitHub client mock for this specific test
+      setup.mocks.getLatestRelease.mockResolvedValueOnce({
+        id: 123,
+        tag_name: '1.0.0',
+        name: 'Test Release',
+        draft: false,
+        prerelease: false,
+        created_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        assets: [
+          {
+            name: 'logging-test-tool-darwin-arm64.tar.gz',
+            browser_download_url:
+              'https://github.com/example/logging-test-tool/releases/download/v1.0.0/logging-test-tool-darwin-arm64.tar.gz',
+            size: 1000,
+            content_type: 'application/gzip',
+            state: 'uploaded',
+            download_count: 100,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+          },
+        ],
+        html_url: 'https://github.com/example/logging-test-tool/releases/tag/1.0.0',
+      });
+
       let capturedLogger: TsLogger | undefined;
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -420,7 +419,7 @@ describe('Hook Integration Tests', () => {
         },
       };
 
-      const result = await installer.install('logging-test-tool', toolConfig);
+      const result = await setup.installer.install('logging-test-tool', toolConfig);
 
       expect(result.success).toBe(true);
       expect(capturedLogger).toBeDefined();

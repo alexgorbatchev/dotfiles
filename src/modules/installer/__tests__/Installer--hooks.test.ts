@@ -132,6 +132,9 @@ describe('Installer - Enhanced Hooks', () => {
 
       const result = await installer.install(mockToolName, toolConfig);
 
+      if (!result.success) {
+        throw new Error(`Hook test failed: ${result.error}`);
+      }
       expect(result.success).toBe(true);
       expect(beforeInstallHook).toHaveBeenCalledTimes(1);
     });

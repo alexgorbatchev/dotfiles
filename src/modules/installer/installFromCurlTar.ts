@@ -1,8 +1,6 @@
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
-import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
-import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
@@ -16,7 +14,14 @@ import type {
 import { setupBinariesFromArchive } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { getBinaryPaths } from './utils';
+import {
+  createToolFileSystem,
+  downloadWithProgress,
+  executeAfterDownloadHook,
+  executeAfterExtractHook,
+  getBinaryPaths,
+  withInstallErrorHandling,
+} from './utils';
 
 /**
  * Install a tool from a tarball using curl
@@ -32,9 +37,7 @@ export async function installFromCurlTar(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
-  // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
-
+  const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
   logger.debug(logs.installer.debug.installingFromCurlTar(), toolName);
 
@@ -52,22 +55,12 @@ export async function installFromCurlTar(
   const params = toolConfig.installParams;
   const url = params.url;
 
-  try {
+  const operation = async (): Promise<InstallResult> => {
     // Download the tarball
     logger.debug(logs.installer.debug.downloadingTarball(), url);
-    const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`); // Assuming .tar.gz, adjust if needed
+    const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`);
 
-    const showProgress = shouldShowProgress(options?.quiet);
-    const progressBar = new ProgressBar(`${toolName}.tar.gz`, { enabled: showProgress });
-
-    try {
-      await downloader.download(url, {
-        destinationPath: tarballPath,
-        onProgress: progressBar.createCallback(),
-      });
-    } finally {
-      progressBar.finish();
-    }
+    await downloadWithProgress(url, tarballPath, `${toolName}.tar.gz`, downloader, options);
 
     // Update context with download path
     postDownloadContext = {
@@ -76,23 +69,18 @@ export async function installFromCurlTar(
     };
 
     // Run afterDownload hook if defined
-    if (toolConfig.installParams?.hooks?.afterDownload) {
-      logger.debug(logs.installer.debug.runningAfterDownloadHook());
-
-      const enhancedContext = hookExecutor.createEnhancedContext(postDownloadContext, fs, logger);
-
-      const hookResult = await hookExecutor.executeHook(
-        'afterDownload',
-        toolConfig.installParams.hooks.afterDownload,
-        enhancedContext
-      );
-
-      if (!hookResult.success) {
-        return {
-          success: false,
-          error: `afterDownload hook failed: ${hookResult.error}`,
-        };
-      }
+    const afterDownloadResult = await executeAfterDownloadHook(
+      toolConfig,
+      postDownloadContext,
+      hookExecutor,
+      fs,
+      logger
+    );
+    if (!afterDownloadResult.success) {
+      return {
+        success: false,
+        error: afterDownloadResult.error,
+      };
     }
 
     // Extract the tarball directly to install directory
@@ -111,23 +99,12 @@ export async function installFromCurlTar(
     };
 
     // Run afterExtract hook if defined
-    if (toolConfig.installParams?.hooks?.afterExtract) {
-      logger.debug(logs.installer.debug.runningAfterExtractHook());
-
-      const enhancedContext = hookExecutor.createEnhancedContext(postExtractContext, fs, logger);
-
-      const hookResult = await hookExecutor.executeHook(
-        'afterExtract',
-        toolConfig.installParams.hooks.afterExtract,
-        enhancedContext
-      );
-
-      if (!hookResult.success) {
-        return {
-          success: false,
-          error: `afterExtract hook failed: ${hookResult.error}`,
-        };
-      }
+    const afterExtractResult = await executeAfterExtractHook(toolConfig, postExtractContext, hookExecutor, fs, logger);
+    if (!afterExtractResult.success) {
+      return {
+        success: false,
+        error: afterExtractResult.error,
+      };
     }
 
     // Handle all binaries from extracted archive
@@ -149,11 +126,7 @@ export async function installFromCurlTar(
         tarballUrl: url,
       },
     };
-  } catch (error) {
-    logger.error(logs.tool.error.installFailed('curl-tar', toolName, (error as Error).message));
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+  };
+
+  return withInstallErrorHandling('curl-tar', toolName, logger, operation) as Promise<InstallResult>;
 }

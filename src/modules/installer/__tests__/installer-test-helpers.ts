@@ -5,6 +5,7 @@ import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
+import type { TsLogger } from '@modules/logger';
 import {
   createMemFileSystem,
   createMockYamlConfig,
@@ -22,6 +23,7 @@ import type {
   ManualToolConfig,
 } from '@types';
 import type { ILogObj } from 'tslog';
+import type { HookExecutor } from '../HookExecutor';
 import { Installer } from '../Installer';
 
 // Common test data
@@ -103,7 +105,7 @@ export const MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS: GitHubRelease = {
 // Test setup interface
 export interface InstallerTestSetup {
   logger: TestLogger<ILogObj>;
-  mockFileSystem: IFileSystem;
+  fs: IFileSystem;
   mockDownloader: IDownloader;
   mockGitHubApiClient: IGitHubApiClient;
   mockArchiveExtractor: IArchiveExtractor;
@@ -115,10 +117,13 @@ export interface InstallerTestSetup {
 
   // Individual mocks for fine-grained control
   mocks: {
+    downloader: IDownloader;
     download: ReturnType<typeof mock>;
     getLatestRelease: ReturnType<typeof mock>;
     getReleaseByTag: ReturnType<typeof mock>;
     extract: ReturnType<typeof mock>;
+    archiveExtractor: IArchiveExtractor;
+    hookExecutor: HookExecutor;
   };
 }
 
@@ -163,12 +168,16 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     // Create the extracted files in the target directory
     if (options?.targetDir) {
       await fs.ensureDir(options.targetDir);
+      // Create both the specific tool name and a generic 'tool' file for hooks to use
       await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), 'mock-binary-content');
+      await fs.writeFile(path.join(options.targetDir, 'tool'), 'mock-binary-content');
       await fs.writeFile(path.join(options.targetDir, 'README.md'), 'mock-readme');
+      await fs.writeFile(path.join(options.targetDir, 'LICENSE'), 'mock-license');
+      await fs.writeFile(path.join(options.targetDir, 'Makefile'), 'CC=gcc\nall:\n\tgcc -o tool tool.c');
     }
     return {
-      extractedFiles: [MOCK_TOOL_NAME, 'README.md'],
-      executables: [MOCK_TOOL_NAME],
+      extractedFiles: [MOCK_TOOL_NAME, 'tool', 'README.md', 'LICENSE', 'Makefile'],
+      executables: [MOCK_TOOL_NAME, 'tool'],
     };
   });
   const mockArchiveExtractor: IArchiveExtractor = {
@@ -189,6 +198,24 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     env: {},
   });
 
+  // Setup mock HookExecutor
+  const mockExecuteHook = mock(async () => ({ success: true, durationMs: 100, skipped: false }));
+  const mockCreateEnhancedContext = mock(
+    (baseContext: BaseInstallContext, fileSystem: IFileSystem, logger: TsLogger) => ({
+      ...baseContext,
+      fileSystem,
+      logger,
+      $: {} as any,
+    })
+  );
+  const mockHookExecutor = {
+    executeHook: mockExecuteHook,
+    createEnhancedContext: mockCreateEnhancedContext,
+    logger: new TestLogger(),
+    defaultTimeoutMs: 60000,
+    executeHooks: mock(async () => ({ success: true, durationMs: 100, skipped: false })),
+  } as any;
+
   // Create installer instance
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
   const installer = new Installer(
@@ -203,7 +230,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
 
   return {
     logger,
-    mockFileSystem: fs,
+    fs,
     mockDownloader,
     mockGitHubApiClient,
     mockArchiveExtractor,
@@ -213,10 +240,13 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     testDirs,
     mockToolBinaryPath,
     mocks: {
+      downloader: mockDownloader,
       download: mockDownload,
       getLatestRelease: mockGetLatestRelease,
       getReleaseByTag: mockGetReleaseByTag,
       extract: mockExtract,
+      archiveExtractor: mockArchiveExtractor,
+      hookExecutor: mockHookExecutor,
     },
   };
 }
@@ -324,10 +354,10 @@ export function setupFileSystemMocks(setup: InstallerTestSetup): void {
   setup.fileSystemMocks.symlink.mockImplementation(async (target: string, linkPath: string) => {
     // Create the parent directory if it doesn't exist
     const parentDir = path.dirname(linkPath);
-    await setup.mockFileSystem.ensureDir(parentDir);
+    await setup.fs.ensureDir(parentDir);
 
     // Create a mock symlink by writing a special file that indicates it's a symlink
-    await setup.mockFileSystem.writeFile(linkPath, `SYMLINK:${target}`);
+    await setup.fs.writeFile(linkPath, `SYMLINK:${target}`);
 
     // Override the readlink method for this specific path
     const originalReadlink = setup.fileSystemMocks.readlink;
@@ -341,6 +371,12 @@ export function setupFileSystemMocks(setup: InstallerTestSetup): void {
     return undefined;
   });
 
-  setup.fileSystemMocks.copyFile.mockResolvedValue(undefined);
+  setup.fileSystemMocks.copyFile.mockImplementation(async (src: string, dest: string) => {
+    // Actually copy the file content in the mock filesystem
+    const content = await setup.fs.readFile(src);
+    await setup.fs.ensureDir(path.dirname(dest));
+    await setup.fs.writeFile(dest, content);
+    return undefined;
+  });
   setup.fileSystemMocks.rm.mockResolvedValue(undefined);
 }

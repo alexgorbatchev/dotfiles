@@ -19,8 +19,8 @@ describe('Installer - installManually', () => {
     const expectedFinalPath = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'unknown', MOCK_TOOL_NAME);
 
     // Create the manual binary file in the mock filesystem
-    await setup.mockFileSystem.ensureDir(path.dirname(manualBinaryPath));
-    await setup.mockFileSystem.writeFile(manualBinaryPath, 'manual binary content');
+    await setup.fs.ensureDir(path.dirname(manualBinaryPath));
+    await setup.fs.writeFile(manualBinaryPath, 'manual binary content');
 
     const toolConfig = createManualToolConfig({
       installParams: {

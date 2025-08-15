@@ -1,14 +1,19 @@
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
-import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
-import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@types';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { getBinaryNames, getBinaryPaths } from './utils';
+import {
+  createToolFileSystem,
+  downloadWithProgress,
+  executeAfterDownloadHook,
+  getBinaryNames,
+  getBinaryPaths,
+  withInstallErrorHandling,
+} from './utils';
 
 /**
  * Install a tool using a curl script
@@ -23,9 +28,7 @@ export async function installFromCurlScript(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
-  // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
-
+  const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
   logger.debug(logs.installer.debug.installingFromCurl(), toolName);
 
@@ -40,50 +43,34 @@ export async function installFromCurlScript(
   const url = params.url;
   const shell = params.shell;
 
-  try {
+  const operation = async (): Promise<InstallResult> => {
     // Download the script
     logger.debug(logs.installer.debug.downloadingScript(), url);
     const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
 
-    const showProgress = shouldShowProgress(options?.quiet);
-    const progressBar = new ProgressBar(`${toolName}-install.sh`, { enabled: showProgress });
-
-    try {
-      await downloader.download(url, {
-        destinationPath: scriptPath,
-        onProgress: progressBar.createCallback(),
-      });
-    } finally {
-      progressBar.finish();
-    }
+    await downloadWithProgress(url, scriptPath, `${toolName}-install.sh`, downloader, options);
 
     // Make the script executable
     await toolFs.chmod(scriptPath, 0o755);
 
     // Run afterDownload hook if defined
-    if (toolConfig.installParams?.hooks?.afterDownload) {
-      logger.debug(logs.installer.debug.runningAfterDownloadHook());
+    const postDownloadContext = {
+      ...context,
+      downloadPath: scriptPath,
+    };
 
-      // Create context with download path for hook
-      const postDownloadContext = {
-        ...context,
-        downloadPath: scriptPath,
+    const afterDownloadResult = await executeAfterDownloadHook(
+      toolConfig,
+      postDownloadContext,
+      hookExecutor,
+      fs,
+      logger
+    );
+    if (!afterDownloadResult.success) {
+      return {
+        success: false,
+        error: afterDownloadResult.error,
       };
-
-      const enhancedContext = hookExecutor.createEnhancedContext(postDownloadContext, fs, logger);
-
-      const hookResult = await hookExecutor.executeHook(
-        'afterDownload',
-        toolConfig.installParams.hooks.afterDownload,
-        enhancedContext
-      );
-
-      if (!hookResult.success) {
-        return {
-          success: false,
-          error: `afterDownload hook failed: ${hookResult.error}`,
-        };
-      }
     }
 
     // Execute the script
@@ -112,11 +99,7 @@ export async function installFromCurlScript(
         shell,
       },
     };
-  } catch (error) {
-    logger.error(logs.tool.error.installFailed('curl-script', toolName, (error as Error).message));
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+  };
+
+  return withInstallErrorHandling('curl-script', toolName, logger, operation) as Promise<InstallResult>;
 }

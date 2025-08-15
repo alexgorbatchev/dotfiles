@@ -78,10 +78,10 @@ export class Installer implements IInstaller {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.logger.debug(
       logs.command.debug.installerConstructor(),
-      fileSystem.constructor.name,
-      downloader.constructor.name,
-      githubApiClient.constructor.name,
-      archiveExtractor.constructor.name,
+      fileSystem?.constructor?.name || 'unknown',
+      downloader?.constructor?.name || 'unknown',
+      githubApiClient?.constructor?.name || 'unknown',
+      archiveExtractor?.constructor?.name || 'unknown',
       appConfig
     );
     this.fs = fileSystem;
