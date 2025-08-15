@@ -10,7 +10,6 @@ describe('expandToolConfigPath', () => {
   const mockSystemInfo: SystemInfo = {
     platform: 'darwin',
     arch: 'arm64',
-    release: '10.0.0',
     homeDir: '/Users/testuser',
   };
 

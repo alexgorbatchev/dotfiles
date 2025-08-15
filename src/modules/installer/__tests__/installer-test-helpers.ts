@@ -200,7 +200,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
     fileSystem: fs,
     logger,
-    systemInfo: { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir },
+    systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
     env: {},
   });
 
@@ -224,7 +224,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
 
   // Create installer instance
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
-  const mockSystemInfo = { platform: 'darwin', arch: 'arm64', release: 'test', homeDir: testDirs.paths.homeDir };
+  const mockSystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir };
   const installer = new Installer(
     logger,
     fs,
@@ -345,7 +345,7 @@ export function createTestContext(
     toolName: MOCK_TOOL_NAME,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
     timestamp: '2024-08-13-16-45-23',
-    systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
+    systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
     appConfig: setup.mockAppConfig,
     ...overrides,

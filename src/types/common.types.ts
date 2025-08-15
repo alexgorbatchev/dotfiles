@@ -15,12 +15,6 @@ export interface SystemInfo {
    */
   arch: string;
   /**
-   * The operating system release version.
-   * Corresponds to the value returned by `os.release()` in Node.js (e.g., '20.3.0' for macOS Big Sur).
-   * This property is optional as it may not always be required or available.
-   */
-  release?: string;
-  /**
    * The user's home directory path.
    * Corresponds to the value returned by `os.homedir()` in Node.js.
    * Used for expanding tilde (~) in file paths.

@@ -108,7 +108,7 @@ describe('Installer with custom GitHub host', () => {
       filePath: path.join(directories.paths.dotfilesDir, 'config.yaml'),
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: 'linux', arch: 'x64', release: 'test', homeDir: directories.paths.homeDir },
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: directories.paths.homeDir },
       env: {},
     });
 

@@ -158,7 +158,7 @@ describe('Installer - installFromGitHubRelease', () => {
           },
           github: { host: undefined },
         },
-        { platform: 'linux', arch: 'x64', release: 'test', homeDir: setup.testDirs.paths.homeDir },
+        { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
         {}
       );
       const tempInstaller = new Installer(
@@ -216,7 +216,7 @@ describe('Installer - installFromGitHubRelease', () => {
           },
           github: { host: 'github.my-company.com' },
         },
-        { platform: 'linux', arch: 'x64', release: 'test', homeDir: setup.testDirs.paths.homeDir },
+        { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
         {}
       );
       const tempInstaller = new Installer(
@@ -274,7 +274,7 @@ describe('Installer - installFromGitHubRelease', () => {
           },
           github: { host: 'api.github.com' },
         },
-        { platform: 'linux', arch: 'x64', release: 'test', homeDir: setup.testDirs.paths.homeDir },
+        { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
         {}
       ); // API host
       const tempInstaller = new Installer(
@@ -340,7 +340,6 @@ describe('Installer - installFromGitHubRelease', () => {
       const systemInfo = {
         platform: 'sunos',
         arch: 'sparc',
-        release: '5.11',
         homeDir: '/home/test',
       };
       // @ts-ignore

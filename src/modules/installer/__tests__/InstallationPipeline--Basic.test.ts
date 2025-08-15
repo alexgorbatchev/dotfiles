@@ -34,7 +34,7 @@ describe('InstallationPipeline - Basic Steps', () => {
       toolName: MOCK_TOOL_NAME,
       installDir,
       timestamp: '2024-08-13-16-45-23',
-      systemInfo: { platform: 'linux', arch: 'x64', release: '', homeDir: setup.testDirs.paths.homeDir },
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
       appConfig: setup.mockAppConfig,
     };

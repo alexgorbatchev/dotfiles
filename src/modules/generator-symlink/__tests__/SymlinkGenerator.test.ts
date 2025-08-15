@@ -28,7 +28,7 @@ describe('SymlinkGenerator', () => {
 
     testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'symlink-generator' });
 
-    systemInfo = { platform: 'linux', arch: 'x64', release: 'test', homeDir: testDirs.paths.homeDir };
+    systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
 
     yamlConfig = await createMockYamlConfig({
       config: {

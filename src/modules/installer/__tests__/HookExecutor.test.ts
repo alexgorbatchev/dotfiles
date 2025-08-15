@@ -40,7 +40,6 @@ describe('HookExecutor', () => {
       systemInfo: {
         platform: 'darwin',
         arch: 'x64',
-        release: '10.0.0',
         homeDir: '/home/user',
       },
       $: createMock$(),
@@ -229,7 +228,7 @@ describe('HookExecutor', () => {
         filePath: '/test/config.yaml',
         fileSystem: memFs.fs,
         logger,
-        systemInfo: { platform: 'linux', arch: 'x64', release: 'test', homeDir: '/home/test' },
+        systemInfo: { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
         env: {},
       });
 
