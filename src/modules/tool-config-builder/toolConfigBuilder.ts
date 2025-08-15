@@ -4,6 +4,8 @@ import type {
   AsyncInstallHook,
   BrewInstallParams,
   BrewToolConfig,
+  CargoInstallParams,
+  CargoToolConfig,
   CompletionConfig,
   CurlScriptInstallParams,
   CurlScriptToolConfig,
@@ -96,6 +98,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
+  install(method: 'cargo', params: CargoInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
   install(method: ToolConfigInstallationMethod, params: ToolConfigInstallParams): this {
     this.currentInstallationMethod = method;
@@ -371,6 +374,12 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
           installationMethod: 'curl-tar',
           installParams: this.currentInstallParams,
         } as CurlTarToolConfig;
+      case 'cargo':
+        return {
+          ...installableBase,
+          installationMethod: 'cargo',
+          installParams: this.currentInstallParams,
+        } as CargoToolConfig;
       case 'manual':
         return {
           ...installableBase,
@@ -386,7 +395,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const invalidMethodError = logs.config.error.invalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
-      'github-release | brew | curl-script | curl-tar | manual'
+      'github-release | brew | curl-script | curl-tar | cargo | manual'
     );
     this.logger.error(invalidMethodError);
     throw new Error(invalidMethodError);

@@ -3,6 +3,8 @@ export * from './baseToolConfigPropertiesSchema';
 export * from './binaryConfigSchema';
 export * from './brewInstallParamsSchema';
 export * from './brewToolConfigSchema';
+export * from './cargoInstallParamsSchema';
+export * from './cargoToolConfigSchema';
 export * from './commonToolConfigPropertiesSchema';
 export * from './completionConfigSchema';
 export * from './curlScriptInstallParamsSchema';

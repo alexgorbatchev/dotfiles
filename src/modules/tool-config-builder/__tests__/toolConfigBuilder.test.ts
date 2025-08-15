@@ -230,7 +230,7 @@ describe('ToolConfigBuilder', () => {
         logs.config.error.invalid(
           'installationMethod',
           'invalid-method',
-          'github-release | brew | curl-script | curl-tar | manual'
+          'github-release | brew | curl-script | curl-tar | cargo | manual'
         ),
       ]
     );

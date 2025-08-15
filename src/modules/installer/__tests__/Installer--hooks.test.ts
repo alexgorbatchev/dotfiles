@@ -104,7 +104,8 @@ describe('Installer - Enhanced Hooks', () => {
       mockGitHubClient,
       mockArchiveExtractor,
       mockConfig,
-      createMockToolInstallationRegistry()
+      createMockToolInstallationRegistry(),
+      { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' }
     );
   });
 

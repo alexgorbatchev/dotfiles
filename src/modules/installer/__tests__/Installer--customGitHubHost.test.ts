@@ -120,7 +120,8 @@ describe('Installer with custom GitHub host', () => {
       mockGitHubApiClient,
       mockArchiveExtractor,
       mockAppConfig,
-      createMockToolInstallationRegistry()
+      createMockToolInstallationRegistry(),
+      { platform: 'darwin', arch: 'arm64', homeDir: directories.paths.homeDir }
     );
   });
 
@@ -190,7 +191,8 @@ describe('Installer with custom GitHub host', () => {
       mockGitHubApiClientWithDifferentUrl,
       mockArchiveExtractor,
       mockAppConfig,
-      createMockToolInstallationRegistry()
+      createMockToolInstallationRegistry(),
+      { platform: 'darwin', arch: 'arm64', homeDir: directories.paths.homeDir }
     );
 
     const toolConfig: ToolConfig = {

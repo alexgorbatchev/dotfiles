@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { brewInstallParamsSchema } from './brewInstallParamsSchema';
+import { cargoInstallParamsSchema } from './cargoInstallParamsSchema';
 import { commonToolConfigPropertiesSchema } from './commonToolConfigPropertiesSchema';
 import { curlScriptInstallParamsSchema } from './curlScriptInstallParamsSchema';
 import { curlTarInstallParamsSchema } from './curlTarInstallParamsSchema';
@@ -9,7 +10,9 @@ import { manualInstallParamsSchema } from './manualInstallParamsSchema';
 export const platformConfigSchema = commonToolConfigPropertiesSchema
   .extend({
     /** The installation method to use */
-    installationMethod: z.enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'manual', 'none']).optional(),
+    installationMethod: z
+      .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'manual', 'none'])
+      .optional(),
     /** Parameters specific to the installation method */
     installParams: z
       .union([
@@ -17,6 +20,7 @@ export const platformConfigSchema = commonToolConfigPropertiesSchema
         brewInstallParamsSchema,
         curlScriptInstallParamsSchema,
         curlTarInstallParamsSchema,
+        cargoInstallParamsSchema,
         manualInstallParamsSchema,
       ])
       .optional(),

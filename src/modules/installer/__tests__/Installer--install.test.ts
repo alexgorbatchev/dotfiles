@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import type { CargoInstallParams, PlatformConfigEntry, ToolConfig } from '@types';
+import { Platform } from '@types';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -90,5 +92,73 @@ describe('Installer - install (orchestrator)', () => {
     expect(afterInstallHook).toHaveBeenCalledTimes(1);
 
     installFromGitHubReleaseSpy.mockRestore();
+  });
+
+  it('should work when only platform-specific configurations are defined', async () => {
+    // Create a tool config that mimics the eza configuration:
+    // - Root level has installationMethod: 'none'
+    // - Platform-specific configs have installationMethod: 'cargo'
+    const cargoInstallParams: CargoInstallParams = {
+      crateName: 'eza',
+      binarySource: 'cargo-quickinstall',
+      versionSource: 'cargo-toml',
+      githubRepo: 'eza-community/eza',
+    };
+
+    const macosConfig: PlatformConfigEntry = {
+      platforms: Platform.MacOS,
+      architectures: undefined,
+      config: {
+        installationMethod: 'cargo',
+        installParams: cargoInstallParams,
+      },
+    };
+
+    const linuxConfig: PlatformConfigEntry = {
+      platforms: Platform.Linux,
+      architectures: undefined,
+      config: {
+        installationMethod: 'cargo',
+        installParams: cargoInstallParams,
+      },
+    };
+
+    const toolConfigWithPlatformSpecificCargo: ToolConfig = {
+      name: 'eza',
+      binaries: ['eza'],
+      version: 'latest',
+      installationMethod: 'none',
+      installParams: undefined,
+      platformConfigs: [macosConfig, linuxConfig],
+    };
+
+    const installFromCargoSpy = spyOn(setup.installer, 'installFromCargo').mockResolvedValue({
+      success: true,
+      binaryPaths: [setup.mockToolBinaryPath],
+    });
+
+    // This should resolve the platform-specific config and call installFromCargo
+    // instead of failing with "Unsupported installation method: none"
+    const result = await setup.installer.install('eza', toolConfigWithPlatformSpecificCargo);
+
+    if (!result.success) {
+      throw new Error(`Expected installation to succeed, but got error: ${result.error}`);
+    }
+
+    expect(result.success).toBe(true);
+    expect(installFromCargoSpy).toHaveBeenCalledWith(
+      'eza',
+      expect.objectContaining({
+        installationMethod: 'cargo',
+        installParams: expect.objectContaining({
+          crateName: 'eza',
+          binarySource: 'cargo-quickinstall',
+        }),
+      }),
+      expect.objectContaining({ toolName: 'eza' }),
+      undefined
+    );
+
+    installFromCargoSpy.mockRestore();
   });
 });

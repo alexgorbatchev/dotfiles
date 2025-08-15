@@ -220,9 +220,16 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
   const yamlConfig = await loadYamlConfig(logger, configFs, userConfigPath, systemInfo, env);
 
+  // Create final systemInfo with correct homeDir from yamlConfig
+  const finalSystemInfo: SystemInfo = {
+    platform: systemInfo.platform,
+    arch: systemInfo.arch,
+    homeDir: yamlConfig.paths.homeDir,
+  };
+
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    await loadToolConfigsForDryRun(logger, fs, yamlConfig, systemInfo);
+    await loadToolConfigsForDryRun(logger, fs, yamlConfig, finalSystemInfo);
   }
 
   // Initialize download cache if enabled
@@ -282,7 +289,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     githubApiClient,
     archiveExtractor,
     yamlConfig,
-    toolInstallationRegistry
+    toolInstallationRegistry,
+    finalSystemInfo
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
 

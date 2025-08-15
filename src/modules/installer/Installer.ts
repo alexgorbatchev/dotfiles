@@ -1,4 +1,3 @@
-import os from 'node:os';
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader/IDownloader';
@@ -12,6 +11,7 @@ import type { IToolInstallationRegistry } from '@modules/tool-installation-regis
 import type {
   BaseInstallContext,
   BrewToolConfig,
+  CargoToolConfig,
   CurlScriptToolConfig,
   CurlTarToolConfig,
   GithubReleaseToolConfig,
@@ -19,10 +19,11 @@ import type {
   SystemInfo,
   ToolConfig,
 } from '@types';
-import { generateTimestamp } from '@utils';
+import { generateTimestamp, resolvePlatformConfig } from '@utils';
 import { HookExecutor } from './HookExecutor';
 import type { IInstaller, InstallOptions, InstallResult } from './IInstaller';
 import { installFromBrew } from './installFromBrew';
+import { installFromCargo } from './installFromCargo';
 import { installFromCurlScript } from './installFromCurlScript';
 import { installFromCurlTar } from './installFromCurlTar';
 import { installFromGitHubRelease } from './installFromGitHubRelease';
@@ -65,6 +66,7 @@ export class Installer implements IInstaller {
   private readonly appConfig: YamlConfig;
   private readonly hookExecutor: HookExecutor;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
+  private readonly systemInfo: SystemInfo;
 
   constructor(
     parentLogger: TsLogger,
@@ -73,7 +75,8 @@ export class Installer implements IInstaller {
     githubApiClient: IGitHubApiClient,
     archiveExtractor: IArchiveExtractor,
     appConfig: YamlConfig,
-    toolInstallationRegistry: IToolInstallationRegistry
+    toolInstallationRegistry: IToolInstallationRegistry,
+    systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.logger.debug(
@@ -91,6 +94,7 @@ export class Installer implements IInstaller {
     this.appConfig = appConfig;
     this.hookExecutor = new HookExecutor(parentLogger);
     this.toolInstallationRegistry = toolInstallationRegistry;
+    this.systemInfo = systemInfo;
   }
 
   /**
@@ -103,6 +107,10 @@ export class Installer implements IInstaller {
       : this.logger.getSubLogger({ name: 'install' });
 
     logger.debug(logs.command.debug.methodDebugParams(), toolName, toolConfig, options);
+
+    // Resolve platform-specific configuration
+    const systemInfo = this.getSystemInfo();
+    const resolvedToolConfig = resolvePlatformConfig(toolConfig, systemInfo);
 
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
@@ -118,7 +126,7 @@ export class Installer implements IInstaller {
         const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
         if (existingInstallation) {
           // Get the version that would be installed
-          const targetVersion = await this.getTargetVersion(toolName, toolConfig);
+          const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
 
           if (targetVersion && existingInstallation.version === targetVersion) {
             logger.debug(logs.tool.success.installed(toolName, targetVersion, 'already-installed'));
@@ -151,19 +159,19 @@ export class Installer implements IInstaller {
         installDir,
         timestamp,
         systemInfo: this.getSystemInfo(),
-        toolConfig,
+        toolConfig: resolvedToolConfig,
         appConfig: this.appConfig,
       };
 
       // Run beforeInstall hook if defined
-      if (toolConfig.installParams?.hooks?.beforeInstall) {
+      if (resolvedToolConfig.installParams?.hooks?.beforeInstall) {
         logger.debug(logs.command.debug.hookExecution('beforeInstall'));
 
         const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
 
         const result = await this.hookExecutor.executeHook(
           'beforeInstall',
-          toolConfig.installParams.hooks.beforeInstall,
+          resolvedToolConfig.installParams.hooks.beforeInstall,
           enhancedContext
         );
 
@@ -177,31 +185,34 @@ export class Installer implements IInstaller {
 
       // Install based on the installation method
       let result: InstallResult;
-      switch (toolConfig.installationMethod) {
+      switch (resolvedToolConfig.installationMethod) {
         case 'github-release':
-          result = await this.installFromGitHubRelease(toolName, toolConfig, context, options, logger, toolFs);
+          result = await this.installFromGitHubRelease(toolName, resolvedToolConfig, context, options, logger, toolFs);
           break;
         case 'brew':
-          result = await this.installFromBrew(toolName, toolConfig, context, options);
+          result = await this.installFromBrew(toolName, resolvedToolConfig, context, options);
+          break;
+        case 'cargo':
+          result = await this.installFromCargo(toolName, resolvedToolConfig, context, options);
           break;
         case 'curl-script':
-          result = await this.installFromCurlScript(toolName, toolConfig, context, options);
+          result = await this.installFromCurlScript(toolName, resolvedToolConfig, context, options);
           break;
         case 'curl-tar':
-          result = await this.installFromCurlTar(toolName, toolConfig, context, options);
+          result = await this.installFromCurlTar(toolName, resolvedToolConfig, context, options);
           break;
         case 'manual':
-          result = await this.installManually(toolName, toolConfig, context, options);
+          result = await this.installManually(toolName, resolvedToolConfig, context, options);
           break;
         default:
           return {
             success: false,
-            error: `Unsupported installation method: ${toolConfig.installationMethod}`,
+            error: `Unsupported installation method: ${resolvedToolConfig.installationMethod}`,
           };
       }
 
       // Run afterInstall hook if defined
-      if (toolConfig.installParams?.hooks?.afterInstall) {
+      if (resolvedToolConfig.installParams?.hooks?.afterInstall) {
         logger.debug(logs.command.debug.hookExecution('afterInstall'));
 
         // Update context with final result information
@@ -215,7 +226,7 @@ export class Installer implements IInstaller {
 
         await this.hookExecutor.executeHook(
           'afterInstall',
-          toolConfig.installParams.hooks.afterInstall,
+          resolvedToolConfig.installParams.hooks.afterInstall,
           enhancedContext,
           { continueOnError: true } // Don't fail installation if afterInstall hook fails
         );
@@ -233,7 +244,9 @@ export class Installer implements IInstaller {
             downloadUrl: result.info?.['downloadUrl'] as string | undefined,
             assetName: result.info?.['assetName'] as string | undefined,
             configuredVersion:
-              toolConfig.installationMethod === 'github-release' ? toolConfig.installParams.version : undefined,
+              resolvedToolConfig.installationMethod === 'github-release'
+                ? resolvedToolConfig.installParams.version
+                : undefined,
           });
           logger.debug(logs.tool.success.installed(toolName, result.version, 'registry-recorded'));
         } catch (registryError) {
@@ -291,6 +304,28 @@ export class Installer implements IInstaller {
     options?: InstallOptions
   ): Promise<InstallResult> {
     return installFromBrew(toolName, toolConfig, context, options, this.logger);
+  }
+
+  /**
+   * Install a tool using Cargo pre-compiled binaries
+   */
+  public async installFromCargo(
+    toolName: string,
+    toolConfig: CargoToolConfig,
+    context: BaseInstallContext,
+    options?: InstallOptions
+  ): Promise<InstallResult> {
+    return installFromCargo(
+      toolName,
+      toolConfig,
+      context,
+      options,
+      this.fs,
+      this.downloader,
+      this.archiveExtractor,
+      this.hookExecutor,
+      this.logger
+    );
   }
 
   /**
@@ -391,11 +426,6 @@ export class Installer implements IInstaller {
    * Get system information for architecture detection
    */
   private getSystemInfo(): SystemInfo {
-    return {
-      platform: process.platform,
-      arch: process.arch,
-      release: os.release(),
-      homeDir: os.homedir(),
-    };
+    return this.systemInfo;
   }
 }

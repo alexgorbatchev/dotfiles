@@ -168,7 +168,8 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
         testAppConfig,
-        createMockToolInstallationRegistry()
+        createMockToolInstallationRegistry(),
+        { platform: 'darwin', arch: 'arm64', homeDir: setup.testDirs.paths.homeDir }
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -225,7 +226,8 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
         testAppConfig,
-        createMockToolInstallationRegistry()
+        createMockToolInstallationRegistry(),
+        { platform: 'darwin', arch: 'arm64', homeDir: setup.testDirs.paths.homeDir }
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -282,7 +284,8 @@ describe('Installer - installFromGitHubRelease', () => {
         setup.mockGitHubApiClient,
         setup.mockArchiveExtractor,
         testAppConfig,
-        createMockToolInstallationRegistry()
+        createMockToolInstallationRegistry(),
+        { platform: 'darwin', arch: 'arm64', homeDir: setup.testDirs.paths.homeDir }
       );
       const context = createTestContext(setup, {
         installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),

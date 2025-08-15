@@ -23,8 +23,14 @@ import type {
   ManualToolConfig,
 } from '@types';
 import type { ILogObj } from 'tslog';
+import type { $ } from 'zx';
 import type { HookExecutor } from '../HookExecutor';
 import { Installer } from '../Installer';
+
+// Helper function to create mock $ instance
+function createMock$() {
+  return mock(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })) as unknown as typeof $;
+}
 
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
@@ -205,7 +211,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
       ...baseContext,
       fileSystem,
       logger,
-      $: {} as any,
+      $: createMock$(),
     })
   );
   const mockHookExecutor = {
@@ -213,11 +219,12 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     createEnhancedContext: mockCreateEnhancedContext,
     logger: new TestLogger(),
     defaultTimeoutMs: 60000,
-    executeHooks: mock(async () => ({ success: true, durationMs: 100, skipped: false })),
-  } as any;
+    executeHooks: mock(async () => [{ success: true, durationMs: 100, skipped: false }]),
+  } as unknown as HookExecutor;
 
   // Create installer instance
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
+  const mockSystemInfo = { platform: 'darwin', arch: 'arm64', release: 'test', homeDir: testDirs.paths.homeDir };
   const installer = new Installer(
     logger,
     fs,
@@ -225,7 +232,8 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     mockGitHubApiClient,
     mockArchiveExtractor,
     mockAppConfig,
-    mockToolInstallationRegistry
+    mockToolInstallationRegistry,
+    mockSystemInfo
   );
 
   return {

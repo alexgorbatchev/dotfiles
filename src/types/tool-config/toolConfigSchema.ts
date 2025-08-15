@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { brewToolConfigSchema } from './brewToolConfigSchema';
+import { cargoToolConfigSchema } from './cargoToolConfigSchema';
 import { curlScriptToolConfigSchema } from './curlScriptToolConfigSchema';
 import { curlTarToolConfigSchema } from './curlTarToolConfigSchema';
 import { githubReleaseToolConfigSchema } from './githubReleaseToolConfigSchema';
@@ -9,6 +10,7 @@ import { noInstallToolConfigSchema } from './noInstallToolConfigSchema';
 export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
   githubReleaseToolConfigSchema,
   brewToolConfigSchema,
+  cargoToolConfigSchema,
   curlScriptToolConfigSchema,
   curlTarToolConfigSchema,
   manualToolConfigSchema,

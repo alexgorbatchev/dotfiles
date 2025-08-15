@@ -65,4 +65,9 @@ export const installerDebugTemplates = {
   pipelineCompleted: () => createSafeLogMessage('Installation pipeline completed successfully for %s'),
   binarySetupStarting: () => createSafeLogMessage('Setting up binaries for %s (%s)'),
   hookExecuting: () => createSafeLogMessage('Executing %s hook'),
+  installingFromCargo: () => createSafeLogMessage('Installing from cargo: toolName=%s, cargoConfig=%o'),
+  queryingCratesIo: () => createSafeLogMessage('Querying crates.io API for crate: %s'),
+  foundCrateVersion: () => createSafeLogMessage('Found crate %s version %s'),
+  parsingCrateMetadata: () => createSafeLogMessage('Parsing crate metadata from: %s'),
+  foundBinaries: () => createSafeLogMessage('Found binaries in crate: %o'),
 } satisfies SafeLogMessageMap;

@@ -26,7 +26,7 @@ src/modules/installer/
 
 ## Installation Methods
 
-The installer supports five installation methods:
+The installer supports six installation methods:
 
 ### 1. GitHub Release (`installFromGitHubRelease`)
 Downloads and installs tools from GitHub releases.
@@ -87,7 +87,27 @@ const toolConfig: CurlTarToolConfig = {
 };
 ```
 
-### 5. Manual (`installManually`)
+### 5. Cargo (`installFromCargo`)
+Installs Rust tools using pre-compiled binaries from cargo-quickinstall or GitHub releases.
+
+```typescript
+const toolConfig: CargoToolConfig = {
+  name: 'eza',
+  binaries: ['eza'],
+  version: 'latest',
+  installationMethod: 'cargo',
+  installParams: {
+    crateName: 'eza',
+    binarySource: 'cargo-quickinstall', // or 'github-releases'
+    versionSource: 'cargo-toml', // or 'crates-io' or 'github-releases'
+    githubRepo: 'eza-community/eza',
+    customBinaries: ['eza'], // optional: override binary names
+    assetPattern: '{crateName}-{version}-{arch}-{platform}.tar.gz' // for github-releases
+  }
+};
+```
+
+### 6. Manual (`installManually`)
 Placeholder for tools that require manual installation.
 
 ```typescript
@@ -305,85 +325,250 @@ const toolFs = createToolFileSystem(baseFileSystem, toolName);
 
 ## Creating a New Installation Method
 
-To create a new installation method, follow these steps:
+To create a new installation method, you need to integrate it into multiple parts of the system. Here's the complete integration process:
 
-### 1. Define Tool Configuration Type
+### 1. Define Zod Schemas and Types
 
+#### Step 1a: Create Install Parameters Schema
 ```typescript
-// In src/types/tool-config/
-export interface MyCustomToolConfig extends BaseToolConfigProperties {
-  installationMethod: 'my-custom';
-  installParams: MyCustomInstallParams;
+// src/types/tool-config/myCustomInstallParamsSchema.ts
+import { z } from 'zod';
+import { baseInstallParamsSchema } from './baseInstallParamsSchema';
+import { installHookSchema } from './installHookSchema';
+
+export const myCustomInstallParamsSchema = baseInstallParamsSchema.extend({
+  /**
+   * Custom URL for the tool
+   */
+  customUrl: z.string(),
+
+  /**
+   * Optional custom options
+   */
+  customOptions: z.array(z.string()).optional(),
+
+  /**
+   * Installation hooks
+   */
+  hooks: z
+    .object({
+      beforeInstall: installHookSchema.optional(),
+      afterDownload: installHookSchema.optional(),
+      afterExtract: installHookSchema.optional(),
+      afterInstall: installHookSchema.optional(),
+    })
+    .optional(),
+});
+
+export type MyCustomInstallParams = z.infer<typeof myCustomInstallParamsSchema>;
+```
+
+#### Step 1b: Create Tool Configuration Schema
+```typescript
+// src/types/tool-config/myCustomToolConfigSchema.ts
+import { z } from 'zod';
+import { baseToolConfigPropertiesSchema } from './baseToolConfigPropertiesSchema';
+import { myCustomInstallParamsSchema } from './myCustomInstallParamsSchema';
+
+export const myCustomToolConfigSchema = baseToolConfigPropertiesSchema.extend({
+  installationMethod: z.literal('my-custom'),
+  installParams: myCustomInstallParamsSchema,
+});
+
+export type MyCustomToolConfig = z.infer<typeof myCustomToolConfigSchema>;
+```
+
+#### Step 1c: Export from Index
+```typescript
+// src/types/tool-config/index.ts
+export * from './myCustomInstallParamsSchema';
+export * from './myCustomToolConfigSchema';
+```
+
+#### Step 1d: Add to Tool Config Schema Union
+```typescript
+// src/types/tool-config/toolConfigSchema.ts
+import { myCustomToolConfigSchema } from './myCustomToolConfigSchema';
+
+export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
+  githubReleaseToolConfigSchema,
+  brewToolConfigSchema,
+  cargoToolConfigSchema,
+  curlScriptToolConfigSchema,
+  curlTarToolConfigSchema,
+  myCustomToolConfigSchema, // Add your schema here
+  manualToolConfigSchema,
+  noInstallToolConfigSchema,
+]);
+```
+
+#### Step 1e: Add to Platform Config Schema
+```typescript
+// src/types/tool-config/platformConfigSchema.ts
+import { myCustomInstallParamsSchema } from './myCustomInstallParamsSchema';
+
+export const platformConfigSchema = commonToolConfigPropertiesSchema
+  .extend({
+    installationMethod: z
+      .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'my-custom', 'manual', 'none'])
+      .optional(),
+    installParams: z
+      .union([
+        githubReleaseInstallParamsSchema,
+        brewInstallParamsSchema,
+        curlScriptInstallParamsSchema,
+        curlTarInstallParamsSchema,
+        cargoInstallParamsSchema,
+        myCustomInstallParamsSchema, // Add your params schema here
+        manualInstallParamsSchema,
+      ])
+      .optional(),
+  })
+  .strict();
+```
+
+### 2. Add to ToolConfigBuilder Interface and Implementation
+
+#### Step 2a: Add to Interface
+```typescript
+// src/types/toolConfigBuilder.types.ts
+import type {
+  // ... other imports
+  MyCustomInstallParams,
+} from './tool-config';
+
+export interface PlatformConfigBuilder {
+  // ... other methods
+  install(method: 'my-custom', params: MyCustomInstallParams): this;
 }
 
-export interface MyCustomInstallParams extends BaseInstallParams {
-  customUrl: string;
-  customOptions?: string[];
+export interface ToolConfigBuilder {
+  // ... other methods  
+  install(method: 'my-custom', params: MyCustomInstallParams): this;
 }
 ```
 
-### 2. Create Installation Function
+#### Step 2b: Add to Implementation
+```typescript
+// src/modules/tool-config-builder/toolConfigBuilder.ts
+import type {
+  // ... other imports
+  MyCustomInstallParams,
+  MyCustomToolConfig,
+} from '@types';
+
+export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
+  // Add to overloaded install method
+  install(method: 'my-custom', params: MyCustomInstallParams): this;
+  install(method: ToolConfigInstallationMethod, params: ToolConfigInstallParams): this {
+    this.currentInstallationMethod = method;
+    this.currentInstallParams = params;
+    return this;
+  }
+
+  // Add to switch statement in buildInstallableConfig
+  private buildInstallableConfig(): ToolConfig {
+    // ... existing code
+    switch (this.currentInstallationMethod) {
+      // ... existing cases
+      case 'my-custom':
+        return {
+          ...installableBase,
+          installationMethod: 'my-custom',
+          installParams: this.currentInstallParams,
+        } as MyCustomToolConfig;
+      // ... other cases
+    }
+  }
+
+  // Update error message
+  private throwInvalidMethodError(): never {
+    const invalidMethodError = logs.config.error.invalid(
+      'installationMethod',
+      this.currentInstallationMethod ?? 'unknown',
+      'github-release | brew | curl-script | curl-tar | cargo | my-custom | manual'
+    );
+    this.logger.error(invalidMethodError);
+    throw new Error(invalidMethodError);
+  }
+}
+```
+
+### 3. Create Installation Function
 
 ```typescript
 // src/modules/installer/installFromMyCustom.ts
+import path from 'node:path';
+import type { IDownloader } from '@modules/downloader/IDownloader';
+import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
+import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
-import type { BaseInstallContext, MyCustomToolConfig } from '@types';
+import type { BaseInstallContext, MyCustomInstallParams, MyCustomToolConfig } from '@types';
+import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { 
-  downloadWithProgress,
-  executeAfterDownloadHook,
-  executeAfterInstallHook,
-  withInstallErrorHandling,
-  createToolFileSystem,
-  getBinaryPaths
-} from './utils';
+import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from './utils';
 
 export async function installFromMyCustom(
   toolName: string,
   toolConfig: MyCustomToolConfig,
   context: BaseInstallContext,
   options: InstallOptions | undefined,
+  fileSystem: IFileSystem,
+  downloader: IDownloader,
+  archiveExtractor: IArchiveExtractor,
+  hookExecutor: HookExecutor,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromMyCustom' });
   logger.debug(logs.installer.debug.installingFromMyCustom(), toolName, toolConfig.installParams);
 
+  if (!toolConfig.installParams) {
+    return {
+      success: false,
+      error: 'Install parameters not specified',
+    };
+  }
+
+  const params = toolConfig.installParams;
+
   const operation = async (): Promise<InstallResult> => {
-    const toolFs = createToolFileSystem(context.fileSystem, toolName);
-    
+    const toolFs = createToolFileSystem(fileSystem, toolName);
+
     // 1. Download phase
-    const downloadPath = path.join(context.installDir, 'downloaded-file');
-    await downloadWithProgress(
-      toolConfig.installParams.customUrl,
-      downloadPath,
-      'downloaded-file',
-      context.downloader,
-      options
-    );
+    const filename = `${toolName}-download`;
+    const downloadPath = path.join(context.installDir, filename);
+
+    await downloadWithProgress(params.customUrl, downloadPath, filename, downloader, options);
 
     // 2. Execute afterDownload hook
-    const hookContext = { ...context, downloadPath, toolFs };
-    const hookResult = await executeAfterDownloadHook(
+    const hookContext = { ...context, downloadPath };
+    const afterDownloadResult = await executeAfterDownloadHook(
       toolConfig,
+      hookExecutor,
       hookContext,
-      context.hookExecutor
+      downloadPath,
+      toolFs,
+      logger
     );
-    if (!hookResult.success) {
-      return { success: false, error: hookResult.error };
+    if (!afterDownloadResult.success) {
+      return afterDownloadResult;
     }
 
-    // 3. Custom installation logic
-    // ... implement your custom installation steps ...
+    // 3. Custom installation logic here
+    // ... implement your specific installation steps ...
 
     // 4. Execute afterInstall hook
-    const finalHookResult = await executeAfterInstallHook(
+    const afterInstallResult = await executeAfterInstallHook(
       toolConfig,
+      hookExecutor,
       hookContext,
-      context.hookExecutor
+      { extractedFiles: [] }, // or whatever result you have
+      toolFs,
+      logger
     );
-    if (!finalHookResult.success) {
-      return { success: false, error: finalHookResult.error };
+    if (!afterInstallResult.success) {
+      return afterInstallResult;
     }
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
@@ -392,63 +577,262 @@ export async function installFromMyCustom(
       success: true,
       binaryPaths,
       info: {
-        customUrl: toolConfig.installParams.customUrl,
+        customUrl: params.customUrl,
       },
     };
   };
 
   return withInstallErrorHandling('my-custom', toolName, logger, operation);
 }
+
+// Helper functions (similar to cargo installer)
+async function executeAfterDownloadHook(
+  toolConfig: MyCustomToolConfig,
+  hookExecutor: HookExecutor,
+  hookContext: BaseInstallContext & { downloadPath: string },
+  downloadPath: string,
+  toolFs: IFileSystem,
+  logger: TsLogger
+): Promise<InstallResult | { success: true }> {
+  if (toolConfig.installParams?.hooks?.afterDownload) {
+    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs, logger);
+    const hookResult = await hookExecutor.executeHook(
+      'afterDownload',
+      toolConfig.installParams.hooks.afterDownload,
+      enhancedContext
+    );
+    if (!hookResult.success) {
+      return { success: false, error: hookResult.error };
+    }
+  }
+  return { success: true };
+}
+
+async function executeAfterInstallHook(
+  toolConfig: MyCustomToolConfig,
+  hookExecutor: HookExecutor,
+  hookContext: BaseInstallContext,
+  installResult: any,
+  toolFs: IFileSystem,
+  logger: TsLogger
+): Promise<InstallResult | { success: true }> {
+  if (toolConfig.installParams?.hooks?.afterInstall) {
+    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, installResult }, toolFs, logger);
+    const finalHookResult = await hookExecutor.executeHook(
+      'afterInstall',
+      toolConfig.installParams.hooks.afterInstall,
+      enhancedContext
+    );
+    if (!finalHookResult.success) {
+      return { success: false, error: finalHookResult.error };
+    }
+  }
+  return { success: true };
+}
 ```
 
-### 3. Add to Main Installer
+### 4. Add to Main Installer Class
 
 ```typescript
 // In src/modules/installer/Installer.ts
 import { installFromMyCustom } from './installFromMyCustom';
 
-// Add to the switch statement in the install method
-case 'my-custom':
-  return this.installFromMyCustom(toolName, toolConfig as MyCustomToolConfig, context, options);
+export class Installer implements IInstaller {
+  // Add to the switch statement in the install method
+  async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
+    // ... existing code ...
+    
+    switch (toolConfig.installationMethod) {
+      // ... existing cases
+      case 'my-custom':
+        result = await this.installFromMyCustom(toolName, toolConfig, context, options);
+        break;
+      // ... other cases
+    }
+  }
 
-// Add the method
-private async installFromMyCustom(
-  toolName: string,
-  toolConfig: MyCustomToolConfig,
-  context: BaseInstallContext,
-  options?: InstallOptions
-): Promise<InstallResult> {
-  return installFromMyCustom(toolName, toolConfig, context, options, this.logger);
+  // Add the delegation method
+  public async installFromMyCustom(
+    toolName: string,
+    toolConfig: MyCustomToolConfig,
+    context: BaseInstallContext,
+    options?: InstallOptions
+  ): Promise<InstallResult> {
+    return installFromMyCustom(
+      toolName,
+      toolConfig,
+      context,
+      options,
+      this.fs,
+      this.downloader,
+      this.archiveExtractor,
+      this.hookExecutor,
+      this.logger
+    );
+  }
 }
 ```
 
-### 4. Create Tests
+### 5. Add Logging Templates (Optional)
+
+```typescript
+// src/modules/logger/templates/installer/debug.ts
+export const installerDebugTemplates = {
+  // ... existing templates
+  installingFromMyCustom: () => createSafeLogMessage('Installing from my-custom: toolName=%s, customConfig=%o'),
+  customProcessingStarted: () => createSafeLogMessage('Starting custom processing for %s'),
+  customProcessingCompleted: () => createSafeLogMessage('Custom processing completed for %s'),
+} satisfies SafeLogMessageMap;
+```
+
+### 6. Create Comprehensive Tests
 
 ```typescript
 // src/modules/installer/__tests__/Installer--installFromMyCustom.test.ts
-import { describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import type { MyCustomToolConfig } from '@types';
+import { FetchMockHelper } from '@testing-helpers';
 import { createInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - installFromMyCustom', () => {
+  const fetchMockHelper = new FetchMockHelper();
+
+  beforeEach(() => {
+    fetchMockHelper.setup();
+  });
+
+  afterEach(() => {
+    fetchMockHelper.restore();
+  });
+
   it('should install tool using custom method', async () => {
     const setup = await createInstallerTestSetup();
-    
-    const toolConfig = {
+
+    const toolConfig: MyCustomToolConfig = {
       name: 'test-tool',
+      version: 'latest',
       binaries: ['test-tool'],
-      installationMethod: 'my-custom' as const,
+      installationMethod: 'my-custom',
       installParams: {
         customUrl: 'https://example.com/tool',
+        customOptions: ['--feature', 'advanced'],
       },
     };
 
     const result = await setup.installer.install('test-tool', toolConfig);
-    
+
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toHaveLength(1);
   });
+
+  it('should handle custom options correctly', async () => {
+    // ... additional test cases
+  });
 });
 ```
+
+### 7. Update Tool Configuration Files
+
+Once your installer is integrated, you can use it in tool configuration files:
+
+```typescript
+// configs-migrated/my-tool/my-tool.tool.ts
+import { Platform, type ToolConfigBuilder } from '../../src/types';
+
+export default async (c: ToolConfigBuilder): Promise<void> => {
+  c.bin('my-tool')
+    .version('latest')
+    .install('my-custom', {
+      customUrl: 'https://example.com/releases/my-tool-latest.tar.gz',
+      customOptions: ['--optimize'],
+    })
+    .platform(Platform.MacOS, async (c) => {
+      c.install('my-custom', {
+        customUrl: 'https://example.com/releases/my-tool-latest-macos.tar.gz',
+      });
+    });
+};
+```
+
+### 8. Integration Checklist
+
+When adding a new installation method, ensure you complete ALL of these steps:
+
+#### Type System Integration:
+- [ ] Create `{method}InstallParamsSchema.ts` with Zod schema
+- [ ] Create `{method}ToolConfigSchema.ts` with tool config schema
+- [ ] Export both schemas from `src/types/tool-config/index.ts`
+- [ ] Add to `toolConfigSchema.ts` discriminated union
+- [ ] Add to `platformConfigSchema.ts` enum and union
+- [ ] Import types in `toolConfigBuilder.types.ts`
+- [ ] Add method overload to `PlatformConfigBuilder` interface
+- [ ] Add method overload to `ToolConfigBuilder` interface
+
+#### ToolConfigBuilder Implementation:
+- [ ] Import types in `toolConfigBuilder.ts`
+- [ ] Add method overload to class implementation
+- [ ] Add case to `buildInstallableConfig()` switch statement
+- [ ] Update `throwInvalidMethodError()` message
+
+#### Installer Integration:
+- [ ] Create `installFrom{Method}.ts` implementation
+- [ ] Import in `Installer.ts`
+- [ ] Add case to `install()` method switch statement
+- [ ] Add delegation method to `Installer` class
+- [ ] Add logging templates (optional)
+
+#### Testing:
+- [ ] Create `Installer--installFrom{Method}.test.ts`
+- [ ] Add test cases for different scenarios
+- [ ] Update existing tests that check method lists
+- [ ] Test platform-specific configurations
+
+#### Documentation:
+- [ ] Add method to this README
+- [ ] Update tool configuration guide
+- [ ] Add example configurations
+
+### 9. Common Integration Issues
+
+#### Missing Platform Resolution
+If you see errors like "Unsupported installation method: none", it means the installer isn't resolving platform-specific configurations. The installer should use `resolvePlatformConfig()` before checking the installation method.
+
+#### Type Errors in ToolConfigBuilder
+If you get TypeScript errors when using your method in tool configs, ensure:
+- Method is added to both interface overloads
+- Types are properly imported
+- Schema is added to the discriminated union
+
+#### Circular Dependencies
+Avoid importing schemas that depend on each other. Keep install params schemas separate from tool config schemas.
+
+#### Missing Hook Support
+Always implement hook support in your installer using the shared hook execution utilities.
+
+### 10. Real-World Example: Cargo Installer Integration
+
+The cargo installer serves as a complete example of proper integration:
+
+1. **Schemas**: `cargoInstallParamsSchema.ts` and `cargoToolConfigSchema.ts`
+2. **Types**: Exported from index and added to unions
+3. **ToolConfigBuilder**: Method overloads and switch case added
+4. **Implementation**: `installFromCargo.ts` with helper functions
+5. **Integration**: Added to `Installer.ts` switch statement
+6. **Testing**: Comprehensive test coverage
+7. **Usage**: Used in `eza.tool.ts` configuration
+
+This integration allows tools to be configured declaratively:
+
+```typescript
+c.install('cargo', {
+  crateName: 'eza',
+  binarySource: 'cargo-quickinstall',
+  versionSource: 'cargo-toml',
+  githubRepo: 'eza-community/eza',
+});
+```
+
+Instead of complex manual hooks and shell commands.
 
 ## Alternative: Using Step-Based Pipeline
 

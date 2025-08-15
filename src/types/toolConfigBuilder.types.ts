@@ -3,6 +3,7 @@ import type { Architecture, Platform } from './platform.types';
 import type { ShellScript } from './shellScript.types';
 import type {
   BrewInstallParams,
+  CargoInstallParams,
   CompletionConfig,
   CurlScriptInstallParams,
   CurlTarInstallParams,
@@ -81,6 +82,7 @@ export interface PlatformConfigBuilder {
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
+  install(method: 'cargo', params: CargoInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
 
   /**
@@ -233,6 +235,7 @@ export interface ToolConfigBuilder {
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'curl-script', params: CurlScriptInstallParams): this;
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
+  install(method: 'cargo', params: CargoInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
 
   /**
