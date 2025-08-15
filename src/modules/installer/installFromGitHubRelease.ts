@@ -3,7 +3,6 @@ import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import { ProgressBar, shouldShowProgress } from '@modules/downloader/ProgressBar';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
-import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { TsLogger } from '@modules/logger';
@@ -33,7 +32,7 @@ export async function installFromGitHubRelease(
   toolConfig: GithubReleaseToolConfig,
   context: BaseInstallContext,
   options: InstallOptions | undefined,
-  fs: IFileSystem,
+  toolFs: IFileSystem,
   downloader: IDownloader,
   githubApiClient: IGitHubApiClient,
   archiveExtractor: IArchiveExtractor,
@@ -41,7 +40,6 @@ export async function installFromGitHubRelease(
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
-  const toolFs = fs instanceof TrackedFileSystem ? fs.withToolName(toolName) : fs;
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
   logger.debug(logs.command.debug.methodStarted(), toolName);
 
@@ -82,7 +80,7 @@ export async function installFromGitHubRelease(
       downloadPath: downloadResult.data.downloadPath,
     };
 
-    const hookResult = await executeAfterDownloadHook(toolConfig, postDownloadContext, fs, hookExecutor, logger);
+    const hookResult = await executeAfterDownloadHook(toolConfig, postDownloadContext, toolFs, hookExecutor, logger);
     if (!hookResult.success) {
       return hookResult;
     }
@@ -97,7 +95,7 @@ export async function installFromGitHubRelease(
       toolFs,
       archiveExtractor,
       hookExecutor,
-      fs,
+      toolFs,
       logger
     );
     if (!installResult.success) {

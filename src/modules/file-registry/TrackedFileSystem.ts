@@ -85,6 +85,19 @@ export class TrackedFileSystem implements IFileSystem {
     return this.withContext({ toolName });
   }
 
+  /**
+   * Creates a new TrackedFileSystem for a specific tool with a suppressed logger.
+   * Used in shim mode to reduce log output.
+   */
+  withToolNameAndSuppressedLogger(toolName: string, suppressedLogger: TsLogger): TrackedFileSystem {
+    const newContext: TrackingContext = {
+      ...this.context,
+      toolName,
+    };
+
+    return new TrackedFileSystem(suppressedLogger, this.fs, this.registry, newContext, this.homeDir);
+  }
+
   async readFile(filePath: string, encoding?: BufferEncoding): Promise<string> {
     // Read operations are not tracked since they don't modify the filesystem
     return this.fs.readFile(filePath, encoding);

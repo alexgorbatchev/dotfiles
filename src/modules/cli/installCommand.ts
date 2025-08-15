@@ -75,7 +75,7 @@ export function registerInstallCommand(
     .command('install <toolName>')
     .description('Installs a tool if it is not already installed. Typically called by shims.')
     .option('--force', 'Force installation even if the tool is already installed', false)
-    .option('--shim-mode', 'Optimized output for shim usage: shows errors but suppresses success messages', false)
+    .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
       logger.debug(logs.command.debug.actionCalled('install', toolName), combinedOptions);
@@ -107,6 +107,7 @@ export function registerInstallCommand(
           const result = await installer.install(toolName, toolConfig, {
             force: combinedOptions.force,
             verbose: combinedOptions.verbose,
+            shimMode: combinedOptions.shimMode,
           });
 
           shouldExitWithCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);

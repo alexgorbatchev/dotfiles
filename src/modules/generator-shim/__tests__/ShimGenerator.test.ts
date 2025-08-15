@@ -93,7 +93,6 @@ describe('ShimGenerator', () => {
         set -euo pipefail
 
         TOOL_NAME="my-tool"
-        BINARY_NAME="my-tool-binary"
         TOOL_EXECUTABLE="${expectedBinaryPath}"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="/path/to/config.yaml"
@@ -111,11 +110,11 @@ describe('ShimGenerator', () => {
           exec "$TOOL_EXECUTABLE" "$@"
         else
           # Tool not found, try to install it
-          # Capture both stdout and stderr from the install command
           # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          # Let stderr (progress bars) pass through to the user
           # Temporarily disable set -e to handle install failures gracefully
           set +e
-          install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
+          eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
           install_exit_code=$?
           set -e
           
@@ -124,12 +123,11 @@ describe('ShimGenerator', () => {
             if [ -x "$TOOL_EXECUTABLE" ]; then
               exec "$TOOL_EXECUTABLE" "$@"
             else
-              echo "Installation completed but binary not found at: $TOOL_EXECUTABLE"
+              echo "Installation completed but binary not found at: $TOOL_EXECUTABLE" >&2
               exit 1
             fi
           else
-            # Installation failed, show the actual error message
-            echo "$install_output"
+            # Installation failed, exit with the same code
             exit $install_exit_code
           fi
         fi
@@ -500,8 +498,9 @@ describe('ShimGenerator', () => {
       expect(result).toHaveLength(1);
       const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
 
-      // Should include --shim-mode flag for cleaner output
+      // Should include --shim-mode flag for suppressed logging
       expect(writtenContent).toContain('update --shim-mode --config');
+      expect(writtenContent).toContain('install --shim-mode --config');
     });
   });
 });

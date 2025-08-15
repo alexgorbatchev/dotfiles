@@ -18,6 +18,11 @@ export interface InstallOptions {
    * Whether to suppress progress indicators and non-essential output
    */
   quiet?: boolean;
+
+  /**
+   * Whether running in shim mode - suppresses log messages but keeps progress bars
+   */
+  shimMode?: boolean;
 }
 
 /**

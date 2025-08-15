@@ -97,11 +97,26 @@ export class Installer implements IInstaller {
    * Install a tool based on its configuration
    */
   async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
-    const logger = this.logger.getSubLogger({ name: 'install' });
+    // Create logger with appropriate level for shim mode
+    const logger = options?.shimMode
+      ? this.logger.getSubLogger({ name: 'install', minLevel: 4 }) // Suppress INFO logs in shim mode (4=error, 3=warn, 2=info)
+      : this.logger.getSubLogger({ name: 'install' });
+
     logger.debug(logs.command.debug.methodDebugParams(), toolName, toolConfig, options);
 
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
-    const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
+    let toolFs: IFileSystem;
+    if (this.fs instanceof TrackedFileSystem) {
+      if (options?.shimMode) {
+        // In shim mode, create TrackedFileSystem with suppressed logger
+        const suppressedLogger = this.logger.getSubLogger({ name: 'TrackedFileSystem', minLevel: 4 });
+        toolFs = this.fs.withToolNameAndSuppressedLogger(toolName, suppressedLogger);
+      } else {
+        toolFs = this.fs.withToolName(toolName);
+      }
+    } else {
+      toolFs = this.fs;
+    }
 
     try {
       // Check if tool is already installed (unless force option is used)
@@ -170,7 +185,7 @@ export class Installer implements IInstaller {
       let result: InstallResult;
       switch (toolConfig.installationMethod) {
         case 'github-release':
-          result = await this.installFromGitHubRelease(toolName, toolConfig, context, options);
+          result = await this.installFromGitHubRelease(toolName, toolConfig, context, options, logger);
           break;
         case 'brew':
           result = await this.installFromBrew(toolName, toolConfig, context, options);
@@ -250,20 +265,29 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: InstallOptions,
+    logger?: TsLogger
   ): Promise<InstallResult> {
+    // Use the appropriate filesystem (may be suppressed TrackedFileSystem in shim mode)
+    const toolFs =
+      this.fs instanceof TrackedFileSystem
+        ? options?.shimMode
+          ? this.fs.withToolNameAndSuppressedLogger(toolName, logger || this.logger)
+          : this.fs.withToolName(toolName)
+        : this.fs;
+
     return installFromGitHubRelease(
       toolName,
       toolConfig,
       context,
       options,
-      this.fs,
+      toolFs,
       this.downloader,
       this.githubApiClient,
       this.archiveExtractor,
       this.appConfig,
       this.hookExecutor,
-      this.logger
+      logger || this.logger
     );
   }
 

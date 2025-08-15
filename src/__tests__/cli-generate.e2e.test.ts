@@ -112,7 +112,6 @@ describe('E2E: bun run cli generate', () => {
         set -euo pipefail
 
         TOOL_NAME="fzf"
-        BINARY_NAME="fzf"
         TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/fzf/fzf"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
         CONFIG_PATH="config.yaml"
@@ -130,11 +129,11 @@ describe('E2E: bun run cli generate', () => {
           exec "$TOOL_EXECUTABLE" "$@"
         else
           # Tool not found, try to install it
-          # Capture both stdout and stderr from the install command
           # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          # Let stderr (progress bars) pass through to the user
           # Temporarily disable set -e to handle install failures gracefully
           set +e
-          install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
+          eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
           install_exit_code=$?
           set -e
           
@@ -143,12 +142,11 @@ describe('E2E: bun run cli generate', () => {
             if [ -x "$TOOL_EXECUTABLE" ]; then
               exec "$TOOL_EXECUTABLE" "$@"
             else
-              echo "Installation completed but binary not found at: $TOOL_EXECUTABLE"
+              echo "Installation completed but binary not found at: $TOOL_EXECUTABLE" >&2
               exit 1
             fi
           else
-            # Installation failed, show the actual error message
-            echo "$install_output"
+            # Installation failed, exit with the same code
             exit $install_exit_code
           fi
         fi
@@ -163,7 +161,6 @@ describe('E2E: bun run cli generate', () => {
         set -euo pipefail
 
         TOOL_NAME="lazygit"
-        BINARY_NAME="lazygit"
         TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/lazygit/lazygit"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
         CONFIG_PATH="config.yaml"
@@ -181,11 +178,11 @@ describe('E2E: bun run cli generate', () => {
           exec "$TOOL_EXECUTABLE" "$@"
         else
           # Tool not found, try to install it
-          # Capture both stdout and stderr from the install command
           # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+          # Let stderr (progress bars) pass through to the user
           # Temporarily disable set -e to handle install failures gracefully
           set +e
-          install_output=$(eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"' 2>&1)
+          eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
           install_exit_code=$?
           set -e
           
@@ -194,12 +191,11 @@ describe('E2E: bun run cli generate', () => {
             if [ -x "$TOOL_EXECUTABLE" ]; then
               exec "$TOOL_EXECUTABLE" "$@"
             else
-              echo "Installation completed but binary not found at: $TOOL_EXECUTABLE"
+              echo "Installation completed but binary not found at: $TOOL_EXECUTABLE" >&2
               exit 1
             fi
           else
-            # Installation failed, show the actual error message
-            echo "$install_output"
+            # Installation failed, exit with the same code
             exit $install_exit_code
           fi
         fi

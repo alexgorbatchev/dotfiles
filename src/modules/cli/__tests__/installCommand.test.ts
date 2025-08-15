@@ -89,6 +89,7 @@ describe('installCommand', () => {
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,
       verbose: false,
+      shimMode: false,
     });
     testLogger.expect(['INFO'], ['registerInstallCommand'], ['Tool "toolA" v1.0.0 installed successfully using CLI']);
   });
@@ -103,6 +104,7 @@ describe('installCommand', () => {
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,
       verbose: false,
+      shimMode: true,
     });
 
     // Should not log success message in shim mode
@@ -193,6 +195,7 @@ describe('installCommand', () => {
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: true,
       verbose: false,
+      shimMode: false,
     });
   });
 });
