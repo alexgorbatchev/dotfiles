@@ -12,7 +12,7 @@ import {
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
-import type { GeneratedArtifactsManifest, SystemInfo, ToolConfig } from '@types';
+import type { SystemInfo, ToolConfig } from '@types';
 import { always, Platform } from '@types';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
@@ -171,10 +171,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         },
       };
 
-      const result: GeneratedArtifactsManifest = await orchestrator.generateAll(toolConfigs);
-
-      expect(result).toBeDefined();
-      expect(result.shellInit?.path).toBeDefined();
+      await orchestrator.generateAll(toolConfigs);
 
       // Verify the shell generator received systemInfo and processed platform configs
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
@@ -229,10 +226,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         },
       };
 
-      const result: GeneratedArtifactsManifest = await orchestrator.generateAll(toolConfigs);
-
-      expect(result).toBeDefined();
-      expect(result.shellInit?.path).toBeDefined();
+      await orchestrator.generateAll(toolConfigs);
 
       // Verify the shell generator received Linux systemInfo
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
@@ -271,10 +265,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         },
       };
 
-      const result: GeneratedArtifactsManifest = await orchestrator.generateAll(toolConfigs);
-
-      expect(result).toBeDefined();
-      expect(result.shellInit?.path).toBeDefined();
+      await orchestrator.generateAll(toolConfigs);
 
       // Should still work even with no platform configs
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
@@ -326,13 +317,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         },
       };
 
-      const result: GeneratedArtifactsManifest = await orchestrator.generateAll(toolConfigs);
-
-      // Verify all generators were called and manifest was populated
-      expect(result).toBeDefined();
-      expect(result.shims).toEqual(['/test/bin/shim1', '/test/bin/shim2']);
-      expect(result.shellInit?.path).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(result.symlinks).toHaveLength(1);
+      await orchestrator.generateAll(toolConfigs);
 
       // Verify shell content includes platform-aware information
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));

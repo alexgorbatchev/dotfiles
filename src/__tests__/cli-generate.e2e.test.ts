@@ -90,10 +90,6 @@ describe('E2E: bun run cli generate', () => {
       expect(cliExitCode).toEqual(0);
     });
 
-    it('creates manifest file', async () => {
-      expect(await fs.exists(testDirs.paths.manifestPath)).toBe(true);
-    });
-
     it('should generate the correct shim files for fzf and lazygit', async () => {
       expect(await fs.exists(fzfShimPath)).toBe(true);
       expect(await fs.exists(lazygitShimPath)).toBe(true);
@@ -210,40 +206,6 @@ describe('E2E: bun run cli generate', () => {
       expect(content).toContain('__dotfiles_lazygit_always');
       expect(content).toContain('alias g="lazygit"');
     });
-
-    describe('manifest file', () => {
-      let parsedManifest: {
-        symlinks: Array<{ sourcePath: string; targetPath: string }>;
-        shims: string[];
-      };
-
-      beforeAll(async () => {
-        parsedManifest = JSON.parse(await fs.readFile(testDirs.paths.manifestPath));
-        expect(parsedManifest).not.toBeNull();
-      });
-
-      it('should verify symlinks in the manifest', async () => {
-        expect(parsedManifest.symlinks!.length).toBeGreaterThan(0);
-        expect(parsedManifest.symlinks![0]!.sourcePath).toBe(lazygitSourceConfigPath);
-      });
-
-      it('should generate a manifest file with correct entries', async () => {
-        expect(parsedManifest.shims!).toContain(fzfShimPath);
-        expect(parsedManifest.shims!).toContain(lazygitShimPath);
-        expect(parsedManifest.symlinks![0]!.sourcePath).toBe(lazygitSourceConfigPath);
-        expect(parsedManifest.symlinks![0]!.targetPath).toContain('lazygit/config.yml');
-      });
-
-      it('should verify the symlink', async () => {
-        const stat = await fs.lstat(parsedManifest.symlinks![0]!.targetPath);
-        expect(stat.isSymbolicLink()).toBeTrue();
-
-        const symlinkTarget = await fs.readlink(parsedManifest.symlinks![0]!.targetPath);
-        expect(path.resolve(path.dirname(parsedManifest.symlinks![0]!.targetPath), symlinkTarget)).toBe(
-          lazygitSourceConfigPath
-        );
-      });
-    });
   });
 
   describe('executing a generated shim for an uninstalled tool', () => {
@@ -252,7 +214,6 @@ describe('E2E: bun run cli generate', () => {
     let mockServer: MockGitHubServerResult;
     let fzfShimPath: string;
     let localArchiveFilePath: string;
-    let manifestPath: string;
 
     const mockToolName = 'fzf';
     const mockToolVersion = '0.54.0'; // from fzf.tool.ts fixture
@@ -269,7 +230,6 @@ describe('E2E: bun run cli generate', () => {
       });
 
       fzfShimPath = path.join(testDirs.paths.targetDir, mockToolName);
-      manifestPath = path.join(testDirs.paths.generatedDir, 'manifest.json');
 
       // 1. Create a mock binary and archive it with realistic directory structure
       const mockBinaryDir = path.join(testDirs.getDir('temp-archive-source'), `fzf-${mockToolVersion}`);
@@ -309,10 +269,7 @@ describe('E2E: bun run cli generate', () => {
       const configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
       await createMockYamlConfig({
         config: {
-          paths: {
-            ...testDirs.paths,
-            manifestPath: manifestPath,
-          },
+          paths: testDirs.paths,
           github: {
             host: mockServer.baseUrl,
           },

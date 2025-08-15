@@ -1,5 +1,6 @@
 export * from './createFile';
 export * from './createMemFileSystem';
+export * from './createMockFileRegistry';
 export * from './createMockGitHubServer';
 export * from './createMockYamlConfig';
 export * from './createTestDirectories';

@@ -6,7 +6,7 @@ import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
 import { logs } from '@modules/logger';
 import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { MemFileSystemReturn, TestLogger } from '@testing-helpers';
-import type { GeneratedArtifactsManifest, ToolConfig } from '@types';
+import type { ToolConfig } from '@types';
 import { registerGenerateCommand } from '../generateCommand';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -47,21 +47,8 @@ describe('generateCommand', () => {
       loadSingleToolConfig: mock(async () => ({})),
     }));
 
-    const mockManifest: GeneratedArtifactsManifest = {
-      shims: ['/test/target/toolA-bin'],
-      shellInit: { path: `${mockYamlConfig.paths.generatedDir}/init.sh` },
-      symlinks: [
-        {
-          sourcePath: '/test/dotfiles/toolA/.config',
-          targetPath: '/test/home/.config/toolA',
-          status: 'created',
-        },
-      ],
-      lastGenerated: new Date().toISOString(),
-    };
-
     mockGeneratorOrchestrator = {
-      generateAll: mock(async () => mockManifest),
+      generateAll: mock(async () => {}),
     };
 
     // Update the mockServices with our custom implementation

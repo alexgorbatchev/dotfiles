@@ -14,8 +14,6 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
     shellScriptsDir: '${paths.generatedDir}/shell-scripts',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    manifestPath: '${paths.generatedDir}/generated-manifest.json',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
     binariesDir: '${paths.generatedDir}/bin',
   },
   system: {

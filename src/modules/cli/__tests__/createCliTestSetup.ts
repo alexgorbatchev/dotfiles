@@ -6,6 +6,7 @@ import type { YamlConfig } from '@modules/config';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import {
   createMemFileSystem,
+  createMockFileRegistry,
   createMockYamlConfig,
   createTestDirectories,
   type MemFileSystemReturn,
@@ -82,11 +83,10 @@ interface CliTestSetup {
  * });
  */
 export async function createCliTestSetup(options: CliTestSetupOptions): Promise<CliTestSetup> {
+  const mockServices: MockedServices = {};
   const program = createProgram();
   const logger = new TestLogger();
-
   const mockFs = await createMemFileSystem(options.memFileSystem || {});
-
   const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: options.testName });
 
   const mockYamlConfig = await createMockYamlConfig({
@@ -99,8 +99,6 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
     env: {},
   });
-
-  const mockServices: MockedServices = {};
 
   if (options.services) {
     for (const [serviceName, serviceConfig] of Object.entries(options.services)) {
@@ -148,6 +146,20 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
                 async (_currentVersion: string, _latestVersion: string) => VersionComparisonStatus.NEWER_AVAILABLE
               ),
               getLatestToolVersion: mock(async () => '1.0.0'),
+            };
+            break;
+          case 'fileRegistry':
+            mockServices.fileRegistry = createMockFileRegistry();
+            break;
+          case 'toolInstallationRegistry':
+            mockServices.toolInstallationRegistry = {
+              recordToolInstallation: mock(async () => {}),
+              getToolInstallation: mock(async () => null),
+              getAllToolInstallations: mock(async () => []),
+              updateToolInstallation: mock(async () => {}),
+              removeToolInstallation: mock(async () => {}),
+              isToolInstalled: mock(async () => false),
+              close: mock(async () => {}),
             };
             break;
         }

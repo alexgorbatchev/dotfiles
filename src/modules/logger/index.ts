@@ -1,4 +1,5 @@
 export * from './createTsLogger';
+export * from './SafeLogMessage';
 export * from './zodErrorFormatter';
 
 import { architecture } from './templates/architecture';

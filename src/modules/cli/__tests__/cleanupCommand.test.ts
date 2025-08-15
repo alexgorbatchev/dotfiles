@@ -2,8 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import type { FileSystemSpies, MockedFileSystem, TestLogger } from '@testing-helpers';
-import type { GeneratedArtifactsManifest } from '@types';
+import { createMockFileRegistry, type MockedFileSystem, type TestLogger } from '@testing-helpers';
 import { registerCleanupCommand } from '../cleanupCommand';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -15,7 +14,7 @@ describe('cleanupCommand', () => {
   let program: GlobalProgram;
   let mockYamlConfig: YamlConfig;
   let mockFs: MockedFileSystem;
-  let mockFsSpies: FileSystemSpies;
+  let mockFileRegistry: ReturnType<typeof createMockFileRegistry>;
   let logger: TestLogger;
   let mockShim1 = '';
   let mockShim2 = '';
@@ -27,14 +26,60 @@ describe('cleanupCommand', () => {
   beforeEach(async () => {
     mock.restore();
 
+    // Create mock file registry and override specific methods
+    mockFileRegistry = createMockFileRegistry();
+
+    // Override getFileStatesForTool to return our test data
+    mockFileRegistry.getFileStatesForTool = mock(async (toolName: string) => {
+      if (toolName === 'tool1') {
+        return [
+          {
+            filePath: mockShim1,
+            toolName: 'tool1',
+            fileType: 'shim' as const,
+            lastOperation: 'writeFile' as const,
+            lastModified: Date.now(),
+          },
+          {
+            filePath: mockShim2,
+            toolName: 'tool1',
+            fileType: 'shim' as const,
+            lastOperation: 'writeFile' as const,
+            lastModified: Date.now(),
+          },
+          {
+            filePath: mockShellInit,
+            toolName: 'tool1',
+            fileType: 'init' as const,
+            lastOperation: 'writeFile' as const,
+            lastModified: Date.now(),
+          },
+          {
+            filePath: mockSymlinkSource,
+            toolName: 'tool1',
+            fileType: 'symlink' as const,
+            lastOperation: 'symlink' as const,
+            targetPath: mockSymlinkTarget,
+            lastModified: Date.now(),
+          },
+        ];
+      }
+      return [];
+    });
+
+    // Override getRegisteredTools to return our test tool
+    mockFileRegistry.getRegisteredTools = mock(async () => ['tool1']);
+
     const setup = await createCliTestSetup({
       testName: 'cleanup-command',
+      services: {
+        fileRegistry: mockFileRegistry,
+      },
     });
 
     program = setup.program;
     logger = setup.logger;
     mockFs = setup.mockFs.fs;
-    mockFsSpies = setup.mockFs.spies;
     mockYamlConfig = setup.mockYamlConfig;
 
     const { addFiles, addSymlinks } = setup.mockFs;
@@ -44,21 +89,9 @@ describe('cleanupCommand', () => {
     mockSymlinkSource = `${mockYamlConfig.paths.dotfilesDir}/tool/config.yml`;
     mockSymlinkTarget = `${mockYamlConfig.paths.targetDir}/.config/tool/config.yml`;
 
-    const mockManifest: GeneratedArtifactsManifest = {
-      shims: [mockShim1, mockShim2],
-      shellInit: { path: mockShellInit },
-      symlinks: [
-        {
-          sourcePath: mockSymlinkSource,
-          targetPath: mockSymlinkTarget,
-          status: 'created',
-        },
-      ],
-      lastGenerated: new Date().toISOString(),
-    };
+    // Files are set up in the mock filesystem
 
     addFiles({
-      [mockYamlConfig.paths.manifestPath]: JSON.stringify(mockManifest),
       [mockSymlinkSource]: 'content',
       [mockShim1]: 'content',
       [mockShim2]: 'content',
@@ -80,57 +113,49 @@ describe('cleanupCommand', () => {
     mockModules.restoreAll();
   });
 
-  it('should successfully cleanup with existing manifest and artifacts', async () => {
+  it('should successfully cleanup with registry-based cleanup (default --all)', async () => {
     await runCommand([]);
 
-    expect(mockFs.readFile).toHaveBeenCalledWith(mockYamlConfig.paths.manifestPath, 'utf-8');
+    // Registry-based cleanup should remove tracked files
     expect(mockFs.rm).toHaveBeenCalledWith(mockShim1, { force: true });
     expect(mockFs.rm).toHaveBeenCalledWith(mockShim2, { force: true });
     expect(mockFs.rm).toHaveBeenCalledWith(mockShellInit, { force: true });
     expect(mockFs.rm).toHaveBeenCalledWith(mockSymlinkTarget, { force: true });
-    expect(mockFs.rm).toHaveBeenCalledWith(mockYamlConfig.paths.generatedDir, {
-      recursive: true,
-      force: true,
-    });
 
     logger.expect(
       ['INFO'],
-      ['registerCleanupCommand', 'cleanupActionLogic'],
+      ['registerCleanupCommand', 'cleanupActionLogic', 'registryBasedCleanup'],
       [
-        'cleanup started',
-        'shim deletion',
-        `[cleanup] rm ${mockShim1}`,
+        'Registry-based cleanup: Removing all tracked files',
+        '[cleanup] rm /usr/bin/shim1',
         '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
-        'shell init file deletion',
         '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
-        'symlink deletion',
+        '[cleanup] rm ~/.dotfiles/tool/config.yml',
         '[cleanup] rm ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
-        '[cleanup] rm ~/.dotfiles/.generated',
-        'Cleanup completed',
+        'registry database cleanup',
       ]
     );
   });
 
-  it('should cleanup generated directory if manifest file does not exist', async () => {
-    mockFsSpies.exists.mockImplementation(async (p: string) => p !== mockYamlConfig.paths.manifestPath);
-    mockFsSpies.readFile.mockClear();
+  it('should cleanup specific tool when --tool flag is used', async () => {
+    await runCommand(['--tool', 'tool1']);
 
-    await runCommand([]);
+    expect(mockFs.rm).toHaveBeenCalledWith(mockShim1, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockShim2, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockShellInit, { force: true });
+    expect(mockFs.rm).toHaveBeenCalledWith(mockSymlinkTarget, { force: true });
 
-    expect(mockFs.readFile).not.toHaveBeenCalled();
-    expect(mockFs.rm).not.toHaveBeenCalledWith(mockShim1, { force: true });
-    expect(mockFs.rm).toHaveBeenCalledWith(mockYamlConfig.paths.generatedDir, {
-      recursive: true,
-      force: true,
-    });
     logger.expect(
-      ['INFO', 'WARN'],
-      ['registerCleanupCommand', 'cleanupActionLogic'],
+      ['INFO'],
+      ['registerCleanupCommand', 'cleanupActionLogic', 'registryBasedCleanup'],
       [
-        'cleanup started',
-        `Manifest file not found: ${mockYamlConfig.paths.manifestPath}`,
-        '[cleanup] rm ~/.dotfiles/.generated',
-        'Cleanup completed',
+        "Registry-based cleanup: files for tool 'tool1'",
+        '[cleanup] rm /usr/bin/shim1',
+        '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
+        '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
+        '[cleanup] rm ~/.dotfiles/tool/config.yml',
+        '[cleanup] rm ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
+        'Removed registry entries for tool: tool1',
       ]
     );
   });
@@ -138,23 +163,19 @@ describe('cleanupCommand', () => {
   it('should not delete any files in dry run mode', async () => {
     await runCommand(['--dry-run']);
 
-    expect(mockFs.readFile).toHaveBeenCalledWith(mockYamlConfig.paths.manifestPath, 'utf-8');
     expect(mockFs.rm).not.toHaveBeenCalled();
 
     logger.expect(
       ['INFO'],
-      ['registerCleanupCommand', 'cleanupActionLogic'],
+      ['registerCleanupCommand', 'cleanupActionLogic', 'registryBasedCleanup'],
       [
-        'dry run cleanup (no files will be removed) started',
-        'shim deletion',
-        `Would delete: ${mockShim1}`,
+        'Registry-based cleanup: Removing all tracked files',
+        'Would delete: /usr/bin/shim1',
         `Would delete: ${mockShim2}`,
-        'shell init file deletion',
         `Would delete: ${mockShellInit}`,
-        'symlink deletion',
+        `Would delete: ${mockSymlinkSource}`,
         `Would delete: ${mockSymlinkTarget}`,
-        `Would delete generated directory: ${mockYamlConfig.paths.generatedDir}`,
-        'Dry run cleanup completed',
+        'Would clean up registry database (dry run)',
       ]
     );
   });

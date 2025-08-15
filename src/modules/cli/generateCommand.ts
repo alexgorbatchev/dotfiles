@@ -30,15 +30,8 @@ export function registerGenerateCommand(
         const toolConfigs = await loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
         logger.debug(logs.config.success.loaded('tool configs', Object.keys(toolConfigs).length));
 
-        const manifest = await generatorOrchestrator.generateAll(toolConfigs, {});
-        logger.debug(logs.generator.debug.orchestrationComplete(), manifest);
-
-        const numSymlinks = manifest.symlinks?.length ?? 0;
-        if (combinedOptions.verbose && manifest.symlinks && numSymlinks > 0) {
-          manifest.symlinks.forEach((op) => {
-            logger.debug(logs.general.success.symlinkOperation(op.targetPath, op.sourcePath, op.status, op.error));
-          });
-        }
+        await generatorOrchestrator.generateAll(toolConfigs, {});
+        logger.debug(logs.generator.debug.orchestrationComplete());
 
         logger.info(logs.general.success.done(combinedOptions.dryRun));
       } catch (error) {

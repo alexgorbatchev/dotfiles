@@ -1,28 +1,15 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { YamlConfig } from '@modules/config';
 import type { ToolConfig } from '@types';
 import { always } from '@types';
 import { createSectionHeader } from '../../shellTemplates';
 import { PowerShellGenerator } from '../PowerShellGenerator';
+import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';
 
 describe('PowerShellGenerator', () => {
   let generator: PowerShellGenerator;
-  let mockAppConfig: YamlConfig;
 
   beforeEach(() => {
-    mockAppConfig = {
-      paths: {
-        homeDir: '/home/test',
-        dotfilesDir: '/home/test/.dotfiles',
-        generatedDir: '/home/test/.dotfiles/.generated',
-        shellScriptsDir: '/home/test/.dotfiles/.generated/shell-scripts',
-        binariesDir: '/home/test/.dotfiles/.generated/bin',
-        targetDir: '/usr/local/bin',
-        toolConfigsDir: '/home/test/.dotfiles/configs/tools',
-        manifestPath: '/home/test/.dotfiles/.generated/manifest.json',
-      },
-    } as YamlConfig;
-    generator = new PowerShellGenerator(mockAppConfig);
+    generator = new PowerShellGenerator(createMockYamlConfigWithPathsOnly());
   });
 
   it('should have correct shell type and file extension', () => {

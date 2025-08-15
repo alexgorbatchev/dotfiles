@@ -89,7 +89,6 @@ export async function createTestDirectories(
   const result: TestDirectories = {
     paths: {
       ...paths,
-      manifestPath: path.join(paths.generatedDir, 'manifest.json'),
     },
 
     additionalDirs: {},

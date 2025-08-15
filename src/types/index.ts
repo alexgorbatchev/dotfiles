@@ -2,7 +2,6 @@ export * from './archive.types';
 export * from './common.types';
 export * from './githubApi.types';
 export * from './installHooks.types';
-export * from './manifest.types';
 export * from './platform.types';
 export * from './shellScript.types';
 // Export all tool configuration types

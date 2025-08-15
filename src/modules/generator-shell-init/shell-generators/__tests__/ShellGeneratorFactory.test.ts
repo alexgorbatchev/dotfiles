@@ -5,24 +5,15 @@ import { BashGenerator } from '../BashGenerator';
 import { PowerShellGenerator } from '../PowerShellGenerator';
 import * as ShellGeneratorFactory from '../ShellGeneratorFactory';
 import { ZshGenerator } from '../ZshGenerator';
+import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';
 
 describe('ShellGeneratorFactory', () => {
   let mockAppConfig: YamlConfig;
 
   beforeEach(() => {
-    mockAppConfig = {
-      paths: {
-        homeDir: '/home/test',
-        dotfilesDir: '/home/test/.dotfiles',
-        generatedDir: '/home/test/.dotfiles/.generated',
-        shellScriptsDir: '/home/test/.dotfiles/.generated/shell-scripts',
-        binariesDir: '/home/test/.dotfiles/.generated/bin',
-        targetDir: '/usr/local/bin',
-        toolConfigsDir: '/home/test/.dotfiles/configs/tools',
-        manifestPath: '/home/test/.dotfiles/.generated/manifest.json',
-      },
-    } as YamlConfig;
+    mockAppConfig = createMockYamlConfigWithPathsOnly();
   });
+
   it('should create zsh generator', () => {
     const generator = ShellGeneratorFactory.createGenerator('zsh', mockAppConfig);
     expect(generator).toBeInstanceOf(ZshGenerator);

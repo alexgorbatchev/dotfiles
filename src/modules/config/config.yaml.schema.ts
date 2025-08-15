@@ -24,9 +24,6 @@ const pathsConfigSchema = z
     /** Defines the directory where downloaded tool binaries are stored. Defaults to `${paths.generatedDir}/binaries`. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
     binariesDir: z.string().default('${paths.generatedDir}/binaries'),
-    /** Specifies the path to the manifest file that tracks all generated artifacts. Defaults to `${paths.generatedDir}/manifest.json`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    manifestPath: z.string().default('${paths.generatedDir}/manifest.json'),
   })
   .strict();
 
@@ -170,7 +167,6 @@ export type YamlConfigPartial = PartialDeep<YamlConfig>;
       generatedDir: '',
       toolConfigsDir: '',
       shellScriptsDir: '',
-      manifestPath: '',
       binariesDir: '',
     },
     system: {
