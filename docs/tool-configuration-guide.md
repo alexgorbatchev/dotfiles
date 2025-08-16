@@ -38,6 +38,8 @@ The `.tool.ts` configuration files replace traditional shell-based tool manageme
 - **Platform Support**: Built-in support for different OS/architecture combinations
 - **Performance**: Faster tool access without shell startup overhead
 - **Maintainability**: Clear structure and validation
+- **Robust Error Handling**: Structured error reporting with Zod schema validation for configuration files
+- **Reliable Parsing**: Uses proper parsers (e.g., smol-toml for Cargo.toml) instead of fragile regex patterns
 
 ## File Structure and Location
 
@@ -559,6 +561,70 @@ c.install('manual', {
   binaryPath: `${ctx.homeDir}/bin/custom-tool`,
 })
 ```
+
+### 6. Cargo (`'cargo'`)
+
+Installs Rust tools from crates.io or GitHub repositories using cargo-quickinstall for faster binary downloads.
+
+```typescript
+c.install('cargo', {
+  crateName: 'tool-name',                    // Required
+  binarySource?: 'cargo-quickinstall',      // Optional
+  versionSource?: 'cargo-toml' | 'crates-io' | 'github-releases', // Optional
+  githubRepo?: 'owner/repository',          // Optional
+  cargoTomlUrl?: 'https://raw.githubusercontent.com/...', // Optional
+})
+```
+
+**Parameters:**
+
+- **`crateName`** (required): Name of the Rust crate to install
+- **`binarySource`**: Source for downloading pre-compiled binaries
+  - `'cargo-quickinstall'`: Downloads from cargo-quickinstall for faster installation (default)
+- **`versionSource`**: How to determine the latest version
+  - `'cargo-toml'`: Parse version from the project's Cargo.toml file (default)
+  - `'crates-io'`: Query crates.io API for the latest version
+  - `'github-releases'`: Use GitHub releases API
+- **`githubRepo`**: GitHub repository in "owner/repo" format (required for some version sources)
+- **`cargoTomlUrl`**: Custom URL to the Cargo.toml file (optional, auto-generated if not provided)
+
+**Version Resolution:**
+The cargo installer uses robust TOML parsing with Zod schema validation to extract version information from Cargo.toml files. This ensures reliable version detection and provides clear error messages if the TOML structure is invalid.
+
+**Examples:**
+
+```typescript
+// Simple cargo installation
+c.install('cargo', {
+  crateName: 'ripgrep',
+})
+
+// With custom GitHub repository
+c.install('cargo', {
+  crateName: 'eza',
+  githubRepo: 'eza-community/eza',
+})
+
+// Using crates.io for version detection
+c.install('cargo', {
+  crateName: 'fd-find',
+  versionSource: 'crates-io',
+})
+
+// Custom Cargo.toml URL
+c.install('cargo', {
+  crateName: 'custom-tool',
+  githubRepo: 'user/custom-tool',
+  cargoTomlUrl: 'https://raw.githubusercontent.com/user/custom-tool/main/Cargo.toml',
+})
+```
+
+**Platform Support:**
+The cargo installer automatically maps system architectures to Rust target triples:
+- `darwin` + `arm64` → `aarch64-apple-darwin`
+- `darwin` + `x64` → `x86_64-apple-darwin`  
+- `linux` + `x64` → `x86_64-unknown-linux-gnu`
+- `linux` + `arm64` → `aarch64-unknown-linux-gnu`
 
 ## Shell Integration
 
