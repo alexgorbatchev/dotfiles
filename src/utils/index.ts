@@ -1,6 +1,7 @@
 export * from './contractHomePath';
 export * from './createBinarySymlinks';
 export * from './dedentString';
+export * from './dedentTemplate';
 export * from './expandHomePath';
 export * from './expandToolConfigPath';
 export * from './formatPermissions';
