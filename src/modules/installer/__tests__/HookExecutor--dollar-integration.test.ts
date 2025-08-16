@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import * as fs from 'node:fs';
 import { realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,7 +7,6 @@ import path from 'node:path';
 import { createMemFileSystem, createMock$, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { InstallHookContext, ToolConfig } from '@types';
 import { HookExecutor } from '../HookExecutor';
-import * as fs from 'node:fs';
 
 describe('HookExecutor $ Integration', () => {
   let logger: TestLogger;

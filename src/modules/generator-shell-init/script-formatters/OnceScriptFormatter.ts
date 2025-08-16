@@ -20,7 +20,8 @@ export class OnceScriptFormatter implements IScriptFormatter {
       throw new Error(`OnceScriptFormatter can only format OnceScript, received: ${typeof script}`);
     }
 
-    const scriptContent = getScriptContent(script);
+    const rawScriptContent = getScriptContent(script);
+    const scriptContent = dedentString(rawScriptContent);
     const fileName = `${toolName}-${scriptIndex}.${this.getFileExtension(shellType)}`;
     const outputPath = path.join(this.shellScriptsDir, '.once', fileName);
 
@@ -60,26 +61,20 @@ export class OnceScriptFormatter implements IScriptFormatter {
   }
 
   private generateZshScript(scriptContent: string, outputPath: string): string {
-    return dedentString(`
-      # Generated once script - will self-delete after execution
-      ${scriptContent}
-      rm "${outputPath}"
-    `);
+    return `# Generated once script - will self-delete after execution
+${scriptContent}
+rm "${outputPath}"`;
   }
 
   private generateBashScript(scriptContent: string, outputPath: string): string {
-    return dedentString(`
-      # Generated once script - will self-delete after execution
-      ${scriptContent}
-      rm "${outputPath}"
-    `);
+    return `# Generated once script - will self-delete after execution
+${scriptContent}
+rm "${outputPath}"`;
   }
 
   private generatePowerShellScript(scriptContent: string, outputPath: string): string {
-    return dedentString(`
-      # Generated once script - will self-delete after execution
-      ${scriptContent}
-      Remove-Item "${outputPath}"
-    `);
+    return `# Generated once script - will self-delete after execution
+${scriptContent}
+Remove-Item "${outputPath}"`;
   }
 }
