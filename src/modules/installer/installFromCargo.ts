@@ -41,16 +41,16 @@ export async function installFromCargo(
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
-  logger.debug(logs.installer.debug.installingFromCargo(), toolName, toolConfig.installParams);
+  logger.debug(logs.installer.debug.installingFromCargo(), toolName, toolConfig['installParams']);
 
-  if (!toolConfig.installParams) {
+  if (!toolConfig['installParams']) {
     return {
       success: false,
       error: 'Install parameters not specified',
     };
   }
 
-  const params = toolConfig.installParams;
+  const params = toolConfig['installParams'];
   const crateName = params.crateName || toolName;
 
   const operation = async (): Promise<InstallResult> => {

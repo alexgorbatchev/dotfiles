@@ -98,6 +98,169 @@ export class Installer implements IInstaller {
   }
 
   /**
+   * Check if tool is already installed and return early if appropriate
+   */
+  private async checkExistingInstallation(
+    toolName: string,
+    resolvedToolConfig: ToolConfig,
+    options?: InstallOptions,
+    logger?: TsLogger
+  ): Promise<InstallResult | null> {
+    if (options?.force) {
+      return null;
+    }
+
+    const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
+    if (!existingInstallation) {
+      return null;
+    }
+
+    const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
+    if (targetVersion && existingInstallation.version === targetVersion) {
+      logger?.debug(logs.tool.success.installed(toolName, targetVersion, 'already-installed'));
+      return {
+        success: true,
+        message: `Tool ${toolName} version ${targetVersion} is already installed`,
+        installPath: existingInstallation.installPath,
+        version: existingInstallation.version,
+        binaryPaths: existingInstallation.binaryPaths,
+      };
+    }
+
+    logger?.debug(
+      logs.tool.warning.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown')
+    );
+    return null;
+  }
+
+  /**
+   * Execute beforeInstall hook if defined
+   */
+  private async executeBeforeInstallHook(
+    resolvedToolConfig: ToolConfig,
+    context: BaseInstallContext,
+    toolFs: IFileSystem,
+    logger: TsLogger
+  ): Promise<InstallResult | null> {
+    if (!resolvedToolConfig.installParams?.hooks?.beforeInstall) {
+      return null;
+    }
+
+    logger.debug(logs.command.debug.hookExecution('beforeInstall'));
+    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
+    const result = await this.hookExecutor.executeHook(
+      'beforeInstall',
+      resolvedToolConfig.installParams.hooks.beforeInstall,
+      enhancedContext
+    );
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: `beforeInstall hook failed: ${result.error}`,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Execute afterInstall hook if defined
+   */
+  private async executeAfterInstallHook(
+    resolvedToolConfig: ToolConfig,
+    context: BaseInstallContext,
+    result: InstallResult,
+    toolFs: IFileSystem,
+    logger: TsLogger
+  ): Promise<void> {
+    if (!resolvedToolConfig.installParams?.hooks?.afterInstall) {
+      return;
+    }
+
+    logger.debug(logs.command.debug.hookExecution('afterInstall'));
+    const finalContext = {
+      ...context,
+      binaryPaths: result.binaryPaths,
+      version: result.version,
+    };
+
+    const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs, logger);
+    await this.hookExecutor.executeHook(
+      'afterInstall',
+      resolvedToolConfig.installParams.hooks.afterInstall,
+      enhancedContext,
+      { continueOnError: true }
+    );
+  }
+
+  /**
+   * Record successful installation in the registry
+   */
+  private async recordInstallation(
+    toolName: string,
+    resolvedToolConfig: ToolConfig,
+    context: BaseInstallContext,
+    result: InstallResult,
+    logger: TsLogger
+  ): Promise<void> {
+    if (!result.success || !result.binaryPaths || !result.version) {
+      return;
+    }
+
+    try {
+      await this.toolInstallationRegistry.recordToolInstallation({
+        toolName,
+        version: result.version,
+        installPath: context.installDir,
+        timestamp: context.timestamp,
+        binaryPaths: result.binaryPaths,
+        downloadUrl: result.info?.['downloadUrl'] as string | undefined,
+        assetName: result.info?.['assetName'] as string | undefined,
+        configuredVersion:
+          resolvedToolConfig.installationMethod === 'github-release'
+            ? resolvedToolConfig.installParams.version
+            : undefined,
+      });
+      logger.debug(logs.tool.success.installed(toolName, result.version, 'registry-recorded'));
+    } catch (registryError) {
+      logger.error(logs.tool.error.installFailed('registry-record', toolName, (registryError as Error).message));
+    }
+  }
+
+  /**
+   * Execute the appropriate installation method
+   */
+  private async executeInstallationMethod(
+    toolName: string,
+    resolvedToolConfig: ToolConfig,
+    context: BaseInstallContext,
+    options?: InstallOptions,
+    logger?: TsLogger,
+    toolFs?: IFileSystem
+  ): Promise<InstallResult> {
+    switch (resolvedToolConfig.installationMethod) {
+      case 'github-release':
+        return await this.installFromGitHubRelease(toolName, resolvedToolConfig, context, options, logger, toolFs);
+      case 'brew':
+        return await this.installFromBrew(toolName, resolvedToolConfig, context, options);
+      case 'cargo':
+        return await this.installFromCargo(toolName, resolvedToolConfig, context, options);
+      case 'curl-script':
+        return await this.installFromCurlScript(toolName, resolvedToolConfig, context, options);
+      case 'curl-tar':
+        return await this.installFromCurlTar(toolName, resolvedToolConfig, context, options);
+      case 'manual':
+        return await this.installManually(toolName, resolvedToolConfig, context, options);
+      default:
+        return {
+          success: false,
+          error: `Unsupported installation method: ${resolvedToolConfig.installationMethod}`,
+        };
+    }
+  }
+
+  /**
    * Install a tool based on its configuration
    */
   async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
@@ -122,27 +285,9 @@ export class Installer implements IInstaller {
 
     try {
       // Check if tool is already installed (unless force option is used)
-      if (!options?.force) {
-        const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
-        if (existingInstallation) {
-          // Get the version that would be installed
-          const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
-
-          if (targetVersion && existingInstallation.version === targetVersion) {
-            logger.debug(logs.tool.success.installed(toolName, targetVersion, 'already-installed'));
-            return {
-              success: true,
-              message: `Tool ${toolName} version ${targetVersion} is already installed`,
-              installPath: existingInstallation.installPath,
-              version: existingInstallation.version,
-              binaryPaths: existingInstallation.binaryPaths,
-            };
-          }
-
-          logger.debug(
-            logs.tool.warning.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown')
-          );
-        }
+      const existingResult = await this.checkExistingInstallation(toolName, resolvedToolConfig, options, logger);
+      if (existingResult) {
+        return existingResult;
       }
 
       // Create timestamped installation directory
@@ -164,96 +309,26 @@ export class Installer implements IInstaller {
       };
 
       // Run beforeInstall hook if defined
-      if (resolvedToolConfig.installParams?.hooks?.beforeInstall) {
-        logger.debug(logs.command.debug.hookExecution('beforeInstall'));
-
-        const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
-
-        const result = await this.hookExecutor.executeHook(
-          'beforeInstall',
-          resolvedToolConfig.installParams.hooks.beforeInstall,
-          enhancedContext
-        );
-
-        if (!result.success) {
-          return {
-            success: false,
-            error: `beforeInstall hook failed: ${result.error}`,
-          };
-        }
+      const beforeInstallResult = await this.executeBeforeInstallHook(resolvedToolConfig, context, toolFs, logger);
+      if (beforeInstallResult) {
+        return beforeInstallResult;
       }
 
       // Install based on the installation method
-      let result: InstallResult;
-      switch (resolvedToolConfig.installationMethod) {
-        case 'github-release':
-          result = await this.installFromGitHubRelease(toolName, resolvedToolConfig, context, options, logger, toolFs);
-          break;
-        case 'brew':
-          result = await this.installFromBrew(toolName, resolvedToolConfig, context, options);
-          break;
-        case 'cargo':
-          result = await this.installFromCargo(toolName, resolvedToolConfig, context, options);
-          break;
-        case 'curl-script':
-          result = await this.installFromCurlScript(toolName, resolvedToolConfig, context, options);
-          break;
-        case 'curl-tar':
-          result = await this.installFromCurlTar(toolName, resolvedToolConfig, context, options);
-          break;
-        case 'manual':
-          result = await this.installManually(toolName, resolvedToolConfig, context, options);
-          break;
-        default:
-          return {
-            success: false,
-            error: `Unsupported installation method: ${resolvedToolConfig.installationMethod}`,
-          };
-      }
+      const result = await this.executeInstallationMethod(
+        toolName,
+        resolvedToolConfig,
+        context,
+        options,
+        logger,
+        toolFs
+      );
 
       // Run afterInstall hook if defined
-      if (resolvedToolConfig.installParams?.hooks?.afterInstall) {
-        logger.debug(logs.command.debug.hookExecution('afterInstall'));
-
-        // Update context with final result information
-        const finalContext = {
-          ...context,
-          binaryPaths: result.binaryPaths,
-          version: result.version,
-        };
-
-        const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs, logger);
-
-        await this.hookExecutor.executeHook(
-          'afterInstall',
-          resolvedToolConfig.installParams.hooks.afterInstall,
-          enhancedContext,
-          { continueOnError: true } // Don't fail installation if afterInstall hook fails
-        );
-      }
+      await this.executeAfterInstallHook(resolvedToolConfig, context, result, toolFs, logger);
 
       // Record successful installation in the registry
-      if (result.success && result.binaryPaths && result.version) {
-        try {
-          await this.toolInstallationRegistry.recordToolInstallation({
-            toolName,
-            version: result.version,
-            installPath: context.installDir,
-            timestamp: context.timestamp,
-            binaryPaths: result.binaryPaths,
-            downloadUrl: result.info?.['downloadUrl'] as string | undefined,
-            assetName: result.info?.['assetName'] as string | undefined,
-            configuredVersion:
-              resolvedToolConfig.installationMethod === 'github-release'
-                ? resolvedToolConfig.installParams.version
-                : undefined,
-          });
-          logger.debug(logs.tool.success.installed(toolName, result.version, 'registry-recorded'));
-        } catch (registryError) {
-          logger.error(logs.tool.error.installFailed('registry-record', toolName, (registryError as Error).message));
-          // Don't fail the installation if registry recording fails
-        }
-      }
+      await this.recordInstallation(toolName, resolvedToolConfig, context, result, logger);
 
       return result;
     } catch (error) {

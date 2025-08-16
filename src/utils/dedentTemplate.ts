@@ -1,6 +1,56 @@
 import { dedentString } from './dedentString';
 
 /**
+ * Processes a standalone placeholder line and returns the processed lines
+ */
+function processStandalonePlaceholder(
+  line: string,
+  standalonePlaceholderMatch: RegExpMatchArray,
+  values: Record<string, string>
+): string[] {
+  const key = standalonePlaceholderMatch[1];
+
+  if (key && key in values) {
+    const value = values[key];
+    if (value !== undefined) {
+      const lineIndent = line.match(/^(\s*)/)?.[1] ?? '';
+      const valueLines = value.split('\n');
+      return valueLines.map((valueLine: string) => lineIndent + valueLine);
+    }
+  }
+
+  // Keep the placeholder if no value provided
+  return [line];
+}
+
+/**
+ * Processes inline placeholders within a line
+ */
+function processInlinePlaceholders(line: string, values: Record<string, string>): string {
+  let processedLine = line;
+  const placeholderRegex = /{(\w+)}/g;
+  let match: RegExpExecArray | null;
+
+  match = placeholderRegex.exec(processedLine);
+  while (match !== null) {
+    const fullMatch = match[0];
+    const key = match[1];
+
+    if (key && key in values) {
+      const value = values[key];
+      if (value !== undefined) {
+        processedLine = processedLine.replace(fullMatch, value);
+        placeholderRegex.lastIndex = 0;
+      }
+    }
+
+    match = placeholderRegex.exec(processedLine);
+  }
+
+  return processedLine;
+}
+
+/**
  * Processes a template string by removing common indentation and replacing placeholders with values.
  *
  * This function:
@@ -13,64 +63,19 @@ import { dedentString } from './dedentString';
  * @returns The processed string with proper indentation and replaced placeholders
  */
 export function dedentTemplate(template: string, values: Record<string, string>): string {
-  // First dedent the template
   const dedentedText = dedentString(template);
-
-  // Split into lines for placeholder processing
   const dedentedLines = dedentedText.split('\n');
-
-  // Process all lines and replace placeholders
   const resultLines: string[] = [];
 
   for (const line of dedentedLines) {
     const trimmedLine = line.trim();
-
-    // Check if the line is a standalone placeholder (e.g., {key})
     const standalonePlaceholderMatch = trimmedLine.match(/^{(\w+)}$/);
 
     if (standalonePlaceholderMatch) {
-      // Handle standalone placeholder (full line)
-      const key = standalonePlaceholderMatch[1];
-
-      if (key && key in values) {
-        const value = values[key];
-        if (value !== undefined) {
-          const lineIndent = line.match(/^(\s*)/)?.[1] ?? '';
-
-          // Split value into lines and indent each line
-          const valueLines = value.split('\n');
-          valueLines.forEach((valueLine: string) => {
-            resultLines.push(lineIndent + valueLine);
-          });
-        }
-      } else {
-        // Keep the placeholder if no value provided
-        resultLines.push(line);
-      }
+      const processedLines = processStandalonePlaceholder(line, standalonePlaceholderMatch, values);
+      resultLines.push(...processedLines);
     } else {
-      // Handle inline placeholders within text
-      let processedLine = line;
-      const placeholderRegex = /{(\w+)}/g;
-      let match;
-
-      // Replace all placeholders in the line
-      while ((match = placeholderRegex.exec(processedLine)) !== null) {
-        const fullMatch = match[0];
-        const key = match[1];
-
-        if (key && key in values) {
-          const value = values[key];
-          if (value !== undefined) {
-            // For inline placeholders, we don't handle multiline values specially
-            // Just replace the placeholder with the value
-            processedLine = processedLine.replace(fullMatch, value);
-
-            // Reset regex index since we modified the string
-            placeholderRegex.lastIndex = 0;
-          }
-        }
-      }
-
+      const processedLine = processInlinePlaceholders(line, values);
       resultLines.push(processedLine);
     }
   }
