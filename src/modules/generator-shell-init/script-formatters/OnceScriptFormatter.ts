@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { ShellScript, ShellType } from '@types';
 import { getScriptContent, isOnceScript } from '@types';
-import { dedentString } from '@utils';
+import { dedentString, dedentTemplate } from '@utils';
 import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
@@ -61,20 +61,62 @@ export class OnceScriptFormatter implements IScriptFormatter {
   }
 
   private generateZshScript(scriptContent: string, outputPath: string): string {
-    return `# Generated once script - will self-delete after execution
-${scriptContent}
-rm "${outputPath}"`;
+    const functionName = `__dotfiles_${path.basename(outputPath, '.zsh')}_once`;
+    return dedentTemplate(
+      `
+      # Generated once script - will self-delete after execution
+      {functionName}() {
+        {scriptContent}
+      }
+      {functionName}
+      unset -f {functionName}
+      rm "{outputPath}"
+    `,
+      {
+        functionName,
+        scriptContent,
+        outputPath,
+      }
+    );
   }
 
   private generateBashScript(scriptContent: string, outputPath: string): string {
-    return `# Generated once script - will self-delete after execution
-${scriptContent}
-rm "${outputPath}"`;
+    const functionName = `__dotfiles_${path.basename(outputPath, '.bash')}_once`;
+    return dedentTemplate(
+      `
+      # Generated once script - will self-delete after execution
+      {functionName}() {
+        {scriptContent}
+      }
+      {functionName}
+      unset -f {functionName}
+      rm "{outputPath}"
+    `,
+      {
+        functionName,
+        scriptContent,
+        outputPath,
+      }
+    );
   }
 
   private generatePowerShellScript(scriptContent: string, outputPath: string): string {
-    return `# Generated once script - will self-delete after execution
-${scriptContent}
-Remove-Item "${outputPath}"`;
+    const functionName = `__dotfiles_${path.basename(outputPath, '.ps1')}_once`;
+    return dedentTemplate(
+      `
+      # Generated once script - will self-delete after execution
+      function {functionName} {
+        {scriptContent}
+      }
+      {functionName}
+      Remove-Item Function:{functionName}
+      Remove-Item "{outputPath}"
+    `,
+      {
+        functionName,
+        scriptContent,
+        outputPath,
+      }
+    );
   }
 }
