@@ -336,6 +336,10 @@ export function createTestContext(
   setup: InstallerTestSetup,
   overrides: Partial<BaseInstallContext> = {}
 ): BaseInstallContext {
+  const getToolDir = (toolName: string): string => {
+    return path.join(setup.testDirs.paths.binariesDir, toolName);
+  };
+
   return {
     toolName: MOCK_TOOL_NAME,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
@@ -343,6 +347,15 @@ export function createTestContext(
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
     appConfig: setup.mockAppConfig,
+    // BaseToolContext properties
+    toolDir: getToolDir(MOCK_TOOL_NAME),
+    getToolDir,
+    homeDir: setup.mockAppConfig.paths.homeDir,
+    binDir: setup.mockAppConfig.paths.targetDir,
+    shellScriptsDir: setup.mockAppConfig.paths.shellScriptsDir,
+    dotfilesDir: setup.mockAppConfig.paths.dotfilesDir,
+    generatedDir: setup.mockAppConfig.paths.generatedDir,
+    logger: setup.logger.getSubLogger({ name: `test-install-${MOCK_TOOL_NAME}` }),
     ...overrides,
   };
 }

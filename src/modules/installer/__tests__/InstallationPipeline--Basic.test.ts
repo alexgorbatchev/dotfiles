@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
-import type { BaseInstallContext } from '@types';
 import { InstallationPipeline } from '../InstallationPipeline';
 import { createDownloadStep, createExtractStep } from '../utils/stepFactories';
 import {
   createInstallerTestSetup,
+  createTestContext,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
   MOCK_TOOL_VERSION,
@@ -30,14 +30,10 @@ describe('InstallationPipeline - Basic Steps', () => {
     };
 
     const installDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, '2024-08-13-16-45-23');
-    const context: BaseInstallContext = {
-      toolName: MOCK_TOOL_NAME,
+    const context = createTestContext(setup, {
       installDir,
-      timestamp: '2024-08-13-16-45-23',
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
-      appConfig: setup.mockAppConfig,
-    };
+    });
 
     mock.restore();
 

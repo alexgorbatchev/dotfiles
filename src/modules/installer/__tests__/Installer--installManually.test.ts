@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   createInstallerTestSetup,
   createManualToolConfig,
+  createTestContext,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
 } from './installer-test-helpers';
@@ -28,14 +29,10 @@ describe('Installer - installManually', () => {
       },
     });
 
-    const context = {
-      toolName: MOCK_TOOL_NAME,
+    const context = createTestContext(setup, {
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'unknown'),
-      timestamp: '2024-08-13-16-45-23',
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
-      appConfig: setup.mockAppConfig,
-    };
+    });
 
     const result = await setup.installer.installManually(MOCK_TOOL_NAME, toolConfig, context);
 
@@ -60,14 +57,10 @@ describe('Installer - installManually', () => {
       },
     });
 
-    const context = {
-      toolName: MOCK_TOOL_NAME,
+    const context = createTestContext(setup, {
       installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
-      timestamp: '2024-08-13-16-45-23',
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
-      appConfig: setup.mockAppConfig,
-    };
+    });
 
     const result = await setup.installer.installManually(MOCK_TOOL_NAME, toolConfig, context);
 

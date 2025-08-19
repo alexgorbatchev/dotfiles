@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
-import type { BaseInstallContext, CurlTarToolConfig } from '@types';
+import type { CurlTarToolConfig } from '@types';
 import {
   createInstallerTestSetup,
+  createTestContext,
   type InstallerTestSetup,
   MOCK_TOOL_NAME,
   MOCK_TOOL_VERSION,
@@ -28,15 +29,10 @@ describe('Installer - installFromCurlTar', () => {
 
     // The binary should be copied to the final location
     const installDir = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, '2024-08-13-16-45-23');
-    const context: BaseInstallContext = {
-      // context is defined here
-      toolName: MOCK_TOOL_NAME,
+    const context = createTestContext(setup, {
       installDir,
-      timestamp: '2024-08-13-16-45-23',
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
       toolConfig,
-      appConfig: setup.mockAppConfig,
-    };
+    });
 
     // The mock extractor will create files in the installDir, which is the timestamped directory
     // No need to manually create files - the mock extractor handles this

@@ -42,7 +42,7 @@ async function processFunctionExport(
   yamlConfig: YamlConfig
 ): Promise<ToolConfig | null> {
   const builder = new ToolConfigBuilder(logger, toolName);
-  const context = createToolConfigContext(yamlConfig, toolName);
+  const context = createToolConfigContext(yamlConfig, toolName, logger);
   const result = await configureToolFn(builder, context);
 
   // Check if the function returned a ToolConfig object
@@ -95,14 +95,16 @@ function processDirectExport(
  * Creates a ToolConfigContext from YamlConfig for the specified tool.
  * @param yamlConfig The application configuration containing path information.
  * @param currentToolName The name of the tool currently being configured.
+ * @param logger The logger instance for structured logging.
  * @returns A ToolConfigContext with all necessary path information.
  */
-function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string): ToolConfigContext {
+function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string, logger: TsLogger): ToolConfigContext {
   const getToolDir = (toolName: string): string => {
     return path.join(yamlConfig.paths.binariesDir, toolName);
   };
 
   return {
+    toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
     homeDir: yamlConfig.paths.homeDir,
@@ -110,6 +112,8 @@ function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string
     shellScriptsDir: yamlConfig.paths.shellScriptsDir,
     dotfilesDir: yamlConfig.paths.dotfilesDir,
     generatedDir: yamlConfig.paths.generatedDir,
+    appConfig: yamlConfig,
+    logger: logger.getSubLogger({ name: `config-${currentToolName}` }),
   };
 }
 

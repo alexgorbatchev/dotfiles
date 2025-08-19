@@ -3,6 +3,7 @@ import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { $ } from 'zx';
 import type { ExtractResult } from './archive.types';
+import type { BaseToolContext } from './baseToolContext.types';
 import type { SystemInfo } from './common.types';
 import type { ToolConfig } from './tool-config';
 
@@ -71,10 +72,9 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
 /**
  * Base install context used internally by the installer.
  * All fields are required as they represent the minimum context available.
+ * Extends BaseToolContext to provide consistent path utilities and logging.
  */
-export interface BaseInstallContext {
-  /** The name of the tool currently being installed */
-  toolName: string;
+export interface BaseInstallContext extends BaseToolContext {
   /** The target directory where the tool's primary binary/executable should be installed */
   installDir: string;
   /** The timestamp for this installation (YYYY-MM-DD-HH-MM-SS) */
@@ -83,8 +83,6 @@ export interface BaseInstallContext {
   systemInfo: SystemInfo;
   /** The full tool configuration being processed */
   toolConfig: ToolConfig;
-  /** The user's application configuration (YAML config) */
-  appConfig: YamlConfig;
 }
 
 /**

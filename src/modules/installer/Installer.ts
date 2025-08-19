@@ -299,14 +299,7 @@ export class Installer implements IInstaller {
       logger.debug(logs.command.debug.directoryCreated(), installDir);
 
       // Create context for installation hooks
-      const context: BaseInstallContext = {
-        toolName,
-        installDir,
-        timestamp,
-        systemInfo: this.getSystemInfo(),
-        toolConfig: resolvedToolConfig,
-        appConfig: this.appConfig,
-      };
+      const context = this.createBaseInstallContext(toolName, installDir, timestamp, resolvedToolConfig, logger);
 
       // Run beforeInstall hook if defined
       const beforeInstallResult = await this.executeBeforeInstallHook(resolvedToolConfig, context, toolFs, logger);
@@ -495,6 +488,39 @@ export class Installer implements IInstaller {
       );
       return null;
     }
+  }
+
+  /**
+   * Create a BaseInstallContext with all required properties from BaseToolContext
+   */
+  private createBaseInstallContext(
+    toolName: string,
+    installDir: string,
+    timestamp: string,
+    toolConfig: ToolConfig,
+    logger: TsLogger
+  ): BaseInstallContext {
+    const getToolDir = (name: string): string => {
+      return path.join(this.appConfig.paths.binariesDir, name);
+    };
+
+    return {
+      toolName,
+      installDir,
+      timestamp,
+      systemInfo: this.getSystemInfo(),
+      toolConfig,
+      appConfig: this.appConfig,
+      // BaseToolContext properties
+      toolDir: getToolDir(toolName),
+      getToolDir,
+      homeDir: this.appConfig.paths.homeDir,
+      binDir: this.appConfig.paths.targetDir,
+      shellScriptsDir: this.appConfig.paths.shellScriptsDir,
+      dotfilesDir: this.appConfig.paths.dotfilesDir,
+      generatedDir: this.appConfig.paths.generatedDir,
+      logger: logger.getSubLogger({ name: `install-${toolName}` }),
+    };
   }
 
   /**

@@ -7,12 +7,17 @@ import type { AsyncConfigureTool, ToolConfigBuilder, ToolConfigContext } from '@
 import { always } from '@types';
 
 // Helper function to create ToolConfigContext (extracted from loadToolConfigs.ts)
-function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string): ToolConfigContext {
+function createToolConfigContext(
+  yamlConfig: YamlConfig,
+  currentToolName: string,
+  logger: TestLogger
+): ToolConfigContext {
   const getToolDir = (toolName: string): string => {
     return path.join(yamlConfig.paths.binariesDir, toolName);
   };
 
   return {
+    toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
     homeDir: yamlConfig.paths.homeDir,
@@ -20,6 +25,8 @@ function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string
     shellScriptsDir: yamlConfig.paths.shellScriptsDir,
     dotfilesDir: yamlConfig.paths.dotfilesDir,
     generatedDir: yamlConfig.paths.generatedDir,
+    appConfig: yamlConfig,
+    logger: logger.getSubLogger({ name: `config-${currentToolName}` }),
   };
 }
 
@@ -47,7 +54,7 @@ describe('ToolConfigContext', () => {
 
   describe('Context creation and path resolution', () => {
     it('should create context with correct paths from yamlConfig', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'test-tool');
+      const context = createToolConfigContext(mockYamlConfig, 'test-tool', logger);
 
       expect(context.toolDir).toBe(path.join(mockYamlConfig.paths.binariesDir, 'test-tool'));
       expect(context.homeDir).toBe(mockYamlConfig.paths.homeDir);
@@ -59,7 +66,7 @@ describe('ToolConfigContext', () => {
     });
 
     it('should provide getToolDir method that works for any tool name', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'my-tool');
+      const context = createToolConfigContext(mockYamlConfig, 'my-tool', logger);
 
       expect(context.getToolDir('my-tool')).toBe(path.join(mockYamlConfig.paths.binariesDir, 'my-tool'));
       expect(context.getToolDir('some-other-tool')).toBe(
@@ -69,7 +76,7 @@ describe('ToolConfigContext', () => {
     });
 
     it('should work correctly with ToolConfigBuilder and context', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'shell-tool');
+      const context = createToolConfigContext(mockYamlConfig, 'shell-tool', logger);
       const builder = new ToolConfigBuilderImpl(logger, 'shell-tool');
 
       // Test that context can be used in a tool configuration function
@@ -108,7 +115,7 @@ describe('ToolConfigContext', () => {
     });
 
     it('should handle tool dependencies using getToolDir', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'dependent-tool');
+      const context = createToolConfigContext(mockYamlConfig, 'dependent-tool', logger);
       const builder = new ToolConfigBuilderImpl(logger, 'dependent-tool');
 
       // Test a tool that references other tools
@@ -148,7 +155,7 @@ describe('ToolConfigContext', () => {
     });
 
     it('should handle tools that generate completions to the correct directory', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'completion-tool');
+      const context = createToolConfigContext(mockYamlConfig, 'completion-tool', logger);
       const builder = new ToolConfigBuilderImpl(logger, 'completion-tool');
 
       // Test a tool that generates completions
@@ -203,7 +210,7 @@ describe('ToolConfigContext', () => {
         env: {},
       });
 
-      const context = createToolConfigContext(customYamlConfig, 'custom-path-tool');
+      const context = createToolConfigContext(customYamlConfig, 'custom-path-tool', logger);
 
       expect(context.homeDir).toBe(customYamlConfig.paths.homeDir);
       expect(context.dotfilesDir).toBe(customYamlConfig.paths.dotfilesDir);
@@ -224,7 +231,10 @@ describe('ToolConfigContext', () => {
 
       // This should not throw an error, even though the function signature doesn't include context
       // biome-ignore lint/suspicious/noExplicitAny: Testing backward compatibility with old function signatures
-      await (oldStyleConfigureToolFn as any)(builder, createToolConfigContext(mockYamlConfig, 'old-style-tool'));
+      await (oldStyleConfigureToolFn as any)(
+        builder,
+        createToolConfigContext(mockYamlConfig, 'old-style-tool', logger)
+      );
       const toolConfig = builder.build();
 
       expect(toolConfig.name).toBe('old-style-tool');
@@ -234,7 +244,7 @@ describe('ToolConfigContext', () => {
 
   describe('Real-world tool patterns', () => {
     it('should work with fzf-like tool pattern', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'fzf-like');
+      const context = createToolConfigContext(mockYamlConfig, 'fzf-like', logger);
       const builder = new ToolConfigBuilderImpl(logger, 'fzf-like');
 
       // Test fzf-like pattern with context
@@ -273,7 +283,7 @@ describe('ToolConfigContext', () => {
     });
 
     it('should work with atuin-like tool pattern', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'atuin-like');
+      const context = createToolConfigContext(mockYamlConfig, 'atuin-like', logger);
       const builder = new ToolConfigBuilderImpl(logger, 'atuin-like');
 
       // Test atuin-like pattern with context

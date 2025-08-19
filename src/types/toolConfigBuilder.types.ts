@@ -1,3 +1,4 @@
+import type { BaseToolContext } from './baseToolContext.types';
 import type { AsyncInstallHook } from './installHooks.types';
 import type { Architecture, Platform } from './platform.types';
 import type { ShellScript } from './shellScript.types';
@@ -383,45 +384,9 @@ export interface ToolConfigBuilder {
 /**
  * Context object providing access to configuration paths and directories for tool configuration.
  * All paths are sourced from the yamlConfig rather than OS-specific defaults.
+ * Extends BaseToolContext to provide logging and configuration access during tool configuration.
  */
-export interface ToolConfigContext {
-  /**
-   * Current tool's installation directory
-   */
-  toolDir: string;
-
-  /**
-   * Get the installation directory for any tool
-   * @param toolName - Name of the tool
-   * @returns Full path to the specified tool's installation directory
-   */
-  getToolDir(toolName: string): string;
-
-  /**
-   * User's home directory path (from yamlConfig.paths.homeDir)
-   */
-  homeDir: string;
-
-  /**
-   * Generated binaries directory (from yamlConfig.paths.binariesDir)
-   */
-  binDir: string;
-
-  /**
-   * Generated shell scripts directory (from yamlConfig.paths.shellScriptsDir)
-   */
-  shellScriptsDir: string;
-
-  /**
-   * Root dotfiles directory (from yamlConfig.paths.dotfilesDir)
-   */
-  dotfilesDir: string;
-
-  /**
-   * Generated files directory (from yamlConfig.paths.generatedDir)
-   */
-  generatedDir: string;
-}
+export interface ToolConfigContext extends BaseToolContext {}
 
 /**
  * Defines the type for the main configuration function exported by each tool's `.tool.ts` file.

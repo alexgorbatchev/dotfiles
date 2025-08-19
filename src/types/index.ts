@@ -1,4 +1,5 @@
 export * from './archive.types';
+export * from './baseToolContext.types';
 export * from './common.types';
 export * from './githubApi.types';
 export * from './installHooks.types';
