@@ -1,0 +1,246 @@
+# Command Completions
+
+Command completions make your tools more user-friendly by providing tab completion support in different shells. Completions are configured as part of shell-specific configuration since completion formats and loading mechanisms differ between shells.
+
+## Shell-Specific Configuration
+
+Completions are configured within each shell's configuration using the `completions` property:
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'completions/_tool.zsh'
+  }
+})
+.bash({
+  completions: {
+    source: 'completions/tool.bash'
+  }
+})
+.powershell({
+  completions: {
+    source: 'completions/tool.ps1'
+  }
+});
+```
+
+## Completion Configuration
+
+Each shell's completion configuration uses a `ShellCompletionConfig` object:
+
+```typescript
+{
+  source: string,      // Path to completion file relative to extracted archive
+  name?: string,       // Optional custom name for installed completion file
+  targetDir?: string   // Optional custom installation directory (absolute path)
+}
+```
+
+## Parameters
+
+- **`source`**: Path to completion file **relative to the extracted tool archive root**
+  - Example: `'completions/_tool.zsh'` looks for `completions/_tool.zsh` inside the extracted archive
+  - Example: `'shell/completion.zsh'` looks for `shell/completion.zsh` inside the extracted archive
+- **`name`**: Optional custom name for the installed completion file (defaults to source filename)
+- **`targetDir`**: Optional custom installation directory **absolute path** (defaults to shell-specific completion directory)
+
+## Basic Examples
+
+### Single Shell Completion
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'completions/_tool.zsh'
+  }
+});
+```
+
+### Multiple Shell Support
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'completions/_tool.zsh'
+  }
+})
+.bash({
+  completions: {
+    source: 'completions/tool.bash'
+  }
+})
+.powershell({
+  completions: {
+    source: 'completions/tool.ps1'
+  }
+});
+```
+
+### Custom Completion Names
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'autocomplete/complete.zsh',
+    name: '_my-tool'
+  }
+});
+```
+
+### Custom Installation Directory
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'completions/tool.zsh',
+    targetDir: `${ctx.homeDir}/.zsh/completions`
+  }
+});
+```
+
+## Generated Completions
+
+Some tools can generate their own completions. Use shell initialization scripts for this:
+
+```typescript
+import { once } from '@types';
+
+c.zsh({
+  shellInit: [
+    once/* zsh */`
+      # Generate completions once after installation
+      if command -v tool >/dev/null 2>&1; then
+        tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+      fi
+    `
+  ]
+});
+```
+
+## Shell-Specific Integration
+
+### Zsh Completions
+
+Zsh completions are automatically loaded from the generated completions directory. The completion files should follow zsh completion conventions:
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'completions/_tool'
+  }
+});
+```
+
+### Bash Completions
+
+Bash completions are sourced during shell initialization:
+
+```typescript
+c.bash({
+  completions: {
+    source: 'completions/tool.bash'
+  }
+});
+```
+
+### PowerShell Completions
+
+PowerShell completions are loaded during shell initialization:
+
+```typescript
+c.powershell({
+  completions: {
+    source: 'completions/tool.ps1'
+  }
+});
+```
+
+## Path Resolution
+
+- **Source paths** are relative to the extracted tool archive root
+- **Target directories** must be absolute paths using context variables
+- Completion files are automatically copied to the appropriate shell completion directories
+
+## Troubleshooting
+
+### Completions Not Loading
+
+1. **Check file exists**: Verify the completion file exists in the extracted archive
+2. **Check path**: Ensure the source path is correct relative to archive root
+3. **Test manually**: Try loading the completion file directly
+4. **Check shell setup**: Ensure completion loading is configured in your shell
+
+```bash
+# Check if completion file was installed
+ls -la ${ctx.generatedDir}/completions/_tool
+
+# Test zsh completion loading
+autoload -U compinit && compinit
+```
+
+### Generated Completions Not Working
+
+1. **Check tool supports completion generation**: Not all tools provide completion generation
+2. **Verify command syntax**: Test the completion generation command manually
+3. **Check permissions**: Ensure the generated file is readable
+
+```typescript
+c.zsh({
+  shellInit: [
+    once/* zsh */`
+      # Add error checking for completion generation
+      if command -v tool >/dev/null 2>&1; then
+        if tool completion zsh > "${ctx.generatedDir}/completions/_tool" 2>/dev/null; then
+          echo "Generated completions for tool"
+        else
+          echo "Failed to generate completions for tool"
+        fi
+      fi
+    `
+  ]
+});
+```
+
+## Best Practices
+
+1. **Provide completions when available**: Most modern CLI tools include completion files
+2. **Use standard locations**: Let the system handle completion directory selection
+3. **Test across shells**: Ensure completions work in your target shells
+4. **Handle generation gracefully**: Add error checking for generated completions
+5. **Use appropriate naming**: Follow shell-specific naming conventions
+
+## Integration with Shell Configuration
+
+Completions work seamlessly with other shell integration features:
+
+```typescript
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  c.bin('my-tool')
+   .install('github-release', { repo: 'owner/my-tool' })
+   .zsh({
+     completions: {
+       source: 'completions/_my-tool'
+     },
+     aliases: {
+       'mt': 'my-tool'
+     },
+     environment: {
+       'MY_TOOL_CONFIG': `${ctx.homeDir}/.config/my-tool`
+     }
+   })
+   .bash({
+     completions: {
+       source: 'completions/my-tool.bash'
+     },
+     aliases: {
+       'mt': 'my-tool'
+     }
+   });
+};
+```
+
+## Next Steps
+
+- [Shell Integration](./shell-integration.md) - Configure shell environments and aliases
+- [Symbolic Links](./symlinks.md) - Link configuration files
+- [Common Patterns](./common-patterns.md) - See real-world examples
