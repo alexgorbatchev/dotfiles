@@ -47,9 +47,7 @@ describe('PowerShellGenerator', () => {
   });
 
   it('should process completions for PowerShell', () => {
-    const completions = {
-      powershell: { source: 'test-tool.ps1' },
-    };
+    const completions = { source: 'test-tool.ps1' };
 
     const result = generator.processCompletions('test-tool', completions);
 

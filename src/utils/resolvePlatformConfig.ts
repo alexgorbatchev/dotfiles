@@ -1,4 +1,4 @@
-import type { PlatformConfig, PlatformConfigEntry, ShellScript, SystemInfo, ToolConfig } from '@types';
+import type { PlatformConfig, PlatformConfigEntry, SystemInfo, ToolConfig } from '@types';
 import { Architecture, hasArchitecture, hasPlatform, Platform } from '@types';
 
 /**
@@ -94,40 +94,51 @@ function initializeShellConfigs(finalConfig: ToolConfig): void {
   }
 }
 
-function mergeShellScripts(
-  finalConfig: ToolConfig,
+function mergeShellConfig(
+  shellConfigs: NonNullable<ToolConfig['shellConfigs']>,
   shellType: 'zsh' | 'bash' | 'powershell',
-  scripts: ShellScript[]
+  platformShellConfig: NonNullable<ToolConfig['shellConfigs']>[typeof shellType]
 ): void {
-  initializeShellConfigs(finalConfig);
-  // shellConfigs is guaranteed to exist after initializeShellConfigs
-  // biome-ignore lint/style/noNonNullAssertion: shellConfigs is guaranteed to exist after initializeShellConfigs
-  const shellConfigs = finalConfig.shellConfigs!;
+  if (!platformShellConfig) return;
 
   if (!shellConfigs[shellType]) {
-    shellConfigs[shellType] = { scripts: undefined };
+    shellConfigs[shellType] = {};
   }
 
-  const shellConfig = shellConfigs[shellType];
-  if (shellConfig) {
-    shellConfig.scripts = [...(shellConfig.scripts || []), ...scripts];
+  // biome-ignore lint/style/noNonNullAssertion: shellConfigs[shellType] is guaranteed to exist after the check above
+  const targetShellConfig = shellConfigs[shellType]!;
+
+  if (platformShellConfig.scripts) {
+    targetShellConfig.scripts = [...(targetShellConfig.scripts || []), ...platformShellConfig.scripts];
+  }
+
+  if (platformShellConfig.completions) {
+    targetShellConfig.completions = platformShellConfig.completions;
+  }
+
+  if (platformShellConfig.aliases) {
+    targetShellConfig.aliases = { ...(targetShellConfig.aliases || {}), ...platformShellConfig.aliases };
+  }
+
+  if (platformShellConfig.environment) {
+    targetShellConfig.environment = {
+      ...(targetShellConfig.environment || {}),
+      ...platformShellConfig.environment,
+    };
   }
 }
 
 function mergeShellConfigs(finalConfig: ToolConfig, platformShellConfigs: ToolConfig['shellConfigs']): void {
   if (!platformShellConfigs) return;
 
-  if (platformShellConfigs.zsh?.scripts) {
-    mergeShellScripts(finalConfig, 'zsh', platformShellConfigs.zsh.scripts);
-  }
+  initializeShellConfigs(finalConfig);
+  // shellConfigs is guaranteed to exist after initializeShellConfigs
+  // biome-ignore lint/style/noNonNullAssertion: shellConfigs is guaranteed to exist after initializeShellConfigs
+  const shellConfigs = finalConfig.shellConfigs!;
 
-  if (platformShellConfigs.bash?.scripts) {
-    mergeShellScripts(finalConfig, 'bash', platformShellConfigs.bash.scripts);
-  }
-
-  if (platformShellConfigs.powershell?.scripts) {
-    mergeShellScripts(finalConfig, 'powershell', platformShellConfigs.powershell.scripts);
-  }
+  mergeShellConfig(shellConfigs, 'zsh', platformShellConfigs.zsh);
+  mergeShellConfig(shellConfigs, 'bash', platformShellConfigs.bash);
+  mergeShellConfig(shellConfigs, 'powershell', platformShellConfigs.powershell);
 }
 
 function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: PlatformConfig): void {
@@ -142,9 +153,6 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
   }
   if (platformConfig.installParams !== undefined) {
     finalConfig.installParams = platformConfig.installParams;
-  }
-  if (platformConfig.completions !== undefined) {
-    finalConfig.completions = platformConfig.completions;
   }
   if (platformConfig.updateCheck !== undefined) {
     finalConfig.updateCheck = platformConfig.updateCheck;

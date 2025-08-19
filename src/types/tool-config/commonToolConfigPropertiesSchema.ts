@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { binaryConfigSchema } from './binaryConfigSchema';
-import { completionConfigSchema } from './completionConfigSchema';
 import { shellConfigsSchema } from './shellConfigsSchema';
 import { symlinkConfigSchema } from './symlinkConfigSchema';
 import { toolConfigUpdateCheckSchema } from './toolConfigUpdateCheckSchema';
@@ -28,8 +27,6 @@ export const commonToolConfigPropertiesSchema = z
      * Analogous to `ln -s source target`.
      */
     symlinks: z.array(symlinkConfigSchema).optional(),
-    /** Shell completion configurations, defined by `c.completions()`. */
-    completions: completionConfigSchema.optional(),
     /**
      * Configuration for automatic update checking for this tool.
      */

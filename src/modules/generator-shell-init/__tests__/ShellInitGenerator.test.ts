@@ -227,8 +227,10 @@ describe('ShellInitGenerator', () => {
         name: 'toolA',
         binaries: ['ta'],
         version: '1.0',
-        completions: {
-          zsh: { source: 'completion/toolA.zsh', name: '_toolA_custom' },
+        shellConfigs: {
+          zsh: {
+            completions: { source: 'completion/toolA.zsh', name: '_toolA_custom' },
+          },
         },
         installationMethod: 'none',
         installParams: undefined,
@@ -237,8 +239,10 @@ describe('ShellInitGenerator', () => {
         name: 'toolB',
         binaries: ['tb'],
         version: '1.0',
-        completions: {
-          zsh: { source: 'completions/_toolB' }, // Default name _toolB
+        shellConfigs: {
+          zsh: {
+            completions: { source: 'completions/_toolB' }, // Default name _toolB
+          },
         },
         installationMethod: 'none',
         installParams: undefined,
@@ -262,9 +266,9 @@ describe('ShellInitGenerator', () => {
         shellConfigs: {
           zsh: {
             scripts: [always`typeset -U fpath`, always`fpath=("/my/custom/fpath" $fpath)`],
+            completions: { source: '_toolA' },
           },
         },
-        completions: { zsh: { source: '_toolA' } },
         installationMethod: 'none',
         installParams: undefined,
       },
@@ -290,9 +294,9 @@ describe('ShellInitGenerator', () => {
         shellConfigs: {
           zsh: {
             scripts: [always`export ALPHA_MODE=on`, always`export PATH="/opt/alpha/bin:$PATH"`],
+            completions: { source: '_alpha' },
           },
         },
-        completions: { zsh: { source: '_alpha' } },
         installationMethod: 'none',
         installParams: undefined,
       },
@@ -312,12 +316,10 @@ describe('ShellInitGenerator', () => {
         name: 'gamma',
         binaries: ['g'],
         version: '0.5',
-        completions: {
-          zsh: { source: 'gamma_completion.sh', targetDir: '/usr/local/share/zsh/site-functions' },
-        },
         shellConfigs: {
           zsh: {
             scripts: [always`export GAMMA_LEVEL=5`],
+            completions: { source: 'gamma_completion.sh', targetDir: '/usr/local/share/zsh/site-functions' },
           },
         },
         installationMethod: 'none',
@@ -358,9 +360,9 @@ describe('ShellInitGenerator', () => {
               always`export PATH="/opt/mytool/bin:$PATH"`,
               always`alias mt="myTool --doit"`,
             ],
+            completions: { source: '_myTool' },
           },
         },
-        completions: { zsh: { source: '_myTool' } },
         installationMethod: 'none',
         installParams: undefined,
       },

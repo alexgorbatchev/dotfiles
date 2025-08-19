@@ -111,11 +111,6 @@ export class ShellInitGenerator implements IShellInitGenerator {
       const resolvedConfig = options?.systemInfo ? resolvePlatformConfig(config, options.systemInfo) : config;
       const shellContent = generator.extractShellContent(toolName, resolvedConfig);
 
-      if (resolvedConfig.completions) {
-        const completionSetup = generator.processCompletions(toolName, resolvedConfig.completions);
-        shellContent.completionSetup.push(...completionSetup);
-      }
-
       if (this.hasContent(shellContent)) {
         toolContents.set(toolName, shellContent);
       }

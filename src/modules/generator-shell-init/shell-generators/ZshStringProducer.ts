@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
-import type { CompletionConfig, ShellScript, ToolConfig } from '@types';
+import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@types';
 import { generateCompletionSetup } from '../shellTemplates';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
@@ -19,17 +19,13 @@ export class ZshStringProducer implements IShellStringProducer {
     return toolConfig.shellConfigs?.zsh?.scripts || [];
   }
 
-  processCompletions(_toolName: string, completions: CompletionConfig): string[] {
+  processCompletions(_toolName: string, completions: ShellCompletionConfig): string[] {
     const completionSetup: string[] = [];
+    const completionDir = completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'zsh');
 
-    if (completions.zsh) {
-      const shellConfig = completions.zsh;
-      const completionDir = shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'zsh');
-
-      // Add completion directory to fpath
-      const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
-      completionSetup.push(fpathAdd);
-    }
+    // Add completion directory to fpath
+    const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
+    completionSetup.push(fpathAdd);
 
     return completionSetup;
   }

@@ -1,4 +1,4 @@
-import type { CompletionConfig, ShellScript, ShellType, ToolConfig } from '@types';
+import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@types';
 
 /**
  * Represents shell-specific initialization content for a single tool.
@@ -63,10 +63,10 @@ export interface IShellGenerator {
   /**
    * Processes completion configuration for this shell.
    * @param toolName - Name of the tool
-   * @param completions - Completion configuration
+   * @param completions - Shell-specific completion configuration
    * @returns Completion setup commands for this shell
    */
-  processCompletions(toolName: string, completions: CompletionConfig): string[];
+  processCompletions(toolName: string, completions: ShellCompletionConfig): string[];
 
   /**
    * Generates the complete shell initialization file content.

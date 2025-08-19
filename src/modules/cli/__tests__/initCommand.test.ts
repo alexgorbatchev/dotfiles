@@ -123,7 +123,7 @@ describe('initCommand', () => {
     expect(fzfToolConfig).toContain(".version('latest')");
     expect(fzfToolConfig).toContain(".install('github-release'");
     expect(fzfToolConfig).toContain("repo: 'junegunn/fzf'");
-    expect(fzfToolConfig).toContain('.completions({');
+    expect(fzfToolConfig).toContain('completions: { source:');
     expect(fzfToolConfig).toContain('.zsh({');
   });
 

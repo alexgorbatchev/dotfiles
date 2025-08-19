@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
-import type { CompletionConfig, ShellScript, ShellType, ToolConfig } from '@types';
+import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@types';
 import { getScriptContent, isAlwaysScript, isOnceScript } from '@types';
 import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
@@ -28,7 +28,7 @@ export interface IShellStringProducer {
   /**
    * Processes completions configuration into shell-specific setup strings.
    */
-  processCompletions(toolName: string, completions: CompletionConfig): string[];
+  processCompletions(toolName: string, completions: ShellCompletionConfig): string[];
 
   /**
    * Processes environment variables into shell-specific export statements.
@@ -62,7 +62,9 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     this.stringProducer = stringProducer;
   }
 
-  extractShellContent(_toolName: string, toolConfig: ToolConfig): ShellInitContent {
+  protected abstract getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined;
+
+  extractShellContent(toolName: string, toolConfig: ToolConfig): ShellInitContent {
     const content: ShellInitContent = {
       configFilePath: toolConfig.configFilePath,
       toolInit: [],
@@ -91,10 +93,17 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const aliases = this.stringProducer.processAliases(toolConfig);
     content.toolInit.push(...aliases);
 
+    // Process shell-specific completions
+    const shellConfig = this.getShellConfig(toolConfig);
+    if (shellConfig?.completions) {
+      const completionSetup = this.stringProducer.processCompletions(toolName, shellConfig.completions);
+      content.completionSetup.push(...completionSetup);
+    }
+
     return content;
   }
 
-  processCompletions(toolName: string, completions: CompletionConfig): string[] {
+  processCompletions(toolName: string, completions: ShellCompletionConfig): string[] {
     return this.stringProducer.processCompletions(toolName, completions);
   }
 

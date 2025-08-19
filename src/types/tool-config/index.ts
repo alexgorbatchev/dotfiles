@@ -6,7 +6,6 @@ export * from './brewToolConfigSchema';
 export * from './cargoInstallParamsSchema';
 export * from './cargoToolConfigSchema';
 export * from './commonToolConfigPropertiesSchema';
-export * from './completionConfigSchema';
 export * from './curlScriptInstallParamsSchema';
 export * from './curlScriptToolConfigSchema';
 export * from './curlTarInstallParamsSchema';

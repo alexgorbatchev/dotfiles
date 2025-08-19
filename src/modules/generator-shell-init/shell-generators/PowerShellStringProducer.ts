@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
-import type { CompletionConfig, ShellScript, ToolConfig } from '@types';
+import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@types';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
 /**
@@ -18,17 +18,13 @@ export class PowerShellStringProducer implements IShellStringProducer {
     return toolConfig.shellConfigs?.powershell?.scripts || [];
   }
 
-  processCompletions(toolName: string, completions: CompletionConfig): string[] {
+  processCompletions(toolName: string, completions: ShellCompletionConfig): string[] {
     const completionSetup: string[] = [];
+    const completionDir = completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'powershell');
+    const completionFile = path.join(completionDir, completions.name ?? `${toolName}.ps1`);
 
-    if (completions.powershell) {
-      const shellConfig = completions.powershell;
-      const completionDir = shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'powershell');
-      const completionFile = path.join(completionDir, shellConfig.name ?? `${toolName}.ps1`);
-
-      // Source the completion file if it exists
-      completionSetup.push(`if (Test-Path "${completionFile}") { . "${completionFile}" }`);
-    }
+    // Source the completion file if it exists
+    completionSetup.push(`if (Test-Path "${completionFile}") { . "${completionFile}" }`);
 
     return completionSetup;
   }

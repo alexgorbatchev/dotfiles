@@ -6,7 +6,6 @@ import type {
   BrewToolConfig,
   CargoInstallParams,
   CargoToolConfig,
-  CompletionConfig,
   CurlScriptInstallParams,
   CurlScriptToolConfig,
   CurlTarInstallParams,
@@ -17,6 +16,7 @@ import type {
   ManualToolConfig,
   Platform,
   PlatformConfigEntry,
+  ShellCompletionConfig,
   ShellConfig,
   ShellConfigs,
   ShellScript,
@@ -34,6 +34,7 @@ interface ShellStorage {
   scripts: ShellScript[];
   aliases: Record<string, string>;
   environment: Record<string, string>;
+  completions?: ShellCompletionConfig;
 }
 
 /**
@@ -66,7 +67,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   };
 
   public symlinkPairs: { source: string; target: string }[] = [];
-  public completionSettings?: CompletionConfig;
   private updateCheckConfig?: ToolConfigUpdateCheck;
   private platformConfigEntries: PlatformConfigEntry[] = [];
 
@@ -142,10 +142,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       };
     }
     if (config.completions) {
-      this.completionSettings = {
-        ...this.completionSettings,
-        zsh: config.completions,
-      };
+      this.internalShellConfigs.zsh.completions = config.completions;
     }
     return this;
   }
@@ -167,10 +164,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       };
     }
     if (config.completions) {
-      this.completionSettings = {
-        ...this.completionSettings,
-        bash: config.completions,
-      };
+      this.internalShellConfigs.bash.completions = config.completions;
     }
     return this;
   }
@@ -192,10 +186,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       };
     }
     if (config.completions) {
-      this.completionSettings = {
-        ...this.completionSettings,
-        powershell: config.completions,
-      };
+      this.internalShellConfigs.powershell.completions = config.completions;
     }
     return this;
   }
@@ -210,12 +201,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       const hasScripts = config.scripts.length > 0;
       const hasAliases = Object.keys(config.aliases).length > 0;
       const hasEnvironment = Object.keys(config.environment).length > 0;
+      const hasCompletions = config.completions !== undefined;
 
-      if (hasScripts || hasAliases || hasEnvironment) {
+      if (hasScripts || hasAliases || hasEnvironment || hasCompletions) {
         result[shellType] = {
           ...(hasScripts && { scripts: config.scripts }),
           ...(hasAliases && { aliases: config.aliases }),
           ...(hasEnvironment && { environment: config.environment }),
+          ...(hasCompletions && { completions: config.completions }),
         };
         hasAnyConfig = true;
       }
@@ -266,11 +259,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
-  completions(config: CompletionConfig): this {
-    this.completionSettings = config;
-    return this;
-  }
-
   // Method to set updateCheck configuration
   updateCheck(config: ToolConfig['updateCheck']): this {
     this.updateCheckConfig = config;
@@ -296,7 +284,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       version: this.versionNum,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
-      completions: this.completionSettings,
       updateCheck: this.updateCheckConfig,
       platformConfigs: this.isPlatformScope
         ? undefined
@@ -317,7 +304,6 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       version: this.versionNum !== 'latest' ? this.versionNum : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
-      completions: this.completionSettings,
       updateCheck: this.updateCheckConfig,
     };
 

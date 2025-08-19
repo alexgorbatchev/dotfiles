@@ -315,9 +315,11 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
               platforms: Platform.MacOS,
               config: {
                 binaries: ['completion-tool'],
-                completions: {
+                shellConfigs: {
                   zsh: {
-                    source: 'completions/_completion-tool',
+                    completions: {
+                      source: 'completions/_completion-tool',
+                    },
                   },
                 },
               },

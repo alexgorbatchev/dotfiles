@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
-import type { CompletionConfig, ShellScript, ToolConfig } from '@types';
+import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@types';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
 /**
@@ -18,17 +18,13 @@ export class BashStringProducer implements IShellStringProducer {
     return toolConfig.shellConfigs?.bash?.scripts || [];
   }
 
-  processCompletions(toolName: string, completions: CompletionConfig): string[] {
+  processCompletions(toolName: string, completions: ShellCompletionConfig): string[] {
     const completionSetup: string[] = [];
+    const completionDir = completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'bash');
+    const completionFile = path.join(completionDir, completions.name ?? `${toolName}.bash`);
 
-    if (completions.bash) {
-      const shellConfig = completions.bash;
-      const completionDir = shellConfig.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'bash');
-      const completionFile = path.join(completionDir, shellConfig.name ?? `${toolName}.bash`);
-
-      // Source the completion file
-      completionSetup.push(`[[ -f "${completionFile}" ]] && source "${completionFile}"`);
-    }
+    // Source the completion file
+    completionSetup.push(`[[ -f "${completionFile}" ]] && source "${completionFile}"`);
 
     return completionSetup;
   }

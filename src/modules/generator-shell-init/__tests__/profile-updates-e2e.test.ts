@@ -86,17 +86,15 @@ describe('Profile Updates E2E Tests', () => {
                 always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
                 always`export PATH="$HOME/.fzf/bin:$PATH"`,
               ],
+              completions: { source: 'completion.zsh', name: '_fzf' },
             },
             bash: {
               scripts: [
                 always`export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"`,
                 always`export PATH="$HOME/.fzf/bin:$PATH"`,
               ],
+              completions: { source: 'completion.bash', name: 'fzf' },
             },
-          },
-          completions: {
-            zsh: { source: 'completion.zsh', name: '_fzf' },
-            bash: { source: 'completion.bash', name: 'fzf' },
           },
           installationMethod: 'github-release',
           installParams: {
@@ -433,12 +431,14 @@ describe('Profile Updates E2E Tests', () => {
           binaries: ['bat'],
           version: '0.24.0',
           shellConfigs: {
-            zsh: { scripts: [always`export BAT_THEME="ansi"`, always`alias cat="bat"`] },
-            bash: { scripts: [always`export BAT_THEME="ansi"`, always`alias cat="bat"`] },
-          },
-          completions: {
-            zsh: { source: 'bat.zsh', name: '_bat' },
-            bash: { source: 'bat.bash', name: 'bat' },
+            zsh: {
+              scripts: [always`export BAT_THEME="ansi"`, always`alias cat="bat"`],
+              completions: { source: 'bat.zsh', name: '_bat' },
+            },
+            bash: {
+              scripts: [always`export BAT_THEME="ansi"`, always`alias cat="bat"`],
+              completions: { source: 'bat.bash', name: 'bat' },
+            },
           },
           installationMethod: 'github-release',
           installParams: {

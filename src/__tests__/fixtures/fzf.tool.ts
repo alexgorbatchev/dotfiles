@@ -7,10 +7,8 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('github-release', {
       repo: 'junegunn/fzf',
     })
-    .completions({
-      zsh: { source: 'shell/completion.zsh' },
-    })
     .zsh({
+      completions: { source: 'shell/completion.zsh' },
       shellInit: [
         always`
           # Unset and set FZF environment variables as per user's 02-configs/fzf/init.zsh

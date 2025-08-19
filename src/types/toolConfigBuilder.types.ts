@@ -4,7 +4,6 @@ import type { ShellScript } from './shellScript.types';
 import type {
   BrewInstallParams,
   CargoInstallParams,
-  CompletionConfig,
   CurlScriptInstallParams,
   CurlTarInstallParams,
   GithubReleaseInstallParams,
@@ -125,13 +124,6 @@ export interface PlatformConfigBuilder {
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   symlink(source: string, target: string): this;
-
-  /**
-   * Configures shell command-line completions for this specific platform configuration.
-   * @param config - A `CompletionConfig` object.
-   * @returns The `PlatformConfigBuilder` instance for chaining.
-   */
-  completions(config: CompletionConfig): this;
 }
 
 /**
@@ -386,21 +378,6 @@ export interface ToolConfigBuilder {
    */
   platform(platforms: Platform, configure: (builder: PlatformConfigBuilder) => void): this;
   platform(platforms: Platform, architectures: Architecture, configure: (builder: PlatformConfigBuilder) => void): this;
-
-  /**
-   * Configures shell command-line completions for the tool.
-   * This involves specifying where the completion scripts are located within the tool's downloaded/extracted files
-   * for different shells like Zsh, Bash, or Fish.
-   * @param config - A {@link CompletionConfig} object that maps shell types to their specific
-   *                 {@link ShellCompletionConfig} (source path, name, target directory).
-   * @returns The `ToolConfigBuilder` instance for chaining.
-   * @example
-   * c.completions({
-   *   zsh: { source: 'completions/_mytool.zsh' },
-   *   bash: { source: 'completions/mytool.bash' }
-   * })
-   */
-  completions(config: CompletionConfig): this;
 }
 
 /**

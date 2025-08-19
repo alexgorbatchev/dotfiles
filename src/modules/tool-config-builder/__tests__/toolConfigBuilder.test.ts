@@ -21,7 +21,6 @@ describe('ToolConfigBuilder', () => {
     expect(builder.symlinkPairs).toEqual([]);
     expect(builder.currentInstallationMethod).toBeUndefined();
     expect(builder.currentInstallParams).toBeUndefined();
-    expect(builder.completionSettings).toBeUndefined();
   });
 
   test('bin method sets binaries correctly', () => {
@@ -115,28 +114,22 @@ describe('ToolConfigBuilder', () => {
     ]);
   });
 
-  test('completions method sets completion configuration correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
-    const completionConfig = { zsh: { source: 'completion.zsh' } };
-    builder.completions(completionConfig);
-    expect(builder.completionSettings).toEqual(completionConfig);
-  });
-
   test('build method returns correct ToolConfig object for github-release', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     const mockHook: AsyncInstallHook = async () => {};
     const hooks = { afterInstall: mockHook };
-    const completionConfig = { bash: { source: 'completion.bash' } };
 
     builder
       .bin('tool-bin')
       .version('1.0.0')
       .install('github-release', installParams)
       .hooks(hooks)
-      .zsh({ shellInit: [always`alias tt="test-tool"`] })
-      .symlink('config.yml', '~/.config/tool/config.yml')
-      .completions(completionConfig);
+      .zsh({
+        shellInit: [always`alias tt="test-tool"`],
+        completions: { source: 'completion.bash' },
+      })
+      .symlink('config.yml', '~/.config/tool/config.yml');
 
     const config = builder.build();
 
@@ -148,8 +141,8 @@ describe('ToolConfigBuilder', () => {
       expect(config.installParams).toEqual({ ...installParams, hooks });
     }
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
+    expect(config.shellConfigs?.zsh?.completions).toEqual({ source: 'completion.bash' });
     expect(config.symlinks).toEqual([{ source: 'config.yml', target: '~/.config/tool/config.yml' }]);
-    expect(config.completions).toEqual(completionConfig);
   });
 
   test('build method returns NoInstallToolConfig if binaries are specified but no installation method', () => {
@@ -163,7 +156,6 @@ describe('ToolConfigBuilder', () => {
     // Ensure other optional fields are undefined if not set
     expect(config.shellConfigs).toBeUndefined();
     expect(config.symlinks).toBeUndefined();
-    expect(config.completions).toBeUndefined();
     expect(config.updateCheck).toBeUndefined();
   });
 

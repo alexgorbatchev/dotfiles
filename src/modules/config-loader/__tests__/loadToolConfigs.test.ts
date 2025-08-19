@@ -245,10 +245,8 @@ describe('ToolConfigContext', () => {
         c.bin('fzf-like')
           .version('latest')
           .install('github-release', { repo: 'owner/fzf-like' })
-          .completions({
-            zsh: { source: 'shell/completion.zsh' },
-          })
           .zsh({
+            completions: { source: 'shell/completion.zsh' },
             shellInit: [
               always /* zsh */`
            export FZF_LIKE_DEFAULT_OPTS="--color=fg+:cyan"
@@ -267,7 +265,7 @@ describe('ToolConfigContext', () => {
       const toolConfig = builder.build();
 
       expect(toolConfig.installationMethod).toBe('github-release');
-      expect(toolConfig.completions).toBeDefined();
+      expect(toolConfig.shellConfigs?.zsh?.completions).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
         path.join(mockYamlConfig.paths.binariesDir, 'fzf-like')

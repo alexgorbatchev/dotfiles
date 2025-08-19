@@ -47,9 +47,7 @@ describe('BashGenerator', () => {
   });
 
   it('should process completions for bash', () => {
-    const completions = {
-      bash: { source: 'test-tool.bash' },
-    };
+    const completions = { source: 'test-tool.bash' };
 
     const result = generator.processCompletions('test-tool', completions);
 

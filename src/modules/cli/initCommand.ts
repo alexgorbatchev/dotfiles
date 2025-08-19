@@ -108,10 +108,8 @@ export function registerInitCommand(
               .install('github-release', {
                 repo: 'junegunn/fzf',
               })
-              .completions({
-                zsh: { source: 'shell/completion.zsh' },
-              })
               .zsh({
+                completions: { source: 'shell/completion.zsh' },
                 environment: {
                   'FZF_DEFAULT_OPTS': '--color=fg+:cyan,bg+:black,hl+:yellow,pointer:blue'
                 },

@@ -1,5 +1,5 @@
 import type { YamlConfig } from '@modules/config';
-import type { ShellType } from '@types';
+import type { ShellCompletionConfig, ShellType, ToolConfig } from '@types';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { PowerShellStringProducer } from './PowerShellStringProducer';
 
@@ -14,5 +14,9 @@ export class PowerShellGenerator extends BaseShellGenerator {
 
   constructor(appConfig: YamlConfig) {
     super(appConfig, new PowerShellStringProducer(appConfig));
+  }
+
+  protected getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined {
+    return toolConfig.shellConfigs?.powershell;
   }
 }

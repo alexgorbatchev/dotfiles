@@ -46,9 +46,7 @@ describe('ZshGenerator', () => {
   });
 
   it('should process completions for zsh', () => {
-    const completions = {
-      zsh: { source: '_test-tool' },
-    };
+    const completions = { source: '_test-tool' };
 
     const result = generator.processCompletions('test-tool', completions);
 
