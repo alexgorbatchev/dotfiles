@@ -21,11 +21,14 @@ export class ZshStringProducer implements IShellStringProducer {
 
   processCompletions(_toolName: string, completions: ShellCompletionConfig): string[] {
     const completionSetup: string[] = [];
-    const completionDir = completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'zsh');
 
-    // Add completion directory to fpath
-    const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
-    completionSetup.push(fpathAdd);
+    if (completions.cmd || completions.source) {
+      const defaultSubdir = completions.cmd ? 'completions' : '';
+      const completionDir =
+        completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'zsh', defaultSubdir);
+      const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
+      completionSetup.push(fpathAdd);
+    }
 
     return completionSetup;
   }

@@ -20,11 +20,14 @@ export class BashStringProducer implements IShellStringProducer {
 
   processCompletions(toolName: string, completions: ShellCompletionConfig): string[] {
     const completionSetup: string[] = [];
-    const completionDir = completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'bash');
-    const completionFile = path.join(completionDir, completions.name ?? `${toolName}.bash`);
 
-    // Source the completion file
-    completionSetup.push(`[[ -f "${completionFile}" ]] && source "${completionFile}"`);
+    if (completions.cmd || completions.source) {
+      const defaultSubdir = completions.cmd ? 'completions' : '';
+      const completionDir =
+        completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'bash', defaultSubdir);
+      const completionFile = path.join(completionDir, completions.name ?? `${toolName}.bash`);
+      completionSetup.push(`[[ -f "${completionFile}" ]] && source "${completionFile}"`);
+    }
 
     return completionSetup;
   }

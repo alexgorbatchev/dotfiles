@@ -20,11 +20,14 @@ export class PowerShellStringProducer implements IShellStringProducer {
 
   processCompletions(toolName: string, completions: ShellCompletionConfig): string[] {
     const completionSetup: string[] = [];
-    const completionDir = completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'powershell');
-    const completionFile = path.join(completionDir, completions.name ?? `${toolName}.ps1`);
 
-    // Source the completion file if it exists
-    completionSetup.push(`if (Test-Path "${completionFile}") { . "${completionFile}" }`);
+    if (completions.cmd || completions.source) {
+      const defaultSubdir = completions.cmd ? 'completions' : '';
+      const completionDir =
+        completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'powershell', defaultSubdir);
+      const completionFile = path.join(completionDir, completions.name ?? `${toolName}.ps1`);
+      completionSetup.push(`if (Test-Path "${completionFile}") { . "${completionFile}" }`);
+    }
 
     return completionSetup;
   }

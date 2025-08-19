@@ -30,23 +30,76 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 
 ```typescript
 {
-  source: string,      // Path to completion file relative to extracted archive
+  source?: string,     // Path to completion file relative to extracted archive
+  cmd?: string,        // Command to execute to generate completion content
   name?: string,       // Optional custom name for installed completion file
   targetDir?: string   // Optional custom installation directory (absolute path)
 }
 ```
+
+**Note**: Either `source` OR `cmd` must be provided, but not both.
 
 ## Parameters
 
 - **`source`**: Path to completion file **relative to the extracted tool archive root**
   - Example: `'completions/_tool.zsh'` looks for `completions/_tool.zsh` inside the extracted archive
   - Example: `'shell/completion.zsh'` looks for `shell/completion.zsh` inside the extracted archive
-- **`name`**: Optional custom name for the installed completion file (defaults to source filename)
+- **`cmd`**: Command to execute to generate completion content dynamically
+  - Example: `'my-tool completion zsh'` executes the tool's completion command
+  - Example: `'kubectl completion bash'` generates Kubernetes completions
+  - The command is executed in the tool's installation directory
+- **`name`**: Optional custom name for the installed completion file (defaults to shell-specific naming)
 - **`targetDir`**: Optional custom installation directory **absolute path** (defaults to shell-specific completion directory)
+
+## Completion Methods
+
+### Static Completions (source)
+
+Use `source` when completion files are included in the tool's archive:
+
+```typescript
+c.zsh({
+  completions: {
+    source: 'completions/_tool.zsh'
+  }
+});
+```
+
+### Dynamic Completions (cmd)
+
+Use `cmd` when the tool can generate completions dynamically:
+
+```typescript
+c.zsh({
+  completions: {
+    cmd: 'my-tool completion zsh'
+  }
+});
+```
 
 ## Basic Examples
 
-### Single Shell Completion
+### Command-Generated Completions
+
+```typescript
+c.zsh({
+  completions: {
+    cmd: 'kubectl completion zsh'
+  }
+})
+.bash({
+  completions: {
+    cmd: 'kubectl completion bash'
+  }
+})
+.powershell({
+  completions: {
+    cmd: 'kubectl completion powershell'
+  }
+});
+```
+
+### Static File Completions
 
 ```typescript
 c.zsh({

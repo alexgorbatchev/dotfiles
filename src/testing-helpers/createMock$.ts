@@ -7,8 +7,14 @@ import type { $ } from 'zx';
  * @returns A mock shell instance compatible with typeof $
  */
 export function createMock$(): typeof $ {
+  const mockResult = { stdout: '', stderr: '', exitCode: 0 };
+
   const mockShell = ((_command: TemplateStringsArray, ..._args: unknown[]) => {
-    return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+    const result = Promise.resolve(mockResult);
+    // Add nothrow method to the promise
+    // biome-ignore lint/suspicious/noExplicitAny: Mock needs to add nothrow method to promise
+    (result as any).nothrow = () => Promise.resolve(mockResult);
+    return result;
   }) as unknown;
 
   // Add required Shell properties to make it compatible with typeof $
