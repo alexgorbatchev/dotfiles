@@ -2,6 +2,7 @@ import { mock } from 'bun:test';
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader';
+
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/github-client';
@@ -17,6 +18,7 @@ import {
 import type {
   BaseInstallContext,
   BrewToolConfig,
+  CargoToolConfig,
   CurlScriptToolConfig,
   ExtractResult,
   GitHubRelease,
@@ -31,10 +33,18 @@ import { Installer } from '../Installer';
 export const MOCK_TOOL_NAME = 'test-tool';
 export const MOCK_TOOL_REPO = 'owner/repo';
 
+export function createMockCargoClient() {
+  return {
+    getCrateMetadata: mock(),
+    getCargoTomlPackage: mock(),
+    getLatestVersion: mock(),
+  };
+}
+
 export function createMockToolInstallationRegistry() {
   return {
     recordToolInstallation: mock(async () => {}),
-    getToolInstallation: mock(async () => null),
+    getToolInstallation: mock(),
     getAllToolInstallations: mock(async () => []),
     updateToolInstallation: mock(async () => {}),
     removeToolInstallation: mock(async () => {}),
@@ -109,8 +119,10 @@ export interface InstallerTestSetup {
   fs: IFileSystem;
   mockDownloader: IDownloader;
   mockGitHubApiClient: IGitHubApiClient;
+  mockCargoClient: ReturnType<typeof createMockCargoClient>;
   mockArchiveExtractor: IArchiveExtractor;
   mockAppConfig: YamlConfig;
+  mockToolInstallationRegistry: ReturnType<typeof createMockToolInstallationRegistry>;
   installer: Installer;
   fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
   testDirs: TestDirectories;
@@ -125,6 +137,7 @@ export interface InstallerTestSetup {
     extract: ReturnType<typeof mock>;
     archiveExtractor: IArchiveExtractor;
     hookExecutor: HookExecutor;
+    cargoClient: ReturnType<typeof createMockCargoClient>;
   };
 }
 
@@ -163,6 +176,9 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     getReleaseByConstraint: mock(() => Promise.resolve(MOCK_GITHUB_RELEASE)),
     getRateLimit: mock(() => Promise.resolve({ limit: 5000, remaining: 4999, reset: 0, used: 1, resource: 'core' })),
   };
+
+  // Setup mock CargoClient
+  const mockCargoClient = createMockCargoClient();
 
   // Setup mock ArchiveExtractor
   const mockExtract = mock(async (_archivePath: string, options?: { targetDir?: string }): Promise<ExtractResult> => {
@@ -225,6 +241,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     fs,
     mockDownloader,
     mockGitHubApiClient,
+    mockCargoClient,
     mockArchiveExtractor,
     mockAppConfig,
     mockToolInstallationRegistry,
@@ -236,8 +253,10 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     fs,
     mockDownloader,
     mockGitHubApiClient,
+    mockCargoClient,
     mockArchiveExtractor,
     mockAppConfig,
+    mockToolInstallationRegistry,
     installer,
     fileSystemMocks: spies,
     testDirs,
@@ -250,6 +269,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
       extract: mockExtract,
       archiveExtractor: mockArchiveExtractor,
       hookExecutor: mockHookExecutor,
+      cargoClient: mockCargoClient,
     },
   };
 }
@@ -322,6 +342,27 @@ export function createManualToolConfig(overrides: Partial<ManualToolConfig> = {}
     installationMethod: 'manual',
     installParams: {
       binaryPath: `/usr/local/bin/${MOCK_TOOL_NAME}`,
+    },
+    ...overrides,
+  };
+
+  return baseConfig;
+}
+
+/**
+ * Creates a cargo tool config for testing
+ */
+export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}): CargoToolConfig {
+  const baseConfig: CargoToolConfig = {
+    name: MOCK_TOOL_NAME,
+    binaries: [MOCK_TOOL_NAME],
+    version: MOCK_TOOL_VERSION,
+    installationMethod: 'cargo',
+    installParams: {
+      crateName: MOCK_TOOL_NAME,
+      binarySource: 'cargo-quickinstall',
+      versionSource: 'cargo-toml',
+      githubRepo: 'mock/repo',
     },
     ...overrides,
   };

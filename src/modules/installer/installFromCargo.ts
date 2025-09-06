@@ -1,30 +1,15 @@
 import path from 'node:path';
+import type { ICargoClient } from '@modules/cargo-client/ICargoClient';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@types';
-import { parse } from 'smol-toml';
-import { z } from 'zod';
+
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from './utils';
-
-/**
- * Cargo crate metadata from crates.io API
- */
-interface CrateMetadata {
-  crate: {
-    name: string;
-    newest_version: string;
-    repository?: string;
-  };
-  versions: Array<{
-    num: string;
-    bin_names?: string[];
-  }>;
-}
 
 /**
  * Install a tool using Cargo pre-compiled binaries
@@ -36,6 +21,7 @@ export async function installFromCargo(
   options: InstallOptions | undefined,
   fileSystem: IFileSystem,
   downloader: IDownloader,
+  cargoClient: ICargoClient,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
@@ -57,7 +43,7 @@ export async function installFromCargo(
     const toolFs = createToolFileSystem(fileSystem, toolName);
 
     // 1. Determine version
-    const version = await determineVersion(crateName, params, logger);
+    const version = await determineVersion(crateName, params, cargoClient, logger);
     logger.debug(logs.installer.debug.foundCrateVersion(), crateName, version);
 
     // 2. Determine download URL based on binary source
@@ -203,14 +189,37 @@ async function executeAfterInstallHook(
 /**
  * Determine the version to install
  */
-async function determineVersion(crateName: string, params: CargoInstallParams, logger: TsLogger): Promise<string> {
+async function determineVersion(
+  crateName: string,
+  params: CargoInstallParams,
+  cargoClient: ICargoClient,
+  logger: TsLogger
+): Promise<string> {
   const versionSource = params.versionSource || 'cargo-toml';
 
   switch (versionSource) {
-    case 'cargo-toml':
-      return getVersionFromCargoToml(crateName, params, logger);
-    case 'crates-io':
-      return getVersionFromCratesIo(crateName, logger);
+    case 'cargo-toml': {
+      const cargoTomlUrl =
+        params.cargoTomlUrl ||
+        `https://raw.githubusercontent.com/${params.githubRepo || `${crateName}-community/${crateName}`}/main/Cargo.toml`;
+
+      logger.debug(logs.installer.debug.parsingCrateMetadata(), cargoTomlUrl);
+
+      const packageInfo = await cargoClient.getCargoTomlPackage(cargoTomlUrl);
+      if (!packageInfo) {
+        throw new Error(`Failed to fetch or parse Cargo.toml from ${cargoTomlUrl}`);
+      }
+      return packageInfo.version;
+    }
+    case 'crates-io': {
+      logger.debug(logs.installer.debug.queryingCratesIo(), crateName);
+
+      const version = await cargoClient.getLatestVersion(crateName);
+      if (!version) {
+        throw new Error(`Failed to get latest version for crate ${crateName} from crates.io`);
+      }
+      return version;
+    }
     case 'github-releases': {
       if (!params.githubRepo) {
         throw new Error('githubRepo is required when using github-releases version source');
@@ -220,80 +229,6 @@ async function determineVersion(crateName: string, params: CargoInstallParams, l
     default:
       throw new Error(`Unknown version source: ${versionSource}`);
   }
-}
-
-/**
- * Zod schema for validating Cargo.toml package section
- */
-const cargoPackageSchema = z
-  .object({
-    package: z
-      .object({
-        name: z.string(),
-        version: z.string(),
-        edition: z.string().optional(),
-        description: z.string().optional(),
-        authors: z.array(z.string()).optional(),
-        license: z.string().optional(),
-        repository: z.string().optional(),
-        homepage: z.string().optional(),
-      })
-      .passthrough(), // Allow additional fields
-  })
-  .passthrough(); // Allow additional top-level sections
-
-/**
- * Get version from Cargo.toml file
- */
-async function getVersionFromCargoToml(
-  crateName: string,
-  params: CargoInstallParams,
-  logger: TsLogger
-): Promise<string> {
-  const cargoTomlUrl =
-    params.cargoTomlUrl ||
-    `https://raw.githubusercontent.com/${params.githubRepo || `${crateName}-community/${crateName}`}/main/Cargo.toml`;
-
-  logger.debug(logs.installer.debug.parsingCrateMetadata(), cargoTomlUrl);
-
-  const response = await fetch(cargoTomlUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Cargo.toml: ${response.statusText}`);
-  }
-
-  const cargoToml = await response.text();
-
-  try {
-    const parsed = parse(cargoToml);
-    const validationResult = cargoPackageSchema.safeParse(parsed);
-
-    if (!validationResult.success) {
-      logger.zodErrors(validationResult.error);
-      throw new Error('Could not parse version from Cargo.toml [package] section');
-    }
-
-    return validationResult.data.package.version;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Could not')) {
-      throw error; // Re-throw our custom errors
-    }
-    throw new Error(`Failed to parse Cargo.toml: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-/**
- * Get version from crates.io API
- */
-async function getVersionFromCratesIo(crateName: string, logger: TsLogger): Promise<string> {
-  logger.debug(logs.installer.debug.queryingCratesIo(), crateName);
-
-  const response = await fetch(`https://crates.io/api/v1/crates/${crateName}`);
-  if (!response.ok) {
-    throw new Error(`Failed to query crates.io: ${response.statusText}`);
-  }
-
-  const data = (await response.json()) as CrateMetadata;
-  return data.crate.newest_version;
 }
 
 /**

@@ -4,6 +4,7 @@ export * from './zodErrorFormatter';
 
 import { architecture } from './templates/architecture';
 import { cache } from './templates/cache';
+import { cargoClient } from './templates/cargo-client';
 import { command } from './templates/command';
 import { config } from './templates/config';
 import { downloader } from './templates/downloader';
@@ -29,6 +30,7 @@ export const logs = {
   service,
   command,
   cache,
+  cargoClient,
   downloader,
   extractor,
   generator,

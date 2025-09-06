@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { ICargoClient } from '@modules/cargo-client/ICargoClient';
 import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
@@ -71,6 +72,7 @@ export class Installer implements IInstaller {
   private readonly fs: IFileSystem;
   private readonly downloader: IDownloader;
   private readonly githubApiClient: IGitHubApiClient;
+  private readonly cargoClient: ICargoClient;
   private readonly archiveExtractor: IArchiveExtractor;
   private readonly appConfig: YamlConfig;
   private readonly hookExecutor: HookExecutor;
@@ -82,6 +84,7 @@ export class Installer implements IInstaller {
     fileSystem: IFileSystem,
     downloader: IDownloader,
     githubApiClient: IGitHubApiClient,
+    cargoClient: ICargoClient,
     archiveExtractor: IArchiveExtractor,
     appConfig: YamlConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
@@ -99,6 +102,7 @@ export class Installer implements IInstaller {
     this.fs = fileSystem;
     this.downloader = downloader;
     this.githubApiClient = githubApiClient;
+    this.cargoClient = cargoClient;
     this.archiveExtractor = archiveExtractor;
     this.appConfig = appConfig;
     this.hookExecutor = new HookExecutor(parentLogger);
@@ -399,6 +403,7 @@ export class Installer implements IInstaller {
       options,
       this.fs,
       this.downloader,
+      this.cargoClient,
       this.archiveExtractor,
       this.hookExecutor,
       this.logger
@@ -476,6 +481,50 @@ export class Installer implements IInstaller {
             return release?.tag_name || null;
           }
           return toolConfig.installParams.version || null;
+
+        case 'cargo':
+          // For cargo installations, we need to use the same version resolution
+          // as the actual installation process to ensure consistency
+          if (toolConfig.version === 'latest') {
+            const crateName = toolConfig.installParams.crateName || toolName;
+            const versionSource = toolConfig.installParams.versionSource || 'cargo-toml';
+
+            switch (versionSource) {
+              case 'cargo-toml': {
+                const cargoTomlUrl =
+                  toolConfig.installParams.cargoTomlUrl ||
+                  `https://raw.githubusercontent.com/${toolConfig.installParams.githubRepo || `${crateName}-community/${crateName}`}/main/Cargo.toml`;
+
+                try {
+                  const packageInfo = await this.cargoClient.getCargoTomlPackage(cargoTomlUrl);
+                  return packageInfo?.version || null;
+                } catch {
+                  return null;
+                }
+              }
+              case 'crates-io': {
+                try {
+                  return await this.cargoClient.getLatestVersion(crateName);
+                } catch {
+                  return null;
+                }
+              }
+              case 'github-releases': {
+                if (!toolConfig.installParams.githubRepo) {
+                  return null;
+                }
+                const [owner, repo] = toolConfig.installParams.githubRepo.split('/');
+                if (!owner || !repo) {
+                  return null;
+                }
+                const release = await this.githubApiClient.getLatestRelease(owner, repo);
+                return release?.tag_name || null;
+              }
+              default:
+                return null;
+            }
+          }
+          return toolConfig.version || null;
 
         case 'brew':
         case 'curl-script':

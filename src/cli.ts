@@ -3,6 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { FileCache, type ICache } from '@modules/cache';
+import { CargoClient, type ICargoClient } from '@modules/cargo-client';
 import {
   registerCheckUpdatesCommand,
   registerCleanupCommand,
@@ -42,6 +43,7 @@ export interface Services {
   downloader: IDownloader;
   githubApiCache: ICache;
   githubApiClient: IGitHubApiClient;
+  cargoClient: ICargoClient;
   shimGenerator: IShimGenerator;
   shellInitGenerator: IShellInitGenerator;
   symlinkGenerator: ISymlinkGenerator;
@@ -258,6 +260,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     storageStrategy: 'json',
   });
   const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
+  const cargoClient = new CargoClient(parentLogger, yamlConfig, downloader);
 
   // Create tracked filesystem instances for each generator
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs } = createTrackedFileSystems(
@@ -287,6 +290,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     installerTrackedFs,
     downloader,
     githubApiClient,
+    cargoClient,
     archiveExtractor,
     yamlConfig,
     toolInstallationRegistry,
@@ -304,6 +308,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     downloader,
     githubApiCache,
     githubApiClient,
+    cargoClient,
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,

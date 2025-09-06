@@ -203,14 +203,17 @@ interface BrewParams {
 }
 ```
 
-#### CargoParams
+#### CargoInstallParams
 ```typescript
-interface CargoParams {
+interface CargoInstallParams {
   crateName: string;
-  binarySource?: 'cargo-quickinstall';
-  versionSource?: 'cargo-toml' | 'crates-io' | 'github-releases';
+  binarySource?: 'cargo-quickinstall' | 'github-releases';
   githubRepo?: string;
+  assetPattern?: string;
+  versionSource?: 'cargo-toml' | 'crates-io' | 'github-releases';
   cargoTomlUrl?: string;
+  customBinaries?: string[];
+  allowSourceFallback?: boolean;
 }
 ```
 

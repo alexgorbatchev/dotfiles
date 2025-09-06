@@ -1,20 +1,9 @@
 import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@modules/config';
-import type { IDownloader } from '@modules/downloader';
-import type { IArchiveExtractor } from '@modules/extractor';
-import type { IFileSystem } from '@modules/file-system';
-import type { IGitHubApiClient } from '@modules/github-client';
-import {
-  createMemFileSystem,
-  createMockYamlConfig,
-  createTestDirectories,
-  type TestDirectories,
-  TestLogger,
-} from '@testing-helpers';
-import type { ExtractResult, GitHubRelease, ToolConfig } from '@types';
+import { createMockYamlConfig } from '@testing-helpers';
+import type { GitHubRelease, ToolConfig } from '@types';
 import { Installer } from '../Installer';
-import { createMockToolInstallationRegistry } from './installer-test-helpers';
+import { createInstallerTestSetup, type InstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer with custom GitHub host', () => {
   const toolName = 'test-tool';
@@ -22,34 +11,31 @@ describe('Installer with custom GitHub host', () => {
   const githubRepo = 'owner/repo';
   const githubHost = 'https://github.example.com';
 
-  let mockFileSystem: IFileSystem;
-  let mockDownloader: IDownloader;
-  let mockGitHubApiClient: IGitHubApiClient;
-  let mockArchiveExtractor: IArchiveExtractor;
-  let mockAppConfig: YamlConfig;
+  let setup: InstallerTestSetup;
   let installer: Installer;
-  let directories: TestDirectories;
-  let logger: TestLogger;
-
   let mockDownload: Mock<() => Promise<Buffer | undefined>>;
   let mockGetLatestRelease: Mock<() => Promise<unknown>>;
-  let mockExtract: Mock<() => Promise<unknown>>;
 
   beforeEach(async () => {
-    const { fs } = await createMemFileSystem();
-    logger = new TestLogger();
-    directories = await createTestDirectories(logger, fs, { testName: 'installer-custom-host-tests' });
-    mockFileSystem = fs;
+    // Use the standard setup as a base
+    setup = await createInstallerTestSetup();
 
-    // Setup mock downloader
-    mockDownload = mock(() => Promise.resolve(Buffer.from('mock content')));
-    mockDownloader = {
-      download: mockDownload,
-      registerStrategy: mock(() => {}),
-      downloadToFile: mock(() => Promise.resolve()),
-    };
+    // Create custom app config with GitHub host
+    const customAppConfig = await createMockYamlConfig({
+      config: {
+        paths: setup.testDirs.paths,
+        github: {
+          host: githubHost,
+        },
+      },
+      filePath: path.join(setup.testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: setup.fs,
+      logger: setup.logger,
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
+      env: {},
+    });
 
-    // Setup mock GitHub API client with a successful response
+    // Setup custom GitHub API client mock with relative URL
     mockGetLatestRelease = mock(() =>
       Promise.resolve({
         id: 123,
@@ -75,53 +61,26 @@ describe('Installer with custom GitHub host', () => {
       })
     );
 
-    mockGitHubApiClient = {
-      getLatestRelease: mockGetLatestRelease as (owner: string, repo: string) => Promise<GitHubRelease | null>,
-      getReleaseByTag: mock(() => Promise.resolve(null)),
-      getAllReleases: mock(() => Promise.resolve([])),
-      getReleaseByConstraint: mock(() => Promise.resolve(null)),
-      getRateLimit: mock(() => Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })),
-    };
+    // Override the GitHub API client mock
+    setup.mockGitHubApiClient.getLatestRelease = mockGetLatestRelease as (
+      owner: string,
+      repo: string
+    ) => Promise<GitHubRelease | null>;
 
-    // Setup mock ArchiveExtractor
-    mockExtract = mock(
-      (): Promise<ExtractResult> =>
-        Promise.resolve({
-          extractedFiles: ['test-tool-linux-amd64'],
-          executables: ['test-tool-linux-amd64'],
-        })
-    );
-    mockArchiveExtractor = {
-      extract: mockExtract as (archivePath: string, options?: unknown) => Promise<ExtractResult>,
-      detectFormat: mock(async () => 'tar.gz' as const),
-      isSupported: mock(() => true),
-    };
+    // Get reference to download mock for easier access
+    mockDownload = setup.mocks.download;
 
-    // Setup mock AppConfig with custom GitHub host
-    mockAppConfig = await createMockYamlConfig({
-      config: {
-        paths: directories.paths,
-        github: {
-          host: githubHost,
-        },
-      },
-      filePath: path.join(directories.paths.dotfilesDir, 'config.yaml'),
-      fileSystem: mockFileSystem,
-      logger,
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: directories.paths.homeDir },
-      env: {},
-    });
-
-    // Create installer instance
+    // Create installer with custom config
     installer = new Installer(
-      new TestLogger(),
-      mockFileSystem,
-      mockDownloader,
-      mockGitHubApiClient,
-      mockArchiveExtractor,
-      mockAppConfig,
-      createMockToolInstallationRegistry(),
-      { platform: 'darwin', arch: 'arm64', homeDir: directories.paths.homeDir }
+      setup.logger,
+      setup.fs,
+      setup.mockDownloader,
+      setup.mockGitHubApiClient,
+      setup.mockCargoClient,
+      setup.mockArchiveExtractor,
+      customAppConfig,
+      setup.mockToolInstallationRegistry,
+      { platform: 'darwin', arch: 'arm64', homeDir: setup.testDirs.paths.homeDir }
     );
   });
 
@@ -183,16 +142,33 @@ describe('Installer with custom GitHub host', () => {
       getReleaseByConstraint: mock(() => Promise.resolve(null)),
       getRateLimit: mock(() => Promise.resolve({ limit: 60, remaining: 59, reset: 0, used: 1, resource: 'core' })),
     };
+
+    // Create custom app config with GitHub host
+    const customAppConfig = await createMockYamlConfig({
+      config: {
+        paths: setup.testDirs.paths,
+        github: {
+          host: githubHost,
+        },
+      },
+      filePath: path.join(setup.testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: setup.fs,
+      logger: setup.logger,
+      systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
+      env: {},
+    });
+
     // Create a new installer with the different mock
     const installerWithDifferentUrl = new Installer(
-      new TestLogger(),
-      mockFileSystem,
-      mockDownloader,
+      setup.logger,
+      setup.fs,
+      setup.mockDownloader,
       mockGitHubApiClientWithDifferentUrl,
-      mockArchiveExtractor,
-      mockAppConfig,
-      createMockToolInstallationRegistry(),
-      { platform: 'darwin', arch: 'arm64', homeDir: directories.paths.homeDir }
+      setup.mockCargoClient,
+      setup.mockArchiveExtractor,
+      customAppConfig,
+      setup.mockToolInstallationRegistry,
+      { platform: 'darwin', arch: 'arm64', homeDir: setup.testDirs.paths.homeDir }
     );
 
     const toolConfig: ToolConfig = {

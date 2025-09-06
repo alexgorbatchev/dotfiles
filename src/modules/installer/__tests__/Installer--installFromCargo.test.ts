@@ -17,8 +17,11 @@ describe('Installer - installFromCargo', () => {
   it('should install tool from cargo-quickinstall', async () => {
     const setup = await createInstallerTestSetup();
 
-    // Mock fetch for Cargo.toml
-    fetchMockHelper.mockTextResponseOnce(`[package]\nname = "eza"\nversion = "0.18.2"\n`);
+    // Mock cargoClient to return version
+    setup.mocks.cargoClient.getCargoTomlPackage.mockResolvedValueOnce({
+      name: 'eza',
+      version: '0.18.2',
+    });
 
     const toolConfig: CargoToolConfig = {
       name: 'eza',
@@ -40,6 +43,9 @@ describe('Installer - installFromCargo', () => {
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toHaveLength(1);
     expect(result.version).toBe('0.18.2');
+    expect(setup.mocks.cargoClient.getCargoTomlPackage).toHaveBeenCalledWith(
+      'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
+    );
     expect(result.info?.['binarySource']).toBe('cargo-quickinstall');
   });
 
@@ -60,13 +66,8 @@ describe('Installer - installFromCargo', () => {
       },
     };
 
-    // Mock crates.io API
-    fetchMockHelper.mockJsonResponseOnce({
-      crate: {
-        name: 'ripgrep',
-        newest_version: '14.1.1',
-      },
-    });
+    // Mock cargoClient to return version from crates.io
+    setup.mocks.cargoClient.getLatestVersion.mockResolvedValueOnce('14.1.1');
 
     const result = await setup.installer.install('ripgrep', toolConfig);
 
@@ -74,6 +75,7 @@ describe('Installer - installFromCargo', () => {
     expect(result.binaryPaths).toHaveLength(1);
     expect(result.version).toBe('14.1.1');
     expect(result.info?.['binarySource']).toBe('github-releases');
+    expect(setup.mocks.cargoClient.getLatestVersion).toHaveBeenCalledWith('ripgrep');
   });
 
   it('should handle platform/arch mapping correctly', async () => {
@@ -90,18 +92,14 @@ describe('Installer - installFromCargo', () => {
       },
     };
 
-    // Mock crates.io API
-    fetchMockHelper.mockJsonResponseOnce({
-      crate: {
-        name: 'fd-find',
-        newest_version: '8.7.0',
-      },
-    });
+    // Mock cargoClient to return version from crates.io
+    setup.mocks.cargoClient.getLatestVersion.mockResolvedValueOnce('8.7.0');
 
     const result = await setup.installer.install('fd', toolConfig);
 
     expect(result.success).toBe(true);
     // The download URL should contain the correct platform/arch mapping
     expect(result.info?.['downloadUrl']).toContain('aarch64-apple-darwin');
+    expect(setup.mocks.cargoClient.getLatestVersion).toHaveBeenCalledWith('fd-find');
   });
 });
