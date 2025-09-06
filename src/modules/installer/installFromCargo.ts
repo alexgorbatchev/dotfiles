@@ -77,8 +77,7 @@ export async function installFromCargo(
       hookExecutor,
       hookContext,
       downloadPath,
-      toolFs,
-      logger
+      toolFs
     );
     if (!afterDownloadResult.success) {
       return afterDownloadResult;
@@ -99,8 +98,7 @@ export async function installFromCargo(
       hookExecutor,
       hookContext,
       extractResult,
-      toolFs,
-      logger
+      toolFs
     );
     if (!afterInstallResult.success) {
       return afterInstallResult;
@@ -137,11 +135,10 @@ async function executeAfterDownloadHook(
   hookExecutor: HookExecutor,
   hookContext: BaseInstallContext & { version: string },
   downloadPath: string,
-  toolFs: IFileSystem,
-  logger: TsLogger
+  toolFs: IFileSystem
 ): Promise<InstallResult | { success: true }> {
   if (toolConfig.installParams?.hooks?.afterDownload) {
-    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs, logger);
+    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs);
     const hookResult = await hookExecutor.executeHook(
       'afterDownload',
       toolConfig.installParams.hooks.afterDownload,
@@ -187,11 +184,10 @@ async function executeAfterInstallHook(
   hookExecutor: HookExecutor,
   hookContext: BaseInstallContext & { version: string },
   extractResult: ExtractResult,
-  toolFs: IFileSystem,
-  logger: TsLogger
+  toolFs: IFileSystem
 ): Promise<InstallResult | { success: true }> {
   if (toolConfig.installParams?.hooks?.afterInstall) {
-    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs, logger);
+    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs);
     const finalHookResult = await hookExecutor.executeHook(
       'afterInstall',
       toolConfig.installParams.hooks.afterInstall,

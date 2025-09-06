@@ -4,9 +4,10 @@ import { realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createMemFileSystem, createMock$, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
+import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { InstallHookContext, ToolConfig } from '@types';
 import { HookExecutor } from '../HookExecutor';
+import { createTestInstallHookContext } from './hookContextTestHelper';
 
 describe('HookExecutor $ Integration', () => {
   let logger: TestLogger;
@@ -45,11 +46,7 @@ describe('HookExecutor $ Integration', () => {
       installParams: undefined,
     };
 
-    const baseContext: InstallHookContext = {
-      toolName: 'test-tool',
-      installDir: '/test/install/dir',
-      $: createMock$(),
-    };
+    const baseContext = createTestInstallHookContext();
 
     const contextWithToolConfig = {
       ...baseContext,
@@ -68,7 +65,7 @@ describe('HookExecutor $ Integration', () => {
       expect(configExists.stdout.trim()).toBe('exists');
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs, logger);
+    const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
     await hookExecutor.executeHook('afterInstall', hookThatUsesShell, enhancedContext);
 
@@ -87,11 +84,10 @@ describe('HookExecutor $ Integration', () => {
       installParams: undefined,
     };
 
-    const baseContext: InstallHookContext = {
+    const baseContext = createTestInstallHookContext({
       toolName: 'file-creator-tool',
       installDir: '/test/install/dir',
-      $: createMock$(),
-    };
+    });
 
     const contextWithToolConfig = {
       ...baseContext,
@@ -107,7 +103,7 @@ describe('HookExecutor $ Integration', () => {
       expect(result.stdout.trim()).toBe('test content');
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs, logger);
+    const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
     await hookExecutor.executeHook('afterInstall', hookThatCreatesFile, enhancedContext);
 
@@ -126,11 +122,10 @@ describe('HookExecutor $ Integration', () => {
       installParams: undefined,
     };
 
-    const baseContext: InstallHookContext = {
+    const baseContext = createTestInstallHookContext({
       toolName: 'fallback-tool',
       installDir: '/test/install/dir',
-      $: createMock$(),
-    };
+    });
 
     const contextWithoutConfigPath = {
       ...baseContext,
@@ -147,7 +142,7 @@ describe('HookExecutor $ Integration', () => {
       }
     };
 
-    const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs, logger);
+    const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs);
 
     await hookExecutor.executeHook('afterInstall', hookThatUsesShellFallback, enhancedContext);
 

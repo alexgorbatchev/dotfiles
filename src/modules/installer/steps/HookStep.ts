@@ -23,7 +23,7 @@ export class HookStep extends InstallationStep<HookStepParams> {
     context.logger.debug(logs.installer.debug.hookExecuting(), hookType);
 
     try {
-      const enhancedContext = hookExecutor.createEnhancedContext(context, context.toolFs, context.logger);
+      const enhancedContext = hookExecutor.createEnhancedContext(context, context.toolFs);
       const result = await hookExecutor.executeHook(hookType, hook, enhancedContext);
 
       if (!result.success) {

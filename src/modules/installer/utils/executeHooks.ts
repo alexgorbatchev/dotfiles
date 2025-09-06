@@ -29,7 +29,7 @@ export async function executeAfterDownloadHook(
 
   logger.debug(logs.installer.debug.runningAfterDownloadHook());
 
-  const enhancedContext = hookExecutor.createEnhancedContext(context, fs, logger);
+  const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
   const hookResult = await hookExecutor.executeHook(
     'afterDownload',
     toolConfig.installParams.hooks.afterDownload,
@@ -63,7 +63,7 @@ export async function executeAfterExtractHook(
 
   logger.debug(logs.installer.debug.runningAfterExtractHook());
 
-  const enhancedContext = hookExecutor.createEnhancedContext(context, fs, logger);
+  const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
   const hookResult = await hookExecutor.executeHook(
     'afterExtract',
     toolConfig.installParams.hooks.afterExtract,

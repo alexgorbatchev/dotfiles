@@ -33,6 +33,13 @@ export interface HookExecutionResult {
 /**
  * Executes installation hooks with proper error handling, timeouts, and tracking
  */
+/**
+ * Type guard to check if a context has a toolConfig property
+ */
+function hasToolConfig(context: BaseInstallContext | InstallHookContext): context is BaseInstallContext {
+  return 'toolConfig' in context && context.toolConfig !== undefined;
+}
+
 export class HookExecutor {
   private readonly logger: TsLogger;
   private readonly defaultTimeoutMs = 60000; // 1 minute default
@@ -112,16 +119,14 @@ export class HookExecutor {
    */
   createEnhancedContext(
     baseContext: BaseInstallContext | InstallHookContext,
-    fileSystem: IFileSystem,
-    logger: TsLogger
+    fileSystem: IFileSystem
   ): EnhancedInstallHookContext {
     // Create a tool-specific TrackedFileSystem if we have one
     const enhancedFileSystem =
       fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
 
-    // Extract appConfig and toolConfig from BaseInstallContext if available
-    const appConfig = 'appConfig' in baseContext ? baseContext.appConfig : undefined;
-    const toolConfig = 'toolConfig' in baseContext ? baseContext.toolConfig : undefined;
+    // Extract toolConfig from BaseInstallContext if available
+    const toolConfig = hasToolConfig(baseContext) ? baseContext.toolConfig : undefined;
 
     // Create ZX $ instance with cwd set to the directory of the .tool.ts file
     let zxInstance: typeof $;
@@ -137,8 +142,6 @@ export class HookExecutor {
     return {
       ...baseContext,
       fileSystem: enhancedFileSystem,
-      logger: logger.getSubLogger({ name: baseContext.toolName }),
-      appConfig,
       toolConfig,
       $: zxInstance,
     };

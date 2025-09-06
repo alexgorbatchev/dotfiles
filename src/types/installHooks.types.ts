@@ -1,6 +1,4 @@
-import type { YamlConfig } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import type { TsLogger } from '@modules/logger';
 import type { $ } from 'zx';
 import type { ExtractResult } from './archive.types';
 import type { BaseToolContext } from './baseToolContext.types';
@@ -15,9 +13,7 @@ import type { ToolConfig } from './tool-config';
  * It is recommended to use a library like `zx` (google/zx) within hooks for easily running shell commands and performing
  * file system operations.
  */
-export interface InstallHookContext {
-  /** The name of the tool currently being installed. */
-  toolName: string;
+export interface InstallHookContext extends BaseToolContext {
   /** The target directory where the tool's primary binary/executable should be (or has been) installed. */
   installDir: string;
   /**
@@ -57,14 +53,10 @@ export interface InstallHookContext {
 export interface EnhancedInstallHookContext extends InstallHookContext {
   /** File system instance for performing file operations */
   fileSystem: IFileSystem;
-  /** Logger instance for structured logging */
-  logger: TsLogger;
   /** Binary path (available in afterInstall hook) */
   binaryPath?: string;
   /** Version of the installed tool (available in afterInstall hook) */
   version?: string;
-  /** The user's application configuration (available in all hooks) */
-  appConfig?: YamlConfig;
   /** The full tool configuration being processed (available in all hooks) */
   toolConfig?: ToolConfig;
 }

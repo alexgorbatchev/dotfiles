@@ -39,6 +39,15 @@ import { installManually } from './installManually';
  *
  * It is responsible for populating the `InstallResult` object with rich details.
  *
+ * ### Public Installation Method Wrappers
+ * The class exposes public methods for each installation type (e.g., `installFromGitHubRelease`,
+ * `installFromBrew`) that wrap the corresponding standalone functions. These wrappers serve
+ * important purposes:
+ * - **Testing API**: Allow tests to focus on individual installation methods in isolation
+ * - **Dependency Injection**: Properly inject all required services into standalone functions
+ * - **Spying/Mocking**: Enable test spies and mocks on specific installation methods
+ * - **API Consistency**: Provide uniform method signatures across all installation types
+ *
  * ### GitHub Asset Selection
  * For `github-release` installations, the asset selection follows this order of precedence:
  * 1. **`assetSelector` function:** A custom function in the `ToolConfig` for complex selection logic.
@@ -147,7 +156,7 @@ export class Installer implements IInstaller {
     }
 
     logger.debug(logs.command.debug.hookExecution('beforeInstall'));
-    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
+    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
     const result = await this.hookExecutor.executeHook(
       'beforeInstall',
       resolvedToolConfig.installParams.hooks.beforeInstall,
@@ -185,7 +194,7 @@ export class Installer implements IInstaller {
       version: result.version,
     };
 
-    const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs, logger);
+    const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs);
     await this.hookExecutor.executeHook(
       'afterInstall',
       resolvedToolConfig.installParams.hooks.afterInstall,
