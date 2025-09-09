@@ -15,6 +15,45 @@ globs:
 - Do not add file header comments.
 - Avoid type casting at all costs and absolutely never use `as any`.
 - Write JSDoc comments and keep them updated as implementation evolves (including single-line JSDoc like `/** comment */`).
+- Avoid using `typeof`, declare types explicitly.
+
+## Type Safety Rules
+
+**NEVER use type assertions (`as Type`) when proper type checking is possible.**
+
+### Forbidden Patterns:
+```typescript
+// ❌ NEVER DO THIS
+array[0] as string
+obj.prop as SomeType  
+value as any
+```
+
+### Required Patterns:
+```typescript
+// ✅ ALWAYS DO THIS
+const item = array[0];
+if (item) {
+  // use item safely
+}
+
+// ✅ OR USE PROPER TYPE ANNOTATIONS
+const value: ExpectedType = sourceValue; // Let TypeScript validate compatibility
+```
+
+### Core Rules:
+1. **Extract first, check second**: `const x = array[0]; if (x) { use(x) }`
+2. **Use type annotations over assertions**: `const x: Type = value` not `const x = value as Type`
+3. **Handle undefined explicitly**: Never assume array elements or object properties exist
+4. **Trust the type system**: If TypeScript complains, fix the types, don't silence with `as`
+
+### Exception:
+Only use `as` for:
+- Branded types: `message as SafeLogMessage`
+- DOM elements: `element as HTMLInputElement`
+- Test mocks where type system limitations require it
+
+**If you find yourself using `as`, ask: "Can I use proper type checking instead?"**
 
 ## File Size and Organization
 
@@ -32,6 +71,7 @@ globs:
 ## Import Statements
 
 - Do not rename import bindings.
+- Never inline `require` and `import` statements, always place them at the top of the file.
 - When you are editing files and there are `as Foo` imports, replace them with the actual binding name.
 - When using `@foo/bar` imports use the shortest path possible (e.g., `@foo/bar` instead of `@foo/bar/baz`).
 

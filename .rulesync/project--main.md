@@ -43,7 +43,6 @@ The project solves key problems developers face with dotfiles management:
 - Provide environment-based customization
 
 ## Goals
-
 1. **Consistency**: Identical development environments across different machines
 2. **Automation**: Single command setup and maintenance of entire dotfiles system
 3. **Performance**: Fast tool access without slowing shell startup

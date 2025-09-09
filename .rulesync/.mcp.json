@@ -15,22 +15,12 @@
     "typescript": {
       "targets": ["*"],
       "command": "npx",
-      "args": [
-        "-y",
-        "@mizchi/lsmcp",
-        "-p",
-        "typescript",
-        "--bin",
-        "npx tsgo --lsp --stdio"
-      ]
+      "args": ["-y", "@mizchi/lsmcp", "-p", "typescript", "--bin", "npx tsgo --lsp --stdio"]
     },
     "context7": {
       "targets": ["*"],
       "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ]
+      "args": ["-y", "@upstash/context7-mcp"]
     }
   }
 }
