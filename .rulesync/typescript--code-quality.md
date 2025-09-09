@@ -14,7 +14,6 @@ globs:
 - Line length is 120 characters.
 - Do not add file header comments.
 - Avoid type casting at all costs and absolutely never use `as any`.
-- Write JSDoc comments and keep them updated as implementation evolves (including single-line JSDoc like `/** comment */`).
 - Avoid using `typeof`, declare types explicitly.
 
 ## Type Safety Rules
@@ -57,8 +56,6 @@ Only use `as` for:
 
 ## File Size and Organization
 
-- Files should be small and focused on a single responsibility.
-- If a file is too large, it should be broken down into smaller files. Try to keep files under 200 lines of code.
 - Break up large test files into smaller files using `{fileName}--{part}` naming convention.
 
 ## Functional Programming Approach
