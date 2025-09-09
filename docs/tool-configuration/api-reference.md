@@ -190,7 +190,55 @@ interface GitHubReleaseParams {
   version?: string;
   includePrerelease?: boolean;
   stripComponents?: number;
-  assetSelector?: (assets: Asset[], sysInfo: SystemInfo) => Asset | undefined;
+  assetSelector?: AssetSelector;
+}
+```
+
+**AssetSelector Function:**
+```typescript
+type AssetSelector = (context: AssetSelectionContext) => GitHubReleaseAsset | undefined;
+
+interface AssetSelectionContext extends BaseToolContext {
+  /** Available release assets to choose from */
+  assets: GitHubReleaseAsset[];
+  /** System information for platform/architecture matching */
+  systemInfo: SystemInfo;
+  /** The GitHub release being processed */
+  release: GitHubRelease;
+  /** The tool configuration being processed */
+  toolConfig: ToolConfig;
+  /** Asset pattern from configuration (if provided) */
+  assetPattern?: string;
+}
+```
+
+**AssetSelector Example:**
+```typescript
+assetSelector: (context) => {
+  const { assets, systemInfo, logger, release } = context;
+  
+  logger.debug('Selecting asset for release:', release.tag_name);
+  
+  // Custom selection logic with access to full context
+  const osMap = { 'darwin': 'macos', 'linux': 'linux', 'win32': 'windows' };
+  const archMap = { 'x64': 'amd64', 'arm64': 'arm64' };
+  
+  const osKey = osMap[systemInfo.platform];
+  const archKey = archMap[systemInfo.arch];
+  
+  const selectedAsset = assets.find(asset => 
+    asset.name.toLowerCase().includes(osKey) &&
+    asset.name.toLowerCase().includes(archKey) &&
+    asset.name.endsWith('.tar.gz')
+  );
+  
+  if (selectedAsset) {
+    logger.debug('Selected asset:', selectedAsset.name);
+  } else {
+    logger.warn('No matching asset found for', osKey, archKey);
+  }
+  
+  return selectedAsset;
 }
 ```
 

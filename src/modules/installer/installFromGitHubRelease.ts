@@ -7,6 +7,7 @@ import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type {
+  AssetSelectionContext,
   BaseInstallContext,
   ExtractResult,
   GitHubRelease,
@@ -173,7 +174,13 @@ async function selectAsset(
 
   if (params.assetSelector) {
     logger.debug(logs.command.debug.assetSelectorCustom());
-    asset = params.assetSelector(release.assets, context.systemInfo);
+    const selectionContext: AssetSelectionContext = {
+      ...context,
+      assets: release.assets,
+      release,
+      assetPattern: params.assetPattern,
+    };
+    asset = params.assetSelector(selectionContext);
   } else if (params.assetPattern) {
     logger.debug(logs.command.debug.assetPatternMatch(), params.assetPattern);
     const pattern = params.assetPattern;

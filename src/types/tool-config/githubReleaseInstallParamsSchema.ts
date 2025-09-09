@@ -1,7 +1,56 @@
 import { z } from 'zod';
+import type { BaseToolContext } from '../baseToolContext.types';
 import type { SystemInfo } from '../common.types';
-import type { GitHubReleaseAsset } from '../githubApi.types';
+import type { GitHubRelease, GitHubReleaseAsset } from '../githubApi.types';
 import { baseInstallParamsSchema } from './baseInstallParamsSchema';
+import type { ToolConfig } from './index';
+
+/**
+ * Context object for asset selection functions.
+ * Provides consistent interface with install hooks, including access to
+ * system information, logging, tool configuration, and release data.
+ */
+export interface AssetSelectionContext extends BaseToolContext {
+  /** Available release assets to choose from */
+  assets: GitHubReleaseAsset[];
+  /** System information for platform/architecture matching */
+  systemInfo: SystemInfo;
+  /** The GitHub release being processed */
+  release: GitHubRelease;
+  /** The tool configuration being processed */
+  toolConfig: ToolConfig;
+  /** Asset pattern from configuration (if provided) */
+  assetPattern?: string;
+}
+
+/**
+ * Asset selector function signature using context object.
+ * Receives rich context object for consistent interface with install hooks.
+ *
+ * @param context - Complete context including assets, system info, logger, and configuration
+ * @returns Selected asset or undefined if no suitable asset found
+ *
+ * @example
+ * ```typescript
+ * const assetSelector: AssetSelector = (context) => {
+ *   context.logger.debug('Selecting asset for', context.toolName);
+ *
+ *   const { assets, systemInfo } = context;
+ *   const osMap = { 'darwin': 'macos', 'linux': 'linux', 'win32': 'windows' };
+ *   const archMap = { 'x64': 'amd64', 'arm64': 'arm64' };
+ *
+ *   const osKey = osMap[systemInfo.platform];
+ *   const archKey = archMap[systemInfo.arch];
+ *
+ *   return assets.find(asset =>
+ *     asset.name.toLowerCase().includes(osKey) &&
+ *     asset.name.toLowerCase().includes(archKey) &&
+ *     asset.name.endsWith('.tar.gz')
+ *   );
+ * };
+ * ```
+ */
+export type AssetSelector = (context: AssetSelectionContext) => GitHubReleaseAsset | undefined;
 
 export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
@@ -43,13 +92,10 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
    * An optional custom function to select the desired asset from a list of available assets for a release.
    * This provides more fine-grained control than `assetPattern` for complex selection logic.
+   *
+   * Uses context-based signature: `(context: AssetSelectionContext) => GitHubReleaseAsset | undefined`
    */
-  assetSelector: z
-    .custom<(assets: GitHubReleaseAsset[], systemInfo: SystemInfo) => GitHubReleaseAsset | undefined>(
-      (val) => typeof val === 'function',
-      'Must be a function'
-    )
-    .optional(),
+  assetSelector: z.custom<AssetSelector>((val) => typeof val === 'function', 'Must be a function').optional(),
   /** Custom GitHub host URL for GitHub Enterprise installations */
   githubHost: z.string().url().optional(),
 });

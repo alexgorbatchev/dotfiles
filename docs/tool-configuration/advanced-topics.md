@@ -9,8 +9,12 @@ For complex release patterns, implement custom asset selectors to handle non-sta
 ```typescript
 c.install('github-release', {
   repo: 'owner/tool',
-  assetSelector: (assets, systemInfo) => {
+  assetSelector: (context) => {
     // Custom logic to select the right asset
+    const { assets, systemInfo, logger } = context;
+    
+    logger.debug('Selecting asset for platform:', systemInfo.platform);
+    
     const osMap = {
       'darwin': 'macos',
       'linux': 'linux',
@@ -25,11 +29,19 @@ c.install('github-release', {
     const osKey = osMap[systemInfo.platform];
     const archKey = archMap[systemInfo.arch];
     
-    return assets.find(asset => 
+    const selectedAsset = assets.find(asset => 
       asset.name.toLowerCase().includes(osKey) &&
       asset.name.toLowerCase().includes(archKey) &&
       asset.name.endsWith('.tar.gz')
     );
+    
+    if (selectedAsset) {
+      logger.debug('Selected asset:', selectedAsset.name);
+    } else {
+      logger.warn('No matching asset found');
+    }
+    
+    return selectedAsset;
   }
 })
 ```
@@ -39,34 +51,49 @@ c.install('github-release', {
 **Complex Naming Schemes:**
 ```typescript
 // Handle assets with inconsistent naming
-assetSelector: (assets, sysInfo) => {
+assetSelector: (context) => {
+  const { assets, systemInfo, logger } = context;
+  
+  logger.debug('Processing assets with complex naming scheme');
+  
   const patterns = [
-    `${sysInfo.platform}-${sysInfo.arch}`,
-    `${sysInfo.platform}_${sysInfo.arch}`,
-    sysInfo.platform === 'darwin' ? 'macos' : sysInfo.platform
+    `${systemInfo.platform}-${systemInfo.arch}`,
+    `${systemInfo.platform}_${systemInfo.arch}`,
+    systemInfo.platform === 'darwin' ? 'macos' : systemInfo.platform
   ];
   
-  return assets.find(asset => 
+  const selectedAsset = assets.find(asset => 
     patterns.some(pattern => asset.name.includes(pattern))
   );
+  
+  if (selectedAsset) {
+    logger.debug('Matched pattern for asset:', selectedAsset.name);
+  }
+  
+  return selectedAsset;
 }
 ```
 
 **Version-Specific Logic:**
 ```typescript
 // Different asset patterns for different versions
-assetSelector: (assets, sysInfo) => {
-  const version = assets[0]?.tag_name || '';
+assetSelector: (context) => {
+  const { assets, systemInfo, release, logger } = context;
+  
+  const version = release.tag_name || '';
+  logger.debug('Selecting asset for version:', version);
   
   if (version.startsWith('v2.')) {
     // v2.x uses new naming scheme
+    logger.debug('Using v2.x naming scheme');
     return assets.find(asset => 
-      asset.name.includes(`${sysInfo.platform}-${sysInfo.arch}`)
+      asset.name.includes(`${systemInfo.platform}-${systemInfo.arch}`)
     );
   } else {
     // v1.x uses old naming scheme
+    logger.debug('Using v1.x naming scheme');
     return assets.find(asset => 
-      asset.name.includes(`${sysInfo.platform}_${sysInfo.arch}`)
+      asset.name.includes(`${systemInfo.platform}_${systemInfo.arch}`)
     );
   }
 }
