@@ -112,6 +112,47 @@ describe('E2E: cli install (GitHub)', () => {
       const binaryContent = await fs.readFile(expectedInstalledBinaryPath, 'utf8');
       expect(binaryContent).toEqual(mockBinaryContent);
     });
+
+    describe('second install call', () => {
+      it('should not re-download the binary when already installed', async () => {
+        // Get the current binary path and its content before second install
+        const binaryPath = path.join(testDirs.paths.binariesDir, mockToolName, mockToolName);
+        expect(await fs.exists(binaryPath)).toBe(true);
+
+        // Read the target of the symlink to get the actual binary file
+        const symlinkTarget = await fs.readlink(binaryPath);
+        const actualBinaryPath = path.resolve(path.dirname(binaryPath), symlinkTarget);
+
+        // Get the original content
+        const originalContent = await fs.readFile(actualBinaryPath, 'utf8');
+        expect(originalContent).toEqual(mockBinaryContent);
+
+        // Modify the source binary file to simulate a change on the server
+        const modifiedContent = `#!/bin/sh\necho "Modified Mock Direct Binary Tool v${mockToolVersion}"`;
+        await fs.writeFile(localMockBinaryFilePath, modifiedContent);
+
+        // Wait a small amount to ensure any file operations would show different timestamps
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const result = executeCliCommand({
+          command: ['install', mockToolName, '--config', 'config.yaml'],
+          cwd: testDirs.paths.dotfilesDir,
+          homeDir: testDirs.paths.homeDir,
+        });
+
+        expect(result.stderr).toEqual('');
+        expect(result.exitCode).toEqual(0);
+
+        // Verify the downloaded binary still has the original content (not the modified source)
+        const finalContent = await fs.readFile(actualBinaryPath, 'utf8');
+        expect(finalContent).toEqual(originalContent);
+        expect(finalContent).toEqual(mockBinaryContent);
+        expect(finalContent).not.toEqual(modifiedContent);
+
+        // Verify binary is still accessible via the symlink
+        expect(await fs.exists(binaryPath)).toBe(true);
+      });
+    });
   });
 
   describe('downloaded tar.gz archive', () => {
