@@ -14,8 +14,8 @@ import {
 } from '@testing-helpers';
 import { $ } from 'zx';
 
-describe('E2E: bun run cli install', () => {
-  describe('downloaded direct binary (GitHub Release with Mock Server)', () => {
+describe('E2E: cli install (GitHub)', () => {
+  describe('downloaded direct binary', () => {
     let localMockBinaryFilePath: string;
     let expectedInstalledBinaryPath: string;
     let testDirs: TestDirectories;
@@ -114,7 +114,7 @@ describe('E2E: bun run cli install', () => {
     });
   });
 
-  describe('downloaded tar.gz archive (GitHub Release with Mock Server)', () => {
+  describe('downloaded tar.gz archive', () => {
     let localArchiveFilePath: string;
     let expectedBinaryPath: string;
     let testDirs: TestDirectories;
