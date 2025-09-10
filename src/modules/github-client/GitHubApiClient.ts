@@ -45,10 +45,10 @@ import type { IGitHubApiClient } from './IGitHubApiClient';
  * For testing this client, two primary helpers are available:
  * - `FetchMockHelper`: For mocking `fetch` requests and their responses.
  *   (from `src/testing-helpers/FetchMockHelper.ts`)
- * - `createMockGitHubServer`: For creating a lightweight mock GitHub API server
+ * - `createMockApiServer`: For creating a lightweight mock API server
  *   using `express`, allowing for end-to-end testing of the client's
  *   interaction with a live server.
- *   (from `src/testing-helpers/createMockGitHubServer.ts`)
+ *   (from `src/testing-helpers/createMockApiServer.ts`)
  */
 export class GitHubApiClient implements IGitHubApiClient {
   private readonly baseUrl: string;

@@ -5,7 +5,7 @@ import type { Express } from 'express';
 import express from 'express';
 
 /**
- * Configuration for an API path in the mock GitHub server
+ * Configuration for an API path in the mock API server
  */
 export interface MockApiPathConfig {
   /** The API path to mock (e.g., '/repos/owner/repo/releases/latest') */
@@ -15,7 +15,7 @@ export interface MockApiPathConfig {
 }
 
 /**
- * Configuration for a binary path in the mock GitHub server
+ * Configuration for a binary path in the mock API server
  */
 export interface MockBinaryPathConfig {
   /** The path to the binary file (e.g., '/owner/repo/releases/download/v1.0.0/tool-linux-amd64') */
@@ -25,9 +25,9 @@ export interface MockBinaryPathConfig {
 }
 
 /**
- * Configuration for the mock GitHub server
+ * Configuration for the mock API server
  */
-export interface MockGitHubServerConfig {
+export interface MockApiServerConfig {
   /** API paths that return JSON responses */
   apiPaths?: MockApiPathConfig[];
   /** Binary paths that return binary file contents */
@@ -35,9 +35,9 @@ export interface MockGitHubServerConfig {
 }
 
 /**
- * Result of setting up a mock GitHub server
+ * Result of setting up a mock API server
  */
-export interface MockGitHubServerResult {
+export interface MockApiServerResult {
   /** The Express server instance */
   server: Server;
   /** The base URL of the server (e.g., 'http://localhost:3000') */
@@ -46,15 +46,19 @@ export interface MockGitHubServerResult {
   close(): Promise<void>;
 }
 
+// Legacy type aliases for backward compatibility
+export type MockGitHubServerConfig = MockApiServerConfig;
+export type MockGitHubServerResult = MockApiServerResult;
+
 /**
- * Sets up a mock GitHub API server using Express
+ * Sets up a mock API server using Express
  *
- * @param config - Configuration for the mock GitHub server
+ * @param config - Configuration for the mock API server
  * @returns A promise that resolves to the server instance and base URL
  *
  * @example
  * ```typescript
- * const { server, baseUrl } = await createMockGitHubServer({
+ * const { server, baseUrl } = await createMockApiServer({
  *   apiPaths: [
  *     {
  *       path: '/repos/owner/repo/releases/latest',
@@ -69,14 +73,14 @@ export interface MockGitHubServerResult {
  *   ]
  * });
  *
- * // Use in tests with baseUrl as the GitHub API URL
+ * // Use in tests with baseUrl as the API URL
  * // ...
  *
  * // Cleanup when done
  * await mockServer.close();
  * ```
  */
-export async function createMockGitHubServer(config: MockGitHubServerConfig): Promise<MockGitHubServerResult> {
+export async function createMockApiServer(config: MockApiServerConfig): Promise<MockApiServerResult> {
   const app: Express = express();
 
   // Configure API paths that return JSON responses
@@ -135,3 +139,9 @@ export async function createMockGitHubServer(config: MockGitHubServerConfig): Pr
     });
   });
 }
+
+/**
+ * Legacy function name for backward compatibility
+ * @deprecated Use createMockApiServer instead
+ */
+export const createMockGitHubServer = createMockApiServer;

@@ -3,12 +3,12 @@ import * as path from 'node:path';
 import { NodeFileSystem } from '@modules/file-system';
 import {
   createFile,
-  createMockGitHubServer,
+  createMockApiServer,
   createMockYamlConfig,
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
-  type MockGitHubServerResult,
+  type MockApiServerResult,
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
@@ -17,7 +17,7 @@ describe('E2E: Download Cache', () => {
   describe('cache validation with repeated installs', () => {
     let testDirs: TestDirectories;
     let fs: NodeFileSystem;
-    let mockServer: MockGitHubServerResult;
+    let mockServer: MockApiServerResult;
 
     const mockToolName = 'cached-binary-tool';
     const mockToolVersion = '1.0.0';
@@ -37,7 +37,7 @@ describe('E2E: Download Cache', () => {
       );
 
       // Mock server that tracks download requests
-      mockServer = await createMockGitHubServer({
+      mockServer = await createMockApiServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/cached-binary-repo/releases/tags/v${mockToolVersion}`,

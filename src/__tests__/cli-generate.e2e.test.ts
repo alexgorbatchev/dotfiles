@@ -3,12 +3,12 @@ import * as path from 'node:path';
 import { NodeFileSystem } from '@modules/file-system';
 import {
   createFile,
-  createMockGitHubServer,
+  createMockApiServer,
   createMockYamlConfig,
   createTestDirectories,
   createToolConfig,
   executeCliCommand,
-  type MockGitHubServerResult,
+  type MockApiServerResult,
   type TestDirectories,
   TestLogger,
 } from '@testing-helpers';
@@ -211,7 +211,7 @@ describe('E2E: bun run cli generate', () => {
   describe('executing a generated shim for an uninstalled tool', () => {
     let testDirs: TestDirectories;
     let fs: NodeFileSystem;
-    let mockServer: MockGitHubServerResult;
+    let mockServer: MockApiServerResult;
     let fzfShimPath: string;
     let localArchiveFilePath: string;
 
@@ -245,7 +245,7 @@ describe('E2E: bun run cli generate', () => {
       await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} fzf-${mockToolVersion}`.quiet();
 
       // 2. Setup mock github server
-      mockServer = await createMockGitHubServer({
+      mockServer = await createMockApiServer({
         apiPaths: [
           {
             path: `/repos/junegunn/fzf/releases/tags/${mockToolVersion}`,

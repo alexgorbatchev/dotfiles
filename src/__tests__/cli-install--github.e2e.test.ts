@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { NodeFileSystem } from '@modules/file-system';
 import {
   createFile,
-  createMockGitHubServer,
+  createMockApiServer,
   createMockYamlConfig,
   createTestDirectories,
   createToolConfig,
@@ -40,7 +40,7 @@ describe('E2E: cli install (GitHub)', () => {
         true
       );
 
-      mockServer = await createMockGitHubServer({
+      mockServer = await createMockApiServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/direct-binary-repo/releases/tags/v${mockToolVersion}`,
@@ -148,7 +148,7 @@ describe('E2E: cli install (GitHub)', () => {
       localArchiveFilePath = path.join(testDirs.paths.homeDir, mockArchiveFileName);
       await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} ${mockArchiveToolName}-v${mockArchiveToolVersion}`.quiet();
 
-      mockServer = await createMockGitHubServer({
+      mockServer = await createMockApiServer({
         apiPaths: [
           {
             path: `/repos/mock-owner/archive-repo/releases/tags/v${mockArchiveToolVersion}`,

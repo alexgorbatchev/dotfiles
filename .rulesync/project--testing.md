@@ -21,7 +21,7 @@ Before creating any bespoke mocks, check the `src/testing-helpers` directory to 
 - **TestLogger** - Extended logger for tests that captures logs for verification with `expect()` methods and filtering capabilities
 - **createMemFileSystem** - Creates in-memory file system for testing with customizable mock implementations and initial directory structure
 - **createMockYamlConfig** - Factory for creating mock YAML configurations with partial overrides and default values
-- **createMockGitHubServer** - Express server mock for GitHub API endpoints and binary downloads with configurable responses
+- **createMockApiServer** - Express server mock for API endpoints and binary downloads with configurable responses (formerly createMockGitHubServer)
 - **createTestDirectories** - Utility for setting up temporary test directories with proper cleanup and path configuration
 - **createToolConfig** - Helper for creating tool configuration files from content or fixtures for testing
 - **createFile** - Simple utility for creating files with optional executable permissions in test file systems
