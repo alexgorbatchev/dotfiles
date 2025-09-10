@@ -7,8 +7,6 @@ globs:
 ---
 # Dotfiles Generator Project
 
-A modern command-line tool for automated management of developer dotfiles, tool installations, and shell configurations across different systems.
-
 ## Overview
 
 This project is a dotfiles management system that replaces traditional shell-based approaches with a programmatic solution. It automates the installation of CLI tools, generates executable shims for system-wide tool availability, and manages shell configurations and symbolic links for dotfiles.
@@ -26,23 +24,27 @@ The project solves key problems developers face with dotfiles management:
 ## Core Capabilities
 
 ### Tool Management
+
 - Install tools from multiple sources (GitHub releases, package managers, scripts)
 - Automatically select appropriate binaries for the current platform
 - Track installed versions and check for updates
 - Cache downloads to avoid repeated fetches
 
 ### System Integration
+
 - Generate executable shims that make tools globally accessible
 - Create consolidated shell initialization files
 - Manage symbolic links for configuration files
 - Handle shell completion files
 
 ### Configuration
+
 - Define tool configurations in structured, version-controlled files
 - Support platform-specific overrides
 - Provide environment-based customization
 
 ## Goals
+
 1. **Consistency**: Identical development environments across different machines
 2. **Automation**: Single command setup and maintenance of entire dotfiles system
 3. **Performance**: Fast tool access without slowing shell startup
@@ -56,5 +58,3 @@ The project solves key problems developers face with dotfiles management:
 - Shell performance is maintained or improved
 - All configuration changes are version controlled and trackable
 - The system handles edge cases and errors gracefully
-
-This project represents a modern approach to dotfiles management, providing automation and consistency for developer environment setup and maintenance.

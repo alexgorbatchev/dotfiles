@@ -16,18 +16,14 @@ globs:
 
 ## File Modification Guidelines
 
-- Use dedicated text processing tools rather than general-purpose stream editors
 - Never use schell commands to modify files, all changes have to be done manually
 - Verify file changes before committing modifications
-- Prefer tools with built-in backup or safety mechanisms
 - Test modifications in isolated environments first
 
-## Search and Analysis
+## Available Tooling
 
-- `rg` must be used to search for files and text
-- Use efficient search tools that can handle large codebases
-- Prefer tools that support regex and contextual search patterns
-- Choose tools that provide structured output for further processing
+- `rg` is available to be used to search for files and text
+- Use all available tools in the environment to accomplish tasks efficiently
 
 ## Documentation and References
 
