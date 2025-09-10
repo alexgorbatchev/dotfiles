@@ -54,7 +54,7 @@ Only use `as` for:
 
 **If you find yourself using `as`, ask: "Can I use proper type checking instead?"**
 
-## File Size and Organization
+## Test File Organization
 
 - Break up large test files into smaller files using `{fileName}--{part}` naming convention.
 

@@ -29,12 +29,12 @@ Before creating any bespoke mocks, check the `src/testing-helpers` directory to 
 - **toMatchLooseInlineSnapshot** - Custom matcher for flexible snapshot testing with regex patterns and loose matching
 - **Mocking:**
   - `fetch` must be mocked, typically using the `FetchMockHelper` utility (imported from `@testing-helpers`).
-  - All other modules should be passed in as dependencies.
+  - All modules should be passed in as dependencies.
   - When mocking real public API calls, the `curl` command must be use to capture the real API response and must be captured in fixtures. An `express` server must be used to serve the fixtures. 
   - module mocking is 
 - **Testing Framework:** The project uses `bun:test` framework and `bun run test {file}` command to run tests.
 
-## How to Mock Modules
+## How to Mock External Modules
 
 ```typescript
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
