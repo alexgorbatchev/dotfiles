@@ -15,6 +15,8 @@ const failTestRegex = /^\(fail\)\s+(.+?)(?:\s+\[\d+\.\d+m?s\])?$/;
 const coverageFileLineRegex = /^\s*(All files|src\/.*?)\s*\|\s*[\d.-]+\s*\|\s*[\d.-]+\s*\|\s*([\d,-]*)\s*$/;
 const summaryTestFailureBlockStartRegex = /^\d+ tests? failed:$/;
 const summaryTestsSkippedBlockStartRegex = /^\d+ tests? skipped:$/;
+const consoleLogHeaderRegex = /^console\.[a-z]+ \([^)]+\) ⟩⟩⟩$/;
+const consoleLogFooterRegex = /^⟨⟨⟨$/;
 
 /**
  * Processes the complete Bun test output and filters it according to the functional requirements.
@@ -34,6 +36,7 @@ export function processBunTestOutput(output: string): string {
   let contextBuffer: string[] = [];
   let isInFinalSummaryRedundantList = false;
   let isInCoverageSection = false;
+  let isInConsoleLogBlock = false;
 
   // Use a traditional for loop with index to handle unhandled errors properly
   for (let i = 0; i < lines.length; i++) {
@@ -63,6 +66,32 @@ export function processBunTestOutput(output: string): string {
       // Add the coverage report header
       result.push(''); // Add a blank line before the header
       result.push('Coverage Report (file_name:uncovered_lines):');
+      continue;
+    }
+
+    // Handle console.log blocks - detect start
+    if (consoleLogHeaderRegex.test(line)) {
+      isInConsoleLogBlock = true;
+      // Add the console.log header and ensure file header is added if this is the first output for a file
+      if (!currentFileHasFailure && currentFileHeader) {
+        result.push(currentFileHeader);
+        currentFileHasFailure = true;
+      }
+      result.push(rawLine);
+      continue;
+    }
+
+    // Handle console.log blocks - detect end
+    if (isInConsoleLogBlock && consoleLogFooterRegex.test(line)) {
+      isInConsoleLogBlock = false;
+      result.push(rawLine);
+      result.push(''); // Add blank line after console.log block
+      continue;
+    }
+
+    // If we're in a console.log block, preserve all content
+    if (isInConsoleLogBlock) {
+      result.push(rawLine);
       continue;
     }
 

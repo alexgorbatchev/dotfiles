@@ -318,4 +318,27 @@ describe('bun-test-runner', () => {
       "
     `);
   });
+
+  test('console-log', () => {
+    const output = getFixtureContent('console-log');
+    const results = processBunTestOutput(output);
+    expect(stripAnsi(results)).toMatchInlineSnapshot(`
+      "src/testing-helpers/__tests__/bun-test-runner.test.ts:
+      console.log (bun-test-runner.test.ts:16) ⟩⟩⟩
+      Results length: 1040
+      ⟨⟨⟨
+
+      ✓ bun-test-runner > no-errors [4.63ms]
+      ✓ bun-test-runner > no-errors--one-skipped [0.41ms]
+      ✓ bun-test-runner > same-file--one-failing [0.96ms]
+      ✓ bun-test-runner > same-file--two-failing [0.59ms]
+      ✓ bun-test-runner > two-files--two-failing [0.67ms]
+      ✓ bun-test-runner > same-file--one-failing-with-unhandled-error [0.72ms]
+
+       6 pass
+       0 fail
+       6 snapshots, 6 expect() calls
+      Ran 6 tests across 1 file. [174.00ms]"
+    `);
+  });
 });
