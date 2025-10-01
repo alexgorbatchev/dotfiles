@@ -60,15 +60,15 @@ export type CargoTomlPackage = z.infer<typeof cargoPackageSchema>['package'];
  */
 export class CargoClient implements ICargoClient {
   private readonly downloader: IDownloader;
-  private readonly userAgent: string;
   private readonly logger: TsLogger;
+  private readonly cargoConfig: YamlConfig['cargo'];
 
   constructor(parentLogger: TsLogger, config: YamlConfig, downloader: IDownloader) {
     this.logger = parentLogger.getSubLogger({ name: 'CargoClient' });
     this.downloader = downloader;
-    this.userAgent = config.github.userAgent; // Reuse GitHub user agent
-
-    this.logger.debug(logs.cargoClient.debug.constructorInit(), 'CargoClient', this.userAgent);
+    // Store full cargo config for future extensibility (tokens, per-host cache toggles, etc.)
+    this.cargoConfig = config.cargo;
+    this.logger.debug(logs.cargoClient.debug.constructorInit(), 'CargoClient', this.cargoConfig.userAgent);
   }
 
   private async request<T>(url: string): Promise<T> {
@@ -96,14 +96,14 @@ export class CargoClient implements ICargoClient {
   private buildRequestHeaders(): Record<string, string> {
     return {
       Accept: 'application/json',
-      'User-Agent': this.userAgent,
+      'User-Agent': this.cargoConfig.userAgent,
     };
   }
 
   async getCrateMetadata(crateName: string): Promise<CrateMetadata | null> {
     this.logger.debug(logs.cargoClient.debug.queryingCratesIo(), crateName);
+  const url = `${this.cargoConfig.cratesIo.host}/api/v1/crates/${crateName}`;
     try {
-      const url = `https://crates.io/api/v1/crates/${crateName}`;
       return await this.request<CrateMetadata>(url);
     } catch (error) {
       if (error instanceof NotFoundError) {
@@ -113,6 +113,13 @@ export class CargoClient implements ICargoClient {
       this.logger.debug(logs.cargoClient.debug.crateMetadataError(), crateName, (error as Error).message);
       throw error;
     }
+  }
+
+  /**
+   * Builds a GitHub raw URL for a Cargo.toml file
+   */
+  buildCargoTomlUrl(githubRepo: string, branch = 'main'): string {
+    return `${this.cargoConfig.githubRaw.host}/${githubRepo}/${branch}/Cargo.toml`;
   }
 
   async getCargoTomlPackage(url: string): Promise<CargoTomlPackage | null> {

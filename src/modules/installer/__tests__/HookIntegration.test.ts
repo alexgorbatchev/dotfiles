@@ -195,7 +195,6 @@ describe('Hook Integration Tests', () => {
       }
 
       const toolDirContents = await setup.fs.readdir(toolDir);
-      console.log('Tool directory contents:', toolDirContents);
 
       const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
       if (!timestampDir) {
@@ -275,7 +274,7 @@ describe('Hook Integration Tests', () => {
 
                 // Create the binary in the extract directory so the binary setup service can find it
                 const binaryPath = path.join(context.extractDir, context.toolName);
-                await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\\necho \"Compiled binary\"');
+                await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\necho "Compiled binary"');
                 await context.fileSystem.chmod(binaryPath, 0o755);
 
                 // Create additional compiled artifacts

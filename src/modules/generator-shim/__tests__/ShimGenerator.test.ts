@@ -473,7 +473,7 @@ describe('ShimGenerator', () => {
       // Should use the correct tool name and config path
       expect(writtenContent).toContain(`TOOL_NAME="${toolName}"`);
       expect(writtenContent).toContain(`CONFIG_PATH="${mockConfig.userConfigPath}"`);
-      expect(writtenContent).toContain('\'\"$CONFIG_PATH\"\' \'\"$TOOL_NAME\"\'');
+      expect(writtenContent).toContain('\'"$CONFIG_PATH"\' \'"$TOOL_NAME"\'');
     });
 
     it('should place @update check before normal execution logic', async () => {

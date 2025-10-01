@@ -1,3 +1,5 @@
+import type { DownloadStrategy } from './DownloadStrategy';
+
 export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | null) => void;
 
 /**
@@ -42,7 +44,7 @@ export interface IDownloader {
    * Registered strategies can then be used for subsequent download operations.
    * @param strategy The DownloadStrategy to register.
    */
-  registerStrategy(strategy: import('./DownloadStrategy').DownloadStrategy): void;
+  registerStrategy(strategy: DownloadStrategy): void;
 
   /**
    * Downloads a file from the given URL and returns its content as a Buffer.

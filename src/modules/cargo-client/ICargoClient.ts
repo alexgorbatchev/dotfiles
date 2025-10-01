@@ -12,6 +12,14 @@ export interface ICargoClient {
   getCrateMetadata(crateName: string): Promise<CrateMetadata | null>;
 
   /**
+   * Builds a GitHub raw URL for a Cargo.toml file.
+   * @param githubRepo The GitHub repository in format "owner/repo".
+   * @param branch The branch name (defaults to "main").
+   * @returns The constructed URL.
+   */
+  buildCargoTomlUrl(githubRepo: string, branch?: string): string;
+
+  /**
    * Fetches and parses a Cargo.toml file from a URL.
    * @param url The URL to the Cargo.toml file.
    * @returns A promise that resolves to the parsed package section, or null if not found.

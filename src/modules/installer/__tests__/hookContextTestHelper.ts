@@ -32,6 +32,27 @@ export function createTestInstallHookContext(
       userAgent: 'test-agent',
       cache: { enabled: true, ttl: 3600 },
     },
+    cargo: {
+      cratesIo: {
+        host: 'https://crates.io',
+        cache: { enabled: true, ttl: 3600 },
+        token: '',
+        userAgent: 'dotfiles-generator',
+      },
+      githubRaw: {
+        host: 'https://raw.githubusercontent.com',
+        cache: { enabled: true, ttl: 3600 },
+        token: '',
+        userAgent: 'dotfiles-generator',
+      },
+      githubRelease: {
+        host: 'https://github.com',
+        cache: { enabled: true, ttl: 3600 },
+        token: '',
+        userAgent: 'dotfiles-generator',
+      },
+      userAgent: 'test-agent',
+    },
     downloader: {
       timeout: 30000,
       retryCount: 3,

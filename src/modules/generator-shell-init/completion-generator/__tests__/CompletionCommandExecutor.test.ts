@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { createTsLogger } from '@modules/logger';
-import { createMock$ } from '@testing-helpers';
+import { createMock$, TestLogger } from '@testing-helpers';
 import { CompletionCommandExecutor } from '../CompletionCommandExecutor';
 
 describe('CompletionCommandExecutor', () => {
-  const logger = createTsLogger('test');
+  const logger = new TestLogger();
   const executor = new CompletionCommandExecutor(logger);
   const mock$ = createMock$();
 

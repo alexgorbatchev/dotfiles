@@ -7,6 +7,7 @@ import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@types';
 
+import { setupBinariesFromArchive } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from './utils';
@@ -24,7 +25,8 @@ export async function installFromCargo(
   cargoClient: ICargoClient,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
+  cargoGithubReleaseHost: string
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
   logger.debug(logs.installer.debug.installingFromCargo(), toolName, toolConfig['installParams']);
@@ -47,7 +49,7 @@ export async function installFromCargo(
     logger.debug(logs.installer.debug.foundCrateVersion(), crateName, version);
 
     // 2. Determine download URL based on binary source
-    const downloadUrl = await buildDownloadUrl(crateName, version, params, context);
+  const downloadUrl = await buildDownloadUrl(crateName, version, params, context, cargoGithubReleaseHost);
     logger.debug(logs.installer.debug.downloadingAsset(), `${crateName}-${version}`, downloadUrl);
 
     // 3. Download and extract
@@ -76,7 +78,7 @@ export async function installFromCargo(
     logger.debug(logs.installer.debug.archiveExtracted(), extractResult);
 
     // 6. Setup binaries
-    await setupBinaries(params, crateName, context.installDir, fileSystem, logger);
+    await setupBinariesFromArchive(fileSystem, toolName, toolConfig, context, context.installDir, logger);
 
     // 7. Execute afterInstall hook
     const afterInstallResult = await executeAfterInstallHook(
@@ -138,31 +140,6 @@ async function executeAfterDownloadHook(
 }
 
 /**
- * Setup binaries by making them executable
- */
-async function setupBinaries(
-  params: CargoInstallParams,
-  crateName: string,
-  installDir: string,
-  fileSystem: IFileSystem,
-  logger: TsLogger
-): Promise<void> {
-  const binaryNames = params.customBinaries || [crateName];
-  logger.debug(logs.installer.debug.foundBinaries(), binaryNames);
-
-  for (const binaryName of binaryNames) {
-    const sourcePath = path.join(installDir, binaryName);
-
-    if (await fileSystem.exists(sourcePath)) {
-      await fileSystem.chmod(sourcePath, 0o755);
-      logger.debug(logs.installer.debug.makingExecutable(), sourcePath);
-    } else {
-      logger.debug(logs.installer.debug.binaryNotFound(), binaryName, sourcePath);
-    }
-  }
-}
-
-/**
  * Execute afterInstall hook if configured
  */
 async function executeAfterInstallHook(
@@ -201,7 +178,7 @@ async function determineVersion(
     case 'cargo-toml': {
       const cargoTomlUrl =
         params.cargoTomlUrl ||
-        `https://raw.githubusercontent.com/${params.githubRepo || `${crateName}-community/${crateName}`}/main/Cargo.toml`;
+        cargoClient.buildCargoTomlUrl(params.githubRepo || `${crateName}-community/${crateName}`);
 
       logger.debug(logs.installer.debug.parsingCrateMetadata(), cargoTomlUrl);
 
@@ -247,15 +224,18 @@ async function buildDownloadUrl(
   crateName: string,
   version: string,
   params: CargoInstallParams,
-  context: BaseInstallContext
+  context: BaseInstallContext,
+  githubReleaseHost: string
 ): Promise<string> {
   const binarySource = params.binarySource || 'cargo-quickinstall';
   const platform = getPlatformString(context.systemInfo.platform);
   const arch = getArchString(context.systemInfo.arch);
 
   switch (binarySource) {
-    case 'cargo-quickinstall':
-      return `https://github.com/cargo-bins/cargo-quickinstall/releases/download/${crateName}-${version}/${crateName}-${version}-${arch}-${platform}.tar.gz`;
+    case 'cargo-quickinstall': {
+  const url = `${githubReleaseHost}/cargo-bins/cargo-quickinstall/releases/download/${crateName}-${version}/${crateName}-${version}-${arch}-${platform}.tar.gz`;
+      return url;
+    }
 
     case 'github-releases': {
       if (!params.githubRepo) {
@@ -268,7 +248,8 @@ async function buildDownloadUrl(
         .replace('{platform}', platform)
         .replace('{arch}', arch);
 
-      return `https://github.com/${params.githubRepo}/releases/download/v${version}/${assetName}`;
+  const url = `${githubReleaseHost}/${params.githubRepo}/releases/download/v${version}/${assetName}`;
+      return url;
     }
 
     default:

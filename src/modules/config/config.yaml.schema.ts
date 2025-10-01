@@ -1,6 +1,47 @@
 import type { PartialDeep } from 'type-fest';
 import { z } from 'zod';
 
+// Shared cache schema factory to avoid duplication across services/hosts
+function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number }) {
+  const enabledDefault = defaults?.enabled ?? true;
+  const ttlDefault = defaults?.ttl ?? 86400000; // 24h
+  return z
+    .object({
+      /** Enables or disables caching for this host/service. */
+      enabled: z.boolean().default(enabledDefault),
+      /** Time-to-live (TTL) in milliseconds for cache entries. */
+      ttl: z.number().default(ttlDefault),
+    })
+    .strict();
+}
+
+export const cacheConfigSchema = createCacheSchema();
+
+// Generic host schema factory with optional token/userAgent and extra fields
+function createHostSchema(options: {
+  defaultHost: string;
+  includeToken?: boolean;
+  includeUserAgent?: boolean;
+  defaultUserAgent?: string;
+  tokenDefault?: string;
+}) {
+  const {
+    defaultHost,
+    includeToken,
+    includeUserAgent,
+    defaultUserAgent = 'dotfiles-generator',
+    tokenDefault = '',
+  } = options;
+  return z
+    .object({
+      host: z.string().default(defaultHost),
+      cache: cacheConfigSchema.default(cacheConfigSchema.parse({})),
+      token: z.string().default(includeToken ? tokenDefault : ''),
+      userAgent: z.string().default(includeUserAgent ? defaultUserAgent : 'dotfiles-generator'),
+    })
+    .strict();
+}
+
 const pathsConfigSchema = z
   .object({
     /** The user's home directory. Defaults to the value of the HOME environment variable. */
@@ -50,33 +91,27 @@ const updatesConfigSchema = z
   })
   .strict();
 
-const gitHubCacheConfigSchema = z
-  .object({
-    /** Enables or disables caching for GitHub API responses. Defaults to true. */
-    enabled: z.boolean().default(true),
-    /** Time-to-live (TTL) in milliseconds for GitHub API cache entries. Defaults to 86400000 (24 hours). */
-    ttl: z.number().default(86400000),
-  })
-  .strict();
+const gitHubConfigSchema = createHostSchema({
+  defaultHost: 'https://api.github.com',
+  includeToken: true,
+  includeUserAgent: true,
+});
 
-const gitHubConfigSchema = z
+// Define individual host schemas for cargo with their own defaults so that cargoConfigSchema.parse({}) succeeds
+const cargoCratesIoHostSchema = createHostSchema({ defaultHost: 'https://crates.io' });
+const cargoGithubRawHostSchema = createHostSchema({ defaultHost: 'https://raw.githubusercontent.com' });
+const cargoGithubReleaseHostSchema = createHostSchema({ defaultHost: 'https://github.com' });
+
+const cargoConfigSchema = z
   .object({
-    /** GitHub Personal Access Token (PAT) for accessing the GitHub API. */
-    token: z.string().default(''),
-    /** Custom GitHub API host URL. Defaults to "https://api.github.com". */
-    host: z.string().default('https://api.github.com'),
-    /** Custom User-Agent string for requests made by the GitHub API client. Defaults to "dotfiles-generator". */
+    /** crates.io API host configuration */
+    cratesIo: cargoCratesIoHostSchema.default(cargoCratesIoHostSchema.parse({})),
+    /** GitHub raw content host configuration for Cargo.toml files */
+    githubRaw: cargoGithubRawHostSchema.default(cargoGithubRawHostSchema.parse({})),
+    /** GitHub releases/download host configuration */
+    githubRelease: cargoGithubReleaseHostSchema.default(cargoGithubReleaseHostSchema.parse({})),
+    /** Custom User-Agent string for requests made by the Cargo client. */
     userAgent: z.string().default('dotfiles-generator'),
-    cache: gitHubCacheConfigSchema.default(gitHubCacheConfigSchema.parse({})),
-  })
-  .strict();
-
-const downloaderCacheConfigSchema = z
-  .object({
-    /** Enables or disables caching for downloaded tool assets. Defaults to true. */
-    enabled: z.boolean().default(true),
-    /** Time-to-live (TTL) in milliseconds for download cache entries. Defaults to 86400000 (24 hours). */
-    ttl: z.number().default(86400000),
   })
   .strict();
 
@@ -88,7 +123,7 @@ const downloaderConfigSchema = z
     retryCount: z.number().default(3),
     /** Delay in milliseconds between download retry attempts. Defaults to 1000 (1 second). */
     retryDelay: z.number().default(1000),
-    cache: downloaderCacheConfigSchema.default(downloaderCacheConfigSchema.parse({})),
+    cache: cacheConfigSchema.default(cacheConfigSchema.parse({})),
   })
   .strict();
 
@@ -117,6 +152,7 @@ const baseYamlConfigSchemaRequired = z
     logging: loggingConfigSchema.required().default(loggingConfigSchema.parse({})),
     updates: updatesConfigSchema.required().default(updatesConfigSchema.parse({})),
     github: gitHubConfigSchema.required().default(gitHubConfigSchema.parse({})),
+    cargo: cargoConfigSchema.required().default(cargoConfigSchema.parse({})),
     downloader: downloaderConfigSchema.required().default(downloaderConfigSchema.parse({})),
   })
   .strict();
@@ -128,6 +164,7 @@ const baseYamlConfigSchemaPartial = z
     logging: loggingConfigSchema.partial().optional(),
     updates: updatesConfigSchema.partial().optional(),
     github: gitHubConfigSchema.partial().optional(),
+    cargo: cargoConfigSchema.partial().optional(),
     downloader: downloaderConfigSchema.partial().optional(),
   })
   .strict();
@@ -153,10 +190,11 @@ export const yamlConfigSchema = baseYamlConfigSchemaRequired
 export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
 export type YamlConfig = z.infer<typeof yamlConfigSchema>;
 export type YamlConfigPartial = PartialDeep<YamlConfig>;
+export type HostConfig = z.infer<ReturnType<typeof createHostSchema>>;
 
 {
   // This is a type assertion to ensure that the schema is correct. DO NOT REMOVE.
-  // @ts-ignore
+  // @ts-expect-error
   const _check: YamlConfig = {
     userConfigPath: '',
 
@@ -180,13 +218,31 @@ export type YamlConfigPartial = PartialDeep<YamlConfig>;
       checkInterval: 0,
     },
     github: {
-      token: '',
       host: '',
+      token: '',
       userAgent: '',
-      cache: {
-        enabled: false,
-        ttl: 0,
+      cache: { enabled: false, ttl: 0 },
+    },
+    cargo: {
+      cratesIo: {
+        host: '',
+        cache: { enabled: false, ttl: 0 },
+        token: '',
+        userAgent: '',
       },
+      githubRaw: {
+        host: '',
+        cache: { enabled: false, ttl: 0 },
+        token: '',
+        userAgent: '',
+      },
+      githubRelease: {
+        host: '',
+        cache: { enabled: false, ttl: 0 },
+        token: '',
+        userAgent: '',
+      },
+      userAgent: '',
     },
     downloader: {
       timeout: 0,

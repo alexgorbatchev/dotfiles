@@ -12,9 +12,11 @@ import type { IToolInstallationRegistry } from '@modules/tool-installation-regis
 import type {
   BaseInstallContext,
   BrewToolConfig,
+  CargoInstallParams,
   CargoToolConfig,
   CurlScriptToolConfig,
   CurlTarToolConfig,
+  GithubReleaseInstallParams,
   GithubReleaseToolConfig,
   ManualToolConfig,
   SystemInfo,
@@ -406,7 +408,8 @@ export class Installer implements IInstaller {
       this.cargoClient,
       this.archiveExtractor,
       this.hookExecutor,
-      this.logger
+      this.logger,
+      this.appConfig.cargo.githubRelease.host
     );
   }
 
@@ -472,59 +475,10 @@ export class Installer implements IInstaller {
     try {
       switch (toolConfig.installationMethod) {
         case 'github-release':
-          if (toolConfig.installParams.version === 'latest') {
-            const [owner, repo] = toolConfig.installParams.repo.split('/');
-            if (!owner || !repo) {
-              return null;
-            }
-            const release = await this.githubApiClient.getLatestRelease(owner, repo);
-            return release?.tag_name || null;
-          }
-          return toolConfig.installParams.version || null;
+          return this.getGitHubReleaseTargetVersion(toolConfig);
 
         case 'cargo':
-          // For cargo installations, we need to use the same version resolution
-          // as the actual installation process to ensure consistency
-          if (toolConfig.version === 'latest') {
-            const crateName = toolConfig.installParams.crateName || toolName;
-            const versionSource = toolConfig.installParams.versionSource || 'cargo-toml';
-
-            switch (versionSource) {
-              case 'cargo-toml': {
-                const cargoTomlUrl =
-                  toolConfig.installParams.cargoTomlUrl ||
-                  `https://raw.githubusercontent.com/${toolConfig.installParams.githubRepo || `${crateName}-community/${crateName}`}/main/Cargo.toml`;
-
-                try {
-                  const packageInfo = await this.cargoClient.getCargoTomlPackage(cargoTomlUrl);
-                  return packageInfo?.version || null;
-                } catch {
-                  return null;
-                }
-              }
-              case 'crates-io': {
-                try {
-                  return await this.cargoClient.getLatestVersion(crateName);
-                } catch {
-                  return null;
-                }
-              }
-              case 'github-releases': {
-                if (!toolConfig.installParams.githubRepo) {
-                  return null;
-                }
-                const [owner, repo] = toolConfig.installParams.githubRepo.split('/');
-                if (!owner || !repo) {
-                  return null;
-                }
-                const release = await this.githubApiClient.getLatestRelease(owner, repo);
-                return release?.tag_name || null;
-              }
-              default:
-                return null;
-            }
-          }
-          return toolConfig.version || null;
+          return this.getCargoTargetVersion(toolName, toolConfig);
 
         case 'brew':
         case 'curl-script':
@@ -546,6 +500,107 @@ export class Installer implements IInstaller {
       );
       return null;
     }
+  }
+
+  /**
+   * Get target version for GitHub release installations
+   */
+  private async getGitHubReleaseTargetVersion(toolConfig: ToolConfig): Promise<string | null> {
+    if (toolConfig.installationMethod !== 'github-release' || !toolConfig.installParams) {
+      return null;
+    }
+
+    const params = toolConfig.installParams as GithubReleaseInstallParams;
+    if (params.version === 'latest') {
+      const [owner, repo] = params.repo.split('/');
+      if (!owner || !repo) {
+        return null;
+      }
+      const release = await this.githubApiClient.getLatestRelease(owner, repo);
+      return release?.tag_name || null;
+    }
+    return params.version || null;
+  }
+
+  /**
+   * Get target version for Cargo installations
+   */
+  private async getCargoTargetVersion(toolName: string, toolConfig: ToolConfig): Promise<string | null> {
+    if (toolConfig.installationMethod !== 'cargo') {
+      return null;
+    }
+
+    if (toolConfig.version === 'latest') {
+      const params = toolConfig.installParams as CargoInstallParams;
+      const crateName = params?.crateName || toolName;
+      const versionSource = params?.versionSource || 'cargo-toml';
+      return this.getCargoVersionBySource(crateName, versionSource, toolConfig);
+    }
+    return toolConfig.version || null;
+  }
+
+  /**
+   * Get cargo version based on version source
+   */
+  private async getCargoVersionBySource(
+    crateName: string,
+    versionSource: string,
+    toolConfig: ToolConfig
+  ): Promise<string | null> {
+    switch (versionSource) {
+      case 'cargo-toml':
+        return this.getVersionFromCargoToml(crateName, toolConfig);
+      case 'crates-io':
+        return this.getVersionFromCratesIo(crateName);
+      case 'github-releases':
+        return this.getVersionFromGitHubReleases(toolConfig);
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Get version from Cargo.toml file
+   */
+  private async getVersionFromCargoToml(crateName: string, toolConfig: ToolConfig): Promise<string | null> {
+    const params = toolConfig.installParams as CargoInstallParams;
+    const cargoTomlUrl =
+      params?.cargoTomlUrl ||
+      this.cargoClient.buildCargoTomlUrl(params?.githubRepo || `${crateName}-community/${crateName}`);
+
+    try {
+      const packageInfo = await this.cargoClient.getCargoTomlPackage(cargoTomlUrl);
+      return packageInfo?.version || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get version from crates.io
+   */
+  private async getVersionFromCratesIo(crateName: string): Promise<string | null> {
+    try {
+      return await this.cargoClient.getLatestVersion(crateName);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get version from GitHub releases
+   */
+  private async getVersionFromGitHubReleases(toolConfig: ToolConfig): Promise<string | null> {
+    const params = toolConfig.installParams as CargoInstallParams;
+    if (!params?.githubRepo) {
+      return null;
+    }
+    const [owner, repo] = params.githubRepo.split('/');
+    if (!owner || !repo) {
+      return null;
+    }
+    const release = await this.githubApiClient.getLatestRelease(owner, repo);
+    return release?.tag_name || null;
   }
 
   /**

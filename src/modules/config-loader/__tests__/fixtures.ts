@@ -36,6 +36,27 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
       ttl: 86400000,
     },
   },
+  cargo: {
+    cratesIo: {
+      host: 'https://crates.io',
+      cache: { enabled: true, ttl: 86400000 },
+      token: '',
+      userAgent: 'dotfiles-generator',
+    },
+    githubRaw: {
+      host: 'https://raw.githubusercontent.com',
+      cache: { enabled: true, ttl: 86400000 },
+      token: '',
+      userAgent: 'dotfiles-generator',
+    },
+    githubRelease: {
+      host: 'https://github.com',
+      cache: { enabled: true, ttl: 86400000 },
+      token: '',
+      userAgent: 'dotfiles-generator',
+    },
+    userAgent: 'dotfiles-generator',
+  },
   downloader: {
     timeout: 300000,
     retryCount: 3,

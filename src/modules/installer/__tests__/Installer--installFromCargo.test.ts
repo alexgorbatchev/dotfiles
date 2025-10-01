@@ -17,7 +17,10 @@ describe('Installer - installFromCargo', () => {
   it('should install tool from cargo-quickinstall', async () => {
     const setup = await createInstallerTestSetup();
 
-    // Mock cargoClient to return version
+    // Mock cargoClient methods
+    setup.mocks.cargoClient.buildCargoTomlUrl.mockReturnValueOnce(
+      'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
+    );
     setup.mocks.cargoClient.getCargoTomlPackage.mockResolvedValueOnce({
       name: 'eza',
       version: '0.18.2',
@@ -43,6 +46,7 @@ describe('Installer - installFromCargo', () => {
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toHaveLength(1);
     expect(result.version).toBe('0.18.2');
+    expect(setup.mocks.cargoClient.buildCargoTomlUrl).toHaveBeenCalledWith('eza-community/eza');
     expect(setup.mocks.cargoClient.getCargoTomlPackage).toHaveBeenCalledWith(
       'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
     );

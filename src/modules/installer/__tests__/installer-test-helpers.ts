@@ -36,6 +36,7 @@ export const MOCK_TOOL_REPO = 'owner/repo';
 export function createMockCargoClient() {
   return {
     getCrateMetadata: mock(),
+    buildCargoTomlUrl: mock(),
     getCargoTomlPackage: mock(),
     getLatestVersion: mock(),
   };

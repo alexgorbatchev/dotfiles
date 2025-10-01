@@ -345,9 +345,9 @@ describe('Installer - installFromGitHubRelease', () => {
         arch: 'sparc',
         homeDir: '/home/test',
       };
-      // @ts-ignore
+      // @ts-expect-error
       process.platform = systemInfo.platform;
-      // @ts-ignore
+      // @ts-expect-error
       process.arch = systemInfo.arch;
 
       const context = createTestContext(setup, {

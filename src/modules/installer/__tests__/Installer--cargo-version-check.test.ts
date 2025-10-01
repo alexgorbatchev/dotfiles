@@ -37,6 +37,9 @@ describe('Installer - Cargo Version Check', () => {
     });
 
     // Mock cargoClient to return the same version as already installed
+    setup.mocks.cargoClient.buildCargoTomlUrl.mockReturnValue(
+      'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
+    );
     setup.mocks.cargoClient.getCargoTomlPackage.mockResolvedValue({
       name: 'eza',
       version: '0.18.2',
@@ -53,6 +56,7 @@ describe('Installer - Cargo Version Check', () => {
 
     // Should not have called the downloader since it should skip installation
     expect(setup.mockDownloader.download).not.toHaveBeenCalled();
+    expect(setup.mocks.cargoClient.buildCargoTomlUrl).toHaveBeenCalledWith('eza-community/eza');
     expect(setup.mocks.cargoClient.getCargoTomlPackage).toHaveBeenCalledWith(
       'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
     );
@@ -82,6 +86,9 @@ describe('Installer - Cargo Version Check', () => {
     });
 
     // Mock cargoClient to return a newer version
+    setup.mocks.cargoClient.buildCargoTomlUrl.mockReturnValue(
+      'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
+    );
     setup.mocks.cargoClient.getCargoTomlPackage.mockResolvedValue({
       name: 'eza',
       version: '0.18.2',
@@ -96,6 +103,7 @@ describe('Installer - Cargo Version Check', () => {
 
     // Should have called the downloader since it needs to install the new version
     expect(setup.mockDownloader.download).toHaveBeenCalled();
+    expect(setup.mocks.cargoClient.buildCargoTomlUrl).toHaveBeenCalledWith('eza-community/eza');
     expect(setup.mocks.cargoClient.getCargoTomlPackage).toHaveBeenCalledWith(
       'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
     );
