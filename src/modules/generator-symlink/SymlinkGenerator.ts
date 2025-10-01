@@ -95,7 +95,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     );
 
     if (!(await toolFs.exists(sourceAbsPath))) {
-      logger.warn(logs.fs.warning.notFound('Source file', sourceAbsPath));
+      logger.warn(logs.symlink.warning.sourceNotFound(), toolConfig.name, sourceAbsPath);
       return {
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,

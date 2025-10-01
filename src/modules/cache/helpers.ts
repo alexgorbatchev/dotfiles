@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { DownloadOptions } from '@modules/downloader/IDownloader';
+import type { DownloadOptions } from '@modules/downloader';
 
 /**
  * Creates a cache key for a download operation.

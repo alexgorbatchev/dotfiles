@@ -42,6 +42,8 @@ export interface Services {
   downloadCache: ICache | undefined;
   downloader: IDownloader;
   githubApiCache: ICache;
+  cargoCratesIoCache: ICache;
+  cargoGithubRawCache: ICache;
   githubApiClient: IGitHubApiClient;
   cargoClient: ICargoClient;
   shimGenerator: IShimGenerator;
@@ -260,7 +262,20 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     storageStrategy: 'json',
   });
   const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
-  const cargoClient = new CargoClient(parentLogger, yamlConfig, downloader);
+
+  const cargoCratesIoCache = new FileCache(parentLogger, fs, {
+    enabled: yamlConfig.cargo.cratesIo.cache.enabled,
+    defaultTtl: yamlConfig.cargo.cratesIo.cache.ttl,
+    cacheDir: path.join(yamlConfig.paths.generatedDir, 'cache', 'cargo', 'crates-io'),
+    storageStrategy: 'json',
+  });
+  const cargoGithubRawCache = new FileCache(parentLogger, fs, {
+    enabled: yamlConfig.cargo.githubRaw.cache.enabled,
+    defaultTtl: yamlConfig.cargo.githubRaw.cache.ttl,
+    cacheDir: path.join(yamlConfig.paths.generatedDir, 'cache', 'cargo', 'github-raw'),
+    storageStrategy: 'json',
+  });
+  const cargoClient = new CargoClient(parentLogger, yamlConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
 
   // Create tracked filesystem instances for each generator
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs } = createTrackedFileSystems(
@@ -307,6 +322,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     downloadCache,
     downloader,
     githubApiCache,
+    cargoCratesIoCache,
+    cargoGithubRawCache,
     githubApiClient,
     cargoClient,
     shimGenerator,

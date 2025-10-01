@@ -71,10 +71,9 @@ export class FileCache implements ICache {
           throw new Error(logs.cache.error.binaryFileNotConfigured());
         }
 
-        const binaryEntry = entry as BinaryCacheEntry;
-        const binaryPath = path.join(this.binariesDir, binaryEntry.binaryFileName);
+        const binaryPath = path.join(this.binariesDir, entry.binaryFileName);
         if (!(await this.fileSystem.exists(binaryPath))) {
-          logger.debug(logs.cache.debug.binaryFileMissing(key, binaryPath));
+          logger.warn(logs.cache.debug.binaryFileMissing(key, binaryPath));
           await this.fileSystem.rm(metadataPath).catch(() => {}); // Clean up orphaned metadata
           return null;
         }
@@ -84,10 +83,10 @@ export class FileCache implements ICache {
 
         // Verify content integrity for binary data
         const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
-        const expectedHash = binaryEntry.contentHash;
+        const expectedHash = entry.contentHash;
 
         if (actualHash !== expectedHash) {
-          logger.debug(logs.cache.error.contentHashMismatch(key, expectedHash, actualHash));
+          logger.warn(logs.cache.error.contentHashMismatch(key, expectedHash, actualHash));
           await this.deleteEntry(key, entry);
           return null;
         }
@@ -96,7 +95,7 @@ export class FileCache implements ICache {
         return buffer as T;
       }
     } catch (error) {
-      logger.debug(logs.cache.error.retrievalFailed(key, (error as Error).message));
+      logger.warn(logs.cache.error.retrievalFailed(key, (error as Error).message));
       return null;
     }
   }
@@ -161,7 +160,7 @@ export class FileCache implements ICache {
         logger.debug(logs.cache.success.stored(key, 'binary', new Date(entry.expiresAt).toISOString(), buffer.length));
       }
     } catch (error) {
-      logger.debug(logs.cache.error.storageFailed(key, (error as Error).message));
+      logger.warn(logs.cache.error.storageFailed(key, (error as Error).message));
       throw new Error(`Failed to cache data: ${(error as Error).message}`);
     }
   }
@@ -217,7 +216,7 @@ export class FileCache implements ICache {
 
       logger.debug(logs.cache.success.stored(key, 'download', new Date(entry.expiresAt).toISOString(), data.length));
     } catch (error) {
-      logger.debug(logs.cache.error.storageFailed(key, (error as Error).message));
+      logger.warn(logs.cache.error.storageFailed(key, (error as Error).message));
       throw new Error(`Failed to cache download: ${(error as Error).message}`);
     }
   }
@@ -247,8 +246,7 @@ export class FileCache implements ICache {
 
       // For binary entries, also check if binary file exists
       if (entry.type === 'binary' && this.binariesDir) {
-        const binaryEntry = entry as BinaryCacheEntry;
-        const binaryPath = path.join(this.binariesDir, binaryEntry.binaryFileName);
+        const binaryPath = path.join(this.binariesDir, entry.binaryFileName);
         const binaryExists = await this.fileSystem.exists(binaryPath);
 
         if (!binaryExists) {
@@ -260,7 +258,7 @@ export class FileCache implements ICache {
       logger.debug(logs.cache.success.entryExists(key));
       return true;
     } catch (error) {
-      logger.debug(logs.cache.error.checkFailed(key, (error as Error).message));
+      logger.warn(logs.cache.error.checkFailed(key, (error as Error).message));
       return false;
     }
   }
@@ -284,7 +282,7 @@ export class FileCache implements ICache {
         logger.debug(logs.cache.debug.noEntryToDelete(key));
       }
     } catch (error) {
-      logger.debug(logs.cache.error.deleteFailed(key, (error as Error).message));
+      logger.warn(logs.cache.error.deleteFailed(key, (error as Error).message));
       throw new Error(`Failed to delete cache entry: ${(error as Error).message}`);
     }
   }
@@ -322,7 +320,7 @@ export class FileCache implements ICache {
             expiredCount++;
           }
         } catch (error) {
-          logger.debug(logs.cache.debug.fileProcessingError(file, (error as Error).message));
+          logger.warn(logs.cache.debug.fileProcessingError(file, (error as Error).message));
           // Remove problematic metadata file
           await this.fileSystem.rm(metadataPath).catch(() => {});
           expiredCount++;
@@ -331,7 +329,7 @@ export class FileCache implements ICache {
 
       logger.debug(logs.cache.success.expiredCleared(expiredCount));
     } catch (error) {
-      logger.debug(logs.cache.error.clearExpiredFailed((error as Error).message));
+      logger.warn(logs.cache.error.clearExpiredFailed((error as Error).message));
       throw new Error(`Failed to clear expired cache entries: ${(error as Error).message}`);
     }
   }
@@ -353,7 +351,7 @@ export class FileCache implements ICache {
       // Always ensure the cache directory exists after attempting to clear
       await this.ensureCacheDirectories();
     } catch (error) {
-      logger.debug(logs.cache.error.clearFailed((error as Error).message));
+      logger.warn(logs.cache.error.clearFailed((error as Error).message));
       throw new Error(`Failed to clear cache: ${(error as Error).message}`);
     }
   }
@@ -371,7 +369,7 @@ export class FileCache implements ICache {
         await this.fileSystem.ensureDir(this.binariesDir);
       }
     } catch (error) {
-      logger.debug(logs.cache.error.directoryCreationFailed((error as Error).message));
+      logger.warn(logs.cache.error.directoryCreationFailed((error as Error).message));
       throw new Error(`Failed to create cache directories: ${(error as Error).message}`);
     }
   }
@@ -390,8 +388,7 @@ export class FileCache implements ICache {
 
     // Remove binary file if it's a binary entry
     if (entry.type === 'binary' && this.binariesDir) {
-      const binaryEntry = entry as BinaryCacheEntry;
-      const binaryPath = path.join(this.binariesDir, binaryEntry.binaryFileName);
+      const binaryPath = path.join(this.binariesDir, entry.binaryFileName);
       if (await this.fileSystem.exists(binaryPath)) {
         await this.fileSystem.rm(binaryPath);
       }

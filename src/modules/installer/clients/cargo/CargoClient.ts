@@ -1,3 +1,4 @@
+import type { ICache } from '@modules/cache';
 import type { YamlConfig } from '@modules/config';
 import { type IDownloader, NetworkError, NotFoundError } from '@modules/downloader';
 import type { TsLogger } from '@modules/logger';
@@ -20,6 +21,18 @@ export interface CrateMetadata {
     num: string;
     bin_names?: string[];
   }>;
+}
+
+/**
+ * Supported cache kinds for Cargo related requests.
+ */
+type CargoCacheKind = 'cratesIo' | 'githubRaw';
+
+/**
+ * Cache options used by requests to determine which host level cache to use.
+ */
+interface CargoCacheOptions {
+  kind: CargoCacheKind;
 }
 
 /**
@@ -62,35 +75,122 @@ export class CargoClient implements ICargoClient {
   private readonly downloader: IDownloader;
   private readonly logger: TsLogger;
   private readonly cargoConfig: YamlConfig['cargo'];
+  private readonly cratesIoCache?: ICache;
+  private readonly githubRawCache?: ICache;
+  private readonly cratesIoCacheEnabled: boolean;
+  private readonly cratesIoCacheTtl: number;
+  private readonly githubRawCacheEnabled: boolean;
+  private readonly githubRawCacheTtl: number;
 
-  constructor(parentLogger: TsLogger, config: YamlConfig, downloader: IDownloader) {
+  constructor(
+    parentLogger: TsLogger,
+    config: YamlConfig,
+    downloader: IDownloader,
+    cratesIoCache?: ICache,
+    githubRawCache?: ICache
+  ) {
     this.logger = parentLogger.getSubLogger({ name: 'CargoClient' });
     this.downloader = downloader;
-    // Store full cargo config for future extensibility (tokens, per-host cache toggles, etc.)
+    this.cratesIoCache = cratesIoCache;
+    this.githubRawCache = githubRawCache;
     this.cargoConfig = config.cargo;
+
+    // Host level cache controls (inherit defaults from schema)
+    this.cratesIoCacheEnabled = this.cargoConfig.cratesIo.cache.enabled && Boolean(this.cratesIoCache);
+    this.cratesIoCacheTtl = this.cargoConfig.cratesIo.cache.ttl;
+    this.githubRawCacheEnabled = this.cargoConfig.githubRaw.cache.enabled && Boolean(this.githubRawCache);
+    this.githubRawCacheTtl = this.cargoConfig.githubRaw.cache.ttl;
+
     this.logger.debug(logs.cargoClient.debug.constructorInit(), 'CargoClient', this.cargoConfig.userAgent);
   }
 
-  private async request<T>(url: string): Promise<T> {
-    this.logger.debug(logs.cargoClient.debug.makingRequest(), 'GET', url);
+  private async request<T>(url: string, cacheOptions?: CargoCacheOptions): Promise<T> {
+    const logger = this.logger.getSubLogger({ name: 'request' });
+    logger.debug(logs.cargoClient.debug.makingRequest(), 'GET', url);
     const headers = this.buildRequestHeaders();
+    const { useCache, cacheKey, cacheTtl } = this.resolveCacheOptions(url, cacheOptions);
+    const cached = await this.tryReadCache<T>(cacheKey, useCache);
+    if (cached) {
+      return cached;
+    }
 
+    const buffer = await this.performDownload(url, headers);
+    const data = this.parseJson<T>(buffer, url);
+    await this.tryStoreCache(cacheKey, data, cacheTtl, useCache);
+    return data;
+  }
+
+  private resolveCacheOptions(
+    url: string,
+    cacheOptions?: CargoCacheOptions
+  ): {
+    useCache: boolean;
+    cacheKey?: string;
+    cacheTtl: number;
+  } {
+    if (!cacheOptions) {
+      return { useCache: false, cacheTtl: 0 };
+    }
+    const kind = cacheOptions.kind;
+    const useCache = kind === 'cratesIo' ? this.cratesIoCacheEnabled : this.githubRawCacheEnabled;
+    const cacheTtl = kind === 'cratesIo' ? this.cratesIoCacheTtl : this.githubRawCacheTtl;
+    const cacheKey = useCache ? `cargo:${kind}:${url}` : undefined;
+    return { useCache, cacheKey, cacheTtl };
+  }
+
+  private async tryReadCache<T>(cacheKey: string | undefined, useCache: boolean): Promise<T | null> {
+    const cacheImpl = cacheKey?.includes('cratesIo:') ? this.cratesIoCache : this.githubRawCache;
+    if (!useCache || !cacheKey || !cacheImpl) {
+      return null;
+    }
     try {
-      const responseBuffer = await this.downloader.download(url, { headers });
-      if (!responseBuffer || responseBuffer.length === 0) {
-        this.logger.debug(logs.cargoClient.debug.emptyResponse(), url);
-        throw new NetworkError(this.logger, 'Empty response received from API', url);
+      const cached = await cacheImpl.get<T>(cacheKey);
+      if (cached) {
+        return cached;
       }
-      const responseText = responseBuffer.toString('utf-8');
-      return JSON.parse(responseText) as T;
+    } catch {
+      // cache errors are ignored
+    }
+    return null;
+  }
+
+  private async tryStoreCache<T>(cacheKey: string | undefined, data: T, ttl: number, useCache: boolean): Promise<void> {
+    const cacheImpl = cacheKey?.includes('cratesIo:') ? this.cratesIoCache : this.githubRawCache;
+    if (!useCache || !cacheKey || !cacheImpl) {
+      return;
+    }
+    try {
+      await cacheImpl.set(cacheKey, data, ttl);
+    } catch {
+      // cache errors are ignored
+    }
+  }
+
+  private parseJson<T>(buffer: Buffer, url: string): T {
+    const logger = this.logger.getSubLogger({ name: 'parseJson' });
+    if (!buffer || buffer.length === 0) {
+      logger.error(logs.cargoClient.error.emptyResponse(), url);
+      throw new NetworkError(logger, 'Empty response received from API', url);
+    }
+    try {
+      return JSON.parse(buffer.toString('utf-8')) as T;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this.logger.debug(logs.cargoClient.debug.jsonParseError(), url, error.message);
+        logger.error(logs.cargoClient.debug.jsonParseError(), url, error.message);
         throw new CargoClientError(`Invalid JSON response from ${url}: ${error.message}`, undefined, error);
       }
-      // Let all downloader errors (NetworkError, NotFoundError, etc.) bubble up
       throw error;
     }
+  }
+
+  private async performDownload(url: string, headers: Record<string, string>): Promise<Buffer> {
+    const logger = this.logger.getSubLogger({ name: 'performDownload' });
+    const result = await this.downloader.download(url, { headers });
+    if (!result) {
+      logger.error(logs.cargoClient.error.emptyResponse(), url);
+      throw new NetworkError(logger, 'Empty response received from API', url);
+    }
+    return result;
   }
 
   private buildRequestHeaders(): Record<string, string> {
@@ -101,16 +201,17 @@ export class CargoClient implements ICargoClient {
   }
 
   async getCrateMetadata(crateName: string): Promise<CrateMetadata | null> {
-    this.logger.debug(logs.cargoClient.debug.queryingCratesIo(), crateName);
+    const logger = this.logger.getSubLogger({ name: 'getCrateMetadata' });
+    logger.debug(logs.cargoClient.debug.queryingCratesIo(), crateName);
     const url = `${this.cargoConfig.cratesIo.host}/api/v1/crates/${crateName}`;
     try {
-      return await this.request<CrateMetadata>(url);
+      return await this.request<CrateMetadata>(url, { kind: 'cratesIo' });
     } catch (error) {
       if (error instanceof NotFoundError) {
-        this.logger.debug(logs.cargoClient.debug.crateNotFound(), crateName);
+        logger.error(logs.cargoClient.debug.crateNotFound(), crateName);
         return null;
       }
-      this.logger.debug(logs.cargoClient.debug.crateMetadataError(), crateName, (error as Error).message);
+      logger.error(logs.cargoClient.debug.crateMetadataError(), crateName, (error as Error).message);
       throw error;
     }
   }
@@ -123,24 +224,25 @@ export class CargoClient implements ICargoClient {
   }
 
   async getCargoTomlPackage(url: string): Promise<CargoTomlPackage | null> {
-    this.logger.debug(logs.cargoClient.debug.parsingCrateMetadata(), url);
+    const logger = this.logger.getSubLogger({ name: 'getCargoTomlPackage' });
+    logger.debug(logs.cargoClient.debug.parsingCrateMetadata(), url);
+    const { useCache, cacheKey } = this.resolveCacheOptions(url, { kind: 'githubRaw' });
+    if (useCache) {
+      const cached = await this.tryReadCache<CargoTomlPackage>(cacheKey, useCache);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       const responseBuffer = await this.downloader.download(url, { headers: this.buildRequestHeaders() });
       if (!responseBuffer || responseBuffer.length === 0) {
-        this.logger.debug(logs.cargoClient.debug.emptyResponse(), url);
+        logger.error(logs.cargoClient.error.emptyResponse(), url);
         return null;
       }
-
-      const cargoToml = responseBuffer.toString('utf-8');
-      const parsed = parse(cargoToml);
-      const validationResult = cargoPackageSchema.safeParse(parsed);
-
-      if (!validationResult.success) {
-        this.logger.zodErrors(validationResult.error);
-        throw new CargoClientError('Could not parse version from Cargo.toml [package] section', undefined);
-      }
-
-      return validationResult.data.package;
+      const pkg = this.parseCargoToml(responseBuffer);
+      await this.tryStoreCache(cacheKey, pkg, this.githubRawCacheTtl, useCache);
+      return pkg;
     } catch (error) {
       if (error instanceof CargoClientError) {
         throw error;
@@ -149,9 +251,21 @@ export class CargoClient implements ICargoClient {
         return null;
       }
       // Let other downloader errors (NetworkError, etc.) bubble up
-      this.logger.debug(logs.cargoClient.debug.cargoTomlParseError(), url, (error as Error).message);
+      logger.error(logs.cargoClient.debug.cargoTomlParseError(), url, (error as Error).message);
       throw error;
     }
+  }
+
+  private parseCargoToml(buffer: Buffer): CargoTomlPackage {
+    const logger = this.logger.getSubLogger({ name: 'parseCargoToml' });
+    const cargoToml = buffer.toString('utf-8');
+    const parsed = parse(cargoToml);
+    const validationResult = cargoPackageSchema.safeParse(parsed);
+    if (!validationResult.success) {
+      logger.zodErrors(validationResult.error);
+      throw new CargoClientError('Could not parse version from Cargo.toml [package] section', undefined);
+    }
+    return validationResult.data.package;
   }
 
   async getLatestVersion(crateName: string): Promise<string | null> {

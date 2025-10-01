@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { DownloadOptions } from '@modules/downloader/IDownloader';
-import { createApiCacheKey, createCacheKey, isApiKey, isDownloadKey } from '../DownloadCacheUtils';
+import { createApiCacheKey, createCacheKey, isApiKey, isDownloadKey } from '../helpers';
 
 describe('DownloadCacheUtils functions', () => {
   describe('createCacheKey', () => {

@@ -125,6 +125,15 @@ describe('SymlinkGenerator', () => {
         status: 'skipped_source_missing',
       },
     ]);
+
+    // Expect a warning log including the tool name and missing source path
+    logger.expect(
+      ['WARN'],
+      ['SymlinkGenerator', 'generate'],
+      [
+        'Tool "test-tool" source file not found', // partial matcher
+      ]
+    );
   });
 
   it('should skip if target exists and overwrite is false (default), returning skipped_exists', async () => {
