@@ -7,7 +7,7 @@ import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigs as actualLoadToolConfigs,
 } from '@modules/config-loader';
-import type { IGitHubApiClient } from '@modules/github-client';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import { logs } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';

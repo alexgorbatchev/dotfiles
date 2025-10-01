@@ -1,4 +1,4 @@
-import type { IGitHubApiClient } from '@modules/github-client';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import { eq, gt, valid } from 'semver';

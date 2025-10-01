@@ -1,11 +1,11 @@
 import path from 'node:path';
-import type { ICargoClient } from '@modules/cargo-client/ICargoClient';
 import type { YamlConfig } from '@modules/config';
-import type { IDownloader } from '@modules/downloader/IDownloader';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
+import type { IDownloader } from '@modules/downloader';
+import type { IArchiveExtractor } from '@modules/extractor';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { ICargoClient } from '@modules/installer/clients/cargo';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { IToolInstallationRegistry } from '@modules/tool-installation-registry';

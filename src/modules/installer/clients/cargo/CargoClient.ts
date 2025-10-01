@@ -102,7 +102,7 @@ export class CargoClient implements ICargoClient {
 
   async getCrateMetadata(crateName: string): Promise<CrateMetadata | null> {
     this.logger.debug(logs.cargoClient.debug.queryingCratesIo(), crateName);
-  const url = `${this.cargoConfig.cratesIo.host}/api/v1/crates/${crateName}`;
+    const url = `${this.cargoConfig.cratesIo.host}/api/v1/crates/${crateName}`;
     try {
       return await this.request<CrateMetadata>(url);
     } catch (error) {

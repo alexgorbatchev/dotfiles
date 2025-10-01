@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { CargoClient } from '@modules/cargo-client';
+import { CargoClient } from '@modules/installer/clients/cargo';
 import { createMemFileSystem, createMockYamlConfig, TestLogger } from '@testing-helpers';
 import { dedentString } from '@utils';
 

@@ -1,8 +1,8 @@
 import path from 'node:path';
-import type { ICargoClient } from '@modules/cargo-client/ICargoClient';
-import type { IDownloader } from '@modules/downloader/IDownloader';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
+import type { IDownloader } from '@modules/downloader';
+import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { ICargoClient } from '@modules/installer/clients/cargo';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@types';
@@ -49,7 +49,7 @@ export async function installFromCargo(
     logger.debug(logs.installer.debug.foundCrateVersion(), crateName, version);
 
     // 2. Determine download URL based on binary source
-  const downloadUrl = await buildDownloadUrl(crateName, version, params, context, cargoGithubReleaseHost);
+    const downloadUrl = await buildDownloadUrl(crateName, version, params, context, cargoGithubReleaseHost);
     logger.debug(logs.installer.debug.downloadingAsset(), `${crateName}-${version}`, downloadUrl);
 
     // 3. Download and extract
@@ -233,7 +233,7 @@ async function buildDownloadUrl(
 
   switch (binarySource) {
     case 'cargo-quickinstall': {
-  const url = `${githubReleaseHost}/cargo-bins/cargo-quickinstall/releases/download/${crateName}-${version}/${crateName}-${version}-${arch}-${platform}.tar.gz`;
+      const url = `${githubReleaseHost}/cargo-bins/cargo-quickinstall/releases/download/${crateName}-${version}/${crateName}-${version}-${arch}-${platform}.tar.gz`;
       return url;
     }
 
@@ -248,7 +248,7 @@ async function buildDownloadUrl(
         .replace('{platform}', platform)
         .replace('{arch}', arch);
 
-  const url = `${githubReleaseHost}/${params.githubRepo}/releases/download/v${version}/${assetName}`;
+      const url = `${githubReleaseHost}/${params.githubRepo}/releases/download/v${version}/${assetName}`;
       return url;
     }
 

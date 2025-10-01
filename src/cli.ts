@@ -3,7 +3,6 @@
 import os from 'node:os';
 import path from 'node:path';
 import { FileCache, type ICache } from '@modules/cache';
-import { CargoClient, type ICargoClient } from '@modules/cargo-client';
 import {
   registerCheckUpdatesCommand,
   registerCleanupCommand,
@@ -24,8 +23,9 @@ import { GeneratorOrchestrator, type IGeneratorOrchestrator } from '@modules/gen
 import { type IShellInitGenerator, ShellInitGenerator } from '@modules/generator-shell-init';
 import { type IShimGenerator, ShimGenerator } from '@modules/generator-shim';
 import { type ISymlinkGenerator, SymlinkGenerator } from '@modules/generator-symlink';
-import { GitHubApiClient, type IGitHubApiClient } from '@modules/github-client';
 import { type IInstaller, Installer } from '@modules/installer';
+import { CargoClient, type ICargoClient } from '@modules/installer/clients/cargo';
+import { GitHubApiClient, type IGitHubApiClient } from '@modules/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, logs, type TsLogger } from '@modules/logger';
 import { RegistryDatabase } from '@modules/registry-database';
 import { type IToolInstallationRegistry, SqliteToolInstallationRegistry } from '@modules/tool-installation-registry';

@@ -2,7 +2,7 @@ import type { GlobalProgram, Services } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadToolConfigs as loadAllToolConfigs, loadSingleToolConfig } from '@modules/config-loader';
 import type { IFileSystem } from '@modules/file-system';
-import type { IGitHubApiClient } from '@modules/github-client';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';

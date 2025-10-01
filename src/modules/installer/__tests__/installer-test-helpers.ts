@@ -5,7 +5,7 @@ import type { IDownloader } from '@modules/downloader';
 
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
-import type { IGitHubApiClient } from '@modules/github-client';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
 import {
   createMemFileSystem,

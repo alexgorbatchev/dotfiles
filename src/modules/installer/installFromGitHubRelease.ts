@@ -1,9 +1,9 @@
 import path from 'node:path';
 import type { YamlConfig } from '@modules/config';
-import type { IDownloader } from '@modules/downloader/IDownloader';
-import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
-import type { IGitHubApiClient } from '@modules/github-client/IGitHubApiClient';
+import type { IDownloader } from '@modules/downloader';
+import type { IArchiveExtractor } from '@modules/extractor';
+import type { IFileSystem } from '@modules/file-system';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
 import { logs } from '@modules/logger';
 import type {

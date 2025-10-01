@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig } from '@modules/config-loader';
-import type { IGitHubApiClient } from '@modules/github-client';
 import type { IInstaller, InstallResult } from '@modules/installer';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import { logs } from '@modules/logger';
 import { type IVersionChecker, VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';

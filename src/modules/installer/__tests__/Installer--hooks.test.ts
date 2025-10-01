@@ -3,7 +3,7 @@ import type { YamlConfig } from '@modules/config';
 import type { DownloadOptions, IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
-import type { IGitHubApiClient } from '@modules/github-client';
+import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import { createMemFileSystem, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { ExtractOptions, GithubReleaseToolConfig } from '@types';
 import { Installer } from '../Installer';
