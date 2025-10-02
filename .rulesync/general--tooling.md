@@ -16,7 +16,7 @@ globs:
 
 ## File Modification Guidelines
 
-- Never use schell commands to modify files, all changes have to be done manually
+- Never use schell commands to make text changes, all text edits must be done manually
 - Verify file changes before committing modifications
 - Test modifications in isolated environments first
 
