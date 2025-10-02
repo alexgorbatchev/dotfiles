@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": "./", // Added baseUrl
+    // "baseUrl": "./", // Added baseUrl
     // "DOM" for fetch API types like HeadersInit, Response
     "lib": ["ESNext", "DOM"],
     "target": "ESNext",
