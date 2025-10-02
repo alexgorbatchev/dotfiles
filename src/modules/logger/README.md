@@ -1,105 +1,182 @@
-# Log Templates System
+# Log Message System (Module-CoLocated First)
 
-A unified, type-safe logging template system that provides structured, consistent log messages across the entire application.
+Centralized `logger/templates` category files are now LEGACY and scheduled for removal. The **only recommended pattern** for new code is module-level co-located `log-messages.ts` files. Existing global templates remain temporarily to unblock migration but MUST NOT receive new additions.
+
+> Migration Principle: Prefer small, explicit, module-scoped message sets over large global taxonomies. 
 
 ## Overview
 
-The log templates system provides a unified approach to logging that:
-- Ensures type safety with `SafeLogMessage` branded strings and `SafeLogMessageMap` validation
-- Provides consistent message formatting across all modules  
-- Organizes templates by functional domain and log level
-- Uses modern TypeScript `satisfies` operator for enhanced type inference
-- Supports internationalization and message standardization
-- Enables easy maintenance and debugging
+The logging system now emphasizes:
+- Strong module encapsulation via co-located `log-messages.ts`
+- Type safety with `SafeLogMessage` and `createSafeLogMessage()`
+- Minimal, intention-revealing template functions
+- Ease of refactoring and removal of obsolete messages
+
+Legacy (to be phased out):
+- Global domain categories under `src/modules/logger/templates/**`
+- Log-level partitioned objects (`error`, `debug`, etc.) inside global categories
+
+Active Direction:
+- Flat intent-based functions inside each module's `log-messages.ts`
+- Use logger subloggers for contextual scoping instead of embedding method names
+- Migrate existing global templates opportunistically (do NOT copy—move & update call sites)
 
 ## Architecture
 
-### Directory Structure
+### Directory Structure (Current + Legacy)
 
+Current (preferred):
+```
+src/modules/{feature}/
+  log-messages.ts        # REQUIRED when custom log messages exist
+  {feature}.ts
+  index.ts
+```
+
+Legacy (frozen – do not add new files):
 ```
 src/modules/logger/templates/
-├── {category}/
-│   ├── error.ts                     # Error-level templates
-│   ├── warning.ts                   # Warning-level templates
-│   ├── success.ts                   # Success-level templates
-│   ├── debug.ts                     # Debug-level templates
-│   └── index.ts                     # Category aggregator 
-└── index.ts                         # Main aggregator 
+  {category}/
+    error.ts
+    warning.ts
+    success.ts
+    debug.ts
+    index.ts
+  index.ts
 ```
 
-### Usage Pattern
+All future work MUST use the co-located model. The legacy directory will be removed after full migration.
 
-```typescript
-import { logs } from '@modules/logger';
+### Module-Specific Log Messages (Co-Location Requirement)
 
-// Use structured logging templates
-logger.error(logs.tool.error.installFailed('github-release', 'fzf', 'Network timeout'));
-logger.info(logs.tool.success.installed('fzf', '0.42.0'));
-logger.debug(logs.cache.debug.notFound('download-cache-key'));
-logger.warn(logs.config.warning.deprecated('old-setting', 'new-setting'));
+In addition to the shared category templates above, every feature/module MUST co-locate its own private log messages in a `log-messages.ts` file that lives directly beside that module's primary source file(s). This file is for messages that are ONLY used within that module and are not broadly reusable across the application. Do NOT add narrow, module-specific messages to the global `logger/templates` categories.
+
+Co-location benefits:
+- Keeps intent and message evolution close to the business logic
+- Prevents global template bloat with one-off messages
+- Encourages single responsibility and easier refactoring
+- Improves discoverability when reading a module
+
+#### File Naming & Location
+
+```
+src/modules/{feature}/
+  index.ts
+  {feature}.ts          # main implementation (example)
+  log-messages.ts       # module-scoped log templates (required when logging exists)
+  __tests__/
+    ...
 ```
 
-## Creating New Templates
+#### Responsibilities Split
 
-### Step 1: Choose or Create a Category
+| Location | Purpose |
+|----------|---------|
+| `src/modules/logger/templates/**` | Shared, cross-cutting, domain categories (tool, config, fs, etc) grouped by log level |
+| `src/modules/*/log-messages.ts` | Module-scoped, non-reusable, highly contextual messages |
 
-Categories represent functional domains in the application:
+If during implementation you notice a module message becomes generically useful (e.g. multiple modules duplicate similar wording), promote it by moving it into the appropriate global category template and updating all call sites—do not keep duplicates.
 
-**Existing Categories:**
-- `tool` - Tool lifecycle operations (install, update, cleanup)
-- `config` - Configuration loading and validation
-- `cache` - Caching operations
-- `fs` - File system operations
-- `service` - External service interactions (GitHub API, etc.)
-- `command` - CLI command execution
-- `archive` - Archive extraction and processing
-- `downloader` - Download operations
-- `extractor` - Archive extraction
-- `generator` - Code/config generation
-- `registry` - File registry operations
-- `installer` - Installation process
-- `symlink` - Symbolic link operations
-- `shim` - Binary shim generation
-
-### Step 2: Create Template Files
-
-#### 2.1 Create the Category Aggregator
-
-**File:** `src/modules/logger/templates/{category}/index.ts`
+#### Module File Pattern
 
 ```typescript
-import { {category}ErrorTemplates } from './error';
-import { {category}WarningTemplates } from './warning';
-import { {category}SuccessTemplates } from './success';
-import { {category}DebugTemplates } from './debug';
-
-/**
- * {Category description} templates grouped by log level
- */
-export const {category} = {
-  error: {category}ErrorTemplates,
-  warning: {category}WarningTemplates,
-  success: {category}SuccessTemplates,
-  debug: {category}DebugTemplates,
-} as const;
-```
-
-#### 2.2 Create Level-Specific Templates
-
-**File:** `src/modules/logger/templates/{category}/error.ts`
-
-```typescript
+// src/modules/example/log-messages.ts
 import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
-import { createSafeLogMessage } from '../../utils';
+import { createSafeLogMessage } from '@modules/logger/utils';
 
-export const {category}ErrorTemplates = {
-  operationFailed: (operation: string, resource: string, reason: string) => 
-    createSafeLogMessage(`${operation} failed for ${resource}: ${reason}`),
-  
-  resourceNotFound: (resource: string, location: string) => 
-    createSafeLogMessage(`Resource "${resource}" not found in ${location}`),
-    
-  // Add more templates as needed
+// Group by semantic intent (NOT by log level here). Keep surface small & focused.
+export const exampleLogMessages = {
+  resolvingConfig: (path: string) => 
+    createSafeLogMessage(`Resolving example config at ${path}`),
+  configResolved: (path: string) => 
+    createSafeLogMessage(`Example config resolved from ${path}`),
+  operationSkipped: (reason: string) => 
+    createSafeLogMessage(`Example operation skipped: ${reason}`),
+  invalidState: (state: string) => 
+    createSafeLogMessage(`Invalid example state: ${state}`),
+} satisfies SafeLogMessageMap;
+```
+
+Usage inside the module:
+
+```typescript
+import { exampleLogMessages } from './log-messages';
+import { logs } from './log-messages'; // local module log messages
+
+export function runExample(logger: Logger) {
+  const l = logger.getSubLogger({ name: 'runExample' });
+  l.debug(exampleLogMessages.resolvingConfig('/tmp/example.yaml'));
+  // ...
+  l.error(exampleLogMessages.invalidState('orphaned'));
+  // Use shared global templates where appropriate
+  l.debug(logs.fs.debug.pathResolved('example', '/tmp/example.yaml'));
+}
+```
+
+#### Design Rules for `log-messages.ts`
+
+1. Only include messages that are single-purpose and local to the module.
+2. Do not duplicate or slightly paraphrase an existing global template—reuse the global one instead.
+3. Keep function names descriptive and action-oriented (`configResolved`, `downloadPlanned`, `checksumMismatch`).
+4. Return values MUST be created via `createSafeLogMessage()`; never return raw strings.
+5. Do not create log-level sub-objects (`error`, `debug`, etc.) inside `log-messages.ts`; selection of level happens at the call site. If you need strong grouping, group by intent not severity.
+6. Avoid embedding method names in messages—the logger sublogger name provides that context.
+7. No interpolation logic side-effects—pure formatting only.
+8. Remove stale messages promptly; no deprecated placeholders.
+
+#### When to Choose Global vs Local
+
+| Scenario | Choose |
+|----------|-------|
+| Message expresses a domain concept used by multiple modules (e.g., archive extraction step) | Global category template |
+| Message is tightly coupled to internal algorithm details of one module | Local `log-messages.ts` |
+| Message might become reusable soon (already in 2+ modules) | Promote to global now |
+| Temporary diagnostic while developing | Local (delete if no longer needed) |
+
+#### Migration Guidance
+
+When refactoring existing modules:
+1. Identify inline string literals passed to logger calls.
+2. Extract them into functions inside `log-messages.ts`.
+3. Replace call sites with the new template functions.
+4. If any extracted message clearly aligns with an existing global category, move it there instead.
+5. Run `bun lint` to ensure no raw string violations remain (search heuristically for `logger.` usages followed by backticks/quotes).
+
+This co-location rule is MANDATORY—new code introducing logger calls without a `log-messages.ts` (when custom messages exist) will be rejected.
+
+### Usage Pattern (New Style)
+
+```typescript
+import { exampleLogMessages } from './log-messages';
+import { logs } from './log-messages'; // migrated local usage
+
+logger.error(exampleLogMessages.invalidState('stale-index'));
+logger.debug(exampleLogMessages.resolvingConfig('/tmp/example.yaml'));
+
+// Legacy (avoid adding NEW usages):
+logger.error(logs.errors.installFailed('github-release', 'fzf', 'Network timeout'));
+```
+
+## Creating New Templates (Module-Scoped Only)
+
+DO NOT create new global categories. All new templates belong in the module's `log-messages.ts`.
+
+### Steps
+1. Create (or update) `src/modules/{feature}/log-messages.ts`.
+2. Add intent-based functions returning `createSafeLogMessage()`.
+3. Replace inline string literals at call sites.
+4. If you find a pattern repeating across ≥2 modules, extract to a single shared module later (NOT the legacy category system).
+
+### Example `log-messages.ts`
+
+```typescript
+import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
+
+export const featureLogMessages = {
+  starting: (mode: string) => createSafeLogMessage(`Starting feature in ${mode} mode`),
+  finished: (durationMs: number) => createSafeLogMessage(`Feature completed in ${durationMs}ms`),
+  cacheMiss: (key: string) => createSafeLogMessage(`Feature cache miss for ${key}`),
+  invalidInput: (field: string, value: string) => createSafeLogMessage(`Invalid input ${field}=${value}`),
 } satisfies SafeLogMessageMap;
 ```
 
@@ -117,22 +194,11 @@ export const {category}ErrorTemplates = {
 - Follow consistent naming conventions (camelCase)
 - Include context information (resource names, operations, reasons)
 
-### Step 3: Update Main Logger Export
+### Legacy Global Export (Frozen)
 
-**File:** `src/modules/logger/index.ts`
+The `logs` object exported from `@modules/logger` still surfaces legacy categories for backward compatibility during migration. Do NOT expand it.
 
-```typescript
-// Add import for new category
-import { newCategory } from './templates/newCategory';
-
-// Add to logs export object
-export const logs = {
-  // ... existing categories
-  newCategory,
-};
-```
-
-### Step 4: Template Design Best Practices
+### Template Design Best Practices (Modern Co-Located)
 
 #### Message Formatting
 - Use clear, actionable language
@@ -146,7 +212,7 @@ export const logs = {
 - Consider optional parameters for additional context
 - Validate parameter types with TypeScript
 
-#### Examples of Good Templates
+#### Examples of Good Module Templates
 
 ```typescript
 // ✅ Good - Specific, actionable, contextual
@@ -162,18 +228,15 @@ export const exampleTemplates = {
 } satisfies SafeLogMessageMap;
 ```
 
+Legacy anti-patterns to remove during migration:
 ```typescript
-// ❌ Bad - Vague, missing context
-export const badTemplates = {
-  failed: (message: string) => 
-    createSafeLogMessage(`Operation failed: ${message}`),
-
-  error: () => 
-    createSafeLogMessage('An error occurred'),
-} satisfies SafeLogMessageMap;
+// ❌ Avoid adding new severity-nested objects or vague catch-alls
+export const bad = {
+  error: (m: string) => createSafeLogMessage(`Error: ${m}`),
+};
 ```
 
-## Log Level Guidelines
+## Log Level Guidelines (Call Site Responsibility)
 
 ### Error Level
 - **When to use:** Critical failures that prevent operation completion
@@ -197,45 +260,17 @@ export const badTemplates = {
 
 ## Template Categories Reference
 
-### Core Operation Categories
+## Legacy Category Reference (For Migration Only)
 
-#### `tool` - Tool Lifecycle
-- **Error:** Installation failures, dependency issues, version conflicts
-- **Warning:** Update recommendations, compatibility concerns
-- **Success:** Successful installations, updates, cleanups
-- **Debug:** Installation steps, binary resolution, version checking
+The following legacy categories exist only to support incremental migration. Do not add new methods:
+- tool, config, cache, fs, service, command, archive, downloader, extractor, generator, registry, installer, symlink, shim
 
-#### `config` - Configuration Management
-- **Error:** Invalid configurations, missing required fields, parse errors
-- **Warning:** Deprecated settings, fallback configurations, validation warnings
-- **Success:** Configuration loaded, validation passed, settings applied
-- **Debug:** Configuration sources, validation steps, resolved values
-
-#### `fs` - File System Operations
-- **Error:** Permission denied, file not found, disk space issues
-- **Warning:** File overwrite, permission issues, path concerns
-- **Success:** Files created/copied/moved, directories created, cleanup completed
-- **Debug:** File operations, path resolution, permission checks
-
-### Infrastructure Categories
-
-#### `cache` - Caching System
-- **Error:** Cache corruption, storage failures, serialization errors
-- **Warning:** Cache misses, expiration notices, size limits
-- **Success:** Cache hits, successful storage, cleanup completed
-- **Debug:** Cache operations, key generation, storage statistics
-
-#### `service` - External Services
-- **Error:** API failures, authentication issues, service unavailable
-- **Warning:** Rate limiting, deprecated APIs, fallback behavior
-- **Success:** API calls completed, authentication successful, data retrieved
-- **Debug:** Request/response details, authentication steps, retry logic
-
-#### `downloader` - Download Operations
-- **Error:** Network failures, invalid URLs, corrupted downloads
-- **Warning:** Slow downloads, retry attempts, fallback sources
-- **Success:** Downloads completed, checksums verified, files cached
-- **Debug:** Download progress, URL resolution, strategy selection
+Migration approach:
+1. Pick a category.
+2. Search usages of its templates.
+3. For each usage, decide: keep (promote to module `log-messages.ts`) or consolidate into a new shared reusable abstraction.
+4. Remove the unused legacy template function.
+5. Repeat until category file empties—then delete it.
 
 ## Testing Templates
 
@@ -243,10 +278,10 @@ export const badTemplates = {
 
 ```typescript
 import { expect, test } from 'bun:test';
-import { logs } from '@modules/logger';
+import { logs } from '../log-messages';
 
 test('tool error templates produce correct messages', () => {
-  const message = logs.tool.error.installFailed('github-release', 'fzf', 'Network timeout');
+  const message = logs.errors.installFailed('github-release', 'fzf', 'Network timeout');
   
   expect(message).toContain('Installation failed');
   expect(message).toContain('[github-release]');
@@ -259,22 +294,22 @@ test('tool error templates produce correct messages', () => {
 
 ```typescript
 import { TestLogger } from '@testing-helpers';
-import { logs } from '@modules/logger';
+import { logs } from '../log-messages';
 
 test('templates work with TestLogger', () => {
   const logger = new TestLogger();
   
-  logger.error(logs.tool.error.installFailed('github-release', 'fzf', 'Network timeout'));
+  logger.error(logs.errors.installFailed('github-release', 'fzf', 'Network timeout'));
   
   logger.expect(['ERROR'], ['TestTarget'], [
-    logs.tool.error.installFailed('github-release', 'fzf', 'Network timeout')
+  logs.errors.installFailed('github-release', 'fzf', 'Network timeout')
   ]);
 });
 ```
 
 ## Advanced Patterns
 
-### Conditional Templates
+### Conditional Templates (Module Scope)
 
 ```typescript
 // Template with optional context
@@ -286,7 +321,7 @@ export const networkTemplates = {
 } satisfies SafeLogMessageMap;
 ```
 
-### Template Composition
+### Template Composition (Module Scope)
 
 ```typescript
 // Reusable message parts
@@ -298,20 +333,6 @@ export const resourceTemplates = {
     
   created: (type: string, name: string, location: string) => 
     createSafeLogMessage(`${formatResource(type, name)} created at ${location}`),
-} satisfies SafeLogMessageMap;
-```
-
-### Template Validation
-
-```typescript
-// Runtime validation for complex templates
-export const validatedTemplates = {
-  complexOperation: (config: OperationConfig) => {
-    if (!config.name || !config.target) {
-      throw new Error('Template requires name and target in config');
-    }
-    return createSafeLogMessage(`Operation "${config.name}" targeting ${config.target}`);
-  },
 } satisfies SafeLogMessageMap;
 ```
 
@@ -336,24 +357,24 @@ Argument of type 'string' is not assignable to parameter of type 'SafeLogMessage
 - Verify template function return types
 
 **Missing Templates During Migration**
-- Check old template files for method names
-- Add missing methods to new template structure
-- Run `bun lint` to identify compilation errors
+- Extract missing string into module `log-messages.ts`
+- Remove legacy usage once replaced
+- Run `bun lint` to confirm no raw string regressions
 
 ### Debugging Templates
 
-1. **Check Template Definition:** Verify the template exists in the correct category/level
-2. **Verify Exports:** Ensure all levels are exported in category aggregator
-3. **Check Main Export:** Confirm category is exported in main logger index
-4. **Test Template Function:** Create unit test to verify template produces expected output
+1. Check module `log-messages.ts` for function presence
+2. If still using legacy `logs.*`, plan migration and create equivalent local message
+3. Remove or refactor legacy template if no longer referenced
+4. Add/adjust unit test to cover new local message
 
 ## Performance Considerations
 
-- Template functions are lightweight and cacheable
-- String interpolation happens only when templates are called
-- Use parameter validation sparingly to avoid runtime overhead
-- Consider template caching for frequently-used messages with dynamic content
+- Module templates are minimal and inline-evaluated only when called
+- No central registry lookup cost
+- Keep functions pure and fast
+- Avoid premature caching—optimize only if profiling shows hotspots
 
 ---
 
-This unified template system provides type-safe, consistent, maintainable logging across the entire application. Follow the patterns and guidelines above to create effective log templates that improve debugging and monitoring capabilities.
+This modern co-located system provides type-safe, maintainable logging with minimal indirection. Migrate remaining legacy category usages steadily and avoid introducing new global templates.
