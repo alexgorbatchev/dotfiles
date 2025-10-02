@@ -10,7 +10,7 @@ OUTFILE="$(pwd)/dist/dotfiles-generator"
 mkdir -p "$(dirname "$OUTFILE")"
 
 # Generate types first
-./scripts/build-types.sh
+# ./scripts/build-types.sh
 
 # Then compile the binary
 bun build \
