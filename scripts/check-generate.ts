@@ -20,23 +20,23 @@ await $`./scripts/check-cli.ts generate`;
 process.chdir('.generated/bin');
 
 try {
-    const fzfOutput = await $`./fzf --version`.text();
-    console.log(fzfOutput);
+  const fzfOutput = await $`./fzf --version`.text();
+  console.log(fzfOutput);
 } catch (error) {
-    console.error("Error: fzf failed to print version:");
-    if (isShellError(error)) {
-      console.error(error.stdout.toString());
-    }
-    process.exit(1);
+  console.error('Error: fzf failed to print version:');
+  if (isShellError(error)) {
+    console.error(error.stdout.toString());
+  }
+  process.exit(1);
 }
 
 try {
-    const ezaOutput = await $`./eza --version`.text();
-    console.log(ezaOutput);
+  const ezaOutput = await $`./eza --version`.text();
+  console.log(ezaOutput);
 } catch (error) {
-    console.error("Error: eza failed to print version:");
-    if (isShellError(error)) {
-      console.error(error.stdout.toString());
-    }
-    process.exit(1);
+  console.error('Error: eza failed to print version:');
+  if (isShellError(error)) {
+    console.error(error.stdout.toString());
+  }
+  process.exit(1);
 }
