@@ -10,27 +10,27 @@
     "test": "bun run src/testing-helpers/bun-test-runner.ts",
     "lint": "tsc --noEmit && biome check ./src",
     "fmt": "biome format --write .",
-    "fix": "biome check --write .",
+    "fix": "biome check --fix .",
     "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
-    "compile": "scripts/compile.sh",
+    "compile": "scripts/compile.ts",
     "cli": "bun run ./src/cli.ts",
-    "agent-rules": "scripts/agent-rules.sh",
+    "agent-rules": "scripts/agent-rules.ts",
     "postinstall": "bun agent-rules"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.4",
+    "@biomejs/biome": "^2.2.3",
     "@rageltd/bun-test-utils": "^2.0.0",
-    "@types/bun": "^1.2.16",
+    "@types/bun": "^1.2.21",
     "@types/cli-progress": "^3.11.6",
     "@types/debug": "^4.1.12",
-    "@types/express": "^5.0.2",
-    "@types/node": "^22.15.19",
-    "@types/semver": "^7.7.0",
-    "@typescript/native-preview": "^7.0.0-dev.20250709.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.18.1",
+    "@types/semver": "^7.7.1",
+    "@typescript/native-preview": "^7.0.0-dev.20250909.1",
     "express": "^5.1.0",
-    "rulesync": "^0.53.0",
-    "strip-ansi": "^7.1.0",
-    "typescript-language-server": "^4.3.4"
+    "rulesync": "^1.2.6",
+    "strip-ansi": "^7.1.2",
+    "typescript-language-server": "^4.4.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
@@ -43,14 +43,14 @@
     "consola": "^3.4.2",
     "debug": "^4.4.1",
     "glob": "^11.0.3",
-    "memfs": "^4.17.2",
+    "memfs": "^4.38.3",
     "minimatch": "^10.0.3",
     "semver": "^7.7.2",
     "smol-toml": "^1.4.2",
     "tslog": "^4.9.3",
     "type-fest": "^4.41.0",
-    "yaml": "^2.8.0",
-    "zod": "^4.0.4",
-    "zx": "^8.5.4"
+    "yaml": "^2.8.1",
+    "zod": "^4.1.5",
+    "zx": "^8.8.1"
   }
 }
