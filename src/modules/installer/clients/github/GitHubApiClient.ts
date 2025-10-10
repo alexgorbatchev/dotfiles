@@ -104,7 +104,6 @@ export class GitHubApiClient implements IGitHubApiClient {
       key += `:${tokenHash}`;
     }
 
-    this.logger.debug(logs.githubClient.debug.cacheKeyGenerated(), method, endpoint);
     return key;
   }
 
@@ -112,7 +111,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const cacheKey = this.generateCacheKey(endpoint, method);
 
-    const cachedResult = await this.tryGetFromCache<T>(cacheKey, method, url);
+  const cachedResult = await this.tryGetFromCache<T>(cacheKey, method);
     if (cachedResult) {
       return cachedResult;
     }
@@ -122,14 +121,14 @@ export class GitHubApiClient implements IGitHubApiClient {
 
     try {
       const data = await this.performRequest<T>(url, headers);
-      await this.tryCacheResponse(cacheKey, data, method, url);
+  await this.tryCacheResponse(cacheKey, data, method);
       return data;
     } catch (error) {
       return this.handleRequestError(error, url);
     }
   }
 
-  private async tryGetFromCache<T>(cacheKey: string, method: string, url: string): Promise<T | null> {
+  private async tryGetFromCache<T>(cacheKey: string, method: string): Promise<T | null> {
     if (!this.cache || !this.cacheEnabled || method !== 'GET') {
       return null;
     }
@@ -137,12 +136,10 @@ export class GitHubApiClient implements IGitHubApiClient {
     try {
       const cachedData = await this.cache.get<T>(cacheKey);
       if (cachedData) {
-        this.logger.debug(logs.githubClient.debug.cacheHit(), method, url);
         return cachedData;
       }
-      this.logger.debug(logs.githubClient.debug.cacheMiss(), method, url);
-    } catch (error) {
-      this.logger.debug(logs.githubClient.debug.cacheError(), method, url, (error as Error).message);
+    } catch {
+      // Cache layer logs retrieval failures
     }
 
     return null;
@@ -171,16 +168,15 @@ export class GitHubApiClient implements IGitHubApiClient {
     return JSON.parse(responseText) as T;
   }
 
-  private async tryCacheResponse<T>(cacheKey: string, data: T, method: string, url: string): Promise<void> {
+  private async tryCacheResponse<T>(cacheKey: string, data: T, method: string): Promise<void> {
     if (!this.cache || !this.cacheEnabled || method !== 'GET') {
       return;
     }
 
     try {
       await this.cache.set<T>(cacheKey, data, this.cacheTtlMs);
-      this.logger.debug(logs.githubClient.debug.cachedResponse(), method, url);
-    } catch (error) {
-      this.logger.debug(logs.githubClient.debug.cacheStoreError(), method, url, (error as Error).message);
+    } catch {
+      // Cache layer logs storage failures
     }
   }
 

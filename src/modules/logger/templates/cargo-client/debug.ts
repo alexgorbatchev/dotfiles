@@ -11,12 +11,4 @@ export const cargoClientDebugTemplates = {
   crateMetadataError: () => createSafeLogMessage('Error fetching crate metadata for %s: %s'),
   parsingCrateMetadata: () => createSafeLogMessage('Parsing Cargo.toml from: %s'),
   cargoTomlParseError: () => createSafeLogMessage('Error parsing Cargo.toml from %s: %s'),
-  cacheEnabled: () => createSafeLogMessage('Cargo client cache enabled'),
-  cacheDisabled: () => createSafeLogMessage('Cargo client cache disabled'),
-  cacheKeyGenerated: () => createSafeLogMessage('Generated cache key for %s'),
-  cacheHit: () => createSafeLogMessage('Cache hit for %s'),
-  cacheMiss: () => createSafeLogMessage('Cache miss for %s'),
-  cacheStoreError: () => createSafeLogMessage('Failed to store cache entry for %s: %s'),
-  cacheStoreSuccess: () => createSafeLogMessage('Stored cache entry for %s'),
-  cacheReadError: () => createSafeLogMessage('Failed to read cache entry for %s: %s'),
 } satisfies SafeLogMessageMap;
