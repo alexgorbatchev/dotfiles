@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { logs } from '@modules/logger';
 import { TestLogger } from '@testing-helpers';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
 import { always } from '@types';
-import { ToolConfigBuilder } from '../index';
+import { ToolConfigBuilder } from '../toolConfigBuilder';
+import { toolConfigBuilderLogMessages } from '../log-messages';
 
 describe('ToolConfigBuilder', () => {
   let logger: TestLogger;
@@ -86,7 +86,10 @@ describe('ToolConfigBuilder', () => {
       ['WARN'],
       ['ToolConfigBuilder'],
       [
-        'Configuration field "hooks" ignored: hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.',
+        toolConfigBuilderLogMessages.configurationFieldIgnored(
+          'hooks',
+          'hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.'
+        ),
       ]
     );
   });
@@ -219,7 +222,7 @@ describe('ToolConfigBuilder', () => {
       ['ERROR'],
       ['ToolConfigBuilder'],
       [
-        logs.config.error.invalid(
+        toolConfigBuilderLogMessages.configurationFieldInvalid(
           'installationMethod',
           'invalid-method',
           'github-release | brew | curl-script | curl-tar | cargo | manual'
@@ -247,7 +250,7 @@ describe('ToolConfigBuilder', () => {
       ['ERROR'],
       ['ToolConfigBuilder'],
       [
-        logs.config.error.required(
+        toolConfigBuilderLogMessages.configurationFieldRequired(
           'tool definition',
           'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
         ),

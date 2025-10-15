@@ -1,8 +1,8 @@
 # Log Message System (Module-CoLocated First)
 
-Centralized `logger/templates` category files are now LEGACY and scheduled for removal. The **only recommended pattern** for new code is module-level co-located `log-messages.ts` files. Existing global templates remain temporarily to unblock migration but MUST NOT receive new additions.
+Legacy `logger/templates` category files have been removed. The **only supported pattern** is module-level, co-located `log-messages.ts` files. Progress and sequencing are tracked in `LOGGER_TEMPLATE_MIGRATION_PLAN.md`; contributors must consult that plan before adjusting log message architecture.
 
-> Migration Principle: Prefer small, explicit, module-scoped message sets over large global taxonomies. 
+> Migration Principle: Prefer small, explicit, module-scoped message sets over large global taxonomies.
 
 ## Overview
 
@@ -11,10 +11,6 @@ The logging system now emphasizes:
 - Type safety with `SafeLogMessage` and `createSafeLogMessage()`
 - Minimal, intention-revealing template functions
 - Ease of refactoring and removal of obsolete messages
-
-Legacy (to be phased out):
-- Global domain categories under `src/modules/logger/templates/**`
-- Log-level partitioned objects (`error`, `debug`, etc.) inside global categories
 
 Active Direction:
 - Flat intent-based functions inside each module's `log-messages.ts`
@@ -45,7 +41,7 @@ src/modules/logger/templates/
   index.ts
 ```
 
-All future work MUST use the co-located model. The legacy directory will be removed after full migration.
+All future work MUST use the co-located model.
 
 ### Module-Specific Log Messages (Co-Location Requirement)
 
@@ -70,10 +66,7 @@ src/modules/{feature}/
 
 #### Responsibilities Split
 
-| Location | Purpose |
-|----------|---------|
-| `src/modules/logger/templates/**` | Shared, cross-cutting, domain categories (tool, config, fs, etc) grouped by log level |
-| `src/modules/*/log-messages.ts` | Module-scoped, non-reusable, highly contextual messages |
+Every module owns its own log messages within the `log-messages.ts` file that sits beside the module implementation. If you discover wording that belongs in more than one module, promote it to a purpose-built shared helper module (not a central registry) and update all call sites immediately.
 
 If during implementation you notice a module message becomes generically useful (e.g. multiple modules duplicate similar wording), promote it by moving it into the appropriate global category template and updating all call sites—do not keep duplicates.
 
@@ -101,22 +94,19 @@ Usage inside the module:
 
 ```typescript
 import { exampleLogMessages } from './log-messages';
-import { logs } from './log-messages'; // local module log messages
 
 export function runExample(logger: Logger) {
   const l = logger.getSubLogger({ name: 'runExample' });
   l.debug(exampleLogMessages.resolvingConfig('/tmp/example.yaml'));
   // ...
   l.error(exampleLogMessages.invalidState('orphaned'));
-  // Use shared global templates where appropriate
-  l.debug(logs.fs.debug.pathResolved('example', '/tmp/example.yaml'));
 }
 ```
 
 #### Design Rules for `log-messages.ts`
 
 1. Only include messages that are single-purpose and local to the module.
-2. Do not duplicate or slightly paraphrase an existing global template—reuse the global one instead.
+2. Avoid duplicating wording across modules—if multiple modules need the same phrasing, create a shared helper module and update every caller in the same change.
 3. Keep function names descriptive and action-oriented (`configResolved`, `downloadPlanned`, `checksumMismatch`).
 4. Return values MUST be created via `createSafeLogMessage()`; never return raw strings.
 5. Do not create log-level sub-objects (`error`, `debug`, etc.) inside `log-messages.ts`; selection of level happens at the call site. If you need strong grouping, group by intent not severity.
@@ -148,13 +138,9 @@ This co-location rule is MANDATORY—new code introducing logger calls without a
 
 ```typescript
 import { exampleLogMessages } from './log-messages';
-import { logs } from './log-messages'; // migrated local usage
 
 logger.error(exampleLogMessages.invalidState('stale-index'));
 logger.debug(exampleLogMessages.resolvingConfig('/tmp/example.yaml'));
-
-// Legacy (avoid adding NEW usages):
-logger.error(logs.errors.installFailed('github-release', 'fzf', 'Network timeout'));
 ```
 
 ## Creating New Templates (Module-Scoped Only)
@@ -193,10 +179,6 @@ export const featureLogMessages = {
 - Use `createSafeLogMessage()` to create branded strings
 - Follow consistent naming conventions (camelCase)
 - Include context information (resource names, operations, reasons)
-
-### Legacy Global Export (Frozen)
-
-The `logs` object exported from `@modules/logger` still surfaces legacy categories for backward compatibility during migration. Do NOT expand it.
 
 ### Template Design Best Practices (Modern Co-Located)
 
@@ -278,15 +260,13 @@ Migration approach:
 
 ```typescript
 import { expect, test } from 'bun:test';
-import { logs } from '../log-messages';
+import { exampleLogMessages } from '../log-messages';
 
-test('tool error templates produce correct messages', () => {
-  const message = logs.errors.installFailed('github-release', 'fzf', 'Network timeout');
-  
-  expect(message).toContain('Installation failed');
-  expect(message).toContain('[github-release]');
-  expect(message).toContain('fzf');
-  expect(message).toContain('Network timeout');
+test('example log templates produce correct messages', () => {
+  const message = exampleLogMessages.invalidState('stale-index');
+
+  expect(message).toContain('Invalid example state');
+  expect(message).toContain('stale-index');
 });
 ```
 
@@ -294,16 +274,14 @@ test('tool error templates produce correct messages', () => {
 
 ```typescript
 import { TestLogger } from '@testing-helpers';
-import { logs } from '../log-messages';
+import { exampleLogMessages } from '../log-messages';
 
 test('templates work with TestLogger', () => {
   const logger = new TestLogger();
-  
-  logger.error(logs.errors.installFailed('github-release', 'fzf', 'Network timeout'));
-  
-  logger.expect(['ERROR'], ['TestTarget'], [
-  logs.errors.installFailed('github-release', 'fzf', 'Network timeout')
-  ]);
+
+  logger.error(exampleLogMessages.invalidState('stale-index'));
+
+  logger.expect(['ERROR'], ['TestTarget'], ['Invalid example state: stale-index']);
 });
 ```
 

@@ -2,11 +2,12 @@ import path from 'node:path';
 import { exitCli } from '@modules/cli';
 import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@modules/config';
 import type { IFileSystem } from '@modules/file-system';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@types';
 import { expandHomePath } from '@utils';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
+import { configLoaderLogMessages } from './log-messages';
 
 /**
  * Detects the current operating system
@@ -101,7 +102,7 @@ function applyPlatformOverrides(
   const currentPlatform = detectOS(systemInfo.platform);
   const currentArch = detectArch(systemInfo.arch);
 
-  logger.debug(logs.config.success.platformOverrides(currentPlatform, currentArch));
+  logger.debug(configLoaderLogMessages.platformOverrides(currentPlatform, currentArch));
 
   let result: Record<string, unknown> = deepMerge({}, config);
 
@@ -135,7 +136,7 @@ function applyPlatformOverrides(
     });
 
     if (matches) {
-      logger.trace(logs.config.success.validated('platform override'), platformOverride.config);
+  logger.trace(configLoaderLogMessages.configurationValidated('platform override'), platformOverride.config);
       result = deepMerge(result, platformOverride.config);
     }
   }
@@ -258,7 +259,7 @@ function processConfig(
   env: Record<string, string | undefined>
 ): YamlConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
-  logger.debug(logs.config.success.configProcessing(), defaultConfig, userConfig, systemInfo);
+  logger.debug(configLoaderLogMessages.configurationProcessing(), defaultConfig, userConfig, systemInfo);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
@@ -268,7 +269,7 @@ function processConfig(
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
-    logger.error(logs.config.error.validationFailed([pretty]));
+  logger.error(configLoaderLogMessages.configurationValidationFailed([pretty]));
     throw new Error(`YAML configuration is invalid.\n${pretty}`);
   }
 
@@ -323,7 +324,7 @@ export async function loadYamlConfig(
   let userConfig = {};
 
   if (!(await fileSystem.exists(userConfigPath))) {
-    logger.error(logs.fs.error.notFound('Config file', userConfigPath));
+    logger.error(configLoaderLogMessages.fsItemNotFound('Config file', userConfigPath));
     exitCli(1);
   }
 
@@ -333,7 +334,11 @@ export async function loadYamlConfig(
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
     logger.error(
-      logs.config.error.parseErrors(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error))
+      configLoaderLogMessages.configurationParseError(
+        userConfigPath,
+        'YAML',
+        error instanceof Error ? error.message : String(error)
+      )
     );
   }
 

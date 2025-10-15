@@ -3,7 +3,7 @@ import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadToolConfigs as actualLoadToolConfigs } from '@modules/config-loader';
 import type { IGeneratorOrchestrator } from '@modules/generator-orchestrator';
-import { logs } from '@modules/logger';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { ToolConfig } from '@types';
@@ -75,8 +75,8 @@ describe('generateCommand', () => {
       mockYamlConfig
     );
 
-    // Should log DONE message at the end
-    logger.expect(['INFO'], ['registerGenerateCommand'], ['DONE']);
+  // Should log DONE message at the end
+  logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(false)]);
   });
 
   test('should successfully generate artifacts in dry run mode', async () => {
@@ -89,8 +89,8 @@ describe('generateCommand', () => {
       mockYamlConfig
     );
 
-    // Should log DONE (dry run) message at the end
-    logger.expect(['INFO'], ['registerGenerateCommand'], ['DONE (dry run)']);
+  // Should log DONE (dry run) message at the end
+  logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(true)]);
   });
 
   test('should handle errors during artifact generation', async () => {
@@ -103,7 +103,7 @@ describe('generateCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerGenerateCommand'],
-      [logs.command.error.executionFailed('generate', 1, 'Generation failed')]
+      [cliLogMessages.commandExecutionFailed('generate', 1, 'Generation failed')]
     );
   });
 });

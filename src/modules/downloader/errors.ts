@@ -1,4 +1,5 @@
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
+import { downloaderErrorLogMessages } from './log-messages';
 
 /**
  * Base error class for all downloader-related errors.
@@ -11,7 +12,7 @@ export class DownloaderError extends Error {
     const logger = parentLogger.getSubLogger({ name: 'DownloaderError' });
     this.name = 'DownloaderError';
     this.url = url;
-    logger.debug(logs.downloader.debug.errorCreated(), 'DownloaderError', message, url);
+  logger.debug(downloaderErrorLogMessages.errorCreated('DownloaderError', message, url));
   }
 }
 
@@ -26,7 +27,7 @@ export class NetworkError extends DownloaderError {
     const logger = parentLogger.getSubLogger({ name: 'NetworkError' });
     this.name = 'NetworkError';
     this.originalError = originalError;
-    logger.debug(logs.downloader.debug.networkErrorCreated(), message, url, originalError);
+  logger.debug(downloaderErrorLogMessages.networkErrorCreated(message, url, originalError), originalError);
   }
 }
 
@@ -56,13 +57,21 @@ export class HttpError extends DownloaderError {
     this.responseBody = responseBody;
     this.responseHeaders = responseHeaders;
     logger.debug(
-      logs.downloader.debug.httpErrorCreated(),
-      message,
-      url,
-      statusCode,
-      statusText,
-      responseBody,
-      responseHeaders
+      downloaderErrorLogMessages.httpErrorCreated(
+        message,
+        url,
+        statusCode,
+        statusText,
+        responseBody,
+        responseHeaders
+      ),
+      {
+        url,
+        statusCode,
+        statusText,
+        responseBody,
+        responseHeaders,
+      }
     );
   }
 }
@@ -80,7 +89,14 @@ export class NotFoundError extends HttpError {
     super(parentLogger, 'Resource not found', url, 404, 'Not Found', responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'NotFoundError' });
     this.name = 'NotFoundError';
-    logger.debug(logs.downloader.debug.notFoundErrorCreated(), url, responseBody, responseHeaders);
+    logger.debug(
+      downloaderErrorLogMessages.notFoundErrorCreated(url, responseBody, responseHeaders),
+      {
+        url,
+        responseBody,
+        responseHeaders,
+      }
+    );
   }
 }
 
@@ -97,7 +113,14 @@ export class ForbiddenError extends HttpError {
     super(parentLogger, 'Access forbidden', url, 403, 'Forbidden', responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'ForbiddenError' });
     this.name = 'ForbiddenError';
-    logger.debug(logs.downloader.debug.forbiddenErrorCreated(), url, responseBody, responseHeaders);
+    logger.debug(
+      downloaderErrorLogMessages.forbiddenErrorCreated(url, responseBody, responseHeaders),
+      {
+        url,
+        responseBody,
+        responseHeaders,
+      }
+    );
   }
 }
 
@@ -122,14 +145,23 @@ export class RateLimitError extends HttpError {
     this.name = 'RateLimitError';
     this.resetTimestamp = resetTimestamp;
     logger.debug(
-      logs.downloader.debug.rateLimitErrorCreated(),
-      message,
-      url,
-      statusCode,
-      statusText,
-      responseBody,
-      responseHeaders,
-      resetTimestamp
+      downloaderErrorLogMessages.rateLimitErrorCreated(
+        message,
+        url,
+        statusCode,
+        statusText,
+        responseBody,
+        responseHeaders,
+        resetTimestamp
+      ),
+      {
+        url,
+        statusCode,
+        statusText,
+        responseBody,
+        responseHeaders,
+        resetTimestamp,
+      }
     );
   }
 }
@@ -150,12 +182,14 @@ export class ClientError extends HttpError {
     const logger = parentLogger.getSubLogger({ name: 'ClientError' });
     this.name = 'ClientError';
     logger.debug(
-      logs.downloader.debug.clientErrorCreated(),
-      url,
-      statusCode,
-      statusText,
-      responseBody,
-      responseHeaders
+      downloaderErrorLogMessages.clientErrorCreated(url, statusCode, statusText, responseBody, responseHeaders),
+      {
+        url,
+        statusCode,
+        statusText,
+        responseBody,
+        responseHeaders,
+      }
     );
   }
 }
@@ -176,12 +210,14 @@ export class ServerError extends HttpError {
     const logger = parentLogger.getSubLogger({ name: 'ServerError' });
     this.name = 'ServerError';
     logger.debug(
-      logs.downloader.debug.serverErrorCreated(),
-      url,
-      statusCode,
-      statusText,
-      responseBody,
-      responseHeaders
+      downloaderErrorLogMessages.serverErrorCreated(url, statusCode, statusText, responseBody, responseHeaders),
+      {
+        url,
+        statusCode,
+        statusText,
+        responseBody,
+        responseHeaders,
+      }
     );
   }
 }

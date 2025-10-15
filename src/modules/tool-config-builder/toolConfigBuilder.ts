@@ -1,4 +1,4 @@
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import type {
   Architecture,
   AsyncInstallHook,
@@ -26,6 +26,7 @@ import type {
   ToolConfigInstallParams,
   ToolConfigUpdateCheck,
 } from '@types';
+import { toolConfigBuilderLogMessages } from './log-messages';
 
 /**
  * Internal shell configuration storage organized by shell type
@@ -116,7 +117,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
     } else {
       this.logger.warn(
-        logs.config.warning.ignored(
+        toolConfigBuilderLogMessages.configurationFieldIgnored(
           'hooks',
           `hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
         )
@@ -236,7 +237,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     } else {
       targetArchitectures = architecturesOrConfigure;
       if (typeof configureCallback !== 'function') {
-        const missingCallbackError = logs.config.error.required(
+        const missingCallbackError = toolConfigBuilderLogMessages.configurationFieldRequired(
           'configure callback',
           `platform() called for tool "${this.toolName}" with architectures but without a configure callback`
         );
@@ -378,7 +379,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   private throwInvalidMethodError(): never {
-    const invalidMethodError = logs.config.error.invalid(
+    const invalidMethodError = toolConfigBuilderLogMessages.configurationFieldInvalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
       'github-release | brew | curl-script | curl-tar | cargo | manual'
@@ -396,7 +397,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       (baseConfig.platformConfigs && baseConfig.platformConfigs.length > 0);
 
     if (!hasContent) {
-      const requiredConfigError = logs.config.error.required(
+      const requiredConfigError = toolConfigBuilderLogMessages.configurationFieldRequired(
         'tool definition',
         `Tool "${baseConfig.name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
       );

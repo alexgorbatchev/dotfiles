@@ -1,9 +1,9 @@
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@types';
 import { createBinarySymlink } from '@utils';
+import { installerLogMessages } from './log-messages';
 import { normalizeBinaries } from './utils';
 
 /**
@@ -20,7 +20,17 @@ export async function setupBinariesFromArchive(
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
-  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, context.timestamp, extractDir, binariesDir, logger);
+  const methodLogger = logger.getSubLogger({ name: 'setupBinariesFromArchive' });
+
+  await setupBinariesUsingPatterns(
+    fs,
+    toolName,
+    binaryConfigs,
+    context.timestamp,
+    extractDir,
+    binariesDir,
+    methodLogger
+  );
 }
 
 /**
@@ -35,20 +45,21 @@ async function setupBinariesUsingPatterns(
   binariesDir: string,
   logger: TsLogger
 ): Promise<void> {
+  const methodLogger = logger.getSubLogger({ name: 'setupBinariesUsingPatterns' });
   for (const binaryConfig of binaryConfigs) {
     const { name: binaryName, pattern } = binaryConfig;
 
     // Find the binary using its pattern
-    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, logger);
+    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, methodLogger);
 
     if (!binaryPath) {
-      logger.error(logs.installer.debug.binaryNotFound(), binaryName, pattern);
+      methodLogger.error(installerLogMessages.binarySetupService.binaryNotFound(binaryName, pattern));
       continue;
     }
 
     // Create symlink for this binary
     const relativePath = path.relative(extractDir, binaryPath);
-    await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, logger);
+    await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, methodLogger);
   }
 }
 
@@ -64,13 +75,14 @@ async function findBinaryUsingPattern(
   pattern: string,
   logger: TsLogger
 ): Promise<string | null> {
-  logger.debug(logs.installer.debug.searchingWithPattern(), pattern, extractDir);
+  const methodLogger = logger.getSubLogger({ name: 'findBinaryUsingPattern' });
+  methodLogger.debug(installerLogMessages.binarySetupService.searchingWithPattern(pattern, extractDir));
 
   // Try the primary pattern first
   let result: string | null = null;
 
   if (pattern.includes('*')) {
-    result = await findBinaryWithWildcards(fs, extractDir, pattern, logger);
+    result = await findBinaryWithWildcards(fs, extractDir, pattern, methodLogger);
   } else {
     result = await findBinaryWithDirectPath(fs, extractDir, pattern);
   }
@@ -78,7 +90,7 @@ async function findBinaryUsingPattern(
   // If primary pattern failed and it's a wildcard pattern like '*/tool', try fallback patterns
   if (!result && pattern.startsWith('*/')) {
     const toolName = pattern.substring(2); // Remove '*/' prefix
-    logger.debug(logs.installer.debug.searchingWithPattern(), `Trying fallback pattern: ${toolName}`, extractDir);
+    methodLogger.debug(installerLogMessages.binarySetupService.fallbackPattern(toolName, extractDir));
 
     // Try direct path as fallback
     result = await findBinaryWithDirectPath(fs, extractDir, toolName);
@@ -96,6 +108,7 @@ async function findBinaryWithWildcards(
   pattern: string,
   logger: TsLogger
 ): Promise<string | null> {
+  const methodLogger = logger.getSubLogger({ name: 'findBinaryWithWildcards' });
   const parts = pattern.split('/');
   let currentDir = extractDir;
 
@@ -103,7 +116,7 @@ async function findBinaryWithWildcards(
     if (!part) continue;
 
     if (part.includes('*')) {
-      const matchedDir = await findWildcardMatch(fs, currentDir, part, logger);
+      const matchedDir = await findWildcardMatch(fs, currentDir, part, methodLogger);
       if (!matchedDir) {
         return null;
       }
@@ -113,7 +126,7 @@ async function findBinaryWithWildcards(
     }
 
     if (!(await fs.exists(currentDir))) {
-      logger.debug(logs.installer.debug.patternPathNotFound(), currentDir);
+      methodLogger.debug(installerLogMessages.binarySetupService.patternPathMissing(currentDir));
       return null;
     }
   }
@@ -130,18 +143,19 @@ async function findWildcardMatch(
   wildcardPart: string,
   logger: TsLogger
 ): Promise<string | null> {
+  const methodLogger = logger.getSubLogger({ name: 'findWildcardMatch' });
   const entries = await fs.readdir(currentDir);
   const regex = new RegExp(`^${wildcardPart.replace(/\*/g, '.*')}$`);
   const matches = entries.filter((entry) => regex.test(entry));
 
   if (matches.length === 0) {
-    logger.debug(logs.installer.debug.noPatternMatch(), wildcardPart, currentDir);
+    methodLogger.debug(installerLogMessages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
     return null;
   }
 
   const firstMatch = matches[0];
   if (!firstMatch) {
-    logger.debug(logs.installer.debug.noPatternMatch(), wildcardPart, currentDir);
+    methodLogger.debug(installerLogMessages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
     return null;
   }
 
@@ -170,6 +184,7 @@ export async function setupBinariesFromDirectDownload(
   downloadPath: string,
   logger: TsLogger
 ): Promise<void> {
+  const methodLogger = logger.getSubLogger({ name: 'setupBinariesFromDirectDownload' });
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
   const primaryBinary = binaryConfigs[0]?.name || toolName;
 
@@ -178,9 +193,19 @@ export async function setupBinariesFromDirectDownload(
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const downloadFileName = path.basename(downloadPath);
 
-  await createBinarySymlink(fs, toolName, primaryBinary, context.timestamp, downloadFileName, binariesDir, logger);
+  await createBinarySymlink(
+    fs,
+    toolName,
+    primaryBinary,
+    context.timestamp,
+    downloadFileName,
+    binariesDir,
+    methodLogger
+  );
 
   if (binaryConfigs.length > 1) {
-    logger.debug(logs.installer.debug.directDownloadSingleBinary(), binaryConfigs.length.toString(), primaryBinary);
+    methodLogger.debug(
+      installerLogMessages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary)
+    );
   }
 }

@@ -365,7 +365,7 @@ describe('Hook Integration Tests', () => {
       // Verify that the hook failure was logged appropriately
       setup.logger.expect(
         ['ERROR'],
-        ['HookExecutor'],
+        ['HookExecutor', 'executeHook'],
         [
           'Installation failed [afterDownload hook] for tool "failing-tool": Downloaded file validation failed: checksum mismatch',
         ]

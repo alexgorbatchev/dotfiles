@@ -7,8 +7,8 @@ import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigs as actualLoadToolConfigs,
 } from '@modules/config-loader';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
-import { logs } from '@modules/logger';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
@@ -161,7 +161,11 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      ['updates for fzf', 'fzf (0.40.0) is up to date. Latest: 0.40.0', 'Check-updates command completed']
+      [
+        cliLogMessages.toolCheckingUpdates('fzf'),
+        cliLogMessages.toolUpToDate('fzf', '0.40.0', '0.40.0'),
+        cliLogMessages.updatesCommandCompleted(),
+      ]
     );
   });
 
@@ -187,7 +191,11 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      ['updates for fzf', 'Update available for fzf: 0.40.0 -> 0.41.0', 'Check-updates command completed']
+      [
+        cliLogMessages.toolCheckingUpdates('fzf'),
+        cliLogMessages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0'),
+        cliLogMessages.updatesCommandCompleted(),
+      ]
     );
   });
 
@@ -211,11 +219,11 @@ describe('checkUpdatesCommand', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        'updates for fzf',
-        'fzf (0.40.0) is up to date. Latest: 0.40.0',
-        'updates for lazygit',
-        'Update available for lazygit: 0.35.0 -> 0.36.0',
-        'Check-updates command completed',
+        cliLogMessages.toolCheckingUpdates('fzf'),
+        cliLogMessages.toolUpToDate('fzf', '0.40.0', '0.40.0'),
+        cliLogMessages.toolCheckingUpdates('lazygit'),
+        cliLogMessages.toolUpdateAvailable('lazygit', '0.35.0', '0.36.0'),
+        cliLogMessages.updatesCommandCompleted(),
       ]
     );
   });
@@ -231,9 +239,9 @@ describe('checkUpdatesCommand', () => {
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        'updates for fzf',
-        'Tool "fzf" is configured to \'latest\'. The latest available version is 0.42.0',
-        'Check-updates command completed',
+        cliLogMessages.toolCheckingUpdates('fzf'),
+        cliLogMessages.toolConfiguredToLatest('fzf', '0.42.0'),
+        cliLogMessages.updatesCommandCompleted(),
       ]
     );
   });
@@ -246,10 +254,10 @@ describe('checkUpdatesCommand', () => {
       ['*'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        'check-updates command action logic started. Tool: manualtool',
-        'updates for manualtool',
-        'Update checking for manualtool not yet supported (method: manual)',
-        'Check-updates command completed',
+        cliLogMessages.commandActionStarted('check-updates', 'manualtool'),
+        cliLogMessages.toolCheckingUpdates('manualtool'),
+        cliLogMessages.commandUnsupportedOperation('Update checking for manualtool', 'method: manual'),
+        cliLogMessages.updatesCommandCompleted(),
       ]
     );
   });
@@ -266,9 +274,9 @@ describe('checkUpdatesCommand', () => {
       ['INFO', 'ERROR', 'INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        'updates for fzf',
-        logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API unavailable'),
-        'Check-updates command completed',
+        cliLogMessages.toolCheckingUpdates('fzf'),
+        cliLogMessages.serviceGithubApiFailed('get latest release', 0, 'GitHub API unavailable'),
+        cliLogMessages.updatesCommandCompleted(),
       ]
     );
   });
@@ -281,7 +289,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [logs.tool.error.notFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
+      [cliLogMessages.toolNotFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -291,7 +299,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [`No tool configurations found in ${mockYamlConfig.paths.toolConfigsDir}`]
+      [cliLogMessages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -309,9 +317,9 @@ describe('checkUpdatesCommand', () => {
       ['INFO', 'WARN', 'INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        'updates for invalidrepo',
-        logs.config.warning.invalid('repo format', 'justonename', 'owner/repo'),
-        'Check-updates command completed',
+        cliLogMessages.toolCheckingUpdates('invalidrepo'),
+        cliLogMessages.configParameterInvalid('repo format', 'justonename', 'owner/repo'),
+        cliLogMessages.updatesCommandCompleted(),
       ]
     );
   });
@@ -330,9 +338,9 @@ describe('checkUpdatesCommand', () => {
       ['INFO', 'WARN', 'INFO'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
-        'updates for missingrepo',
-        logs.config.warning.ignored('repo', "Tool \"missingrepo\" is 'github-release' but missing 'repo' parameter"),
-        'Check-updates command completed',
+        cliLogMessages.toolCheckingUpdates('missingrepo'),
+        cliLogMessages.configParameterIgnored('repo', "Tool \"missingrepo\" is 'github-release' but missing 'repo' parameter"),
+        cliLogMessages.updatesCommandCompleted(),
       ]
     );
   });
@@ -344,7 +352,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [logs.config.error.loadFailed('tool configurations', errorMessage)]
+      [cliLogMessages.configLoadFailed('tool configurations', errorMessage)]
     );
   });
 
@@ -355,7 +363,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
-      [logs.config.error.loadFailed('tool configurations', errorMessage)]
+      [cliLogMessages.configLoadFailed('tool configurations', errorMessage)]
     );
   });
 });

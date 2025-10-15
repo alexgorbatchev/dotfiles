@@ -1,9 +1,10 @@
 import type { GlobalProgram, Services } from '@cli';
 import { ExitCode, exitCli } from '@modules/cli/exitCli';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { YamlConfig } from '@modules/config';
 import type { FileOperation, IFileRegistry } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import { contractHomePath, formatPermissions } from '@utils';
 
 export interface FilesCommandOptions {
@@ -34,7 +35,9 @@ function buildOperationsFilter(
   if (since) {
     const sinceDate = new Date(since);
     if (Number.isNaN(sinceDate.getTime())) {
-      logger.error(logs.config.error.invalid('date format for --since', since, 'ISO format like "2025-08-01"'));
+      logger.error(
+        cliLogMessages.configParameterInvalid('date format for --since', since, 'ISO format like "2025-08-01"')
+      );
       return { filter: {}, exitCode: ExitCode.ERROR };
     }
     filter['createdAfter'] = sinceDate.getTime();
@@ -50,7 +53,7 @@ async function showFileStates(
   tool?: string
 ): Promise<void> {
   const allTools = await fileRegistry.getRegisteredTools();
-  logger.info(logs.general.success.checkingFileStates());
+  logger.info(cliLogMessages.filesCheckingFileStates());
 
   for (const toolName of allTools) {
     if (tool && toolName !== tool) continue;
@@ -58,7 +61,7 @@ async function showFileStates(
     const fileStates = await fileRegistry.getFileStatesForTool(toolName);
     if (fileStates.length === 0) continue;
 
-    logger.info(logs.general.success.fileStatesForTool(toolName));
+    logger.info(cliLogMessages.filesFileStatesForTool(toolName));
 
     for (const state of fileStates) {
       await logFileState(logger, fs, state);
@@ -76,12 +79,12 @@ async function logFileState(
   const statusText = exists ? 'exists' : 'MISSING';
   const sizeText = state.sizeBytes ? ` (${state.sizeBytes} bytes)` : '';
 
-  logger.info(logs.general.success.fileStatus(statusIcon, state.filePath, state.fileType, statusText, sizeText));
+  logger.info(cliLogMessages.filesFileStatus(statusIcon, state.filePath, state.fileType, statusText, sizeText));
 
   if (state.targetPath) {
     const targetExists = await fs.exists(state.targetPath);
     const targetIcon = targetExists ? '→' : '✗';
-    logger.info(logs.general.success.targetStatus(targetIcon, state.targetPath));
+    logger.info(cliLogMessages.filesTargetStatus(targetIcon, state.targetPath));
   }
 }
 
@@ -140,56 +143,53 @@ function logOperationByType(
 ): void {
   switch (operation.operationType) {
     case 'writeFile': {
-      const writeMsg = logs.fs.success.created(operation.toolName, contractedPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, writeMsg, metadataString));
+      const writeMessage = `[${operation.toolName}] write ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, writeMessage, metadataString));
       break;
     }
     case 'mkdir': {
-      const mkdirMsg = logs.fs.success.directoryCreated(operation.toolName, contractedPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, mkdirMsg, metadataString));
+      const mkdirMessage = `[${operation.toolName}] mkdir ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, mkdirMessage, metadataString));
       break;
     }
     case 'chmod': {
-      const chmodMsg = logs.fs.success.permissionsChanged(
-        operation.toolName,
-        contractedPath,
-        formatPermissions(operation.permissions || 0)
-      );
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, chmodMsg, metadataString));
+      const modeString = formatPermissions(operation.permissions || 0);
+      const chmodMessage = `[${operation.toolName}] chmod ${modeString} ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, chmodMessage, metadataString));
       break;
     }
     case 'rm': {
-      const rmMsg = logs.fs.success.removed(operation.toolName, contractedPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, rmMsg, metadataString));
+      const removeMessage = `[${operation.toolName}] rm ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, removeMessage, metadataString));
       break;
     }
     case 'rename': {
       const targetPath = operation.targetPath
         ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
-      const renameMsg = logs.fs.success.moved(operation.toolName, targetPath, contractedPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, renameMsg, metadataString));
+      const renameMessage = `[${operation.toolName}] mv ${targetPath} ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, renameMessage, metadataString));
       break;
     }
     case 'cp': {
       const sourcePath = operation.targetPath
         ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
-      const cpMsg = logs.fs.success.copied(operation.toolName, sourcePath, contractedPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, cpMsg, metadataString));
+      const copyMessage = `[${operation.toolName}] cp ${sourcePath} ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, copyMessage, metadataString));
       break;
     }
     case 'symlink': {
       const symlinkTargetPath = operation.targetPath
         ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
-      const symlinkMsg = logs.fs.success.symlinkCreated(operation.toolName, contractedPath, symlinkTargetPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, symlinkMsg, metadataString));
+      const symlinkMessage = `[${operation.toolName}] ln -s ${symlinkTargetPath} ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, symlinkMessage, metadataString));
       break;
     }
     default: {
-      const defaultMsg = logs.fs.success.updated(operation.toolName, contractedPath);
-      logger.info(logs.command.debug.fileOperationHistory(timestamp, defaultMsg, metadataString));
+      const defaultMessage = `[${operation.toolName}] write ${contractedPath}`;
+      logger.info(cliLogMessages.filesOperationHistory(timestamp, defaultMessage, metadataString));
     }
   }
 }
@@ -209,7 +209,7 @@ function groupOperationsByTool(operations: FileOperation[]): Record<string, File
 
 async function showOperations(logger: TsLogger, operations: FileOperation[], yamlConfig: YamlConfig): Promise<void> {
   if (operations.length === 0) {
-    logger.info(logs.general.success.noFileOperationsFound());
+    logger.info(cliLogMessages.filesNoOperationsFound());
     return;
   }
 
@@ -235,7 +235,7 @@ async function filesActionLogic(
   const { fileRegistry, fs, yamlConfig } = services;
 
   try {
-    logger.debug(logs.command.debug.actionCalled('files', options.tool), options);
+    logger.debug(cliLogMessages.commandActionCalled('files', options.tool), options);
 
     if (options.status) {
       await showFileStates(logger, fileRegistry, fs, options.tool);
@@ -250,8 +250,8 @@ async function filesActionLogic(
     const operations = await fileRegistry.getOperations(filterResult.filter);
     await showOperations(logger, operations, yamlConfig);
   } catch (error) {
-    logger.error(logs.command.error.executionFailed('files', ExitCode.ERROR, (error as Error).message));
-    logger.debug(logs.command.debug.errorDetails(), error);
+    logger.error(cliLogMessages.commandExecutionFailed('files', ExitCode.ERROR, (error as Error).message));
+    logger.debug(cliLogMessages.commandErrorDetails(), error);
     exitCli(ExitCode.ERROR);
   }
 }
@@ -273,7 +273,7 @@ export function registerFilesCommand(
     .action(async (options) => {
       const combinedOptions: FilesCommandOptions = { ...options, ...program.opts() };
 
-      logger.debug(logs.command.debug.actionCalled('files', options.tool), combinedOptions);
+      logger.debug(cliLogMessages.commandActionCalled('files', options.tool), combinedOptions);
       const services = await servicesFactory();
       await filesActionLogic(logger, combinedOptions, services);
     });

@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { CompletionGenerationContext, CompletionGenerator } from '@modules/generator-shell-init';
-import { logs } from '@modules/logger';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@types';
 import { InstallationStep, type StepContext } from './base';
+import { installerLogMessages } from '../log-messages';
 
 export interface CompletionGenerationStepParams {
   completionGenerator: CompletionGenerator;
@@ -17,11 +17,11 @@ export class CompletionGenerationStep extends InstallationStep<CompletionGenerat
     const completionConfigs = this.extractCompletionConfigs(context.toolConfig);
 
     if (completionConfigs.length === 0) {
-      context.logger.debug(logs.command.debug.installDebug('no completions configured'));
+      context.logger.debug(installerLogMessages.completion.noCompletionsConfigured());
       return context;
     }
 
-    context.logger.debug(logs.command.debug.installDebug(`generating ${completionConfigs.length} completion files`));
+    context.logger.debug(installerLogMessages.completion.generatingCompletions(completionConfigs.length));
 
     const generationContext: CompletionGenerationContext = {
       toolName: context.toolName,
@@ -64,7 +64,7 @@ export class CompletionGenerationStep extends InstallationStep<CompletionGenerat
     await context.toolFs.writeFile(generated.targetPath, generated.content);
 
     context.logger.debug(
-      logs.command.debug.installDebug(`generated completion: ${generated.filename} -> ${generated.targetPath}`)
+      installerLogMessages.completion.generatedCompletion(generated.filename, generated.targetPath)
     );
   }
 

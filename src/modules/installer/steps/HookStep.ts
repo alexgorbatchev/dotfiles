@@ -1,7 +1,7 @@
-import { logs } from '@modules/logger';
 import type { AsyncInstallHook } from '@types';
 import type { HookExecutor } from '../HookExecutor';
 import { InstallationStep, type StepContext } from './base';
+import { installerLogMessages } from '../log-messages';
 
 export interface HookStepParams {
   hookType: 'afterDownload' | 'afterExtract' | 'beforeInstall' | 'afterInstall';
@@ -20,7 +20,7 @@ export class HookStep extends InstallationStep<HookStepParams> {
   async execute(context: StepContext): Promise<StepContext> {
     const { hookType, hook, hookExecutor } = this.params;
 
-    context.logger.debug(logs.installer.debug.hookExecuting(), hookType);
+  context.logger.debug(installerLogMessages.hookStep.executingHook(hookType));
 
     try {
       const enhancedContext = hookExecutor.createEnhancedContext(context, context.toolFs);

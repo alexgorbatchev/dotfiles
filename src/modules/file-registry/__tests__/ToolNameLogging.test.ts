@@ -2,7 +2,8 @@ import { beforeEach, test } from 'bun:test';
 import { MemFileSystem } from '@modules/file-system';
 import { RegistryDatabase } from '@modules/registry-database';
 import { TestLogger } from '@testing-helpers';
-import { SqliteFileRegistry, TrackedFileSystem } from '../index';
+import { SqliteFileRegistry } from '../SqliteFileRegistry';
+import { TrackedFileSystem } from '../TrackedFileSystem';
 
 let logger: TestLogger;
 let fs: MemFileSystem;

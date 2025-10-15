@@ -2,9 +2,9 @@ import type { ICache } from '@modules/cache';
 import { createCacheKey } from '@modules/cache';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions } from './IDownloader';
+import { cachedDownloadStrategyLogMessages } from './log-messages';
 
 /**
  * A download strategy decorator that adds caching functionality.
@@ -40,7 +40,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     this.cacheTtl = cacheTtl;
     this.name = `cached-${underlyingStrategy.name}`;
 
-    this.logger.debug(logs.cache.debug.cachedDownloadStrategyCreated(underlyingStrategy.name, cacheTtl));
+  this.logger.debug(cachedDownloadStrategyLogMessages.strategyWrapped(underlyingStrategy.name, cacheTtl));
   }
 
   /**
@@ -58,12 +58,12 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     url: string,
     options: DownloadOptions
   ): Promise<Buffer | undefined> {
-    logger.trace(logs.cache.success.hit(cacheKey, 'binary', cachedBuffer.length), { url });
+  logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
 
     // If destinationPath is specified, write cached data to file and return void
     if (options.destinationPath) {
       await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
-      logger.trace(logs.fs.success.created('CachedDownloadStrategy', options.destinationPath));
+  logger.trace(cachedDownloadStrategyLogMessages.cachedFileWritten(options.destinationPath));
       return; // Return void for file downloads
     }
 
@@ -71,25 +71,30 @@ export class CachedDownloadStrategy implements DownloadStrategy {
   }
 
   private async readFileForCaching(logger: TsLogger, destinationPath: string): Promise<Buffer | null> {
-    logger.trace(logs.downloader.success.readFileForCaching(destinationPath));
+  logger.trace(cachedDownloadStrategyLogMessages.readFileForCaching(destinationPath));
 
     try {
       const fileExists = await this.fileSystem.exists(destinationPath);
-      logger.trace(logs.downloader.debug.fileExists(fileExists), { path: destinationPath });
+  logger.trace(cachedDownloadStrategyLogMessages.downloadedFileExists(destinationPath, fileExists));
 
       if (fileExists) {
         const bufferToCache = await this.fileSystem.readFileBuffer(destinationPath);
-        logger.trace(logs.downloader.debug.fileCached(), {
-          path: destinationPath,
-          size: bufferToCache.length,
-        });
+        logger.trace(
+          cachedDownloadStrategyLogMessages.downloadedFileCached(destinationPath, bufferToCache.length),
+          {
+            path: destinationPath,
+            size: bufferToCache.length,
+          }
+        );
         return bufferToCache;
       } else {
-        logger.trace(logs.fs.error.notFound('Downloaded file', destinationPath));
+        logger.trace(cachedDownloadStrategyLogMessages.downloadedFileMissing(destinationPath));
         return null;
       }
     } catch (error) {
-      logger.trace(logs.fs.error.readFailed(destinationPath, (error as Error).message));
+      logger.trace(
+        cachedDownloadStrategyLogMessages.downloadedFileReadFailed(destinationPath, (error as Error).message)
+      );
       return null;
     }
   }
@@ -123,9 +128,14 @@ export class CachedDownloadStrategy implements DownloadStrategy {
         url,
         this.extractContentTypeFromHeaders(options.headers)
       );
-      logger.trace(logs.cache.success.stored(cacheKey, 'binary', 'TTL-based', bufferToCache.length), { url });
+      logger.trace(
+        cachedDownloadStrategyLogMessages.cacheStored(cacheKey, 'binary', 'TTL-based', bufferToCache.length),
+        { url }
+      );
     } catch (error) {
-      logger.trace(logs.cache.error.storageFailed(cacheKey, (error as Error).message), { url });
+      logger.trace(cachedDownloadStrategyLogMessages.cacheStorageFailed(cacheKey, (error as Error).message), {
+        url,
+      });
       // Don't fail the download if caching fails
     }
   }
@@ -143,7 +153,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     const shouldCache = !options.onProgress;
 
     if (!shouldCache) {
-      logger.trace(logs.cache.debug.disabled('caching', url), { reason: 'progress callback' });
+      logger.trace(cachedDownloadStrategyLogMessages.cacheDisabledForProgress(url));
       return await this.underlyingStrategy.download(url, options);
     }
 
@@ -156,14 +166,14 @@ export class CachedDownloadStrategy implements DownloadStrategy {
         return await this.handleCacheHit(logger, cachedBuffer, cacheKey, url, options);
       }
 
-      logger.trace(logs.cache.debug.notFound(cacheKey), { url });
+      logger.trace(cachedDownloadStrategyLogMessages.cacheMiss(cacheKey), { url });
     } catch (error) {
-      logger.trace(logs.cache.error.checkFailed(cacheKey, (error as Error).message), { url });
+      logger.trace(cachedDownloadStrategyLogMessages.cacheCheckFailed(cacheKey, (error as Error).message), { url });
       // Continue with download if cache check fails
     }
 
     // Download from underlying strategy
-    logger.trace(logs.downloader.success.downloadFrom(this.underlyingStrategy.name), { url });
+    logger.trace(cachedDownloadStrategyLogMessages.downloadFromStrategy(this.underlyingStrategy.name), { url });
     const result = await this.underlyingStrategy.download(url, options);
 
     // Cache the result if possible

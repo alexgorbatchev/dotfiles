@@ -1,8 +1,8 @@
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { PostDownloadInstallContext, PostExtractInstallContext, ToolConfig } from '@types';
 import type { HookExecutor } from '../HookExecutor';
+import { installerLogMessages } from '../log-messages';
 
 /**
  * Result of hook execution
@@ -27,7 +27,7 @@ export async function executeAfterDownloadHook(
     return { success: true };
   }
 
-  logger.debug(logs.installer.debug.runningAfterDownloadHook());
+  logger.debug(installerLogMessages.hooks.afterDownload());
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
   const hookResult = await hookExecutor.executeHook(
@@ -61,7 +61,7 @@ export async function executeAfterExtractHook(
     return { success: true };
   }
 
-  logger.debug(logs.installer.debug.runningAfterExtractHook());
+  logger.debug(installerLogMessages.hooks.afterExtract());
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
   const hookResult = await hookExecutor.executeHook(

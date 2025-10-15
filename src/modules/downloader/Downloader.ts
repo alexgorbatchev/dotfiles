@@ -1,11 +1,11 @@
 import type { ICache } from '@modules/cache';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions, IDownloader } from './IDownloader';
 import { NodeFetchStrategy } from './NodeFetchStrategy';
+import { downloaderLogMessages } from './log-messages';
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];
@@ -22,14 +22,10 @@ export class Downloader implements IDownloader {
       // Create default strategy, optionally wrapped with cache
       const baseStrategy = new NodeFetchStrategy(this.logger, this.fs);
       if (cache) {
-        this.logger.debug(
-          logs.downloader.debug.strategyCreated(),
-          'CachedDownloadStrategy',
-          ' wrapping NodeFetchStrategy'
-        );
+        this.logger.debug(downloaderLogMessages.strategyCreated('CachedDownloadStrategy', ' wrapping NodeFetchStrategy'));
         this.strategies.push(new CachedDownloadStrategy(this.logger, this.fs, cache, baseStrategy));
       } else {
-        this.logger.debug(logs.downloader.debug.strategyCreated(), 'NodeFetchStrategy', ' (no cache)');
+        this.logger.debug(downloaderLogMessages.strategyCreated('NodeFetchStrategy', ' (no cache)'));
         this.strategies.push(baseStrategy);
       }
     }
@@ -53,8 +49,8 @@ export class Downloader implements IDownloader {
   }
 
   public async download(url: string, options: DownloadOptions = {}): Promise<Buffer | undefined> {
-    const logger = this.logger.getSubLogger({ name: 'download' });
-    logger.debug(logs.downloader.debug.downloadStarted(), url);
+  const logger = this.logger.getSubLogger({ name: 'download' });
+  logger.debug(downloaderLogMessages.downloadStarted(url));
 
     if (this.strategies.length === 0) {
       throw new Error('No download strategies registered.');
@@ -107,8 +103,8 @@ export class Downloader implements IDownloader {
   }
 
   public async downloadToFile(url: string, filePath: string, options: DownloadOptions = {}): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'downloadToFile' });
-    logger.debug(logs.downloader.debug.downloadToFileStarted(), url, filePath);
+  const logger = this.logger.getSubLogger({ name: 'downloadToFile' });
+  logger.debug(downloaderLogMessages.downloadToFileStarted(url, filePath));
 
     // Set destination path in options to indicate file download
     const fileOptions = { ...options, destinationPath: filePath };

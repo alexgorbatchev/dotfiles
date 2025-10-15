@@ -2,9 +2,10 @@ import type { GlobalProgram, Services } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig } from '@modules/config-loader/loadToolConfigs';
 import type { IFileSystem } from '@modules/file-system';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import type { ToolConfig } from '@types';
 import { exitCli } from './exitCli';
+import { cliLogMessages } from './log-messages';
 
 async function loadToolConfigSafely(
   logger: TsLogger,
@@ -16,7 +17,7 @@ async function loadToolConfigSafely(
   const toolConfig = await loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
 
   if (!toolConfig) {
-    logger.error(logs.tool.error.notFound(toolName, toolConfigsDir));
+  logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
     return null;
   }
 
@@ -35,32 +36,32 @@ function handleInstallationResult(
       return 0;
     } else {
       // Normal mode: log success message and continue (don't exit)
-      logger.info(logs.tool.success.installed(toolName, result.version || 'unknown', 'CLI'));
+      logger.info(cliLogMessages.toolInstalled(toolName, result.version ?? 'unknown', 'CLI'));
       return null; // Don't exit on success in normal mode
     }
   } else {
-    logger.debug(logs.command.debug.actionStarted('install-failed', toolName), result.error);
+    logger.debug(cliLogMessages.commandActionStarted('install-failed', toolName), result.error);
 
     if (shimMode) {
       // In shim mode, output user-friendly error message to stderr only
-      console.error(`Failed to install '${toolName}': ${result.error || 'Unknown error'}`);
+      process.stderr.write(`Failed to install '${toolName}': ${result.error ?? 'Unknown error'}\n`);
     } else {
       // Normal mode: use logger only
-      logger.error(logs.tool.error.installFailed('unknown', toolName, result.error || 'Unknown error'));
+      logger.error(cliLogMessages.toolInstallFailed('unknown', toolName, result.error ?? 'Unknown error'));
     }
     return 1;
   }
 }
 
 function handleInstallationError(logger: TsLogger, error: Error, toolName: string, shimMode: boolean): number {
-  logger.debug(logs.command.debug.unhandledError(), error);
+  logger.debug(cliLogMessages.commandUnhandledError(), error);
 
   if (shimMode) {
     // In shim mode, output user-friendly error message to stderr only
-    console.error(`Failed to install '${toolName}': ${error.message}`);
+    process.stderr.write(`Failed to install '${toolName}': ${error.message}\n`);
   } else {
     // Normal mode: use logger only
-    logger.error(logs.command.error.executionFailed('install', 1, error.message));
+    logger.error(cliLogMessages.commandExecutionFailed('install', 1, error.message));
   }
   return 1;
 }
@@ -78,7 +79,7 @@ export function registerInstallCommand(
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
-      logger.debug(logs.command.debug.actionCalled('install', toolName), combinedOptions);
+  logger.debug(cliLogMessages.commandActionCalled('install', toolName), combinedOptions);
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer } = services;
@@ -87,7 +88,7 @@ export function registerInstallCommand(
 
       try {
         logger.debug(
-          logs.command.debug.actionStarted('install', toolName),
+          cliLogMessages.commandActionStarted('install', toolName),
           yamlConfig.paths.toolConfigsDir,
           fs.constructor.name
         );

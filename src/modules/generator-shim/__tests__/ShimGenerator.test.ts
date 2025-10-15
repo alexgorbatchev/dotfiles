@@ -375,7 +375,11 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
 
       // Should log error about conflicting file
-      logger.expect(['ERROR'], ['ShimGenerator'], [/Cannot create shim for "test-tool": conflicting file exists/]);
+      logger.expect(
+        ['ERROR'],
+        ['ShimGenerator', 'generateShimForBinary'],
+        [/Cannot create shim for "test-tool": conflicting file exists/]
+      );
     });
 
     it('should skip silently when our shim exists and overwrite is false', async () => {
@@ -420,7 +424,11 @@ describe('ShimGenerator', () => {
       expect(fsMocks.chmod).not.toHaveBeenCalled();
 
       // Should log error about conflicting file
-      logger.expect(['ERROR'], ['ShimGenerator'], [/Cannot create shim for "test-tool": conflicting file exists/]);
+      logger.expect(
+        ['ERROR'],
+        ['ShimGenerator', 'generateShimForBinary'],
+        [/Cannot create shim for "test-tool": conflicting file exists/]
+      );
     });
 
     it('should treat unreadable files as non-shims', async () => {
@@ -434,7 +442,11 @@ describe('ShimGenerator', () => {
       expect(fsMocks.writeFile).not.toHaveBeenCalled();
 
       // Should log error about conflicting file
-      logger.expect(['ERROR'], ['ShimGenerator'], [/Cannot create shim for "test-tool": conflicting file exists/]);
+      logger.expect(
+        ['ERROR'],
+        ['ShimGenerator', 'generateShimForBinary'],
+        [/Cannot create shim for "test-tool": conflicting file exists/]
+      );
     });
   });
 

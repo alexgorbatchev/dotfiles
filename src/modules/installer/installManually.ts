@@ -1,11 +1,11 @@
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { BaseInstallContext, ManualToolConfig } from '@types';
 import { expandToolConfigPath } from '@utils';
 import type { InstallOptions, InstallResult } from './IInstaller';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from './utils';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool manually
@@ -20,7 +20,7 @@ export async function installManually(
 ): Promise<InstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
-  logger.debug(logs.installer.debug.installingManually(), toolName);
+  logger.debug(installerLogMessages.manual.installing(toolName));
 
   if (!toolConfig.installParams || !('binaryPath' in toolConfig.installParams)) {
     return {
@@ -80,7 +80,7 @@ async function installBinariesManually(
       await toolFs.copyFile(binaryPath, finalBinaryPath);
       await toolFs.chmod(finalBinaryPath, 0o755);
     } else {
-      logger.debug(logs.installer.debug.manualMultipleBinariesNotSupported(), binaryName);
+  logger.debug(installerLogMessages.manual.multipleBinariesNotSupported(binaryName));
     }
   }
 }

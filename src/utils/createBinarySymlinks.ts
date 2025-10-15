@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
+import { installerLogMessages } from '@modules/installer/log-messages';
 
 /**
  * Create or update a symlink for a binary
@@ -23,6 +23,7 @@ export async function createBinarySymlink(
   binariesDir: string,
   logger: TsLogger
 ): Promise<void> {
+  const methodLogger = logger.getSubLogger({ name: 'createBinarySymlink' });
   const toolDir = path.join(binariesDir, toolName);
   const symlinkPath = path.join(toolDir, binaryName);
   const timestampedDir = path.join(toolDir, timestamp);
@@ -31,7 +32,9 @@ export async function createBinarySymlink(
   // Verify the target binary exists before creating symlink
   if (!(await fs.exists(actualBinaryPath))) {
     const errorMsg = `Cannot create symlink: target binary does not exist at ${actualBinaryPath}`;
-    logger.error(logs.installer.debug.binaryNotFound(), errorMsg);
+    methodLogger.error(
+      installerLogMessages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath)
+    );
     throw new Error(errorMsg);
   }
 
@@ -44,28 +47,30 @@ export async function createBinarySymlink(
   // Remove existing symlink if it exists
   try {
     if (await fs.exists(symlinkPath)) {
+      methodLogger.debug(installerLogMessages.binarySymlink.removingExisting(symlinkPath));
       await fs.rm(symlinkPath, { force: true });
-      logger.debug(logs.installer.debug.removingOldSymlink(), symlinkPath);
     }
   } catch (error) {
-    logger.error(logs.installer.debug.removingOldSymlink(), `Failed to remove old symlink ${symlinkPath}: ${error}`);
-    throw new Error(`Failed to remove old symlink ${symlinkPath}: ${error}`);
+    const reason = error instanceof Error ? error.message : String(error);
+    methodLogger.error(installerLogMessages.binarySymlink.removeExistingFailed(symlinkPath, reason));
+    throw new Error(`Failed to remove old symlink ${symlinkPath}: ${reason}`);
   }
 
   // Create new symlink
   try {
+    methodLogger.debug(installerLogMessages.binarySymlink.creating(symlinkPath, targetPath));
     await fs.symlink(targetPath, symlinkPath);
-    logger.debug(logs.installer.debug.creatingSymlink(), symlinkPath, targetPath);
   } catch (error) {
-    const errorMsg = `Failed to create symlink from ${symlinkPath} to ${targetPath}: ${error}`;
-    logger.error(logs.installer.debug.creatingSymlink(), errorMsg);
+    const reason = error instanceof Error ? error.message : String(error);
+    const errorMsg = `Failed to create symlink from ${symlinkPath} to ${targetPath}: ${reason}`;
+    methodLogger.error(installerLogMessages.binarySymlink.creationFailed(symlinkPath, targetPath, reason));
     throw new Error(errorMsg);
   }
 
   // Verify symlink was created successfully
   if (!(await fs.exists(symlinkPath))) {
     const errorMsg = `Symlink creation appeared to succeed but symlink does not exist at ${symlinkPath}`;
-    logger.error(logs.installer.debug.creatingSymlink(), errorMsg);
+    methodLogger.error(installerLogMessages.binarySymlink.verificationFailed(symlinkPath, errorMsg));
     throw new Error(errorMsg);
   }
 
@@ -74,19 +79,17 @@ export async function createBinarySymlink(
     const linkTarget = await fs.readlink(symlinkPath);
     if (linkTarget !== targetPath) {
       const errorMsg = `Symlink points to wrong target. Expected: ${targetPath}, Actual: ${linkTarget}`;
-      logger.error(logs.installer.debug.creatingSymlink(), errorMsg);
+      methodLogger.error(installerLogMessages.binarySymlink.verificationMismatch(symlinkPath, targetPath, linkTarget));
       throw new Error(errorMsg);
     }
   } catch (error) {
     const errorMsg = `Failed to verify symlink target at ${symlinkPath}: ${error}`;
-    logger.error(logs.installer.debug.creatingSymlink(), errorMsg);
+    const reason = error instanceof Error ? error.message : String(error);
+    methodLogger.error(installerLogMessages.binarySymlink.verificationFailed(symlinkPath, reason));
     throw new Error(errorMsg);
   }
 
-  logger.debug(
-    logs.installer.debug.creatingSymlink(),
-    `Successfully created and verified symlink: ${symlinkPath} -> ${targetPath}`
-  );
+  methodLogger.debug(installerLogMessages.binarySymlink.createdAndVerified(symlinkPath, targetPath));
 }
 
 /**
@@ -109,8 +112,9 @@ export async function createAllBinarySymlinks(
   binariesDir: string,
   logger: TsLogger
 ): Promise<void> {
+  const methodLogger = logger.getSubLogger({ name: 'createAllBinarySymlinks' });
   for (const binaryName of binaries) {
     const binaryPath = path.join(binaryBasePath, binaryName);
-    await createBinarySymlink(fs, toolName, binaryName, timestamp, binaryPath, binariesDir, logger);
+    await createBinarySymlink(fs, toolName, binaryName, timestamp, binaryPath, binariesDir, methodLogger);
   }
 }

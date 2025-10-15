@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
+import { cacheLogMessages } from './log-messages';
 import type { BinaryCacheEntry, CacheConfig, CacheEntry, DownloadCacheEntry, ICache, JsonCacheEntry } from './types';
 
 /**
@@ -32,14 +32,14 @@ export class FileCache implements ICache {
     }
 
     this.logger.debug(
-      logs.cache.debug.constructorDebug(config.cacheDir, config.defaultTtl, config.storageStrategy, config.enabled)
+      cacheLogMessages.initialized(config.cacheDir, config.defaultTtl, config.storageStrategy, config.enabled)
     );
   }
 
   async get<T>(key: string): Promise<T | null> {
     const logger = this.logger.getSubLogger({ name: 'get' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('returning null', key));
+      logger.debug(cacheLogMessages.cachingDisabled('returning null', key));
       return null;
     }
 
@@ -47,33 +47,33 @@ export class FileCache implements ICache {
       const metadataPath = this.getMetadataFilePath(key);
 
       if (!(await this.fileSystem.exists(metadataPath))) {
-        logger.debug(logs.cache.debug.notFound(key));
+        logger.debug(cacheLogMessages.entryMissing(key));
         return null;
       }
 
-      const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
-      const entry: CacheEntry = JSON.parse(metadataContent);
+  const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
+  const entry: CacheEntry<T> = JSON.parse(metadataContent);
 
       // Check if entry is expired
       if (this.isExpired(entry)) {
-        logger.debug(logs.cache.debug.expired(key));
+        logger.debug(cacheLogMessages.entryExpired(key));
         await this.deleteEntry(key, entry);
         return null;
       }
 
       if (entry.type === 'json') {
         // For JSON entries, data is stored directly
-        logger.debug(logs.cache.success.hit(key, 'JSON'));
-        return (entry as JsonCacheEntry<T>).data;
+  logger.debug(cacheLogMessages.cacheHit(key, 'JSON'));
+  return entry.data;
       } else {
         // For binary entries, data is in a separate file
         if (!this.binariesDir) {
-          throw new Error(logs.cache.error.binaryFileNotConfigured());
+          throw new Error(cacheLogMessages.binaryDirectoryNotConfigured());
         }
 
         const binaryPath = path.join(this.binariesDir, entry.binaryFileName);
         if (!(await this.fileSystem.exists(binaryPath))) {
-          logger.warn(logs.cache.debug.binaryFileMissing(key, binaryPath));
+          logger.warn(cacheLogMessages.binaryFileMissing(key, binaryPath));
           await this.fileSystem.rm(metadataPath).catch(() => {}); // Clean up orphaned metadata
           return null;
         }
@@ -86,16 +86,16 @@ export class FileCache implements ICache {
         const expectedHash = entry.contentHash;
 
         if (actualHash !== expectedHash) {
-          logger.warn(logs.cache.error.contentHashMismatch(key, expectedHash, actualHash));
+          logger.warn(cacheLogMessages.contentHashMismatch(key, expectedHash, actualHash));
           await this.deleteEntry(key, entry);
           return null;
         }
 
-        logger.debug(logs.cache.success.hit(key, 'binary', buffer.length));
+        logger.debug(cacheLogMessages.cacheHit(key, 'binary', buffer.length));
         return buffer as T;
       }
     } catch (error) {
-      logger.warn(logs.cache.error.retrievalFailed(key, (error as Error).message));
+      logger.warn(cacheLogMessages.retrievalFailed(key, this.getErrorMessage(error)));
       return null;
     }
   }
@@ -103,7 +103,7 @@ export class FileCache implements ICache {
   async set<T>(key: string, data: T, ttlMs?: number): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'set' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('skipping set', key));
+      logger.debug(cacheLogMessages.cachingDisabled('skipping set', key));
       return;
     }
 
@@ -125,24 +125,24 @@ export class FileCache implements ICache {
         const metadataPath = this.getMetadataFilePath(key);
         await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
 
-        logger.debug(logs.cache.success.stored(key, 'JSON', new Date(entry.expiresAt).toISOString()));
+        logger.debug(cacheLogMessages.cacheStored(key, 'JSON', new Date(entry.expiresAt).toISOString()));
       } else {
         // For binary strategy, store data and metadata separately
         if (!Buffer.isBuffer(data)) {
-          throw new Error(logs.cache.error.binaryDataRequired());
+          throw new Error(cacheLogMessages.binaryDataRequired());
         }
 
         if (!this.binariesDir) {
-          throw new Error(logs.cache.error.binaryFileNotConfigured());
+          throw new Error(cacheLogMessages.binaryDirectoryNotConfigured());
         }
 
-        const buffer = data as Buffer;
-        const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
+  const buffer = data;
+  const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
         const binaryFileName = `${contentHash}.bin`;
         const binaryFilePath = path.join(this.binariesDir, binaryFileName);
 
         // Write binary content to file
-        await this.fileSystem.writeFile(binaryFilePath, buffer);
+  await this.fileSystem.writeFile(binaryFilePath, buffer);
 
         // Store metadata with reference to binary file
         const entry: BinaryCacheEntry = {
@@ -157,11 +157,14 @@ export class FileCache implements ICache {
         const metadataPath = this.getMetadataFilePath(key);
         await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
 
-        logger.debug(logs.cache.success.stored(key, 'binary', new Date(entry.expiresAt).toISOString(), buffer.length));
+        logger.debug(
+          cacheLogMessages.cacheStored(key, 'binary', new Date(entry.expiresAt).toISOString(), buffer.length)
+        );
       }
     } catch (error) {
-      logger.warn(logs.cache.error.storageFailed(key, (error as Error).message));
-      throw new Error(`Failed to cache data: ${(error as Error).message}`);
+      const errorMessage = this.getErrorMessage(error);
+      logger.warn(cacheLogMessages.storageFailed(key, errorMessage));
+      throw new Error(`Failed to cache data: ${errorMessage}`);
     }
   }
 
@@ -174,7 +177,7 @@ export class FileCache implements ICache {
   ): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'setDownload' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('skipping setDownload', key));
+      logger.debug(cacheLogMessages.cachingDisabled('skipping setDownload', key));
       return;
     }
 
@@ -189,7 +192,7 @@ export class FileCache implements ICache {
       }
 
       if (!this.binariesDir) {
-        throw new Error(logs.cache.error.binaryFileNotConfigured());
+        throw new Error(cacheLogMessages.binaryDirectoryNotConfigured());
       }
 
       const contentHash = crypto.createHash('sha256').update(data).digest('hex');
@@ -214,17 +217,20 @@ export class FileCache implements ICache {
       const metadataPath = this.getMetadataFilePath(key);
       await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
 
-      logger.debug(logs.cache.success.stored(key, 'download', new Date(entry.expiresAt).toISOString(), data.length));
+      logger.debug(
+        cacheLogMessages.cacheStored(key, 'download', new Date(entry.expiresAt).toISOString(), data.length)
+      );
     } catch (error) {
-      logger.warn(logs.cache.error.storageFailed(key, (error as Error).message));
-      throw new Error(`Failed to cache download: ${(error as Error).message}`);
+      const errorMessage = this.getErrorMessage(error);
+      logger.warn(cacheLogMessages.storageFailed(key, errorMessage));
+      throw new Error(`Failed to cache download: ${errorMessage}`);
     }
   }
 
   async has(key: string): Promise<boolean> {
     const logger = this.logger.getSubLogger({ name: 'has' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('returning false', key));
+      logger.debug(cacheLogMessages.cachingDisabled('returning false', key));
       return false;
     }
 
@@ -232,7 +238,7 @@ export class FileCache implements ICache {
       const metadataPath = this.getMetadataFilePath(key);
 
       if (!(await this.fileSystem.exists(metadataPath))) {
-        logger.debug(logs.cache.debug.notFound(key));
+        logger.debug(cacheLogMessages.entryMissing(key));
         return false;
       }
 
@@ -240,7 +246,7 @@ export class FileCache implements ICache {
       const entry: CacheEntry = JSON.parse(metadataContent);
 
       if (this.isExpired(entry)) {
-        logger.debug(logs.cache.debug.expired(key));
+        logger.debug(cacheLogMessages.entryExpired(key));
         return false;
       }
 
@@ -250,15 +256,15 @@ export class FileCache implements ICache {
         const binaryExists = await this.fileSystem.exists(binaryPath);
 
         if (!binaryExists) {
-          logger.debug(logs.cache.debug.binaryFileMissing(key, binaryPath));
+          logger.debug(cacheLogMessages.binaryFileMissing(key, binaryPath));
           return false;
         }
       }
 
-      logger.debug(logs.cache.success.entryExists(key));
+      logger.debug(cacheLogMessages.cacheEntryExists(key));
       return true;
     } catch (error) {
-      logger.warn(logs.cache.error.checkFailed(key, (error as Error).message));
+      logger.warn(cacheLogMessages.checkFailed(key, this.getErrorMessage(error)));
       return false;
     }
   }
@@ -266,7 +272,7 @@ export class FileCache implements ICache {
   async delete(key: string): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'delete' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('skipping delete', key));
+      logger.debug(cacheLogMessages.cachingDisabled('skipping delete', key));
       return;
     }
 
@@ -277,26 +283,27 @@ export class FileCache implements ICache {
         const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
         const entry: CacheEntry = JSON.parse(metadataContent);
         await this.deleteEntry(key, entry);
-        logger.debug(logs.cache.success.removed(key));
+        logger.debug(cacheLogMessages.cacheEntryRemoved(key));
       } else {
-        logger.debug(logs.cache.debug.noEntryToDelete(key));
+        logger.debug(cacheLogMessages.noEntryToDelete(key));
       }
     } catch (error) {
-      logger.warn(logs.cache.error.deleteFailed(key, (error as Error).message));
-      throw new Error(`Failed to delete cache entry: ${(error as Error).message}`);
+      const errorMessage = this.getErrorMessage(error);
+      logger.warn(cacheLogMessages.deleteFailed(key, errorMessage));
+      throw new Error(`Failed to delete cache entry: ${errorMessage}`);
     }
   }
 
   async clearExpired(): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'clearExpired' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('skipping clearExpired', 'N/A'));
+      logger.debug(cacheLogMessages.cachingDisabled('skipping clearExpired', 'N/A'));
       return;
     }
 
     try {
       if (!(await this.fileSystem.exists(this.metadataDir))) {
-        logger.debug(logs.cache.debug.directoryNotExist());
+        logger.debug(cacheLogMessages.cacheDirectoryMissing());
         return;
       }
 
@@ -320,39 +327,41 @@ export class FileCache implements ICache {
             expiredCount++;
           }
         } catch (error) {
-          logger.warn(logs.cache.debug.fileProcessingError(file, (error as Error).message));
+          logger.warn(cacheLogMessages.metadataProcessingWarning(file, this.getErrorMessage(error)));
           // Remove problematic metadata file
           await this.fileSystem.rm(metadataPath).catch(() => {});
           expiredCount++;
         }
       }
 
-      logger.debug(logs.cache.success.expiredCleared(expiredCount));
+      logger.debug(cacheLogMessages.expiredEntriesCleared(expiredCount));
     } catch (error) {
-      logger.warn(logs.cache.error.clearExpiredFailed((error as Error).message));
-      throw new Error(`Failed to clear expired cache entries: ${(error as Error).message}`);
+      const errorMessage = this.getErrorMessage(error);
+      logger.warn(cacheLogMessages.clearExpiredFailed(errorMessage));
+      throw new Error(`Failed to clear expired cache entries: ${errorMessage}`);
     }
   }
 
   async clear(): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'clear' });
     if (!this.config.enabled) {
-      logger.debug(logs.cache.debug.disabled('skipping clear', 'N/A'));
+      logger.debug(cacheLogMessages.cachingDisabled('skipping clear', 'N/A'));
       return;
     }
 
     try {
       if (await this.fileSystem.exists(this.config.cacheDir)) {
         await this.fileSystem.rm(this.config.cacheDir, { recursive: true, force: true });
-        logger.debug(logs.cache.success.cleared());
+        logger.debug(cacheLogMessages.cacheCleared());
       } else {
-        logger.debug(logs.cache.debug.directoryNotExist());
+        logger.debug(cacheLogMessages.cacheDirectoryMissing());
       }
       // Always ensure the cache directory exists after attempting to clear
       await this.ensureCacheDirectories();
     } catch (error) {
-      logger.warn(logs.cache.error.clearFailed((error as Error).message));
-      throw new Error(`Failed to clear cache: ${(error as Error).message}`);
+      const errorMessage = this.getErrorMessage(error);
+      logger.warn(cacheLogMessages.clearFailed(errorMessage));
+      throw new Error(`Failed to clear cache: ${errorMessage}`);
     }
   }
 
@@ -369,9 +378,18 @@ export class FileCache implements ICache {
         await this.fileSystem.ensureDir(this.binariesDir);
       }
     } catch (error) {
-      logger.warn(logs.cache.error.directoryCreationFailed((error as Error).message));
-      throw new Error(`Failed to create cache directories: ${(error as Error).message}`);
+      const errorMessage = this.getErrorMessage(error);
+      logger.warn(cacheLogMessages.directoryCreationFailed(errorMessage));
+      throw new Error(`Failed to create cache directories: ${errorMessage}`);
     }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
   }
 
   private isExpired(entry: CacheEntry): boolean {

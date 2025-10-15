@@ -2,7 +2,7 @@ import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
+import { registryDatabaseLogMessages } from './log-messages';
 
 /**
  * Registry database connection for the dotfiles generator.
@@ -17,7 +17,7 @@ export class RegistryDatabase {
     const dbDir = path.dirname(registryDbPath);
     mkdirSync(dbDir, { recursive: true });
     this.db = new Database(registryDbPath);
-    this.logger.debug(logs.registry.debug.initialized(), 'shared connection');
+  this.logger.debug(registryDatabaseLogMessages.initialized(), 'shared connection');
   }
 
   /**

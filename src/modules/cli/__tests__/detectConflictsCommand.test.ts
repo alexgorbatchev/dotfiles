@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { GlobalProgram } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadToolConfigs as actualLoadToolConfigs } from '@modules/config-loader';
-import { logs } from '@modules/logger';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
@@ -94,7 +94,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [/No tool configurations found in .*\/configs\/tools/]
+        [cliLogMessages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
       );
     });
 
@@ -107,7 +107,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['ERROR'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [logs.config.error.loadFailed('tool configurations', loadError.message)]
+        [cliLogMessages.configLoadFailed('tool configurations', loadError.message)]
       );
     });
 
@@ -120,7 +120,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No conflicts detected']
+        [cliLogMessages.noConflictsDetected()]
       );
     });
 
@@ -136,7 +136,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${shimPath} (exists but is not a generator shim)`;
-      const expectedMessageShim = logs.tool.warning.conflictsDetected(
+      const expectedMessageShim = cliLogMessages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
@@ -156,7 +156,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        ['No conflicts detected']
+        [cliLogMessages.noConflictsDetected()]
       );
     });
 
@@ -171,7 +171,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${configPath} (exists but is not a symlink)`;
-      const expectedMessageSymlinkFile = logs.tool.warning.conflictsDetected(
+      const expectedMessageSymlinkFile = cliLogMessages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
@@ -197,7 +197,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
-      const expectedMessage = logs.tool.warning.conflictsDetected(
+      const expectedMessage = cliLogMessages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
@@ -224,7 +224,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
-      const expectedMessageMultiple = logs.tool.warning.conflictsDetected(
+      const expectedMessageMultiple = cliLogMessages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );

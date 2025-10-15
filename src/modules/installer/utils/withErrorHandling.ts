@@ -1,6 +1,6 @@
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { InstallResult } from '../IInstaller';
+import { installerLogMessages } from '../log-messages';
 
 /**
  * Wraps installation operations with consistent error handling
@@ -15,10 +15,11 @@ export async function withInstallErrorHandling<T>(
   try {
     return await operation();
   } catch (error) {
-    logger.error(logs.tool.error.installFailed(methodName, toolName, (error as Error).message));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(installerLogMessages.outcome.installFailed(methodName, toolName, errorMessage));
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     };
   }
 }

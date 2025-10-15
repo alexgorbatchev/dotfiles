@@ -441,7 +441,7 @@ describe('HookExecutor', () => {
 
       logger.expect(
         ['DEBUG'],
-        ['HookExecutor'],
+        ['HookExecutor', 'executeHook'],
         [/Executing testHook hook with \d+ms timeout/, 'Hook testHook completed successfully in']
       );
     });
@@ -459,7 +459,7 @@ describe('HookExecutor', () => {
 
       logger.expect(
         ['ERROR'],
-        ['HookExecutor'],
+        ['HookExecutor', 'executeHook'],
         ['Installation failed [testHook hook] for tool "test-tool": Test hook error']
       );
     });

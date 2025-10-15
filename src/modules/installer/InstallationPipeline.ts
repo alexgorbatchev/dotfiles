@@ -1,10 +1,10 @@
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { BaseInstallContext, ToolConfig } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
 import type { InstallationStep, StepContext } from './steps/base';
 import { createToolFileSystem, getBinaryPaths } from './utils';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Orchestrates the execution of installation steps in a pipeline
@@ -28,7 +28,7 @@ export class InstallationPipeline {
     steps: InstallationStep[]
   ): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: `install-${toolName}` });
-    logger.debug(logs.installer.debug.pipelineStarting(), toolName, steps.length);
+    logger.debug(installerLogMessages.pipeline.starting(toolName, steps.length));
 
     try {
       const toolFs = createToolFileSystem(fs, toolName);
@@ -54,25 +54,25 @@ export class InstallationPipeline {
 
         const stepName = step.getStepName();
 
-        logger.debug(logs.installer.debug.pipelineStepExecuting(), i + 1, steps.length, stepName);
+        logger.debug(installerLogMessages.pipeline.executingStep(i + 1, steps.length, stepName));
 
         stepContext = await step.execute(stepContext);
 
         if (!stepContext.success) {
-          logger.error(logs.installer.debug.pipelineStepFailed(), stepName, stepContext.error);
+          logger.error(installerLogMessages.pipeline.stepFailed(stepName, stepContext.error));
           return {
             success: false,
             error: stepContext.error || `Step ${stepName} failed`,
           };
         }
 
-        logger.debug(logs.installer.debug.pipelineStepCompleted(), stepName);
+        logger.debug(installerLogMessages.pipeline.stepCompleted(stepName));
       }
 
       // Calculate final binary paths
       const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-      logger.debug(logs.installer.debug.pipelineCompleted(), toolName);
+  logger.debug(installerLogMessages.pipeline.completed(toolName));
 
       return {
         success: true,
@@ -81,10 +81,11 @@ export class InstallationPipeline {
         info: stepContext.info,
       };
     } catch (error) {
-      logger.error(logs.tool.error.installFailed('pipeline', toolName, (error as Error).message));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(installerLogMessages.outcome.installFailed('pipeline', toolName, errorMessage));
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       };
     }
   }

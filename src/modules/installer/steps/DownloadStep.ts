@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
-import { logs } from '@modules/logger';
 import { downloadWithProgress } from '../utils';
 import { InstallationStep, type StepContext } from './base';
+import { installerLogMessages } from '../log-messages';
 
 export interface DownloadStepParams {
   url: string;
@@ -22,7 +22,7 @@ export class DownloadStep extends InstallationStep<DownloadStepParams> {
     const { url, filename, downloader } = this.params;
     const downloadPath = path.join(context.installDir, filename);
 
-    context.logger.debug(logs.installer.debug.downloadingAsset(), filename, url);
+    context.logger.debug(installerLogMessages.downloadStep.downloadingAsset(filename, url));
 
     try {
       await downloadWithProgress(url, downloadPath, filename, downloader, context.options);

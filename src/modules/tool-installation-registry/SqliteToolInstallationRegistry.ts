@@ -1,5 +1,6 @@
 import type { Database } from 'bun:sqlite';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
+import { toolInstallationRegistryLogMessages } from './log-messages';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import type { ToolInstallation, ToolInstallationInput } from './types';
 
@@ -27,7 +28,7 @@ export class SqliteToolInstallationRegistry implements IToolInstallationRegistry
   }
 
   private initializeDatabase(): void {
-    this.logger.debug(logs.registry.debug.schemaInitialized());
+  this.logger.debug(toolInstallationRegistryLogMessages.schemaInitialized());
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tool_installations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +47,12 @@ export class SqliteToolInstallationRegistry implements IToolInstallationRegistry
   }
 
   async recordToolInstallation(installation: ToolInstallationInput): Promise<void> {
-    this.logger.debug(logs.registry.debug.operationRecorded(), 'record', installation.toolName, installation.version);
+    this.logger.debug(
+      toolInstallationRegistryLogMessages.operationRecorded(),
+      'record',
+      installation.toolName,
+      installation.version
+    );
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO tool_installations 
       (tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version)

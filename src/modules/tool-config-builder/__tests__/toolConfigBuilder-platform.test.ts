@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { logs } from '@modules/logger';
 import { TestLogger } from '@testing-helpers';
 import type { ManualInstallParams } from '@types';
 import { Architecture, Platform } from '@types';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
+import { toolConfigBuilderLogMessages } from '../log-messages';
 
 describe('ToolConfigBuilder - Platform Support', () => {
   let builder: ToolConfigBuilder;
@@ -175,7 +175,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
       ['ERROR'],
       ['ToolConfigBuilder'],
       [
-        logs.config.error.required(
+        toolConfigBuilderLogMessages.configurationFieldRequired(
           'configure callback',
           'platform() called for tool "test-tool" with architectures but without a configure callback'
         ),

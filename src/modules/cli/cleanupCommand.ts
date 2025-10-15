@@ -1,8 +1,9 @@
 import type { GlobalProgram, Services } from '@cli';
 import { exitCli } from '@modules/cli/exitCli';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { FileOperation, FileState, IFileRegistry } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 
 import { contractHomePath } from '@utils';
 
@@ -23,7 +24,7 @@ async function cleanupAllTrackedFiles(
   homeDir: string,
   dryRun: boolean
 ): Promise<void> {
-  logger.info(logs.general.success.cleanupAllTrackedFiles());
+  logger.info(cliLogMessages.cleanupAllTrackedFiles());
   const allTools = await fileRegistry.getRegisteredTools();
 
   for (const toolName of allTools) {
@@ -32,10 +33,10 @@ async function cleanupAllTrackedFiles(
 
   // Clean up the registry database itself
   if (!dryRun) {
-    logger.info(logs.general.success.cleanupRegistryDatabase());
+    logger.info(cliLogMessages.cleanupRegistryDatabase());
     await fileRegistry.compact();
   } else {
-    logger.info(logs.general.success.cleanupRegistryDryRun());
+    logger.info(cliLogMessages.cleanupRegistryDryRun());
   }
 }
 
@@ -48,14 +49,14 @@ async function cleanupSpecificTool(
   fileType: string | undefined,
   dryRun: boolean
 ): Promise<void> {
-  logger.info(logs.general.success.cleanupToolFiles(toolName));
+  logger.info(cliLogMessages.cleanupToolFiles(toolName));
   await cleanupToolFiles(logger, fs, fileRegistry, toolName, homeDir, fileType, dryRun);
 
   if (!dryRun) {
     await fileRegistry.removeToolOperations(toolName);
-    logger.info(logs.general.success.cleanupRegistryTool(toolName, false));
+    logger.info(cliLogMessages.cleanupRegistryTool(toolName, false));
   } else {
-    logger.info(logs.general.success.cleanupRegistryTool(toolName, true));
+    logger.info(cliLogMessages.cleanupRegistryTool(toolName, true));
   }
 }
 
@@ -67,7 +68,7 @@ async function cleanupSpecificType(
   homeDir: string,
   dryRun: boolean
 ): Promise<void> {
-  logger.info(logs.general.success.cleanupTypeFiles(fileType));
+  logger.info(cliLogMessages.cleanupTypeFiles(fileType));
   const operations = await fileRegistry.getOperations({ fileType: fileType as FileOperation['fileType'] });
 
   for (const operation of operations) {
@@ -96,7 +97,7 @@ async function registryBasedCleanup(
     await cleanupSpecificType(logger, fs, fileRegistry, type, homeDir, dryRun);
   } else {
     logger.warn(
-      logs.config.warning.ignored(
+      cliLogMessages.configParameterIgnored(
         'cleanup options',
         'Registry-based cleanup requires --all, --tool <name>, or --type <type> option'
       )
@@ -117,7 +118,7 @@ async function cleanupToolFiles(
 
   const filteredStates = fileType ? fileStates.filter((state: FileState) => state.fileType === fileType) : fileStates;
 
-  logger.trace(logs.command.debug.foundFiles(filteredStates.length, toolName, fileType));
+  logger.trace(cliLogMessages.cleanupFoundFiles(filteredStates.length, toolName, fileType));
 
   for (const fileState of filteredStates) {
     await removeFile(logger, fs, fileState.filePath, homeDir, dryRun);
@@ -139,15 +140,15 @@ async function removeFile(
     if (await fs.exists(filePath)) {
       if (!dryRun) {
         await fs.rm(filePath, { force: true });
-        logger.info(logs.fs.success.removed('cleanup', contractHomePath(homeDir, filePath)));
+        logger.info(cliLogMessages.cleanupFileRemoved(contractHomePath(homeDir, filePath)));
       } else {
-        logger.info(logs.general.success.fileCleanupDryRun(filePath));
+        logger.info(cliLogMessages.fileCleanupDryRun(filePath));
       }
     } else {
-      logger.debug(logs.command.debug.fileNotFound(filePath));
+      logger.debug(cliLogMessages.cleanupFileNotFound(filePath));
     }
   } catch (error) {
-    logger.error(logs.fs.error.deleteFailed(filePath, String(error)));
+    logger.error(cliLogMessages.cleanupDeleteFailed(filePath, String(error)));
   }
 }
 
@@ -160,22 +161,24 @@ async function cleanupActionLogic(
   const { dryRun, tool, type, all } = options;
 
   try {
-    logger.trace(logs.command.debug.cleanupStarted(dryRun), options);
+    logger.trace(cliLogMessages.cleanupProcessStarted(dryRun), options);
     logger.info(
       dryRun
-        ? logs.general.success.started('dry run cleanup (no files will be removed)')
-        : logs.general.success.started('cleanup')
+        ? cliLogMessages.operationStarted('dry run cleanup (no files will be removed)')
+        : cliLogMessages.operationStarted('cleanup')
     );
 
     // Use registry-based cleanup (default behavior is now --all)
     const cleanupOptions = { ...options, all: all || (!tool && !type) };
     await registryBasedCleanup(logger, services, cleanupOptions);
 
-    logger.info(dryRun ? logs.general.success.completed('Dry run cleanup') : logs.general.success.completed('Cleanup'));
-    logger.trace(logs.command.debug.cleanupFinished(dryRun));
+    logger.info(
+      dryRun ? cliLogMessages.operationCompleted('Dry run cleanup') : cliLogMessages.operationCompleted('Cleanup')
+    );
+    logger.trace(cliLogMessages.cleanupProcessFinished(dryRun));
   } catch (error) {
-    logger.error(logs.command.error.executionFailed('cleanup', 1, (error as Error).message));
-    logger.debug(logs.command.debug.errorDetails(), error);
+    logger.error(cliLogMessages.commandExecutionFailed('cleanup', 1, (error as Error).message));
+    logger.debug(cliLogMessages.commandErrorDetails(), error);
     exitCli(1);
   }
 }
@@ -196,7 +199,7 @@ export function registerCleanupCommand(
     .action(async (options) => {
       const combinedOptions: CleanupCommandOptions = { ...options, ...program.opts() };
 
-      logger.debug(logs.command.debug.actionCalled('cleanup'), combinedOptions);
+      logger.debug(cliLogMessages.commandActionCalled('cleanup'), combinedOptions);
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);
     });

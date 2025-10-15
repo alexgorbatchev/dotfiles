@@ -1,6 +1,7 @@
 import type { GlobalProgram, Services } from '@cli';
 import { loadToolConfigs } from '@modules/config-loader/loadToolConfigs';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
+import { cliLogMessages } from './log-messages';
 import { exitCli } from './exitCli';
 
 export interface GenerateCommandOptions {
@@ -23,19 +24,20 @@ export function registerGenerateCommand(
       const services = await servicesFactory();
       const { yamlConfig, fs, generatorOrchestrator } = services;
 
-      logger.debug(logs.command.debug.actionCalled('generate'), combinedOptions);
+      logger.debug(cliLogMessages.commandActionCalled('generate'), combinedOptions);
 
       try {
-        logger.debug(logs.config.success.toolConfigLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
+        logger.debug(cliLogMessages.toolConfigsLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
         const toolConfigs = await loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
-        logger.debug(logs.config.success.loaded('tool configs', Object.keys(toolConfigs).length));
+        logger.debug(
+          cliLogMessages.toolConfigsLoaded(yamlConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length)
+        );
 
         await generatorOrchestrator.generateAll(toolConfigs, {});
-        logger.debug(logs.generator.debug.orchestrationComplete());
-
-        logger.info(logs.general.success.done(combinedOptions.dryRun));
+        logger.info(cliLogMessages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (error) {
-        logger.error(logs.command.error.executionFailed('generate', 1, (error as Error).message), error);
+        const failureMessage = cliLogMessages.commandExecutionFailed('generate', 1, (error as Error).message);
+        logger.error(failureMessage, error);
         exitCli(1);
       }
     });

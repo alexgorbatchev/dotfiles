@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { GlobalProgram, Services } from '@cli';
-import { logs, type TsLogger } from '@modules/logger';
+import { cliLogMessages } from '@modules/cli/log-messages';
+import type { TsLogger } from '@modules/logger';
 import { dedentString } from '@utils';
 import { getCliBinPath } from '@utils/getCliBinPath';
 import { exitCli } from './exitCli';
@@ -15,7 +16,7 @@ export function registerInitCommand(
     .command('init')
     .description('Initialize a new dotfiles generator project')
     .action(async () => {
-      logger.debug(logs.command.debug.actionCalled('init', ''));
+      logger.debug(cliLogMessages.commandActionCalled('init'));
 
       try {
         const services = await servicesFactory();
@@ -32,8 +33,8 @@ export function registerInitCommand(
         }
 
         if (existingFiles.length > 0) {
-          logger.error(logs.fs.error.accessDenied('init', existingFiles.join(', ')));
-          logger.error(logs.general.error.operationFailed('init'));
+          logger.error(cliLogMessages.initExistingFiles(existingFiles.join(', ')));
+          logger.error(cliLogMessages.operationFailed('init'));
           exitCli(1);
           return;
         }
@@ -46,7 +47,7 @@ export function registerInitCommand(
           const generatedDts = await fs.readFile(generatedDtsPath, 'utf8');
           await fs.writeFile('generator.d.ts', generatedDts);
         } else {
-          logger.error(logs.general.error.operationFailed('init'));
+          logger.error(cliLogMessages.operationFailed('init'));
           exitCli(1);
           return;
         }
@@ -122,10 +123,13 @@ export function registerInitCommand(
 
         await fs.writeFile('tools/fzf.tool.ts', fzfToolConfig);
 
-        logger.info(logs.general.success.initialized('dotfiles generator project'));
-        logger.info(logs.fs.success.created('init', 'generator.d.ts, tsconfig.json, config.yaml, tools/fzf.tool.ts'));
+        logger.info(cliLogMessages.initProjectInitialized());
+        logger.info(
+          cliLogMessages.initFilesCreated('generator.d.ts, tsconfig.json, config.yaml, tools/fzf.tool.ts')
+        );
       } catch (error) {
-        logger.error(logs.general.error.operationFailed('project initialization'), error);
+        logger.error(cliLogMessages.operationFailed('project initialization'));
+        logger.debug(cliLogMessages.commandErrorDetails(), error);
         exitCli(1);
       }
     });

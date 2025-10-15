@@ -3,7 +3,8 @@ import type { IFileSystem } from '@modules/file-system';
 import type { GenerateShellInitOptions, IShellInitGenerator } from '@modules/generator-shell-init';
 import type { GenerateShimsOptions, IShimGenerator } from '@modules/generator-shim';
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
+import { generatorOrchestratorLogMessages } from './log-messages';
 import type { SystemInfo, ToolConfig } from '@types';
 import type { GenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 
@@ -25,7 +26,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
-    this.logger.debug(logs.generator.debug.orchestratorInit());
+    const logger = this.logger.getSubLogger({ name: 'constructor' });
+    logger.debug(generatorOrchestratorLogMessages.constructor.initialized());
     this.shimGenerator = shimGenerator;
     this.shellInitGenerator = shellInitGenerator;
     this.symlinkGenerator = symlinkGenerator;
@@ -35,32 +37,36 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
   async generateAll(toolConfigs: Record<string, ToolConfig>, options?: GenerateAllOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
-    logger.debug(logs.generator.debug.methodEntry(), options, this.fs.constructor.name);
+    const fileSystemName = this.fs.constructor.name;
+    logger.debug(generatorOrchestratorLogMessages.generateAll.methodEntry(fileSystemName), options);
 
     const toolConfigsCount = toolConfigs ? Object.keys(toolConfigs).length : 0;
-    logger.debug(logs.generator.debug.parsedOptions(), toolConfigsCount);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.parsedOptions(toolConfigsCount));
 
     // 1. Generate Shims
     const shimOptions: GenerateShimsOptions = { overwrite: true };
-    logger.debug(logs.generator.debug.shimGenerate(), shimOptions);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.shimGenerate(), shimOptions);
     const generatedShimsPaths = await this.shimGenerator.generate(toolConfigs, shimOptions);
-    logger.debug(logs.generator.debug.shimGenerationComplete(), generatedShimsPaths?.length ?? 0);
+    const shimCount = generatedShimsPaths?.length ?? 0;
+    logger.debug(generatorOrchestratorLogMessages.generateAll.shimGenerationComplete(shimCount));
 
     // 2. Generate Shell Init for all supported shells
     const shellInitOptions: GenerateShellInitOptions = {
       shellTypes: ['zsh', 'bash', 'powershell'],
       systemInfo: this.systemInfo,
     };
-    logger.debug(logs.generator.debug.shellGenerate(), shellInitOptions);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.shellGenerate(), shellInitOptions);
     const shellInitResult = await this.shellInitGenerator.generate(toolConfigs, shellInitOptions);
-    logger.debug(logs.generator.debug.shellInitComplete(), shellInitResult?.primaryPath ?? 'null');
+    const primaryPath = shellInitResult?.primaryPath ?? 'null';
+    logger.debug(generatorOrchestratorLogMessages.generateAll.shellInitComplete(primaryPath));
 
     // 3. Generate Symlinks
     const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
-    logger.debug(logs.generator.debug.symlinkGenerate(), symlinkOptions);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.symlinkGenerate(), symlinkOptions);
     const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(toolConfigs, symlinkOptions);
-    logger.debug(logs.generator.debug.symlinkGenerationComplete(), symlinkResults?.length ?? 0);
+    const symlinkResultCount = symlinkResults?.length ?? 0;
+    logger.debug(generatorOrchestratorLogMessages.generateAll.symlinkGenerationComplete(symlinkResultCount));
 
-    logger.debug(logs.generator.debug.orchestrationComplete(), this.fs.constructor.name);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.completed(fileSystemName));
   }
 }

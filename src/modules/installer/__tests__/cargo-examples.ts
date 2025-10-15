@@ -1,7 +1,6 @@
 // Example Cargo tool configurations
 
 import path from 'node:path';
-import { logs } from '@modules/logger';
 import type { CargoToolConfig } from '@types';
 
 // 1. Using cargo-quickinstall (fastest, most common)
@@ -71,7 +70,6 @@ export const batConfig: CargoToolConfig = {
           '--theme="Monokai Extended"\n--style="numbers,changes,header"\n'
         );
 
-        context.logger.info(logs.general.success.operationComplete('bat-config'));
       },
     },
   },

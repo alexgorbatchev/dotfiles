@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { getBinaryNames, getBinaryPaths, normalizeBinaries } from '../index';
+import { getBinaryNames } from '../getBinaryNames';
+import { getBinaryPaths } from '../getBinaryPaths';
+import { normalizeBinaries } from '../normalizeBinaries';
 
 describe('normalizeBinaries', () => {
   test('should handle undefined binaries with fallback', () => {

@@ -2,7 +2,6 @@ import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@types';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
@@ -14,6 +13,7 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from './utils';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool using a curl script
@@ -30,7 +30,7 @@ export async function installFromCurlScript(
 ): Promise<InstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
-  logger.debug(logs.installer.debug.installingFromCurl(), toolName);
+  logger.debug(installerLogMessages.curlScript.installing(toolName));
 
   if (!toolConfig.installParams || !('url' in toolConfig.installParams) || !('shell' in toolConfig.installParams)) {
     return {
@@ -45,7 +45,7 @@ export async function installFromCurlScript(
 
   const operation = async (): Promise<InstallResult> => {
     // Download the script
-    logger.debug(logs.installer.debug.downloadingScript(), url);
+  logger.debug(installerLogMessages.curlScript.downloadingScript(url));
     const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
 
     await downloadWithProgress(url, scriptPath, `${toolName}-install.sh`, downloader, options);
@@ -74,7 +74,7 @@ export async function installFromCurlScript(
     }
 
     // Execute the script
-    logger.debug(logs.installer.debug.executingScript(), shell);
+  logger.debug(installerLogMessages.curlScript.executingScript(shell));
 
     // [TODO] In a real implementation, we would execute the script here
     // For now, we'll just simulate success
@@ -85,7 +85,7 @@ export async function installFromCurlScript(
       const sourcePath = path.join('/usr/local/bin', binaryName);
       const finalBinaryPath = path.join(context.installDir, binaryName);
 
-      logger.debug(logs.installer.debug.movingBinary(), sourcePath, finalBinaryPath);
+  logger.debug(installerLogMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
     }
 
     // Return paths to all binaries

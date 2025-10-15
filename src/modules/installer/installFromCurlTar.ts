@@ -3,7 +3,6 @@ import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type {
   BaseInstallContext,
   CurlTarToolConfig,
@@ -22,6 +21,7 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from './utils';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool from a tarball using curl
@@ -39,7 +39,7 @@ export async function installFromCurlTar(
 ): Promise<InstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
-  logger.debug(logs.installer.debug.installingFromCurlTar(), toolName);
+  logger.debug(installerLogMessages.curlTar.installing(toolName));
 
   // Context variables for lifecycle stages
   let postDownloadContext: PostDownloadInstallContext;
@@ -57,7 +57,7 @@ export async function installFromCurlTar(
 
   const operation = async (): Promise<InstallResult> => {
     // Download the tarball
-    logger.debug(logs.installer.debug.downloadingTarball(), url);
+  logger.debug(installerLogMessages.curlTar.downloadingTarball(url));
     const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`);
 
     await downloadWithProgress(url, tarballPath, `${toolName}.tar.gz`, downloader, options);
@@ -84,12 +84,12 @@ export async function installFromCurlTar(
     }
 
     // Extract the tarball directly to install directory
-    logger.debug(logs.installer.debug.extractingTarball());
+    logger.debug(installerLogMessages.curlTar.extractingTarball());
 
     const extractResult: ExtractResult = await archiveExtractor.extract(tarballPath, {
       targetDir: context.installDir,
     });
-    logger.debug(logs.installer.debug.tarballExtracted(), extractResult);
+    logger.debug(installerLogMessages.curlTar.tarballExtracted(), extractResult);
 
     // Update context with extract directory and result
     postExtractContext = {
@@ -112,7 +112,7 @@ export async function installFromCurlTar(
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
-      logger.debug(logs.installer.debug.cleaningArchive(), tarballPath);
+  logger.debug(installerLogMessages.curlTar.cleaningArchive(tarballPath));
       await toolFs.rm(tarballPath);
     }
 

@@ -5,7 +5,6 @@ import type { IArchiveExtractor } from '@modules/extractor';
 import type { IFileSystem } from '@modules/file-system';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type {
   AssetSelectionContext,
   BaseInstallContext,
@@ -28,6 +27,7 @@ import {
   executeAfterExtractHook as executeAfterExtractHookUtil,
   getBinaryPaths,
 } from './utils';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool from GitHub releases
@@ -46,7 +46,7 @@ export async function installFromGitHubRelease(
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
-  logger.debug(logs.command.debug.methodStarted(), toolName);
+  logger.debug(installerLogMessages.lifecycle.methodStarted(toolName));
 
   if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
     return {
@@ -147,10 +147,10 @@ async function fetchGitHubRelease(
 
   let release: GitHubRelease | null;
   if (version === 'latest') {
-    logger.debug(logs.command.debug.gitHubReleaseLatest(), repo);
+    logger.debug(installerLogMessages.gitHubRelease.fetchLatest(repo));
     release = await githubApiClient.getLatestRelease(owner, repoName);
   } else {
-    logger.debug(logs.command.debug.gitHubReleaseDetails(), version, repo);
+    logger.debug(installerLogMessages.gitHubRelease.fetchByTag(version, repo));
     release = await githubApiClient.getReleaseByTag(owner, repoName, version);
   }
 
@@ -173,7 +173,7 @@ async function selectAsset(
   let asset: GitHubReleaseAsset | undefined;
 
   if (params.assetSelector) {
-    logger.debug(logs.command.debug.assetSelectorCustom());
+  logger.debug(installerLogMessages.gitHubRelease.assetSelectorCustom());
     const selectionContext: AssetSelectionContext = {
       ...context,
       assets: release.assets,
@@ -182,11 +182,13 @@ async function selectAsset(
     };
     asset = params.assetSelector(selectionContext);
   } else if (params.assetPattern) {
-    logger.debug(logs.command.debug.assetPatternMatch(), params.assetPattern);
+    logger.debug(installerLogMessages.gitHubRelease.assetPatternMatch(params.assetPattern));
     const pattern = params.assetPattern;
     asset = release.assets.find((a) => minimatch(a.name, pattern));
   } else {
-    logger.debug(logs.command.debug.assetPlatformMatch());
+    logger.debug(
+      installerLogMessages.gitHubRelease.assetPlatformMatch(context.systemInfo.platform, context.systemInfo.arch)
+    );
     asset = findPlatformAsset(release.assets, context.systemInfo);
   }
 
@@ -250,7 +252,7 @@ function constructDownloadUrl(
   logger: TsLogger
 ): OperationResult<string> {
   const customHost = appConfig.github.host;
-  logger.debug(logs.command.debug.determiningDownloadUrl(), rawBrowserDownloadUrl, customHost);
+  logger.debug(installerLogMessages.gitHubRelease.determiningDownloadUrl(rawBrowserDownloadUrl, customHost));
 
   try {
     const isAbsolute = isAbsoluteUrl(rawBrowserDownloadUrl);
@@ -262,25 +264,20 @@ function constructDownloadUrl(
       return downloadUrl;
     }
 
-    logger.debug(
-      logs.command.debug.finalDownloadUrl(),
-      rawBrowserDownloadUrl,
-      customHost || '(public GitHub)',
-      downloadUrl.data
-    );
+    const host = customHost ?? '(public GitHub)';
+    logger.debug(installerLogMessages.gitHubRelease.finalDownloadUrl(rawBrowserDownloadUrl, host, downloadUrl.data));
 
     return downloadUrl;
   } catch (error) {
-    logger.error(logs.service.error.network.invalidUrl(rawBrowserDownloadUrl));
+    const host = customHost ?? '(public GitHub)';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(installerLogMessages.gitHubRelease.invalidUrl(rawBrowserDownloadUrl));
     logger.debug(
-      logs.command.debug.downloadUrlError(),
-      rawBrowserDownloadUrl,
-      customHost || '(public GitHub)',
-      (error as Error).message
+      installerLogMessages.gitHubRelease.downloadUrlError(rawBrowserDownloadUrl, host, errorMessage)
     );
     return {
       success: false,
-      error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${customHost || '(public GitHub)'}, Error: ${(error as Error).message}`,
+      error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${host}, Error: ${errorMessage}`,
     };
   }
 }
@@ -295,13 +292,13 @@ function isAbsoluteUrl(url: string): boolean {
 }
 
 function handleAbsoluteUrl(url: string, logger: TsLogger): OperationResult<string> {
-  logger.debug(logs.command.debug.usingAbsoluteUrl(), url);
+  logger.debug(installerLogMessages.gitHubRelease.usingAbsoluteUrl(url));
   return { success: true, data: url };
 }
 
 function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logger: TsLogger): OperationResult<string> {
   if (!rawUrl.startsWith('/')) {
-    logger.debug(logs.command.debug.invalidUrlFormat(), rawUrl);
+    logger.debug(installerLogMessages.gitHubRelease.invalidRelativeUrl(rawUrl));
     return {
       success: false,
       error: `Invalid asset download URL format: ${rawUrl}`,
@@ -314,7 +311,7 @@ function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logge
   }
   const finalUrl = new URL(rawUrl, base);
   const downloadUrl = finalUrl.toString();
-  logger.debug(logs.command.debug.resolvedRelativeUrl(), base, rawUrl, downloadUrl);
+  logger.debug(installerLogMessages.gitHubRelease.resolvedRelativeUrl(base, rawUrl, downloadUrl));
   return { success: true, data: downloadUrl };
 }
 
@@ -326,7 +323,7 @@ async function downloadAsset(
   options: InstallOptions | undefined,
   logger: TsLogger
 ): Promise<OperationResult<{ downloadPath: string }>> {
-  logger.debug(logs.command.debug.downloadingAsset(), downloadUrl);
+  logger.debug(installerLogMessages.gitHubRelease.downloadingAsset(downloadUrl));
   const downloadPath = path.join(context.installDir, asset.name);
 
   try {
@@ -405,12 +402,12 @@ async function processArchiveInstallation(
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<OperationResult<void>> {
-  logger.debug(logs.installer.debug.extractingArchive(), asset.name);
+  logger.debug(installerLogMessages.gitHubRelease.extractingArchive(asset.name));
 
   const extractResult: ExtractResult = await archiveExtractor.extract(downloadPath, {
     targetDir: context.installDir,
   });
-  logger.debug(logs.installer.debug.archiveExtracted(), extractResult);
+  logger.debug(installerLogMessages.gitHubRelease.archiveExtracted(), extractResult);
 
   const postExtractContext = {
     ...postDownloadContext,
@@ -426,7 +423,7 @@ async function processArchiveInstallation(
   await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
 
   if (await toolFs.exists(downloadPath)) {
-    logger.debug(logs.installer.debug.cleaningArchive(), downloadPath);
+    logger.debug(installerLogMessages.gitHubRelease.cleaningArchive(downloadPath));
     await toolFs.rm(downloadPath);
   }
 

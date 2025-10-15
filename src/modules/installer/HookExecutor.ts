@@ -2,9 +2,9 @@ import path from 'node:path';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { AsyncInstallHook, BaseInstallContext, EnhancedInstallHookContext, InstallHookContext } from '@types';
 import { $ } from 'zx';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Options for hook execution
@@ -57,10 +57,11 @@ export class HookExecutor {
     context: EnhancedInstallHookContext,
     options: HookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
+    const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
     const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
     const startTime = Date.now();
 
-    this.logger.debug(logs.hookExecutor.debug.executingHook(), hookName, timeoutMs);
+    methodLogger.debug(installerLogMessages.hookExecutor.executingHook(hookName, timeoutMs));
 
     // Create hook-specific logger and update context
     const hookSpecificLogger = context.logger.getSubLogger({ name: `${context.toolName}--${hookName}` });
@@ -73,7 +74,7 @@ export class HookExecutor {
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error(logs.command.error.timeout(hookName, timeoutMs)));
+          reject(new Error(installerLogMessages.hookExecutor.timeoutExceeded(hookName, timeoutMs)));
         }, timeoutMs);
       });
 
@@ -81,7 +82,7 @@ export class HookExecutor {
       await Promise.race([hookPromise, timeoutPromise]);
 
       const durationMs = Date.now() - startTime;
-      this.logger.debug(logs.hookExecutor.debug.hookCompleted(), hookName, durationMs);
+      methodLogger.debug(installerLogMessages.hookExecutor.hookCompleted(hookName, durationMs));
 
       return {
         success: true,
@@ -92,10 +93,10 @@ export class HookExecutor {
       const durationMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      this.logger.error(logs.tool.error.installFailed(`${hookName} hook`, context.toolName, errorMessage));
+      methodLogger.error(installerLogMessages.outcome.installFailed(`${hookName} hook`, context.toolName, errorMessage));
 
       if (continueOnError) {
-        this.logger.debug(logs.hookExecutor.debug.continuingDespiteFailure(), hookName);
+        methodLogger.debug(installerLogMessages.hookExecutor.continuingDespiteFailure(hookName));
 
         return {
           success: false,
@@ -154,6 +155,7 @@ export class HookExecutor {
     hooks: Array<{ name: string; hook: AsyncInstallHook; options?: HookExecutionOptions }>,
     context: EnhancedInstallHookContext
   ): Promise<HookExecutionResult[]> {
+    const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 
     for (const { name, hook, options } of hooks) {
@@ -162,7 +164,7 @@ export class HookExecutor {
 
       // If hook failed and we're not continuing on error, stop execution
       if (!result.success && !options?.continueOnError) {
-        this.logger.debug(logs.hookExecutor.debug.stoppingDueToFailure(), name);
+        methodLogger.debug(installerLogMessages.hookExecutor.stoppingDueToFailure(name));
         break;
       }
     }

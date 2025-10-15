@@ -483,13 +483,13 @@ export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
 
   // Update error message
   private throwInvalidMethodError(): never {
-    const invalidMethodError = logs.config.error.invalid(
+    const invalidMethodMessage = toolConfigBuilderLogMessages.configurationFieldInvalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
       'github-release | brew | curl-script | curl-tar | cargo | my-custom | manual'
     );
-    this.logger.error(invalidMethodError);
-    throw new Error(invalidMethodError);
+    this.logger.error(invalidMethodMessage);
+    throw new Error(invalidMethodMessage);
   }
 }
 ```
@@ -503,7 +503,7 @@ import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
+import { installerLogMessages } from './log-messages';
 import type { BaseInstallContext, MyCustomInstallParams, MyCustomToolConfig } from '@types';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
@@ -521,7 +521,7 @@ export async function installFromMyCustom(
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromMyCustom' });
-  logger.debug(logs.installer.debug.installingFromMyCustom(), toolName, toolConfig.installParams);
+  logger.debug(installerLogMessages.lifecycle.methodStarted(toolName));
 
   if (!toolConfig.installParams) {
     return {
@@ -898,8 +898,8 @@ return withInstallErrorHandling('method-name', toolName, logger, operation);
 Use the structured logging templates:
 
 ```typescript
-logger.debug(logs.installer.debug.downloadingAsset(), filename, url);
-logger.info(logs.installer.success.installationCompleted(), toolName);
+logger.debug(installerLogMessages.downloadStep.downloadingAsset(filename, url));
+logger.info(installerLogMessages.outcome.installSuccess(toolName, version, method));
 ```
 
 ### 4. Hook Support

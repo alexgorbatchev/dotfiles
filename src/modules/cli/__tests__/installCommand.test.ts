@@ -3,7 +3,7 @@ import type { GlobalProgram, Services } from '@cli';
 import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
-import { logs } from '@modules/logger';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@testing-helpers';
 import type { ToolConfig } from '@types';
@@ -91,7 +91,11 @@ describe('installCommand', () => {
       verbose: false,
       shimMode: false,
     });
-    testLogger.expect(['INFO'], ['registerInstallCommand'], ['Tool "toolA" v1.0.0 installed successfully using CLI']);
+    testLogger.expect(
+      ['INFO'],
+      ['registerInstallCommand'],
+      [cliLogMessages.toolInstalled('toolA', '1.0.0', 'CLI')]
+    );
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
@@ -119,10 +123,9 @@ describe('installCommand', () => {
       error: 'Download failed: Network timeout',
     });
 
-    // Mock console.error
-    const mockConsoleError = mock(() => {});
-    const originalConsoleError = console.error;
-    console.error = mockConsoleError as typeof console.error;
+  const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
+  const originalStderrWrite = process.stderr.write;
+  process.stderr.write = mockStderrWrite as typeof process.stderr.write;
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
@@ -130,19 +133,18 @@ describe('installCommand', () => {
       );
 
       // Should output user-friendly error to stderr
-      expect(mockConsoleError).toHaveBeenCalledWith("Failed to install 'toolA': Download failed: Network timeout");
+      expect(mockStderrWrite).toHaveBeenCalledWith("Failed to install 'toolA': Download failed: Network timeout\n");
     } finally {
-      console.error = originalConsoleError;
+      process.stderr.write = originalStderrWrite;
     }
   });
 
   test('should output unhandled error to stderr in shim mode', async () => {
     mockLoadSingleToolConfig.mockRejectedValue(new Error('Config file corrupted'));
 
-    // Mock console.error
-    const mockConsoleError = mock(() => {});
-    const originalConsoleError = console.error;
-    console.error = mockConsoleError as typeof console.error;
+  const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
+  const originalStderrWrite = process.stderr.write;
+  process.stderr.write = mockStderrWrite as typeof process.stderr.write;
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
@@ -150,9 +152,9 @@ describe('installCommand', () => {
       );
 
       // Should output user-friendly error to stderr
-      expect(mockConsoleError).toHaveBeenCalledWith("Failed to install 'toolA': Config file corrupted");
+      expect(mockStderrWrite).toHaveBeenCalledWith("Failed to install 'toolA': Config file corrupted\n");
     } finally {
-      console.error = originalConsoleError;
+      process.stderr.write = originalStderrWrite;
     }
   });
 
@@ -166,7 +168,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+  [cliLogMessages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -183,7 +185,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [logs.tool.error.installFailed('unknown', 'toolA', 'Installation failed')]
+  [cliLogMessages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
     );
   });
 

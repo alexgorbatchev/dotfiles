@@ -1,5 +1,6 @@
-import { logs, type TsLogger } from '@modules/logger';
+import type { TsLogger } from '@modules/logger';
 import type { ArchitecturePatterns, SystemInfo } from '@types';
+import { architectureLogMessages } from './log-messages';
 
 /**
  * Represents a set of regular expression patterns derived from {@link ArchitecturePatterns}.
@@ -36,7 +37,7 @@ export interface ArchitectureRegex {
  */
 export function getArchitecturePatterns(parentLogger: TsLogger, systemInfo: SystemInfo): ArchitecturePatterns {
   const logger = parentLogger.getSubLogger({ name: 'getArchitecturePatterns' });
-  logger.trace(logs.architecture.success.patterns(), systemInfo.platform, systemInfo.arch);
+  logger.trace(architectureLogMessages.patternGenerationStarted(systemInfo.platform, systemInfo.arch));
 
   const patterns: ArchitecturePatterns = {
     system: [],
@@ -107,7 +108,7 @@ export function getArchitecturePatterns(parentLogger: TsLogger, systemInfo: Syst
       break;
   }
 
-  logger.trace(logs.general.success.completed('pattern generation'), patterns);
+  logger.trace(architectureLogMessages.patternGenerationCompleted(systemInfo.platform, systemInfo.arch), patterns);
 
   return patterns;
 }
@@ -121,7 +122,7 @@ export function getArchitecturePatterns(parentLogger: TsLogger, systemInfo: Syst
  */
 export function createArchitectureRegex(parentLogger: TsLogger, patterns: ArchitecturePatterns): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'createArchitectureRegex' });
-  logger.trace(logs.architecture.success.regexCreation());
+  logger.trace(architectureLogMessages.regexGenerationStarted());
 
   // Escape special regex characters in pattern strings
   const escapeRegex = (str: string): string => {
@@ -141,7 +142,7 @@ export function createArchitectureRegex(parentLogger: TsLogger, patterns: Archit
     variantPattern,
   };
 
-  logger.trace(logs.general.success.completed('regex generation'), result);
+  logger.trace(architectureLogMessages.regexGenerationCompleted(), result);
 
   return result;
 }
@@ -155,12 +156,12 @@ export function createArchitectureRegex(parentLogger: TsLogger, patterns: Archit
  */
 export function getArchitectureRegex(parentLogger: TsLogger, systemInfo: SystemInfo): ArchitectureRegex {
   const logger = parentLogger.getSubLogger({ name: 'getArchitectureRegex' });
-  logger.trace(logs.general.success.started('architecture detection'), systemInfo.platform, systemInfo.arch);
+  logger.trace(architectureLogMessages.architectureDetectionStarted(systemInfo.platform, systemInfo.arch));
 
   const patterns = getArchitecturePatterns(logger, systemInfo);
   const regex = createArchitectureRegex(logger, patterns);
 
-  logger.trace(logs.general.success.completed('architecture detection'));
+  logger.trace(architectureLogMessages.architectureDetectionCompleted(systemInfo.platform, systemInfo.arch));
   return regex;
 }
 
@@ -178,7 +179,7 @@ export function matchesArchitecture(
   architectureRegex: ArchitectureRegex
 ): boolean {
   const logger = parentLogger.getSubLogger({ name: 'matchesArchitecture' });
-  logger.trace(logs.architecture.success.assetMatchCheck(assetName));
+  logger.trace(architectureLogMessages.assetMatchCheckStarted(assetName));
 
   const lowerAssetName = assetName.toLowerCase();
 
@@ -194,7 +195,10 @@ export function matchesArchitecture(
 
   const matches = systemMatch && cpuMatch;
 
-  logger.trace(logs.general.success.completed('asset match check'), { assetName, systemMatch, cpuMatch, matches });
+  logger.trace(
+    architectureLogMessages.assetMatchCheckCompleted(assetName, systemMatch, cpuMatch, matches),
+    { assetName, systemMatch, cpuMatch, matches }
+  );
 
   return matches;
 }

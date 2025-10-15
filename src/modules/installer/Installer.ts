@@ -7,7 +7,6 @@ import type { IFileSystem } from '@modules/file-system/IFileSystem';
 import type { ICargoClient } from '@modules/installer/clients/cargo';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { IToolInstallationRegistry } from '@modules/tool-installation-registry';
 import type {
   BaseInstallContext,
@@ -31,6 +30,7 @@ import { installFromCurlScript } from './installFromCurlScript';
 import { installFromCurlTar } from './installFromCurlTar';
 import { installFromGitHubRelease } from './installFromGitHubRelease';
 import { installManually } from './installManually';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Orchestrates the tool installation process by coordinating services like `Downloader`,
@@ -93,12 +93,17 @@ export class Installer implements IInstaller {
     systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
+    const fileSystemName = fileSystem?.constructor?.name ?? 'unknown';
+    const downloaderName = downloader?.constructor?.name ?? 'unknown';
+    const githubClientName = githubApiClient?.constructor?.name ?? 'unknown';
+    const archiveExtractorName = archiveExtractor?.constructor?.name ?? 'unknown';
     this.logger.debug(
-      logs.command.debug.installerConstructor(),
-      fileSystem?.constructor?.name || 'unknown',
-      downloader?.constructor?.name || 'unknown',
-      githubApiClient?.constructor?.name || 'unknown',
-      archiveExtractor?.constructor?.name || 'unknown',
+      installerLogMessages.lifecycle.constructorDetails(
+        fileSystemName,
+        downloaderName,
+        githubClientName,
+        archiveExtractorName
+      ),
       appConfig
     );
     this.fs = fileSystem;
@@ -132,7 +137,7 @@ export class Installer implements IInstaller {
 
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion && existingInstallation.version === targetVersion) {
-      logger?.debug(logs.tool.success.installed(toolName, targetVersion, 'already-installed'));
+      logger?.debug(installerLogMessages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
       return {
         success: true,
         message: `Tool ${toolName} version ${targetVersion} is already installed`,
@@ -143,7 +148,11 @@ export class Installer implements IInstaller {
     }
 
     logger?.debug(
-      logs.tool.warning.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown')
+      installerLogMessages.outcome.outdatedVersion(
+        toolName,
+        existingInstallation.version,
+        targetVersion || 'unknown'
+      )
     );
     return null;
   }
@@ -161,7 +170,7 @@ export class Installer implements IInstaller {
       return null;
     }
 
-    logger.debug(logs.command.debug.hookExecution('beforeInstall'));
+    logger.debug(installerLogMessages.lifecycle.hookExecution('beforeInstall'));
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
     const result = await this.hookExecutor.executeHook(
       'beforeInstall',
@@ -193,7 +202,7 @@ export class Installer implements IInstaller {
       return;
     }
 
-    logger.debug(logs.command.debug.hookExecution('afterInstall'));
+    logger.debug(installerLogMessages.lifecycle.hookExecution('afterInstall'));
     const finalContext = {
       ...context,
       binaryPaths: result.binaryPaths,
@@ -237,9 +246,10 @@ export class Installer implements IInstaller {
             ? resolvedToolConfig.installParams.version
             : undefined,
       });
-      logger.debug(logs.tool.success.installed(toolName, result.version, 'registry-recorded'));
+      logger.debug(installerLogMessages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
     } catch (registryError) {
-      logger.error(logs.tool.error.installFailed('registry-record', toolName, (registryError as Error).message));
+      const errorMessage = registryError instanceof Error ? registryError.message : String(registryError);
+      logger.error(installerLogMessages.outcome.installFailed('registry-record', toolName, errorMessage));
     }
   }
 
@@ -284,7 +294,7 @@ export class Installer implements IInstaller {
       ? this.logger.getSubLogger({ name: 'install', minLevel: 4 }) // Suppress INFO logs in shim mode (4=error, 3=warn, 2=info)
       : this.logger.getSubLogger({ name: 'install' });
 
-    logger.debug(logs.command.debug.methodDebugParams(), toolName, toolConfig, options);
+    logger.debug(installerLogMessages.lifecycle.methodParams(toolName), toolConfig, options);
 
     // Resolve platform-specific configuration
     const systemInfo = this.getSystemInfo();
@@ -311,7 +321,7 @@ export class Installer implements IInstaller {
       const installDir = path.join(binariesDir, toolName, timestamp);
 
       await toolFs.ensureDir(installDir);
-      logger.debug(logs.command.debug.directoryCreated(), installDir);
+  logger.debug(installerLogMessages.lifecycle.directoryCreated(installDir));
 
       // Create context for installation hooks
       const context = this.createBaseInstallContext(toolName, installDir, timestamp, resolvedToolConfig, logger);
@@ -340,10 +350,11 @@ export class Installer implements IInstaller {
 
       return result;
     } catch (error) {
-      logger.error(logs.tool.error.installFailed('install', toolName, (error as Error).message));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(installerLogMessages.outcome.installFailed('install', toolName, errorMessage));
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       };
     }
   }
@@ -493,7 +504,7 @@ export class Installer implements IInstaller {
       }
     } catch (error) {
       this.logger.debug(
-        logs.general.warning.unsupportedOperation(
+        installerLogMessages.outcome.unsupportedOperation(
           'get-target-version',
           `Failed to get target version for ${toolName}: ${error}`
         )

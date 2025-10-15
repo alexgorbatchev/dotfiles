@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { logs } from '@modules/logger';
 import type { AssetSelectionContext, AssetSelector } from '@types';
 import {
   createGithubReleaseToolConfig,
@@ -13,6 +12,7 @@ import {
   MOCK_TOOL_VERSION,
   setupFileSystemMocks,
 } from './installer-test-helpers';
+import { installerLogMessages } from '../log-messages';
 
 describe('Installer - Asset Selector Context API', () => {
   let setup: InstallerTestSetup;
@@ -119,7 +119,7 @@ describe('Installer - Asset Selector Context API', () => {
 
       const modernAssetSelector: AssetSelector = (context: AssetSelectionContext) => {
         // Test that logger is available and functional
-        context.logger.debug(logs.command.debug.assetSelectorCustom());
+  context.logger.debug(installerLogMessages.gitHubRelease.assetSelectorCustom());
         return context.assets.find((asset) => asset.name.includes('linux'));
       };
 

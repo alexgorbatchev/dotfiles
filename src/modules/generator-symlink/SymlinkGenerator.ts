@@ -3,10 +3,10 @@ import type { YamlConfig } from '@modules/config';
 import { TrackedFileSystem } from '@modules/file-registry';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { logs } from '@modules/logger';
 import type { SystemInfo, ToolConfig } from '@types';
 import { expandToolConfigPath } from '@utils';
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
+import { symlinkGeneratorLogMessages } from './log-messages';
 
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
@@ -19,7 +19,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     this.yamlConfig = yamlConfig;
     this.systemInfo = systemInfo;
     this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
-    this.logger.debug(logs.symlink.debug.constructorInit());
+    const logger = this.logger.getSubLogger({ name: 'constructor' });
+    logger.debug(symlinkGeneratorLogMessages.constructor.initialized(), fileSystem, yamlConfig, systemInfo);
   }
 
   async generate(
@@ -27,7 +28,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: GenerateSymlinksOptions = {}
   ): Promise<SymlinkOperationResult[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
-    logger.debug(logs.symlink.debug.generateStart(), options, this.fs.constructor.name);
+    logger.debug(symlinkGeneratorLogMessages.generate.started(), options, this.fs.constructor.name);
     const results: SymlinkOperationResult[] = [];
 
     for (const toolName in toolConfigs) {
@@ -37,7 +38,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
 
       const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
-      logger.debug(logs.symlink.debug.processingTool(), toolName);
+      logger.debug(symlinkGeneratorLogMessages.generate.processingTool(toolName));
 
       for (const symlinkConfig of toolConfig.symlinks) {
         const result = await this.processSymlink(toolConfig, symlinkConfig, toolFs, options, logger);
@@ -45,7 +46,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
     }
 
-    logger.debug(logs.symlink.debug.generationComplete(), results);
+    logger.debug(symlinkGeneratorLogMessages.generate.completed(), results);
     return results;
   }
 
@@ -54,12 +55,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolName: string,
     logger: TsLogger
   ): toolConfig is ToolConfig & { symlinks: NonNullable<ToolConfig['symlinks']> } {
+    const methodLogger = logger.getSubLogger({ name: 'shouldProcessTool' });
     if (!toolConfig) {
-      logger.debug(logs.symlink.debug.toolConfigUndefined(), toolName);
+      methodLogger.debug(symlinkGeneratorLogMessages.generate.missingToolConfig(toolName));
       return false;
     }
     if (!toolConfig.symlinks || toolConfig.symlinks.length === 0) {
-      logger.debug(logs.symlink.debug.noSymlinks(), toolName);
+      methodLogger.debug(symlinkGeneratorLogMessages.generate.noSymlinks(toolName));
       return false;
     }
     return true;
@@ -72,6 +74,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: GenerateSymlinksOptions,
     logger: TsLogger
   ): Promise<SymlinkOperationResult> {
+    const methodLogger = logger.getSubLogger({ name: 'processSymlink' });
     const { overwrite = false, backup = false } = options;
     const sourceAbsPath = expandToolConfigPath(
       toolConfig.configFilePath,
@@ -86,8 +89,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       this.systemInfo
     );
 
-    logger.debug(
-      logs.symlink.debug.processingSymlink(),
+    methodLogger.debug(
+      symlinkGeneratorLogMessages.process.symlinkDetails(
+        symlinkConfig.source,
+        sourceAbsPath,
+        symlinkConfig.target,
+        targetAbsPath
+      ),
       symlinkConfig.source,
       sourceAbsPath,
       symlinkConfig.target,
@@ -95,7 +103,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     );
 
     if (!(await toolFs.exists(sourceAbsPath))) {
-      logger.warn(logs.symlink.warning.sourceNotFound(), toolConfig.name, sourceAbsPath);
+      methodLogger.warn(symlinkGeneratorLogMessages.process.sourceMissing(toolConfig.name, sourceAbsPath));
       return {
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
@@ -108,7 +116,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       targetAbsPath,
       toolFs,
       { overwrite, backup },
-      logger
+      methodLogger
     );
 
     if (targetHandlingResult.shouldSkip) {
@@ -120,7 +128,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       };
     }
 
-    return await this.createSymlink(sourceAbsPath, targetAbsPath, toolFs, targetHandlingResult.status, logger);
+    return await this.createSymlink(sourceAbsPath, targetAbsPath, toolFs, targetHandlingResult.status, methodLogger);
   }
 
   private async handleExistingTarget(
@@ -130,13 +138,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: { overwrite: boolean; backup: boolean },
     logger: TsLogger
   ): Promise<{ shouldSkip: boolean; status: SymlinkOperationResult['status']; error?: string }> {
+    const methodLogger = logger.getSubLogger({ name: 'handleExistingTarget' });
     const targetExists = await toolFs.exists(targetAbsPath);
 
     if (!targetExists) {
       return { shouldSkip: false, status: 'created' };
     }
 
-    logger.debug(logs.symlink.debug.targetExists(), targetAbsPath);
+    methodLogger.debug(symlinkGeneratorLogMessages.process.targetExists(targetAbsPath));
 
     const correctSymlinkResult = await this.checkCorrectSymlink(sourceAbsPath, targetAbsPath, toolFs);
     if (correctSymlinkResult.isCorrect) {
@@ -144,11 +153,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     }
 
     if (!options.overwrite) {
-      logger.debug(logs.symlink.debug.skipTargetExists(), targetAbsPath);
+      methodLogger.debug(symlinkGeneratorLogMessages.process.skipExistingTarget(targetAbsPath));
       return { shouldSkip: true, status: 'skipped_exists' };
     }
 
-    return await this.handleOverwrite(targetAbsPath, toolFs, options.backup, logger);
+    return await this.handleOverwrite(targetAbsPath, toolFs, options.backup, methodLogger);
   }
 
   private async checkCorrectSymlink(
@@ -176,16 +185,17 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     backup: boolean,
     logger: TsLogger
   ): Promise<{ shouldSkip: boolean; status: SymlinkOperationResult['status']; error?: string }> {
+    const methodLogger = logger.getSubLogger({ name: 'handleOverwrite' });
     let status: SymlinkOperationResult['status'] = 'updated_target';
 
     if (backup) {
-      const backupResult = await this.createBackup(targetAbsPath, toolFs, logger);
+      const backupResult = await this.createBackup(targetAbsPath, toolFs, methodLogger);
       if (backupResult.failed) {
         return { shouldSkip: true, status: 'failed', error: backupResult.error };
       }
       status = 'backed_up';
     } else {
-      const deleteResult = await this.deleteTarget(targetAbsPath, toolFs, logger);
+      const deleteResult = await this.deleteTarget(targetAbsPath, toolFs, methodLogger);
       if (deleteResult.failed) {
         return { shouldSkip: true, status: 'failed', error: deleteResult.error };
       }
@@ -199,6 +209,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolFs: IFileSystem,
     logger: TsLogger
   ): Promise<{ failed: boolean; error?: string }> {
+    const methodLogger = logger.getSubLogger({ name: 'createBackup' });
     const backupPath = `${targetAbsPath}.bak`;
     try {
       if (await toolFs.exists(backupPath)) {
@@ -207,8 +218,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       await toolFs.rename(targetAbsPath, backupPath);
       return { failed: false };
     } catch (error) {
-      const errorMsg = logs.fs.error.writeFailed(`backup of ${targetAbsPath}`, (error as Error).message);
-      logger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.backupFailed(
+        targetAbsPath,
+        (error as Error).message
+      );
+      methodLogger.error(errorMsg);
       return { failed: true, error: errorMsg };
     }
   }
@@ -218,6 +232,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolFs: IFileSystem,
     logger: TsLogger
   ): Promise<{ failed: boolean; error?: string }> {
+    const methodLogger = logger.getSubLogger({ name: 'deleteTarget' });
     try {
       const targetStat = await toolFs.stat(targetAbsPath);
       const isDirectory = targetStat.isDirectory();
@@ -229,8 +244,11 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
       return { failed: false };
     } catch (error) {
-      const errorMsg = logs.fs.error.deleteFailed(targetAbsPath, (error as Error).message);
-      logger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.deleteFailed(
+        targetAbsPath,
+        (error as Error).message
+      );
+      methodLogger.error(errorMsg);
       return { failed: true, error: errorMsg };
     }
   }
@@ -242,13 +260,17 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     status: SymlinkOperationResult['status'],
     logger: TsLogger
   ): Promise<SymlinkOperationResult> {
+    const methodLogger = logger.getSubLogger({ name: 'createSymlink' });
     const targetDir = path.dirname(targetAbsPath);
 
     try {
       await toolFs.ensureDir(targetDir);
     } catch (error) {
-      const errorMsg = logs.fs.error.directoryCreateFailed(targetDir, (error as Error).message);
-      logger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.directoryCreateFailed(
+        targetDir,
+        (error as Error).message
+      );
+      methodLogger.error(errorMsg);
       return {
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
@@ -265,8 +287,12 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         status,
       };
     } catch (error) {
-      const errorMsg = logs.fs.error.symlinkFailed(sourceAbsPath, targetAbsPath, (error as Error).message);
-      logger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.symlinkFailed(
+        sourceAbsPath,
+        targetAbsPath,
+        (error as Error).message
+      );
+      methodLogger.error(errorMsg);
       return {
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,

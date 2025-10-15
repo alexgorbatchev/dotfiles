@@ -4,7 +4,7 @@ import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
-import { logs } from '@modules/logger';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import { type IVersionChecker, VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@testing-helpers';
@@ -136,7 +136,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['updateCommand'],
-      ['updates check for "fzf"', 'fzf (0.40.0) is up to date. Latest: 0.40.0']
+      [cliLogMessages.commandCheckingUpdatesFor('fzf'), cliLogMessages.toolUpToDate('fzf', '0.40.0', '0.40.0')]
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -156,10 +156,10 @@ describe('updateCommand', () => {
       ['INFO'],
       ['updateCommand'],
       [
-        'updates check for "fzf"',
-        'Update available for fzf: 0.40.0 -> 0.41.0',
-        'fzf update from 0.40.0 to 0.41.0',
-        'Tool "fzf" updated from v0.40.0 to v0.41.0',
+        cliLogMessages.commandCheckingUpdatesFor('fzf'),
+        cliLogMessages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0'),
+        cliLogMessages.toolProcessingUpdate('fzf', '0.40.0', '0.41.0'),
+        cliLogMessages.toolUpdated('fzf', '0.40.0', '0.41.0'),
       ]
     );
     expect(mockInstallerService.install).toHaveBeenCalledWith(
@@ -183,7 +183,11 @@ describe('updateCommand', () => {
 
     expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['updateCommand'], [logs.tool.error.updateFailed('fzf', 'Install failed miserably')]);
+    logger.expect(
+      ['ERROR'],
+      ['updateCommand'],
+      [cliLogMessages.toolUpdateFailed('fzf', 'Install failed miserably')]
+    );
   });
 
   test('tool config not found', async () => {
@@ -196,7 +200,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['ERROR'],
       ['updateCommand', 'action'],
-      [logs.tool.error.notFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+      [cliLogMessages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -209,8 +213,11 @@ describe('updateCommand', () => {
       ['INFO'],
       ['updateCommand'],
       [
-        'updates check for "manualtool"',
-        'Update not yet supported (installation method: "manual" for tool "manualtool")',
+        cliLogMessages.commandCheckingUpdatesFor('manualtool'),
+        cliLogMessages.commandUnsupportedOperation(
+          'Update',
+          'installation method: "manual" for tool "manualtool"'
+        ),
       ]
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
@@ -226,7 +233,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['ERROR'],
       ['updateCommand'],
-      [logs.service.error.github.apiFailed('get latest release', 0, 'GitHub API Down')]
+      [cliLogMessages.serviceGithubApiFailed('get latest release', 0, 'GitHub API Down')]
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -245,7 +252,10 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['updateCommand'],
-      ['updates check for "fzf"', 'Tool "fzf" is configured to \'latest\'. The latest available version is 0.50.0']
+      [
+        cliLogMessages.commandCheckingUpdatesFor('fzf'),
+        cliLogMessages.toolConfiguredToLatest('fzf', '0.50.0'),
+      ]
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -266,7 +276,10 @@ describe('updateCommand', () => {
       logger.expect(
         ['INFO'],
         ['updateCommand'],
-        ['Updating fzf from 0.40.0 to 0.41.0...', 'fzf successfully updated to 0.41.0']
+        [
+          cliLogMessages.toolShimUpdateStarting('fzf', '0.40.0', '0.41.0'),
+          cliLogMessages.toolShimUpdateSuccess('fzf', '0.41.0'),
+        ]
       );
     });
 
@@ -282,7 +295,11 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(['INFO'], ['updateCommand'], ['fzf is already on latest version (0.41.0)']);
+      logger.expect(
+        ['INFO'],
+        ['updateCommand'],
+        [cliLogMessages.toolShimOnLatest('fzf', '0.41.0')]
+      );
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -299,7 +316,11 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(['INFO'], ['updateCommand'], ['fzf is already up to date (0.40.0)']);
+      logger.expect(
+        ['INFO'],
+        ['updateCommand'],
+        [cliLogMessages.toolShimUpToDate('fzf', '0.40.0')]
+      );
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -316,7 +337,11 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should not include the "checking updates" message in shim mode
-      logger.expect(['INFO'], ['updateCommand'], ['fzf is already up to date (0.40.0)']);
+      logger.expect(
+        ['INFO'],
+        ['updateCommand'],
+        [cliLogMessages.toolShimUpToDate('fzf', '0.40.0')]
+      );
 
       // Verify that exactly one log message was generated (no "updates check for" message)
       const updateCommandInfoLogs = logger.logs.filter((log) => {
