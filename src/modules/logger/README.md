@@ -74,8 +74,7 @@ If during implementation you notice a module message becomes generically useful 
 
 ```typescript
 // src/modules/example/log-messages.ts
-import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
-import { createSafeLogMessage } from '@modules/logger/utils';
+import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
 
 // Group by semantic intent (NOT by log level here). Keep surface small & focused.
 export const exampleLogMessages = {

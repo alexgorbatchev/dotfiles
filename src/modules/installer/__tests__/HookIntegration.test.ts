@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { TsLogger } from '@modules/logger';
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { TsLogger, SafeLogMessage } from '@modules/logger';
 import type { AsyncInstallHook, EnhancedInstallHookContext, GithubReleaseToolConfig } from '@types';
 import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 

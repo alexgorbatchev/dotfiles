@@ -1,4 +1,4 @@
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { PostDownloadInstallContext, PostExtractInstallContext, ToolConfig } from '@types';
 import type { HookExecutor } from '../HookExecutor';

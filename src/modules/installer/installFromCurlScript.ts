@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@types';
 import type { HookExecutor } from './HookExecutor';

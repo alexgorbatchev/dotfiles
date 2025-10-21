@@ -1,5 +1,4 @@
-import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
-import { createSafeLogMessage } from '@modules/logger/utils';
+import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
 
 export const versionCheckerLogMessages = {
   initializing: () => createSafeLogMessage('Initializing VersionChecker with githubClient'),

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@types';
 import { createBinarySymlink } from '@utils';

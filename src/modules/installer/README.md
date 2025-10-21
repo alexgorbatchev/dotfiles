@@ -501,7 +501,7 @@ export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import { installerLogMessages } from './log-messages';
 import type { BaseInstallContext, MyCustomInstallParams, MyCustomToolConfig } from '@types';

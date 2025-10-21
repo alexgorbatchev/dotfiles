@@ -1,5 +1,5 @@
 import { TrackedFileSystem } from '@modules/file-registry';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 
 /**
  * Creates a tool-specific file system instance

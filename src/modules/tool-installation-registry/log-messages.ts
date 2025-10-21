@@ -1,5 +1,4 @@
-import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
-import { createSafeLogMessage } from '@modules/logger/utils';
+import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
 
 export const toolInstallationRegistryLogMessages = {
   schemaInitialized: () => createSafeLogMessage('Schema initialization complete'),

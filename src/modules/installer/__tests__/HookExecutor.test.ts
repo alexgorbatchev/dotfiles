@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { TrackedFileSystem } from '@modules/file-registry';
-import type { SafeLogMessage } from '@modules/logger/SafeLogMessage';
+import type { SafeLogMessage } from '@modules/logger';
 import { createMemFileSystem, createMockYamlConfig, type MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@types';
 import type { $ } from 'zx';

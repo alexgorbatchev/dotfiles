@@ -3,7 +3,7 @@ import type { YamlConfig } from '@modules/config';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
 import { TrackedFileSystem } from '@modules/file-registry';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import type { ICargoClient } from '@modules/installer/clients/cargo';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { TsLogger } from '@modules/logger';

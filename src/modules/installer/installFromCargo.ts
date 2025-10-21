@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader';
 import type { IArchiveExtractor } from '@modules/extractor';
-import type { IFileSystem } from '@modules/file-system/IFileSystem';
+import type { IFileSystem } from '@modules/file-system';
 import type { ICargoClient } from '@modules/installer/clients/cargo';
 import type { TsLogger } from '@modules/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@types';
