@@ -11,7 +11,7 @@
     "lint": "tsgo -p tsconfig.json && biome check ./src",
     "fmt": "biome format --write .",
     "fix": "biome check --fix .",
-    "test:task": "BUN_CORRECT_TEST_COMMAND=1 bun test",
+    "test:task": "bun test",
     "compile": "scripts/compile.ts",
     "cli": "bun run ./src/cli.ts"
   },
@@ -37,6 +37,7 @@
     "commander": "^14.0.1",
     "debug": "^4.4.3",
     "glob": "^11.0.3",
+    "memfs": "^4.49.0",
     "minimatch": "^10.0.3",
     "semver": "^7.7.3",
     "smol-toml": "^1.4.2",
