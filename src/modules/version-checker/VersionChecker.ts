@@ -10,14 +10,14 @@ export class VersionChecker implements IVersionChecker {
   private readonly logger: TsLogger;
 
   constructor(parentLogger: TsLogger, githubClient: IGitHubApiClient) {
-  this.logger = parentLogger.getSubLogger({ name: 'VersionChecker' });
-  this.logger.debug(versionCheckerLogMessages.initializing());
+    this.logger = parentLogger.getSubLogger({ name: 'VersionChecker' });
+    this.logger.debug(versionCheckerLogMessages.initializing());
     this.githubClient = githubClient;
   }
 
   async getLatestToolVersion(owner: string, repo: string): Promise<string | null> {
     const logger = this.logger.getSubLogger({ name: 'getLatestToolVersion' });
-  logger.debug(versionCheckerLogMessages.fetchingLatestRelease(owner, repo));
+    logger.debug(versionCheckerLogMessages.fetchingLatestRelease(owner, repo));
     try {
       const release = await this.githubClient.getLatestRelease(owner, repo);
       if (release?.tag_name) {
@@ -37,7 +37,7 @@ export class VersionChecker implements IVersionChecker {
 
   async checkVersionStatus(currentVersion: string, latestVersion: string): Promise<VersionComparisonStatus> {
     const logger = this.logger.getSubLogger({ name: 'checkVersionStatus' });
-  logger.debug(versionCheckerLogMessages.comparingVersions(currentVersion, latestVersion));
+    logger.debug(versionCheckerLogMessages.comparingVersions(currentVersion, latestVersion));
 
     const cleanCurrentVersion = currentVersion.replace(/^v/, '');
     const cleanLatestVersion = latestVersion.replace(/^v/, '');

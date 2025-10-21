@@ -6,12 +6,10 @@ export const symlinkGeneratorLogMessages = {
   } satisfies SafeLogMessageMap,
   generate: {
     started: () => createSafeLogMessage('Starting symlink generation. Options: %o, FileSystem: %s'),
-    processingTool: (toolName: string) =>
-      createSafeLogMessage(`Processing symlinks for tool "${toolName}"`),
+    processingTool: (toolName: string) => createSafeLogMessage(`Processing symlinks for tool "${toolName}"`),
     missingToolConfig: (toolName: string) =>
       createSafeLogMessage(`Tool config for "${toolName}" is undefined. Skipping.`),
-    noSymlinks: (toolName: string) =>
-      createSafeLogMessage(`Tool "${toolName}" has no symlinks defined, skipping.`),
+    noSymlinks: (toolName: string) => createSafeLogMessage(`Tool "${toolName}" has no symlinks defined, skipping.`),
     completed: () => createSafeLogMessage('Symlink generation process completed. Results: %o'),
   } satisfies SafeLogMessageMap,
   process: {
@@ -21,8 +19,7 @@ export const symlinkGeneratorLogMessages = {
       ),
     sourceMissing: (toolName: string, sourceAbsPath: string) =>
       createSafeLogMessage(`Tool "${toolName}" source file not found: ${sourceAbsPath}`),
-    targetExists: (targetAbsPath: string) =>
-      createSafeLogMessage(`Target path "${targetAbsPath}" already exists.`),
+    targetExists: (targetAbsPath: string) => createSafeLogMessage(`Target path "${targetAbsPath}" already exists.`),
     skipExistingTarget: (targetAbsPath: string) =>
       createSafeLogMessage(`Target "${targetAbsPath}" exists and overwrite is false. Skipping symlink creation.`),
   } satisfies SafeLogMessageMap,

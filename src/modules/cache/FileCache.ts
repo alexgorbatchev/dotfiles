@@ -51,8 +51,8 @@ export class FileCache implements ICache {
         return null;
       }
 
-  const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
-  const entry: CacheEntry<T> = JSON.parse(metadataContent);
+      const metadataContent = await this.fileSystem.readFile(metadataPath, 'utf8');
+      const entry: CacheEntry<T> = JSON.parse(metadataContent);
 
       // Check if entry is expired
       if (this.isExpired(entry)) {
@@ -63,8 +63,8 @@ export class FileCache implements ICache {
 
       if (entry.type === 'json') {
         // For JSON entries, data is stored directly
-  logger.debug(cacheLogMessages.cacheHit(key, 'JSON'));
-  return entry.data;
+        logger.debug(cacheLogMessages.cacheHit(key, 'JSON'));
+        return entry.data;
       } else {
         // For binary entries, data is in a separate file
         if (!this.binariesDir) {
@@ -136,13 +136,13 @@ export class FileCache implements ICache {
           throw new Error(cacheLogMessages.binaryDirectoryNotConfigured());
         }
 
-  const buffer = data;
-  const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
+        const buffer = data;
+        const contentHash = crypto.createHash('sha256').update(buffer).digest('hex');
         const binaryFileName = `${contentHash}.bin`;
         const binaryFilePath = path.join(this.binariesDir, binaryFileName);
 
         // Write binary content to file
-  await this.fileSystem.writeFile(binaryFilePath, buffer);
+        await this.fileSystem.writeFile(binaryFilePath, buffer);
 
         // Store metadata with reference to binary file
         const entry: BinaryCacheEntry = {
@@ -217,9 +217,7 @@ export class FileCache implements ICache {
       const metadataPath = this.getMetadataFilePath(key);
       await this.fileSystem.writeFile(metadataPath, JSON.stringify(entry, null, 2), 'utf8');
 
-      logger.debug(
-        cacheLogMessages.cacheStored(key, 'download', new Date(entry.expiresAt).toISOString(), data.length)
-      );
+      logger.debug(cacheLogMessages.cacheStored(key, 'download', new Date(entry.expiresAt).toISOString(), data.length));
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
       logger.warn(cacheLogMessages.storageFailed(key, errorMessage));

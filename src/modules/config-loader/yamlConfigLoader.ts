@@ -136,7 +136,7 @@ function applyPlatformOverrides(
     });
 
     if (matches) {
-  logger.trace(configLoaderLogMessages.configurationValidated('platform override'), platformOverride.config);
+      logger.trace(configLoaderLogMessages.configurationValidated('platform override'), platformOverride.config);
       result = deepMerge(result, platformOverride.config);
     }
   }
@@ -269,7 +269,7 @@ function processConfig(
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
-  logger.error(configLoaderLogMessages.configurationValidationFailed([pretty]));
+    logger.error(configLoaderLogMessages.configurationValidationFailed([pretty]));
     throw new Error(`YAML configuration is invalid.\n${pretty}`);
   }
 

@@ -12,8 +12,7 @@ export const installerLogMessages = {
       createSafeLogMessage(`Searching for binary using pattern ${pattern} in directory ${directoryPath}`),
     fallbackPattern: (pattern: string, directoryPath: string) =>
       createSafeLogMessage(`Trying fallback binary pattern ${pattern} in directory ${directoryPath}`),
-    patternPathMissing: (missingPath: string) =>
-      createSafeLogMessage(`Pattern path does not exist: ${missingPath}`),
+    patternPathMissing: (missingPath: string) => createSafeLogMessage(`Pattern path does not exist: ${missingPath}`),
     noPatternMatch: (patternSegment: string, directoryPath: string) =>
       createSafeLogMessage(`No matches found for pattern ${patternSegment} in directory ${directoryPath}`),
     directDownloadSingleBinary: (configuredCount: number, primaryBinary: string) =>
@@ -34,9 +33,7 @@ export const installerLogMessages = {
     creationFailed: (symlinkPath: string, targetPath: string, reason: string) =>
       createSafeLogMessage(`Failed to create symlink ${symlinkPath} -> ${targetPath}: ${reason}`),
     verificationMismatch: (symlinkPath: string, expectedTarget: string, actualTarget: string) =>
-      createSafeLogMessage(
-        `Symlink ${symlinkPath} points to ${actualTarget}, expected ${expectedTarget}`
-      ),
+      createSafeLogMessage(`Symlink ${symlinkPath} points to ${actualTarget}, expected ${expectedTarget}`),
     verificationFailed: (symlinkPath: string, reason: string) =>
       createSafeLogMessage(`Failed to verify symlink ${symlinkPath}: ${reason}`),
     createdAndVerified: (symlinkPath: string, targetPath: string) =>
@@ -56,7 +53,8 @@ export const installerLogMessages = {
     methodParams: (toolName: string) =>
       createSafeLogMessage(`toolName=${toolName}; tool configuration and options attached`),
     hookExecution: (hookName: string) => createSafeLogMessage(`install: Running ${hookName} hook`),
-    directoryCreated: (installDir: string) => createSafeLogMessage(`install: Created installation directory: ${installDir}`),
+    directoryCreated: (installDir: string) =>
+      createSafeLogMessage(`install: Created installation directory: ${installDir}`),
   } satisfies SafeLogMessageMap,
   outcome: {
     installSuccess: (toolName: string, version: string, method: string) =>
@@ -84,7 +82,9 @@ export const installerLogMessages = {
     resolvedRelativeUrl: (base: string, rawUrl: string, resolved: string) =>
       createSafeLogMessage(`Resolved relative URL. Base: "${base}", Relative Path: "${rawUrl}", Result: "${resolved}"`),
     finalDownloadUrl: (rawUrl: string, host: string, resolved: string) =>
-      createSafeLogMessage(`Final download URL determined. Raw: "${rawUrl}", Configured Host: "${host}", Result: "${resolved}"`),
+      createSafeLogMessage(
+        `Final download URL determined. Raw: "${rawUrl}", Configured Host: "${host}", Result: "${resolved}"`
+      ),
     downloadUrlError: (rawUrl: string, host: string, errorMessage: string) =>
       createSafeLogMessage(
         `Download URL construction error details: Raw: "${rawUrl}", Configured Host: "${host}", Error: ${errorMessage}`
@@ -146,7 +146,8 @@ export const installerLogMessages = {
     stepFailed: (stepName: string, reason: string | undefined) =>
       createSafeLogMessage(`Step ${stepName} failed: ${reason ?? 'unknown reason'}`),
     stepCompleted: (stepName: string) => createSafeLogMessage(`Step ${stepName} completed successfully`),
-    completed: (toolName: string) => createSafeLogMessage(`Installation pipeline completed successfully for ${toolName}`),
+    completed: (toolName: string) =>
+      createSafeLogMessage(`Installation pipeline completed successfully for ${toolName}`),
   } satisfies SafeLogMessageMap,
   downloadStep: {
     downloadingAsset: (filename: string, url: string) =>

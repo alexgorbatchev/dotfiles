@@ -183,11 +183,7 @@ describe('updateCommand', () => {
 
     expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(
-      ['ERROR'],
-      ['updateCommand'],
-      [cliLogMessages.toolUpdateFailed('fzf', 'Install failed miserably')]
-    );
+    logger.expect(['ERROR'], ['updateCommand'], [cliLogMessages.toolUpdateFailed('fzf', 'Install failed miserably')]);
   });
 
   test('tool config not found', async () => {
@@ -214,10 +210,7 @@ describe('updateCommand', () => {
       ['updateCommand'],
       [
         cliLogMessages.commandCheckingUpdatesFor('manualtool'),
-        cliLogMessages.commandUnsupportedOperation(
-          'Update',
-          'installation method: "manual" for tool "manualtool"'
-        ),
+        cliLogMessages.commandUnsupportedOperation('Update', 'installation method: "manual" for tool "manualtool"'),
       ]
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
@@ -252,10 +245,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['updateCommand'],
-      [
-        cliLogMessages.commandCheckingUpdatesFor('fzf'),
-        cliLogMessages.toolConfiguredToLatest('fzf', '0.50.0'),
-      ]
+      [cliLogMessages.commandCheckingUpdatesFor('fzf'), cliLogMessages.toolConfiguredToLatest('fzf', '0.50.0')]
     );
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
@@ -295,11 +285,7 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(
-        ['INFO'],
-        ['updateCommand'],
-        [cliLogMessages.toolShimOnLatest('fzf', '0.41.0')]
-      );
+      logger.expect(['INFO'], ['updateCommand'], [cliLogMessages.toolShimOnLatest('fzf', '0.41.0')]);
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -316,11 +302,7 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(
-        ['INFO'],
-        ['updateCommand'],
-        [cliLogMessages.toolShimUpToDate('fzf', '0.40.0')]
-      );
+      logger.expect(['INFO'], ['updateCommand'], [cliLogMessages.toolShimUpToDate('fzf', '0.40.0')]);
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -337,11 +319,7 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should not include the "checking updates" message in shim mode
-      logger.expect(
-        ['INFO'],
-        ['updateCommand'],
-        [cliLogMessages.toolShimUpToDate('fzf', '0.40.0')]
-      );
+      logger.expect(['INFO'], ['updateCommand'], [cliLogMessages.toolShimUpToDate('fzf', '0.40.0')]);
 
       // Verify that exactly one log message was generated (no "updates check for" message)
       const updateCommandInfoLogs = logger.logs.filter((log) => {

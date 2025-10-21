@@ -17,7 +17,7 @@ export class RegistryDatabase {
     const dbDir = path.dirname(registryDbPath);
     mkdirSync(dbDir, { recursive: true });
     this.db = new Database(registryDbPath);
-  this.logger.debug(registryDatabaseLogMessages.initialized(), 'shared connection');
+    this.logger.debug(registryDatabaseLogMessages.initialized(), 'shared connection');
   }
 
   /**

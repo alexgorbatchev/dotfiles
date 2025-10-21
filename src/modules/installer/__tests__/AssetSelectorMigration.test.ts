@@ -119,7 +119,7 @@ describe('Installer - Asset Selector Context API', () => {
 
       const modernAssetSelector: AssetSelector = (context: AssetSelectionContext) => {
         // Test that logger is available and functional
-  context.logger.debug(installerLogMessages.gitHubRelease.assetSelectorCustom());
+        context.logger.debug(installerLogMessages.gitHubRelease.assetSelectorCustom());
         return context.assets.find((asset) => asset.name.includes('linux'));
       };
 

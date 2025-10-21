@@ -4,15 +4,12 @@ export const cliLogMessages = {
   commandActionCalled: (commandName: string, targetTool?: string) =>
     createSafeLogMessage(`Action called for ${commandName}${targetTool ? ` "${targetTool}"` : ''} with options: %O`),
   commandActionStarted: (commandName: string, targetTool?: string) =>
-    createSafeLogMessage(
-      `${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`
-    ),
+    createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`),
   commandErrorDetails: () => createSafeLogMessage('Error details: %O'),
   commandConfigErrorDetails: () => createSafeLogMessage('Configuration loading error details: %O'),
   dryRunEnabled: () => createSafeLogMessage('Dry run enabled. Initializing MemFileSystem'),
   componentInitialized: (component: string) => createSafeLogMessage(`${component} initialized`),
-  toolConfigsLoading: (toolConfigsDir: string) =>
-    createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
+  toolConfigsLoading: (toolConfigsDir: string) => createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
   toolConfigsLoaded: (toolConfigsDir: string, toolCount: number) =>
     createSafeLogMessage(`Configuration loaded from ${toolConfigsDir} (${toolCount} tools configured)`),
   toolConfigsForDryRun: () => createSafeLogMessage('tool configs for dry run'),
@@ -26,8 +23,7 @@ export const cliLogMessages = {
     createSafeLogMessage(`GitHub API error details for ${toolName}: %O`),
   commandUnsupportedOperation: (operation: string, details: string) =>
     createSafeLogMessage(`${operation} not yet supported (${details})`),
-  toolNotFound: (toolName: string, source: string) =>
-    createSafeLogMessage(`Tool "${toolName}" not found in ${source}`),
+  toolNotFound: (toolName: string, source: string) => createSafeLogMessage(`Tool "${toolName}" not found in ${source}`),
   toolInstalled: (toolName: string, version: string, method: string) =>
     createSafeLogMessage(`Tool "${toolName}" v${version} installed successfully using ${method}`),
   toolInstallFailed: (method: string, toolName: string, reason: string) =>
@@ -42,9 +38,13 @@ export const cliLogMessages = {
   toolAheadOfLatest: (toolName: string, currentVersion: string, latestVersion: string) =>
     createSafeLogMessage(`${toolName} (${currentVersion}) is ahead of the latest known version (${latestVersion})`),
   toolConfiguredToLatest: (toolName: string, latestVersion: string) =>
-    createSafeLogMessage(`Tool "${toolName}" is configured to 'latest'. The latest available version is ${latestVersion}`),
+    createSafeLogMessage(
+      `Tool "${toolName}" is configured to 'latest'. The latest available version is ${latestVersion}`
+    ),
   toolVersionComparisonFailed: (toolName: string, currentVersion: string, latestVersion: string) =>
-    createSafeLogMessage(`Could not determine update status for ${toolName} (${currentVersion}) against latest ${latestVersion}`),
+    createSafeLogMessage(
+      `Could not determine update status for ${toolName} (${currentVersion}) against latest ${latestVersion}`
+    ),
   toolShimUpToDate: (toolName: string, version: string) =>
     createSafeLogMessage(`${toolName} is already up to date (${version})`),
   toolShimOnLatest: (toolName: string, version: string) =>
@@ -59,16 +59,14 @@ export const cliLogMessages = {
     createSafeLogMessage(`Tool "${toolName}" updated from v${fromVersion} to v${toVersion}`),
   toolUpdateFailed: (toolName: string, reason: string) =>
     createSafeLogMessage(`Update failed for tool "${toolName}": ${reason}`),
-  commandCheckingUpdatesFor: (toolName: string) =>
-    createSafeLogMessage(`updates check for "${toolName}"`),
+  commandCheckingUpdatesFor: (toolName: string) => createSafeLogMessage(`updates check for "${toolName}"`),
   fsReadFailed: (path: string, reason: string) => createSafeLogMessage(`Failed to read ${path}: ${reason}`),
   fsAccessDenied: (operation: string, path: string) => createSafeLogMessage(`Access denied ${operation}: ${path}`),
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),
   fsWrite: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] write ${path}`),
   toolConflictsDetected: (header: string, conflicts: string) => createSafeLogMessage(`${header}\n${conflicts}`),
   noConflictsDetected: () => createSafeLogMessage('No conflicts detected'),
-  cleanupAllTrackedFiles: () =>
-    createSafeLogMessage('Registry-based cleanup: Removing all tracked files'),
+  cleanupAllTrackedFiles: () => createSafeLogMessage('Registry-based cleanup: Removing all tracked files'),
   cleanupRegistryDatabase: () => createSafeLogMessage('registry database cleanup'),
   cleanupRegistryDryRun: () => createSafeLogMessage('Would clean up registry database (dry run)'),
   cleanupToolFiles: (toolName: string) => createSafeLogMessage(`Registry-based cleanup: files for tool '${toolName}'`),
@@ -84,15 +82,15 @@ export const cliLogMessages = {
   cleanupFileRemoved: (path: string) => createSafeLogMessage(`[cleanup] rm ${path}`),
   fileCleanupDryRun: (filePath: string) => createSafeLogMessage(`Would delete: ${filePath}`),
   cleanupFileNotFound: (filePath: string) => createSafeLogMessage(`file not found ${filePath}`),
-  cleanupDeleteFailed: (filePath: string, reason: string) => createSafeLogMessage(`Failed to delete ${filePath}: ${reason}`),
+  cleanupDeleteFailed: (filePath: string, reason: string) =>
+    createSafeLogMessage(`Failed to delete ${filePath}: ${reason}`),
   cleanupProcessStarted: (dryRun: boolean) => createSafeLogMessage(`starting cleanup process, dryRun=${dryRun}: %O`),
   operationStarted: (operation: string) => createSafeLogMessage(`${operation} started`),
   operationCompleted: (operation: string) => createSafeLogMessage(`${operation} completed`),
   operationFailed: (operation: string) => createSafeLogMessage(`${operation} failed`),
   configParameterOverridden: (field: string, value: string) =>
     createSafeLogMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} overridden to: ${value}`),
-  cleanupProcessFinished: (dryRun: boolean) =>
-    createSafeLogMessage(`cleanup process finished, dryRun=${dryRun}`),
+  cleanupProcessFinished: (dryRun: boolean) => createSafeLogMessage(`cleanup process finished, dryRun=${dryRun}`),
   initExistingFiles: (fileList: string) => createSafeLogMessage(`Access denied init: ${fileList}`),
   initProjectInitialized: () => createSafeLogMessage('dotfiles generator project initialized'),
   initFilesCreated: (fileList: string) => createSafeLogMessage(`[init] write ${fileList}`),

@@ -34,8 +34,7 @@ export const cachedDownloadStrategyLogMessages = {
   downloadedFileCached: (path: string, size: number) =>
     createSafeLogMessage(`Successfully read file for caching from ${path}, size: ${size} bytes`),
   downloadedFileMissing: (path: string) => createSafeLogMessage(`Downloaded file not found: ${path}`),
-  downloadedFileReadFailed: (path: string, reason: string) =>
-    createSafeLogMessage(`Failed to read ${path}: ${reason}`),
+  downloadedFileReadFailed: (path: string, reason: string) => createSafeLogMessage(`Failed to read ${path}: ${reason}`),
   downloadFromStrategy: (strategyName: string) => createSafeLogMessage(`download from ${strategyName}`),
   cachedFileWritten: (path: string) => createSafeLogMessage(`[CachedDownloadStrategy] write ${path}`),
 } satisfies SafeLogMessageMap;
@@ -49,12 +48,10 @@ export const nodeFetchStrategyLogMessages = {
     createSafeLogMessage(
       `Download failed: url=${url}, statusCode=${statusCode}, statusText=${statusText}, responseBody=${responseBody ?? 'N/A'}`
     ),
-  downloadAttempt: (attempt: number, url: string) =>
-    createSafeLogMessage(`Attempt ${attempt}: Downloading ${url}`),
+  downloadAttempt: (attempt: number, url: string) => createSafeLogMessage(`Attempt ${attempt}: Downloading ${url}`),
   downloadSuccessful: (url: string, size: number) =>
     createSafeLogMessage(`Download successful for ${url}, size: ${size} bytes`),
-  savingToDestination: (destinationPath: string) =>
-    createSafeLogMessage(`Saving to destination: ${destinationPath}`),
+  savingToDestination: (destinationPath: string) => createSafeLogMessage(`Saving to destination: ${destinationPath}`),
   savedSuccessfully: (destinationPath: string) =>
     createSafeLogMessage(`Successfully wrote to ${destinationPath} using IFileSystem`),
   downloadAttemptError: (attempt: number, url: string, error: unknown) =>
@@ -68,7 +65,9 @@ export const downloaderErrorLogMessages = {
   errorCreated: (errorName: string, message: string, url: string) =>
     createSafeLogMessage(`${errorName} created: message=${message}, url=${url}`),
   networkErrorCreated: (message: string, url: string, originalError?: Error) =>
-    createSafeLogMessage(`NetworkError created: message=${message}, url=${url}, originalError=${String(originalError)}`),
+    createSafeLogMessage(
+      `NetworkError created: message=${message}, url=${url}, originalError=${String(originalError)}`
+    ),
   httpErrorCreated: (
     message: string,
     url: string,

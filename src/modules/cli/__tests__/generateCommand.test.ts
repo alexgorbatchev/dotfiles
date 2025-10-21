@@ -75,8 +75,8 @@ describe('generateCommand', () => {
       mockYamlConfig
     );
 
-  // Should log DONE message at the end
-  logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(false)]);
+    // Should log DONE message at the end
+    logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(false)]);
   });
 
   test('should successfully generate artifacts in dry run mode', async () => {
@@ -89,8 +89,8 @@ describe('generateCommand', () => {
       mockYamlConfig
     );
 
-  // Should log DONE (dry run) message at the end
-  logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(true)]);
+    // Should log DONE (dry run) message at the end
+    logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(true)]);
   });
 
   test('should handle errors during artifact generation', async () => {

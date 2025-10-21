@@ -339,7 +339,10 @@ describe('checkUpdatesCommand', () => {
       ['registerCheckUpdatesCommand', 'checkUpdatesActionLogic'],
       [
         cliLogMessages.toolCheckingUpdates('missingrepo'),
-        cliLogMessages.configParameterIgnored('repo', "Tool \"missingrepo\" is 'github-release' but missing 'repo' parameter"),
+        cliLogMessages.configParameterIgnored(
+          'repo',
+          "Tool \"missingrepo\" is 'github-release' but missing 'repo' parameter"
+        ),
         cliLogMessages.updatesCommandCompleted(),
       ]
     );

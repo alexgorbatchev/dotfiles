@@ -25,9 +25,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     shellType: ShellType,
     context: CompletionGenerationContext
   ): Promise<GeneratedCompletion> {
-    this.logger.debug(
-      completionGeneratorLogMessages.generationStarted(toolName, shellType)
-    );
+    this.logger.debug(completionGeneratorLogMessages.generationStarted(toolName, shellType));
 
     if (config.cmd) {
       return this.generateFromCommand(config, toolName, shellType, context);

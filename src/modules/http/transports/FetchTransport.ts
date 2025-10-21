@@ -1,6 +1,6 @@
 import { HttpTransportError } from '../errors/HttpTransportError';
 import type { HttpTransportRequest, HttpTransportResponse } from '../types/HttpTypes';
-import type { HttpTransport } from './HttpTransport';
+import type { HttpTransport } from '../types/HttpTransport';
 
 export interface FetchTransportOptions {
   readonly fetchImplementation?: typeof fetch;

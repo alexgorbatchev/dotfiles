@@ -148,11 +148,7 @@ export class Installer implements IInstaller {
     }
 
     logger?.debug(
-      installerLogMessages.outcome.outdatedVersion(
-        toolName,
-        existingInstallation.version,
-        targetVersion || 'unknown'
-      )
+      installerLogMessages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown')
     );
     return null;
   }
@@ -321,7 +317,7 @@ export class Installer implements IInstaller {
       const installDir = path.join(binariesDir, toolName, timestamp);
 
       await toolFs.ensureDir(installDir);
-  logger.debug(installerLogMessages.lifecycle.directoryCreated(installDir));
+      logger.debug(installerLogMessages.lifecycle.directoryCreated(installDir));
 
       // Create context for installation hooks
       const context = this.createBaseInstallContext(toolName, installDir, timestamp, resolvedToolConfig, logger);

@@ -2,7 +2,9 @@ import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
 
 export const cacheLogMessages = {
   initialized: (cacheDir: string, defaultTtl: number, strategy: string, enabled: boolean) =>
-    createSafeLogMessage(`Cache directory: ${cacheDir}, TTL: ${defaultTtl} ms, Strategy: ${strategy}, Enabled: ${enabled}`),
+    createSafeLogMessage(
+      `Cache directory: ${cacheDir}, TTL: ${defaultTtl} ms, Strategy: ${strategy}, Enabled: ${enabled}`
+    ),
   cachingDisabled: (operation: string, key: string) =>
     createSafeLogMessage(`Cache disabled, ${operation} for key: ${key}`),
   entryMissing: (key: string) => createSafeLogMessage(`No cache entry found for key: ${key}`),
@@ -17,8 +19,7 @@ export const cacheLogMessages = {
   },
   cacheEntryRemoved: (key: string) => createSafeLogMessage(`Removed cache entry for key: ${key}`),
   cacheCleared: () => createSafeLogMessage('Removed entire cache directory'),
-  expiredEntriesCleared: (count: number) =>
-    createSafeLogMessage(`Removed ${count} expired cache entries`),
+  expiredEntriesCleared: (count: number) => createSafeLogMessage(`Removed ${count} expired cache entries`),
   cacheEntryExists: (key: string) => createSafeLogMessage(`Valid cache entry exists for key: ${key}`),
   noEntryToDelete: (key: string) => createSafeLogMessage(`No cache entry to delete for key: ${key}`),
   cacheDirectoryMissing: () => createSafeLogMessage('Cache directory does not exist, nothing to clear'),
@@ -36,12 +37,10 @@ export const cacheLogMessages = {
     createSafeLogMessage(`Error checking cache for key: ${key}, error: ${reason}`),
   deleteFailed: (key: string, reason: string) =>
     createSafeLogMessage(`Error deleting cache entry for key: ${key}, error: ${reason}`),
-  clearExpiredFailed: (reason: string) =>
-    createSafeLogMessage(`Error clearing expired cache entries: ${reason}`),
+  clearExpiredFailed: (reason: string) => createSafeLogMessage(`Error clearing expired cache entries: ${reason}`),
   clearFailed: (reason: string) => createSafeLogMessage(`Error clearing cache: ${reason}`),
   directoryCreationFailed: (reason: string) =>
     createSafeLogMessage(`Error ensuring cache directories exist: ${reason}`),
-  binaryDirectoryNotConfigured: () =>
-    createSafeLogMessage('Binary directory not configured for binary strategy'),
+  binaryDirectoryNotConfigured: () => createSafeLogMessage('Binary directory not configured for binary strategy'),
   binaryDataRequired: () => createSafeLogMessage('Binary storage strategy requires Buffer data'),
 } satisfies SafeLogMessageMap;

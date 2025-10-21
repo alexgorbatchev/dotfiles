@@ -218,10 +218,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       await toolFs.rename(targetAbsPath, backupPath);
       return { failed: false };
     } catch (error) {
-      const errorMsg = symlinkGeneratorLogMessages.filesystem.backupFailed(
-        targetAbsPath,
-        (error as Error).message
-      );
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.backupFailed(targetAbsPath, (error as Error).message);
       methodLogger.error(errorMsg);
       return { failed: true, error: errorMsg };
     }
@@ -244,10 +241,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
       return { failed: false };
     } catch (error) {
-      const errorMsg = symlinkGeneratorLogMessages.filesystem.deleteFailed(
-        targetAbsPath,
-        (error as Error).message
-      );
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.deleteFailed(targetAbsPath, (error as Error).message);
       methodLogger.error(errorMsg);
       return { failed: true, error: errorMsg };
     }

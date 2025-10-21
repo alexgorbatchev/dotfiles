@@ -57,7 +57,7 @@ export async function installFromCurlTar(
 
   const operation = async (): Promise<InstallResult> => {
     // Download the tarball
-  logger.debug(installerLogMessages.curlTar.downloadingTarball(url));
+    logger.debug(installerLogMessages.curlTar.downloadingTarball(url));
     const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`);
 
     await downloadWithProgress(url, tarballPath, `${toolName}.tar.gz`, downloader, options);
@@ -112,7 +112,7 @@ export async function installFromCurlTar(
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
-  logger.debug(installerLogMessages.curlTar.cleaningArchive(tarballPath));
+      logger.debug(installerLogMessages.curlTar.cleaningArchive(tarballPath));
       await toolFs.rm(tarballPath);
     }
 

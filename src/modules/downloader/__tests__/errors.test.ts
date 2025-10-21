@@ -31,7 +31,11 @@ describe('Downloader Errors', () => {
     const err = new NetworkError(logger, 'message', 'url');
     expect(err).toBeInstanceOf(DownloaderError);
     expect(err.name).toBe('NetworkError');
-    logger.expect(['DEBUG'], ['NetworkError'], ['NetworkError created: message=message, url=url, originalError=undefined']);
+    logger.expect(
+      ['DEBUG'],
+      ['NetworkError'],
+      ['NetworkError created: message=message, url=url, originalError=undefined']
+    );
   });
 
   it('HttpError', () => {
@@ -42,7 +46,7 @@ describe('Downloader Errors', () => {
       ['DEBUG'],
       ['HttpError'],
       [
-        /^HttpError created: message=message, url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/, 
+        /^HttpError created: message=message, url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
       ]
     );
   });
@@ -80,7 +84,7 @@ describe('Downloader Errors', () => {
       ['DEBUG'],
       ['RateLimitError'],
       [
-        /^RateLimitError created: message=message, url=url, statusCode=429, statusText=Too Many Requests, responseBody=undefined, responseHeaders=\{\}, resetTimestamp=undefined(?:[\s\S]*)$/, 
+        /^RateLimitError created: message=message, url=url, statusCode=429, statusText=Too Many Requests, responseBody=undefined, responseHeaders=\{\}, resetTimestamp=undefined(?:[\s\S]*)$/,
       ]
     );
   });
@@ -92,7 +96,9 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['ClientError'],
-      [/^ClientError created: url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/]
+      [
+        /^ClientError created: url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
+      ]
     );
   });
 
@@ -104,7 +110,7 @@ describe('Downloader Errors', () => {
       ['DEBUG'],
       ['ServerError'],
       [
-        /^ServerError created: url=url, statusCode=500, statusText=Internal Server Error, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/
+        /^ServerError created: url=url, statusCode=500, statusText=Internal Server Error, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
       ]
     );
   });

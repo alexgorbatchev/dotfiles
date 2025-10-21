@@ -1,5 +1,4 @@
-import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
-import { createSafeLogMessage } from '@modules/logger/utils';
+import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
 
 export const gitHubHttpClientLogMessages = {
   fetchingLatestRelease: (owner: string, repo: string) =>
@@ -9,4 +8,7 @@ export const gitHubHttpClientLogMessages = {
   releaseFetched: (tag: string) => createSafeLogMessage(`GitHub release fetched tag ${tag}`),
   fetchingRateLimit: () => createSafeLogMessage('GitHub fetching rate limit status'),
   rateLimitFetched: () => createSafeLogMessage('GitHub rate limit status fetched'),
+  downloadingBinary: (url: string) => createSafeLogMessage(`GitHub downloading binary from ${url}`),
+  binaryDownloaded: (url: string, bytes: number) =>
+    createSafeLogMessage(`GitHub binary downloaded from ${url} size ${bytes} bytes`),
 } satisfies SafeLogMessageMap;

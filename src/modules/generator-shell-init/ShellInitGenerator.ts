@@ -224,10 +224,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(
-        shellInitGeneratorLogMessages.cleanup.failure(onceDir, errorMessage),
-        this.fs.constructor.name
-      );
+      logger.debug(shellInitGeneratorLogMessages.cleanup.failure(onceDir, errorMessage), this.fs.constructor.name);
       // Continue generation even if cleanup fails
     }
   }

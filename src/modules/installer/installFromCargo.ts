@@ -46,11 +46,11 @@ export async function installFromCargo(
 
     // 1. Determine version
     const version = await determineVersion(crateName, params, cargoClient, logger);
-  logger.debug(installerLogMessages.cargo.foundVersion(crateName, version));
+    logger.debug(installerLogMessages.cargo.foundVersion(crateName, version));
 
     // 2. Determine download URL based on binary source
     const downloadUrl = await buildDownloadUrl(crateName, version, params, context, cargoGithubReleaseHost);
-  logger.debug(installerLogMessages.cargo.downloadingAsset(`${crateName}-${version}`, downloadUrl));
+    logger.debug(installerLogMessages.cargo.downloadingAsset(`${crateName}-${version}`, downloadUrl));
 
     // 3. Download and extract
     const filename = `${crateName}-${version}.tar.gz`;
@@ -75,7 +75,7 @@ export async function installFromCargo(
     const extractResult = await archiveExtractor.extract(downloadPath, {
       targetDir: context.installDir,
     });
-  logger.debug(installerLogMessages.cargo.archiveExtracted(), extractResult);
+    logger.debug(installerLogMessages.cargo.archiveExtracted(), extractResult);
 
     // 6. Setup binaries
     await setupBinariesFromArchive(fileSystem, toolName, toolConfig, context, context.installDir, logger);
@@ -95,7 +95,7 @@ export async function installFromCargo(
     // 8. Cleanup downloaded archive
     if (await fileSystem.exists(downloadPath)) {
       await fileSystem.rm(downloadPath);
-  logger.debug(installerLogMessages.cargo.cleaningArchive(downloadPath));
+      logger.debug(installerLogMessages.cargo.cleaningArchive(downloadPath));
     }
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
@@ -180,7 +180,7 @@ async function determineVersion(
         params.cargoTomlUrl ||
         cargoClient.buildCargoTomlUrl(params.githubRepo || `${crateName}-community/${crateName}`);
 
-  logger.debug(installerLogMessages.cargo.parsingMetadata(cargoTomlUrl));
+      logger.debug(installerLogMessages.cargo.parsingMetadata(cargoTomlUrl));
 
       const packageInfo = await cargoClient.getCargoTomlPackage(cargoTomlUrl);
       if (!packageInfo) {
@@ -189,7 +189,7 @@ async function determineVersion(
       return packageInfo.version;
     }
     case 'crates-io': {
-  logger.debug(installerLogMessages.cargo.queryingCratesIo(crateName));
+      logger.debug(installerLogMessages.cargo.queryingCratesIo(crateName));
 
       const version = await cargoClient.getLatestVersion(crateName);
       if (!version) {

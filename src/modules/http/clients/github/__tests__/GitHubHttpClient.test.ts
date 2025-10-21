@@ -1,8 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
-import { HttpCache } from '@modules/http/cache/HttpCache';
-import { BaseHttpClient } from '@modules/http/clients/core/BaseHttpClient';
-import { HttpPipelineError } from '@modules/http/errors/HttpPipelineError';
-import { FetchTransport } from '@modules/http/transports/FetchTransport';
+import { HttpCache, BaseHttpClient, HttpPipelineError, FetchTransport } from '@modules/http';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { FetchMockHelper, TestLogger } from '@testing-helpers';
 import { GitHubHttpClient } from '../GitHubHttpClient';

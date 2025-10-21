@@ -173,7 +173,7 @@ async function selectAsset(
   let asset: GitHubReleaseAsset | undefined;
 
   if (params.assetSelector) {
-  logger.debug(installerLogMessages.gitHubRelease.assetSelectorCustom());
+    logger.debug(installerLogMessages.gitHubRelease.assetSelectorCustom());
     const selectionContext: AssetSelectionContext = {
       ...context,
       assets: release.assets,
@@ -272,9 +272,7 @@ function constructDownloadUrl(
     const host = customHost ?? '(public GitHub)';
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(installerLogMessages.gitHubRelease.invalidUrl(rawBrowserDownloadUrl));
-    logger.debug(
-      installerLogMessages.gitHubRelease.downloadUrlError(rawBrowserDownloadUrl, host, errorMessage)
-    );
+    logger.debug(installerLogMessages.gitHubRelease.downloadUrlError(rawBrowserDownloadUrl, host, errorMessage));
     return {
       success: false,
       error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${host}, Error: ${errorMessage}`,

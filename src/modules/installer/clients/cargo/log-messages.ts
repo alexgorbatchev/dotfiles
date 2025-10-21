@@ -6,13 +6,11 @@ export const cargoClientLogMessages = {
       createSafeLogMessage(`Initializing ${clientName} with user agent: ${userAgent}`),
   } satisfies SafeLogMessageMap,
   request: {
-    makingRequest: (method: string, url: string) =>
-      createSafeLogMessage(`Making ${method} request to ${url}`),
+    makingRequest: (method: string, url: string) => createSafeLogMessage(`Making ${method} request to ${url}`),
   } satisfies SafeLogMessageMap,
   errors: {
     emptyResponse: (url: string) => createSafeLogMessage(`Empty response received from ${url}`),
-    jsonParseError: (url: string, reason: string) =>
-      createSafeLogMessage(`JSON parse error for ${url}: ${reason}`),
+    jsonParseError: (url: string, reason: string) => createSafeLogMessage(`JSON parse error for ${url}: ${reason}`),
   } satisfies SafeLogMessageMap,
   cratesIo: {
     querying: (crateName: string) => createSafeLogMessage(`Querying crates.io for crate ${crateName}`),

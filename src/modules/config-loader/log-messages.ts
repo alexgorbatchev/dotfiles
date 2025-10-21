@@ -4,8 +4,7 @@ export const configLoaderLogMessages = {
   configurationProcessing: () => createSafeLogMessage('config processing'),
   platformOverrides: (platform: string, arch: string) =>
     createSafeLogMessage(`platform overrides: ${platform} ${arch}`),
-  configurationValidated: (context: string) =>
-    createSafeLogMessage(`Configuration validated successfully: ${context}`),
+  configurationValidated: (context: string) => createSafeLogMessage(`Configuration validated successfully: ${context}`),
   configurationValidationFailed: (errors: string[]) =>
     createSafeLogMessage(`Configuration validation failed:\n${errors.join('\n')}`),
   configurationParseError: (configPath: string, format: string, reason: string) =>
@@ -14,8 +13,7 @@ export const configLoaderLogMessages = {
     createSafeLogMessage(`Failed to load configuration from ${configPath}: ${reason}`),
   configurationLoaded: (configPath: string, toolCount: number) =>
     createSafeLogMessage(`Configuration loaded from ${configPath} (${toolCount} tools configured)`),
-  toolConfigLoadingStarted: (toolConfigsDir: string) =>
-    createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
+  toolConfigLoadingStarted: (toolConfigsDir: string) => createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
   singleToolConfigLoadingStarted: (toolName: string, toolConfigsDir: string) =>
     createSafeLogMessage(`single tool config load: ${toolName} in ${toolConfigsDir}`),
   toolConfigDirectoryScan: (toolConfigsDir: string) => createSafeLogMessage(`directory scan: ${toolConfigsDir}`),

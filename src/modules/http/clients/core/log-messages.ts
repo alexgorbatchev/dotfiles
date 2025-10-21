@@ -1,5 +1,4 @@
-import type { SafeLogMessageMap } from '@modules/logger/SafeLogMessage';
-import { createSafeLogMessage } from '@modules/logger/utils';
+import { createSafeLogMessage, type SafeLogMessageMap } from '@modules/logger';
 
 export const httpLogMessages = {
   requestPlanned: (method: string, url: string) => createSafeLogMessage(`HTTP request planned ${method} ${url}`),

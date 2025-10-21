@@ -17,7 +17,7 @@ async function loadToolConfigSafely(
   const toolConfig = await loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
 
   if (!toolConfig) {
-  logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
+    logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
     return null;
   }
 
@@ -79,7 +79,7 @@ export function registerInstallCommand(
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName, options) => {
       const combinedOptions = { ...options, ...program.opts() };
-  logger.debug(cliLogMessages.commandActionCalled('install', toolName), combinedOptions);
+      logger.debug(cliLogMessages.commandActionCalled('install', toolName), combinedOptions);
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer } = services;

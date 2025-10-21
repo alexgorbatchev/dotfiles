@@ -124,9 +124,7 @@ export function registerInitCommand(
         await fs.writeFile('tools/fzf.tool.ts', fzfToolConfig);
 
         logger.info(cliLogMessages.initProjectInitialized());
-        logger.info(
-          cliLogMessages.initFilesCreated('generator.d.ts, tsconfig.json, config.yaml, tools/fzf.tool.ts')
-        );
+        logger.info(cliLogMessages.initFilesCreated('generator.d.ts, tsconfig.json, config.yaml, tools/fzf.tool.ts'));
       } catch (error) {
         logger.error(cliLogMessages.operationFailed('project initialization'));
         logger.debug(cliLogMessages.commandErrorDetails(), error);

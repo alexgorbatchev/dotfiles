@@ -211,11 +211,7 @@ function validateAndStoreToolConfig(
     );
   } else {
     logger.error(
-      configLoaderLogMessages.configurationParseError(
-        filePath,
-        'ToolConfig',
-        'Could not derive valid configuration'
-      )
+      configLoaderLogMessages.configurationParseError(filePath, 'ToolConfig', 'Could not derive valid configuration')
     );
   }
 }

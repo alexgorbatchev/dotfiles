@@ -58,11 +58,7 @@ export class ShimGenerator implements IShimGenerator {
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
     const toolFileSystemName = toolFs.constructor.name;
-    logger.debug(
-      shimGeneratorLogMessages.generateForTool.started(toolName, toolFileSystemName),
-      toolConfig,
-      options
-    );
+    logger.debug(shimGeneratorLogMessages.generateForTool.started(toolName, toolFileSystemName), toolConfig, options);
 
     const generatedShimPaths: string[] = [];
     const overwrite = options?.overwrite ?? false;
@@ -117,9 +113,7 @@ export class ShimGenerator implements IShimGenerator {
     // Use the new symlink-based path structure
     const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, binaryName);
 
-    logger.debug(
-      shimGeneratorLogMessages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath)
-    );
+    logger.debug(shimGeneratorLogMessages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
     const shimContent = dedentString(`
       #!/usr/bin/env bash
@@ -168,7 +162,7 @@ export class ShimGenerator implements IShimGenerator {
         fi
       fi
     `);
-  logger.debug(shimGeneratorLogMessages.generateShim.generatedContent(binaryName), shimContent);
+    logger.debug(shimGeneratorLogMessages.generateShim.generatedContent(binaryName), shimContent);
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     await toolFs.ensureDir(path.dirname(shimFilePath));

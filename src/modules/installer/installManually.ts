@@ -80,7 +80,7 @@ async function installBinariesManually(
       await toolFs.copyFile(binaryPath, finalBinaryPath);
       await toolFs.chmod(finalBinaryPath, 0o755);
     } else {
-  logger.debug(installerLogMessages.manual.multipleBinariesNotSupported(binaryName));
+      logger.debug(installerLogMessages.manual.multipleBinariesNotSupported(binaryName));
     }
   }
 }

@@ -136,7 +136,7 @@ async function loadToolConfigsForDryRun(
       }
     }
   } catch (_error) {
-  logger.error(cliLogMessages.fsAccessDenied('accessing', realToolConfigsDir));
+    logger.error(cliLogMessages.fsAccessDenied('accessing', realToolConfigsDir));
   }
 }
 
@@ -404,11 +404,7 @@ if (import.meta.main) {
   main(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
     const fatalLogger = createTsLogger({ name: 'cli', minLevel: 5 }); // FATAL level only
-    fatalLogger.fatal(
-      cliLogMessages.commandExecutionFailed('main', 1, 'Top-level unhandled error'),
-      '%O',
-      error
-    );
+    fatalLogger.fatal(cliLogMessages.commandExecutionFailed('main', 1, 'Top-level unhandled error'), '%O', error);
     process.exit(1);
   });
 }

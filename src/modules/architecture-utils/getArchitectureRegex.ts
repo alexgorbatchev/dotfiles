@@ -195,10 +195,12 @@ export function matchesArchitecture(
 
   const matches = systemMatch && cpuMatch;
 
-  logger.trace(
-    architectureLogMessages.assetMatchCheckCompleted(assetName, systemMatch, cpuMatch, matches),
-    { assetName, systemMatch, cpuMatch, matches }
-  );
+  logger.trace(architectureLogMessages.assetMatchCheckCompleted(assetName, systemMatch, cpuMatch, matches), {
+    assetName,
+    systemMatch,
+    cpuMatch,
+    matches,
+  });
 
   return matches;
 }

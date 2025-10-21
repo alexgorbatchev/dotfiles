@@ -69,7 +69,6 @@ export const batConfig: CargoToolConfig = {
           configPath,
           '--theme="Monokai Extended"\n--style="numbers,changes,header"\n'
         );
-
       },
     },
   },

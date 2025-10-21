@@ -20,7 +20,7 @@ export class HookStep extends InstallationStep<HookStepParams> {
   async execute(context: StepContext): Promise<StepContext> {
     const { hookType, hook, hookExecutor } = this.params;
 
-  context.logger.debug(installerLogMessages.hookStep.executingHook(hookType));
+    context.logger.debug(installerLogMessages.hookStep.executingHook(hookType));
 
     try {
       const enhancedContext = hookExecutor.createEnhancedContext(context, context.toolFs);

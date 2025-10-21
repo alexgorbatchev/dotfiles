@@ -72,7 +72,7 @@ export class InstallationPipeline {
       // Calculate final binary paths
       const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-  logger.debug(installerLogMessages.pipeline.completed(toolName));
+      logger.debug(installerLogMessages.pipeline.completed(toolName));
 
       return {
         success: true,

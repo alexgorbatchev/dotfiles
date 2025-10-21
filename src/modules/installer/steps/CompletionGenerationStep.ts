@@ -63,9 +63,7 @@ export class CompletionGenerationStep extends InstallationStep<CompletionGenerat
     await context.toolFs.mkdir(path.dirname(generated.targetPath), { recursive: true });
     await context.toolFs.writeFile(generated.targetPath, generated.content);
 
-    context.logger.debug(
-      installerLogMessages.completion.generatedCompletion(generated.filename, generated.targetPath)
-    );
+    context.logger.debug(installerLogMessages.completion.generatedCompletion(generated.filename, generated.targetPath));
   }
 
   private extractCompletionConfigs(

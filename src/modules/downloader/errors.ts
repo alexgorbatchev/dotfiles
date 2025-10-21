@@ -12,7 +12,7 @@ export class DownloaderError extends Error {
     const logger = parentLogger.getSubLogger({ name: 'DownloaderError' });
     this.name = 'DownloaderError';
     this.url = url;
-  logger.debug(downloaderErrorLogMessages.errorCreated('DownloaderError', message, url));
+    logger.debug(downloaderErrorLogMessages.errorCreated('DownloaderError', message, url));
   }
 }
 
@@ -27,7 +27,7 @@ export class NetworkError extends DownloaderError {
     const logger = parentLogger.getSubLogger({ name: 'NetworkError' });
     this.name = 'NetworkError';
     this.originalError = originalError;
-  logger.debug(downloaderErrorLogMessages.networkErrorCreated(message, url, originalError), originalError);
+    logger.debug(downloaderErrorLogMessages.networkErrorCreated(message, url, originalError), originalError);
   }
 }
 
@@ -57,14 +57,7 @@ export class HttpError extends DownloaderError {
     this.responseBody = responseBody;
     this.responseHeaders = responseHeaders;
     logger.debug(
-      downloaderErrorLogMessages.httpErrorCreated(
-        message,
-        url,
-        statusCode,
-        statusText,
-        responseBody,
-        responseHeaders
-      ),
+      downloaderErrorLogMessages.httpErrorCreated(message, url, statusCode, statusText, responseBody, responseHeaders),
       {
         url,
         statusCode,
@@ -89,14 +82,11 @@ export class NotFoundError extends HttpError {
     super(parentLogger, 'Resource not found', url, 404, 'Not Found', responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'NotFoundError' });
     this.name = 'NotFoundError';
-    logger.debug(
-      downloaderErrorLogMessages.notFoundErrorCreated(url, responseBody, responseHeaders),
-      {
-        url,
-        responseBody,
-        responseHeaders,
-      }
-    );
+    logger.debug(downloaderErrorLogMessages.notFoundErrorCreated(url, responseBody, responseHeaders), {
+      url,
+      responseBody,
+      responseHeaders,
+    });
   }
 }
 
@@ -113,14 +103,11 @@ export class ForbiddenError extends HttpError {
     super(parentLogger, 'Access forbidden', url, 403, 'Forbidden', responseBody, responseHeaders);
     const logger = parentLogger.getSubLogger({ name: 'ForbiddenError' });
     this.name = 'ForbiddenError';
-    logger.debug(
-      downloaderErrorLogMessages.forbiddenErrorCreated(url, responseBody, responseHeaders),
-      {
-        url,
-        responseBody,
-        responseHeaders,
-      }
-    );
+    logger.debug(downloaderErrorLogMessages.forbiddenErrorCreated(url, responseBody, responseHeaders), {
+      url,
+      responseBody,
+      responseHeaders,
+    });
   }
 }
 

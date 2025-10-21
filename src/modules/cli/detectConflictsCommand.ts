@@ -41,7 +41,7 @@ async function checkShimConflicts(
           conflictMessages.push(`[${toolConfig.name}]: ${shimPath} (exists but is not a generator shim)`);
         }
       } catch (readError: unknown) {
-  logger.warn(cliLogMessages.fsReadFailed(shimPath, (readError as Error).message));
+        logger.warn(cliLogMessages.fsReadFailed(shimPath, (readError as Error).message));
         conflictMessages.push(`[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`);
       }
     }
@@ -79,7 +79,7 @@ async function checkSymlinkConflicts(
       }
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-  logger.warn(cliLogMessages.fsReadFailed(targetPath, (error as Error).message));
+        logger.warn(cliLogMessages.fsReadFailed(targetPath, (error as Error).message));
       }
     }
   }
@@ -148,7 +148,7 @@ export function registerDetectConflictsCommand(
     .description('Detects conflicts between potential generated artifacts and existing system files.')
     .action(async (options) => {
       const combinedOptions = { ...options, ...program.opts() };
-  logger.debug(cliLogMessages.commandErrorDetails(), combinedOptions);
+      logger.debug(cliLogMessages.commandErrorDetails(), combinedOptions);
 
       let exitCode: ExitCode;
       try {

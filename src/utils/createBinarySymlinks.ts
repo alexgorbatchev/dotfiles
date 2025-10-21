@@ -32,9 +32,7 @@ export async function createBinarySymlink(
   // Verify the target binary exists before creating symlink
   if (!(await fs.exists(actualBinaryPath))) {
     const errorMsg = `Cannot create symlink: target binary does not exist at ${actualBinaryPath}`;
-    methodLogger.error(
-      installerLogMessages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath)
-    );
+    methodLogger.error(installerLogMessages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath));
     throw new Error(errorMsg);
   }
 

@@ -3,7 +3,7 @@ import { versionCheckerLogMessages } from '../log-messages';
 
 describe('versionCheckerLogMessages', () => {
   test('initializing', () => {
-  expect(String(versionCheckerLogMessages.initializing())).toBe('Initializing VersionChecker with githubClient');
+    expect(String(versionCheckerLogMessages.initializing())).toBe('Initializing VersionChecker with githubClient');
   });
 
   test('fetchingLatestRelease', () => {
@@ -13,7 +13,7 @@ describe('versionCheckerLogMessages', () => {
   });
 
   test('latestReleaseFound', () => {
-  expect(String(versionCheckerLogMessages.latestReleaseFound('1.2.3'))).toBe('Latest release found 1.2.3');
+    expect(String(versionCheckerLogMessages.latestReleaseFound('1.2.3'))).toBe('Latest release found 1.2.3');
   });
 
   test('latestReleaseError', () => {
@@ -35,11 +35,11 @@ describe('versionCheckerLogMessages', () => {
   });
 
   test('invalidConfiguredVersion', () => {
-  expect(String(versionCheckerLogMessages.invalidConfiguredVersion('bad'))).toBe('Configured version invalid bad');
+    expect(String(versionCheckerLogMessages.invalidConfiguredVersion('bad'))).toBe('Configured version invalid bad');
   });
 
   test('invalidLatestVersion', () => {
-  expect(String(versionCheckerLogMessages.invalidLatestVersion('bad'))).toBe('Latest version invalid bad');
+    expect(String(versionCheckerLogMessages.invalidLatestVersion('bad'))).toBe('Latest version invalid bad');
   });
 
   test('versionComparisonResult', () => {

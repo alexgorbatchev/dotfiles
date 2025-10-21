@@ -93,7 +93,9 @@ export class HookExecutor {
       const durationMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      methodLogger.error(installerLogMessages.outcome.installFailed(`${hookName} hook`, context.toolName, errorMessage));
+      methodLogger.error(
+        installerLogMessages.outcome.installFailed(`${hookName} hook`, context.toolName, errorMessage)
+      );
 
       if (continueOnError) {
         methodLogger.debug(installerLogMessages.hookExecutor.continuingDespiteFailure(hookName));

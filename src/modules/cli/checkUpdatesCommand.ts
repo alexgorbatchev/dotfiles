@@ -31,7 +31,7 @@ async function loadToolConfigs(
         toolConfigs[toolName] = config;
       } else {
         specificToolNotFound = true;
-  logger.error(cliLogMessages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
+        logger.error(cliLogMessages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
       }
     } else {
       toolConfigs = await loadAllToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
@@ -67,7 +67,7 @@ function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner
 
   const [owner, repoName] = githubParams.repo.split('/');
   if (!owner || !repoName) {
-  logger.warn(cliLogMessages.configParameterInvalid('repo format', githubParams.repo, 'owner/repo'));
+    logger.warn(cliLogMessages.configParameterInvalid('repo format', githubParams.repo, 'owner/repo'));
     return null;
   }
 
@@ -190,9 +190,7 @@ export function registerCheckUpdatesCommand(
         await checkUpdatesActionLogic(logger, toolName, services);
       } catch (error) {
         logger.debug(cliLogMessages.commandUnhandledError(), error);
-        logger.error(
-          cliLogMessages.commandExecutionFailed('check-updates', ExitCode.ERROR, (error as Error).message)
-        );
+        logger.error(cliLogMessages.commandExecutionFailed('check-updates', ExitCode.ERROR, (error as Error).message));
         logger.debug(cliLogMessages.commandErrorDetails(), error);
         exitCli(ExitCode.ERROR);
       }

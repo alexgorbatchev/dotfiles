@@ -54,17 +54,13 @@ async function getLatestReleaseFromGitHub(
     const latestRelease = await githubApiClient.getLatestRelease(owner, repo);
 
     if (!latestRelease) {
-      logger.warn(
-        cliLogMessages.serviceGithubResourceNotFound('release', `${toolName} from ${owner}/${repo}`)
-      );
+      logger.warn(cliLogMessages.serviceGithubResourceNotFound('release', `${toolName} from ${owner}/${repo}`));
       return null;
     }
 
     return latestRelease;
   } catch (networkError) {
-    logger.error(
-      cliLogMessages.serviceGithubApiFailed('get latest release', 0, (networkError as Error).message)
-    );
+    logger.error(cliLogMessages.serviceGithubApiFailed('get latest release', 0, (networkError as Error).message));
     logger.debug(cliLogMessages.commandErrorDetails(), networkError);
     return null;
   }
@@ -82,7 +78,10 @@ function validateGitHubRepo(
   const githubParams = toolConfig.installParams as GithubReleaseInstallParams;
   if (!githubParams?.repo) {
     logger.warn(
-      cliLogMessages.configParameterIgnored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
+      cliLogMessages.configParameterIgnored(
+        'repo',
+        `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`
+      )
     );
     return null;
   }
@@ -215,13 +214,13 @@ export function registerUpdateCommand(
     .action(async (toolName, options) => {
       const actionLogger = logger.getSubLogger({ name: 'action' });
       const combinedOptions = { ...options, ...program.opts() };
-  actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName, combinedOptions);
+      actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName, combinedOptions);
 
       const services = await servicesFactory();
       const { yamlConfig, fs } = services;
 
       try {
-  actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName);
+        actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName);
 
         const toolConfigResult = await loadToolConfigSafely(
           actionLogger,

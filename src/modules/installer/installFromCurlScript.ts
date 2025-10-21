@@ -45,7 +45,7 @@ export async function installFromCurlScript(
 
   const operation = async (): Promise<InstallResult> => {
     // Download the script
-  logger.debug(installerLogMessages.curlScript.downloadingScript(url));
+    logger.debug(installerLogMessages.curlScript.downloadingScript(url));
     const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
 
     await downloadWithProgress(url, scriptPath, `${toolName}-install.sh`, downloader, options);
@@ -74,7 +74,7 @@ export async function installFromCurlScript(
     }
 
     // Execute the script
-  logger.debug(installerLogMessages.curlScript.executingScript(shell));
+    logger.debug(installerLogMessages.curlScript.executingScript(shell));
 
     // [TODO] In a real implementation, we would execute the script here
     // For now, we'll just simulate success
@@ -85,7 +85,7 @@ export async function installFromCurlScript(
       const sourcePath = path.join('/usr/local/bin', binaryName);
       const finalBinaryPath = path.join(context.installDir, binaryName);
 
-  logger.debug(installerLogMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
+      logger.debug(installerLogMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
     }
 
     // Return paths to all binaries

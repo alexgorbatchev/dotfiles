@@ -91,11 +91,7 @@ describe('installCommand', () => {
       verbose: false,
       shimMode: false,
     });
-    testLogger.expect(
-      ['INFO'],
-      ['registerInstallCommand'],
-      [cliLogMessages.toolInstalled('toolA', '1.0.0', 'CLI')]
-    );
+    testLogger.expect(['INFO'], ['registerInstallCommand'], [cliLogMessages.toolInstalled('toolA', '1.0.0', 'CLI')]);
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
@@ -123,9 +119,9 @@ describe('installCommand', () => {
       error: 'Download failed: Network timeout',
     });
 
-  const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
-  const originalStderrWrite = process.stderr.write;
-  process.stderr.write = mockStderrWrite as typeof process.stderr.write;
+    const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
+    const originalStderrWrite = process.stderr.write;
+    process.stderr.write = mockStderrWrite as typeof process.stderr.write;
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
@@ -142,9 +138,9 @@ describe('installCommand', () => {
   test('should output unhandled error to stderr in shim mode', async () => {
     mockLoadSingleToolConfig.mockRejectedValue(new Error('Config file corrupted'));
 
-  const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
-  const originalStderrWrite = process.stderr.write;
-  process.stderr.write = mockStderrWrite as typeof process.stderr.write;
+    const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
+    const originalStderrWrite = process.stderr.write;
+    process.stderr.write = mockStderrWrite as typeof process.stderr.write;
 
     try {
       expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
@@ -168,7 +164,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-  [cliLogMessages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+      [cliLogMessages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -185,7 +181,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-  [cliLogMessages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
+      [cliLogMessages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
     );
   });
 

@@ -46,7 +46,7 @@ export class TrackedFileSystem implements IFileSystem {
     this.context = context;
     this.homeDir = homeDir;
 
-  this.logger.debug(fileRegistryLogMessages.trackedFsCreated(), context.toolName);
+    this.logger.debug(fileRegistryLogMessages.trackedFsCreated(), context.toolName);
   }
 
   /**
@@ -93,7 +93,7 @@ export class TrackedFileSystem implements IFileSystem {
    */
   private logInfo(message: SafeLogMessage): void {
     if (!this.suppressLogging) {
-  this.logger.info(message);
+      this.logger.info(message);
     }
   }
 
@@ -271,9 +271,13 @@ export class TrackedFileSystem implements IFileSystem {
     await this.fs.rm(filePath, options);
 
     if (options?.recursive) {
-      this.logInfo(fileRegistryLogMessages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logInfo(
+        fileRegistryLogMessages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath))
+      );
     } else {
-      this.logInfo(fileRegistryLogMessages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath)));
+      this.logInfo(
+        fileRegistryLogMessages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath))
+      );
     }
   }
 
@@ -363,7 +367,7 @@ export class TrackedFileSystem implements IFileSystem {
     // Perform the actual operation
     await this.fs.rmdir(dirPath, options);
 
-  logger.debug(fileRegistryLogMessages.rmdirTracked(), dirPath);
+    logger.debug(fileRegistryLogMessages.rmdirTracked(), dirPath);
   }
 
   async ensureDir(dirPath: string): Promise<void> {
@@ -439,7 +443,7 @@ export class TrackedFileSystem implements IFileSystem {
       // Track the directory itself
       await this.trackFileDeletion(dirPath);
     } catch (error) {
-  this.logger.debug(fileRegistryLogMessages.directoryDeletionError(), dirPath, (error as Error).message);
+      this.logger.debug(fileRegistryLogMessages.directoryDeletionError(), dirPath, (error as Error).message);
     }
   }
 }

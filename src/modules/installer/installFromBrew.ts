@@ -32,7 +32,7 @@ export async function installFromBrew(
 
   const operation = async (): Promise<InstallResult> => {
     const command = buildBrewCommand(formula, isCask, tap, options?.force);
-  logger.debug(installerLogMessages.brew.executingCommand(command));
+    logger.debug(installerLogMessages.brew.executingCommand(command));
 
     await installBinaries(toolConfig, toolName, context, logger);
 
@@ -89,6 +89,6 @@ async function installBinaries(
     const binaryName = typeof binary === 'string' ? binary : binary.name;
     const sourcePath = `/usr/local/bin/${binaryName}`;
     const finalBinaryPath = path.join(context.installDir, binaryName);
-  logger.debug(installerLogMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
+    logger.debug(installerLogMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
   }
 }

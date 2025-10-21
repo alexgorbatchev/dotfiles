@@ -5,8 +5,7 @@ export const shimGeneratorLogMessages = {
     initialized: () => createSafeLogMessage('ShimGenerator initialized'),
   } satisfies SafeLogMessageMap,
   generate: {
-    started: (fileSystemName: string) =>
-      createSafeLogMessage(`Starting shim generation using ${fileSystemName}`),
+    started: (fileSystemName: string) => createSafeLogMessage(`Starting shim generation using ${fileSystemName}`),
     missingToolConfig: (toolName: string) =>
       createSafeLogMessage(`Skipping shim generation for ${toolName} because configuration is missing`),
   } satisfies SafeLogMessageMap,
@@ -24,8 +23,7 @@ export const shimGeneratorLogMessages = {
       ),
     resolvedBinaryPath: (toolName: string, binaryName: string, binaryPath: string) =>
       createSafeLogMessage(`Resolved binary path for ${toolName}/${binaryName} to ${binaryPath}`),
-    generatedContent: (binaryName: string) =>
-      createSafeLogMessage(`Generated shim content for ${binaryName}`),
+    generatedContent: (binaryName: string) => createSafeLogMessage(`Generated shim content for ${binaryName}`),
     success: (binaryName: string, shimPath: string, fileSystemName: string) =>
       createSafeLogMessage(`Generated shim ${binaryName} at ${shimPath} using ${fileSystemName}`),
   } satisfies SafeLogMessageMap,

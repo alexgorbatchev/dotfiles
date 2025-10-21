@@ -49,7 +49,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   private async executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
     try {
-  logger.debug(extractorLogMessages.shellCommandStarted(command));
+      logger.debug(extractorLogMessages.shellCommandStarted(command));
       const { stdout, stderr } = await this.promisedExec(command);
       return { stdout, stderr, exitCode: 0 };
     } catch (error: unknown) {
@@ -62,7 +62,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       augmentedError.stderr = execError.stderr || '';
       augmentedError.exitCode = typeof execError.code === 'number' ? execError.code : 1;
       augmentedError.originalError = execError; // Keep original error if needed
-  logger.debug(extractorLogMessages.shellCommandFailed(command, augmentedError.exitCode), augmentedError);
+      logger.debug(extractorLogMessages.shellCommandFailed(command, augmentedError.exitCode), augmentedError);
       throw augmentedError;
     }
   }
@@ -110,7 +110,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
       return this.detectFormatByMimeType(output);
     } catch (error) {
-  logger.debug(extractorLogMessages.fileCommandFallbackFailed(filePath), error);
+      logger.debug(extractorLogMessages.fileCommandFallbackFailed(filePath), error);
       return null;
     }
   }
@@ -200,7 +200,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       detectExecutables = true,
     } = options;
 
-  logger.debug(extractorLogMessages.extractionRequested(archivePath), options);
+    logger.debug(extractorLogMessages.extractionRequested(archivePath), options);
 
     const format = explicitFormat || (await this.detectFormat(archivePath));
 
@@ -260,7 +260,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
           }
         }
       } catch (error) {
-  logger.debug(extractorLogMessages.executableCheckFailed(filePath), error);
+        logger.debug(extractorLogMessages.executableCheckFailed(filePath), error);
       }
     }
     return executables;

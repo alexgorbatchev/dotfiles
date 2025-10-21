@@ -13,8 +13,6 @@ export const versionCheckerLogMessages = {
     createSafeLogMessage(`Comparing versions configured ${configuredVersion} vs latest ${latestVersion}`),
   invalidConfiguredVersion: (configuredVersion: string) =>
     createSafeLogMessage(`Configured version invalid ${configuredVersion}`),
-  invalidLatestVersion: (latestVersion: string) =>
-    createSafeLogMessage(`Latest version invalid ${latestVersion}`),
-  versionComparisonResult: (result: string) =>
-    createSafeLogMessage(`Version comparison result ${result}`),
+  invalidLatestVersion: (latestVersion: string) => createSafeLogMessage(`Latest version invalid ${latestVersion}`),
+  versionComparisonResult: (result: string) => createSafeLogMessage(`Version comparison result ${result}`),
 } satisfies SafeLogMessageMap;

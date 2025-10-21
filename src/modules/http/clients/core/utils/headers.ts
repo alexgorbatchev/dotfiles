@@ -1,4 +1,4 @@
-import type { HttpHeaders } from '../types/HttpTypes';
+import type { HttpHeaders } from '../../../types/HttpTypes';
 import { normalizeHeaderName } from './contentType';
 
 export function normalizeHeaders(headers?: HttpHeaders): HttpHeaders {

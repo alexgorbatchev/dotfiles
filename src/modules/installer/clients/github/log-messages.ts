@@ -28,8 +28,7 @@ export const githubApiClientLogMessages = {
       createSafeLogMessage(`GitHub API server error for ${url} with status ${statusCode}`),
     http: (url: string, statusCode: number) =>
       createSafeLogMessage(`GitHub API HTTP error for ${url} with status ${statusCode}`),
-    network: (url: string, reason: string) =>
-      createSafeLogMessage(`GitHub API network error for ${url}: ${reason}`),
+    network: (url: string, reason: string) => createSafeLogMessage(`GitHub API network error for ${url}: ${reason}`),
     unknown: (url: string) => createSafeLogMessage(`Unknown GitHub API error for ${url}`),
     constraintLatestError: (message: string) =>
       createSafeLogMessage(`GitHub API latest constraint lookup failed: ${message}`),
@@ -71,8 +70,7 @@ export const githubApiClientLogMessages = {
       createSafeLogMessage(`Best GitHub release candidate so far ${tag} (version ${version})`),
     resultFound: (constraint: string, tag: string) =>
       createSafeLogMessage(`Found GitHub release ${tag} for constraint ${constraint}`),
-    resultMissing: (constraint: string) =>
-      createSafeLogMessage(`No GitHub release found for constraint ${constraint}`),
+    resultMissing: (constraint: string) => createSafeLogMessage(`No GitHub release found for constraint ${constraint}`),
   } satisfies SafeLogMessageMap,
   rateLimit: {
     fetching: () => createSafeLogMessage('Fetching GitHub API rate limit status'),

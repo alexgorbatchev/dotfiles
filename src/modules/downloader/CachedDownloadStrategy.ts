@@ -40,7 +40,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     this.cacheTtl = cacheTtl;
     this.name = `cached-${underlyingStrategy.name}`;
 
-  this.logger.debug(cachedDownloadStrategyLogMessages.strategyWrapped(underlyingStrategy.name, cacheTtl));
+    this.logger.debug(cachedDownloadStrategyLogMessages.strategyWrapped(underlyingStrategy.name, cacheTtl));
   }
 
   /**
@@ -58,12 +58,12 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     url: string,
     options: DownloadOptions
   ): Promise<Buffer | undefined> {
-  logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
+    logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
 
     // If destinationPath is specified, write cached data to file and return void
     if (options.destinationPath) {
       await this.fileSystem.writeFile(options.destinationPath, cachedBuffer);
-  logger.trace(cachedDownloadStrategyLogMessages.cachedFileWritten(options.destinationPath));
+      logger.trace(cachedDownloadStrategyLogMessages.cachedFileWritten(options.destinationPath));
       return; // Return void for file downloads
     }
 
@@ -71,21 +71,18 @@ export class CachedDownloadStrategy implements DownloadStrategy {
   }
 
   private async readFileForCaching(logger: TsLogger, destinationPath: string): Promise<Buffer | null> {
-  logger.trace(cachedDownloadStrategyLogMessages.readFileForCaching(destinationPath));
+    logger.trace(cachedDownloadStrategyLogMessages.readFileForCaching(destinationPath));
 
     try {
       const fileExists = await this.fileSystem.exists(destinationPath);
-  logger.trace(cachedDownloadStrategyLogMessages.downloadedFileExists(destinationPath, fileExists));
+      logger.trace(cachedDownloadStrategyLogMessages.downloadedFileExists(destinationPath, fileExists));
 
       if (fileExists) {
         const bufferToCache = await this.fileSystem.readFileBuffer(destinationPath);
-        logger.trace(
-          cachedDownloadStrategyLogMessages.downloadedFileCached(destinationPath, bufferToCache.length),
-          {
-            path: destinationPath,
-            size: bufferToCache.length,
-          }
-        );
+        logger.trace(cachedDownloadStrategyLogMessages.downloadedFileCached(destinationPath, bufferToCache.length), {
+          path: destinationPath,
+          size: bufferToCache.length,
+        });
         return bufferToCache;
       } else {
         logger.trace(cachedDownloadStrategyLogMessages.downloadedFileMissing(destinationPath));
