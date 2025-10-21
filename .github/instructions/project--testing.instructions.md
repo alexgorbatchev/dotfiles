@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: Project testing requirements.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # Project Testing Requirements
 
 - `bun run test {file}` - Run a single test file.

@@ -1,12 +1,10 @@
 ---
-root: false
-targets: ["*"]
 description: Project tooling requirements.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # Project Tooling Requirements
+
+The project is using Bun as run the main run time.
 
 ## Data Validation
 

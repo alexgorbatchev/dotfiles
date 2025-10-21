@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: TypeScript specific testing rules.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # TypeScript Specific Testing Rules
 
 - Never delete tests to get them to pass.

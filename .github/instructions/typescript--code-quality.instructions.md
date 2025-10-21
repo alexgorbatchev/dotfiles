@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: TypeScript specific code quality requirements.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # TypeScript Code Quality Requirements
 
 ## General Requirements
@@ -15,6 +11,10 @@ globs:
 - Do not add file header comments.
 - Avoid type casting at all costs and absolutely never use `as any`.
 - Avoid using `typeof`, declare types explicitly.
+
+## File Name Rules
+Unless otherwise specified, all filenames must be in a PascalCase and match the
+name of the main exported element.
 
 ## Type Safety Rules
 
@@ -77,7 +77,7 @@ Only use `as` for:
 - **camelCase**: Variables, functions, methods, properties
 - **PascalCase**: Classes, interfaces, types, enums
 - **SCREAMING_SNAKE_CASE**: Constants
-- **kebab-case**: File names, CSS classes
+- **kebab-case**: CSS classes
 
 ## Boolean Variables
 

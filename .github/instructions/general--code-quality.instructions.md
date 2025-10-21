@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: Universal code quality standards for LLM assistance.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # Universal Code Quality Standards
 
 ## File Organization

@@ -1,22 +1,26 @@
 {
-  "mcpServers": {
-    "typescript": {
-      "command": "npx",
+  "mcpServers": [
+    {
+      "name": "git",
+      "command": "docker",
       "args": [
-        "-y",
-        "@mizchi/lsmcp",
-        "-p",
-        "typescript",
-        "--bin",
-        "npx tsgo --lsp --stdio"
+        "run",
+        "--rm",
+        "-i",
+        "--mount",
+        "type=bind,src=/Users/alex/.dotfiles,dst=/Users/alex/.dotfiles/generator",
+        "mcp/git"
       ]
     },
-    "context7": {
+    {
+      "name": "typescript",
       "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ]
+      "args": ["-y", "@mizchi/lsmcp", "-p", "typescript", "--bin", "npx tsgo --lsp --stdio"]
+    },
+    {
+      "name": "context7",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
     }
-  }
+  ]
 }

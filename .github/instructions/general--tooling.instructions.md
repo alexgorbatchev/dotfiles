@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: Tool-agnostic development practices for LLM assistance.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # Universal Tooling Practices
 
 ## Tool Usage Principles

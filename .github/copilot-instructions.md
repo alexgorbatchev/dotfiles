@@ -1,10 +1,52 @@
----
-root: true
-targets: ["*"]
-description: About the project.
-globs:
-  - '**/*'
----
+Please also reference the following documents as needed. In this case, `@` stands for the project root directory.
+
+<Documents>
+  <Document>
+    <Path>@.github/instructions/general--code-quality.instructions.md</Path>
+    <Description>Universal code quality standards for LLM assistance.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/general--rules.instructions.md</Path>
+    <Description>Universal development rules for LLM assistance</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/general--tooling.instructions.md</Path>
+    <Description>Tool-agnostic development practices for LLM assistance.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/project--file-structure.instructions.md</Path>
+    <Description>file-structure</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/project--logging.instructions.md</Path>
+    <Description>Project logging requirements.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/project--testing.instructions.md</Path>
+    <Description>Project testing requirements.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/project--tooling.instructions.md</Path>
+    <Description>Project tooling requirements.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/project--workflow.instructions.md</Path>
+    <Description>Project development workflow requirements.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/typescript--code-quality.instructions.md</Path>
+    <Description>TypeScript specific code quality requirements.</Description>
+  </Document>
+  <Document>
+    <Path>@.github/instructions/typescript--testing.instructions.md</Path>
+    <Description>TypeScript specific testing rules.</Description>
+  </Document>
+</Documents>
+
+# Additional Conventions Beyond the Built-in Functions
+
+As this project's AI coding tool, you must follow the additional conventions below, in addition to the built-in functions.
+
 # Dotfiles Generator Project
 
 ## Overview

@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: Project logging requirements.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # Project Logging Requirements
 
 - The project uses `tslog` for structured logging.

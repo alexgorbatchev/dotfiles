@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
-description: 'Universal development rules for LLM assistance'
-globs:
-  - '**/*'
+description: Universal development rules for LLM assistance
+applyTo: '**/*'
 ---
-
 # Universal Development Rules
 
 ## Role Definition

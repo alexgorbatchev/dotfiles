@@ -1,11 +1,7 @@
 ---
-root: false
-targets: ["*"]
 description: Project development workflow requirements.
-globs:
-  - '**/*'
+applyTo: '**/*'
 ---
-
 # Project Development Workflow
 
 ## Development Approach
