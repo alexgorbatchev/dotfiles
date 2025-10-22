@@ -100,6 +100,7 @@ Only use `as` for:
 const userName = 'john';
 const userAge = 25;
 const isActive = true;
+const schema = zod...;
 
 // ✅ Good - Explicit types for complex declarations
 const items: string[] = [];

@@ -16,8 +16,8 @@ Instruction files must:
 When any violations are present, you must flag them to the user and offer to resolve them.
 
 **Important**: all .instructions.md files must be seen as a whole, separate files only enxist for editing purpose.
-You must use this command to read all of the instructions:
 
+You must use this command to read all of the instructions:
 ```
 find .github/instructions -type f -exec sh -c 'echo ""; echo "=== $(basename "$1") ==="; echo ""; cat "$1"; echo ""' _ {} \;
 ```

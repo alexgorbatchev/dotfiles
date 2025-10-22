@@ -6,6 +6,7 @@ applyTo: '**/*'
 
 ## Tool Usage Principles
 
+- Never filter tooling output with grep, awk, sed, or similar content-filtering tools. Only use `head` or `tail` to limit output length. To find specific content, output the full result (or use head/tail to limit length) and search within the displayed output.
 - Use the most appropriate tool available in the environment for each task
 - Prefer tools that provide clear, parseable output for automation
 - Choose tools that maintain data integrity and provide error handling

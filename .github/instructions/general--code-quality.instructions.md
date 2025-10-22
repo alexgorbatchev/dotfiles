@@ -117,6 +117,16 @@ Test-specific code in production:
 
 NON-NEGOTIABLE: All testing needs must be satisfied through proper dependency injection, test doubles, or separate test utilities. Production code must be focused solely on its intended business purpose and must be fully implemented before deployment.
 
+### Stub Implementation Policy
+
+When replacing production code:
+- NEVER commit stub/placeholder implementations to production code paths
+- If implementation is incomplete, either:
+  1. Complete the implementation before integration, OR
+  2. Keep both old and new implementations until new is complete
+- "Replace X with Y" means Y must be functionally complete and all tests must pass
+- Incomplete implementations must not be integrated into production code paths
+
 ## ANTI-LEGACY CODE DIRECTIVE
 
 When implementing new architecture or APIs, NEVER add deprecated/legacy properties or backward compatibility layers. Instead:

@@ -76,17 +76,6 @@ Review all TypeScript files in a specified directory or module to identify viola
 - **Context Awareness**: Understand the difference between legitimate code patterns and standards violations
 - **Documentation**: Clearly explain what constitutes a violation and why
 
-## Output Format
-
-### Per-File Status (Console Output)
-```
-OKAY
-```
-or
-```
-NOT OKAY - Line X: Description of violation
-```
-
 ### Report File Generation
 - **Create Report File**: Generate `CODE-QUALITY-REVIEW-[DATE].md` in the project root
 - **Date Format**: Use ISO date format (YYYY-MM-DD)
@@ -173,3 +162,15 @@ NOT OKAY - Line X: Description of violation
 - Ensure complete coverage of the specified directory or module
 - **Generate persistent report**: Create/update `CODE-QUALITY-REVIEW-[DATE].md` file with detailed findings
 - **Track progress**: Use checkboxes and clear categorization for remediation tracking
+
+You must use this command to read all files in directory:
+```
+find {dir} -type f \( -name "*.ts" -o -name "*.tsx" \) -not -name "log-messages.ts" -exec sh -c '\
+  echo ""; \
+  echo "=== $(basename "$1") ==="; \
+  echo ""; \
+  cat "$1"; \
+  echo "" \
+' \
+_ {} \;
+```
