@@ -1,0 +1,16 @@
+{
+  "name": "@dotfiles/shim-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/config": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/utils": "workspace:*"
+  }
+}

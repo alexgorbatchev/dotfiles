@@ -1,0 +1,12 @@
+export * from './checkUpdatesCommand';
+export * from './cleanupCommand';
+export * from './createProgram';
+export * from './detectConflictsCommand';
+export * from './filesCommand';
+export * from './generateCommand';
+export * from './initCommand';
+export * from './installCommand';
+export { cliLogMessages } from './log-messages';
+export { main, registerAllCommands, setupServices } from './main';
+export * from './types';
+export * from './updateCommand';

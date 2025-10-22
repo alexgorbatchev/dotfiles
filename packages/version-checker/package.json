@@ -1,0 +1,24 @@
+{
+  "name": "@dotfiles/version-checker",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@types/semver": "^7.5.8",
+    "@rageltd/bun-test-utils": "catalog:testing",
+    "typescript": "catalog:typescript",
+    "@typescript/native-preview": "catalog:typescript"
+  }
+}

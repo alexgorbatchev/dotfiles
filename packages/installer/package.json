@@ -1,0 +1,22 @@
+{
+  "name": "@dotfiles/installer",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./clients/cargo": "./src/clients/cargo/index.ts",
+    "./clients/github": "./src/clients/github/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/archive-extractor": "workspace:*",
+    "@dotfiles/config": "workspace:*",
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/shell-init-generator": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
+    "zx": "^8.8.5"
+  }
+}

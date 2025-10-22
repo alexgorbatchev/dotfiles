@@ -20,16 +20,12 @@
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "types": ["bun-types", "node"],
 
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": true,
-    "noImplicitAny": true,
-
-    "paths": {
-      "@*": ["./src/*"]
-    }
+    "noImplicitAny": true
   },
+  "include": ["packages/**/*", "cli.ts", "scripts/**/*"],
   "exclude": ["**/tmp/**"]
 }

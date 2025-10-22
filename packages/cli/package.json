@@ -1,0 +1,27 @@
+{
+  "name": "@dotfiles/cli",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./log-messages": "./src/log-messages.ts"
+  },
+  "dependencies": {
+    "@dotfiles/config": "workspace:*",
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/generator-orchestrator": "workspace:*",
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
+    "@dotfiles/registry-database": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
+    "@dotfiles/version-checker": "workspace:*",
+    "@commander-js/extra-typings": "^14.0.0",
+    "commander": "^14.0.1"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*"
+  }
+}

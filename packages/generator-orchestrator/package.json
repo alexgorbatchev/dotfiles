@@ -1,0 +1,17 @@
+{
+  "name": "@dotfiles/generator-orchestrator",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/config": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/shell-init-generator": "workspace:*",
+    "@dotfiles/shim-generator": "workspace:*",
+    "@dotfiles/symlink-generator": "workspace:*"
+  }
+}

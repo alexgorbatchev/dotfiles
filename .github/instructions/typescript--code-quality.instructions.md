@@ -220,12 +220,12 @@ const finalBinaryPath = determinePath();
 ```typescript
 // ✅ Good - Import from module path
 import { UserService, createUser } from '@modules/user';
-import { Logger } from '@modules/logger';
+import { Logger } from '@dotfiles/logger';
 
 // ❌ Bad - Deep imports from subpaths
 import { UserService } from '@modules/user/UserService';
 import { createUser } from '@modules/user/utils/createUser';
-import { Logger } from '@modules/logger/Logger';
+import { Logger } from '@dotfiles/logger/Logger';
 import { validateEmail } from '@modules/user/validation/emailValidator';
 ```
 
