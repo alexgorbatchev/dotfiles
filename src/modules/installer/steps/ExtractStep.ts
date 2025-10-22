@@ -1,7 +1,7 @@
 import type { IArchiveExtractor } from '@modules/extractor/IArchiveExtractor';
 import type { ExtractResult } from '@types';
-import { InstallationStep, type StepContext } from './base';
 import { installerLogMessages } from '../log-messages';
+import { InstallationStep, type StepContext } from './base';
 
 export interface ExtractStepParams {
   archiveExtractor: IArchiveExtractor;

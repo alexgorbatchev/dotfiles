@@ -2,9 +2,9 @@ import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
 import type { BaseInstallContext, ToolConfig } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { installerLogMessages } from './log-messages';
 import type { InstallationStep, StepContext } from './steps/base';
 import { createToolFileSystem, getBinaryPaths } from './utils';
-import { installerLogMessages } from './log-messages';
 
 /**
  * Orchestrates the execution of installation steps in a pipeline

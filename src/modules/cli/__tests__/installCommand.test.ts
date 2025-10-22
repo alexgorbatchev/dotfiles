@@ -1,9 +1,9 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { GlobalProgram, Services } from '@cli';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
-import { cliLogMessages } from '@modules/cli/log-messages';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@testing-helpers';
 import type { ToolConfig } from '@types';

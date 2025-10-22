@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { TestLogger } from '@testing-helpers';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@types';
 import { always } from '@types';
-import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { toolConfigBuilderLogMessages } from '../log-messages';
+import { ToolConfigBuilder } from '../toolConfigBuilder';
 
 describe('ToolConfigBuilder', () => {
   let logger: TestLogger;

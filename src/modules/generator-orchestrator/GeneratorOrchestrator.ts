@@ -4,9 +4,9 @@ import type { GenerateShellInitOptions, IShellInitGenerator } from '@modules/gen
 import type { GenerateShimsOptions, IShimGenerator } from '@modules/generator-shim';
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@modules/generator-symlink';
 import type { TsLogger } from '@modules/logger';
-import { generatorOrchestratorLogMessages } from './log-messages';
 import type { SystemInfo, ToolConfig } from '@types';
 import type { GenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
+import { generatorOrchestratorLogMessages } from './log-messages';
 
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly logger: TsLogger;

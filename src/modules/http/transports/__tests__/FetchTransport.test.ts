@@ -12,7 +12,7 @@ describe('FetchTransport', () => {
 
   beforeEach(() => {
     mockFetch = mock();
-    transport = new FetchTransport({ fetchImplementation: mockFetch });
+    transport = new FetchTransport({ fetchImplementation: mockFetch as unknown as typeof fetch });
   });
 
   afterEach(() => {
@@ -30,7 +30,7 @@ describe('FetchTransport', () => {
         )
       );
 
-      const customTransport = new FetchTransport({ fetchImplementation: customFetch });
+      const customTransport = new FetchTransport({ fetchImplementation: customFetch as unknown as typeof fetch });
       await customTransport.execute({
         method: 'GET',
         url: 'https://example.com',

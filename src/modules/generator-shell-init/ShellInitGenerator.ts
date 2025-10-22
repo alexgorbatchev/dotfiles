@@ -5,6 +5,7 @@ import type { TsLogger } from '@modules/logger';
 import type { ShellType, ToolConfig } from '@types';
 import { resolvePlatformConfig } from '@utils';
 import type { GenerateShellInitOptions, IShellInitGenerator, ShellInitGenerationResult } from './IShellInitGenerator';
+import { shellInitGeneratorLogMessages } from './log-messages';
 import { type ProfileUpdateConfig, ProfileUpdater } from './profile-updater';
 import {
   type AdditionalShellFile,
@@ -12,7 +13,6 @@ import {
   type IShellGenerator,
   type ShellInitContent,
 } from './shell-generators';
-import { shellInitGeneratorLogMessages } from './log-messages';
 
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;

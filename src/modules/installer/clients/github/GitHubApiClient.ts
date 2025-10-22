@@ -12,11 +12,11 @@ import {
   ServerError,
 } from '@modules/downloader';
 import type { TsLogger } from '@modules/logger';
-import { githubApiClientLogMessages } from './log-messages';
 import type { GitHubRateLimit, GitHubRelease } from '@types';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiClient } from './IGitHubApiClient';
+import { githubApiClientLogMessages } from './log-messages';
 
 /**
  * Implements the IGitHubApiClient interface for interacting with the GitHub API.

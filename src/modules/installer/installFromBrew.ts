@@ -2,8 +2,8 @@ import path from 'node:path';
 import type { TsLogger } from '@modules/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@types';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { getBinaryPaths, withInstallErrorHandling } from './utils';
 import { installerLogMessages } from './log-messages';
+import { getBinaryPaths, withInstallErrorHandling } from './utils';
 
 /**
  * Install a tool using Homebrew

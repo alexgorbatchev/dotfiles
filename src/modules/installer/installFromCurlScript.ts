@@ -5,6 +5,7 @@ import type { TsLogger } from '@modules/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@types';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { installerLogMessages } from './log-messages';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -13,7 +14,6 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from './utils';
-import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool using a curl script

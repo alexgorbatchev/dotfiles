@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { CompletionGenerationContext, CompletionGenerator } from '@modules/generator-shell-init';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@types';
-import { InstallationStep, type StepContext } from './base';
 import { installerLogMessages } from '../log-messages';
+import { InstallationStep, type StepContext } from './base';
 
 export interface CompletionGenerationStepParams {
   completionGenerator: CompletionGenerator;

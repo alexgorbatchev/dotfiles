@@ -21,13 +21,13 @@ import { minimatch } from 'minimatch';
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { installerLogMessages } from './log-messages';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
   executeAfterExtractHook as executeAfterExtractHookUtil,
   getBinaryPaths,
 } from './utils';
-import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool from GitHub releases

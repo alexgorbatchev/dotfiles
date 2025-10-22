@@ -114,6 +114,33 @@ export class GitHubHttpClient {
     return response.body;
   }
 
+  async downloadBinary(url: string): Promise<Uint8Array> {
+    const logger = this.logger.getSubLogger({ name: 'downloadBinary' });
+
+    logger.debug(gitHubHttpClientLogMessages.downloadingBinary(url));
+
+    const response = await this.client.request({
+      method: 'GET',
+      url,
+      responseFormat: 'buffer',
+      authToken: this.authToken,
+      headers: this.buildHeaders(),
+      errorMapping: {
+        defaultCode: 'GITHUB_ASSET_NOT_FOUND',
+        statusCodeMap: {
+          404: 'GITHUB_ASSET_NOT_FOUND',
+          403: 'GITHUB_RATE_LIMIT_EXCEEDED',
+          429: 'GITHUB_RATE_LIMIT_EXCEEDED',
+        },
+        networkErrorCode: 'DOWNLOAD_NETWORK_FAILURE',
+        timeoutErrorCode: 'DOWNLOAD_TIMEOUT',
+      },
+    });
+
+    logger.debug(gitHubHttpClientLogMessages.binaryDownloaded(url, response.body.length));
+    return response.body;
+  }
+
   private buildHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',

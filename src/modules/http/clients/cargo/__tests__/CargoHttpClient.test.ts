@@ -1,5 +1,5 @@
-import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
-import { HttpCache, BaseHttpClient, HttpPipelineError, FetchTransport } from '@modules/http';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { BaseHttpClient, FetchTransport, HttpCache, HttpPipelineError } from '@modules/http';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { FetchMockHelper, TestLogger } from '@testing-helpers';
 import { CargoHttpClient } from '../CargoHttpClient';
@@ -39,10 +39,13 @@ describe('CargoHttpClient', () => {
     });
   });
 
+  afterEach(() => {
+    fetchMock.restore();
+  });
+
   afterAll(() => {
     clearMockRegistry();
     mockModules.restoreAll();
-    fetchMock.restore();
   });
 
   describe('getCrateMetadata', () => {

@@ -4,9 +4,9 @@ import { basename, extname, join } from 'node:path';
 import { promisify } from 'node:util';
 import type { IFileSystem } from '@modules/file-system';
 import type { TsLogger } from '@modules/logger';
-import { extractorLogMessages } from './log-messages';
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@types';
 import type { IArchiveExtractor } from './IArchiveExtractor';
+import { extractorLogMessages } from './log-messages';
 
 interface ExecError extends Error {
   code?: number;

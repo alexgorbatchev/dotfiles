@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IFileSystem } from '@modules/file-system';
-import type { TsLogger } from '@modules/logger';
 import { installerLogMessages } from '@modules/installer/log-messages';
+import type { TsLogger } from '@modules/logger';
 
 /**
  * Create or update a symlink for a binary

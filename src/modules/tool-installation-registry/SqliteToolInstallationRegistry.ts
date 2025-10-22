@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@modules/logger';
-import { toolInstallationRegistryLogMessages } from './log-messages';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
+import { toolInstallationRegistryLogMessages } from './log-messages';
 import type { ToolInstallation, ToolInstallationInput } from './types';
 
 interface ToolInstallationRow {

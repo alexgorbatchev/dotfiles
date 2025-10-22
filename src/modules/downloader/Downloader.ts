@@ -4,8 +4,8 @@ import type { TsLogger } from '@modules/logger';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions, IDownloader } from './IDownloader';
-import { NodeFetchStrategy } from './NodeFetchStrategy';
 import { downloaderLogMessages } from './log-messages';
+import { NodeFetchStrategy } from './NodeFetchStrategy';
 
 export class Downloader implements IDownloader {
   private strategies: DownloadStrategy[] = [];

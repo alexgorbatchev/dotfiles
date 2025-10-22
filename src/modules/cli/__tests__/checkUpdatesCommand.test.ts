@@ -2,12 +2,12 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 import path from 'node:path';
 import type { GlobalProgram, Services } from '@cli';
 import { createProgram } from '@cli';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { YamlConfig } from '@modules/config';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigs as actualLoadToolConfigs,
 } from '@modules/config-loader';
-import { cliLogMessages } from '@modules/cli/log-messages';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
 import type { IVersionChecker } from '@modules/version-checker';
 import { VersionComparisonStatus } from '@modules/version-checker';

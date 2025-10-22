@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { TestLogger } from '@testing-helpers';
 import type { ManualInstallParams } from '@types';
 import { Architecture, Platform } from '@types';
-import { ToolConfigBuilder } from '../toolConfigBuilder';
 import { toolConfigBuilderLogMessages } from '../log-messages';
+import { ToolConfigBuilder } from '../toolConfigBuilder';
 
 describe('ToolConfigBuilder - Platform Support', () => {
   let builder: ToolConfigBuilder;

@@ -13,6 +13,7 @@ import type {
 import { setupBinariesFromArchive } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
+import { installerLogMessages } from './log-messages';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -21,7 +22,6 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from './utils';
-import { installerLogMessages } from './log-messages';
 
 /**
  * Install a tool from a tarball using curl

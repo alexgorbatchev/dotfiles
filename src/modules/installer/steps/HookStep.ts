@@ -1,7 +1,7 @@
 import type { AsyncInstallHook } from '@types';
 import type { HookExecutor } from '../HookExecutor';
-import { InstallationStep, type StepContext } from './base';
 import { installerLogMessages } from '../log-messages';
+import { InstallationStep, type StepContext } from './base';
 
 export interface HookStepParams {
   hookType: 'afterDownload' | 'afterExtract' | 'beforeInstall' | 'afterInstall';

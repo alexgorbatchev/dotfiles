@@ -1,10 +1,10 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { GlobalProgram } from '@cli';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { YamlConfig } from '@modules/config';
 import { loadSingleToolConfig } from '@modules/config-loader';
 import type { IInstaller, InstallResult } from '@modules/installer';
 import type { IGitHubApiClient } from '@modules/installer/clients/github';
-import { cliLogMessages } from '@modules/cli/log-messages';
 import { type IVersionChecker, VersionComparisonStatus } from '@modules/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@testing-helpers';

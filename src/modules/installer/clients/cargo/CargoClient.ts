@@ -2,11 +2,11 @@ import type { ICache } from '@modules/cache';
 import type { YamlConfig } from '@modules/config';
 import { type IDownloader, NetworkError, NotFoundError } from '@modules/downloader';
 import type { TsLogger } from '@modules/logger';
-import { cargoClientLogMessages } from './log-messages';
 import { parse } from 'smol-toml';
 import { z } from 'zod';
 import { CargoClientError } from './CargoClientError';
 import type { ICargoClient } from './ICargoClient';
+import { cargoClientLogMessages } from './log-messages';
 
 /**
  * Cargo crate metadata from crates.io API

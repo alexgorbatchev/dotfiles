@@ -9,8 +9,8 @@ import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractRe
 import { setupBinariesFromArchive } from './BinarySetupService';
 import type { HookExecutor } from './HookExecutor';
 import type { InstallOptions, InstallResult } from './IInstaller';
-import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from './utils';
 import { installerLogMessages } from './log-messages';
+import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from './utils';
 
 /**
  * Install a tool using Cargo pre-compiled binaries

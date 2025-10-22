@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { IDownloader } from '@modules/downloader/IDownloader';
+import { installerLogMessages } from '../log-messages';
 import { downloadWithProgress } from '../utils';
 import { InstallationStep, type StepContext } from './base';
-import { installerLogMessages } from '../log-messages';
 
 export interface DownloadStepParams {
   url: string;

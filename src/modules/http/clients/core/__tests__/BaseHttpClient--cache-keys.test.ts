@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { HttpCache, FetchTransport } from '@modules/http';
+import { FetchTransport, HttpCache } from '@modules/http';
 import { FetchMockHelper, TestLogger } from '@testing-helpers';
 import { z } from 'zod';
 import { BaseHttpClient } from '../BaseHttpClient';

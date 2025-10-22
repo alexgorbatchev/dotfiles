@@ -1,2 +1,2 @@
-export * from './HttpCache';
 export * from './CacheNamespaces';
+export * from './HttpCache';

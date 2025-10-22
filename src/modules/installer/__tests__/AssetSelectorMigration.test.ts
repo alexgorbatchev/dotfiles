@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { AssetSelectionContext, AssetSelector } from '@types';
+import { installerLogMessages } from '../log-messages';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -12,7 +13,6 @@ import {
   MOCK_TOOL_VERSION,
   setupFileSystemMocks,
 } from './installer-test-helpers';
-import { installerLogMessages } from '../log-messages';
 
 describe('Installer - Asset Selector Context API', () => {
   let setup: InstallerTestSetup;

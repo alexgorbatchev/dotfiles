@@ -1,9 +1,9 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
 import type { GlobalProgram } from '@cli';
+import { cliLogMessages } from '@modules/cli/log-messages';
 import type { YamlConfig } from '@modules/config';
 import { loadToolConfigs as actualLoadToolConfigs } from '@modules/config-loader';
-import { cliLogMessages } from '@modules/cli/log-messages';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { MemFileSystemReturn, TestLogger } from '@testing-helpers';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@types';
