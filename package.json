@@ -7,8 +7,8 @@
     "mydotfiles": "./dist/cli.js"
   },
   "scripts": {
-    "test": "bun run src/testing-helpers/bun-test-runner.ts",
-    "lint": "tsgo -p tsconfig.json && biome check ./src",
+    "lint": "biome lint",
+    "typecheck": "tsgo -p tsconfig.json",
     "fmt": "biome format --write .",
     "fix": "biome check --fix .",
     "test:task": "bun test",

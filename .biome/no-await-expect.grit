@@ -1,0 +1,10 @@
+engine biome(1.0)
+language js(typescript)
+
+`await $expr` as $await_stmt where {
+    $expr <: contains `expect($_)`,
+    register_diagnostic(
+        span = $await_stmt,
+        message = "Using `await` before `expect` doesn't do anything, remove it."
+    )
+}
