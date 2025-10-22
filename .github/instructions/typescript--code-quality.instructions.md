@@ -6,15 +6,24 @@ applyTo: '**/*'
 
 ## General Requirements
 
-- `any` type is not allowed.
-- Line length is 120 characters.
-- Do not add file header comments.
-- Avoid type casting at all costs and absolutely never use `as any`.
-- Avoid using `typeof`, declare types explicitly.
+- `any` type is PROHIBITED
+- Line length is 120 characters
+- Do not add file header comments
+- Type casting is PROHIBITED and absolutely never use `as any`
+- Use typeguard functions instead of `as Type`
 
 ## File Name Rules
-Unless otherwise specified, all filenames must be in a PascalCase and match the
-name of the main exported element.
+Filenames must match the exact name and casing of the main exported element.
+- If exporting a function `createUser`, the file should be `createUser.ts`
+- If exporting a class `UserProfile`, the file should be `UserProfile.ts`
+- If exporting a type `Config`, the file should be `Config.ts`
+
+**Edge Cases:**
+- **Constants files**: Use `constants.ts` for module-specific constants or follow project structure guidelines
+- **Utility collections**: Use descriptive names like `stringUtils.ts`, `dateUtils.ts` when exporting multiple related utilities
+- **Type collections**: Use `types.ts` for module-specific type collections (project-wide types go in `src/types/`)
+- **Index files**: Always named `index.ts` and re-export module's public API
+- **Test files**: Use `{sourceFileName}.test.ts` pattern in `__tests__` directories
 
 ## Type Safety Rules
 
@@ -67,10 +76,11 @@ Only use `as` for:
 
 ## Import Statements
 
-- Do not rename import bindings.
-- Never inline `require` and `import` statements, always place them at the top of the file.
-- When you are editing files and there are `as Foo` imports, replace them with the actual binding name.
-- When using `@foo/bar` imports use the shortest path possible (e.g., `@foo/bar` instead of `@foo/bar/baz`).
+- All import statements must be placed at the top of the file, before any other code
+- Dynamic imports using `await import()` are PROHIBITED
+- Do not rename import bindings
+- When editing files with `as Foo` imports, replace them with the actual binding name
+- When using `@foo/bar` imports use the shortest path possible (e.g., `@foo/bar` instead of `@foo/bar/baz`)
 
 ## Variable Types
 
@@ -78,6 +88,55 @@ Only use `as` for:
 - **PascalCase**: Classes, interfaces, types, enums
 - **SCREAMING_SNAKE_CASE**: Constants
 - **kebab-case**: CSS classes
+
+## Variable Type Annotations
+
+- **Explicit Types Required**: Every declared variable that is not a result of a function call must have an explicit type annotation
+- **Function Call Results**: Variables assigned from function calls can rely on type inference
+- **Primitive Literals Exception**: String, number, and boolean literals can rely on type inference
+
+```typescript
+// ✅ Good - Strings, booleans and numbers can use inference
+const userName = 'john';
+const userAge = 25;
+const isActive = true;
+
+// ✅ Good - Explicit types for complex declarations
+const items: string[] = [];
+const config: AppConfig = {};
+const result: PatternResult = {
+  systemPattern,
+  cpuPattern,
+  variantPattern,
+};
+
+// ✅ Good - Function calls can use inference
+const result = calculateTotal(items);
+const user = await fetchUser(id);
+const data = JSON.parse(response);
+
+// ❌ Bad - Missing type annotations for complex declarations
+const items = [];
+const config = {};
+const result = {
+  systemPattern,
+  cpuPattern,
+  variantPattern,
+};
+```
+
+**Specific Requirements**:
+- **Object literals**: Must have explicit type annotations (e.g., `const obj: MyType = { ... }`)
+- **Array literals**: Must have explicit type annotations (e.g., `const arr: string[] = []`)
+- **Complex expressions**: Any non-primitive assignment must include type annotation
+
+**Rationale**: Explicit type annotations for non-function-call variables improve:
+- Code readability and self-documentation
+- Type safety and compile-time error detection
+- IDE support and autocomplete accuracy
+- Easier refactoring and maintenance
+
+**Enforcement**: When working with existing code that violates this standard, ALL violations in the file must be corrected during any modification session.
 
 ## Boolean Variables
 
@@ -150,7 +209,71 @@ const finalBinaryPathTar = determinePath();
 const finalBinaryPath = determinePath();
 ```
 
+## Module Import Rules
+
+- **Index File Requirement**: All modules and submodules must re-export their public API through `index.ts` files
+- **Submodule Index Files**: When a submodule exports functionality, it must have its own `index.ts` file
+- **Module Path Imports Only**: All imports must only import from the module path, never from subpaths
+- **No Deep Imports**: Importing directly from submodules or specific files within a module is prohibited
+
+```typescript
+// ✅ Good - Import from module path
+import { UserService, createUser } from '@modules/user';
+import { Logger } from '@modules/logger';
+
+// ❌ Bad - Deep imports from subpaths
+import { UserService } from '@modules/user/UserService';
+import { createUser } from '@modules/user/utils/createUser';
+import { Logger } from '@modules/logger/Logger';
+import { validateEmail } from '@modules/user/validation/emailValidator';
+```
+
+**Module Structure Example**:
+```
+src/modules/user/
+├── index.ts              // Re-exports main user functionality
+├── UserService.ts
+├── createUser.ts
+├── validation/
+│   ├── index.ts          // Re-exports validation utilities
+│   ├── emailValidator.ts
+│   └── passwordValidator.ts
+└── email/
+    ├── index.ts          // Re-exports email functionality
+    ├── EmailService.ts
+    └── templates.ts
+```
+
+## Index File Export Rules
+
+- **Index.ts Files**: `index.ts` files can use `export *` statements to re-export module contents
+- **Wildcard Exports Allowed**: `export * from './module'` is permitted in `index.ts` files only
+- **Named Exports Preferred**: When possible, prefer explicit named exports for better IDE support
+- **Submodule Exports**: Parent module index files should re-export submodule functionality
+
+```typescript
+// ✅ Good - main module index.ts
+export * from './UserService';
+export * from './createUser';
+export * from './validation';  // Re-exports from submodule
+export * from './email';       // Re-exports from submodule
+
+// ✅ Good - submodule index.ts (validation/index.ts)
+export * from './emailValidator';
+export * from './passwordValidator';
+
+// ❌ Bad 
+export { UserService } from './UserService';
+export { createUser, updateUser } from './userUtils';
+export { ValidationUtils } from './validation';
+export type { User, UserConfig } from './types';
+```
+
 ## Project Analysis and Tooling
 
 - Use TypeScript tool calling to access LSP-based project analysis for the current codebase
 - Leverage TypeScript tooling to understand project structure, types, and dependencies before making changes
+
+## ENFORCEMENT
+
+When working with existing code that violates this standard, ALL violations in the file must be corrected during any modification session.

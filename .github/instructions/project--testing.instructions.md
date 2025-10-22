@@ -4,10 +4,8 @@ applyTo: '**/*'
 ---
 # Project Testing Requirements
 
-- `bun run test {file}` - Run a single test file.
-- `bun run test` - Run all tests.
-- `bun lint` - Run linting.
-- Do not run `tsc` directly. 
+- `bun test [file]` - Run a single test file
+- `bun lint` - Run linting 
 
 ## Available Testing Helpers
 
@@ -27,8 +25,13 @@ Before creating any bespoke mocks, check the `src/testing-helpers` directory to 
   - `fetch` must be mocked, typically using the `FetchMockHelper` utility (imported from `@testing-helpers`).
   - All modules should be passed in as dependencies.
   - When mocking real public API calls, the `curl` command must be use to capture the real API response and must be captured in fixtures. An `express` server must be used to serve the fixtures. 
-  - module mocking is 
-- **Testing Framework:** The project uses `bun:test` framework and `bun run test {file}` command to run tests.
+
+## Test Coverage Requirements
+
+- **Coverage Analysis**: Use test coverage tools to identify missing tests and uncovered code paths
+- **Coverage Reporting**: Test coverage must be measured and reported for every module
+- **Branch Coverage**: Focus on branch coverage, not just line coverage, to ensure all code paths are tested
+- **Coverage Enforcement**: Test coverage must be verified and maintained within the 85-95% range
 
 ## How to Mock External Modules
 
