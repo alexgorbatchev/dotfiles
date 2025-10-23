@@ -19,7 +19,7 @@ When any violations are present, you must flag them to the user and offer to res
 
 You must use this command to read all of the instructions:
 ```
-find .github/instructions -type f -exec sh -c 'echo ""; echo "=== $(basename "$1") ==="; echo ""; cat "$1"; echo ""' _ {} \;
+rg --files .github/instructions | while read -r file; do echo ""; echo "=== $(basename "$file") ==="; echo ""; cat "$file"; echo ""; done
 ```
 
 Do not regurgitate rules to the user when asked for a review, instead present your analysis together with uniquely numbered solutions. User will provide you with instructions or solution numbers.

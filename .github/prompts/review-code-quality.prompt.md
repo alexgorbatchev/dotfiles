@@ -165,12 +165,11 @@ Review all TypeScript files in a specified directory or module to identify viola
 
 You must use this command to read all files in directory:
 ```
-find {dir} -type f \( -name "*.ts" -o -name "*.tsx" \) -not -name "log-messages.ts" -exec sh -c '\
+rg --files {dir} -g '*.ts' -g '*.tsx' -g '!log-messages.ts' | while read -r file; do \
   echo ""; \
-  echo "=== $(basename "$1") ==="; \
+  echo "=== $(basename "$file") ==="; \
   echo ""; \
-  cat "$1"; \
-  echo "" \
-' \
-_ {} \;
+  cat "$file"; \
+  echo ""; \
+done
 ```

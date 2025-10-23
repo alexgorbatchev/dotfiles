@@ -22,12 +22,11 @@ Place the system design document into `<LOCATION>/AGENTS.md` file. If the file a
 
 You must use this command to read all files in directory:
 ```
-find {dir} -type f \( -name "*.ts" -o -name "*.tsx" \) -not -name "log-messages.ts" -not -path "*/__tests__/*" -exec sh -c '\
+rg --files {dir} -g '*.ts' -g '*.tsx' -g '!log-messages.ts' -g '!**/__tests__/*' | while read -r file; do \
   echo ""; \
-  echo "=== $(basename "$1") ==="; \
+  echo "=== $(basename "$file") ==="; \
   echo ""; \
-  cat "$1"; \
-  echo "" \
-' \
-_ {} \;
+  cat "$file"; \
+  echo ""; \
+done
 ```

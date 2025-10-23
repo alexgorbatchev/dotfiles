@@ -14,14 +14,13 @@ if asked to move a module:
 - read all module files using this command:
 
   ```
-  find {dir} -type f -exec sh -c '\
+  rg --files {dir} | while read -r file; do \
     echo ""; \
-    echo "=== $(basename "$1") ==="; \
+    echo "=== $(basename "$file") ==="; \
     echo ""; \
-    cat "$1"; \
-    echo "" \
-  ' \
-  _ {} \;
+    cat "$file"; \
+    echo ""; \
+  done
   ```
 
 - if new package depends on a module that is not in packages/, stop and notify user

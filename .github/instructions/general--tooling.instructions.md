@@ -23,14 +23,13 @@ applyTo: '**/*'
 - Use all available tools in the environment to accomplish tasks efficiently
 - Use similar batch command to read multiple files at the same time:
   ```
-  find {dir} -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sh -c '\
+  rg --files {dir} -g '*.ts' -g '*.tsx' | while read -r file; do \
     echo ""; \
-    echo "=== $(basename "$1") ==="; \
+    echo "=== $(basename "$file") ==="; \
     echo ""; \
-    cat "$1"; \
-    echo "" \
-  ' \
-  _ {} \;
+    cat "$file"; \
+    echo ""; \
+  done
   ```
 
 ## Documentation and References
