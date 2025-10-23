@@ -9,7 +9,7 @@ applyTo: '**/*'
 
 ## Available Testing Helpers
 
-Before creating any bespoke mocks, check the `src/testing-helpers` directory to see if there is a utility that can be used. If not, create a new utility in that directory.
+Before creating any bespoke mocks, check the `@dotfiles/testing-helpers` package to see if there is a utility that can be used. If not, create a new utility in that package.
 
 - **FetchMockHelper** - Helper for spying on and mocking `globalThis.fetch` in tests with configurable responses and error simulation
 - **TestLogger** - Extended logger for tests that captures logs for verification with `expect()` methods and filtering capabilities
@@ -22,14 +22,14 @@ Before creating any bespoke mocks, check the `src/testing-helpers` directory to 
 - **executeCliCommand** - Executes CLI commands in test environment with custom environment variables and working directory
 - **toMatchLooseInlineSnapshot** - Custom matcher for flexible snapshot testing with regex patterns and loose matching
 - **Mocking:**
-  - `fetch` must be mocked, typically using the `FetchMockHelper` utility (imported from `@testing-helpers`).
-  - All modules should be passed in as dependencies.
+  - `fetch` must be mocked, typically using the `FetchMockHelper` utility (imported from `@dotfiles/testing-helpers`).
+  - All packages should be passed in as dependencies.
   - When mocking real public API calls, the `curl` command must be use to capture the real API response and must be captured in fixtures. An `express` server must be used to serve the fixtures. 
 
 ## Test Coverage Requirements
 
 - **Coverage Analysis**: Use test coverage tools to identify missing tests and uncovered code paths
-- **Coverage Reporting**: Test coverage must be measured and reported for every module
+- **Coverage Reporting**: Test coverage must be measured and reported for every package
 - **Branch Coverage**: Focus on branch coverage, not just line coverage, to ensure all code paths are tested
 - **Coverage Enforcement**: Test coverage must be verified and maintained within the 85-95% range
 

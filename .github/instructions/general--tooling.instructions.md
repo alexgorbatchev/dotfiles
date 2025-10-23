@@ -21,6 +21,17 @@ applyTo: '**/*'
 
 - `rg` is available to be used to search for files and text
 - Use all available tools in the environment to accomplish tasks efficiently
+- Use similar batch command to read multiple files at the same time:
+  ```
+  find {dir} -type f \( -name "*.ts" -o -name "*.tsx" \) -exec sh -c '\
+    echo ""; \
+    echo "=== $(basename "$1") ==="; \
+    echo ""; \
+    cat "$1"; \
+    echo "" \
+  ' \
+  _ {} \;
+  ```
 
 ## Documentation and References
 

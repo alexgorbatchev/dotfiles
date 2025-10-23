@@ -19,10 +19,10 @@ Filenames must match the exact name and casing of the main exported element.
 - If exporting a type `Config`, the file should be `Config.ts`
 
 **Edge Cases:**
-- **Constants files**: Use `constants.ts` for module-specific constants or follow project structure guidelines
+- **Constants files**: Use `constants.ts` for package-specific constants
 - **Utility collections**: Use descriptive names like `stringUtils.ts`, `dateUtils.ts` when exporting multiple related utilities
-- **Type collections**: Use `types.ts` for module-specific type collections (project-wide types go in `src/types/`)
-- **Index files**: Always named `index.ts` and re-export module's public API
+- **Type collections**: Use `types.ts` for package-specific type collections
+- **Index files**: Always named `index.ts` and re-export package's public API
 - **Test files**: Use `{sourceFileName}.test.ts` pattern in `__tests__` directories
 
 ## Type Safety Rules
@@ -229,37 +229,41 @@ import { Logger } from '@dotfiles/logger/Logger';
 import { validateEmail } from '@modules/user/validation/emailValidator';
 ```
 
-**Module Structure Example**:
+**Package Structure Example**:
 ```
-src/modules/user/
-├── index.ts              // Re-exports main user functionality
-├── UserService.ts
-├── createUser.ts
-├── validation/
-│   ├── index.ts          // Re-exports validation utilities
-│   ├── emailValidator.ts
-│   └── passwordValidator.ts
-└── email/
-    ├── index.ts          // Re-exports email functionality
-    ├── EmailService.ts
-    └── templates.ts
+packages/user/
+├── src/
+│   ├── index.ts              // Re-exports main user functionality
+│   ├── UserService.ts
+│   ├── createUser.ts
+│   ├── validation/
+│   │   ├── index.ts          // Re-exports validation utilities
+│   │   ├── emailValidator.ts
+│   │   └── passwordValidator.ts
+│   └── email/
+│       ├── index.ts          // Re-exports email functionality
+│       ├── EmailService.ts
+│       └── templates.ts
+├── __tests__/
+├── package.json
+└── tsconfig.json
 ```
 
 ## Index File Export Rules
 
-- **Index.ts Files**: `index.ts` files can use `export *` statements to re-export module contents
+- **Index.ts Files**: `index.ts` files can use `export *` statements to re-export package contents
 - **Wildcard Exports Allowed**: `export * from './module'` is permitted in `index.ts` files only
 - **Named Exports Preferred**: When possible, prefer explicit named exports for better IDE support
-- **Submodule Exports**: Parent module index files should re-export submodule functionality
+- **Submodule Exports**: Parent package index files should re-export submodule functionality
 
 ```typescript
-// ✅ Good - main module index.ts
+// ✅ Good - main package index.ts
 export * from './UserService';
 export * from './createUser';
 export * from './validation';  // Re-exports from submodule
 export * from './email';       // Re-exports from submodule
 
-// ✅ Good - submodule index.ts (validation/index.ts)
+// ✅ Good - submodule index.ts (src/validation/index.ts)
 export * from './emailValidator';
 export * from './passwordValidator';
 
