@@ -60,6 +60,13 @@ c.install('manual', {
 })
 ```
 
+### [No-Install](./no-install.md)
+Configure tools that are already on the system without managing their installation.
+
+```typescript
+c.install('no-install')
+```
+
 ## Choosing the Right Method
 
 | Method | Best For | Pros | Cons |
@@ -70,6 +77,7 @@ c.install('manual', {
 | **Curl Script** | Custom installers | Flexible, handles complex setups | Less predictable, security concerns |
 | **Curl Tar** | Direct downloads | Simple, no dependencies | Manual URL management |
 | **Manual** | System tools, custom builds | Works with any tool | No automatic updates |
+| **No-Install** | System tools, unmanaged tools | Simple configuration | No installation or updates |
 
 ## Common Parameters
 

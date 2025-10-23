@@ -56,13 +56,13 @@ The system uses TypeScript branded types to enforce execution timing at compile 
 
 ```typescript
 // Scripts that run only once after tool installation/updates
-const onceScript = once`
+const onceScript = once/* zsh */`
   # Generate completions (expensive operation)
   tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
 `;
 
 // Scripts that run every shell startup (lightweight operations)
-const alwaysScript = always`
+const alwaysScript = always/* zsh */`
   # Fast runtime setup
   export TOOL_CONFIG_DIR="$HOME/.tool"
   alias t="tool"
@@ -97,7 +97,7 @@ interface FormattedScriptOutput {
 
 **Zsh/Bash:**
 ```bash
-# Input: always`export MY_VAR="value"`
+# Input: always/* zsh */`export MY_VAR="value"`
 # Output:
 __dotfiles_tool_always() {
   export MY_VAR="value"
@@ -108,7 +108,7 @@ unset -f __dotfiles_tool_always
 
 **PowerShell:**
 ```powershell
-# Input: always`$env:MY_VAR = "value"`
+# Input: always/* powershell */`$env:MY_VAR = "value"`
 # Output:
 function __dotfiles_tool_always {
   $env:MY_VAR = "value"
@@ -174,11 +174,11 @@ Remove-Item "/full/path/to/.once/tool-0.ps1"
 ```typescript
 // In a .tool.ts file
 c.zsh(
-  once`
+  once/* zsh */`
     # Expensive operation - runs once
     tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
   `,
-  always`
+  always/* zsh */`
     # Fast setup - runs every shell startup
     export TOOL_CONFIG_DIR="$HOME/.tool"
     alias t="tool"

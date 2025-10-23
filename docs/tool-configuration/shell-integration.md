@@ -114,7 +114,7 @@ c.zsh({
 Use shell scripts for complex functions and logic:
 
 ```typescript
-import { always, once } from '@types';
+import { always, once } from '@dotfiles/schemas';
 
 c.zsh({
   shellInit: [

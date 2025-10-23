@@ -62,6 +62,7 @@ See the [Installation Methods](./installation/README.md) section for detailed in
 - [`curl-script`](./installation/curl-script.md) - Install via download scripts
 - [`curl-tar`](./installation/curl-tar.md) - Download and extract tarballs
 - [`manual`](./installation/manual.md) - Configure existing tools
+- [`no-install`](./installation/no-install.md) - For tools that are already on the system or don't need installation
 
 ## Method Chaining
 

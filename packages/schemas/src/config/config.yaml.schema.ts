@@ -44,21 +44,21 @@ function createHostSchema(options: {
 
 const pathsConfigSchema = z
   .object({
+    /** Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`. You SHOULD set this value. */
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
+    dotfilesDir: z.string().default('${HOME}/.dotfiles'),
+
+    /** Sets the target directory where executable shims for tools will be placed. Defaults to `/usr/local/bin`. */
+    targetDir: z.string().default('/usr/local/bin'),
     /** The user's home directory. Defaults to the value of the HOME environment variable. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
     homeDir: z.string().default('${HOME}'),
-    /** Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    dotfilesDir: z.string().default('${HOME}/.dotfiles'),
     /** Defines the directory where all generated files will be stored. Defaults to `${paths.dotfilesDir}/.generated`. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
     generatedDir: z.string().default('${paths.dotfilesDir}/.generated'),
-    /** Sets the target directory where executable shims for tools will be placed. Defaults to `${paths.generatedDir}/usr-local-bin`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    targetDir: z.string().default('${paths.generatedDir}/usr-local-bin'),
     /** Specifies the directory containing `*.tool.ts` tool configuration files. Defaults to `${paths.dotfilesDir}/generator/configs/tools`. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    toolConfigsDir: z.string().default('${paths.dotfilesDir}/generator/configs/tools'),
+    toolConfigsDir: z.string().default('${paths.dotfilesDir}/tools'),
     /** Specifies the directory where generated shell scripts are stored. Defaults to `${paths.generatedDir}/shell-scripts`. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
     shellScriptsDir: z.string().default('${paths.generatedDir}/shell-scripts'),
@@ -180,9 +180,10 @@ const platformOverrideSchema = z
 
 export const yamlConfigSchema = baseYamlConfigSchemaRequired
   .extend({
-    /** Path to the user's config file. Defaults to `~/.dotfiles/config.yaml` */
+    /** Path to the user's config file. Defaults to `~/.dotfiles/config.yaml`. This is INTERNAL value and should not be part of the `config.yaml`, it is set dynamically. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
     userConfigPath: z.string().default('${paths.dotfilesDir}/config.yaml'),
+
     platform: z.array(platformOverrideSchema).optional(),
   })
   .strict();
