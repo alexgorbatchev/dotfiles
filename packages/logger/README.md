@@ -19,26 +19,26 @@ Active Direction:
 
 Current (preferred):
 ```
-src/modules/{feature}/
+packages/{package}/src/{feature}/
   log-messages.ts        # REQUIRED when custom log messages exist
   {feature}.ts
   index.ts
 ```
 
-### Module-Specific Log Messages 
+### Package-Specific Log Messages 
 
-In addition to the shared category templates above, every feature/module MUST co-locate its own private log messages in a `log-messages.ts` file that lives directly beside that module's primary source file(s). This file is for messages that are ONLY used within that module and are not broadly reusable across the application. Do NOT add narrow, module-specific messages to the global `logger/templates` categories.
+In addition to the shared category templates above, every feature package MUST co-locate its own private log messages in a `log-messages.ts` file that lives directly beside that package's primary source file(s). This file is for messages that are ONLY used within that package and are not broadly reusable across the application. Do NOT add narrow, package-specific messages to the global `logger/templates` categories.
 
 Co-location benefits:
 - Keeps intent and message evolution close to the business logic
 - Prevents global template bloat with one-off messages
 - Encourages single responsibility and easier refactoring
-- Improves discoverability when reading a module
+- Improves discoverability when reading a package
 
 #### File Naming & Location
 
 ```
-src/modules/{feature}/
+packages/{package}/src/{feature}/
   index.ts
   {feature}.ts          # main implementation (example)
   log-messages.ts       # module-scoped log templates (required when logging exists)
@@ -48,14 +48,14 @@ src/modules/{feature}/
 
 #### Responsibilities Split
 
-Every module owns its own log messages within the `log-messages.ts` file that sits beside the module implementation. If you discover wording that belongs in more than one module, promote it to a purpose-built shared helper module (not a central registry) and update all call sites immediately.
+Every package owns its own log messages within the `log-messages.ts` file that sits beside the package implementation. If you discover wording that belongs in more than one package, promote it to a purpose-built shared helper package (not a central registry) and update all call sites immediately.
 
-If during implementation you notice a module message becomes generically useful (e.g. multiple modules duplicate similar wording), promote it by moving it into the appropriate global category template and updating all call sites—do not keep duplicates.
+If during implementation you notice a package message becomes generically useful (e.g. multiple packages duplicate similar wording), promote it by moving it into the appropriate global category template and updating all call sites—do not keep duplicates.
 
-#### Module File Pattern
+#### Package File Pattern
 
 ```typescript
-// src/modules/example/log-messages.ts
+// packages/example/src/log-messages.ts
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 // Group by semantic intent (NOT by log level here). Keep surface small & focused.
@@ -71,7 +71,7 @@ export const messages = {
 } satisfies SafeLogMessageMap;
 ```
 
-Usage inside the module:
+Usage inside the package:
 
 ```typescript
 import { messages } from './log-messages';
@@ -86,8 +86,8 @@ export function runExample(logger: Logger) {
 
 #### Design Rules for `log-messages.ts`
 
-1. Only include messages that are single-purpose and local to the module.
-2. Avoid duplicating wording across modules—if multiple modules need the same phrasing, create a shared helper module and update every caller in the same change.
+1. Only include messages that are single-purpose and local to the package.
+2. Avoid duplicating wording across packages—if multiple packages need the same phrasing, create a shared helper package and update every caller in the same change.
 3. Keep function names descriptive and action-oriented (`configResolved`, `downloadPlanned`, `checksumMismatch`).
 4. Return values MUST be created via `createSafeLogMessage()`; never return raw strings.
 5. Do not create log-level sub-objects (`error`, `debug`, etc.) inside `log-messages.ts`; selection of level happens at the call site. If you need strong grouping, group by intent not severity.
@@ -95,18 +95,18 @@ export function runExample(logger: Logger) {
 7. No interpolation logic side-effects—pure formatting only.
 8. Remove stale messages promptly; no deprecated placeholders.
 
-#### When to Choose Global vs Local
+#### When to Choose Shared vs Local
 
 | Scenario | Choose |
 |----------|-------|
-| Message expresses a domain concept used by multiple modules (e.g., archive extraction step) | Global category template |
-| Message is tightly coupled to internal algorithm details of one module | Local `log-messages.ts` |
-| Message might become reusable soon (already in 2+ modules) | Promote to global now |
+| Message expresses a domain concept used by multiple packages (e.g., archive extraction step) | Shared helper package |
+| Message is tightly coupled to internal algorithm details of one package | Local `log-messages.ts` |
+| Message might become reusable soon (already in 2+ packages) | Promote to shared now |
 | Temporary diagnostic while developing | Local (delete if no longer needed) |
 
 #### Migration Guidance
 
-When refactoring existing modules:
+When refactoring existing packages:
 1. Identify inline string literals passed to logger calls.
 2. Extract them into functions inside `log-messages.ts`.
 3. Replace call sites with the new template functions.
@@ -124,15 +124,15 @@ logger.error(messages.invalidState('stale-index'));
 logger.debug(messages.resolvingConfig('/tmp/example.yaml'));
 ```
 
-## Creating New Templates (Module-Scoped Only)
+## Creating New Templates (Package-Scoped Only)
 
-DO NOT create new global categories. All new templates belong in the module's `log-messages.ts`.
+DO NOT create new global categories. All new templates belong in the package's `log-messages.ts`.
 
 ### Steps
-1. Create (or update) `src/modules/{feature}/log-messages.ts`.
+1. Create (or update) `packages/{package}/src/log-messages.ts` or `packages/{package}/src/{feature}/log-messages.ts`.
 2. Add intent-based functions returning `createSafeLogMessage()`.
 3. Replace inline string literals at call sites.
-4. If you find a pattern repeating across ≥2 modules, extract to a single shared module later (NOT the legacy category system).
+4. If you find a pattern repeating across ≥2 packages, extract to a single shared package later (NOT the legacy category system).
 
 ### Example `log-messages.ts`
 
@@ -161,7 +161,7 @@ export const messages = {
 - Follow consistent naming conventions (camelCase)
 - Include context information (resource names, operations, reasons)
 
-### Template Design Best Practices (Modern Co-Located)
+### Template Design Best Practices (Co-Located in Packages)
 
 #### Message Formatting
 - Use clear, actionable language
@@ -175,7 +175,7 @@ export const messages = {
 - Consider optional parameters for additional context
 - Validate parameter types with TypeScript
 
-#### Examples of Good Module Templates
+#### Examples of Good Package Templates
 
 ```typescript
 // ✅ Good - Specific, actionable, contextual
@@ -268,7 +268,7 @@ test('templates work with TestLogger', () => {
 
 ## Advanced Patterns
 
-### Conditional Templates (Module Scope)
+### Conditional Templates (Package Scope)
 
 ```typescript
 // Template with optional context
@@ -280,7 +280,7 @@ export const messages = {
 } satisfies SafeLogMessageMap;
 ```
 
-### Template Composition (Module Scope)
+### Template Composition (Package Scope)
 
 ```typescript
 // Reusable message parts
@@ -316,20 +316,20 @@ Argument of type 'string' is not assignable to parameter of type 'SafeLogMessage
 - Verify template function return types
 
 **Missing Templates During Migration**
-- Extract missing string into module `log-messages.ts`
+- Extract missing string into package `log-messages.ts`
 - Remove legacy usage once replaced
 - Run `bun lint` to confirm no raw string regressions
 
 ### Debugging Templates
 
-1. Check module `log-messages.ts` for function presence
+1. Check package `log-messages.ts` for function presence
 2. If still using legacy `logs.*`, plan migration and create equivalent local message
 3. Remove or refactor legacy template if no longer referenced
 4. Add/adjust unit test to cover new local message
 
 ## Performance Considerations
 
-- Module templates are minimal and inline-evaluated only when called
+- Package templates are minimal and inline-evaluated only when called
 - No central registry lookup cost
 - Keep functions pure and fast
 - Avoid premature caching—optimize only if profiling shows hotspots
