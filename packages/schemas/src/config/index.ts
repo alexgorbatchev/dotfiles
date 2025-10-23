@@ -1,1 +1,1 @@
-export * from './config.yaml.schema';
+export * from './yamlConfigSchema';
