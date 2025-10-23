@@ -1,5 +1,5 @@
-export type { ArchitectureRegex } from './ArchitectureRegex';
-export { createArchitectureRegex } from './createArchitectureRegex';
-export { getArchitecturePatterns } from './getArchitecturePatterns';
-export { getArchitectureRegex } from './getArchitectureRegex';
-export { matchesArchitecture } from './matchesArchitecture';
+export * from './ArchitectureRegex';
+export * from './createArchitectureRegex';
+export * from './getArchitecturePatterns';
+export * from './getArchitectureRegex';
+export * from './matchesArchitecture';

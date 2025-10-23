@@ -1,1 +1,1 @@
-export { ToolConfigBuilder } from './toolConfigBuilder';
+export * from './toolConfigBuilder';

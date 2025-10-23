@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { GitHubRelease, IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import { GitHubApiClientError } from '@dotfiles/installer/clients/github';
 import { TestLogger } from '@dotfiles/logger';
+import type { GitHubRelease } from '@dotfiles/schemas';
 import { VersionComparisonStatus } from '../IVersionChecker.ts';
 import { VersionChecker } from '../VersionChecker.ts';
 

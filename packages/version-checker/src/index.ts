@@ -1,3 +1,2 @@
-export type { IVersionChecker } from './IVersionChecker';
-export { VersionComparisonStatus } from './IVersionChecker';
-export { VersionChecker } from './VersionChecker';
+export * from './IVersionChecker';
+export * from './VersionChecker';

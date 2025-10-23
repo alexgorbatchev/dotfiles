@@ -1,8 +1,3 @@
-export { CompletionCommandExecutor } from './CompletionCommandExecutor';
-export { CompletionGenerator } from './CompletionGenerator';
-export type {
-  CompletionGenerationContext,
-  GeneratedCompletion,
-  ICompletionCommandExecutor,
-  ICompletionGenerator,
-} from './types';
+export * from './CompletionCommandExecutor';
+export * from './CompletionGenerator';
+export * from './types';
