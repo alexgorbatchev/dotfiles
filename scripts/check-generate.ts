@@ -17,7 +17,7 @@ function isShellError(error: unknown): error is ShellError {
 
 await $`./scripts/check-cli.ts generate`;
 
-process.chdir('.generated/bin');
+process.chdir('.generated/user-local-bin');
 
 try {
   const fzfOutput = await $`./fzf --version`.text();

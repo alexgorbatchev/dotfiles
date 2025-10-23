@@ -133,7 +133,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
         '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
         '[cleanup] rm ~/.dotfiles/tool/config.yml',
-        '[cleanup] rm ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
+        '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
         'registry database cleanup',
       ]
     );
@@ -156,7 +156,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
         '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
         '[cleanup] rm ~/.dotfiles/tool/config.yml',
-        '[cleanup] rm ~/.dotfiles/.generated/usr-local-bin/.config/tool/config.yml',
+        '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
         'Removed registry entries for tool: tool1',
       ]
     );
