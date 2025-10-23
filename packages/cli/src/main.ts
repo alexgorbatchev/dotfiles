@@ -197,8 +197,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const fs = initializeFileSystem(logger, dryRun);
   const systemInfo = createSystemInfo(options, logger);
 
-  // Default config path should be in the generator directory
-  const userConfigPath = config.length === 0 ? path.resolve(path.dirname(__dirname), 'config.yaml') : config;
+  // Resolve config path to absolute (defaults to config.yaml in cwd, relative paths resolved from cwd)
+  const userConfigPath = path.resolve(process.cwd(), config.length === 0 ? 'config.yaml' : config);
 
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];

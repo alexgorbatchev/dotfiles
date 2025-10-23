@@ -110,7 +110,7 @@ describe('E2E: bun run cli generate', () => {
         TOOL_NAME="fzf"
         TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/fzf/fzf"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
-        CONFIG_PATH="config.yaml"
+        CONFIG_PATH="${/.+\/config\.yaml/}"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
@@ -159,7 +159,7 @@ describe('E2E: bun run cli generate', () => {
         TOOL_NAME="lazygit"
         TOOL_EXECUTABLE="${testDirs.paths.binariesDir}/lazygit/lazygit"
         GENERATOR_CLI_EXECUTABLE="${/.*cli\.ts/}"
-        CONFIG_PATH="config.yaml"
+        CONFIG_PATH="${/.+\/config\.yaml/}"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
