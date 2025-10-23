@@ -1,6 +1,9 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
-  "plugins": ["./.biome/no-await-expect.grit"],
+  "plugins": [
+    "./.biome/no-await-expect.grit",
+    "./.biome/use-export-star.grit"
+  ],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -73,7 +76,10 @@
   },
   "overrides": [
     {
-      "includes": ["**/*.test.ts", "**/__tests__/**/*.ts"],
+      "includes": [
+        "**/*.test.ts",
+        "**/__tests__/**/*.ts"
+      ],
       "linter": {
         "rules": {
           "complexity": {
