@@ -34,7 +34,7 @@ interface HookContext {
   logger: TsLogger;          // Structured logging
   appConfig: YamlConfig;     // User's application configuration
   toolConfig: ToolConfig;    // Full tool configuration
-  $: ReturnType<typeof $>;   // ZX shell executor with cwd set to tool directory
+  $: typeof $;               // Bun's shell executor for running shell commands
   
   // Available in afterInstall hook only
   binaryPath?: string;       // Path to installed binary
@@ -58,13 +58,13 @@ fileSystem.stat(path)
 
 ### Shell Executor (`$`)
 
-The `$` property provides a ZX shell executor that automatically has its working directory (`cwd`) set to the directory containing the `.tool.ts` file.
+The `$` property provides Bun's built-in shell executor for running shell commands within hooks.
 
 **Key Features:**
-- **Automatic Working Directory**: `$` commands execute in the same directory as your `.tool.ts` file
-- **Relative Path Support**: Use `./` to reference files next to your tool config
 - **Template Literals**: Use tagged template literals for shell commands: `` $`command` ``
-- **Promise-Based**: All `$` commands return promises with stdout, stderr, and exitCode
+- **Promise-Based**: All `$` commands return promises with stdout (as Buffer), stderr, and exitCode
+- **Working Directory**: Use `cd` commands or `process.chdir()` to change working directory
+- **Text Output**: Use `.text()` to get stdout as a string: `await $`command`.text()`
 - **Cross-Platform**: Works consistently across Linux, macOS, and Windows
 
 ## Basic Usage Examples
@@ -161,10 +161,12 @@ c.hooks({
     try {
       // Command that might fail
       const result = await $`./configure --enable-feature`;
-      logger.info(`Configure output: ${result.stdout}`);
+      logger.info(`Configure output: ${result.stdout.toString()}`);
     } catch (error) {
-      // ZX throws ProcessOutput on non-zero exit codes
-      logger.error(`Configure failed: ${error.stderr}`);
+      // Bun throws errors with exitCode, stdout, and stderr properties
+      const stderr = error && typeof error === 'object' && 'stderr' in error ? 
+        (error.stderr as Buffer).toString() : 'Unknown error';
+      logger.error(`Configure failed: ${stderr}`);
       throw error; // Re-throw to fail the hook
     }
   }
@@ -177,9 +179,8 @@ c.hooks({
 c.hooks({
   afterInstall: async ({ $, logger }) => {
     // Capture and process command output
-    const versionResult = await $`./tool --version`;
-    const version = versionResult.stdout.trim();
-    logger.info(`Installed version: ${version}`);
+    const version = await $`./tool --version`.text();
+    logger.info(`Installed version: ${version.trim()}`);
     
     // Use output in subsequent commands
     if (version.includes('2.')) {
@@ -187,7 +188,13 @@ c.hooks({
     }
     
     // Check exit codes
-    const testResult = await $`./tool self-test`.exitCode;
+    try {
+      await $`./tool self-test`;
+      logger.info('Self-test passed');
+    } catch (error) {
+      const exitCode = error && typeof error === 'object' && 'exitCode' in error ?
+        error.exitCode as number : -1;
+      logger.error(`Self-test failed with exit code: ${exitCode}`);
     if (testResult !== 0) {
       throw new Error('Self-test failed');
     }

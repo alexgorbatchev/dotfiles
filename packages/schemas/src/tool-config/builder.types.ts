@@ -120,8 +120,11 @@ export interface PlatformConfigBuilder {
 
   /**
    * Configures a symbolic link for this specific platform configuration.
-   * @param source - The path to the source file/directory.
-   * @param target - The path where the symlink should be created.
+   * @param source - Path to the source file/directory. Relative paths (e.g., './config.yaml') are resolved
+   *                 relative to the tool configuration file directory (where the .tool.ts file is located).
+   *                 Absolute paths are used as-is.
+   * @param target - Absolute path where the symlink should be created. Use context variables like
+   *                 `${ctx.homeDir}/.config/tool/config.yaml` for proper path resolution.
    * @returns The `PlatformConfigBuilder` instance for chaining.
    */
   symlink(source: string, target: string): this;
@@ -349,11 +352,14 @@ export interface ToolConfigBuilder {
    * repository to a target path, typically in the user's home directory.
    * This is used for managing configuration files (dotfiles) that the tool might expect at specific locations.
    * Multiple calls to `symlink()` will configure multiple links.
-   * @param source - The path to the source file/directory, relative to the dotfiles project root.
-   * @param target - The path where the symlink should be created, relative to the user's home directory.
+   * @param source - Path to the source file/directory. Relative paths (e.g., './config.yaml') are resolved
+   *                 relative to the tool configuration file directory (where the .tool.ts file is located).
+   *                 Absolute paths are used as-is.
+   * @param target - Absolute path where the symlink should be created. Use context variables like
+   *                 `${ctx.homeDir}/.config/tool/config.yaml` for proper path resolution.
    * @returns The `ToolConfigBuilder` instance for chaining.
    * @example
-   * c.symlink('mytool/config.yaml', '.config/mytool/config.yaml')
+   * c.symlink('./config.yaml', `${ctx.homeDir}/.config/mytool/config.yaml`)
    */
   symlink(source: string, target: string): this;
 

@@ -27,3 +27,22 @@
 - [Shell Integration](./tool-configuration/shell-integration.md) - Environment and aliases
 - [Common Patterns](./tool-configuration/common-patterns.md) - Real-world examples
 - [Troubleshooting](./tool-configuration/troubleshooting.md) - Solutions to common issues
+
+### Network Host Configuration (New)
+
+Service hosts (GitHub API, Cargo registry/raw/release sources) now use a unified schema:
+
+```yaml
+github:
+	host: https://api.github.com
+	token: ""
+	userAgent: dotfiles-generator
+	cache: { enabled: true, ttl: 86400000 }
+cargo:
+	cratesIo: { host: https://crates.io, cache: { enabled: true, ttl: 86400000 } }
+	githubRaw: { host: https://raw.githubusercontent.com, cache: { enabled: true, ttl: 86400000 } }
+	githubRelease: { host: https://github.com, cache: { enabled: true, ttl: 86400000 } }
+	userAgent: dotfiles-generator
+```
+
+Each host has independent cache controls. See Migration Guide for conversion details.

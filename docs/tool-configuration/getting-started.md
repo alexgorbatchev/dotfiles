@@ -7,31 +7,30 @@ This guide covers the basic structure and anatomy of `.tool.ts` configuration fi
 ### Minimal Configuration
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@dotfiles/schemas';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+export default defineTool((c, ctx) =>
   c
     .bin('tool-name')
     .version('latest')
     .install('github-release', {
       repo: 'owner/repository',
-    });
-};
+    })
+);
 ```
 
 ### Complete Configuration Template
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@dotfiles/schemas';
+import { always } from '@dotfiles/schemas';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+export default defineTool((c, ctx) =>
   c
     // Define the binary names this tool provides
     .bin(['primary-binary', 'secondary-binary'])
-    
     // Specify version (latest, specific version, or SemVer constraint)
     .version('latest')
-    
     // Configure installation method
     .install('github-release', {
       repo: 'owner/repository',
@@ -39,25 +38,17 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       binaryPath: 'bin/tool',
       stripComponents: 1,
     })
-    
     // Configure symbolic links
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-    
     // Add shell configuration
     .zsh({
-      // Add shell completions
       completions: { source: 'completions/_tool.zsh' },
-      
-      // Use declarative configuration for environment variables and aliases
       environment: {
         'TOOL_CONFIG_DIR': `${ctx.homeDir}/.tool`
       },
-      
       aliases: {
         't': 'tool'
       },
-      
-      // Use script-based configuration for complex functions
       shellInit: [
         always/* zsh */`
           # Functions
@@ -67,12 +58,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         `
       ]
     })
-    
     // Add bash configuration
     .bash({
       completions: { source: 'completions/tool.bash' }
-    });
-};
+    })
+);
 ```
 
 ## TypeScript Requirements
@@ -88,12 +78,12 @@ import { Platform, Architecture } from '@types';
 
 ### Function Signature
 
-The default export must be an async function with this exact signature:
+The default export must use the `defineTool` helper:
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+export default defineTool((c: ToolConfigBuilder, ctx: ToolConfigContext) => {
   // Configuration goes here
-};
+});
 ```
 
 ### Type Safety
