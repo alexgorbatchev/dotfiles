@@ -1,10 +1,10 @@
 import type { YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
+import type { TsLogger } from '@dotfiles/logger';
+import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
 import type { GenerateShellInitOptions, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { GenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import type { TsLogger } from '@dotfiles/logger';
-import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
 import type { GenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { generatorOrchestratorLogMessages } from './log-messages';
 

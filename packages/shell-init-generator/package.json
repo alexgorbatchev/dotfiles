@@ -10,7 +10,6 @@
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/schemas": "workspace:*",
-    "@dotfiles/utils": "workspace:*",
-    "zx": "^8.8.5"
+    "@dotfiles/utils": "workspace:*"
   }
 }

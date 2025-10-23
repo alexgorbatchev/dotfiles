@@ -16,7 +16,6 @@
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/schemas": "workspace:*",
     "@dotfiles/shell-init-generator": "workspace:*",
-    "@dotfiles/utils": "workspace:*",
-    "zx": "^8.8.5"
+    "@dotfiles/utils": "workspace:*"
   }
 }

@@ -32,6 +32,6 @@ The project is using Bun as run the main run time.
 
 ## Shell Command Usage
 
-- Use Bun's built-in `$` shell operator for all shell command executions.
+- Use Bun's built-in `$` shell operator for all shell command executions with `.quiet()` to avoid stdout clutter.
 - The `$` operator provides better error handling, TypeScript integration, and performance compared to other shell execution methods.
 - Shell commands should be injected as dependencies when possible for better testability.

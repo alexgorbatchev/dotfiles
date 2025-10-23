@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { TestLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { SqliteFileRegistry } from '../SqliteFileRegistry';
 
 describe('SqliteFileRegistry', () => {

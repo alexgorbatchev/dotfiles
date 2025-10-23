@@ -2,8 +2,8 @@ import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/schemas';
-import { installerLogMessages } from './log-messages';
 import { createBinarySymlink } from './createBinarySymlinks';
+import { installerLogMessages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
 
 /**

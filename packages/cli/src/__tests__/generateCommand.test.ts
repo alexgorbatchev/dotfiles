@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { GlobalProgram } from '../types';
-import { cliLogMessages } from '../log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadToolConfigs as actualLoadToolConfigs } from '@dotfiles/config';
-import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
-import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import type { TestLogger } from '@dotfiles/logger';
 import type { MemFileSystemReturn } from '@dotfiles/file-system';
+import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
+import type { TestLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
+import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerGenerateCommand } from '../generateCommand';
+import { cliLogMessages } from '../log-messages';
+import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 setupTestCleanup();

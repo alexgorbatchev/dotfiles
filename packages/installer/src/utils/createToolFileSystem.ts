@@ -1,5 +1,5 @@
-import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IFileSystem } from '@dotfiles/file-system';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
 
 /**
  * Creates a tool-specific file system instance

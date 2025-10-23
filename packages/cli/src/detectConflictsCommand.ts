@@ -1,5 +1,4 @@
 import path from 'node:path';
-import type { GlobalProgram, Services } from './types';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadToolConfigs as loadAllToolConfigs } from '@dotfiles/config';
 import type { IFileSystem, Stats } from '@dotfiles/file-system';
@@ -7,6 +6,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, Services } from './types';
 
 async function loadToolConfigs(
   logger: TsLogger,

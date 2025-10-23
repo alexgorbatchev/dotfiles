@@ -1,14 +1,14 @@
-import type { GlobalProgram, Services } from './types';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadSingleToolConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IInstaller } from '@dotfiles/installer';
 import type { GitHubRelease, IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import type { GithubReleaseInstallParams, ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
+import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, Services } from './types';
 
 export interface UpdateCommandOptions {
   yes: boolean;

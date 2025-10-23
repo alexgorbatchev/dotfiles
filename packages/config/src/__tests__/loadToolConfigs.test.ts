@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/schemas/config';
-import { ToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import type { AsyncConfigureTool, ToolConfigBuilder, ToolConfigContext } from '@dotfiles/schemas';
 import { always } from '@dotfiles/schemas';
+import type { YamlConfig } from '@dotfiles/schemas/config';
+import { createMockYamlConfig, createTestDirectories } from '@dotfiles/testing-helpers';
+import { ToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
 
 // Helper function to create ToolConfigContext (extracted from loadToolConfigs.ts)
 function createToolConfigContext(

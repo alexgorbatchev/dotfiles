@@ -1,7 +1,7 @@
-import { createCacheKey } from './cache/helpers';
-import type { ICache } from './cache/types';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { createCacheKey } from './cache/helpers';
+import type { ICache } from './cache/types';
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions } from './IDownloader';
 import { cachedDownloadStrategyLogMessages } from './log-messages';

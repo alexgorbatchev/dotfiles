@@ -2,9 +2,11 @@
 
 import os from 'node:os';
 import path from 'node:path';
-import { FileCache, type ICache } from '@dotfiles/downloader';
+import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import {
   createProgram,
+  type GlobalProgram,
+  type GlobalProgramOptions,
   registerCheckUpdatesCommand,
   registerCleanupCommand,
   registerDetectConflictsCommand,
@@ -13,30 +15,28 @@ import {
   registerInitCommand,
   registerInstallCommand,
   registerUpdateCommand,
-  type GlobalProgram,
-  type GlobalProgramOptions,
   type Services,
 } from '@dotfiles/cli';
 import { cliLogMessages } from '@dotfiles/cli/log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadYamlConfig } from '@dotfiles/config';
-import { Downloader } from '@dotfiles/downloader';
-import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import { SqliteFileRegistry, TrackedFileSystem, type IFileRegistry } from '@dotfiles/registry/file';
-import { MemFileSystem, NodeFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
+import { type IFileSystem, MemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
-import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
-import { ShimGenerator } from '@dotfiles/shim-generator';
-import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
+import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { VersionChecker } from '@dotfiles/version-checker';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import type { SystemInfo } from '@dotfiles/schemas';
+import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
+import { ShimGenerator } from '@dotfiles/shim-generator';
+import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
+import { VersionChecker } from '@dotfiles/version-checker';
+
 type SetupServicesOptions = GlobalProgramOptions & {
   cwd: string;
   env: NodeJS.ProcessEnv;

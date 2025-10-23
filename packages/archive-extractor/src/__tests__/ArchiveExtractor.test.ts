@@ -3,10 +3,10 @@ import { exec as actualExecCallbackSignature } from 'node:child_process';
 import * as nodePath from 'node:path';
 import { promisify } from 'node:util'; // Import promisify
 import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import { $ } from 'zx'; // For creating test archives
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import { $ } from 'bun';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
 
@@ -155,8 +155,8 @@ describe('ArchiveExtractor (with NodeFS)', () => {
 
       await nodeFs.mkdir(nodePath.dirname(fullPathToFileInSource), { recursive: true });
       await nodeFs.writeFile(fullPathToFileInSource, fileContent);
-      // Use actual child_process.exec (via zxDollarReal for convenience in test setup)
-      await $`tar -czf ${archiveFullPath} -C ${sourceDir} ${fileToArchivePath}`;
+      // Use actual child_process.exec (via Bun $ for convenience in test setup)
+      await $`tar -czf ${archiveFullPath} -C ${sourceDir} ${fileToArchivePath}`.quiet();
       return archiveFullPath;
     };
 
@@ -175,9 +175,9 @@ describe('ArchiveExtractor (with NodeFS)', () => {
       await nodeFs.mkdir(nodePath.dirname(fullPathToFileInSource), { recursive: true });
       await nodeFs.writeFile(fullPathToFileInSource, fileContent);
       if (subDir) {
-        await $`cd ${sourceDir} && zip -r ${archiveFullPath} ${subDir}`;
+        await $`cd ${sourceDir} && zip -r ${archiveFullPath} ${subDir}`.quiet();
       } else {
-        await $`zip -j ${archiveFullPath} ${fullPathToFileInSource}`;
+        await $`zip -j ${archiveFullPath} ${fullPathToFileInSource}`.quiet();
       }
       return archiveFullPath;
     };

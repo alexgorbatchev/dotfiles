@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { TestLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { SqliteFileRegistry } from '../SqliteFileRegistry';
 import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
 

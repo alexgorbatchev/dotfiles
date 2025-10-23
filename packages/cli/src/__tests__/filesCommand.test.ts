@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import type { Services } from '../types';
-import { createProgram } from '../createProgram';
 import { TestLogger } from '@dotfiles/logger';
+import { createProgram } from '../createProgram';
 import { registerFilesCommand } from '../filesCommand';
+import type { Services } from '../types';
 
 describe('filesCommand', () => {
   it('should register files command successfully', () => {

@@ -1,4 +1,3 @@
-import type { GlobalProgram, Services } from './types';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadSingleToolConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -6,6 +5,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, Services } from './types';
 
 export interface InstallCommandOptions {
   force: boolean;

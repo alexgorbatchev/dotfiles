@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import type { CargoToolConfig } from '@dotfiles/schemas';
+import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { createInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - installFromCargo', () => {

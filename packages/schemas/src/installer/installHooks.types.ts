@@ -1,17 +1,16 @@
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { $ } from 'zx';
-import type { ExtractResult } from './archive.types';
+import type { $ } from 'bun';
 import type { BaseToolContext } from '../common/baseToolContext.types';
 import type { SystemInfo } from '../common/common.types';
 import type { ToolConfig } from '../tool-config/toolConfigSchema';
+import type { ExtractResult } from './archive.types';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.  This context provides information
  * about the current tool, installation paths, system details, and results from previous steps (like download or
  * extraction).  Hooks can use this information to perform custom setup or modification tasks.
  *
- * It is recommended to use a library like `zx` (google/zx) within hooks for easily running shell commands and performing
- * file system operations.
+ * Use Bun's built-in $ shell operator for running shell commands within hooks.
  */
 export interface InstallHookContext extends BaseToolContext {
   /** The target directory where the tool's primary binary/executable should be (or has been) installed. */
@@ -39,8 +38,9 @@ export interface InstallHookContext extends BaseToolContext {
    */
   systemInfo?: SystemInfo;
   /**
-   * ZX shell executor with cwd set to the directory of the .tool.ts file.
-   * This allows hooks to run shell commands relative to the tool's configuration directory.
+   * Bun's shell executor for running shell commands.
+   * Use the $ tagged template literal to execute shell commands within hooks.
+   * The working directory can be changed using cd commands or process.chdir().
    */
   $: typeof $;
 }
@@ -116,7 +116,7 @@ export interface FinalInstallContext extends BaseInstallContext {
  * @example
  * ```typescript
  * // An example afterExtract hook to move a specific binary and set permissions
- * import { $ } from 'zx';
+ * import { $ } from 'bun';
  * import path from 'path';
  *
  * const myHook: AsyncInstallHook = async (context) => {

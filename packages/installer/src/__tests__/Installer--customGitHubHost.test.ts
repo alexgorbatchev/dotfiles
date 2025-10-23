@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
 import path from 'node:path';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 import type { GitHubRelease, ToolConfig } from '@dotfiles/schemas';
+import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 import { Installer } from '../Installer';
 import { createInstallerTestSetup, type InstallerTestSetup } from './installer-test-helpers';
 

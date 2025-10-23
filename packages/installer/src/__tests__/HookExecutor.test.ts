@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { SafeLogMessage } from '@dotfiles/logger';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
+import type { SafeLogMessage } from '@dotfiles/logger';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@dotfiles/schemas';
-import type { $ } from 'zx';
+import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import type { $ } from 'bun';
 import { type HookExecutionOptions, HookExecutor } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 
@@ -173,13 +173,12 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
-      // Verify $ instance is created and configured
+      // Verify $ instance is created and provided to hooks
       expect(enhancedContext.$).toBeDefined();
       expect(typeof enhancedContext.$).toBe('function');
 
-      // Verify the $ instance has the correct cwd configuration
-      // We can't directly test the cwd without executing commands, but we can verify it exists
-      expect(enhancedContext.$.bind).toBeDefined(); // $ should be a bound function
+      // Bun's $ is a global tagged template function, not configurable per-instance
+      // Hooks should use cd commands to change directories if needed
     });
 
     it('should use fallback $ instance when configFilePath is missing', () => {

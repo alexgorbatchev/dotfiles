@@ -1,10 +1,10 @@
 export { contractHomePath } from './contractHomePath';
-export { formatPermissions } from './formatPermissions';
-export { expandHomePath } from './expandHomePath';
 export { dedentString } from './dedentString';
 export { dedentTemplate } from './dedentTemplate';
+export { ExitCode, type ExitCode as ExitCodeType, exitCli } from './exitCli';
+export { expandHomePath } from './expandHomePath';
+export { expandToolConfigPath } from './expandToolConfigPath';
+export { formatPermissions } from './formatPermissions';
 export { generateTimestamp } from './generateTimestamp';
 export { getCliBinPath } from './getCliBinPath';
-export { exitCli, ExitCode, type ExitCode as ExitCodeType } from './exitCli';
-export { expandToolConfigPath } from './expandToolConfigPath';
 export { resolvePlatformConfig } from './resolvePlatformConfig';

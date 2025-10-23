@@ -1,22 +1,22 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import path from 'node:path';
-import type { GlobalProgram, Services } from '../types';
-import { createProgram } from '../createProgram';
-import { cliLogMessages } from '../log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import {
   loadSingleToolConfig as actualLoadSingleToolConfig,
   loadToolConfigs as actualLoadToolConfigs,
 } from '@dotfiles/config';
+import { createMemFileSystem } from '@dotfiles/file-system';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import { TestLogger } from '@dotfiles/logger';
+import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@dotfiles/schemas';
+import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@dotfiles/schemas';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
+import { createProgram } from '../createProgram';
+import { cliLogMessages } from '../log-messages';
+import type { GlobalProgram, Services } from '../types';
 
 // Helper function to create mock GitHubRelease objects
 function createMockRelease(tagName: string, id = 123): GitHubRelease {

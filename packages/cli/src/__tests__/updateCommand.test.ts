@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { GlobalProgram } from '../types';
-import { cliLogMessages } from '../log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadSingleToolConfig } from '@dotfiles/config';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
-import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@dotfiles/logger';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@dotfiles/schemas';
+import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import { cliLogMessages } from '../log-messages';
+import type { GlobalProgram } from '../types';
 import { registerUpdateCommand } from '../updateCommand';
 import { createCliTestSetup } from './createCliTestSetup';
 

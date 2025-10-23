@@ -1,8 +1,8 @@
-import type { GlobalProgram, Services } from './types';
 import { loadToolConfigs } from '@dotfiles/config';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, Services } from './types';
 
 export interface GenerateCommandOptions {
   dryRun: boolean;

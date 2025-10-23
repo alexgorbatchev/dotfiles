@@ -1,6 +1,6 @@
 import path from 'node:path';
-import type { IDownloader } from '@dotfiles/downloader';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type {
@@ -10,10 +10,7 @@ import type {
   PostDownloadInstallContext,
   PostExtractInstallContext,
 } from '@dotfiles/schemas';
-import { setupBinariesFromArchive } from '../utils/BinarySetupService';
-import type { HookExecutor } from '../utils/HookExecutor';
 import type { InstallOptions, InstallResult } from '../types';
-import { installerLogMessages } from '../utils/log-messages';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -22,6 +19,9 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from '../utils';
+import { setupBinariesFromArchive } from '../utils/BinarySetupService';
+import type { HookExecutor } from '../utils/HookExecutor';
+import { installerLogMessages } from '../utils/log-messages';
 
 /**
  * Install a tool from a tarball using curl

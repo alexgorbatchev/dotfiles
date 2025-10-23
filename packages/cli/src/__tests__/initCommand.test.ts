@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { GlobalProgram } from '../types';
-import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@dotfiles/logger';
+import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerInitCommand } from '../initCommand';
+import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 // Setup cleanup once per file

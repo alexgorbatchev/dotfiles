@@ -1,11 +1,11 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, ToolConfig } from '@dotfiles/schemas';
-import type { InstallOptions, InstallResult } from '../types';
-import { installerLogMessages } from './log-messages';
 import type { InstallationStep, StepContext } from '../steps/base';
+import type { InstallOptions, InstallResult } from '../types';
 import { createToolFileSystem } from './createToolFileSystem';
 import { getBinaryPaths } from './getBinaryPaths';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Orchestrates the execution of installation steps in a pipeline

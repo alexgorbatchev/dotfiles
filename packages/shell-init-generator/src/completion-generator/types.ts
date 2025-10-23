@@ -1,5 +1,4 @@
 import type { ShellCompletionConfig, ShellType } from '@dotfiles/schemas';
-import type { $ } from 'zx';
 
 export interface CompletionGenerationContext {
   toolName: string;
@@ -16,13 +15,7 @@ export interface GeneratedCompletion {
 }
 
 export interface ICompletionCommandExecutor {
-  executeCompletionCommand(
-    cmd: string,
-    toolName: string,
-    shellType: ShellType,
-    workingDir: string,
-    zxInstance?: typeof $
-  ): Promise<string>;
+  executeCompletionCommand(cmd: string, toolName: string, shellType: ShellType, workingDir: string): Promise<string>;
 }
 
 export interface ICompletionGenerator {

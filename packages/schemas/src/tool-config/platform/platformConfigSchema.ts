@@ -1,7 +1,7 @@
 import { z } from 'zod';
+import { commonToolConfigPropertiesSchema } from '../base/commonToolConfigPropertiesSchema';
 import { brewInstallParamsSchema } from '../installation-methods/brew/brewInstallParamsSchema';
 import { cargoInstallParamsSchema } from '../installation-methods/cargo/cargoInstallParamsSchema';
-import { commonToolConfigPropertiesSchema } from '../base/commonToolConfigPropertiesSchema';
 import { curlScriptInstallParamsSchema } from '../installation-methods/curl-script/curlScriptInstallParamsSchema';
 import { curlTarInstallParamsSchema } from '../installation-methods/curl-tar/curlTarInstallParamsSchema';
 import { githubReleaseInstallParamsSchema } from '../installation-methods/github-release/githubReleaseInstallParamsSchema';

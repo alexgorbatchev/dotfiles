@@ -1,8 +1,8 @@
-import type { IDownloader } from '@dotfiles/downloader';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IDownloader } from '@dotfiles/downloader';
 import type { AsyncInstallHook, ToolConfig } from '@dotfiles/schemas';
-import type { HookExecutor } from './HookExecutor';
 import { BinarySetupStep, DownloadStep, ExtractStep, HookStep, type InstallationStep } from '../steps';
+import type { HookExecutor } from './HookExecutor';
 
 /**
  * Factory functions for creating common step combinations

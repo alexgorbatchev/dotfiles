@@ -3,9 +3,9 @@ import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
 import { Architecture, always, Platform } from '@dotfiles/schemas';
+import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 

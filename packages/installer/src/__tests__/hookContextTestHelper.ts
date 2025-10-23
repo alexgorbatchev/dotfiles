@@ -1,6 +1,6 @@
 import { TestLogger } from '@dotfiles/logger';
-import { createMock$ } from '@dotfiles/testing-helpers';
 import type { InstallHookContext } from '@dotfiles/schemas';
+import { createMock$ } from '@dotfiles/testing-helpers';
 
 /**
  * Helper function to create a proper InstallHookContext for tests.

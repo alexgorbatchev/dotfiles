@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@dotfiles/config';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 import type { SystemInfo } from '@dotfiles/schemas';
+import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 import { expandToolConfigPath } from '../src/expandToolConfigPath';
 
 describe('expandToolConfigPath', () => {

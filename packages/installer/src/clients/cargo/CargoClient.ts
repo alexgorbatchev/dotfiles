@@ -1,5 +1,5 @@
-import type { ICache } from '@dotfiles/downloader';
 import type { YamlConfig } from '@dotfiles/config';
+import type { ICache } from '@dotfiles/downloader';
 import { type IDownloader, NetworkError, NotFoundError } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import { parse } from 'smol-toml';

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import type { ICache } from '@dotfiles/downloader';
 import type { YamlConfig } from '@dotfiles/config';
+import type { ICache } from '@dotfiles/downloader';
 import {
   ClientError,
   ForbiddenError,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
-import { Downloader } from '../Downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { Downloader } from '../Downloader';
 import type { DownloadStrategy } from '../DownloadStrategy';
 import type { DownloadOptions } from '../IDownloader';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';

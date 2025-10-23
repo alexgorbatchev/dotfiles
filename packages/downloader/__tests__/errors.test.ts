@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { TestLogger } from '@dotfiles/logger';
 import {
   ClientError,
   DownloaderError,
@@ -9,7 +10,6 @@ import {
   RateLimitError,
   ServerError,
 } from '../errors';
-import { TestLogger } from '@dotfiles/logger';
 
 describe('Downloader Errors', () => {
   let logger: TestLogger;

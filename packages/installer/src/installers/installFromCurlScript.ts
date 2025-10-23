@@ -3,9 +3,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@dotfiles/schemas';
-import type { HookExecutor } from '../utils/HookExecutor';
 import type { InstallOptions, InstallResult } from '../types';
-import { installerLogMessages } from '../utils/log-messages';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -14,6 +12,8 @@ import {
   getBinaryPaths,
   withInstallErrorHandling,
 } from '../utils';
+import type { HookExecutor } from '../utils/HookExecutor';
+import { installerLogMessages } from '../utils/log-messages';
 
 /**
  * Install a tool using a curl script

@@ -1,14 +1,13 @@
-import path from 'node:path';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type {
   AsyncInstallHook,
   BaseInstallContext,
   EnhancedInstallHookContext,
   InstallHookContext,
 } from '@dotfiles/schemas';
-import { $ } from 'zx';
+import { $ } from 'bun';
 import { installerLogMessages } from './log-messages';
 
 /**
@@ -136,22 +135,14 @@ export class HookExecutor {
     // Extract toolConfig from BaseInstallContext if available
     const toolConfig = hasToolConfig(baseContext) ? baseContext.toolConfig : undefined;
 
-    // Create ZX $ instance with cwd set to the directory of the .tool.ts file
-    let zxInstance: typeof $;
-    if (toolConfig?.configFilePath) {
-      const toolConfigDir = path.dirname(toolConfig.configFilePath);
-      // Create a new $ instance with the specified cwd
-      zxInstance = $({ cwd: toolConfigDir });
-    } else {
-      // Fallback to default $ instance if no config file path is available
-      zxInstance = $;
-    }
-
+    // With Bun's $, we provide the shell operator directly
+    // Hooks can use `cd` commands if they need to change directories
+    // The cwd is available via toolConfig.configFilePath if needed
     return {
       ...baseContext,
       fileSystem: enhancedFileSystem,
       toolConfig,
-      $: zxInstance,
+      $,
     };
   }
 

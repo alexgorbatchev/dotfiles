@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { TestLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { SqliteToolInstallationRegistry } from '../SqliteToolInstallationRegistry';
 import type { ToolInstallationInput } from '../types';
 

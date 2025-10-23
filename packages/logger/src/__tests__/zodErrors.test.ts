@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { z } from 'zod';
 import { TestLogger } from '@dotfiles/logger';
+import { z } from 'zod';
 
 // Helper function to extract log messages from TestLogger logs
 function getLogMessages(logger: TestLogger): string[] {

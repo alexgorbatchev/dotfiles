@@ -1,5 +1,5 @@
-import type { YamlConfig } from '../config';
 import type { TsLogger } from '@dotfiles/logger';
+import type { YamlConfig } from '../config';
 
 /**
  * Base context providing common functionality across tool configuration and installation phases.

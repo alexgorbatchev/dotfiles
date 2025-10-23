@@ -1,13 +1,13 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { GlobalProgram, Services } from '../types';
-import { cliLogMessages } from '../log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@dotfiles/config';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { TestLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerInstallCommand } from '../installCommand';
+import { cliLogMessages } from '../log-messages';
+import type { GlobalProgram, Services } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 // Setup cleanup once per file

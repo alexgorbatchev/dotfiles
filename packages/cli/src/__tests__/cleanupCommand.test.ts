@@ -1,12 +1,12 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { GlobalProgram } from '../types';
 import type { YamlConfig } from '@dotfiles/config';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import type { TestLogger } from '@dotfiles/logger';
 import type { MockedFileSystem } from '@dotfiles/file-system';
-import { createMockFileRegistry } from './createMockFileRegistry';
+import type { TestLogger } from '@dotfiles/logger';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerCleanupCommand } from '../cleanupCommand';
+import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
+import { createMockFileRegistry } from './createMockFileRegistry';
 
 setupTestCleanup();
 

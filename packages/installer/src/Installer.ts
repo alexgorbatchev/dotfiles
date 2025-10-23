@@ -1,12 +1,12 @@
 import path from 'node:path';
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type {
   BaseInstallContext,
@@ -22,8 +22,6 @@ import type {
   ToolConfig,
 } from '@dotfiles/schemas';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
-import { HookExecutor, installerLogMessages } from './utils';
-import type { IInstaller, InstallOptions, InstallResult } from './types';
 import {
   installFromBrew,
   installFromCargo,
@@ -32,6 +30,8 @@ import {
   installFromGitHubRelease,
   installManually,
 } from './installers';
+import type { IInstaller, InstallOptions, InstallResult } from './types';
+import { HookExecutor, installerLogMessages } from './utils';
 
 /**
  * Orchestrates the tool installation process by coordinating services like `Downloader`,

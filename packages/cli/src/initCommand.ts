@@ -1,8 +1,8 @@
 import { join } from 'node:path';
-import type { GlobalProgram, Services } from './types';
-import { cliLogMessages } from './log-messages';
 import type { TsLogger } from '@dotfiles/logger';
 import { dedentString, exitCli, getCliBinPath } from '@dotfiles/utils';
+import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, Services } from './types';
 
 export function registerInitCommand(
   parentLogger: TsLogger,

@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { FileCache } from '../cache/FileCache';
-import type { CacheConfig } from '../cache/types';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { FileCache } from '../cache/FileCache';
+import type { CacheConfig } from '../cache/types';
 import { Downloader } from '../Downloader';
 
 describe('Downloader with Cache', () => {

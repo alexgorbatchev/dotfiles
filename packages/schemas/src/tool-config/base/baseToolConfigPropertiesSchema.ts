@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { commonToolConfigPropertiesSchema } from './commonToolConfigPropertiesSchema';
 import { platformConfigEntrySchema } from '../platform/platformConfigEntrySchema';
+import { commonToolConfigPropertiesSchema } from './commonToolConfigPropertiesSchema';
 
 export const baseToolConfigPropertiesSchema = commonToolConfigPropertiesSchema
   .extend({

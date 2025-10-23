@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { TestLogger } from '@dotfiles/logger';
 import { CachedDownloadStrategy } from '../../CachedDownloadStrategy';
 import type { DownloadStrategy } from '../../DownloadStrategy';
 import type { DownloadOptions } from '../../IDownloader';
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
 import type { ICache } from '../types';
 
 class MockDownloadStrategy implements DownloadStrategy {

@@ -1,7 +1,7 @@
 import { beforeEach, test } from 'bun:test';
 import { MemFileSystem } from '@dotfiles/file-system';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { TestLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { SqliteFileRegistry } from '../SqliteFileRegistry';
 import { TrackedFileSystem } from '../TrackedFileSystem';
 

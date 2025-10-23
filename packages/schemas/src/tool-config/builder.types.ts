@@ -1,6 +1,6 @@
 import type { BaseToolContext } from '../common/baseToolContext.types';
-import type { AsyncInstallHook } from '../installer/installHooks.types';
 import type { Architecture, Platform } from '../common/platform.types';
+import type { AsyncInstallHook } from '../installer/installHooks.types';
 import type { ShellScript } from '../shell/shellScript.types';
 import type {
   BrewInstallParams,

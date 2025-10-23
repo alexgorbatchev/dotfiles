@@ -1,7 +1,7 @@
-import type { ICache } from './cache/types';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
+import type { ICache } from './cache/types';
 import type { DownloadStrategy } from './DownloadStrategy';
 import type { DownloadOptions, IDownloader } from './IDownloader';
 import { downloaderLogMessages } from './log-messages';

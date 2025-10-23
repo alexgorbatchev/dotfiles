@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import { createTsLogger } from '@dotfiles/logger';
 import { createMemFileSystem } from '@dotfiles/file-system';
+import { createTsLogger } from '@dotfiles/logger';
 import { createAllBinarySymlinks, createBinarySymlink } from '../createBinarySymlinks';
 
 describe('createBinarySymlinks', () => {

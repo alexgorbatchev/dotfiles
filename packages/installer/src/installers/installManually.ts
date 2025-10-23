@@ -4,8 +4,8 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, ManualToolConfig } from '@dotfiles/schemas';
 import { expandToolConfigPath } from '@dotfiles/utils';
 import type { InstallOptions, InstallResult } from '../types';
-import { installerLogMessages } from '../utils/log-messages';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '../utils';
+import { installerLogMessages } from '../utils/log-messages';
 
 /**
  * Install a tool manually

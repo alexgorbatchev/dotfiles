@@ -1,18 +1,11 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
-
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
-import {
-  createMock$,
-  createMockYamlConfig,
-  createTestDirectories,
-  type TestDirectories,
-} from '@dotfiles/testing-helpers';
 import type {
   BaseInstallContext,
   BrewToolConfig,
@@ -23,9 +16,15 @@ import type {
   GithubReleaseToolConfig,
   ManualToolConfig,
 } from '@dotfiles/schemas';
+import {
+  createMock$,
+  createMockYamlConfig,
+  createTestDirectories,
+  type TestDirectories,
+} from '@dotfiles/testing-helpers';
 import type { ILogObj } from 'tslog';
-import type { HookExecutor } from '../utils/HookExecutor';
 import { Installer } from '../Installer';
+import type { HookExecutor } from '../utils/HookExecutor';
 
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';

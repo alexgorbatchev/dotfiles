@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { createYamlConfigFromObject } from '@dotfiles/config';
-import { stringify } from 'yaml';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { stringify } from 'yaml';
 import { createMockYamlConfig, type PartialYamlConfig } from '../src/createMockYamlConfig';
 
 describe('createMockYamlConfig', () => {

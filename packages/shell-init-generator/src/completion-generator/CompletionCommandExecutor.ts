@@ -1,6 +1,6 @@
 import type { TsLogger } from '@dotfiles/logger';
 import type { ShellType } from '@dotfiles/schemas';
-import { $ } from 'zx';
+import { $ } from 'bun';
 import { completionGeneratorLogMessages } from './log-messages';
 import type { ICompletionCommandExecutor } from './types';
 
@@ -15,22 +15,25 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
     cmd: string,
     toolName: string,
     shellType: ShellType,
-    workingDir: string,
-    zxInstance: typeof $ = $
+    workingDir: string
   ): Promise<string> {
     const logger = this.logger.getSubLogger({ name: 'executeCompletionCommand' });
     logger.debug(completionGeneratorLogMessages.commandExecutionStarted(toolName, cmd, shellType));
 
-    const result = await zxInstance`cd ${workingDir} && PATH=${workingDir}:$PATH ${cmd}`.nothrow();
+    try {
+      // Use sh -c to execute the command string properly
+      const fullCommand = `cd ${workingDir} && PATH=${workingDir}:$PATH ${cmd}`;
+      const result = await $`sh -c ${fullCommand}`.quiet();
+      logger.debug(completionGeneratorLogMessages.commandExecutionCompleted(toolName, shellType));
+      return result.text();
+    } catch (error) {
+      const exitCode = error && typeof error === 'object' && 'exitCode' in error ? (error.exitCode as number) : -1;
+      const stderr =
+        error && typeof error === 'object' && 'stderr' in error ? (error.stderr as Buffer).toString() : 'Unknown error';
 
-    if (result.exitCode !== 0) {
       const errorMessage = `Completion command failed for ${toolName}: ${cmd}`;
-      const exitCode = result.exitCode ?? -1;
-      logger.error(completionGeneratorLogMessages.commandExecutionFailed(toolName, cmd, exitCode, result.stderr));
-      throw new Error(`${errorMessage}\nExit code: ${exitCode}\nStderr: ${result.stderr}`);
+      logger.error(completionGeneratorLogMessages.commandExecutionFailed(toolName, cmd, exitCode, stderr));
+      throw new Error(`${errorMessage}\nExit code: ${exitCode}\nStderr: ${stderr}`);
     }
-
-    logger.debug(completionGeneratorLogMessages.commandExecutionCompleted(toolName, shellType));
-    return result.stdout;
   }
 }

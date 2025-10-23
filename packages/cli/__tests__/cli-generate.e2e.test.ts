@@ -11,8 +11,8 @@ import {
   type MockApiServerResult,
   type TestDirectories,
 } from '@dotfiles/testing-helpers';
+import { $ } from 'bun';
 import { executeCliCommand } from '../src/__tests__/executeCliCommand';
-import { $ } from 'zx';
 
 import '@dotfiles/testing-helpers';
 
@@ -242,7 +242,7 @@ describe('E2E: bun run cli generate', () => {
       );
 
       localArchiveFilePath = path.join(testDirs.paths.homeDir, mockAssetFileName);
-      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} fzf-${mockToolVersion}`.quiet();
+      await $`tar -czf ${localArchiveFilePath} -C ${testDirs.getDir('temp-archive-source')} fzf-${mockToolVersion}`;
 
       // 2. Setup mock github server
       mockServer = await createMockApiServer({

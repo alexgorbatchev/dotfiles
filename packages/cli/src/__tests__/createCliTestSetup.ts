@@ -1,12 +1,12 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
-import type { GlobalProgram, Services } from '../types';
-import { createProgram } from '../createProgram';
 import type { YamlConfig } from '@dotfiles/config';
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { createProgram } from '../createProgram';
+import type { GlobalProgram, Services } from '../types';
 import { createMockFileRegistry } from './createMockFileRegistry';
 
 /**

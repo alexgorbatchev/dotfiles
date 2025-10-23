@@ -1,8 +1,6 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/schemas/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 import type {
   AsyncConfigureTool,
   AsyncConfigureToolWithReturn,
@@ -10,6 +8,8 @@ import type {
   ToolConfigContext,
 } from '@dotfiles/schemas';
 import { toolConfigSchema } from '@dotfiles/schemas';
+import type { YamlConfig } from '@dotfiles/schemas/config';
+import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 import { configLoaderLogMessages } from './log-messages';
 
 /**

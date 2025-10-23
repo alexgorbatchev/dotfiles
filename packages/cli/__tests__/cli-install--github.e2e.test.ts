@@ -11,8 +11,8 @@ import {
   type MockGitHubServerResult,
   type TestDirectories,
 } from '@dotfiles/testing-helpers';
+import { $ } from 'bun';
 import { executeCliCommand } from '../src/__tests__/executeCliCommand';
-import { $ } from 'zx';
 
 describe('E2E: cli install (GitHub)', () => {
   describe('downloaded direct binary', () => {

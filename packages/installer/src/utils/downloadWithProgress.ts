@@ -1,4 +1,4 @@
-import { ProgressBar, shouldShowProgress, type IDownloader } from '@dotfiles/downloader';
+import { type IDownloader, ProgressBar, shouldShowProgress } from '@dotfiles/downloader';
 import type { InstallOptions } from '../types';
 
 /**

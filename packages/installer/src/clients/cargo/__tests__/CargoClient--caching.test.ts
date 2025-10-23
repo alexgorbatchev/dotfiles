@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { FileCache } from '@dotfiles/downloader';
-import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { createMemFileSystem } from '@dotfiles/file-system';
+import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 

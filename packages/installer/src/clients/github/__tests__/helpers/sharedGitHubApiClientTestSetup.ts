@@ -1,7 +1,7 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
-import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { YamlConfig } from '@dotfiles/config';
+import type { ICache, IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockYamlConfig, createTestDirectories, type PartialYamlConfig } from '@dotfiles/testing-helpers';

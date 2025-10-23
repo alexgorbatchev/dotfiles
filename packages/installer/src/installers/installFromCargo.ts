@@ -1,16 +1,15 @@
 import path from 'node:path';
-import type { IDownloader } from '@dotfiles/downloader';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
-
+import type { InstallOptions, InstallResult } from '../types';
+import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { setupBinariesFromArchive } from '../utils/BinarySetupService';
 import type { HookExecutor } from '../utils/HookExecutor';
-import type { InstallOptions, InstallResult } from '../types';
 import { installerLogMessages } from '../utils/log-messages';
-import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 
 /**
  * Install a tool using Cargo pre-compiled binaries

@@ -1,6 +1,6 @@
 import path from 'node:path';
-import type { CompletionGenerationContext, CompletionGenerator } from '@dotfiles/shell-init-generator';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/schemas';
+import type { CompletionGenerationContext, CompletionGenerator } from '@dotfiles/shell-init-generator';
 import { installerLogMessages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 

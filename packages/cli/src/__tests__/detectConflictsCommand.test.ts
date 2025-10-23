@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
-import type { GlobalProgram } from '../types';
-import { cliLogMessages } from '../log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadToolConfigs as actualLoadToolConfigs } from '@dotfiles/config';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
-import type { TestLogger } from '@dotfiles/logger';
 import type { MemFileSystemReturn } from '@dotfiles/file-system';
+import type { TestLogger } from '@dotfiles/logger';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@dotfiles/schemas';
+import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerDetectConflictsCommand } from '../detectConflictsCommand';
+import { cliLogMessages } from '../log-messages';
+import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 setupTestCleanup();

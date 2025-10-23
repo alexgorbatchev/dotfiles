@@ -3,8 +3,8 @@ import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
+import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 

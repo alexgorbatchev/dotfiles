@@ -6,9 +6,9 @@
  * Verifies that manifest.json removal was successful
  */
 
+import { $ } from 'bun';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { $ } from 'zx';
 
 // Configuration
 const PROJECT_ROOT = process.cwd();
@@ -90,7 +90,7 @@ async function testGeneration(): Promise<void> {
 
     // Check registry has operations
     const registryCheck = await $`sqlite3 ${REGISTRY_PATH} "SELECT COUNT(*) FROM file_operations;"`;
-    const operationCount = parseInt(registryCheck.stdout.trim(), 10);
+    const operationCount = parseInt(registryCheck.stdout.toString().trim(), 10);
 
     if (operationCount === 0) {
       throw new Error('registry.db has no file operations recorded');
@@ -104,7 +104,7 @@ async function testGeneration(): Promise<void> {
     }
 
     const shimCheck = await $`ls ${binDir} | wc -l`;
-    const shimCount = parseInt(shimCheck.stdout.trim(), 10);
+    const shimCount = parseInt(shimCheck.stdout.toString().trim(), 10);
 
     if (shimCount === 0) {
       throw new Error('No shims were created');
@@ -131,7 +131,7 @@ async function testCleanup(): Promise<void> {
   try {
     // Get initial file count for verification
     const initialCheck = await $`sqlite3 ${REGISTRY_PATH} "SELECT COUNT(*) FROM file_operations;"`;
-    const initialCount = parseInt(initialCheck.stdout.trim(), 10);
+    const initialCount = parseInt(initialCheck.stdout.toString().trim(), 10);
 
     if (initialCount === 0) {
       throw new Error('No file operations in registry before cleanup');
@@ -145,8 +145,8 @@ async function testCleanup(): Promise<void> {
     let remainingShims = 0;
 
     if (existsSync(binDir)) {
-      const shimCheck = await $`ls ${binDir} 2>/dev/null | wc -l`.catch(() => ({ stdout: '0' }));
-      remainingShims = parseInt(shimCheck.stdout.trim(), 10);
+      const shimCheck = await $`ls ${binDir} 2>/dev/null | wc -l`.catch(() => ({ stdout: Buffer.from('0') }));
+      remainingShims = parseInt(shimCheck.stdout.toString().trim(), 10);
     }
 
     if (remainingShims > 0) {
@@ -158,9 +158,9 @@ async function testCleanup(): Promise<void> {
     // Verify registry was cleaned up
     if (existsSync(REGISTRY_PATH)) {
       const finalCheck = await $`sqlite3 ${REGISTRY_PATH} "SELECT COUNT(*) FROM file_operations;" 2>/dev/null`.catch(
-        () => ({ stdout: '0' })
+        () => ({ stdout: Buffer.from('0') })
       );
-      const finalCount = parseInt(finalCheck.stdout.trim(), 10);
+      const finalCount = parseInt(finalCheck.stdout.toString().trim(), 10);
 
       if (finalCount < initialCount) {
         success(`Registry cleaned up (${initialCount} -> ${finalCount} operations)`);
@@ -199,7 +199,7 @@ async function testRegistryBasedWorkflow(): Promise<void> {
     // Verify registry has data
     const operationsCheck =
       await $`sqlite3 ${REGISTRY_PATH} "SELECT file_type, COUNT(*) FROM file_operations GROUP BY file_type;"`;
-    const operations = operationsCheck.stdout.trim().split('\n');
+    const operations = operationsCheck.stdout.toString().trim().split('\n');
 
     if (operations.length === 0) {
       throw new Error('No file operations by type found in registry');
@@ -246,7 +246,7 @@ async function validateMigrationSuccess(): Promise<void> {
         test: async () => {
           if (!existsSync(REGISTRY_PATH)) return false;
           const result = await $`sqlite3 ${REGISTRY_PATH} "SELECT COUNT(*) FROM file_operations;"`;
-          return parseInt(result.stdout.trim(), 10) > 0;
+          return parseInt(result.stdout.toString().trim(), 10) > 0;
         },
         error: 'registry.db not properly populated',
       },

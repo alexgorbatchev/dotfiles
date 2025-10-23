@@ -1,10 +1,10 @@
-import type { GlobalProgram, Services } from './types';
-import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
-import { cliLogMessages } from './log-messages';
 import type { YamlConfig } from '@dotfiles/config';
-import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
+import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
+import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, Services } from './types';
 
 export interface FilesCommandOptions {
   dryRun: boolean;

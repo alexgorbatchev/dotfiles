@@ -3,8 +3,8 @@ import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
 import { createMemFileSystem, type FileSystemSpies, type Stats } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { ToolConfig } from '@dotfiles/schemas';
+import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import { ShimGenerator } from '../ShimGenerator';
 
 import '@dotfiles/testing-helpers';

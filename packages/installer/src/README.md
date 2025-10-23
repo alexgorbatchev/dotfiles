@@ -221,7 +221,7 @@ interface EnhancedInstallHookContext {
   binaryPath?: string;
   fileSystem: IFileSystem;
   logger: TsLogger;
-  $: typeof $; // ZX shell execution
+  $: typeof $; // Bun's shell execution
 }
 ```
 

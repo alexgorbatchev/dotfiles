@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem } from '@dotfiles/file-system';
+import { TestLogger } from '@dotfiles/logger';
+import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
+import { always, Platform } from '@dotfiles/schemas';
 import type { IShellInitGenerator, ShellInitGenerationResult } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
 import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
-import { always, Platform } from '@dotfiles/schemas';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 // Helper function to generate platform-specific content

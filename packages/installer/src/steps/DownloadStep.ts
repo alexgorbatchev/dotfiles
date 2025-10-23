@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IDownloader } from '@dotfiles/downloader';
-import { installerLogMessages } from '../utils/log-messages';
 import { downloadWithProgress } from '../utils';
+import { installerLogMessages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 
 export interface DownloadStepParams {

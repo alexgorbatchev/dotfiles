@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { DownloadOptions, IDownloader } from '@dotfiles/downloader';
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import { createMemFileSystem, type IFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import { TestLogger } from '@dotfiles/logger';

@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
@@ -19,16 +19,16 @@ import type {
   SystemInfo,
 } from '@dotfiles/schemas';
 import { minimatch } from 'minimatch';
-import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from '../utils/BinarySetupService';
-import type { HookExecutor } from '../utils/HookExecutor';
 import type { InstallOptions, InstallResult } from '../types';
-import { installerLogMessages } from '../utils/log-messages';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
   executeAfterExtractHook as executeAfterExtractHookUtil,
   getBinaryPaths,
 } from '../utils';
+import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from '../utils/BinarySetupService';
+import type { HookExecutor } from '../utils/HookExecutor';
+import { installerLogMessages } from '../utils/log-messages';
 
 /**
  * Install a tool from GitHub releases

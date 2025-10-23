@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
-import { installerLogMessages } from './log-messages';
 import type { TsLogger } from '@dotfiles/logger';
+import { installerLogMessages } from './log-messages';
 
 /**
  * Create or update a symlink for a binary

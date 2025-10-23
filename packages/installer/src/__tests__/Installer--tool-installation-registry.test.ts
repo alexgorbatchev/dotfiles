@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { TestLogger } from '@dotfiles/logger';
+import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 
 describe('Installer Integration - Tool Installation Registry', () => {
   let logger: TestLogger;

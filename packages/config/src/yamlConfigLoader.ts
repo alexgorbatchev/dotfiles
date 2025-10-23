@@ -1,10 +1,9 @@
 import path from 'node:path';
-import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@dotfiles/schemas/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { exitCli } from '@dotfiles/utils';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@dotfiles/schemas';
-import { expandHomePath } from '@dotfiles/utils';
+import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@dotfiles/schemas/config';
+import { exitCli, expandHomePath } from '@dotfiles/utils';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { configLoaderLogMessages } from './log-messages';
