@@ -1045,6 +1045,8 @@ JsImportDeclaration()             # import statement
 JsArrowFunctionExpression()       # Arrow function
 JsClassDeclaration()              # Class declaration
 
+see https://docs.rs/biome_js_syntax/latest/biome_js_syntax/all.html for all nodes
+
 # Severity Levels
 "error"   # Default, must fix
 "warn"    # Should fix
