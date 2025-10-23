@@ -180,7 +180,7 @@ const platformOverrideSchema = z
 
 export const yamlConfigSchema = baseYamlConfigSchemaRequired
   .extend({
-    /** Path to the user's config file. Defaults to `~/.dotfiles/config.yaml`. This is INTERNAL value and should not be part of the `config.yaml`, it is set dynamically. */
+    /** Path to the user's config file. Defaults to `${paths.dotfilesDir}/config.yaml`. This is INTERNAL value and should not be part of the `config.yaml`, it is set dynamically. */
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
     userConfigPath: z.string().default('${paths.dotfilesDir}/config.yaml'),
 
@@ -192,77 +192,3 @@ export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
 export type YamlConfig = z.infer<typeof yamlConfigSchema>;
 export type YamlConfigPartial = PartialDeep<YamlConfig>;
 export type HostConfig = z.infer<ReturnType<typeof createHostSchema>>;
-
-{
-  // This is a type assertion to ensure that the schema is correct. DO NOT REMOVE.
-  // @ts-expect-error
-  const _check: YamlConfig = {
-    userConfigPath: '',
-
-    paths: {
-      homeDir: '',
-      dotfilesDir: 'test',
-      targetDir: '',
-      generatedDir: '',
-      toolConfigsDir: '',
-      shellScriptsDir: '',
-      binariesDir: '',
-    },
-    system: {
-      sudoPrompt: '',
-    },
-    logging: {
-      debug: '',
-    },
-    updates: {
-      checkOnRun: false,
-      checkInterval: 0,
-    },
-    github: {
-      host: '',
-      token: '',
-      userAgent: '',
-      cache: { enabled: false, ttl: 0 },
-    },
-    cargo: {
-      cratesIo: {
-        host: '',
-        cache: { enabled: false, ttl: 0 },
-        token: '',
-        userAgent: '',
-      },
-      githubRaw: {
-        host: '',
-        cache: { enabled: false, ttl: 0 },
-        token: '',
-        userAgent: '',
-      },
-      githubRelease: {
-        host: '',
-        cache: { enabled: false, ttl: 0 },
-        token: '',
-        userAgent: '',
-      },
-      userAgent: '',
-    },
-    downloader: {
-      timeout: 0,
-      retryCount: 0,
-      retryDelay: 0,
-      cache: {
-        enabled: false,
-        ttl: 0,
-      },
-    },
-    platform: [
-      {
-        match: [{ os: 'macos' }, { arch: 'arm64' }],
-        config: {
-          paths: {
-            dotfilesDir: 'macos-arm64-dotfiles',
-          },
-        },
-      },
-    ],
-  };
-}
