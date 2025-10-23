@@ -15,8 +15,7 @@
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/schemas": "workspace:*",
     "@dotfiles/tool-config-builder": "workspace:*",
-    "@dotfiles/utils": "workspace:*",
-    "yaml": "catalog:"
+    "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "catalog:system",

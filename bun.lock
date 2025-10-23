@@ -74,7 +74,6 @@
         "@dotfiles/schemas": "workspace:*",
         "@dotfiles/tool-config-builder": "workspace:*",
         "@dotfiles/utils": "workspace:*",
-        "yaml": "catalog:",
       },
       "devDependencies": {
         "@rageltd/bun-test-utils": "catalog:testing",
@@ -304,7 +303,6 @@
     "@biomejs/biome": "^2.2.6",
     "tslog": "^4.10.2",
     "type-fest": "^5.1.0",
-    "yaml": "^2.8.1",
     "zod": "^4.1.12",
   },
   "catalogs": {
@@ -639,8 +637,6 @@
     "utils-merge": ["utils-merge@1.0.1", "https://registry.npmjs.org/utils-merge/-/utils-merge-1.0.1.tgz", {}, "sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA=="],
 
     "vary": ["vary@1.1.2", "https://registry.npmjs.org/vary/-/vary-1.1.2.tgz", {}, "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="],
-
-    "yaml": ["yaml@2.8.1", "https://registry.npmjs.org/yaml/-/yaml-2.8.1.tgz", { "bin": { "yaml": "bin.mjs" } }, "sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw=="],
 
     "zod": ["zod@4.1.12", "https://registry.npmjs.org/zod/-/zod-4.1.12.tgz", {}, "sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ=="],
 

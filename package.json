@@ -8,7 +8,6 @@
   ],
   "catalog": {
     "type-fest": "^5.1.0",
-    "yaml": "^2.8.1",
     "zod": "^4.1.12",
     "tslog": "^4.10.2",
     "@biomejs/biome": "^2.2.6"

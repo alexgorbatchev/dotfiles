@@ -4,7 +4,6 @@ import type { TsLogger } from '@dotfiles/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@dotfiles/schemas';
 import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@dotfiles/schemas/config';
 import { exitCli, expandHomePath } from '@dotfiles/utils';
-import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { configLoaderLogMessages } from './log-messages';
 
@@ -234,12 +233,12 @@ function substituteTokens(
   systemInfo: SystemInfo
 ): Record<string, unknown> {
   const finalEnv = deepMerge(env, { HOME: systemInfo.homeDir });
-  const configStr = stringify(config);
+  const configStr = Bun.YAML.stringify(config);
 
   const substitutedConfigStr = performTokenSubstitution(configStr, finalEnv, fullConfig);
 
   // Parse the config string back to an object
-  const parsedConfig = parse(substitutedConfigStr) as Record<string, unknown>;
+  const parsedConfig = Bun.YAML.parse(substitutedConfigStr) as Record<string, unknown>;
 
   // Expand home paths in the config
   const userConfigPath =
@@ -329,7 +328,7 @@ export async function loadYamlConfig(
 
   try {
     const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
-    userConfig = parse(userConfigContent) || {};
+    userConfig = Bun.YAML.parse(userConfigContent) || {};
     (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
     logger.error(
