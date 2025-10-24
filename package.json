@@ -36,6 +36,7 @@
     "fix": "biome check --fix .",
     "test:task": "bun test",
     "compile": "scripts/compile.ts",
+    "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"
   },
   "devDependencies": {

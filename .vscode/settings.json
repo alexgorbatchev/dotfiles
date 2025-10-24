@@ -14,5 +14,30 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/bun.lock": true
-  }
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#7e2cc2",
+    "activityBar.background": "#7e2cc2",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#34220c",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "panel.border": "#7e2cc2",
+    "sash.hoverBorder": "#7e2cc2",
+    "statusBar.background": "#632399",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#7e2cc2",
+    "statusBarItem.remoteBackground": "#632399",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#632399",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#63239999",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#632399",
+  "bun.test.customScript": "bun test:agent",
+  "bun.test.customFlag": "--coverage",
+  "testing.coverageToolbarEnabled": true,
+  "scm.countBadge": "off"
 }
