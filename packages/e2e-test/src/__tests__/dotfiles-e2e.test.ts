@@ -1,8 +1,8 @@
 import { describe } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/schemas';
 import { TestHarness } from '../TestHarness';
-import { setupMockServer } from '../mockServerHelper';
 import { generateScenarios, updateScenarios } from '../scenarios';
+import { withMockServer } from '../withMockServer';
 
 const platformConfigs = [
   { platform: Platform.MacOS, architecture: Architecture.Arm64, name: 'macOS ARM64' },
@@ -10,8 +10,9 @@ const platformConfigs = [
 ];
 
 describe('E2E: dotfiles CLI', () => {
-  setupMockServer();
+  withMockServer();
 
+  // Run platform tests sequentially to avoid mock server conflicts
   for (const config of platformConfigs) {
     describe(`${config.name}`, () => {
       const harness = new TestHarness({

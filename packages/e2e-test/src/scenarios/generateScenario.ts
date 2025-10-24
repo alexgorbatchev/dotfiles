@@ -30,11 +30,7 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
     });
 
     it('should set GITHUB_RELEASE_TOOL environment variable in shell script', async () => {
-      await harness.verifyEnvironmentVariable(
-        'github-release-tool',
-        'GITHUB_RELEASE_TOOL_DEFAULT_OPTS',
-        '--color=fg'
-      );
+      await harness.verifyEnvironmentVariable('github-release-tool', 'GITHUB_RELEASE_TOOL_DEFAULT_OPTS', '--color=fg');
       await harness.verifyEnvironmentVariable('github-release-tool', 'GITHUB_RELEASE_TOOL_OTHER_OPTS', '--arg=1');
     });
 
@@ -54,7 +50,12 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
       await harness.verifyShim('github-release-tool', {
         args: ['--version'],
         expectedExitCode: 0,
-        stdoutMatcher: (stdout) => stdout === '1.0.0',
+        stdoutMatcher: (stdout) => {
+          // Extract the version from the end of the output, handling logging output
+          const lines = stdout.split('\n');
+          const versionLine = lines[lines.length - 1] || lines[lines.length - 2] || '';
+          return versionLine.trim() === '1.0.0';
+        },
       });
     });
 

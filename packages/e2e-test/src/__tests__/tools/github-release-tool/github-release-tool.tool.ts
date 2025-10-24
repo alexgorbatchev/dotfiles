@@ -3,7 +3,7 @@ import { always, defineTool, once } from '@dotfiles/schemas';
 export default defineTool((c) =>
   c
     .bin('github-release-tool')
-    .version('1.0.0') // Start with specific old version
+    .version('latest')
     .install('github-release', {
       repo: 'repo/github-release-tool',
     })
