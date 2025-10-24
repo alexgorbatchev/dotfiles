@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e 
+
+#
+# BUG: bun install doesn't link workspaces package/package.json/bin
+# https://github.com/oven-sh/bun/issues/19782
+#
+
+mkdir -p node_modules/.bin
+cd node_modules/.bin
+[ ! -e ./dotfiles ] && ln -s ../@dotfiles/cli/bin/dotfiles .
