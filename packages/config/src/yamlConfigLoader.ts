@@ -2,7 +2,12 @@ import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@dotfiles/schemas';
-import { type YamlConfig, type YamlConfigPartial, yamlConfigSchema } from '@dotfiles/schemas/config';
+import {
+  privateYamlConfigFields,
+  type YamlConfig,
+  type YamlConfigPartial,
+  yamlConfigSchema,
+} from '@dotfiles/schemas/config';
 import { exitCli, expandHomePath } from '@dotfiles/utils';
 import { z } from 'zod';
 import { configLoaderLogMessages } from './log-messages';
@@ -251,6 +256,7 @@ function substituteTokens(
 
 function processConfig(
   parentLogger: TsLogger,
+  userConfigPath: string,
   defaultConfig: Record<string, unknown>,
   userConfig: Record<string, unknown>,
   systemInfo: SystemInfo,
@@ -261,9 +267,12 @@ function processConfig(
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
-  const configWithTokens = substituteTokens(configWithPlatformOverrides, env, configWithPlatformOverrides, systemInfo);
+  const withInjectedValues: YamlConfig = configWithPlatformOverrides as YamlConfig;
 
-  const result = yamlConfigSchema.safeParse(configWithTokens);
+  withInjectedValues.userConfigPath = userConfigPath;
+
+  const configWithTokens = substituteTokens(withInjectedValues, env, configWithPlatformOverrides, systemInfo);
+  const result = yamlConfigSchema.extend(privateYamlConfigFields.shape).safeParse(configWithTokens);
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
@@ -278,10 +287,11 @@ export async function getDefaultConfig(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   systemInfo: SystemInfo,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
+  userConfigPath: string
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
-  return processConfig(parentLogger, defaultConfig, {}, systemInfo, env);
+  return processConfig(parentLogger, userConfigPath, defaultConfig, {}, systemInfo, env);
 }
 
 /**
@@ -329,7 +339,6 @@ export async function loadYamlConfig(
   try {
     const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
     userConfig = Bun.YAML.parse(userConfigContent) || {};
-    (userConfig as YamlConfig).userConfigPath = userConfigPath;
   } catch (error) {
     logger.error(
       configLoaderLogMessages.configurationParseError(
@@ -340,7 +349,7 @@ export async function loadYamlConfig(
     );
   }
 
-  return processConfig(parentLogger, defaultConfig, userConfig, systemInfo, env);
+  return processConfig(parentLogger, userConfigPath, defaultConfig, userConfig, systemInfo, env);
 }
 
 /**
@@ -365,10 +374,5 @@ export async function createYamlConfigFromObject(
 ): Promise<YamlConfig> {
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   const userConfigClone = deepMerge({} as YamlConfigPartial, userConfig);
-
-  if (userConfigClone.userConfigPath === undefined) {
-    userConfigClone.userConfigPath = '/path/to/config.yaml';
-  }
-
-  return processConfig(parentLogger, defaultConfig, userConfigClone, systemInfo, env);
+  return processConfig(parentLogger, '/path/to/config.yaml', defaultConfig, userConfigClone, systemInfo, env);
 }

@@ -42,6 +42,33 @@ function createHostSchema(options: {
     .strict();
 }
 
+/**
+ * Schema for path configuration with variable expansion support.
+ *
+ * Path variables can reference other path variables and environment variables.
+ * The dependency tree shows how paths are derived from each other:
+ *
+ * ```
+ * ${HOME} (environment variable)
+ * ├── homeDir
+ * └── dotfilesDir
+ *     ├── toolConfigsDir
+ *     └── generatedDir
+ *         ├── shellScriptsDir
+ *         └── binariesDir
+ *
+ * targetDir (independent)
+ * ```
+ *
+ * Resolution order:
+ * 1. `homeDir` - resolved from ${HOME}
+ * 2. `dotfilesDir` - resolved from ${HOME}
+ * 3. `toolConfigsDir` - resolved from ${paths.dotfilesDir}
+ * 4. `generatedDir` - resolved from ${paths.dotfilesDir}
+ * 5. `shellScriptsDir` - resolved from ${paths.generatedDir}
+ * 6. `binariesDir` - resolved from ${paths.generatedDir}
+ * 7. `targetDir` - independent, no variable expansion
+ */
 const pathsConfigSchema = z
   .object({
     /** Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`. You SHOULD set this value. */
@@ -180,15 +207,15 @@ const platformOverrideSchema = z
 
 export const yamlConfigSchema = baseYamlConfigSchemaRequired
   .extend({
-    /** Path to the user's config file. Defaults to `${paths.dotfilesDir}/config.yaml`. This is INTERNAL value and should not be part of the `config.yaml`, it is set dynamically. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    userConfigPath: z.string().default('${paths.dotfilesDir}/config.yaml'),
-
     platform: z.array(platformOverrideSchema).optional(),
   })
   .strict();
 
 export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
-export type YamlConfig = z.infer<typeof yamlConfigSchema>;
 export type YamlConfigPartial = PartialDeep<YamlConfig>;
-export type HostConfig = z.infer<ReturnType<typeof createHostSchema>>;
+
+export const privateYamlConfigFields = z.object({
+  userConfigPath: z.string(),
+});
+
+export type YamlConfig = z.infer<typeof yamlConfigSchema> & z.infer<typeof privateYamlConfigFields>;
