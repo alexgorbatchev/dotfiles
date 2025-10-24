@@ -222,6 +222,18 @@ function performTokenSubstitution(
 }
 
 /**
+ * Type guard to check if a config object has a valid userConfigPath string property.
+ *
+ * @param config - The configuration object to check
+ * @returns True if the config has a userConfigPath string property
+ */
+function hasConfigFilePath(
+  config: Record<string, unknown>
+): config is Record<string, unknown> & { configFilePath: string } {
+  return typeof (config as YamlConfig).configFilePath === 'string';
+}
+
+/**
  * Substitutes tokens in the configuration with values from environment variables and other config values.
  * Also expands home paths (~ character) in string values.
  *
@@ -237,20 +249,22 @@ function substituteTokens(
   fullConfig: Record<string, unknown>,
   systemInfo: SystemInfo
 ): Record<string, unknown> {
-  const finalEnv = deepMerge(env, { HOME: systemInfo.homeDir });
-  const configStr = Bun.YAML.stringify(config);
+  const configFileDir =
+    hasConfigFilePath(fullConfig) && fullConfig.configFilePath
+      ? path.dirname(fullConfig.configFilePath)
+      : systemInfo.homeDir;
 
+  const finalEnv = deepMerge(env, { HOME: systemInfo.homeDir, configFileDir });
+  const configStr = Bun.YAML.stringify(config);
   const substitutedConfigStr = performTokenSubstitution(configStr, finalEnv, fullConfig);
 
   // Parse the config string back to an object
   const parsedConfig = Bun.YAML.parse(substitutedConfigStr) as Record<string, unknown>;
 
   // Expand home paths in the config
-  const userConfigPath =
-    'userConfigPath' in fullConfig && typeof fullConfig['userConfigPath'] === 'string'
-      ? fullConfig['userConfigPath']
-      : undefined;
+  const userConfigPath = hasConfigFilePath(fullConfig) ? fullConfig.configFilePath : undefined;
   const baseDir = userConfigPath ? path.dirname(userConfigPath) : systemInfo.homeDir;
+
   return expandHomePathsInObject(parsedConfig, baseDir) as Record<string, unknown>;
 }
 
@@ -269,9 +283,10 @@ function processConfig(
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
   const withInjectedValues: YamlConfig = configWithPlatformOverrides as YamlConfig;
 
-  withInjectedValues.userConfigPath = userConfigPath;
+  withInjectedValues.configFilePath = userConfigPath;
+  withInjectedValues.configFileDir = path.dirname(userConfigPath);
 
-  const configWithTokens = substituteTokens(withInjectedValues, env, configWithPlatformOverrides, systemInfo);
+  const configWithTokens = substituteTokens(withInjectedValues, env, withInjectedValues, systemInfo);
   const result = yamlConfigSchema.extend(privateYamlConfigFields.shape).safeParse(configWithTokens);
 
   if (!result.success) {

@@ -32,7 +32,7 @@ type AnyConfigureTool = AsyncConfigureTool | SyncConfigureTool;
  *     .version('latest')
  *     .install('github-release', { repo: 'wagoodman/dive' })
  * );
- * 
+ *
  * // Async syntax with braces
  * export default defineTool(async (c, ctx) => {
  *   c.bin('dive')

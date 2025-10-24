@@ -67,7 +67,7 @@ describe('E2E: cli install (GitHub)', () => {
           github: {
             host: mockServer.baseUrl,
           },
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         logger,
@@ -227,7 +227,7 @@ describe('E2E: cli install (GitHub)', () => {
               enabled: false,
             },
           },
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         fileSystem: fs,

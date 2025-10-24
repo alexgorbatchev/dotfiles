@@ -13,6 +13,8 @@ export function createTestInstallHookContext(
   const logger = testLogger || new TestLogger();
 
   const mockAppConfig = {
+    configFilePath: '/home/user/.dotfiles/config.yaml',
+    configFileDir: '/home/user/.dotfiles',
     paths: {
       homeDir: '/home/user',
       dotfilesDir: '/home/user/.dotfiles',

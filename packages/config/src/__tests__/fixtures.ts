@@ -1,7 +1,9 @@
 import type { YamlConfig } from '@dotfiles/schemas/config';
 
 export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
-  userConfigPath: '',
+  configFilePath: '',
+  configFileDir: '',
+
   paths: {
     homeDir: '/home/testuser',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion

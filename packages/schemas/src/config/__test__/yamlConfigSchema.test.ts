@@ -4,7 +4,8 @@ import type { YamlConfig } from '../yamlConfigSchema';
 describe('yamlConfigSchemaTest', () => {
   test('type validation', () => {
     const config: YamlConfig = {
-      userConfigPath: '',
+      configFilePath: '',
+      configFileDir: '',
 
       paths: {
         homeDir: '',

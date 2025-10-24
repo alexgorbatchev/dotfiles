@@ -1,23 +1,6 @@
 #!/usr/bin/env bun
 
-import os from 'node:os';
-import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import {
-  createProgram,
-  type GlobalProgram,
-  type GlobalProgramOptions,
-  registerCheckUpdatesCommand,
-  registerCleanupCommand,
-  registerDetectConflictsCommand,
-  registerFilesCommand,
-  registerGenerateCommand,
-  registerInitCommand,
-  registerInstallCommand,
-  registerUpdateCommand,
-  type Services,
-} from '@dotfiles/cli';
-import { cliLogMessages } from '@dotfiles/cli/log-messages';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadYamlConfig } from '@dotfiles/config';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
@@ -27,15 +10,29 @@ import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import type { SystemInfo } from '@dotfiles/schemas';
 import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
+import os from 'node:os';
+import path from 'node:path';
+
+import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
+import { registerCleanupCommand } from './cleanupCommand';
+import { createProgram } from './createProgram';
+import { registerDetectConflictsCommand } from './detectConflictsCommand';
+import { registerFilesCommand } from './filesCommand';
+import { registerGenerateCommand } from './generateCommand';
+import { registerInitCommand } from './initCommand';
+import { registerInstallCommand } from './installCommand';
+import { cliLogMessages } from './log-messages';
+import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
+import { registerUpdateCommand } from './updateCommand';
 
 type SetupServicesOptions = GlobalProgramOptions & {
   cwd: string;

@@ -93,7 +93,7 @@ describe('E2E: Download Cache', () => {
               ttl: 60000, // 1 minute for testing
             },
           },
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         fileSystem: fs,
@@ -225,7 +225,7 @@ describe('E2E: Download Cache', () => {
               ttl: 60000,
             },
           },
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         fileSystem: fs,

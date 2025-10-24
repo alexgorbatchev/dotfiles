@@ -215,7 +215,10 @@ export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
 export type YamlConfigPartial = PartialDeep<YamlConfig>;
 
 export const privateYamlConfigFields = z.object({
-  userConfigPath: z.string(),
+  /** Full path to the config file */
+  configFilePath: z.string(),
+  /** Directory containing the config file */
+  configFileDir: z.string(),
 });
 
 export type YamlConfig = z.infer<typeof yamlConfigSchema> & z.infer<typeof privateYamlConfigFields>;

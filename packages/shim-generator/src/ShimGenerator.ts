@@ -125,7 +125,7 @@ export class ShimGenerator implements IShimGenerator {
       TOOL_NAME="${toolName}"
       TOOL_EXECUTABLE="${toolBinaryPath}"
       GENERATOR_CLI_EXECUTABLE="${getCliBinPath()}"
-      CONFIG_PATH="${this.config.userConfigPath}"
+      CONFIG_PATH="${this.config.configFilePath}"
 
       # Check if the first argument is @update
       if [ $# -gt 0 ] && [ "$1" = "@update" ]; then

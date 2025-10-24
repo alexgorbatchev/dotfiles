@@ -2,6 +2,9 @@
   "name": "@dotfiles/cli",
   "version": "1.0.0",
   "type": "module",
+  "bin": {
+    "dotfiles": "bin/dotfiles"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./log-messages": "./src/log-messages.ts"

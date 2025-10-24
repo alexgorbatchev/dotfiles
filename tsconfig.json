@@ -26,6 +26,6 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitAny": true
   },
-  "include": ["packages/**/*", "cli.ts", "scripts/**/*"],
+  "include": ["packages", "cli.ts", "scripts"],
   "exclude": ["**/tmp/**"]
 }

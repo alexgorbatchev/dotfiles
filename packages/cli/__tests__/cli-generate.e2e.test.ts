@@ -49,7 +49,7 @@ describe('E2E: bun run cli generate', () => {
       await createMockYamlConfig({
         config: {
           paths: testDirs.paths,
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         fileSystem: fs,
@@ -273,7 +273,7 @@ describe('E2E: bun run cli generate', () => {
           github: {
             host: mockServer.baseUrl,
           },
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         fileSystem: fs,

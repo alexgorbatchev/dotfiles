@@ -75,7 +75,7 @@ describe('E2E: cli install (Cargo)', () => {
             githubRaw: { host: mockServer.baseUrl },
             githubRelease: { host: mockServer.baseUrl },
           },
-          userConfigPath: configFilePath,
+          configFilePath: configFilePath,
         },
         filePath: configFilePath,
         logger,

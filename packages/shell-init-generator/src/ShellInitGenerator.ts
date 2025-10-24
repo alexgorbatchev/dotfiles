@@ -180,7 +180,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
         shellType,
         generatedScriptPath: scriptPath,
         onlyIfExists: true, // Only update profile files if they already exist
-        yamlConfigPath: this.appConfig.userConfigPath,
+        yamlConfigPath: this.appConfig.configFilePath,
       });
     }
 
