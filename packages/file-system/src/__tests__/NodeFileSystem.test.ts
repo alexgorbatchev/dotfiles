@@ -1,14 +1,7 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { Stats } from 'node:fs';
-import { constants as fsConstants, promises as fsPromises } from 'node:fs';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import type { IFileSystem } from '../IFileSystem';
 import { NodeFileSystem } from '../NodeFileSystem';
-
-// Setup cleanup once per file
-setupTestCleanup();
-
-const mockModules = createModuleMocker();
 
 // Create mocks for fs functions
 const mockReadFile = mock(async () => 'mocked file content');
@@ -25,145 +18,137 @@ const mockChmod = mock(async () => undefined);
 const mockCopyFile = mock(async () => undefined);
 const mockRename = mock(async () => undefined);
 
+const mockFsPromises = {
+  readFile: mockReadFile,
+  writeFile: mockWriteFile,
+  access: mockAccess,
+  mkdir: mockMkdir,
+  readdir: mockReaddir,
+  rm: mockRm,
+  rmdir: mockRmdir,
+  stat: mockStat,
+  lstat: mockStat,
+  symlink: mockSymlink,
+  readlink: mockReadlink,
+  chmod: mockChmod,
+  copyFile: mockCopyFile,
+  rename: mockRename,
+};
+
+const mockConstants = {
+  F_OK: 0,
+};
+
 describe('NodeFileSystem', () => {
   let fileSystem: IFileSystem;
 
-  beforeEach(async () => {
-    // Setup mock for node:fs module
-    await mockModules.mock('node:fs', () => ({
-      promises: {
-        readFile: mockReadFile,
-        writeFile: mockWriteFile,
-        access: mockAccess,
-        mkdir: mockMkdir,
-        readdir: mockReaddir,
-        rm: mockRm,
-        rmdir: mockRmdir,
-        stat: mockStat,
-        symlink: mockSymlink,
-        readlink: mockReadlink,
-        chmod: mockChmod,
-        copyFile: mockCopyFile,
-        rename: mockRename,
-      },
-      constants: {
-        F_OK: 0, // Actual value doesn't matter much for mock, just needs to be defined
-      },
-    }));
-
-    fileSystem = new NodeFileSystem();
+  beforeEach(() => {
+    fileSystem = new NodeFileSystem(
+      mockFsPromises as unknown as typeof import('node:fs').promises,
+      mockConstants as unknown as typeof import('node:fs').constants
+    );
   });
 
-  afterEach(() => {
-    clearMockRegistry();
-  });
-
-  afterAll(() => {
-    mockModules.restoreAll();
-  });
-
-  it('should call fsPromises.readFile for readFile', async () => {
+  it('should call readFile with correct parameters', async () => {
     const filePath = 'test.txt';
     const content = await fileSystem.readFile(filePath);
-    expect(fsPromises.readFile).toHaveBeenCalledWith(filePath, { encoding: 'utf8' });
+    expect(mockReadFile).toHaveBeenCalledWith(filePath, { encoding: 'utf8' });
     expect(content).toBe('mocked file content');
   });
 
-  it('should call fsPromises.writeFile for writeFile', async () => {
+  it('should call writeFile with correct parameters', async () => {
     const filePath = 'test.txt';
     const fileContent = 'hello world';
     await fileSystem.writeFile(filePath, fileContent);
-    expect(fsPromises.writeFile).toHaveBeenCalledWith(filePath, fileContent, { encoding: 'utf8' });
+    expect(mockWriteFile).toHaveBeenCalledWith(filePath, fileContent, { encoding: 'utf8' });
   });
 
-  it('should call fsPromises.access for exists and return true if access succeeds', async () => {
-    const mockAccess = fsPromises.access as ReturnType<typeof mock>;
-    mockAccess.mockResolvedValueOnce(undefined); // Ensure this call succeeds
+  it('should return true when file exists', async () => {
+    mockAccess.mockResolvedValueOnce(undefined);
     const filePath = 'test.txt';
     const result = await fileSystem.exists(filePath);
-    expect(fsPromises.access).toHaveBeenCalledWith(filePath, fsConstants.F_OK);
+    expect(mockAccess).toHaveBeenCalledWith(filePath, 0);
     expect(result).toBe(true);
   });
 
-  it('should call fsPromises.access for exists and return false if access fails', async () => {
-    const mockAccess = fsPromises.access as ReturnType<typeof mock>;
-    mockAccess.mockRejectedValueOnce(new Error('File not found')); // Ensure this call fails
+  it('should return false when file does not exist', async () => {
+    mockAccess.mockRejectedValueOnce(new Error('File not found'));
     const filePath = 'nonexistent.txt';
     const result = await fileSystem.exists(filePath);
-    expect(fsPromises.access).toHaveBeenCalledWith(filePath, fsConstants.F_OK);
+    expect(mockAccess).toHaveBeenCalledWith(filePath, 0);
     expect(result).toBe(false);
   });
 
-  it('should call fsPromises.mkdir for mkdir', async () => {
+  it('should call mkdir with correct parameters', async () => {
     const dirPath = 'new_dir';
     await fileSystem.mkdir(dirPath, { recursive: true });
-    expect(fsPromises.mkdir).toHaveBeenCalledWith(dirPath, { recursive: true });
+    expect(mockMkdir).toHaveBeenCalledWith(dirPath, { recursive: true });
   });
 
-  it('should call fsPromises.readdir for readdir', async () => {
+  it('should call readdir with correct parameters', async () => {
     const dirPath = 'test_dir';
     const entries = await fileSystem.readdir(dirPath);
-    expect(fsPromises.readdir).toHaveBeenCalledWith(dirPath);
+    expect(mockReaddir).toHaveBeenCalledWith(dirPath);
     expect(entries).toEqual(['file1.txt', 'dir1']);
   });
 
-  it('should call fsPromises.rm for rm', async () => {
+  it('should call rm with correct parameters', async () => {
     const filePath = 'file_to_remove.txt';
     await fileSystem.rm(filePath, { force: true });
-    expect(fsPromises.rm).toHaveBeenCalledWith(filePath, { force: true });
+    expect(mockRm).toHaveBeenCalledWith(filePath, { force: true });
   });
 
-  it('should call fsPromises.rmdir for rmdir', async () => {
+  it('should call rmdir with correct parameters', async () => {
     const dirPath = 'dir_to_remove';
     await fileSystem.rmdir(dirPath, { recursive: true });
-    expect(fsPromises.rmdir).toHaveBeenCalledWith(dirPath, { recursive: true });
+    expect(mockRmdir).toHaveBeenCalledWith(dirPath, { recursive: true });
   });
 
-  it('should call fsPromises.stat for stat', async () => {
+  it('should call stat with correct parameters', async () => {
     const filePath = 'test.txt';
     const stats = await fileSystem.stat(filePath);
-    expect(fsPromises.stat).toHaveBeenCalledWith(filePath);
+    expect(mockStat).toHaveBeenCalledWith(filePath);
     expect(stats.isFile()).toBe(true);
   });
 
-  it('should call fsPromises.symlink for symlink', async () => {
+  it('should call symlink with correct parameters', async () => {
     const target = '/target/file';
     const linkPath = '/link/path';
     await fileSystem.symlink(target, linkPath, 'file');
-    expect(fsPromises.symlink).toHaveBeenCalledWith(target, linkPath, 'file');
+    expect(mockSymlink).toHaveBeenCalledWith(target, linkPath, 'file');
   });
 
-  it('should call fsPromises.readlink for readlink', async () => {
+  it('should call readlink with correct parameters', async () => {
     const linkPath = '/link/path';
     const target = await fileSystem.readlink(linkPath);
-    expect(fsPromises.readlink).toHaveBeenCalledWith(linkPath);
+    expect(mockReadlink).toHaveBeenCalledWith(linkPath);
     expect(target).toBe('mocked/target/path');
   });
 
-  it('should call fsPromises.chmod for chmod', async () => {
+  it('should call chmod with correct parameters', async () => {
     const filePath = 'test.txt';
     const mode = 0o755;
     await fileSystem.chmod(filePath, mode);
-    expect(fsPromises.chmod).toHaveBeenCalledWith(filePath, mode);
+    expect(mockChmod).toHaveBeenCalledWith(filePath, mode);
   });
 
-  it('should call fsPromises.copyFile for copyFile', async () => {
+  it('should call copyFile with correct parameters', async () => {
     const src = 'source.txt';
     const dest = 'destination.txt';
     await fileSystem.copyFile(src, dest);
-    expect(fsPromises.copyFile).toHaveBeenCalledWith(src, dest, undefined);
+    expect(mockCopyFile).toHaveBeenCalledWith(src, dest, undefined);
   });
 
-  it('should call fsPromises.rename for rename', async () => {
+  it('should call rename with correct parameters', async () => {
     const oldPath = 'old_name.txt';
     const newPath = 'new_name.txt';
     await fileSystem.rename(oldPath, newPath);
-    expect(fsPromises.rename).toHaveBeenCalledWith(oldPath, newPath);
+    expect(mockRename).toHaveBeenCalledWith(oldPath, newPath);
   });
 
-  it('should call fsPromises.mkdir for ensureDir', async () => {
+  it('should call mkdir for ensureDir with recursive option', async () => {
     const dirPath = 'ensure_this_dir';
     await fileSystem.ensureDir(dirPath);
-    expect(fsPromises.mkdir).toHaveBeenCalledWith(dirPath, { recursive: true });
+    expect(mockMkdir).toHaveBeenCalledWith(dirPath, { recursive: true });
   });
 });

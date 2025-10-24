@@ -2,13 +2,23 @@ import type { Stats } from 'node:fs';
 import { constants as fsConstants, promises as fsPromises } from 'node:fs';
 import type { IFileSystem } from './IFileSystem';
 
+type FsPromises = typeof fsPromises;
+
 export class NodeFileSystem implements IFileSystem {
+  private readonly fs: FsPromises;
+  private readonly constants: typeof fsConstants;
+
+  constructor(fs: FsPromises = fsPromises, constants: typeof fsConstants = fsConstants) {
+    this.fs = fs;
+    this.constants = constants;
+  }
+
   public async readFile(path: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
-    return fsPromises.readFile(path, { encoding });
+    return this.fs.readFile(path, { encoding });
   }
 
   public async readFileBuffer(path: string): Promise<Buffer> {
-    return fsPromises.readFile(path);
+    return this.fs.readFile(path);
   }
 
   public async writeFile(
@@ -16,12 +26,12 @@ export class NodeFileSystem implements IFileSystem {
     content: string | NodeJS.ArrayBufferView,
     encoding: BufferEncoding = 'utf8'
   ): Promise<void> {
-    return fsPromises.writeFile(path, content, { encoding });
+    return this.fs.writeFile(path, content, { encoding });
   }
 
   public async exists(path: string): Promise<boolean> {
     try {
-      await fsPromises.access(path, fsConstants.F_OK);
+      await this.fs.access(path, this.constants.F_OK);
       return true;
     } catch {
       return false;
@@ -29,52 +39,52 @@ export class NodeFileSystem implements IFileSystem {
   }
 
   public async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-    await fsPromises.mkdir(path, options);
+    await this.fs.mkdir(path, options);
   }
 
   public async readdir(path: string): Promise<string[]> {
-    return fsPromises.readdir(path);
+    return this.fs.readdir(path);
   }
 
   public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
-    return fsPromises.rm(path, options);
+    return this.fs.rm(path, options);
   }
 
   public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-    return fsPromises.rmdir(path, options);
+    return this.fs.rmdir(path, options);
   }
 
   public async stat(path: string): Promise<Stats> {
-    return fsPromises.stat(path);
+    return this.fs.stat(path);
   }
 
   public async lstat(path: string): Promise<Stats> {
-    return fsPromises.lstat(path);
+    return this.fs.lstat(path);
   }
 
   public async symlink(target: string, path: string, type?: 'file' | 'dir' | 'junction'): Promise<void> {
-    return fsPromises.symlink(target, path, type);
+    return this.fs.symlink(target, path, type);
   }
 
   public async readlink(path: string): Promise<string> {
-    return fsPromises.readlink(path);
+    return this.fs.readlink(path);
   }
 
   public async chmod(path: string, mode: number | string): Promise<void> {
-    return fsPromises.chmod(path, mode);
+    return this.fs.chmod(path, mode);
   }
 
   public async copyFile(src: string, dest: string, flags?: number): Promise<void> {
-    return fsPromises.copyFile(src, dest, flags);
+    return this.fs.copyFile(src, dest, flags);
   }
 
   public async rename(oldPath: string, newPath: string): Promise<void> {
-    return fsPromises.rename(oldPath, newPath);
+    return this.fs.rename(oldPath, newPath);
   }
 
   public async ensureDir(path: string): Promise<void> {
-    // fsPromises.mkdir with recursive: true already behaves like ensureDir
+    // this.fs.mkdir with recursive: true already behaves like ensureDir
     // It doesn't throw an error if the directory already exists.
-    await fsPromises.mkdir(path, { recursive: true });
+    await this.fs.mkdir(path, { recursive: true });
   }
 }
