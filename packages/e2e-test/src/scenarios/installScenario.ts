@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { TestHarness } from '../TestHarness';
-import { beforeAll } from 'bun:test';
 
 export function installScenarios(harness: TestHarness): void {
   const binariesDir = path.join(harness.generatedDir, 'binaries', 'github-release-tool');

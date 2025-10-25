@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import type { ArchitecturePatterns } from '../types';
 import { createArchitectureRegex } from '../createArchitectureRegex';
+import type { ArchitecturePatterns } from '../types';
 
 describe('createArchitectureRegex', () => {
   it('should create proper regex patterns from architecture patterns', () => {

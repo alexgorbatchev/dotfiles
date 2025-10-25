@@ -1,7 +1,7 @@
 import { expect } from 'bun:test';
-import { $ } from 'bun';
 import path from 'node:path';
 import type { Architecture, Platform } from '@dotfiles/schemas';
+import { $ } from 'bun';
 import { architectureToString, platformToString } from './platformUtils';
 
 export interface TestHarnessOptions {

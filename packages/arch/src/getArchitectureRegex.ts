@@ -1,7 +1,7 @@
 import type { SystemInfo } from '@dotfiles/schemas';
-import type { ArchitectureRegex } from './types';
 import { createArchitectureRegex } from './createArchitectureRegex';
 import { getArchitecturePatterns } from './getArchitecturePatterns';
+import type { ArchitectureRegex } from './types';
 
 /**
  * Main function that combines pattern generation and regex creation.

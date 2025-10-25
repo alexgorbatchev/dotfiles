@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+import os from 'node:os';
+import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import { loadYamlConfig } from '@dotfiles/config';
@@ -10,17 +12,15 @@ import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
-import { RegistryDatabase } from '@dotfiles/registry-database';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import type { SystemInfo } from '@dotfiles/schemas';
 import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
-import os from 'node:os';
-import path from 'node:path';
 
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';

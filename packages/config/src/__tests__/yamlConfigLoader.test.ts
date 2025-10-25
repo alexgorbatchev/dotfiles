@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { createMemFileSystem } from '@dotfiles/file-system';
 import type { IFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { SystemInfo } from '@dotfiles/schemas';
 import { loadYamlConfig } from '../yamlConfigLoader';

@@ -1,7 +1,7 @@
 import { describe } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/schemas';
-import { TestHarness } from '../TestHarness';
 import { generateScenarios, installScenarios, updateScenarios } from '../scenarios';
+import { TestHarness } from '../TestHarness';
 import { withMockServer } from '../withMockServer';
 
 const platformConfigs = [
