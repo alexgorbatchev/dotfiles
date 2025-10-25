@@ -3,25 +3,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';
-import { cdToRepoRoot } from './lib';
+import { cdToRepoRoot, executeCommand, validateGitRepository } from './lib';
 
 cdToRepoRoot(import.meta.url);
 
 const rootDir = process.cwd();
 const releaseDir = path.join(rootDir, '.release');
-
-async function validateGitRepository(): Promise<void> {
-  try {
-    const args = ['rev-parse', '--git-dir'];
-    const result = await $`git ${args}`.cwd(rootDir).quiet();
-    if (result.exitCode !== 0) {
-      throw new Error('Not a git repository');
-    }
-    console.log('✓ Confirmed we are in a git repository');
-  } catch {
-    throw new Error('Not in a git repository. Please run this script from the project root.');
-  }
-}
 
 async function validateCleanWorkingDirectory(): Promise<void> {
   try {
@@ -35,19 +22,6 @@ async function validateCleanWorkingDirectory(): Promise<void> {
   }
 }
 
-async function executeCommand(args: string[], cwd: string = process.cwd()): Promise<void> {
-  const command = args.join(' ');
-  console.log(`🔧 Running: ${command}`);
-  const result = await $`${args}`.cwd(cwd).quiet();
-
-  if (result.exitCode !== 0) {
-    console.error(`❌ Command failed: ${command}`);
-    console.error(`Exit code: ${result.exitCode}`);
-    console.error(`Error output: ${result.stderr.toString()}`);
-    throw new Error(`Command failed with exit code ${result.exitCode}`);
-  }
-}
-
 async function cleanupReleaseDir(): Promise<void> {
   if (fs.existsSync(releaseDir)) {
     console.log('🧹 Cleaning up existing .release directory...');
@@ -58,7 +32,7 @@ async function cleanupReleaseDir(): Promise<void> {
 async function cloneRepository(): Promise<void> {
   console.log('📂 Cloning repository to .release...');
   await executeCommand(['git', 'clone', '.', releaseDir], rootDir);
-  
+
   // Copy .npmrc if it exists in the root
   const npmrcPath = path.join(rootDir, '.npmrc');
   if (fs.existsSync(npmrcPath)) {
@@ -71,7 +45,7 @@ async function cloneRepository(): Promise<void> {
 async function installDependencies(): Promise<void> {
   console.log('📦 Installing dependencies...');
   await executeCommand(['bun', 'install'], releaseDir);
-  
+
   // Remove .npmrc after installation to avoid including it in the release
   const releaseNpmrcPath = path.join(releaseDir, '.npmrc');
   if (fs.existsSync(releaseNpmrcPath)) {
@@ -155,7 +129,7 @@ export async function release(): Promise<void> {
 
   try {
     // Step 0: Validate environment
-    await validateGitRepository();
+    await validateGitRepository(rootDir);
     await validateCleanWorkingDirectory();
 
     // Step 1: Clean up any existing release directory
