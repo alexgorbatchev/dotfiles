@@ -10,12 +10,7 @@ applyTo: '**/*'
 - Use the most appropriate tool available in the environment for each task
 - Prefer tools that provide clear, parseable output for automation
 - Choose tools that maintain data integrity and provide error handling
-
-## File Modification Guidelines
-
-- Never use schell commands to make text changes, all text edits must be done manually
-- Verify file changes before committing modifications
-- Test modifications in isolated environments first
+- Don't use `cat << EOF` style commands to make file changes
 
 ## Available Tooling
 
