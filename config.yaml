@@ -1,4 +1,0 @@
-paths:
-  generatedDir: ${paths.dotfilesDir}/generator/.generated 
-  homeDir: ${paths.generatedDir}/user-home
-  targetDir: ${paths.generatedDir}/bin
