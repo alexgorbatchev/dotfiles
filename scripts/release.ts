@@ -3,7 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';
-import { cdToRepoRoot, executeCommand, validateGitRepository } from './lib';
+import cliPackageJson from '../package.json';
+import { cdToRepoRoot, executeCommand, validateGitRepository, printDirectoryContents } from './lib';
 
 cdToRepoRoot(import.meta.url);
 
@@ -45,13 +46,6 @@ async function cloneRepository(): Promise<void> {
 async function installDependencies(): Promise<void> {
   console.log('📦 Installing dependencies...');
   await executeCommand(['bun', 'install'], releaseDir);
-
-  // Remove .npmrc after installation to avoid including it in the release
-  const releaseNpmrcPath = path.join(releaseDir, '.npmrc');
-  if (fs.existsSync(releaseNpmrcPath)) {
-    fs.unlinkSync(releaseNpmrcPath);
-    console.log('✓ Removed .npmrc after dependency installation');
-  }
 }
 
 async function runBuildScript(): Promise<void> {
@@ -86,17 +80,33 @@ async function moveDistFiles(): Promise<void> {
     throw new Error('Build files not found in .release/.dist');
   }
 
-  // Copy all files from .dist to root of release branch
+  // Only copy essential release files (exclude .npmrc, bun.lock, etc.)
+  const allowedFiles = ['cli.js', 'cli.js.map', 'package.json', 'schemas.d.ts'];
+  
   const distFiles = fs.readdirSync(releaseDistDir);
   for (const file of distFiles) {
-    const srcPath = path.join(releaseDistDir, file);
-    const destPath = path.join(releaseDir, file);
-    fs.copyFileSync(srcPath, destPath);
-    console.log(`   ✓ Moved ${file}`);
+    if (allowedFiles.includes(file)) {
+      const srcPath = path.join(releaseDistDir, file);
+      const destPath = path.join(releaseDir, file);
+      fs.copyFileSync(srcPath, destPath);
+      console.log(`   ✓ Moved ${file}`);
+    } else {
+      console.log(`   ⏭️  Skipped ${file} (not included in release)`);
+    }
   }
 
   // Remove the .dist directory
   fs.rmSync(releaseDistDir, { recursive: true, force: true });
+}
+
+async function removeBuildOnlyFiles(): Promise<void> {
+  console.log('🧹 Removing build-only files from release directory...');
+  
+  const releaseNpmrcPath = path.join(releaseDir, '.npmrc');
+  if (fs.existsSync(releaseNpmrcPath)) {
+    fs.unlinkSync(releaseNpmrcPath);
+    console.log('   ✓ Removed .npmrc');
+  }
 }
 
 async function commitAndPush(): Promise<void> {
@@ -105,10 +115,8 @@ async function commitAndPush(): Promise<void> {
   // Add all files
   await executeCommand(['git', 'add', '.'], releaseDir);
 
-  // Get version from package.json for commit message
-  const packageJsonPath = path.join(releaseDir, 'package.json');
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  const version = packageJson.version;
+  // Get version from imported package.json for commit message
+  const version = cliPackageJson.version;
 
   // Commit with version info
   await executeCommand(['git', 'commit', '-m', `Release v${version}`], releaseDir);
@@ -150,16 +158,38 @@ export async function release(): Promise<void> {
     // Step 6: Move dist files to root
     await moveDistFiles();
 
-    // Step 7: Commit and push
+    // Step 7: Remove build-only files
+    await removeBuildOnlyFiles();
+
+    // Step 8: List files before commit
+    printDirectoryContents(releaseDir, 'Release directory contents');
+
+    // Step 9: Commit and push
     await commitAndPush();
 
-    console.log('✅ Release completed successfully!');
+    console.log('✅ Release completed successfully! Use `bun run publish` now to publish.');
   } catch (error) {
     console.error('❌ Release failed:', error);
     throw error;
-  } finally {
-    // Step 8: Clean up .release directory
-    await cleanup();
+  }
+
+  // Step 10: Clean up .release directory
+  await cleanup();
+
+  // Step 11: Show final release branch contents
+  console.log('📋 Final release branch contents:');
+  try {
+    const result = await $`git ls-tree -r --name-only release`.quiet();
+    const files = result.stdout.toString().trim().split('\n').filter(f => f);
+    if (files.length > 0) {
+      for (const file of files) {
+        console.log(`   📄 ${file}`);
+      }
+    } else {
+      console.log('   (no files)');
+    }
+  } catch {
+    console.log('   ❌ Could not list release branch files');
   }
 }
 

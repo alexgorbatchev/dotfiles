@@ -21,6 +21,9 @@ import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
 
+// biome-ignore lint:plugin/use-export-star Reexport these for the consumption
+export { defineTool, always, once } from '@dotfiles/schemas';
+
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
