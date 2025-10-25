@@ -500,7 +500,7 @@ describe('Profile Updates E2E Tests', () => {
       // Verify generated scripts contain all expected content
       const zshScriptPath = result?.files.get('zsh');
       const bashScriptPath = result?.files.get('bash');
-      
+
       expect(zshScriptPath).toBeDefined();
       expect(bashScriptPath).toBeDefined();
 

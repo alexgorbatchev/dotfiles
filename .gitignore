@@ -27,9 +27,5 @@ _.log
 *.tsbuildinfo
 
 tmp
-.qdrant
+.generated
 
-.roo
-.claude
-CLAUDE.md
-.crush
