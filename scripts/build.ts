@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { $ } from 'bun';
 import cliPackageJson from '../package.json';
 import { cdToRepoRoot } from './lib';
 
@@ -42,7 +43,7 @@ try {
   if (result.success) {
     // Make cli.js executable
     fs.chmodSync(outputFile, 0o755);
-    
+
     // Generate package.json for the built CLI
     const packageJson = {
       name: 'dotfiles',
@@ -72,7 +73,6 @@ try {
     // Test the built CLI
     console.log('🧪 Testing built CLI...');
     try {
-      const { $ } = await import('bun');
       const testResult = await $`bun ${outputFile} --version`.quiet();
 
       if (testResult.exitCode === 0) {

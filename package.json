@@ -37,6 +37,7 @@
     "fix": "biome check --write --unsafe .",
     "test:task": "bun test",
     "build": "scripts/build.ts",
+    "release": "scripts/release.ts",
     "compile": "scripts/compile.ts",
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"

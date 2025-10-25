@@ -11,6 +11,7 @@ applyTo: '**/*'
 - Do not add file header comments
 - Type casting is PROHIBITED and absolutely never use `as any`
 - Use typeguard functions instead of `as Type`
+- Don't use inline imports or require statements
 
 ## File Name Rules
 Filenames must match the exact name and casing of the main exported element.

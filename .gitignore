@@ -5,6 +5,8 @@ node_modules
 out
 dist
 .dist
+.release
+.npmrc
 *.tgz
 
 # code coverage
