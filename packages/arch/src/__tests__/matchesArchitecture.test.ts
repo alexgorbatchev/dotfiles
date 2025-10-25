@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'bun:test';
+import type { SystemInfo } from '@dotfiles/schemas';
 import type { ArchitectureRegex } from '@dotfiles/arch';
-import { matchesArchitecture } from '@dotfiles/arch';
+import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
 
 describe('matchesArchitecture', () => {
-  const macosArm64Regex: ArchitectureRegex = {
-    systemPattern: '(apple|darwin|macos)',
-    cpuPattern: '(arm64|aarch64)',
-    variantPattern: '(darwin)',
+  const macosArm64SystemInfo: SystemInfo = {
+    platform: 'darwin',
+    arch: 'arm64',
+    homeDir: '/home/test',
   };
 
-  const linuxX64Regex: ArchitectureRegex = {
-    systemPattern: '(linux)',
-    cpuPattern: '(amd64|x86_64|x64)',
-    variantPattern: '(musl|gnu)',
+  const linuxX64SystemInfo: SystemInfo = {
+    platform: 'linux',
+    arch: 'x86_64',
+    homeDir: '/home/test',
   };
+
+  const macosArm64Regex = getArchitectureRegex(macosArm64SystemInfo);
+  const linuxX64Regex = getArchitectureRegex(linuxX64SystemInfo);
 
   it('should match asset with correct system and CPU for macOS ARM64', () => {
     expect(matchesArchitecture('myapp-darwin-arm64.tar.gz', macosArm64Regex)).toBe(true);
@@ -73,4 +77,49 @@ describe('matchesArchitecture', () => {
     expect(matchesArchitecture('myapp-unknown-arm64.tar.gz', cpuOnlyRegex)).toBe(true);
     expect(matchesArchitecture('myapp-unknown-x64.tar.gz', cpuOnlyRegex)).toBe(false);
   });
+});
+
+describe('matchesArchitecture with FZF release assets', () => {
+  const assets: string[] = [
+    'fzf-0.66.0-android_arm64.tar.gz',
+    'fzf-0.66.0-darwin_amd64.tar.gz',
+    'fzf-0.66.0-darwin_arm64.tar.gz',
+    'fzf-0.66.0-freebsd_amd64.tar.gz',
+    'fzf-0.66.0-linux_amd64.tar.gz',
+    'fzf-0.66.0-linux_arm64.tar.gz',
+    'fzf-0.66.0-linux_armv5.tar.gz',
+    'fzf-0.66.0-linux_armv6.tar.gz',
+    'fzf-0.66.0-linux_armv7.tar.gz',
+    'fzf-0.66.0-linux_loong64.tar.gz',
+    'fzf-0.66.0-linux_ppc64le.tar.gz',
+    'fzf-0.66.0-linux_s390x.tar.gz',
+    'fzf-0.66.0-openbsd_amd64.tar.gz',
+    'fzf-0.66.0-windows_amd64.zip',
+    'fzf-0.66.0-windows_arm64.zip',
+    'fzf-0.66.0-windows_armv5.zip',
+    'fzf-0.66.0-windows_armv6.zip',
+    'fzf-0.66.0-windows_armv7.zip',
+    'fzf_0.66.0_checksums.txt',
+  ];
+
+  function expectMatchingAssets(platform: string, arch: string, expectedAssets: string[]): void {
+    it(`should find correct file for ${platform}/${arch}`, () => {
+      const systemInfo: SystemInfo = {
+        platform,
+        arch,
+        homeDir: '/home/test',
+      };
+      const regex = getArchitectureRegex(systemInfo);
+      const matchedAssets = assets.filter((asset) => matchesArchitecture(asset, regex));
+      expect(matchedAssets).toEqual(expectedAssets);
+    });
+  }
+
+  expectMatchingAssets('darwin', 'arm64', ['fzf-0.66.0-darwin_arm64.tar.gz']);
+  expectMatchingAssets('darwin', 'x64', ['fzf-0.66.0-darwin_amd64.tar.gz']);
+  expectMatchingAssets('linux', 'x86_64', ['fzf-0.66.0-linux_amd64.tar.gz']);
+  expectMatchingAssets('linux', 'arm64', ['fzf-0.66.0-linux_arm64.tar.gz']);
+  expectMatchingAssets('win32', 'x64', ['fzf-0.66.0-windows_amd64.zip']);
+  expectMatchingAssets('win32', 'arm64', ['fzf-0.66.0-windows_arm64.zip']);
+  expectMatchingAssets('freebsd', 'x64', ['fzf-0.66.0-freebsd_amd64.tar.gz']);
 });

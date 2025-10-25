@@ -21,26 +21,3 @@ export interface SystemInfo {
    */
   homeDir: string;
 }
-
-/**
- * Defines a set of string patterns used for matching system and CPU architectures,
- * often found in the names of release assets (e.g., on GitHub Releases).
- * These patterns help in identifying compatible binaries or installers for the current system.
- */
-export interface ArchitecturePatterns {
-  /**
-   * An array of string patterns representing different ways an operating system might be named.
-   * For example, for macOS, this could include `['apple', 'darwin', 'macos', 'osx']`.
-   */
-  system: string[];
-  /**
-   * An array of string patterns representing different ways a CPU architecture might be named.
-   * For example, for ARM64, this could include `['arm64', 'aarch64']`.
-   */
-  cpu: string[];
-  /**
-   * An array of additional OS-specific patterns or variants that might be used in asset naming.
-   * For example, `['musl']` for Linux distributions using musl libc, or `['gnu']` for glibc.
-   */
-  variants: string[];
-}

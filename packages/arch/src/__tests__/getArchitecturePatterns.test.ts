@@ -24,7 +24,7 @@ describe('getArchitecturePatterns', () => {
       'os-x',
       'os64x',
     ]);
-    expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'arm', 'aarch']);
+    expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'aarch']);
     expect(patterns.variants).toEqual(['darwin']);
   });
 
@@ -77,7 +77,7 @@ describe('getArchitecturePatterns', () => {
     const patterns = getArchitecturePatterns(systemInfo);
 
     expect(patterns.system).toEqual(['linux']);
-    expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'arm', 'aarch']);
+    expect(patterns.cpu).toEqual(['arm64', 'aarch64', 'aarch']);
     expect(patterns.variants).toEqual(['musl', 'gnu', 'unknown-linux']);
   });
 

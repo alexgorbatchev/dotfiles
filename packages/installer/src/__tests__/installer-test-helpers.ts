@@ -111,6 +111,42 @@ export const MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS: GitHubRelease = {
   ],
 };
 
+export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: GitHubRelease = {
+  ...MOCK_GITHUB_RELEASE,
+  assets: [
+    {
+      name: 'test-tool-linux-x86_64-musl.tar.gz',
+      browser_download_url: 'https://example.com/test-tool-linux-x86_64-musl.tar.gz',
+      size: 1000,
+      content_type: 'application/gzip',
+      state: 'uploaded',
+      download_count: 100,
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+    },
+    {
+      name: 'test-tool-linux-x86_64-gnu.tar.gz',
+      browser_download_url: 'https://example.com/test-tool-linux-x86_64-gnu.tar.gz',
+      size: 1100,
+      content_type: 'application/gzip',
+      state: 'uploaded',
+      download_count: 150,
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+    },
+    {
+      name: 'test-tool-darwin-arm64.zip',
+      browser_download_url: 'https://example.com/test-tool-darwin-arm64.zip',
+      size: 1200,
+      content_type: 'application/zip',
+      state: 'uploaded',
+      download_count: 50,
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+    },
+  ],
+};
+
 // Test setup interface
 export interface InstallerTestSetup {
   logger: TestLogger<ILogObj>;

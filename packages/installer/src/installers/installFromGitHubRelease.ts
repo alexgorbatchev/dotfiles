@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
+import { selectBestMatch } from '@dotfiles/arch';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -204,8 +204,14 @@ async function selectAsset(
 }
 
 function findPlatformAsset(assets: GitHubReleaseAsset[], systemInfo: SystemInfo): GitHubReleaseAsset | undefined {
-  const architectureRegex = getArchitectureRegex(systemInfo);
-  return assets.find((asset) => matchesArchitecture(asset.name, architectureRegex));
+  const assetNames = assets.map((a) => a.name);
+  const selectedName = selectBestMatch(assetNames, systemInfo);
+
+  if (!selectedName) {
+    return undefined;
+  }
+
+  return assets.find((a) => a.name === selectedName);
 }
 
 function createAssetNotFoundError(

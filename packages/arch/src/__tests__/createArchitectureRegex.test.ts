@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { ArchitecturePatterns } from '@dotfiles/schemas';
+import type { ArchitecturePatterns } from '../types';
 import { createArchitectureRegex } from '../createArchitectureRegex';
 
 describe('createArchitectureRegex', () => {

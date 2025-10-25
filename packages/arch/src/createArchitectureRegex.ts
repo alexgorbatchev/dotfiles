@@ -1,5 +1,4 @@
-import type { ArchitecturePatterns } from '@dotfiles/schemas';
-import type { ArchitectureRegex } from './ArchitectureRegex';
+import type { ArchitecturePatterns, ArchitectureRegex } from './types';
 
 /**
  * Creates combined regex patterns from architecture patterns.
@@ -16,9 +15,7 @@ export function createArchitectureRegex(patterns: ArchitecturePatterns): Archite
 
   // Create alternations for each pattern group
   const systemPattern = patterns.system.length > 0 ? `(${patterns.system.map(escapeRegex).join('|')})` : '';
-
   const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join('|')})` : '';
-
   const variantPattern = patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join('|')})` : '';
 
   const result: ArchitectureRegex = {
