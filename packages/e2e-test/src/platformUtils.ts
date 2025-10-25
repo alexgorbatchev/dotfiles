@@ -12,7 +12,11 @@ export function platformToString(platform: Platform): string {
     [Platform.All]: 'linux',
     [Platform.None]: 'linux',
   };
-  return mapping[platform];
+  const result: string | undefined = mapping[platform];
+  if (result === undefined) {
+    throw new Error(`Unknown platform: ${platform}`);
+  }
+  return result;
 }
 
 /**
@@ -25,5 +29,9 @@ export function architectureToString(architecture: Architecture): string {
     [Architecture.All]: 'x86_64',
     [Architecture.None]: 'x86_64',
   };
-  return mapping[architecture];
+  const result: string | undefined = mapping[architecture];
+  if (result === undefined) {
+    throw new Error(`Unknown architecture: ${architecture}`);
+  }
+  return result;
 }

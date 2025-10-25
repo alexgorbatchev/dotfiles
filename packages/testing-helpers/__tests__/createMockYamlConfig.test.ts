@@ -2,7 +2,6 @@ import { describe, expect, it } from 'bun:test';
 import { createYamlConfigFromObject } from '@dotfiles/config';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { stringify } from 'yaml';
 import { createMockYamlConfig, type PartialYamlConfig } from '../src/createMockYamlConfig';
 
 describe('createMockYamlConfig', () => {
@@ -32,6 +31,6 @@ describe('createMockYamlConfig', () => {
     });
     const fileContent = await fs.readFile(filePath, 'utf8');
     const expectedConfig = await createYamlConfigFromObject(logger, fs, mockConfig, systemInfo, env);
-    expect(fileContent).toBe(stringify(expectedConfig));
+    expect(fileContent).toBe(Bun.YAML.stringify(expectedConfig));
   });
 });

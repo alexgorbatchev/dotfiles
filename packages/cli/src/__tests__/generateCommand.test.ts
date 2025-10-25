@@ -1,17 +1,19 @@
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { YamlConfig } from '@dotfiles/config';
-import { loadToolConfigs as actualLoadToolConfigs } from '@dotfiles/config';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { MemFileSystemReturn } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { TestLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
-import { createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerGenerateCommand } from '../generateCommand';
 import { cliLogMessages } from '../log-messages';
 import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
-setupTestCleanup();
+const createMockConfigService = (): MockedInterface<IConfigService> => ({
+  loadSingleToolConfig: mock(async () => undefined),
+  loadToolConfigs: mock(async () => ({})),
+});
 
 describe('generateCommand', () => {
   let program: GlobalProgram;
@@ -19,9 +21,7 @@ describe('generateCommand', () => {
   let logger: TestLogger;
   let mockFs: MemFileSystemReturn;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
-  const mockModules = createModuleMocker();
-  const createMockLoadToolConfigs = () => mock(actualLoadToolConfigs);
-  let mockLoadToolConfigs: ReturnType<typeof createMockLoadToolConfigs>;
+  let mockConfigService: MockedInterface<IConfigService>;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -40,36 +40,30 @@ describe('generateCommand', () => {
     mockFs = setup.mockFs;
     mockYamlConfig = setup.mockYamlConfig;
 
-    mockLoadToolConfigs = createMockLoadToolConfigs();
-    mockLoadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
-
-    await mockModules.mock('@dotfiles/config', () => ({
-      loadToolConfigs: mockLoadToolConfigs,
-      loadSingleToolConfig: mock(async () => ({})),
-    }));
+    mockConfigService = createMockConfigService();
+    mockConfigService.loadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
 
     mockGeneratorOrchestrator = {
       generateAll: mock(async () => {}),
     };
 
-    // Update the mockServices with our custom implementation
-    setup.mockServices.generatorOrchestrator = mockGeneratorOrchestrator;
-
-    registerGenerateCommand(logger, program, async () => setup.createServices());
+    registerGenerateCommand(logger, program, async () => ({
+      ...setup.createServices(),
+      configService: mockConfigService,
+      generatorOrchestrator: mockGeneratorOrchestrator,
+    }));
   });
 
   afterEach(() => {
-    mockModules.restoreAll();
-  });
-
-  afterAll(() => {
-    mockModules.restoreAll();
+    // Reset all mocks
+    mockConfigService.loadToolConfigs.mockReset();
+    mockConfigService.loadSingleToolConfig.mockReset();
   });
 
   test('should successfully generate artifacts', async () => {
     await program.parseAsync(['generate'], { from: 'user' });
 
-    expect(mockLoadToolConfigs).toHaveBeenCalledWith(
+    expect(mockConfigService.loadToolConfigs).toHaveBeenCalledWith(
       expect.any(Object),
       mockYamlConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,
@@ -83,7 +77,7 @@ describe('generateCommand', () => {
   test('should successfully generate artifacts in dry run mode', async () => {
     await program.parseAsync(['generate', '--dry-run'], { from: 'user' });
 
-    expect(mockLoadToolConfigs).toHaveBeenCalledWith(
+    expect(mockConfigService.loadToolConfigs).toHaveBeenCalledWith(
       expect.any(Object),
       mockYamlConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,

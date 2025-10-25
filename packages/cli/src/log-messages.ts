@@ -91,9 +91,6 @@ export const cliLogMessages = {
   configParameterOverridden: (field: string, value: string) =>
     createSafeLogMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} overridden to: ${value}`),
   cleanupProcessFinished: (dryRun: boolean) => createSafeLogMessage(`cleanup process finished, dryRun=${dryRun}`),
-  initExistingFiles: (fileList: string) => createSafeLogMessage(`Access denied init: ${fileList}`),
-  initProjectInitialized: () => createSafeLogMessage('dotfiles generator project initialized'),
-  initFilesCreated: (fileList: string) => createSafeLogMessage(`[init] write ${fileList}`),
   filesCheckingFileStates: () => createSafeLogMessage('Checking file states for all tools'),
   filesFileStatesForTool: (toolName: string) => createSafeLogMessage(`${toolName} files`),
   filesFileStatus: (statusIcon: string, filePath: string, fileType: string, statusText: string, sizeText: string) =>

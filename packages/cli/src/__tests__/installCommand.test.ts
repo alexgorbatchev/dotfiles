@@ -1,29 +1,26 @@
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { YamlConfig } from '@dotfiles/config';
-import { loadSingleToolConfig as actualLoadSingleToolConfig } from '@dotfiles/config';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
+import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerInstallCommand } from '../installCommand';
 import { cliLogMessages } from '../log-messages';
 import type { GlobalProgram, Services } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
-// Setup cleanup once per file
-setupTestCleanup();
-
-const mockModules = createModuleMocker();
-
-const mockLoadSingleToolConfig = mock(actualLoadSingleToolConfig);
-const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
+const createMockConfigService = (): MockedInterface<IConfigService> => ({
+  loadSingleToolConfig: mock(async () => undefined),
+  loadToolConfigs: mock(async () => ({})),
+});
 
 describe('installCommand', () => {
   let program: GlobalProgram;
-  let mockInstaller: IInstaller;
+  let mockInstaller: MockedInterface<IInstaller>;
   let mockYamlConfig: YamlConfig;
   let testLogger: TestLogger;
   let mockServices: Services;
+  let mockConfigService: MockedInterface<IConfigService>;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -58,28 +55,26 @@ describe('installCommand', () => {
     mockServices = setup.createServices();
 
     // Set up mocks
-    await mockModules.mock('@dotfiles/config', () => ({
-      loadSingleToolConfig: mockLoadSingleToolConfig,
-      loadToolConfigs: mockLoadToolConfigsFromDirectory,
-    }));
+    mockConfigService = createMockConfigService();
 
-    registerInstallCommand(testLogger, program, async () => mockServices);
+    registerInstallCommand(testLogger, program, async () => ({
+      ...mockServices,
+      configService: mockConfigService,
+    }));
   });
 
   afterEach(() => {
-    clearMockRegistry();
-  });
-
-  afterAll(() => {
-    mockModules.restoreAll();
+    // Reset all mocks
+    mockConfigService.loadSingleToolConfig.mockReset();
+    mockConfigService.loadToolConfigs.mockReset();
   });
 
   test('should successfully install a tool', async () => {
-    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
 
     await program.parseAsync(['install', 'toolA'], { from: 'user' });
 
-    expect(mockLoadSingleToolConfig).toHaveBeenCalledWith(
+    expect(mockConfigService.loadSingleToolConfig).toHaveBeenCalledWith(
       expect.any(Object),
       'toolA',
       mockYamlConfig.paths.toolConfigsDir,
@@ -95,7 +90,7 @@ describe('installCommand', () => {
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
-    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
 
     expect(program.parseAsync(['install', 'toolA', '--shim-mode'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_0'
@@ -112,7 +107,7 @@ describe('installCommand', () => {
   });
 
   test('should output error to stderr in shim mode when installation fails', async () => {
-    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
     const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
     mockInstall.mockResolvedValueOnce({
       success: false,
@@ -136,7 +131,7 @@ describe('installCommand', () => {
   });
 
   test('should output unhandled error to stderr in shim mode', async () => {
-    mockLoadSingleToolConfig.mockRejectedValue(new Error('Config file corrupted'));
+    mockConfigService.loadSingleToolConfig.mockRejectedValue(new Error('Config file corrupted'));
 
     const mockStderrWrite = mock((_chunk: string | Uint8Array) => true);
     const originalStderrWrite = process.stderr.write;
@@ -155,7 +150,7 @@ describe('installCommand', () => {
   });
 
   test('should exit with error if tool config is not found', async () => {
-    mockLoadSingleToolConfig.mockResolvedValue(undefined);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(undefined);
 
     expect(program.parseAsync(['install', 'nonexistent'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_1'
@@ -169,7 +164,7 @@ describe('installCommand', () => {
   });
 
   test('should exit with error if installation fails', async () => {
-    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
     const mockInstall = mockInstaller.install as ReturnType<typeof mock>;
     mockInstall.mockResolvedValue({
       success: false,
@@ -186,7 +181,7 @@ describe('installCommand', () => {
   });
 
   test('should pass force option to installer', async () => {
-    mockLoadSingleToolConfig.mockResolvedValue(toolAConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(toolAConfig);
 
     await program.parseAsync(['install', 'toolA', '--force'], { from: 'user' });
 

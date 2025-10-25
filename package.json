@@ -45,7 +45,7 @@
     "@types/cli-progress": "^3.11.6",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",
+    "lefthook": "^2.0.0",
     "typescript": "catalog:typescript",
-    "lefthook": "^2.0.0"
   }
 }

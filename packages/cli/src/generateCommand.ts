@@ -1,4 +1,3 @@
-import { loadToolConfigs } from '@dotfiles/config';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
@@ -23,13 +22,18 @@ export function registerGenerateCommand(
     .action(async (_options: any) => {
       const combinedOptions: GenerateCommandOptions = program.opts() as GenerateCommandOptions;
       const services = await servicesFactory();
-      const { yamlConfig, fs, generatorOrchestrator } = services;
+      const { yamlConfig, fs, generatorOrchestrator, configService } = services;
 
       logger.debug(cliLogMessages.commandActionCalled('generate'), combinedOptions);
 
       try {
         logger.debug(cliLogMessages.toolConfigsLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
-        const toolConfigs = await loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+        const toolConfigs = await configService.loadToolConfigs(
+          logger,
+          yamlConfig.paths.toolConfigsDir,
+          fs,
+          yamlConfig
+        );
         logger.debug(
           cliLogMessages.toolConfigsLoaded(yamlConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length)
         );

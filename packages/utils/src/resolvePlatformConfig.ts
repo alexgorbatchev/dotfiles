@@ -184,7 +184,9 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
   }
 
   // Find matching platform configurations
-  const matchingConfigs = toolConfig.platformConfigs.filter((entry) => matchesPlatform(entry, systemInfo));
+  const matchingConfigs = toolConfig.platformConfigs.filter((entry: PlatformConfigEntry) =>
+    matchesPlatform(entry, systemInfo)
+  );
 
   // If no matches found, return the original config without platformConfigs
   if (matchingConfigs.length === 0) {

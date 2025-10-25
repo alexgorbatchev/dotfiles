@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { YamlConfig } from '@dotfiles/config';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
@@ -18,6 +18,7 @@ import type { Command } from 'commander';
 export interface Services {
   yamlConfig: YamlConfig;
   fs: IFileSystem;
+  configService: IConfigService;
   fileRegistry: IFileRegistry;
   toolInstallationRegistry: IToolInstallationRegistry;
   downloadCache: ICache | undefined;

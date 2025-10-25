@@ -13,7 +13,6 @@
     "@dotfiles/utils": "workspace:*",
     "express": "^4.18.2",
     "type-fest": "catalog:",
-    "yaml": "^2.6.1",
     "tslog": "catalog:"
   },
   "devDependencies": {

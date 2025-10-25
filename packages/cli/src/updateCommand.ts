@@ -1,5 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
-import { loadSingleToolConfig } from '@dotfiles/config';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IInstaller } from '@dotfiles/installer';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
@@ -20,13 +19,14 @@ export interface UpdateCommandOptions {
 
 async function loadToolConfigSafely(
   logger: TsLogger,
+  configService: IConfigService,
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
   yamlConfig: YamlConfig
 ): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
   try {
-    const toolConfig = await loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+    const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
     logger.debug(cliLogMessages.commandErrorDetails(), toolName);
 
     if (!toolConfig) {
@@ -232,13 +232,14 @@ export function registerUpdateCommand(
       actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName, combinedOptions);
 
       const services = await servicesFactory();
-      const { yamlConfig, fs } = services;
+      const { yamlConfig, fs, configService } = services;
 
       try {
         actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName);
 
         const toolConfigResult = await loadToolConfigSafely(
           actionLogger,
+          configService,
           toolName,
           yamlConfig.paths.toolConfigsDir,
           fs,

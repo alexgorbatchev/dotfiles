@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { exec as actualExecCallbackSignature } from 'node:child_process';
 import * as nodePath from 'node:path';
-import { promisify } from 'node:util'; // Import promisify
+import { promisify } from 'node:util'; 
 import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
@@ -17,10 +17,7 @@ interface TestExecError extends Error {
   code?: number;
 }
 
-// Setup cleanup once per file
 setupTestCleanup();
-
-// This is the real exec, promisified, for use INSIDE our mock's implementation when needed
 const realPromisedExecViaUtil = promisify(actualExecCallbackSignature);
 
 // mockExecCallback must always adhere to the node-style callback signature,

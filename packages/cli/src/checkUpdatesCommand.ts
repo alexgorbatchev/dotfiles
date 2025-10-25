@@ -1,5 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
-import { loadToolConfigs as loadAllToolConfigs, loadSingleToolConfig } from '@dotfiles/config';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
@@ -18,36 +17,45 @@ export interface CheckUpdatesCommandOptions {
 
 async function loadToolConfigs(
   logger: TsLogger,
+  configService: IConfigService,
   toolName: string | undefined,
   yamlConfig: YamlConfig,
   fs: IFileSystem
-): Promise<{ toolConfigs: Record<string, ToolConfig>; specificToolNotFound: boolean; exitCode: ExitCode }> {
+): Promise<Record<string, ToolConfig> | null> {
   let toolConfigs: Record<string, ToolConfig> = {};
-  let specificToolNotFound = false;
-
-  try {
-    if (toolName) {
-      const config = await loadSingleToolConfig(logger, toolName, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+  if (toolName) {
+    logger.debug(cliLogMessages.commandErrorDetails(), toolName);
+    try {
+      const config = await configService.loadSingleToolConfig(
+        logger,
+        toolName,
+        yamlConfig.paths.toolConfigsDir,
+        fs,
+        yamlConfig
+      );
       if (config) {
         toolConfigs[toolName] = config;
       } else {
-        specificToolNotFound = true;
         logger.error(cliLogMessages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
+        return null;
       }
-    } else {
-      toolConfigs = await loadAllToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
-      if (Object.keys(toolConfigs).length === 0) {
-        logger.info(cliLogMessages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
-        return { toolConfigs: {}, specificToolNotFound: false, exitCode: ExitCode.SUCCESS };
-      }
+    } catch (error) {
+      logger.error(cliLogMessages.configLoadFailed(`tool "${toolName}"`, (error as Error).message));
+      return null;
     }
-  } catch (error) {
-    logger.error(cliLogMessages.configLoadFailed('tool configurations', (error as Error).message));
-    logger.debug(cliLogMessages.commandConfigErrorDetails(), error);
-    return { toolConfigs: {}, specificToolNotFound: false, exitCode: ExitCode.ERROR };
+  } else {
+    try {
+      toolConfigs = await configService.loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+      if (Object.keys(toolConfigs).length === 0) {
+        logger.error(cliLogMessages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
+        return null;
+      }
+    } catch (error) {
+      logger.error(cliLogMessages.configLoadFailed('tool configurations', (error as Error).message));
+      return null;
+    }
   }
-
-  return { toolConfigs, specificToolNotFound, exitCode: ExitCode.SUCCESS };
+  return toolConfigs;
 }
 
 function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
@@ -57,18 +65,13 @@ function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner
 
   const githubParams = config.installParams as GithubReleaseInstallParams;
   if (!githubParams?.repo) {
-    logger.warn(
-      cliLogMessages.configParameterIgnored(
-        'repo',
-        `Tool "${config.name}" is 'github-release' but missing 'repo' parameter`
-      )
-    );
+    logger.error(cliLogMessages.configParameterInvalid('repo', 'undefined', 'owner/repo format'));
     return null;
   }
 
   const [owner, repoName] = githubParams.repo.split('/');
   if (!owner || !repoName) {
-    logger.warn(cliLogMessages.configParameterInvalid('repo format', githubParams.repo, 'owner/repo'));
+    logger.error(cliLogMessages.configParameterInvalid('repo', githubParams.repo, 'owner/repo format'));
     return null;
   }
 
@@ -130,41 +133,32 @@ async function compareVersions(
 }
 
 export async function checkUpdatesActionLogic(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   toolName: string | undefined,
   services: Services
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'checkUpdatesActionLogic' });
   const { yamlConfig, fs, versionChecker, githubApiClient } = services;
 
   logger.trace(cliLogMessages.commandActionStarted('check-updates', toolName || 'all'));
 
-  const { toolConfigs, specificToolNotFound, exitCode } = await loadToolConfigs(logger, toolName, yamlConfig, fs);
-
-  if (exitCode !== ExitCode.SUCCESS) {
-    exitCli(exitCode);
-    return;
-  }
-
-  if (specificToolNotFound) {
-    exitCli(ExitCode.ERROR);
+  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, yamlConfig, fs);
+  if (!toolConfigs) {
     return;
   }
 
   if (Object.keys(toolConfigs).length === 0) {
+    logger.error(cliLogMessages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
     return;
   }
 
   for (const config of Object.values(toolConfigs)) {
-    logger.info(cliLogMessages.toolCheckingUpdates(config.name));
-
     if (config.installationMethod === 'github-release') {
       await checkGitHubReleaseUpdate(logger, config, githubApiClient, versionChecker);
     } else {
-      logger.warn(
+      logger.info(
         cliLogMessages.commandUnsupportedOperation(
-          `Update checking for ${config.name}`,
-          `method: ${config.installationMethod}`
+          'Check updates',
+          `installation method: "${config.installationMethod}" for tool "${config.name}"`
         )
       );
     }
@@ -178,7 +172,7 @@ export function registerCheckUpdatesCommand(
   program: GlobalProgram,
   servicesFactory: () => Promise<Services>
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
+  const logger = parentLogger.getSubLogger({ name: 'checkUpdatesCommand' });
   program
     .command('check-updates [toolName]')
     .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')

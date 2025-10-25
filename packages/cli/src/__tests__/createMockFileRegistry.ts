@@ -1,7 +1,8 @@
 import { mock } from 'bun:test';
 import type { IFileRegistry } from '@dotfiles/registry/file';
+import type { MockedInterface } from '@dotfiles/testing-helpers';
 
-export function createMockFileRegistry(): IFileRegistry {
+export function createMockFileRegistry(): MockedInterface<IFileRegistry> {
   return {
     recordOperation: mock(async () => {}),
     getOperations: mock(async () => []),

@@ -1,5 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
-import { loadSingleToolConfig } from '@dotfiles/config';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
@@ -20,9 +19,10 @@ async function loadToolConfigSafely(
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
-  yamlConfig: YamlConfig
+  yamlConfig: YamlConfig,
+  configService: IConfigService
 ): Promise<ToolConfig | null> {
-  const toolConfig = await loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+  const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
 
   if (!toolConfig) {
     logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
@@ -91,7 +91,7 @@ export function registerInstallCommand(
       logger.debug(cliLogMessages.commandActionCalled('install', toolName), combinedOptions);
 
       const services = await servicesFactory();
-      const { yamlConfig, fs, installer } = services;
+      const { yamlConfig, fs, installer, configService } = services;
 
       let shouldExitWithCode: number | null = null;
 
@@ -107,7 +107,8 @@ export function registerInstallCommand(
           toolName,
           yamlConfig.paths.toolConfigsDir,
           fs,
-          yamlConfig
+          yamlConfig,
+          configService
         );
 
         if (!toolConfig) {

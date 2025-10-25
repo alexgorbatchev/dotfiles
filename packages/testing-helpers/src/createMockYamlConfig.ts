@@ -4,7 +4,6 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { SystemInfo } from '@dotfiles/schemas';
 import type { PartialDeep } from 'type-fest';
-import { stringify } from 'yaml';
 
 /**
  * Represents a deep partial version of `YamlConfig`, where all properties and sub-properties are optional.
@@ -64,7 +63,7 @@ export async function createMockYamlConfig({
   env,
 }: CreateMockYamlConfigOptions): Promise<YamlConfig> {
   const fullConfig = await createYamlConfigFromObject(logger, fileSystem, config, systemInfo, env);
-  const yamlString = stringify(fullConfig);
+  const yamlString = Bun.YAML.stringify(fullConfig);
   await fileSystem.writeFile(filePath, yamlString, 'utf8');
   return fullConfig;
 }

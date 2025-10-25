@@ -3,7 +3,12 @@ import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import {
+  createMockYamlConfig,
+  createTestDirectories,
+  type MockedInterface,
+  type TestDirectories,
+} from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { createProgram } from '../createProgram';
 import type { GlobalProgram, Services } from '../types';
@@ -16,7 +21,7 @@ import { createMockFileRegistry } from './createMockFileRegistry';
  * - A mock implementation for that service
  */
 type ServicesConfig = {
-  [K in keyof Services]?: Services[K] | true;
+  [K in keyof Services]?: MockedInterface<Services[K]> | true;
 };
 
 /**
@@ -24,7 +29,7 @@ type ServicesConfig = {
  * Each service that was configured will be available as a properly typed mock.
  */
 type MockedServices = {
-  [K in keyof Services]?: Services[K];
+  [K in keyof Services]?: MockedInterface<Services[K]>;
 };
 
 interface CliTestSetupOptions {
@@ -100,6 +105,12 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
       if (serviceConfig === true) {
         // Create default mock for this service
         switch (serviceName as keyof Services) {
+          case 'configService':
+            mockServices.configService = {
+              loadSingleToolConfig: mock(async () => undefined),
+              loadToolConfigs: mock(async () => ({})),
+            };
+            break;
           case 'installer':
             mockServices.installer = {
               install: mock(async () => ({

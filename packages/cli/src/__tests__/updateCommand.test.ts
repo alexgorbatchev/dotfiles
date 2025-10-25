@@ -1,24 +1,15 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { YamlConfig } from '@dotfiles/config';
-import { loadSingleToolConfig } from '@dotfiles/config';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { GitHubRelease, GithubReleaseToolConfig, ToolConfig } from '@dotfiles/schemas';
+import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
-import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { cliLogMessages } from '../log-messages';
 import type { GlobalProgram } from '../types';
 import { registerUpdateCommand } from '../updateCommand';
 import { createCliTestSetup } from './createCliTestSetup';
-
-// Setup cleanup once per file
-setupTestCleanup();
-
-const mockModules = createModuleMocker();
-
-const mockActualLoadSingleToolConfig = mock(loadSingleToolConfig);
-const mockLoadToolConfigsFromDirectory = mock(async () => ({}));
 
 describe('updateCommand', () => {
   let program: GlobalProgram;
@@ -27,6 +18,7 @@ describe('updateCommand', () => {
   let mockInstallerService: Partial<IInstaller>;
   let mockVersionChecker: Partial<IVersionChecker>;
   let logger: TestLogger;
+  let mockConfigService: MockedInterface<IConfigService>;
 
   const fzfToolConfig: GithubReleaseToolConfig = {
     name: 'fzf',
@@ -58,10 +50,17 @@ describe('updateCommand', () => {
   };
 
   beforeEach(async () => {
+    // Create a configService mock that we can control
+    mockConfigService = {
+      loadSingleToolConfig: mock(async () => fzfToolConfig),
+      loadToolConfigs: mock(async () => ({})),
+    };
+
     const setup = await createCliTestSetup({
       testName: 'update-command',
       memFileSystem: { exists: mock(async () => true) },
       services: {
+        configService: mockConfigService,
         installer: {
           install: mock(
             async (toolName: string, tc: ToolConfig, _opts?: unknown): Promise<InstallResult> => ({
@@ -102,27 +101,19 @@ describe('updateCommand', () => {
     mockInstallerService = setup.mockServices.installer!;
     mockVersionChecker = setup.mockServices.versionChecker!;
 
-    mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
-
-    // Set up mocks
-    await mockModules.mock('@dotfiles/config', () => ({
-      loadSingleToolConfig: mockActualLoadSingleToolConfig,
-      loadToolConfigs: mockLoadToolConfigsFromDirectory,
-    }));
-
     registerUpdateCommand(logger, program, async () => setup.createServices());
   });
 
   afterEach(() => {
-    clearMockRegistry();
+    // Clean up any test state if needed
   });
 
   afterAll(() => {
-    mockModules.restoreAll();
+    // Clean up any global test state if needed
   });
 
   test('tool is up-to-date', async () => {
-    mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     const mockGetLatestRelease = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
     mockGetLatestRelease.mockResolvedValue({
       ...latestGitHubRelease,
@@ -142,7 +133,7 @@ describe('updateCommand', () => {
   });
 
   test('update available, successful installation', async () => {
-    mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     const mockGetLatestRelease2 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
     mockGetLatestRelease2.mockResolvedValue(latestGitHubRelease);
     const mockCheckVersionStatus2 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
@@ -170,7 +161,7 @@ describe('updateCommand', () => {
   });
 
   test('update available, installation fails', async () => {
-    mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     const mockGetLatestRelease3 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
     mockGetLatestRelease3.mockResolvedValue(latestGitHubRelease);
     const mockCheckVersionStatus3 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
@@ -187,7 +178,7 @@ describe('updateCommand', () => {
   });
 
   test('tool config not found', async () => {
-    mockActualLoadSingleToolConfig.mockResolvedValue(undefined);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(undefined);
 
     expect(program.parseAsync(['update', 'nonexistent'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_1'
@@ -201,7 +192,7 @@ describe('updateCommand', () => {
   });
 
   test('unsupported installation method', async () => {
-    mockActualLoadSingleToolConfig.mockResolvedValue(manualToolConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(manualToolConfig);
 
     await program.parseAsync(['update', 'manualtool'], { from: 'user' });
 
@@ -217,7 +208,7 @@ describe('updateCommand', () => {
   });
 
   test('GitHub API error when fetching latest release', async () => {
-    mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     const mockGetLatestRelease4 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
     mockGetLatestRelease4.mockRejectedValue(new Error('GitHub API Down'));
 
@@ -233,7 +224,7 @@ describe('updateCommand', () => {
 
   test('tool configured with "latest" version', async () => {
     const fzfLatestConfig = { ...fzfToolConfig, version: 'latest' };
-    mockActualLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
     const mockGetLatestRelease5 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
     mockGetLatestRelease5.mockResolvedValue({
       ...latestGitHubRelease,
@@ -266,7 +257,7 @@ describe('updateCommand', () => {
 
   describe('shim mode', () => {
     test('should use concise output when --shim-mode flag is provided', async () => {
-      mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+      mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
       const mockGetLatestRelease6 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
       mockGetLatestRelease6.mockResolvedValue(latestGitHubRelease);
       const mockCheckVersionStatus4 = mockVersionChecker.checkVersionStatus as ReturnType<typeof mock>;
@@ -289,7 +280,7 @@ describe('updateCommand', () => {
 
     test('should show concise message when tool is already latest in shim mode', async () => {
       const fzfLatestConfig = { ...fzfToolConfig, version: 'latest' };
-      mockActualLoadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
+      mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
       const mockGetLatestRelease7 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
       mockGetLatestRelease7.mockResolvedValue({
         ...latestGitHubRelease,
@@ -320,7 +311,7 @@ describe('updateCommand', () => {
     });
 
     test('should show concise message when tool is already up to date in shim mode', async () => {
-      mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+      mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
       const mockGetLatestRelease8 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
       mockGetLatestRelease8.mockResolvedValue({
         ...latestGitHubRelease,
@@ -337,7 +328,7 @@ describe('updateCommand', () => {
     });
 
     test('should skip "checking updates" message in shim mode', async () => {
-      mockActualLoadSingleToolConfig.mockResolvedValue(fzfToolConfig);
+      mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
       const mockGetLatestRelease9 = mockGitHubApiClient.getLatestRelease as ReturnType<typeof mock>;
       mockGetLatestRelease9.mockResolvedValue({
         ...latestGitHubRelease,

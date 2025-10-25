@@ -4,7 +4,6 @@ export * from './createProgram';
 export * from './detectConflictsCommand';
 export * from './filesCommand';
 export * from './generateCommand';
-export * from './initCommand';
 export * from './installCommand';
 export * from './log-messages';
 export * from './main';

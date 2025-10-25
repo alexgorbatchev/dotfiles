@@ -3,8 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { YamlConfig } from '@dotfiles/config';
-import { loadYamlConfig } from '@dotfiles/config';
+import { ConfigService, loadYamlConfig, type YamlConfig } from '@dotfiles/config';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { type IFileSystem, MemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
@@ -28,7 +27,6 @@ import { createProgram } from './createProgram';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
 import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
-import { registerInitCommand } from './initCommand';
 import { registerInstallCommand } from './installCommand';
 import { cliLogMessages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
@@ -290,11 +288,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     finalSystemInfo
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
+  const configService = new ConfigService();
 
   logger.trace(cliLogMessages.servicesSetup());
   return {
     yamlConfig,
     fs,
+    configService,
     fileRegistry,
     toolInstallationRegistry,
     downloadCache,
@@ -321,7 +321,6 @@ export function registerAllCommands(
   servicesFactory: () => Promise<Services>
 ) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
-  registerInitCommand(logger, program, servicesFactory);
   registerInstallCommand(logger, program, servicesFactory);
   registerGenerateCommand(logger, program, servicesFactory);
   registerCleanupCommand(logger, program, servicesFactory);

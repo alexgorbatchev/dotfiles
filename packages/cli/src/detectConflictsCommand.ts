@@ -1,6 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
-import { loadToolConfigs as loadAllToolConfigs } from '@dotfiles/config';
+import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
@@ -11,10 +10,16 @@ import type { GlobalProgram, Services } from './types';
 async function loadToolConfigs(
   logger: TsLogger,
   yamlConfig: YamlConfig,
-  fs: IFileSystem
+  fs: IFileSystem,
+  configService: IConfigService
 ): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
   try {
-    const toolConfigsRecord = await loadAllToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+    const toolConfigsRecord = await configService.loadToolConfigs(
+      logger,
+      yamlConfig.paths.toolConfigsDir,
+      fs,
+      yamlConfig
+    );
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
     logger.error(cliLogMessages.configLoadFailed('tool configurations', (error as Error).message));
@@ -103,10 +108,10 @@ export async function detectConflictsActionLogic(
   services: Services
 ): Promise<ExitCode> {
   const logger = parentLogger.getSubLogger({ name: 'detectConflictsActionLogic' });
-  const { yamlConfig, fs } = services;
+  const { yamlConfig, fs, configService } = services;
   const conflictMessages: string[] = [];
 
-  const toolConfigsResult = await loadToolConfigs(logger, yamlConfig, fs);
+  const toolConfigsResult = await loadToolConfigs(logger, yamlConfig, fs, configService);
 
   if (toolConfigsResult.exitCode !== ExitCode.SUCCESS) {
     return toolConfigsResult.exitCode;
