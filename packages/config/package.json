@@ -15,11 +15,13 @@
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/schemas": "workspace:*",
     "@dotfiles/tool-config-builder": "workspace:*",
-    "@dotfiles/utils": "workspace:*"
+    "@dotfiles/utils": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
+    "@dotfiles/testing-helpers": "workspace:*",
     "@rageltd/bun-test-utils": "catalog:testing",
     "typescript": "catalog:typescript",
     "@typescript/native-preview": "catalog:typescript"

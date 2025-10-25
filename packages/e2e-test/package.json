@@ -6,6 +6,14 @@
     "postinstall": "scripts/fix-bun-bug"
   },
   "dependencies": {
-    "@dotfiles/cli": "workspace:*"
+    "@dotfiles/cli": "workspace:*",
+    "@dotfiles/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@rageltd/bun-test-utils": "catalog:testing",
+    "typescript": "catalog:typescript",
+    "@typescript/native-preview": "catalog:typescript"
   }
 }

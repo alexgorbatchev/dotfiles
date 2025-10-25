@@ -161,8 +161,8 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
       } else {
         // Use provided mock directly - bypass strict typing for test setup
         const serviceKey = serviceName as keyof Services;
-        // @ts-expect-error - Test utility needs to bypass strict service typing
-        mockServices[serviceKey] = serviceConfig;
+        // biome-ignore lint/suspicious/noExplicitAny: Test utility needs to bypass strict service typing
+        mockServices[serviceKey] = serviceConfig as any;
       }
     }
   }

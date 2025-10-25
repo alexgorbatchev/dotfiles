@@ -16,6 +16,8 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
     "type-fest": "catalog:",
     "zod": "catalog:"
   },

@@ -2,6 +2,7 @@
   "name": "@dotfiles/cli",
   "version": "1.0.0",
   "type": "module",
+  "main": "./src/index.ts",
   "bin": {
     "dotfiles": "bin/dotfiles"
   },
@@ -10,6 +11,7 @@
     "./log-messages": "./src/log-messages.ts"
   },
   "dependencies": {
+    "@dotfiles/archive-extractor": "workspace:*",
     "@dotfiles/config": "workspace:*",
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
@@ -19,12 +21,20 @@
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
     "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/shell-init-generator": "workspace:*",
+    "@dotfiles/shim-generator": "workspace:*",
+    "@dotfiles/symlink-generator": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "@dotfiles/version-checker": "workspace:*",
     "@commander-js/extra-typings": "^14.0.0",
     "commander": "^14.0.1"
   },
   "devDependencies": {
-    "@dotfiles/testing-helpers": "workspace:*"
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@rageltd/bun-test-utils": "catalog:testing",
+    "typescript": "catalog:typescript",
+    "@typescript/native-preview": "catalog:typescript"
   }
 }

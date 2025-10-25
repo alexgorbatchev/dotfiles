@@ -11,9 +11,13 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
     "semver": "^7.6.3"
   },
   "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@types/semver": "^7.5.8",

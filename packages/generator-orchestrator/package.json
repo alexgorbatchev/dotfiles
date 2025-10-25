@@ -13,5 +13,13 @@
     "@dotfiles/shell-init-generator": "workspace:*",
     "@dotfiles/shim-generator": "workspace:*",
     "@dotfiles/symlink-generator": "workspace:*"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@rageltd/bun-test-utils": "catalog:testing",
+    "typescript": "catalog:typescript",
+    "@typescript/native-preview": "catalog:typescript"
   }
 }
