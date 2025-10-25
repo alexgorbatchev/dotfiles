@@ -20,7 +20,6 @@ export function updateScenarios(harness: TestHarness, additionalTests?: () => vo
 
       // Run update command - should now get the NEW version
       const updateResult = await harness.update('github-release-tool', ['--yes']);
-      console.log(updateResult.stdout)
       expect(updateResult.exitCode).toBe(0);
 
       // Verify we now have the NEWER version

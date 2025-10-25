@@ -239,15 +239,29 @@ describe('updateCommand', () => {
       ...latestGitHubRelease,
       tag_name: 'v0.50.0',
     });
+    const mockInstall4 = mockInstallerService.install as ReturnType<typeof mock>;
+    mockInstall4.mockResolvedValue({ success: true });
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
     logger.expect(
       ['INFO'],
       ['updateCommand'],
-      [cliLogMessages.commandCheckingUpdatesFor('fzf'), cliLogMessages.toolConfiguredToLatest('fzf', '0.50.0')]
+      [
+        cliLogMessages.commandCheckingUpdatesFor('fzf'),
+        cliLogMessages.toolConfiguredToLatest('fzf', '0.50.0'),
+        cliLogMessages.toolUpdateAvailable('fzf', '0.50.0', '0.50.0'),
+        cliLogMessages.toolProcessingUpdate('fzf', '0.50.0', '0.50.0'),
+        cliLogMessages.toolUpdated('fzf', '0.50.0', '0.50.0'),
+      ]
     );
-    expect(mockInstallerService.install).not.toHaveBeenCalled();
+    expect(mockInstallerService.install).toHaveBeenCalledWith(
+      'fzf',
+      { ...fzfLatestConfig, version: '0.50.0' },
+      {
+        force: true,
+      }
+    );
   });
 
   describe('shim mode', () => {
@@ -281,12 +295,28 @@ describe('updateCommand', () => {
         ...latestGitHubRelease,
         tag_name: 'v0.41.0',
       });
+      const mockInstall5 = mockInstallerService.install as ReturnType<typeof mock>;
+      mockInstall5.mockResolvedValue({ success: true });
 
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(['INFO'], ['updateCommand'], [cliLogMessages.toolShimOnLatest('fzf', '0.41.0')]);
-      expect(mockInstallerService.install).not.toHaveBeenCalled();
+      logger.expect(
+        ['INFO'],
+        ['updateCommand'],
+        [
+          cliLogMessages.toolShimOnLatest('fzf', '0.41.0'),
+          cliLogMessages.toolShimUpdateStarting('fzf', '0.41.0', '0.41.0'),
+          cliLogMessages.toolShimUpdateSuccess('fzf', '0.41.0'),
+        ]
+      );
+      expect(mockInstallerService.install).toHaveBeenCalledWith(
+        'fzf',
+        { ...fzfLatestConfig, version: '0.41.0' },
+        {
+          force: true,
+        }
+      );
     });
 
     test('should show concise message when tool is already up to date in shim mode', async () => {

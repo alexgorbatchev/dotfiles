@@ -173,10 +173,23 @@ async function handleGitHubReleaseUpdate(
   const configuredVersion = toolConfig.version || 'latest';
 
   if (configuredVersion === 'latest') {
+    // Even if configured to 'latest', we still need to install/update to ensure latest version is installed
     if (shimMode) {
       logger.info(cliLogMessages.toolShimOnLatest(toolName, latestVersion));
     } else {
       logger.info(cliLogMessages.toolConfiguredToLatest(toolName, latestVersion));
+    }
+    const updateExitCode = await performUpdate(
+      logger,
+      services.installer,
+      toolName,
+      toolConfig,
+      latestVersion,
+      latestVersion, // Use latestVersion for both since we're on 'latest'
+      shimMode
+    );
+    if (updateExitCode !== ExitCode.SUCCESS) {
+      exitCli(updateExitCode);
     }
     return;
   }

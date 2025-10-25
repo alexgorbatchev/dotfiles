@@ -59,7 +59,7 @@ export const cliLogMessages = {
     createSafeLogMessage(`Tool "${toolName}" updated from v${fromVersion} to v${toVersion}`),
   toolUpdateFailed: (toolName: string, reason: string) =>
     createSafeLogMessage(`Update failed for tool "${toolName}": ${reason}`),
-  commandCheckingUpdatesFor: (toolName: string) => createSafeLogMessage(`updates check for "${toolName}"`),
+  commandCheckingUpdatesFor: (toolName: string) => createSafeLogMessage(`Checking "${toolName}" for updates`),
   fsReadFailed: (path: string, reason: string) => createSafeLogMessage(`Failed to read ${path}: ${reason}`),
   fsAccessDenied: (operation: string, path: string) => createSafeLogMessage(`Access denied ${operation}: ${path}`),
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),

@@ -72,15 +72,12 @@ export function withMockServer(): void {
         '/set-tool-version/:org/:repo/:version': (req) => {
           const toolKey = `${req.params.org}/${req.params.repo}`;
           currentVersions[toolKey] = req.params.version;
-          console.log(currentVersions);
           return new Response(`Set ${toolKey} to version ${req.params.version}`);
         },
 
         // GitHub binary downloads - dynamic org, repo, version and filename
         '/:org/:repo/releases/download/:version/:filename': (req) => {
           const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', req.params.filename);
-
-          console.log(req.params.filename)
           return new Response(Bun.file(mockBinaryPath), {
             headers: {
               'Content-Disposition': `attachment; filename=${req.params.filename}`,
