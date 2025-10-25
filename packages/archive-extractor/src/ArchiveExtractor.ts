@@ -1,5 +1,4 @@
 import { exec as execCallback } from 'node:child_process';
-// Fully remove zx imports now
 import { basename, extname, join } from 'node:path';
 import { promisify } from 'node:util';
 import type { IFileSystem } from '@dotfiles/file-system';

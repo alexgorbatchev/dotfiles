@@ -498,10 +498,13 @@ describe('Profile Updates E2E Tests', () => {
       expect(result?.profileUpdates).toHaveLength(2);
 
       // Verify generated scripts contain all expected content
-      const zshScriptPath = result?.files.get('zsh')!;
-      const bashScriptPath = result?.files.get('bash')!;
+      const zshScriptPath = result?.files.get('zsh');
+      const bashScriptPath = result?.files.get('bash');
+      
+      expect(zshScriptPath).toBeDefined();
+      expect(bashScriptPath).toBeDefined();
 
-      const zshScriptContent = await mockFileSystem.readFile(zshScriptPath);
+      const zshScriptContent = await mockFileSystem.readFile(zshScriptPath!);
       // Bash script should have similar structure to zsh
 
       // Check hoisted PATH modifications
@@ -548,8 +551,8 @@ describe('Profile Updates E2E Tests', () => {
       expect(updatedBashContent).toContain('alias grep=');
 
       // Sourcing lines should be added
-      expect(updatedZshContent).toContain(`source "${zshScriptPath}"`);
-      expect(updatedBashContent).toContain(`source "${bashScriptPath}"`);
+      expect(updatedZshContent).toContain(`source "${zshScriptPath!}"`);
+      expect(updatedBashContent).toContain(`source "${bashScriptPath!}"`);
     });
   });
 });
