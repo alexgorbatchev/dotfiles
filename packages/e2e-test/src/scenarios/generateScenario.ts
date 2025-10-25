@@ -60,6 +60,50 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
       });
     });
 
+    describe('cargo-quickinstall-tool', () => {
+      it('should generate cargo-quickinstall-tool shim that is executable', async () => {
+        await harness.verifyShim('cargo-quickinstall-tool');
+      });
+
+      it('should set CARGO_QUICKINSTALL_TOOL environment variables in shell script', async () => {
+        await harness.verifyEnvironmentVariable(
+          'cargo-quickinstall-tool',
+          'CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS',
+          '--color=fg'
+        );
+        await harness.verifyEnvironmentVariable(
+          'cargo-quickinstall-tool',
+          'CARGO_QUICKINSTALL_TOOL_OTHER_OPTS',
+          '--arg=1'
+        );
+      });
+
+      it('should set cargo-quickinstall-tool alias in shell script', async () => {
+        await harness.verifyAlias('cargo-quickinstall-tool', 'cqt', 'cargo-quickinstall-tool --preview "ps -f -p {+}"');
+      });
+
+      it('should generate cargo-quickinstall-tool always script', async () => {
+        await harness.verifyAlwaysScript('cargo-quickinstall-tool', 'echo "always from cargo-quickinstall-tool"');
+      });
+
+      it('should generate cargo-quickinstall-tool once script', async () => {
+        await harness.verifyOnceScript('cargo-quickinstall-tool', 'echo "once from cargo-quickinstall-tool"');
+      });
+
+      it('should execute cargo-quickinstall-tool shim and download binary on first run', async () => {
+        await harness.verifyShim('cargo-quickinstall-tool', {
+          args: ['--version'],
+          expectedExitCode: 0,
+          stdoutMatcher: (stdout) => {
+            // Extract the version from the end of the output, handling logging output
+            const lines = stdout.split('\n');
+            const versionLine = lines[lines.length - 1] || lines[lines.length - 2] || '';
+            return versionLine.trim() === '1.0.0';
+          },
+        });
+      });
+    });
+
     // Execute additional tests if provided
     if (additionalTests) {
       additionalTests();

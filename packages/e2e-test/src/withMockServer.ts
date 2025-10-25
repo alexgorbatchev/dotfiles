@@ -1,5 +1,6 @@
 import { afterEach, beforeEach } from 'bun:test';
 import * as path from 'node:path';
+import { dedentString } from '../../utils/src/dedentString';
 
 const ASSET_NAMES_V1: string[] = [
   'github-release-tool-1.0.0-linux_amd64.tar.gz',
@@ -44,6 +45,19 @@ const DEFAULT_VERSIONS: Record<string, string> = {
 const currentVersions: Record<string, string> = {};
 
 /**
+ * Creates a response for binary file downloads from fixtures
+ */
+function createBinaryDownloadResponse(filename: string): Response {
+  const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', filename);
+  return new Response(Bun.file(mockBinaryPath), {
+    headers: {
+      'Content-Disposition': `attachment; filename=${filename}`,
+      'Content-Type': 'application/gzip',
+    },
+  });
+}
+
+/**
  * Sets up a mock server on port 8765 with GitHub and Cargo API responses
  * Automatically handles beforeEach/afterEach setup and teardown for fresh state
  *
@@ -75,16 +89,37 @@ export function withMockServer(): void {
           return new Response(`Set ${toolKey} to version ${req.params.version}`);
         },
 
-        // GitHub binary downloads - dynamic org, repo, version and filename
-        '/:org/:repo/releases/download/:version/:filename': (req) => {
-          const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', req.params.filename);
-          return new Response(Bun.file(mockBinaryPath), {
-            headers: {
-              'Content-Disposition': `attachment; filename=${req.params.filename}`,
-              'Content-Type': 'application/gzip',
+        // Cargo crates.io API - returns crate metadata
+        '/api/v1/crates/:crateName': (req) => {
+          const crateName = req.params.crateName;
+          return Response.json({
+            crate: {
+              id: crateName,
+              name: crateName,
+              newest_version: '1.0.0',
             },
           });
         },
+
+        // Cargo.toml from GitHub raw
+        '/:org/:repo/:branch/Cargo.toml': (req) => {
+          const cargoToml = dedentString(`
+            [package]
+            name = "${req.params.repo}"
+            version = "1.0.0"
+            edition = "2021"
+          `);
+          return new Response(cargoToml, {
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        },
+
+        // Cargo-quickinstall binary downloads
+        '/cargo-bins/:org/releases/download/:crateName-:version/:filename': (req) =>
+          createBinaryDownloadResponse(req.params.filename),
+
+        // GitHub binary downloads - dynamic org, repo, version and filename
+        '/:org/:repo/releases/download/:version/:filename': (req) => createBinaryDownloadResponse(req.params.filename),
       },
       fetch() {
         return new Response('Not Found', { status: 404 });
