@@ -6,7 +6,7 @@ export function createProgram(): GlobalProgram {
   const program: GlobalProgram = new Command()
     .name('generator')
     .description('CLI tool for managing dotfiles and tool configurations')
-    .version('0.1.0')
+    .version(process.env.DOTFILES_VERSION || '0.0.0')
     .option('--config <path>', 'Path to a configuration file', '')
     .option('--dry-run', 'Simulate all operations without making changes to the file system', false)
     .option('--verbose', 'Enable detailed debug messages.', false)

@@ -11,6 +11,7 @@
     "includes": [
       "src/**",
       "packages/**",
+      "scripts/**",
       "!**/dist",
       "!**/.generated",
       "!**/node_modules",

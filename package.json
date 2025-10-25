@@ -1,5 +1,6 @@
 {
   "name": "dotfiles",
+  "version": "1.0.0",
   "module": "cli.ts",
   "type": "module",
   "private": true,
@@ -27,7 +28,7 @@
     }
   },
   "bin": {
-    "dotfiles": "./dist/cli.js"
+    "dotfiles": "./.dist/cli.js"
   },
   "scripts": {
     "lint": "biome lint",
@@ -35,6 +36,7 @@
     "fmt": "biome format --write .",
     "fix": "biome check --write --unsafe .",
     "test:task": "bun test",
+    "build": "scripts/build.ts",
     "compile": "scripts/compile.ts",
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"
