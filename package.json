@@ -49,6 +49,7 @@
     "@types/cli-progress": "^3.11.6",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",
+    "dts-bundle-generator": "^9.5.1",
     "lefthook": "^2.0.1",
     "typescript": "catalog:typescript"
   }
