@@ -1,7 +1,7 @@
 import { describe } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/schemas';
 import { TestHarness } from '../TestHarness';
-import { generateScenarios, updateScenarios } from '../scenarios';
+import { generateScenarios, installScenarios, updateScenarios } from '../scenarios';
 import { withMockServer } from '../withMockServer';
 
 const platformConfigs = [
@@ -24,6 +24,8 @@ describe('E2E: dotfiles CLI', () => {
       generateScenarios(harness, () => {
         updateScenarios(harness);
       });
+
+      installScenarios(harness);
     });
   }
 });

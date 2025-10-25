@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { TestHarness } from '../TestHarness';
 
-/**
- * Update command test scenarios - updates tools to latest versions
- */
 export function updateScenarios(harness: TestHarness, additionalTests?: () => void): void {
   describe('update command', () => {
     it('should update github-release-tool from current version to newer version', async () => {

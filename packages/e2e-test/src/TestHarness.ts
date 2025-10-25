@@ -229,8 +229,8 @@ export class TestHarness {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    // Look for the environment variable with the tool comment
-    const varRegex = new RegExp(`# Hoisted from: ${toolName}\\s+export ${varName}=["']([^"']+)["']`, 'm');
+    // Look for the environment variable with the tool comment (may include multiple tools separated by commas)
+    const varRegex = new RegExp(`# Hoisted from: [^\\n]*${toolName}[^\\n]*\\s+export ${varName}=["']([^"']+)["']`, 'm');
     const match = content.match(varRegex);
 
     expect(match).not.toBeNull();

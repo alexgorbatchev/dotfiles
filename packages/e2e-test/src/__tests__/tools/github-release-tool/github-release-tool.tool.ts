@@ -20,10 +20,10 @@ export default defineTool((c) =>
       },
       shellInit: [
         once /* zsh */`
-          echo "hello from github-release-tool"
+          echo "echo from github-release-tool"
         `,
         always /* zsh */`
-          bindkey '^]' github-release-tool-jump-to-dir
+          echo "always from github-release-tool"
         `,
       ],
     })
