@@ -1,0 +1,20 @@
+{
+  "name": "dotfiles",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "dotfiles": "./cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./schemas.d.ts",
+        "default": "./cli.js"
+      }
+    }
+  },
+  "dependencies": {
+    "zod": "4.1.12",
+    "type-fest": "5.1.0"
+  }
+}
