@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e 
+set -e
 
 #
 # BUG: bun install doesn't link workspaces package/package.json/bin
@@ -9,4 +9,4 @@ set -e
 
 mkdir -p node_modules/.bin
 cd node_modules/.bin
-[ ! -e ./dotfiles ] && ln -s ../@dotfiles/cli/bin/dotfiles .
+[ ! -L ./dotfiles ] && ln -s ../@dotfiles/cli/bin/dotfiles . || true
