@@ -1,1 +1,12 @@
-../lefthook.yml
+pre-commit:
+  parallel: true
+  jobs:
+    - name: typecheck
+      root: generator/
+      glob: "**/*.ts"
+      run: bun typecheck
+
+    - name: lint
+      root: generator/
+      glob: "**/*.ts"
+      run: bun lint
