@@ -12,11 +12,50 @@ This guide provides comprehensive instructions for migrating existing shell-base
 ## Migration Process Overview
 
 1. **[Getting Started](../../docs/getting-started.md)** - Understand the basic `.tool.ts` file structure
-2. **[Installation Methods](../../docs/installation/README.md)** - Choose the right installation approach
-3. **[Shell Integration](../../docs/shell-integration.md)** - Migrate aliases, functions, and environment variables
-4. **[Configuration Files](../../docs/symlinks.md)** - Set up symlinks for dotfiles
-5. **[Platform Support](../../docs/platform-support.md)** - Handle cross-platform differences
-6. **[Testing](../../docs/testing.md)** - Validate your migration
+2. **File Organization** - Set up proper directory structure and naming
+3. **[Installation Methods](../../docs/installation/README.md)** - Choose the right installation approach
+4. **[Shell Integration](../../docs/shell-integration.md)** - Migrate aliases, functions, and environment variables
+5. **[Configuration Files](../../docs/symlinks.md)** - Set up symlinks for dotfiles
+6. **[Platform Support](../../docs/platform-support.md)** - Handle cross-platform differences
+7. **[Testing](../../docs/testing.md)** - Validate your migration
+
+## File Organization and Naming
+
+### Directory Structure
+
+All tool configurations must be organized in the `configs/` directory with the following structure:
+
+```
+configs/
+└── tool-name/              # Multi-file configuration directory
+    ├── tool-name.tool.ts   # Main configuration file
+    ├── config.toml         # Tool-specific configuration files
+    ├── themes/             # Tool themes or assets
+    └── completions/        # Shell completion files
+```
+
+### File Naming Convention
+
+- **Configuration file**: `{tool-name}.tool.ts` (kebab-case)
+- **Export requirement**: Must use `export default` with the `defineTool` helper
+- **Directory name**: Must match the tool name in kebab-case
+
+### Examples
+
+```
+configs/
+├── ripgrep/
+│   ├── ripgrep.tool.ts     # Main config for ripgrep
+│   └── .ripgreprc          # ripgrep configuration file
+├── neovim/
+│   ├── neovim.tool.ts      # Main config for neovim
+│   ├── init.lua            # Neovim configuration
+│   └── themes/             # Neovim themes
+└── git/
+    ├── git.tool.ts         # Main config for git
+    ├── .gitconfig          # Global git configuration
+    └── .gitignore_global   # Global gitignore
+```
 
 ## Pattern Syntax
 
@@ -80,7 +119,8 @@ cp config.toml ~/.config/tool/
 
 **After (TypeScript):**
 ```typescript
-// Place all assets (e.g., 'config.toml') in the same directory as this .tool.ts file.
+// File: configs/my-tool/my-tool.tool.ts
+// Place all assets (e.g., 'config.toml') in configs/my-tool/ directory
 import { defineTool } from '@dotfiles/schemas';
 
 export default defineTool((c, ctx) =>
@@ -102,6 +142,7 @@ function mkcd() { mkdir -p "$1" && cd "$1"; }
 
 **After (TypeScript):**
 ```typescript
+// File: configs/shell-utils/shell-utils.tool.ts
 import { defineTool } from '@dotfiles/schemas';
 
 export default defineTool((c, ctx) =>
@@ -156,17 +197,25 @@ tar -tzf rg.tar.gz | head -10
 - [ ] Read [Getting Started Guide](../../docs/getting-started.md)
 - [ ] Review [Installation Methods](../../docs/installation/README.md) to choose appropriate installation type
 - [ ] Understand [Platform Support](../../docs/platform-support.md) requirements
+- [ ] Set up proper directory structure in `configs/` directory
 
 ### For Each Tool Configuration
 
+#### File Structure Setup
+- [ ] Create tool directory in `configs/{tool-name}/`
+- [ ] Create main configuration file `configs/{tool-name}/{tool-name}.tool.ts`
+- [ ] Move all related tool assets to the tool directory
+
 #### Shell Integration Migration
-- [ ] Convert aliases using [Shell Integration Guide](../../docs/shell-integration.md#aliases)
-- [ ] Convert functions using [Shell Integration Guide](../../docs/shell-integration.md#functions)
-- [ ] Convert environment variables using [Shell Integration Guide](../../docs/shell-integration.md#environment-variables)
-- [ ] Set up completions using [Completions Guide](../../docs/completions.md)
+See [Shell Integration Guide](../../docs/shell-integration.md)
+
+- [ ] Convert aliases 
+- [ ] Convert functions 
+- [ ] Convert environment variables 
+- [ ] Set up completions
 
 #### Configuration Files
-- [ ] Move all related tool assets (configs, fonts, themes, binaries, etc.) to the same directory as the `.tool.ts` file preserving their original file layout.
+- [ ] Move all related tool assets (configs, fonts, themes, binaries, etc.) to the tool directory (`configs/{tool-name}/`) preserving their original file layout
 - [ ] Set up symlinks using [Symlinks Guide](../../docs/symlinks.md)
 - [ ] Configure platform-specific paths using [Platform Support](../../docs/platform-support.md)
 

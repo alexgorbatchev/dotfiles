@@ -203,17 +203,43 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 };
 ```
 
-## System Tool with Manual Installation
+## Custom Script Tool
 
 ```typescript
 import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
-    .bin('git')
+    .bin('deploy')
     .install('manual', {
-      binaryPath: '/usr/bin/git',
+      binaryPath: './scripts/deploy.sh',  // Script included with dotfiles
     })
+    .symlink('./deploy.config.yaml', `${ctx.homeDir}/.config/deploy/config.yaml`)
+    .zsh({
+      aliases: {
+        'dp': 'deploy',
+        'deploy-prod': 'deploy --env production',
+        'deploy-staging': 'deploy --env staging',
+      },
+      environment: {
+        'DEPLOY_CONFIG': `${ctx.homeDir}/.config/deploy/config.yaml`
+      },
+      shellInit: [
+        always`# Deploy tool helpers`,
+        always`function deploy-status() { deploy status "$@"; }`
+      ]
+    });
+};
+```
+
+## Configuration-Only Tool
+
+```typescript
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  c
+    .install('no-install')  // No binary management
     .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
     .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
     .zsh({
@@ -285,6 +311,41 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 6. **Follow naming conventions** - kebab-case for file names
 7. **Provide completions** when available from the tool
 8. **Use appropriate installation methods** based on tool distribution
+
+## Installation Method Selection
+
+### GitHub Tools (Most Common)
+```typescript
+// For most open source tools hosted on GitHub
+c.install('github-release', {
+  repo: 'owner/tool',
+  assetPattern: '*linux_amd64.tar.gz',
+})
+```
+
+### Custom Scripts and Binaries
+```typescript
+// For scripts/binaries included with your dotfiles
+c.install('manual', {
+  binaryPath: './scripts/my-tool.sh',  // Relative to .tool.ts
+})
+```
+
+### Configuration-Only Tools
+```typescript
+// For pure shell configuration without binaries
+c.install('no-install')  // Only shell configs, aliases, symlinks
+```
+
+### When to Use Each Method
+
+| Use Case | Method | Example |
+|----------|--------|---------|
+| Download from GitHub | `github-release` | fzf, ripgrep, bat |
+| Package manager tools | `brew`, `cargo` | git, rust tools |
+| Custom helper scripts | `manual` | deployment scripts, wrappers |
+| Pure shell config | `no-install` | aliases, environment vars |
+| Download scripts | `curl-script` | Node.js, Rust installers |
 
 ## Next Steps
 

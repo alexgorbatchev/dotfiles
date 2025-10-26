@@ -67,4 +67,30 @@ describe('Installer - installManually', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('Binary not found');
   });
+
+  it('should succeed with configuration-only tool (no binaryPath)', async () => {
+    const toolConfig = createManualToolConfig({
+      installParams: undefined, // No install params at all
+      binaries: [], // No binaries specified
+    });
+
+    const context = createTestContext(setup, {
+      installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'unknown'),
+      toolConfig,
+    });
+
+    // Reset the mock after any setup calls
+    setup.fileSystemMocks.exists.mockClear();
+
+    const result = await setup.installer.installManually(MOCK_TOOL_NAME, toolConfig, context);
+
+    expect(setup.fileSystemMocks.exists).not.toHaveBeenCalled();
+    expect(setup.fileSystemMocks.copyFile).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(result.binaryPaths).toEqual([]);
+    expect(result.info).toEqual({
+      manualInstall: true,
+      originalPath: null,
+    });
+  });
 });

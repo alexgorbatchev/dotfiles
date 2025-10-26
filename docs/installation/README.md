@@ -52,19 +52,19 @@ c.install('curl-tar', {
 ```
 
 ### [Manual](./manual.md)
-Configure tools that are already installed or managed externally.
+Install files from your dotfiles directory (custom scripts, pre-built binaries).
 
 ```typescript
 c.install('manual', {
-  binaryPath: '/usr/local/bin/tool',
+  binaryPath: './bin/my-script.sh',
 })
 ```
 
 ### [No-Install](./no-install.md)
-Configure tools that are already on the system without managing their installation.
+Configuration-only tools without any binary management.
 
 ```typescript
-c.install('no-install')
+c.install('no-install')  // Shell configs, aliases, symlinks only
 ```
 
 ## Choosing the Right Method
@@ -76,8 +76,28 @@ c.install('no-install')
 | **Cargo** | Rust tools | Fast pre-compiled binaries | Rust tools only |
 | **Curl Script** | Custom installers | Flexible, handles complex setups | Less predictable, security concerns |
 | **Curl Tar** | Direct downloads | Simple, no dependencies | Manual URL management |
-| **Manual** | System tools, custom builds | Works with any tool | No automatic updates |
-| **No-Install** | System tools, unmanaged tools | Simple configuration | No installation or updates |
+| **Manual** | Custom scripts/binaries | Include files with dotfiles | Manual file management |
+| **No-Install** | Pure configuration | Simple, no file management | No binary installation |
+
+## Manual vs No-Install Decision Guide
+
+Both `manual` and `no-install` methods are used for tools that aren't downloaded from external sources, but they serve different purposes:
+
+### Use **Manual** When:
+- ✅ You have custom scripts or binaries to include with your dotfiles
+- ✅ You want the system to manage and version your tool files
+- ✅ You need shims generated for your custom tools
+- ✅ You want to distribute pre-built binaries with your dotfiles
+
+**Example:** Including a custom deployment script with your dotfiles.
+
+### Use **No-Install** When:
+- ✅ You only need shell configuration (aliases, environment, symlinks)
+- ✅ Tools are managed entirely outside the dotfiles system
+- ✅ You don't want any binary installation or management
+- ✅ Creating configuration-only "tools"
+
+**Example:** Setting up shell aliases and environment variables.
 
 ## Common Parameters
 

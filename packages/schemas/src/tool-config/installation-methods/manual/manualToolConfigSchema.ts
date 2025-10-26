@@ -8,8 +8,8 @@ export const manualToolConfigSchema = baseToolConfigPropertiesSchema.extend({
   installationMethod: z.literal('manual'),
   /** Manual installation parameters */
   installParams: manualInstallParamsSchema,
-  /** Binaries are typically required for this installation method */
-  binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).min(1),
+  /** Binaries are optional for this installation method */
+  binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).optional(),
 });
 
 /** Resolved tool configuration for the 'manual' installation method. */

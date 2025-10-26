@@ -1,76 +1,82 @@
 # Manual Installation
 
-The `manual` method configures tools that are already installed or managed externally.
+The `manual` method installs files from your tool configuration directory, such as custom scripts, pre-built binaries, or other resources included with your dotfiles.
 
 ## Basic Usage
 
 ```typescript
+// Install a custom script
 c.install('manual', {
-  binaryPath: '/usr/local/bin/tool',
+  binaryPath: './scripts/my-tool.sh',
 })
+
+// Configuration-only tool (no binary)
+c.install('manual', {})
 ```
 
 ## Parameters
 
 ```typescript
 c.install('manual', {
-  binaryPath: '/path/to/binary',  // Required: absolute path to existing binary
+  binaryPath?: './relative/path/to/binary',  // Optional: path relative to .tool.ts file
 })
 ```
 
 ### Parameters
 
-- **`binaryPath`**: **Absolute path** to the existing binary on the system
-  - Must be absolute path (e.g., `/usr/local/bin/tool`, `${ctx.homeDir}/bin/custom-tool`)
-  - The binary must already exist at this location
+- **`binaryPath`**: **Optional.** Path to a binary file relative to the tool configuration file location
+  - Must be relative path (e.g., `./bin/tool`, `../scripts/helper.sh`)
+  - The file will be copied to the managed installation directory
+  - If omitted, only shell configurations and symlinks will be processed
 
 ## Examples
 
-### System-Installed Tool
+### Custom Shell Script
 
 ```typescript
 c.install('manual', {
-  binaryPath: '/usr/bin/git',
+  binaryPath: './bin/my-tool.sh',
 })
 ```
 
-### User-Installed Binary
+### Pre-built Binary
 
 ```typescript
 c.install('manual', {
-  binaryPath: `${ctx.homeDir}/bin/custom-tool`,
+  binaryPath: './binaries/linux/x64/custom-tool',
 })
 ```
 
-### Tool in Custom Location
+### Configuration-Only Tool
 
 ```typescript
 c.install('manual', {
-  binaryPath: '/opt/custom-software/bin/tool',
+  // No binaryPath - only shell configuration and symlinks
 })
+```
 ```
 
 ## When to Use Manual Installation
 
 **Best for:**
-- System-provided tools (git, curl, etc.)
-- Tools installed by other package managers
-- Custom-compiled binaries
-- Tools with complex installation requirements
-- Development versions or local builds
+- Custom shell scripts included with your dotfiles
+- Pre-built binaries for specific platforms
+- Tools that need to be "installed" from your dotfiles repository
+- Configuration-only tools (shell aliases, environment setup)
+- Composite tools that combine multiple resources
 
 **Use cases:**
-- Wrapping system tools with additional shell configuration
-- Adding completions to existing tools
-- Creating aliases for tools installed elsewhere
-- Managing tools installed via other methods (apt, yum, etc.)
+- Including custom helper scripts in your dotfiles
+- Distributing pre-compiled binaries with your configuration
+- Creating tools that only provide shell configuration
+- Managing platform-specific implementations
 
 ## Important Notes
 
-- The binary must already exist at the specified path
-- No installation or downloading occurs
-- The tool only configures shell integration and generates shims
-- Updates must be managed externally
+- Binary paths are relative to the tool configuration file location
+- Files are copied to the managed installation directory with executable permissions
+- If `binaryPath` is omitted, the tool will only provide shell configuration and symlinks
+- All files are managed within the dotfiles system's versioned storage
 
 ## Complete Example
 
@@ -79,23 +85,22 @@ import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
-    .bin('git')
+    .bin('my-tool')
     .install('manual', {
-      binaryPath: '/usr/bin/git',
+      binaryPath: './bin/my-tool.sh',
     })
     .zsh({
       aliases: {
-        'g': 'git',
-        'gs': 'git status',
-        'ga': 'git add',
-        'gc': 'git commit',
+        'mt': 'my-tool',
+        'mt-status': 'my-tool status',
       },
       environment: {
-        'GIT_EDITOR': 'nvim'
+        'MY_TOOL_CONFIG': `${ctx.homeDir}/.config/my-tool`
       }
     })
+    .symlink('./config/my-tool.conf', `${ctx.homeDir}/.config/my-tool/config`)
     .zsh({
-      completions: { source: 'contrib/completion/git-completion.zsh' }
+      completions: { source: './completions/_my-tool' }
     });
 };
 ```

@@ -22,39 +22,37 @@ export async function installManually(
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
   logger.debug(installerLogMessages.manual.installing(toolName));
 
-  if (!toolConfig.installParams || !('binaryPath' in toolConfig.installParams)) {
-    return {
-      success: false,
-      error: 'Binary path not specified in installParams',
-    };
-  }
-
   const params = toolConfig.installParams;
-  const binaryPath = expandToolConfigPath(
-    toolConfig.configFilePath,
-    params.binaryPath as string,
-    context.appConfig,
-    context.systemInfo
-  );
-
+  
   const operation = async (): Promise<InstallResult> => {
-    if (!(await toolFs.exists(binaryPath))) {
-      return {
-        success: false,
-        error: `Binary not found at ${binaryPath}`,
-      };
+    let binaryPaths: string[] = [];
+
+    // Handle binary installation if binaryPath is specified
+    if (params?.binaryPath) {
+      const binaryPath = expandToolConfigPath(
+        toolConfig.configFilePath,
+        params.binaryPath,
+        context.appConfig,
+        context.systemInfo
+      );
+
+      if (!(await toolFs.exists(binaryPath))) {
+        return {
+          success: false,
+          error: `Binary not found at ${binaryPath}`,
+        };
+      }
+
+      await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
+      binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
     }
-
-    await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
-
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
     return {
       success: true,
       binaryPaths,
       info: {
         manualInstall: true,
-        originalPath: binaryPath,
+        originalPath: params?.binaryPath || null,
       },
     };
   };

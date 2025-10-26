@@ -3,24 +3,22 @@ import { baseInstallParamsSchema } from '../../base/baseInstallParamsSchema';
 
 /**
  * Parameters for a "manual" installation method.
- * This method is used when the tool is expected to be installed by some other means
- * (e.g., system package manager not covered, user installs it manually, or it's part of the OS).
- * The generator will primarily check for the existence of the binary at the specified path.
+ * This method is used to install files from the tool configuration directory
+ * (e.g., custom scripts, pre-built binaries, or other resources included with the dotfiles).
  * Hooks can be used to provide custom validation or setup steps.
  */
 export const manualInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
-   * The expected absolute path to the tool's binary if it's installed manually or by other means.
-   * The generator will check this path to verify installation.
+   * The path to the binary file relative to the tool configuration file location.
+   * If not specified, only shell configurations and symlinks will be processed.
    */
-  binaryPath: z.string().min(1),
+  binaryPath: z.string().min(1).optional(),
 });
 
 /**
  * Parameters for a "manual" installation method.
- * This method is used when the tool is expected to be installed by some other means
- * (e.g., system package manager not covered, user installs it manually, or it's part of the OS).
- * The generator will primarily check for the existence of the binary at the specified path.
+ * This method is used to install files from the tool configuration directory
+ * (e.g., custom scripts, pre-built binaries, or other resources included with the dotfiles).
  * Hooks can be used to provide custom validation or setup steps.
  */
 export type ManualInstallParams = z.infer<typeof manualInstallParamsSchema>;
