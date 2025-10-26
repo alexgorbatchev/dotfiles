@@ -6,7 +6,6 @@
       "devDependencies": {
         "@biomejs/biome": "catalog:",
         "@types/bun": "catalog:system",
-        "@types/cli-progress": "^3.11.6",
         "@types/node": "catalog:system",
         "@typescript/native-preview": "catalog:typescript",
         "dts-bundle-generator": "^9.5.1",

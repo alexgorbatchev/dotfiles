@@ -27,9 +27,6 @@
       "typescript": "^5.9.3"
     }
   },
-  "bin": {
-    "dotfiles": "./.dist/cli.js"
-  },
   "scripts": {
     "lint": "biome lint",
     "typecheck": "tsgo -p tsconfig.json",
@@ -46,7 +43,6 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/bun": "catalog:system",
-    "@types/cli-progress": "^3.11.6",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",
     "dts-bundle-generator": "^9.5.1",
