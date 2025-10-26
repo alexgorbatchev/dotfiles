@@ -162,7 +162,8 @@ export class ShimGenerator implements IShimGenerator {
         fi
       fi
     `);
-    logger.debug(shimGeneratorLogMessages.generateShim.generatedContent(binaryName), shimContent);
+
+    logger.debug(shimGeneratorLogMessages.generateShim.generatedContent(binaryName));
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     await toolFs.ensureDir(path.dirname(shimFilePath));
@@ -180,10 +181,7 @@ export class ShimGenerator implements IShimGenerator {
       // If we can't check permissions, try to set them anyway
       await toolFs.chmod(shimFilePath, desiredMode);
     }
-    logger.debug(
-      shimGeneratorLogMessages.generateShim.success(binaryName, shimFilePath, toolFs.constructor.name),
-      toolFs
-    );
+    logger.debug(shimGeneratorLogMessages.generateShim.success(binaryName, shimFilePath, toolFs.constructor.name));
     return shimFilePath;
   }
 

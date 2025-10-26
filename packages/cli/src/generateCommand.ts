@@ -38,7 +38,7 @@ export function registerGenerateCommand(
           cliLogMessages.toolConfigsLoaded(yamlConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length)
         );
 
-        await generatorOrchestrator.generateAll(toolConfigs, {});
+        await generatorOrchestrator.generateAll(toolConfigs);
         logger.info(cliLogMessages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (error) {
         const failureMessage = cliLogMessages.commandExecutionFailed('generate', 1, (error as Error).message);

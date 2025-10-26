@@ -108,7 +108,7 @@ describe('GeneratorOrchestrator', () => {
 
       // The dryRun option is no longer passed to orchestrator.generateAll
       // and subsequently not to sub-generators by the orchestrator.
-      await orchestrator.generateAll(toolConfigs, {}); // Pass empty options or specific non-dryRun options like generatorVersion
+      await orchestrator.generateAll(toolConfigs); // Pass empty options or specific non-dryRun options like generatorVersion
 
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         // dryRun: false, // Removed
@@ -126,7 +126,7 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should call sub-generators correctly', async () => {
-      await orchestrator.generateAll(toolConfigs, {});
+      await orchestrator.generateAll(toolConfigs);
 
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         overwrite: true,
@@ -142,7 +142,7 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should handle empty toolConfigs gracefully', async () => {
-      await orchestrator.generateAll({}, {});
+      await orchestrator.generateAll({});
 
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(
         {},
@@ -171,7 +171,7 @@ describe('GeneratorOrchestrator', () => {
       const shellSpy = mockShellInitGenerator.generate as ReturnType<typeof mock>;
       const symlinkSpy = mockSymlinkGenerator.generate as ReturnType<typeof mock>;
 
-      await orchestrator.generateAll(toolConfigs, {});
+      await orchestrator.generateAll(toolConfigs);
 
       expect(shimSpy).toHaveBeenCalled();
       expect(shellSpy).toHaveBeenCalled();
@@ -199,7 +199,7 @@ describe('GeneratorOrchestrator', () => {
       });
       (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockSymlinkResults);
 
-      await orchestrator.generateAll(toolConfigs, {});
+      await orchestrator.generateAll(toolConfigs);
 
       expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
         overwrite: true,
@@ -245,7 +245,7 @@ describe('GeneratorOrchestrator', () => {
 
     describe('generator behavior', () => {
       it('should call sub-generators with correct options', async () => {
-        await orchestrator.generateAll(toolConfigs, {});
+        await orchestrator.generateAll(toolConfigs);
 
         expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,
@@ -261,7 +261,7 @@ describe('GeneratorOrchestrator', () => {
       });
 
       it('should complete without errors when using MemFileSystem', async () => {
-        await orchestrator.generateAll(toolConfigs, {});
+        await orchestrator.generateAll(toolConfigs);
       });
 
       it('should work with custom generator results', async () => {
@@ -278,7 +278,7 @@ describe('GeneratorOrchestrator', () => {
         });
         (mockSymlinkGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockTestSymlinkResults);
 
-        await orchestrator.generateAll(toolConfigs, {});
+        await orchestrator.generateAll(toolConfigs);
 
         expect(mockShimGenerator.generate).toHaveBeenCalledWith(toolConfigs, {
           overwrite: true,

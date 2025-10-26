@@ -108,9 +108,9 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
     for (const toolName in toolConfigs) {
       const config = toolConfigs[toolName];
-      logger.debug(shellInitGeneratorLogMessages.generate.processingTool(toolName), config);
-
-      if (!config) {
+      if (config) {
+        logger.debug(shellInitGeneratorLogMessages.generate.processingTool(toolName));
+      } else {
         logger.debug(shellInitGeneratorLogMessages.generate.skippingTool(toolName));
         continue;
       }
@@ -200,14 +200,10 @@ export class ShellInitGenerator implements IShellInitGenerator {
     try {
       const onceDirExists = await this.fs.exists(onceDir);
       if (!onceDirExists) {
-        logger.debug(shellInitGeneratorLogMessages.cleanup.onceDirectoryMissing(onceDir));
         return;
       }
 
-      // Get file extension for this shell type
       const extension = this.getShellExtension(shellType);
-
-      // Read all files in the once directory
       const files = await this.fs.readdir(onceDir);
 
       // Filter to only files matching this shell type and remove them
@@ -220,7 +216,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(shellInitGeneratorLogMessages.cleanup.failure(onceDir, errorMessage), this.fs.constructor.name);
+      logger.debug(shellInitGeneratorLogMessages.cleanup.failure(onceDir, errorMessage));
       // Continue generation even if cleanup fails
     }
   }

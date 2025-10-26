@@ -11,6 +11,7 @@ import { toolConfigSchema } from '@dotfiles/schemas';
 import type { YamlConfig } from '@dotfiles/schemas/config';
 import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 import { configLoaderLogMessages } from './log-messages';
+import { error } from 'node:console';
 
 /**
  * Validates a tool configuration with Zod schema and logs errors if validation fails.
@@ -127,43 +128,6 @@ function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string
   };
 }
 
-function determineToolFilePath(toolConfigsDir: string, file: string): { filePath: string; toolName: string } | null {
-  if (file.endsWith('.tool.ts')) {
-    // Direct .tool.ts file (flat structure like configs/tools/)
-    return {
-      filePath: path.resolve(toolConfigsDir, file),
-      toolName: path.basename(file, '.tool.ts'),
-    };
-  }
-
-  // Check if it's a directory that might contain a .tool.ts file (nested structure like configs-migrated/)
-  const dirPath = path.resolve(toolConfigsDir, file);
-  const expectedToolFile = path.join(dirPath, `${file}.tool.ts`);
-
-  return {
-    filePath: expectedToolFile,
-    toolName: file,
-  };
-}
-
-async function validateDirectoryStructure(fs: IFileSystem, toolConfigsDir: string, file: string): Promise<boolean> {
-  if (file.endsWith('.tool.ts')) {
-    return true; // Direct .tool.ts files are always valid
-  }
-
-  const dirPath = path.resolve(toolConfigsDir, file);
-  try {
-    const stat = await fs.stat(dirPath);
-    if (stat.isDirectory()) {
-      const expectedToolFile = path.join(dirPath, `${file}.tool.ts`);
-      return await fs.exists(expectedToolFile);
-    }
-    return false; // Not a directory, skip non-.tool.ts files
-  } catch {
-    return false; // Skip if we can't stat the item
-  }
-}
-
 async function loadToolConfigFromModule(
   logger: TsLogger,
   filePath: string,
@@ -194,8 +158,7 @@ async function loadToolConfigFromModule(
 
     return toolConfig;
   } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    logger.error(configLoaderLogMessages.configurationLoadFailed(filePath, errorMessage));
+    logger.error(configLoaderLogMessages.configurationLoadFailed(path.relative(yamlConfig.configFileDir, filePath), e));
     return null;
   }
 }
@@ -222,51 +185,45 @@ function validateAndStoreToolConfig(
 }
 
 /**
- * Filters files based on toolName if provided.
+ * Recursively scans a directory for .tool.ts files.
  */
-function filterFilesForTool(files: string[], toolName?: string): string[] {
-  if (!toolName) {
-    return files;
-  }
-
-  return files.filter((file) => {
-    // Match either flat structure (toolName.tool.ts) or nested structure (toolName/)
-    return file === `${toolName}.tool.ts` || file === toolName;
-  });
-}
-
-/**
- * Processes a single file and loads its tool configuration.
- */
-async function processToolConfigFile(
-  file: string,
-  toolConfigsDir: string,
+async function scanDirectoryForToolFiles(
   fs: IFileSystem,
-  logger: TsLogger,
-  yamlConfig: YamlConfig,
-  toolConfigs: Record<string, ToolConfig>,
-  targetToolName?: string
-): Promise<void> {
-  // Validate directory structure first
-  if (!(await validateDirectoryStructure(fs, toolConfigsDir, file))) {
-    return;
+  dirPath: string,
+  logger: TsLogger
+): Promise<{ filePath: string; toolName: string }[]> {
+  const results: { filePath: string; toolName: string }[] = [];
+
+  try {
+    const entries = await fs.readdir(dirPath);
+
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry);
+
+      try {
+        const stat = await fs.stat(entryPath);
+
+        if (stat.isDirectory()) {
+          // Recursively scan subdirectories
+          const subResults = await scanDirectoryForToolFiles(fs, entryPath, logger);
+          results.push(...subResults);
+        } else if (entry.endsWith('.tool.ts')) {
+          // Found a .tool.ts file
+          const toolName = path.basename(entry, '.tool.ts');
+          results.push({
+            filePath: entryPath,
+            toolName,
+          });
+        }
+      } catch (error) {
+        logger.debug(configLoaderLogMessages.fsReadFailed(entryPath, (error as Error).message));
+      }
+    }
+  } catch (error) {
+    logger.debug(configLoaderLogMessages.fsReadFailed(dirPath, (error as Error).message));
   }
 
-  const fileInfo = determineToolFilePath(toolConfigsDir, file);
-  if (!fileInfo) {
-    return;
-  }
-
-  // If looking for a specific tool, ensure the toolName matches
-  if (targetToolName && fileInfo.toolName !== targetToolName) {
-    return;
-  }
-
-  const { filePath, toolName: discoveredToolName } = fileInfo;
-  logger.trace(configLoaderLogMessages.toolConfigEntryLoad(filePath));
-
-  const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, yamlConfig);
-  validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
+  return results;
 }
 
 /**
@@ -303,10 +260,19 @@ export async function loadToolConfigs(
     const files = await fs.readdir(toolConfigsDir);
     logger.trace(configLoaderLogMessages.toolConfigDirectoryScan(toolConfigsDir), files);
 
-    const filesToProcess = filterFilesForTool(files, toolName);
+    // Recursively scan for all .tool.ts files
+    const allToolFiles = await scanDirectoryForToolFiles(fs, toolConfigsDir, logger);
 
-    for (const file of filesToProcess) {
-      await processToolConfigFile(file, toolConfigsDir, fs, logger, yamlConfig, toolConfigs, toolName);
+    // Filter files if a specific tool name is requested
+    const filesToProcess = toolName
+      ? allToolFiles.filter(({ toolName: foundToolName }) => foundToolName === toolName)
+      : allToolFiles;
+
+    for (const { filePath, toolName: discoveredToolName } of filesToProcess) {
+      logger.trace(configLoaderLogMessages.toolConfigEntryLoad(path.relative(yamlConfig.configFileDir, filePath)));
+
+      const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, yamlConfig);
+      validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);

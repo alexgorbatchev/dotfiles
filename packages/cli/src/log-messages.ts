@@ -100,7 +100,6 @@ export const cliLogMessages = {
   filesOperationHistory: (timestamp: string, operationMessage: string, metadata: string) =>
     createSafeLogMessage(`${timestamp} ${operationMessage}${metadata ? ` ${metadata}` : ''}`),
   cachingDisabled: () => createSafeLogMessage('Caching disabled'),
-  cachingEnabled: () => createSafeLogMessage('Caching enabled'),
   registryInitialized: (path: string) => createSafeLogMessage(`File tracking initialized: ${path}`),
   servicesSetup: () => createSafeLogMessage('Services setup complete'),
   cliStarted: () => createSafeLogMessage('CLI starting with arguments'),

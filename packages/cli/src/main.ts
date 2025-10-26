@@ -21,9 +21,6 @@ import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
 
-// biome-ignore lint:plugin/use-export-star Reexport these for the consumption
-export { defineTool, always, once } from '@dotfiles/schemas';
-
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
@@ -34,6 +31,15 @@ import { registerInstallCommand } from './installCommand';
 import { cliLogMessages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 import { registerUpdateCommand } from './updateCommand';
+
+// biome-ignore lint:plugin/use-export-star Reexport these for the consumption
+export {
+  defineTool,
+  always,
+  once,
+  Platform,
+  Architecture,
+} from '@dotfiles/schemas';
 
 type SetupServicesOptions = GlobalProgramOptions & {
   cwd: string;
@@ -131,11 +137,6 @@ function initializeDownloadCache(parentLogger: TsLogger, fs: IFileSystem, yamlCo
     cacheDir,
     storageStrategy: 'binary',
   });
-
-  parentLogger.debug(
-    cliLogMessages.cachingEnabled(),
-    `Directory: ${cacheDir} (TTL: ${yamlConfig.downloader.cache.ttl / 1000 / 60 / 60} hours)`
-  );
 
   return downloadCache;
 }

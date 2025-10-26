@@ -9,8 +9,8 @@ export const configLoaderLogMessages = {
     createSafeLogMessage(`Configuration validation failed:\n${errors.join('\n')}`),
   configurationParseError: (configPath: string, format: string, reason: string) =>
     createSafeLogMessage(`Failed to parse ${format} configuration ${configPath}: ${reason}`),
-  configurationLoadFailed: (configPath: string, reason: string) =>
-    createSafeLogMessage(`Failed to load configuration from ${configPath}: ${reason}`),
+  configurationLoadFailed: (toolPath: string, reason: string) =>
+    createSafeLogMessage(`${toolPath}: ${reason}`),
   configurationLoaded: (configPath: string, toolCount: number) =>
     createSafeLogMessage(`Configuration loaded from ${configPath} (${toolCount} tools configured)`),
   toolConfigLoadingStarted: (toolConfigsDir: string) => createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),

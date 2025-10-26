@@ -22,8 +22,6 @@ export const shellInitGeneratorLogMessages = {
     starting: (entryCount: number) => createSafeLogMessage(`Updating ${entryCount} shell profile entries`),
   } satisfies SafeLogMessageMap,
   cleanup: {
-    onceDirectoryMissing: (directoryPath: string) =>
-      createSafeLogMessage(`Shell init once directory missing: ${directoryPath}`),
     onceScriptRemoved: (scriptPath: string) => createSafeLogMessage(`Removed stale once script ${scriptPath}`),
     failure: (directoryPath: string, reason: string) =>
       createSafeLogMessage(`Failed to clean shell init once directory ${directoryPath}: ${reason}`),

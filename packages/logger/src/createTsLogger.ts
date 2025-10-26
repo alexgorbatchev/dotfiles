@@ -101,10 +101,12 @@ export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
   return new SafeLogger({
     name: config.name,
     minLevel: config.level,
-
     prettyLogTemplate,
+
     hideLogPositionForProduction: false,
+
     prettyErrorTemplate: '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
+    
     prettyLogStyles: {
       logLevelName: {
         FATAL: ['bold', 'red'],
@@ -115,5 +117,10 @@ export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
         TRACE: ['bold', 'white'],
       },
     },
+
+    prettyInspectOptions: {
+      breakLength: Infinity,
+      compact: true
+    }
   });
 }
