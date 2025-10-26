@@ -6,7 +6,6 @@ import { $ } from 'bun';
 import cliPackageJson from '../package.json';
 import { cdToRepoRoot } from './lib';
 
-// PATH CONSTANTS
 const OUTPUT_DIR = './.dist';
 const CLI_OUTPUT_FILE = path.join(OUTPUT_DIR, 'cli.js');
 const ENTRY_POINT = path.resolve(process.cwd(), 'packages/cli/src/main.ts');
@@ -22,11 +21,10 @@ const OUTPUT_PACKAGE_JSON_PATH = path.join(OUTPUT_DIR, 'package.json');
 const OUTPUT_NODE_MODULES_PATH = path.join(OUTPUT_DIR, 'node_modules');
 const OUTPUT_LOCKFILE_PATH = path.join(OUTPUT_DIR, 'bun.lockb');
 
-// DEPENDENCY VERSION CONSTANTS
 interface DependencyVersions {
-  zodVersion: string;
-  typeFestVersion: string;
-  bunTypesVersion: string;
+  zod: string;
+  typeFest: string;
+  bunTypes: string;
 }
 
 async function cleanPreviousBuild(): Promise<void> {
@@ -57,9 +55,9 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
   }
 
   return {
-    zodVersion,
-    typeFestVersion,
-    bunTypesVersion,
+    zod: zodVersion,
+    typeFest: typeFestVersion,
+    bunTypes: bunTypesVersion,
   };
 }
 
@@ -120,9 +118,9 @@ async function createTempSchemasPackage(dependencyVersions: DependencyVersions):
     version: '0.0.0',
     type: 'module',
     dependencies: {
-      zod: dependencyVersions.zodVersion,
-      'type-fest': dependencyVersions.typeFestVersion,
-      '@types/bun': dependencyVersions.bunTypesVersion,
+      zod: dependencyVersions.zod,
+      'type-fest': dependencyVersions.typeFest,
+      '@types/bun': dependencyVersions.bunTypes,
     },
   };
 
@@ -172,9 +170,9 @@ async function validateSchemas(dependencyVersions: DependencyVersions): Promise<
     version: '0.0.0',
     type: 'module',
     dependencies: {
-      zod: dependencyVersions.zodVersion,
-      'type-fest': dependencyVersions.typeFestVersion,
-      '@types/bun': dependencyVersions.bunTypesVersion,
+      zod: dependencyVersions.zod,
+      'type-fest': dependencyVersions.typeFest,
+      '@types/bun': dependencyVersions.bunTypes,
     },
   };
 
@@ -254,8 +252,8 @@ async function generatePackageJson(dependencyVersions: DependencyVersions): Prom
       },
     },
     dependencies: {
-      zod: dependencyVersions.zodVersion,
-      'type-fest': dependencyVersions.typeFestVersion,
+      zod: dependencyVersions.zod,
+      'type-fest': dependencyVersions.typeFest,
     },
   };
 

@@ -10,6 +10,7 @@ cdToRepoRoot(import.meta.url);
 
 const rootDir = process.cwd();
 const releaseDir = path.join(rootDir, '.release');
+const releaseBranchName = `release-${cliPackageJson.version}`;
 
 async function validateCleanWorkingDirectory(): Promise<void> {
   try {
@@ -54,19 +55,10 @@ async function runBuildScript(): Promise<void> {
 }
 
 async function createOrphanedReleaseBranch(): Promise<void> {
-  console.log('🌿 Creating orphaned release branch...');
+  console.log(`🌿 Creating orphaned release branch: ${releaseBranchName}...`);
 
-  // Check if release branch exists and delete it
-  try {
-    await executeCommand(['git', 'show-ref', '--verify', '--quiet', 'refs/heads/release'], releaseDir);
-    console.log('🗑️  Deleting existing release branch...');
-    await executeCommand(['git', 'branch', '-D', 'release'], releaseDir);
-  } catch {
-    // Branch doesn't exist, that's fine
-  }
-
-  // Create new orphaned branch
-  await executeCommand(['git', 'checkout', '--orphan', 'release'], releaseDir);
+  // Create new orphaned branch with versioned name
+  await executeCommand(['git', 'checkout', '--orphan', releaseBranchName], releaseDir);
 
   // Remove all files from staging
   await executeCommand(['git', 'rm', '-rf', '.'], releaseDir);
@@ -121,8 +113,8 @@ async function commitAndPush(): Promise<void> {
   // Commit with version info
   await executeCommand(['git', 'commit', '-m', `Release v${version}`], releaseDir);
 
-  // Push to release branch (force push since it's orphaned)
-  await executeCommand(['git', 'push', '-f', 'origin', 'release'], releaseDir);
+  // Push to versioned release branch (force push since it's orphaned)
+  await executeCommand(['git', 'push', '-f', 'origin', releaseBranchName], releaseDir);
 }
 
 async function cleanup(): Promise<void> {
@@ -132,54 +124,10 @@ async function cleanup(): Promise<void> {
   }
 }
 
-export async function release(): Promise<void> {
-  console.log('🚀 Starting release process...');
-
-  try {
-    // Step 0: Validate environment
-    await validateGitRepository(rootDir);
-    await validateCleanWorkingDirectory();
-
-    // Step 1: Clean up any existing release directory
-    await cleanupReleaseDir();
-
-    // Step 2: Clone repository to .release
-    await cloneRepository();
-
-    // Step 3: Install dependencies
-    await installDependencies();
-
-    // Step 4: Run build script
-    await runBuildScript();
-
-    // Step 5: Create orphaned release branch
-    await createOrphanedReleaseBranch();
-
-    // Step 6: Move dist files to root
-    await moveDistFiles();
-
-    // Step 7: Remove build-only files
-    await removeBuildOnlyFiles();
-
-    // Step 8: List files before commit
-    printDirectoryContents(releaseDir, 'Release directory contents');
-
-    // Step 9: Commit and push
-    await commitAndPush();
-
-    console.log('✅ Release completed successfully! Use `bun run publish` now to publish.');
-  } catch (error) {
-    console.error('❌ Release failed:', error);
-    throw error;
-  }
-
-  // Step 10: Clean up .release directory
-  await cleanup();
-
-  // Step 11: Show final release branch contents
+async function showFinalReleaseBranchContents(): Promise<void> {
   console.log('📋 Final release branch contents:');
   try {
-    const result = await $`git ls-tree -r --name-only release`.quiet();
+    const result = await $`git ls-tree -r --name-only ${releaseBranchName}`.quiet();
     const files = result.stdout.toString().trim().split('\n').filter(f => f);
     if (files.length > 0) {
       for (const file of files) {
@@ -191,6 +139,81 @@ export async function release(): Promise<void> {
   } catch {
     console.log('   ❌ Could not list release branch files');
   }
+}
+
+async function checkReleaseBranchExists(): Promise<void> {
+  console.log(`🔍 Checking if release branch ${releaseBranchName} already exists...`);
+
+  // Check if versioned release branch already exists locally
+  try {
+    await executeCommand(['git', 'show-ref', '--verify', '--quiet', `refs/heads/${releaseBranchName}`], rootDir);
+    console.error(`❌ Release branch '${releaseBranchName}' already exists locally. Please delete it first or bump the version.`);
+    process.exit(1);
+  } catch {
+    // Branch doesn't exist locally which is what we want
+  }
+
+  // Check if versioned release branch already exists remotely
+  try {
+    await executeCommand(['git', 'ls-remote', '--exit-code', 'origin', `refs/heads/${releaseBranchName}`], rootDir);
+    console.error(`❌ Release branch '${releaseBranchName}' already exists remotely. Please delete it first or bump the version.`);
+    process.exit(1);
+  } catch {
+    // Branch doesn't exist remotely which is what we want
+  }
+
+  console.log(`✓ Release branch ${releaseBranchName} is available`);
+}
+
+export async function release(): Promise<void> {
+  console.log('🚀 Starting release process...');
+
+  try {
+    // Step 0: Validate environment
+    await validateGitRepository(rootDir);
+    await validateCleanWorkingDirectory();
+
+    // Step 1: Check if release branch already exists
+    await checkReleaseBranchExists();
+
+    // Step 2: Clean up any existing release directory
+    await cleanupReleaseDir();
+
+    // Step 3: Clone repository to .release
+    await cloneRepository();
+
+    // Step 4: Install dependencies
+    await installDependencies();
+
+    // Step 5: Run build script
+    await runBuildScript();
+
+    // Step 6: Create orphaned release branch
+    await createOrphanedReleaseBranch();
+
+    // Step 7: Move dist files to root
+    await moveDistFiles();
+
+    // Step 8: Remove build-only files
+    await removeBuildOnlyFiles();
+
+    // Step 9: List files before commit
+    printDirectoryContents(releaseDir, 'Release directory contents');
+
+    // Step 10: Commit and push
+    await commitAndPush();
+
+    console.log('✅ Release completed successfully! Use `bun run publish` now to publish.');
+  } catch (error) {
+    console.error('❌ Release failed:', error);
+    throw error;
+  }
+
+  // Step 11: Clean up .release directory
+  await cleanup();
+
+  // Step 12: Show final release branch contents
+  await showFinalReleaseBranchContents();
 }
 
 // Only run if executed directly
