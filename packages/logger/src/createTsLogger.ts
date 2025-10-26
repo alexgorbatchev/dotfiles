@@ -76,35 +76,30 @@ class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
  * @param config.minLevel Minimum log level (0=trace, 1=debug, 2=info, 3=warn, 4=error, 5=fatal)
  * @returns SafeLogger instance that enforces type-safe logging
  */
+export function createTsLogger(name: string): TsLogger;
 export function createTsLogger(config: LoggerConfig): TsLogger;
-export function createTsLogger(name: string): TsLogger; // Backward compatibility overload
-
 export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
+  let config: LoggerConfig = {} as LoggerConfig;
+
   if (typeof configOrName === 'string') {
-    // Backward compatibility: default to INFO level with user-friendly formatting
-    return new SafeLogger({
-      name: configOrName,
-      minLevel: 3, // INFO level (0=silly, 1=trace, 2=debug, 3=info)
-      ...getUserFriendlyLoggerSettings(),
-    });
+    config.name = configOrName;
+  } else {
+    config = { ...configOrName };
   }
 
-  const { name, minLevel = 3 } = configOrName; // Default to INFO level
-  return new SafeLogger({
-    name,
-    minLevel,
-    ...getUserFriendlyLoggerSettings(),
-  });
-}
+  config.minLevel = config.minLevel ?? 3;
 
-/**
- * Returns user-friendly logger settings for public-facing output.
- * Shows clean format: "LEVEL message" without timestamps, file paths, etc.
- */
-function getUserFriendlyLoggerSettings() {
-  return {
-    hideLogPositionForProduction: true,
-    prettyLogTemplate: '{{logLevelName}}\t',
+  const prettyLogTemplate =
+    config.minLevel < 3
+      ? // add full name in verbose mode
+        '{{logLevelName}}\t{{filePathWithLine}} - '
+      : '{{logLevelName}}\t';
+
+  return new SafeLogger({
+    ...config,
+
+    prettyLogTemplate,
+    hideLogPositionForProduction: false,
     prettyErrorTemplate: '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
     prettyLogStyles: {
       logLevelName: {
@@ -116,5 +111,5 @@ function getUserFriendlyLoggerSettings() {
         TRACE: ['bold', 'white'],
       },
     },
-  };
+  });
 }

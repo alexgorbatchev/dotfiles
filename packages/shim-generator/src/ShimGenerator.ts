@@ -27,7 +27,7 @@ export class ShimGenerator implements IShimGenerator {
     const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
     this.logger = logger;
     const constructorLogger = logger.getSubLogger({ name: 'constructor' });
-    constructorLogger.debug(shimGeneratorLogMessages.constructor.initialized(), fileSystem, config);
+    constructorLogger.debug(shimGeneratorLogMessages.constructor.initialized());
     this.fs = fileSystem;
     this.config = config;
   }
@@ -35,7 +35,7 @@ export class ShimGenerator implements IShimGenerator {
   async generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const fileSystemName = this.fs.constructor.name;
-    logger.debug(shimGeneratorLogMessages.generate.started(fileSystemName), toolConfigs, options);
+    logger.debug(shimGeneratorLogMessages.generate.started(fileSystemName));
     const generatedShimPaths: string[] = [];
 
     for (const toolName in toolConfigs) {

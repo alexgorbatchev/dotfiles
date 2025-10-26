@@ -24,7 +24,7 @@ export function registerGenerateCommand(
       const services = await servicesFactory();
       const { yamlConfig, fs, generatorOrchestrator, configService } = services;
 
-      logger.debug(cliLogMessages.commandActionCalled('generate'), combinedOptions);
+      logger.debug(cliLogMessages.commandActionCalled('generate'));
 
       try {
         logger.debug(cliLogMessages.toolConfigsLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);

@@ -22,7 +22,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, appConfig: YamlConfig) {
     this.logger = parentLogger.getSubLogger({ name: 'ShellInitGenerator' });
     const logger = this.logger.getSubLogger({ name: 'constructor' });
-    logger.debug(shellInitGeneratorLogMessages.constructor.initialized(), fileSystem, appConfig);
+    logger.debug(shellInitGeneratorLogMessages.constructor.initialized());
     this.fs = fileSystem;
     this.appConfig = appConfig;
   }
@@ -33,7 +33,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   ): Promise<ShellInitGenerationResult | null> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const fileSystemName = this.fs.constructor.name;
-    logger.debug(shellInitGeneratorLogMessages.generate.started(fileSystemName), toolConfigs, options);
+    logger.debug(shellInitGeneratorLogMessages.generate.started(fileSystemName));
 
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
     const generatedFiles = new Map<ShellType, string>();
@@ -184,11 +184,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       });
     }
 
-    logger.debug(
-      shellInitGeneratorLogMessages.profiles.starting(configs.length),
-      configs.map((c) => ({ shellType: c.shellType, path: c.generatedScriptPath }))
-    );
-
+    logger.debug(shellInitGeneratorLogMessages.profiles.starting(configs.length));
     return await profileUpdater.updateProfiles(configs);
   }
 

@@ -94,19 +94,6 @@ export class Installer implements IInstaller {
     systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
-    const fileSystemName = fileSystem?.constructor?.name ?? 'unknown';
-    const downloaderName = downloader?.constructor?.name ?? 'unknown';
-    const githubClientName = githubApiClient?.constructor?.name ?? 'unknown';
-    const archiveExtractorName = archiveExtractor?.constructor?.name ?? 'unknown';
-    this.logger.debug(
-      installerLogMessages.lifecycle.constructorDetails(
-        fileSystemName,
-        downloaderName,
-        githubClientName,
-        archiveExtractorName
-      ),
-      appConfig
-    );
     this.fs = fileSystem;
     this.downloader = downloader;
     this.githubApiClient = githubApiClient;

@@ -234,7 +234,7 @@ async function filesActionLogic(
   const { fileRegistry, fs, yamlConfig } = services;
 
   try {
-    logger.debug(cliLogMessages.commandActionCalled('files', options.tool), options);
+    logger.debug(cliLogMessages.commandActionCalled('files', options.tool));
 
     if (options.status) {
       await showFileStates(logger, fileRegistry, fs, options.tool);
@@ -271,9 +271,8 @@ export function registerFilesCommand(
     .option('--since <date>', 'Show files created since date (ISO format: 2025-08-01)')
     // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
     .action(async (_options: any) => {
-      const combinedOptions: FilesCommandOptions = { ..._options, ...program.opts() } as FilesCommandOptions;
-
-      logger.debug(cliLogMessages.commandActionCalled('files', _options.tool), combinedOptions);
+      const combinedOptions: FilesCommandOptions = { ..._options, ...program.opts() };
+      logger.debug(cliLogMessages.commandActionCalled('files', _options.tool));
       const services = await servicesFactory();
       await filesActionLogic(logger, combinedOptions, services);
     });

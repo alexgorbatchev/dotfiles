@@ -40,15 +40,6 @@ export const installerLogMessages = {
       createSafeLogMessage(`Successfully created and verified symlink: ${symlinkPath} -> ${targetPath}`),
   } satisfies SafeLogMessageMap,
   lifecycle: {
-    constructorDetails: (
-      fileSystemName: string,
-      downloaderName: string,
-      githubClientName: string,
-      archiveExtractorName: string
-    ) =>
-      createSafeLogMessage(
-        `constructor: fileSystem=${fileSystemName}, downloader=${downloaderName}, githubApiClient=${githubClientName}, archiveExtractor=${archiveExtractorName}`
-      ),
     methodStarted: (toolName: string) => createSafeLogMessage(`Starting installation for ${toolName}`),
     methodParams: (toolName: string) =>
       createSafeLogMessage(`toolName=${toolName}; tool configuration and options attached`),

@@ -346,7 +346,7 @@ export async function main(argv: string[]) {
   const rootLogger = createTsLogger({ name: 'cli', minLevel: logLevel });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
-  logger.trace(cliLogMessages.cliStarted(), 'Arguments: %o', argv);
+  logger.trace(cliLogMessages.cliStarted(),  argv);
 
   // Create a factory function that will initialize services only when needed
   const servicesFactory = async () => {

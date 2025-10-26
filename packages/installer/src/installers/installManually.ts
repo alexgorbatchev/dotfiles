@@ -57,7 +57,7 @@ export async function installManually(
     };
   };
 
-  return withInstallErrorHandling('manual', toolName, logger, operation) as Promise<InstallResult>;
+  return withInstallErrorHandling('manual', toolName, logger, operation);
 }
 
 async function installBinariesManually(

@@ -2,7 +2,7 @@ import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const cliLogMessages = {
   commandActionCalled: (commandName: string, targetTool?: string) =>
-    createSafeLogMessage(`Action called for ${commandName}${targetTool ? ` "${targetTool}"` : ''} with options: %O`),
+    createSafeLogMessage(`Action called for ${commandName}${targetTool ? ` "${targetTool}"` : ''}`),
   commandActionStarted: (commandName: string, targetTool?: string) =>
     createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`),
   commandErrorDetails: () => createSafeLogMessage('Error details: %O'),

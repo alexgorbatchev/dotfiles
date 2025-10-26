@@ -277,7 +277,7 @@ function processConfig(
   env: Record<string, string | undefined>
 ): YamlConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
-  logger.debug(configLoaderLogMessages.configurationProcessing(), defaultConfig, userConfig, systemInfo);
+  logger.debug(configLoaderLogMessages.configurationProcessing(), userConfigPath);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);

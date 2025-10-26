@@ -38,14 +38,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   async generateAll(toolConfigs: Record<string, ToolConfig>, options?: GenerateAllOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
     const fileSystemName = this.fs.constructor.name;
-    logger.debug(generatorOrchestratorLogMessages.generateAll.methodEntry(fileSystemName), options);
 
     const toolConfigsCount = toolConfigs ? Object.keys(toolConfigs).length : 0;
     logger.debug(generatorOrchestratorLogMessages.generateAll.parsedOptions(toolConfigsCount));
 
     // 1. Generate Shims
     const shimOptions: GenerateShimsOptions = { overwrite: true };
-    logger.debug(generatorOrchestratorLogMessages.generateAll.shimGenerate(), shimOptions);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.shimGenerate());
     const generatedShimsPaths = await this.shimGenerator.generate(toolConfigs, shimOptions);
     const shimCount = generatedShimsPaths?.length ?? 0;
     logger.debug(generatorOrchestratorLogMessages.generateAll.shimGenerationComplete(shimCount));
@@ -55,14 +54,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       shellTypes: ['zsh', 'bash', 'powershell'],
       systemInfo: this.systemInfo,
     };
-    logger.debug(generatorOrchestratorLogMessages.generateAll.shellGenerate(), shellInitOptions);
+    logger.debug(generatorOrchestratorLogMessages.generateAll.shellGenerate());
     const shellInitResult = await this.shellInitGenerator.generate(toolConfigs, shellInitOptions);
     const primaryPath = shellInitResult?.primaryPath ?? 'null';
     logger.debug(generatorOrchestratorLogMessages.generateAll.shellInitComplete(primaryPath));
 
     // 3. Generate Symlinks
     const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
-    logger.debug(generatorOrchestratorLogMessages.generateAll.symlinkGenerate(), symlinkOptions);
     const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(toolConfigs, symlinkOptions);
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(generatorOrchestratorLogMessages.generateAll.symlinkGenerationComplete(symlinkResultCount));

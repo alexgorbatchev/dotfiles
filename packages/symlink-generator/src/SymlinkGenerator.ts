@@ -26,7 +26,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: GenerateSymlinksOptions = {}
   ): Promise<SymlinkOperationResult[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
-    logger.debug(symlinkGeneratorLogMessages.generate.started(), options, this.fs.constructor.name);
+    logger.debug(symlinkGeneratorLogMessages.generate.started());
     const results: SymlinkOperationResult[] = [];
 
     for (const toolName in toolConfigs) {
@@ -44,7 +44,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
     }
 
-    logger.debug(symlinkGeneratorLogMessages.generate.completed(), results);
+    logger.debug(symlinkGeneratorLogMessages.generate.completed());
     return results;
   }
 

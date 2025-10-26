@@ -44,7 +44,7 @@ describe('Downloader with Cache', () => {
       logger.expect(
         ['DEBUG'],
         ['Downloader'],
-        ['constructor: Created CachedDownloadStrategy wrapping NodeFetchStrategy']
+        ['Created CachedDownloadStrategy wrapping NodeFetchStrategy']
       );
     });
 

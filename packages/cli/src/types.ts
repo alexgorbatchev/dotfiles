@@ -38,7 +38,6 @@ export interface Services {
   systemInfo: SystemInfo;
 }
 
-export type GlobalProgram = Command;
 export interface GlobalProgramOptions {
   config: string;
   dryRun: boolean;
@@ -47,3 +46,5 @@ export interface GlobalProgramOptions {
   platform?: string;
   arch?: string;
 }
+
+export type GlobalProgram = Command;

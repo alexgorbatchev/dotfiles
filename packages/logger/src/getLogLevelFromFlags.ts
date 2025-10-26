@@ -5,7 +5,6 @@
  * @param verbose If true, show all messages including debug and trace (level 1)
  * @returns The appropriate log level (0=silly, 1=trace, 2=debug, 3=info, 4=warn, 5=error, 6=fatal)
  */
-
 export function getLogLevelFromFlags(quiet: boolean, verbose: boolean): number {
   if (quiet) {
     return 5; // ERROR level - only show errors and fatal (5=error, 6=fatal)

@@ -88,7 +88,7 @@ export function registerInstallCommand(
     // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
     .action(async (toolName: string, _options: any) => {
       const combinedOptions: InstallCommandOptions = { ..._options, ...program.opts() } as InstallCommandOptions;
-      logger.debug(cliLogMessages.commandActionCalled('install', toolName), combinedOptions);
+      logger.debug(cliLogMessages.commandActionCalled('install', toolName));
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer, configService } = services;

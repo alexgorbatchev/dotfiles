@@ -196,9 +196,8 @@ export function registerCleanupCommand(
     .option('--registry', 'Use registry-based cleanup instead of manifest-based')
     // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
     .action(async (_options: any) => {
-      const combinedOptions: CleanupCommandOptions = { ..._options, ...program.opts() } as CleanupCommandOptions;
-
-      logger.debug(cliLogMessages.commandActionCalled('cleanup'), combinedOptions);
+      const combinedOptions: CleanupCommandOptions = { ..._options, ...program.opts() };
+      logger.debug(cliLogMessages.commandActionCalled('cleanup'));
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);
     });
