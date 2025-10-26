@@ -7,20 +7,20 @@ mode: agent
 
 This guide provides comprehensive instructions for migrating existing shell-based dotfiles configurations to the new `.tool.ts` system. It covers both the technical migration process and references to detailed documentation for each aspect of the new system.
 
-> **📚 Complete Documentation**: For detailed information about any topic mentioned here, see the [Tool Configuration Guide](../../docs/tool-configuration/README.md).
+> **📚 Complete Documentation**: For detailed information about any topic mentioned here, see the [Tool Configuration Guide](../../docs/README.md).
 
 ## Migration Process Overview
 
-1. **[Getting Started](../../docs/tool-configuration/getting-started.md)** - Understand the basic `.tool.ts` file structure
-2. **[Installation Methods](../../docs/tool-configuration/installation/README.md)** - Choose the right installation approach
-3. **[Shell Integration](../../docs/tool-configuration/shell-integration.md)** - Migrate aliases, functions, and environment variables
-4. **[Configuration Files](../../docs/tool-configuration/symlinks.md)** - Set up symlinks for dotfiles
-5. **[Platform Support](../../docs/tool-configuration/platform-support.md)** - Handle cross-platform differences
-6. **[Testing](../../docs/tool-configuration/testing.md)** - Validate your migration
+1. **[Getting Started](../../docs/getting-started.md)** - Understand the basic `.tool.ts` file structure
+2. **[Installation Methods](../../docs/installation/README.md)** - Choose the right installation approach
+3. **[Shell Integration](../../docs/shell-integration.md)** - Migrate aliases, functions, and environment variables
+4. **[Configuration Files](../../docs/symlinks.md)** - Set up symlinks for dotfiles
+5. **[Platform Support](../../docs/platform-support.md)** - Handle cross-platform differences
+6. **[Testing](../../docs/testing.md)** - Validate your migration
 
 ## Pattern Syntax
 
-> **📚 Complete Reference**: See [Path Resolution Guide](../../docs/tool-configuration/path-resolution.md) for comprehensive pattern documentation.
+> **📚 Complete Reference**: See [Path Resolution Guide](../../docs/path-resolution.md) for comprehensive pattern documentation.
 
 ### Basic Patterns
 
@@ -51,7 +51,7 @@ c.bin('gh', '*/bin/gh')
 c.bin('nvim', '*/bin/nvim')
 ```
 
-> **💡 More Examples**: See [Common Patterns](../../docs/tool-configuration/common-patterns.md) for additional real-world configuration examples.
+> **💡 More Examples**: See [Common Patterns](../../docs/common-patterns.md) for additional real-world configuration examples.
 
 ## Default Pattern Behavior
 
@@ -67,7 +67,7 @@ This default assumes the binary is located in a subdirectory, which matches most
 
 ## Shell-to-TypeScript Migration Patterns
 
-> **📚 Complete Guide**: See [Migration from Shell Scripts](../../docs/tool-configuration/migration.md) for detailed shell-to-TypeScript conversion examples.
+> **📚 Complete Guide**: See [Migration from Shell Scripts](../../docs/migration.md) for detailed shell-to-TypeScript conversion examples.
 
 The new system centralizes all tool-related assets. Instead of copying files with shell commands, you move all related assets (e.g., `config.toml`, fonts, themes) into the same directory as your `.tool.ts` file and then use the `.symlink()` method to link them to their expected locations in your home directory.
 
@@ -120,7 +120,7 @@ export default defineTool((c, ctx) =>
 
 ## Troubleshooting Migration Issues
 
-> **📚 Complete Troubleshooting**: See [Troubleshooting Guide](../../docs/tool-configuration/troubleshooting.md) for comprehensive problem-solving information.
+> **📚 Complete Troubleshooting**: See [Troubleshooting Guide](../../docs/troubleshooting.md) for comprehensive problem-solving information.
 
 ### Binary Not Found After Installation
 
@@ -153,29 +153,29 @@ tar -tzf rg.tar.gz | head -10
 ## Complete Migration Checklist
 
 ### Pre-Migration Planning
-- [ ] Read [Getting Started Guide](../../docs/tool-configuration/getting-started.md)
-- [ ] Review [Installation Methods](../../docs/tool-configuration/installation/README.md) to choose appropriate installation type
-- [ ] Understand [Platform Support](../../docs/tool-configuration/platform-support.md) requirements
+- [ ] Read [Getting Started Guide](../../docs/getting-started.md)
+- [ ] Review [Installation Methods](../../docs/installation/README.md) to choose appropriate installation type
+- [ ] Understand [Platform Support](../../docs/platform-support.md) requirements
 
 ### For Each Tool Configuration
 
 #### Shell Integration Migration
-- [ ] Convert aliases using [Shell Integration Guide](../../docs/tool-configuration/shell-integration.md#aliases)
-- [ ] Convert functions using [Shell Integration Guide](../../docs/tool-configuration/shell-integration.md#functions)
-- [ ] Convert environment variables using [Shell Integration Guide](../../docs/tool-configuration/shell-integration.md#environment-variables)
-- [ ] Set up completions using [Completions Guide](../../docs/tool-configuration/completions.md)
+- [ ] Convert aliases using [Shell Integration Guide](../../docs/shell-integration.md#aliases)
+- [ ] Convert functions using [Shell Integration Guide](../../docs/shell-integration.md#functions)
+- [ ] Convert environment variables using [Shell Integration Guide](../../docs/shell-integration.md#environment-variables)
+- [ ] Set up completions using [Completions Guide](../../docs/completions.md)
 
 #### Configuration Files
 - [ ] Move all related tool assets (configs, fonts, themes, binaries, etc.) to the same directory as the `.tool.ts` file preserving their original file layout.
-- [ ] Set up symlinks using [Symlinks Guide](../../docs/tool-configuration/symlinks.md)
-- [ ] Configure platform-specific paths using [Platform Support](../../docs/tool-configuration/platform-support.md)
+- [ ] Set up symlinks using [Symlinks Guide](../../docs/symlinks.md)
+- [ ] Configure platform-specific paths using [Platform Support](../../docs/platform-support.md)
 
 #### Advanced Features (if needed)
-- [ ] Add installation hooks using [Hooks Guide](../../docs/tool-configuration/hooks.md)
-- [ ] Implement custom logic using [Advanced Topics](../../docs/tool-configuration/advanced-topics.md)
+- [ ] Add installation hooks using [Hooks Guide](../../docs/hooks.md)
+- [ ] Implement custom logic using [Advanced Topics](../../docs/advanced-topics.md)
 
 #### Testing and Validation
-- [ ] Test the migrated configuration using [Testing Guide](../../docs/tool-configuration/testing.md)
+- [ ] Test the migrated configuration using [Testing Guide](../../docs/testing.md)
 - [ ] Verify symlinks are created correctly
 - [ ] Confirm tool functionality is preserved
 - [ ] Test on all target platforms
@@ -188,10 +188,10 @@ tar -tzf rg.tar.gz | head -10
 
 ## Additional Resources
 
-- **[API Reference](../../docs/tool-configuration/api-reference.md)** - Complete method documentation
-- **[Configuration Examples](../../docs/tool-configuration/examples.md)** - Real-world configuration examples
-- **[Common Patterns](../../docs/tool-configuration/common-patterns.md)** - Frequently used patterns
-- **[Advanced Topics](../../docs/tool-configuration/advanced-topics.md)** - Complex configuration scenarios
-- **[Troubleshooting](../../docs/tool-configuration/troubleshooting.md)** - Problem-solving guide
+- **[API Reference](../../docs/api-reference.md)** - Complete method documentation
+- **[Configuration Examples](../../docs/examples.md)** - Real-world configuration examples
+- **[Common Patterns](../../docs/common-patterns.md)** - Frequently used patterns
+- **[Advanced Topics](../../docs/advanced-topics.md)** - Complex configuration scenarios
+- **[Troubleshooting](../../docs/troubleshooting.md)** - Problem-solving guide
 
-> **💡 Pro Tip**: Start with simple tools first to get familiar with the system, then migrate more complex configurations. Use the [Testing Guide](../../docs/tool-configuration/testing.md) to validate each migration step.
+> **💡 Pro Tip**: Start with simple tools first to get familiar with the system, then migrate more complex configurations. Use the [Testing Guide](../../docs/testing.md) to validate each migration step.

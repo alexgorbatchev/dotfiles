@@ -202,9 +202,9 @@ updateCheck:
 
 ## Documentation
 
-- **[Tool Configuration Guide](docs/tool-configuration/README.md)** - The complete guide to creating `.tool.ts` files.
+- **[Tool Configuration Guide](docs/README.md)** - The complete guide to creating `.tool.ts` files.
 - **[Migration Guide](docs/migration-guide.md)** - How to move from shell scripts to the new system.
-- **[Common Patterns](docs/tool-configuration/common-patterns.md)** - Real-world configuration examples.
+- **[Common Patterns](docs/common-patterns.md)** - Real-world configuration examples.
 
 ## Global Configuration (`config.yaml`)
 

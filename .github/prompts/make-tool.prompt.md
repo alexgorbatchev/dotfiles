@@ -43,19 +43,19 @@ Research the tool to understand:
 Based on your analysis, select the most appropriate installation method. Prioritize official and pre-compiled options.
 
 - **`github-release`**: Best for tools with binary releases on GitHub. It's the most common method.
-  - See: [GitHub Release Installation Guide](../../docs/tool-configuration/installation/github-release.md)
+  - See: [GitHub Release Installation Guide](../../docs/installation/github-release.md)
 - **`brew`**: Use if the tool is officially available via Homebrew and the target platform is macOS or Linux.
-  - See: [Homebrew Installation Guide](../../docs/tool-configuration/installation/homebrew.md)
+  - See: [Homebrew Installation Guide](../../docs/installation/homebrew.md)
 - **`cargo`**: The preferred method for Rust-based tools available on crates.io, as it's generally faster.
-  - See: [Cargo Installation Guide](../../docs/tool-configuration/installation/cargo.md)
+  - See: [Cargo Installation Guide](../../docs/installation/cargo.md)
 - **`curl-script`**: For tools that provide an official installation script (e.g., `install.sh`).
-  - See: [Curl Script Installation Guide](../../docs/tool-configuration/installation/curl-script.md)
+  - See: [Curl Script Installation Guide](../../docs/installation/curl-script.md)
 - **`curl-tar`**: For downloading and extracting archives from a direct URL.
-  - See: [Curl Tar Installation Guide](../../docs/tool-configuration/installation/curl-tar.md)
+  - See: [Curl Tar Installation Guide](../../docs/installation/curl-tar.md)
 - **`manual`**: For tools that are already installed on the system but you want to manage their configuration.
-  - See: [Manual Installation Guide](../../docs/tool-configuration/installation/manual.md)
+  - See: [Manual Installation Guide](../../docs/installation/manual.md)
 - **`no-install`**: For system tools (like `git`) where you only want to manage shell integration and symlinks.
-  - See: [No-Install Guide](../../docs/tool-configuration/installation/no-install.md)
+  - See: [No-Install Guide](../../docs/installation/no-install.md)
 
 ### Step 2: Configure Binary Patterns
 If using an archive-based installer (`github-release`, `curl-tar`), determine the correct binary patterns based on the archive's structure.
@@ -68,7 +68,7 @@ c.bin('tool', '*/bin/tool')      // Binary in a 'bin' subdirectory
 c.bin('tool', 'tool')            // Binary at the archive root
 ```
 
-**Reference**: [Path Resolution Guide](../../docs/tool-configuration/path-resolution.md)
+**Reference**: [Path Resolution Guide](../../docs/path-resolution.md)
 
 ### Step 3: Add Shell Integration
 Configure shell features if the tool provides them.
@@ -99,7 +99,7 @@ c.zsh({
 });
 ```
 
-**Reference**: [Shell Integration Guide](../../docs/tool-configuration/shell-integration.md)
+**Reference**: [Shell Integration Guide](../../docs/shell-integration.md)
 
 ### Step 4: Configure File Management
 Set up symbolic links for configuration files if the tool uses them.
@@ -108,7 +108,7 @@ Set up symbolic links for configuration files if the tool uses them.
 c.symlink('./config.toml', '~/.config/tool/config.toml')
 ```
 
-**Reference**: [Symlinks Guide](../../docs/tool-configuration/symlinks.md)
+**Reference**: [Symlinks Guide](../../docs/symlinks.md)
 
 ### Step 5: Add Platform Support
 Handle platform-specific requirements using `.platform()`.
@@ -122,7 +122,7 @@ c.platform(Platform.Linux, (c) => {
 });
 ```
 
-**Reference**: [Platform Support Guide](../../docs/tool-configuration/platform-support.md)
+**Reference**: [Platform Support Guide](../../docs/platform-support.md)
 
 ### Step 6: Add Installation Hooks (if needed)
 Include post-installation setup for tasks like creating directories or running initialization commands.
@@ -136,7 +136,7 @@ c.hooks({
 })
 ```
 
-**Reference**: [Hooks Guide](../../docs/tool-configuration/hooks.md)
+**Reference**: [Hooks Guide](../../docs/hooks.md)
 
 ## Output Requirements
 
@@ -208,15 +208,15 @@ Before finalizing your configuration, verify:
 - [ ] **Version specification** is appropriate (`latest` vs. a specific version).
 - [ ] **Shell integration** includes available completions and useful aliases.
 - [ ] **Platform support** covers all intended platforms.
-- [ ] **Configuration follows** [TypeScript requirements](../../docs/tool-configuration/typescript.md).
-- [ ] **Code style** matches [examples](../../docs/tool-configuration/examples.md).
+- [ ] **Configuration follows** [TypeScript requirements](../../docs/typescript.md).
+- [ ] **Code style** matches [examples](../../docs/examples.md).
 
 ## Common Patterns Reference
 
 For quick reference, see these common configuration patterns:
-- **[Common Patterns Guide](../../docs/tool-configuration/common-patterns.md)** - Real-world examples.
-- **[Configuration Examples](../../docs/tool-configuration/examples.md)** - Template configurations.
-- **[API Reference](../../docs/tool-configuration/api-reference.md)** - Complete method documentation.
+- **[Common Patterns Guide](../../docs/common-patterns.md)** - Real-world examples.
+- **[Configuration Examples](../../docs/examples.md)** - Template configurations.
+- **[API Reference](../../docs/api-reference.md)** - Complete method documentation.
 
 ## Troubleshooting
 
@@ -226,7 +226,7 @@ If you encounter issues:
 3. **Complex installation**: Use hooks for custom setup scripts.
 4. **Platform differences**: Use `.platform()` for platform-specific overrides.
 
-**Reference**: [Troubleshooting Guide](../../docs/tool-configuration/troubleshooting.md)
+**Reference**: [Troubleshooting Guide](../../docs/troubleshooting.md)
 
 ## Success Criteria
 
@@ -239,9 +239,9 @@ Your generated configuration is successful if:
 
 ## Additional Resources
 
-- **[Getting Started](../../docs/tool-configuration/getting-started.md)** - Basic configuration concepts.
-- **[Advanced Topics](../../docs/tool-configuration/advanced-topics.md)** - Complex scenarios.
-- **[Testing Guide](../../docs/tool-configuration/testing.md)** - Validation approaches.
+- **[Getting Started](../../docs/getting-started.md)** - Basic configuration concepts.
+- **[Advanced Topics](../../docs/advanced-topics.md)** - Complex scenarios.
+- **[Testing Guide](../../docs/testing.md)** - Validation approaches.
 
 ---
 
