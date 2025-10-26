@@ -251,8 +251,8 @@ describe('Profile Updates E2E Tests', () => {
             zsh: { scripts: [always`export TEST_VAR="value"`] },
             bash: { scripts: [always`export TEST_VAR="value"`] },
           },
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       };
 
@@ -334,8 +334,8 @@ describe('Profile Updates E2E Tests', () => {
           shellConfigs: {
             zsh: { scripts: [always`export CUSTOM_VAR="test"`] },
           },
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       };
 

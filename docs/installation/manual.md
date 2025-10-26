@@ -1,6 +1,6 @@
 # Manual Installation
 
-The `manual` method installs files from your tool configuration directory, such as custom scripts, pre-built binaries, or other resources included with your dotfiles.
+The `manual` method is a unified approach for installing files from your tool configuration directory or creating configuration-only tools. It can install custom scripts, pre-built binaries, or provide pure shell configuration without any binary management.
 
 ## Basic Usage
 

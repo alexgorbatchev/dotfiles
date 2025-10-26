@@ -96,7 +96,7 @@ describe('Installer - install (orchestrator)', () => {
 
   it('should work when only platform-specific configurations are defined', async () => {
     // Create a tool config that mimics the eza configuration:
-    // - Root level has installationMethod: 'none'
+    // - Root level has installationMethod: 'manual'
     // - Platform-specific configs have installationMethod: 'cargo'
     const cargoInstallParams: CargoInstallParams = {
       crateName: 'eza',
@@ -127,8 +127,8 @@ describe('Installer - install (orchestrator)', () => {
       name: 'eza',
       binaries: ['eza'],
       version: 'latest',
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
       platformConfigs: [macosConfig, linuxConfig],
     };
 

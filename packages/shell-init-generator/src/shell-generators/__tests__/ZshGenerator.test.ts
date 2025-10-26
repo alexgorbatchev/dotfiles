@@ -31,8 +31,8 @@ describe('ZshGenerator', () => {
           ],
         },
       },
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const content = generator.extractShellContent('test-tool', toolConfig);
@@ -116,8 +116,8 @@ describe('ZshGenerator', () => {
           },
         },
       },
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const content = generator.extractShellContent('test-tool', toolConfig);
@@ -142,8 +142,8 @@ describe('ZshGenerator', () => {
           },
         },
       },
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const content = generator.extractShellContent('test-tool', toolConfig);

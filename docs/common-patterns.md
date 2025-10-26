@@ -239,7 +239,7 @@ import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
-    .install('no-install')  // No binary management
+    .install('manual', {})  // No binary management
     .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
     .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
     .zsh({
@@ -331,10 +331,10 @@ c.install('manual', {
 })
 ```
 
-### Configuration-Only Tools
+### Configuration-Only Tool
 ```typescript
 // For pure shell configuration without binaries
-c.install('no-install')  // Only shell configs, aliases, symlinks
+c.install('manual', {})  // No binaryPath = configuration only
 ```
 
 ### When to Use Each Method
@@ -344,7 +344,7 @@ c.install('no-install')  // Only shell configs, aliases, symlinks
 | Download from GitHub | `github-release` | fzf, ripgrep, bat |
 | Package manager tools | `brew`, `cargo` | git, rust tools |
 | Custom helper scripts | `manual` | deployment scripts, wrappers |
-| Pure shell config | `no-install` | aliases, environment vars |
+| Pure shell config | `manual` | aliases, environment vars |
 | Download scripts | `curl-script` | Node.js, Rust installers |
 
 ## Next Steps

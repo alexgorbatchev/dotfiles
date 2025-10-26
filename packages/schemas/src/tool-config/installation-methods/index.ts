@@ -5,4 +5,3 @@ export * from './curl-tar';
 export * from './github-release';
 export * from './installParams';
 export * from './manual';
-export * from './noInstallToolConfigSchema';

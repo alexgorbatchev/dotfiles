@@ -10,9 +10,7 @@ import { manualInstallParamsSchema } from '../installation-methods/manual/manual
 export const platformConfigSchema = commonToolConfigPropertiesSchema
   .extend({
     /** The installation method to use */
-    installationMethod: z
-      .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'manual', 'none'])
-      .optional(),
+    installationMethod: z.enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'manual']).optional(),
     /** Parameters specific to the installation method */
     installParams: z
       .union([

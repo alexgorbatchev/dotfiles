@@ -49,7 +49,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         'multi-shell-tool': {
           name: 'multi-shell-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: {
             zsh: { scripts: [always`# Base zsh`] },
             bash: { scripts: [always`# Base bash`] },
@@ -110,7 +110,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         'symlink-tool': {
           name: 'symlink-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base init`] } },
           symlinks: [{ source: './base.conf', target: '~/.base.conf' }],
           platformConfigs: [
@@ -157,7 +157,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         'env-path-tool': {
           name: 'env-path-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: {
             zsh: {
               scripts: [
@@ -233,7 +233,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         aerospace: {
           name: 'aerospace',
           version: 'latest',
-          installationMethod: 'none', // Base has no install method
+          installationMethod: 'manual', // Base has no install method
           platformConfigs: [
             {
               platforms: Platform.MacOS,
@@ -299,7 +299,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         eza: {
           name: 'eza',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: {
             zsh: {
               scripts: [
@@ -375,7 +375,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         'empty-platform-tool': {
           name: 'empty-platform-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base init`] } },
           platformConfigs: [
             {
@@ -413,7 +413,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         'windows-only-tool': {
           name: 'windows-only-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           // No base zshInit
           platformConfigs: [
             {

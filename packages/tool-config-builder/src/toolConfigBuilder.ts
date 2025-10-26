@@ -83,17 +83,63 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this.internalShellConfigs;
   }
 
+  /**
+   * Defines a binary that this tool provides. A shim will be generated for each binary.
+   *
+   * **Can be called multiple times** - each call adds to the binaries array.
+   *
+   * @param name The name of the binary executable
+   * @param pattern Optional search pattern for finding the binary (defaults to star-slash-name)
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * ```typescript
+   * c.bin('tool')
+   * c.bin('tool1').bin('tool2')  // Multiple calls
+   * ```
+   */
   bin(name: string, pattern?: string): this {
     const binaryPattern = pattern || `*/${name}`;
     this.binaries.push({ name, pattern: binaryPattern });
     return this;
   }
 
+  /**
+   * Sets the tool version.
+   *
+   * **Should be called only once** - subsequent calls replace the previous value.
+   *
+   * @param version The version string, SemVer constraint, or 'latest'
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * ```typescript
+   * c.version('1.2.3')
+   * c.version('latest')
+   * c.version('^2.0.0')
+   * ```
+   */
   version(version: string): this {
     this.versionNum = version;
     return this;
   }
 
+  /**
+   * Sets the installation method and parameters for this tool.
+   *
+   * **Should be called only once** - subsequent calls replace the previous installation method.
+   *
+   * @param method The installation method to use
+   * @param params Parameters specific to the installation method
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * ```typescript
+   * c.install('github-release', { repo: 'owner/repo' })
+   * c.install('brew', { formula: 'tool' })
+   * c.install('manual', { binaryPath: './bin/tool' })
+   * ```
+   */
   // Overloaded install method
   install(method: 'github-release', params: GithubReleaseInstallParams): this;
   install(method: 'brew', params: BrewInstallParams): this;
@@ -107,6 +153,19 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
+  /**
+   * Sets installation hooks for this tool.
+   *
+   * **Can be called multiple times** - subsequent calls merge with existing hooks.
+   * **Must be called after install()** - will be ignored with warning if called before.
+   *
+   * @param hooks Object containing hook functions for different installation phases
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.install('github-release', { repo: 'owner/repo' })
+   *  .hooks({ afterInstall: async (context) => { } })
+   */
   hooks(hooks: {
     beforeInstall?: AsyncInstallHook;
     afterDownload?: AsyncInstallHook;
@@ -126,6 +185,18 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
+  /**
+   * Configures zsh shell integration (scripts, aliases, environment, completions).
+   *
+   * **Can be called multiple times** - configuration is merged (scripts are appended, aliases/environment are merged).
+   *
+   * @param config Shell configuration object
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.zsh({ aliases: { ll: 'ls -la' } })
+   *  .zsh({ environment: { EDITOR: 'vim' } })  // Multiple calls merge
+   */
   zsh(config: ShellConfig): this {
     if (config.shellInit) {
       this.internalShellConfigs.zsh.scripts.push(...config.shellInit);
@@ -148,6 +219,18 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
+  /**
+   * Configures bash shell integration (scripts, aliases, environment, completions).
+   *
+   * **Can be called multiple times** - configuration is merged (scripts are appended, aliases/environment are merged).
+   *
+   * @param config Shell configuration object
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.bash({ aliases: { ll: 'ls -la' } })
+   *  .bash({ environment: { EDITOR: 'vim' } })  // Multiple calls merge
+   */
   bash(config: ShellConfig): this {
     if (config.shellInit) {
       this.internalShellConfigs.bash.scripts.push(...config.shellInit);
@@ -170,6 +253,18 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
+  /**
+   * Configures PowerShell integration (scripts, aliases, environment, completions).
+   *
+   * **Can be called multiple times** - configuration is merged (scripts are appended, aliases/environment are merged).
+   *
+   * @param config Shell configuration object
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.powershell({ aliases: { ll: 'Get-ChildItem' } })
+   *  .powershell({ environment: { EDITOR: 'code' } })  // Multiple calls merge
+   */
   powershell(config: ShellConfig): this {
     if (config.shellInit) {
       this.internalShellConfigs.powershell.scripts.push(...config.shellInit);
@@ -218,11 +313,38 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return hasAnyConfig ? result : undefined;
   }
 
+  /**
+   * Adds a symbolic link to be created when the tool is installed.
+   *
+   * **Can be called multiple times** - each call adds to the symlinks array.
+   *
+   * @param source Path to the source file relative to the tool config directory
+   * @param target Absolute path where the symlink should be created
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.symlink('./config/tool.conf', '~/.config/tool.conf')
+   *  .symlink('./scripts/helper.sh', '~/bin/helper')  // Multiple calls
+   */
   symlink(source: string, target: string): this {
     this.symlinkPairs.push({ source, target });
     return this;
   }
 
+  /**
+   * Adds platform-specific configuration overrides.
+   *
+   * **Can be called multiple times** - each call adds a new platform config entry.
+   *
+   * @param platforms Target platform(s) using Platform enum (can be combined with bitwise OR)
+   * @param architecturesOrConfigure Either Architecture enum or configuration callback function
+   * @param configureCallback Optional configuration callback when architectures are specified
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.platform(Platform.MacOS, (pb) => pb.install('brew', { formula: 'tool' }))
+   *  .platform(Platform.Linux, (pb) => pb.install('cargo', { crateName: 'tool' }))
+   */
   platform(
     platforms: Platform,
     architecturesOrConfigure: Architecture | ((builder: ToolConfigBuilderInterface) => void),
@@ -260,7 +382,17 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
-  // Method to set updateCheck configuration
+  /**
+   * Configures update checking behavior for this tool.
+   *
+   * **Should be called only once** - subsequent calls replace the previous configuration.
+   *
+   * @param config Update check configuration object
+   * @returns The ToolConfigBuilder instance for chaining
+   *
+   * @example
+   * c.updateCheck({ enabled: true, constraint: '^1.0.0' })
+   */
   updateCheck(config: ToolConfig['updateCheck']): this {
     this.updateCheckConfig = config;
     return this;
@@ -325,9 +457,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   private hasInstallationMethod(): boolean {
-    return Boolean(
-      this.currentInstallationMethod && this.currentInstallationMethod !== 'none' && this.currentInstallParams
-    );
+    return Boolean(this.currentInstallationMethod && this.currentInstallParams);
   }
 
   private buildInstallableToolConfig(baseConfig: ReturnType<typeof this.buildBaseConfig>): ToolConfig {
@@ -410,8 +540,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return {
       ...baseConfig,
       binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
-      installationMethod: 'none',
-      installParams: undefined,
-    };
+      installationMethod: 'manual',
+      installParams: {},
+    } as ManualToolConfig;
   }
 }

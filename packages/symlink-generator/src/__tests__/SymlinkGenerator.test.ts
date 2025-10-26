@@ -45,8 +45,8 @@ describe('SymlinkGenerator', () => {
     version: '1.0.0',
     configFilePath: path.join(testDirs.paths.toolConfigsDir, 'test-tool.tool.ts'),
     symlinks,
-    installationMethod: 'none',
-    installParams: undefined,
+    installationMethod: 'manual',
+    installParams: {},
   });
 
   // Helper function to get the absolute path where source files should be created (relative to config file)
@@ -287,8 +287,8 @@ describe('SymlinkGenerator', () => {
         binaries: [],
         version: '1.0.0',
         symlinks: undefined,
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const results = await symlinkGenerator.generate(toolConfigs as Record<string, ToolConfig>);

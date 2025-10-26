@@ -32,8 +32,8 @@ describe('PowerShellGenerator', () => {
           ],
         },
       },
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const content = generator.extractShellContent('test-tool', toolConfig);
@@ -102,8 +102,8 @@ describe('PowerShellGenerator', () => {
           },
         },
       },
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const content = generator.extractShellContent('test-tool', toolConfig);
@@ -128,8 +128,8 @@ describe('PowerShellGenerator', () => {
           },
         },
       },
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const content = generator.extractShellContent('test-tool', toolConfig);

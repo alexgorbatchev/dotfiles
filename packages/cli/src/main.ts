@@ -188,8 +188,9 @@ function createTrackedFileSystems(
 
 export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<Services> {
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
-  logger.trace(cliLogMessages.operationStarted('setupServices'), options);
   const { dryRun, env, config } = options;
+
+  logger.trace(cliLogMessages.operationStarted('setupServices'));
 
   // Initialize filesystem first
   const fs = initializeFileSystem(logger, dryRun);

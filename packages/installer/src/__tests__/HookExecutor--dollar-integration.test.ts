@@ -43,8 +43,8 @@ describe('HookExecutor $ Integration', () => {
       name: 'test-tool',
       binaries: ['test-tool'],
       version: 'latest',
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const baseContext = createTestInstallHookContext();
@@ -87,8 +87,8 @@ describe('HookExecutor $ Integration', () => {
       name: 'file-creator-tool',
       binaries: ['file-creator-tool'],
       version: 'latest',
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const baseContext = createTestInstallHookContext({
@@ -130,8 +130,8 @@ describe('HookExecutor $ Integration', () => {
       name: 'fallback-tool',
       binaries: ['fallback-tool'],
       version: 'latest',
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     const baseContext = createTestInstallHookContext({

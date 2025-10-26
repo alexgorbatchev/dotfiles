@@ -86,8 +86,8 @@ describe('GeneratorOrchestrator', () => {
         binaries: ['ta'],
         version: '1.0',
         symlinks: [{ source: 'a.conf', target: '~/.a.conf' }],
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: {
         name: 'toolB',
@@ -98,8 +98,8 @@ describe('GeneratorOrchestrator', () => {
             scripts: [always`export TB=1`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
 
@@ -237,8 +237,8 @@ describe('GeneratorOrchestrator', () => {
           name: 'toolX',
           binaries: ['tx'],
           version: '1',
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       });
     });

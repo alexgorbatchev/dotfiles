@@ -86,8 +86,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export TEST_TOOL_VAR="hello"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const expectedPath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
@@ -118,8 +118,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export PATH="/opt/toolA/bin:$PATH"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: {
         name: 'toolB',
@@ -130,8 +130,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`path+=("/opt/toolB/bin")`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -155,8 +155,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export TOOL_A_ENABLED=true`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: {
         name: 'toolB',
@@ -167,8 +167,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export TOOL_B_MODE="debug"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -191,8 +191,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`alias ta="toolA --extended"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: {
         name: 'toolB',
@@ -203,8 +203,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`source /opt/toolB/init.sh`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -227,8 +227,8 @@ describe('ShellInitGenerator', () => {
             completions: { source: 'completion/toolA.zsh', name: '_toolA_custom' },
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: {
         name: 'toolB',
@@ -239,8 +239,8 @@ describe('ShellInitGenerator', () => {
             completions: { source: 'completions/_toolB' }, // Default name _toolB
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -264,8 +264,8 @@ describe('ShellInitGenerator', () => {
             completions: { source: '_toolA' },
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -292,8 +292,8 @@ describe('ShellInitGenerator', () => {
             completions: { source: '_alpha' },
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       beta: {
         name: 'beta',
@@ -304,8 +304,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`alias b="beta -v"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       gamma: {
         name: 'gamma',
@@ -317,8 +317,8 @@ describe('ShellInitGenerator', () => {
             completions: { source: 'gamma_completion.sh', targetDir: '/usr/local/share/zsh/site-functions' },
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -358,8 +358,8 @@ describe('ShellInitGenerator', () => {
             completions: { source: '_myTool' },
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -389,8 +389,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export DUP_VAR="val"`, always`export PATH="/dup/path:$PATH"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: {
         name: 'toolB',
@@ -401,8 +401,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export DUP_VAR="val"`, always`export PATH="/dup/path:$PATH"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs);
@@ -425,8 +425,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export TOOL_A_VAR="set"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
       toolB: undefined, // This tool's config is undefined
       toolC: {
@@ -438,8 +438,8 @@ describe('ShellInitGenerator', () => {
             scripts: [always`export TOOL_C_VAR="active"`],
           },
         },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
     const result = await generator.generate(toolConfigs as Record<string, ToolConfig>);

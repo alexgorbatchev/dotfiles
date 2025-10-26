@@ -24,8 +24,7 @@ This directory contains real-world examples of `.tool.ts` configurations for var
 - **GitHub Release**: ripgrep, fzf, bat, eza
 - **Homebrew**: git, node (macOS)
 - **Cargo**: ripgrep, eza, fd
-- **Manual**: custom scripts, pre-built binaries
-- **No-Install**: shell configurations, environment setup
+- **Manual**: custom scripts, pre-built binaries, configuration-only tools
 
 ### By Complexity
 - **Basic**: Single binary, minimal configuration

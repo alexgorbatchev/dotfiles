@@ -5,7 +5,6 @@ import { curlScriptToolConfigSchema } from './installation-methods/curl-script/c
 import { curlTarToolConfigSchema } from './installation-methods/curl-tar/curlTarToolConfigSchema';
 import { githubReleaseToolConfigSchema } from './installation-methods/github-release/githubReleaseToolConfigSchema';
 import { manualToolConfigSchema } from './installation-methods/manual/manualToolConfigSchema';
-import { noInstallToolConfigSchema } from './installation-methods/noInstallToolConfigSchema';
 
 export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
   githubReleaseToolConfigSchema,
@@ -14,7 +13,6 @@ export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
   curlScriptToolConfigSchema,
   curlTarToolConfigSchema,
   manualToolConfigSchema,
-  noInstallToolConfigSchema,
 ]);
 
 /**

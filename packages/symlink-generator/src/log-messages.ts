@@ -1,9 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const symlinkGeneratorLogMessages = {
-  constructor: {
-    initialized: () => createSafeLogMessage('SymlinkGenerator initialized'),
-  } satisfies SafeLogMessageMap,
   generate: {
     started: () => createSafeLogMessage('Starting symlink generation. Options: %o, FileSystem: %s'),
     processingTool: (toolName: string) => createSafeLogMessage(`Processing symlinks for tool "${toolName}"`),

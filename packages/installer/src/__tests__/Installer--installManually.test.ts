@@ -70,7 +70,7 @@ describe('Installer - installManually', () => {
 
   it('should succeed with configuration-only tool (no binaryPath)', async () => {
     const toolConfig = createManualToolConfig({
-      installParams: undefined, // No install params at all
+      installParams: {}, // No install params at all
       binaries: [], // No binaries specified
     });
 

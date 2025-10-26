@@ -52,19 +52,16 @@ c.install('curl-tar', {
 ```
 
 ### [Manual](./manual.md)
-Install files from your dotfiles directory (custom scripts, pre-built binaries).
+Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools.
 
 ```typescript
+// With binary installation
 c.install('manual', {
   binaryPath: './bin/my-script.sh',
 })
-```
 
-### [No-Install](./no-install.md)
-Configuration-only tools without any binary management.
-
-```typescript
-c.install('no-install')  // Shell configs, aliases, symlinks only
+// Configuration-only
+c.install('manual', {})
 ```
 
 ## Choosing the Right Method
@@ -76,28 +73,37 @@ c.install('no-install')  // Shell configs, aliases, symlinks only
 | **Cargo** | Rust tools | Fast pre-compiled binaries | Rust tools only |
 | **Curl Script** | Custom installers | Flexible, handles complex setups | Less predictable, security concerns |
 | **Curl Tar** | Direct downloads | Simple, no dependencies | Manual URL management |
-| **Manual** | Custom scripts/binaries | Include files with dotfiles | Manual file management |
-| **No-Install** | Pure configuration | Simple, no file management | No binary installation |
+| **Manual** | Custom scripts, configuration tools | Include files with dotfiles, flexible | Manual file management |
 
-## Manual vs No-Install Decision Guide
+## Manual Installation Guide
 
-Both `manual` and `no-install` methods are used for tools that aren't downloaded from external sources, but they serve different purposes:
+The `manual` method is now the unified approach for both binary installation and configuration-only tools:
 
-### Use **Manual** When:
+### Use **Manual** for Binary Installation:
 - ✅ You have custom scripts or binaries to include with your dotfiles
 - ✅ You want the system to manage and version your tool files
 - ✅ You need shims generated for your custom tools
 - ✅ You want to distribute pre-built binaries with your dotfiles
 
 **Example:** Including a custom deployment script with your dotfiles.
+```typescript
+c.install('manual', {
+  binaryPath: './scripts/deploy.sh',
+})
+```
 
-### Use **No-Install** When:
+### Use **Manual** for Configuration Only:
 - ✅ You only need shell configuration (aliases, environment, symlinks)
 - ✅ Tools are managed entirely outside the dotfiles system
 - ✅ You don't want any binary installation or management
 - ✅ Creating configuration-only "tools"
 
 **Example:** Setting up shell aliases and environment variables.
+```typescript
+c.install('manual', {
+  // No binaryPath - configuration only
+})
+```
 
 ## Common Parameters
 

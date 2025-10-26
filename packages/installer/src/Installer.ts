@@ -277,7 +277,7 @@ export class Installer implements IInstaller {
       default:
         return {
           success: false,
-          error: `Unsupported installation method: ${resolvedToolConfig.installationMethod}`,
+          error: `Unsupported installation method: ${(resolvedToolConfig as { installationMethod: string }).installationMethod}`,
         };
     }
   }

@@ -161,8 +161,8 @@ describe('HookExecutor', () => {
         name: 'test-tool',
         binaries: ['test-tool'],
         version: 'latest',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       const baseContext = createTestInstallHookContext({}, logger);
@@ -189,8 +189,8 @@ describe('HookExecutor', () => {
           name: 'test-tool',
           binaries: ['test-tool'],
           version: 'latest',
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         } as ToolConfig, // No configFilePath
       };
 
@@ -208,8 +208,8 @@ describe('HookExecutor', () => {
         name: 'test-tool',
         binaries: ['test-tool'],
         version: 'latest',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       await memFs.fs.ensureDir('/test');
@@ -265,8 +265,8 @@ describe('HookExecutor', () => {
         name: 'shell-tool',
         binaries: ['shell-tool'],
         version: 'latest',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       const contextWithToolConfig = {
@@ -297,8 +297,8 @@ describe('HookExecutor', () => {
         name: 'tool1',
         binaries: ['tool1'],
         version: 'latest',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       const toolConfig2: ToolConfig = {
@@ -306,8 +306,8 @@ describe('HookExecutor', () => {
         name: 'tool2',
         binaries: ['tool2'],
         version: 'latest',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       const context1 = { ...baseContext, toolConfig: toolConfig1 };

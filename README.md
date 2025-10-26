@@ -92,7 +92,7 @@ version: latest
 
 # Defines the primary installation method for the tool.
 # (enum, required)
-# Possible values: "github-release", "brew", "curl-script", "curl-tar", "cargo", "manual", "none"
+# Possible values: "github-release", "brew", "curl-script", "curl-tar", "cargo", "manual"
 installationMethod: github-release
 
 # An array of binary names or configurations that should have shims generated.

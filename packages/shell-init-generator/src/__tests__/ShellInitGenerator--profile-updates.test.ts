@@ -44,8 +44,8 @@ describe('ShellInitGenerator - Profile Updates', () => {
         binaries: ['tt'],
         version: '1.0.0',
         shellConfigs: { zsh: { scripts: [always`export TEST_VAR="hello"`] } },
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       },
     };
 
@@ -246,8 +246,8 @@ describe('ShellInitGenerator - Profile Updates', () => {
           binaries: ['tt'],
           version: '1.0.0',
           shellConfigs: { powershell: { scripts: [always`$env:TEST_VAR = "hello"`] } },
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       };
 
@@ -288,8 +288,8 @@ describe('ShellInitGenerator - Profile Updates', () => {
           binaries: ['tt'],
           version: '1.0.0',
           shellConfigs: { zsh: { scripts: [always`export TEST_VAR="hello"`] } },
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       };
 

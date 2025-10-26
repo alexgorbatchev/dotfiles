@@ -52,10 +52,10 @@ Based on your analysis, select the most appropriate installation method. Priorit
   - See: [Curl Script Installation Guide](../../docs/installation/curl-script.md)
 - **`curl-tar`**: For downloading and extracting archives from a direct URL.
   - See: [Curl Tar Installation Guide](../../docs/installation/curl-tar.md)
-- **`manual`**: For tools that are already installed on the system but you want to manage their configuration.
+- **`manual`**: For tools that are already installed on the system, custom scripts, or configuration-only tools.
+  - With binary: Copies binaries from your dotfiles directory  
+  - Configuration-only: Just manages shell integration and symlinks
   - See: [Manual Installation Guide](../../docs/installation/manual.md)
-- **`no-install`**: For system tools (like `git`) where you only want to manage shell integration and symlinks.
-  - See: [No-Install Guide](../../docs/installation/no-install.md)
 
 ### Step 2: Configure Binary Patterns
 If using an archive-based installer (`github-release`, `curl-tar`), determine the correct binary patterns based on the archive's structure.

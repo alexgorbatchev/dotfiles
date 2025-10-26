@@ -56,8 +56,8 @@ describe('ShimGenerator', () => {
       name: toolName,
       binaries: ['my-tool-binary'],
       version: '1.0.0',
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
     let expectedShimPath: string;
     let expectedBinaryPath: string;
@@ -133,8 +133,8 @@ describe('ShimGenerator', () => {
         name: toolName,
         version: '1.0.0',
         binaries: [],
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
       const expectedBinaryPathFallback = path.join(mockConfig.paths.binariesDir, configNoBinaries.name, toolName);
       const result = await shimGenerator.generateForTool(toolName, configNoBinaries);
@@ -152,8 +152,8 @@ describe('ShimGenerator', () => {
         name: toolName,
         version: '1.0.0',
         binaries: undefined,
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
       const expectedBinaryPathFallback = path.join(
         mockConfig.paths.binariesDir,
@@ -211,15 +211,15 @@ describe('ShimGenerator', () => {
           name: 'tool-a',
           binaries: ['tool-a-bin'],
           version: '1.0',
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
         'tool-b': {
           name: 'tool-b',
           binaries: ['tool-b-bin'],
           version: '2.0',
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       };
       const expectedPathA = path.join(mockConfig.paths.targetDir, 'tool-a');
@@ -255,8 +255,8 @@ describe('ShimGenerator', () => {
           name: 'tool-a',
           binaries: ['tool-a-bin'],
           version: '1.0',
-          installationMethod: 'none',
-          installParams: undefined,
+          installationMethod: 'manual',
+          installParams: {},
         },
       };
       const options = { overwrite: true };
@@ -288,8 +288,8 @@ describe('ShimGenerator', () => {
         name: 'test-tool',
         binaries: ['test-tool'],
         version: '1.0.0',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       await shimGenerator.generateForTool('test-tool', toolConfig);
@@ -312,8 +312,8 @@ describe('ShimGenerator', () => {
         name: 'test-tool',
         binaries: ['test-tool'],
         version: '1.0.0',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       await shimGenerator.generateForTool('test-tool', toolConfig);
@@ -334,8 +334,8 @@ describe('ShimGenerator', () => {
         name: 'test-tool',
         binaries: ['test-tool'],
         version: '1.0.0',
-        installationMethod: 'none',
-        installParams: undefined,
+        installationMethod: 'manual',
+        installParams: {},
       };
 
       await shimGenerator.generateForTool('test-tool', toolConfig);
@@ -353,8 +353,8 @@ describe('ShimGenerator', () => {
       name: toolName,
       binaries: ['test-tool'],
       version: '1.0.0',
-      installationMethod: 'none',
-      installParams: undefined,
+      installationMethod: 'manual',
+      installParams: {},
     };
 
     it('should skip and log error when non-shim file exists at target location', async () => {

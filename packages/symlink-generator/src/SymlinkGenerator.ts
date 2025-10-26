@@ -19,8 +19,6 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     this.yamlConfig = yamlConfig;
     this.systemInfo = systemInfo;
     this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
-    const logger = this.logger.getSubLogger({ name: 'constructor' });
-    logger.debug(symlinkGeneratorLogMessages.constructor.initialized(), fileSystem, yamlConfig, systemInfo);
   }
 
   async generate(

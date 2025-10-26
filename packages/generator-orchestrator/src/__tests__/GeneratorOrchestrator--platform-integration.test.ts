@@ -138,7 +138,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         aerospace: {
           name: 'aerospace',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           platformConfigs: [
             {
               platforms: Platform.MacOS,
@@ -191,7 +191,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         'cross-platform-tool': {
           name: 'cross-platform-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: {
             zsh: {
               scripts: [always`# Base init`],
@@ -287,7 +287,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         'full-platform-tool': {
           name: 'full-platform-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: {
             zsh: {
               scripts: [always`# Base shell init`],

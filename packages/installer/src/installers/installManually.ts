@@ -23,7 +23,7 @@ export async function installManually(
   logger.debug(installerLogMessages.manual.installing(toolName));
 
   const params = toolConfig.installParams;
-  
+
   const operation = async (): Promise<InstallResult> => {
     let binaryPaths: string[] = [];
 

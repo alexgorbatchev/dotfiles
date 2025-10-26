@@ -641,7 +641,7 @@ export const toolConfigSchema = z.discriminatedUnion('installationMethod', [
   curlTarToolConfigSchema,
   myCustomToolConfigSchema, // Add your schema here
   manualToolConfigSchema,
-  noInstallToolConfigSchema,
+
 ]);
 ```
 
@@ -653,7 +653,7 @@ import { myCustomInstallParamsSchema } from './myCustomInstallParamsSchema';
 export const platformConfigSchema = commonToolConfigPropertiesSchema
   .extend({
     installationMethod: z
-      .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'my-custom', 'manual', 'none'])
+      .enum(['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'my-custom', 'manual'])
       .optional(),
     installParams: z
       .union([
@@ -1038,7 +1038,7 @@ When adding a new installation method, ensure you complete ALL of these steps:
 ### 9. Common Integration Issues
 
 #### Missing Platform Resolution
-If you see errors like "Unsupported installation method: none", it means the installer isn't resolving platform-specific configurations. The installer should use `resolvePlatformConfig()` before checking the installation method.
+If you see errors like "Unsupported installation method", it means the installer isn't resolving platform-specific configurations. The installer should use `resolvePlatformConfig()` before checking the installation method.
 
 #### Type Errors in ToolConfigBuilder
 If you get TypeScript errors when using your method in tool configs, ensure:

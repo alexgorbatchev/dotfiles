@@ -49,7 +49,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         aerospace: {
           name: 'aerospace',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base aerospace init`] } },
           platformConfigs: [
             {
@@ -102,7 +102,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         aerospace: {
           name: 'aerospace',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base aerospace init`] } },
           platformConfigs: [
             {
@@ -143,7 +143,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         'multi-platform-tool': {
           name: 'multi-platform-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base init`] } },
           platformConfigs: [
             {
@@ -205,7 +205,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         'arch-specific-tool': {
           name: 'arch-specific-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base init`] } },
           platformConfigs: [
             {
@@ -304,7 +304,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         'tool-with-completions': {
           name: 'tool-with-completions',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           platformConfigs: [
             {
               platforms: Platform.MacOS,
@@ -360,7 +360,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         'platform-tool': {
           name: 'platform-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           shellConfigs: { zsh: { scripts: [always`# Base platform init`] } },
           platformConfigs: [
             {
@@ -375,7 +375,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         'linux-only-tool': {
           name: 'linux-only-tool',
           version: 'latest',
-          installationMethod: 'none',
+          installationMethod: 'manual',
           platformConfigs: [
             {
               platforms: Platform.Linux,

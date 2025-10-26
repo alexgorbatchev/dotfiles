@@ -148,36 +148,36 @@ describe('ToolConfigBuilder', () => {
     expect(config.symlinks).toEqual([{ source: 'config.yml', target: '~/.config/tool/config.yml' }]);
   });
 
-  test('build method returns NoInstallToolConfig if binaries are specified but no installation method', () => {
+  test('build method returns ManualToolConfig if binaries are specified but no installation method', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     const config = builder.build();
     expect(config.name).toBe('test-tool');
     expect(config.binaries).toEqual(['test-bin']);
-    expect(config.installationMethod).toBe('none');
-    expect(config.installParams).toBeUndefined();
+    expect(config.installationMethod).toBe('manual');
+    expect(config.installParams).toEqual({});
     // Ensure other optional fields are undefined if not set
     expect(config.shellConfigs).toBeUndefined();
     expect(config.symlinks).toBeUndefined();
     expect(config.updateCheck).toBeUndefined();
   });
 
-  test('build method returns NoInstallToolConfig if only zshInit is present', () => {
+  test('build method returns ManualToolConfig if only zshInit is present', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.zsh({ shellInit: [always`alias tt="test-tool"`] });
     const config = builder.build();
-    expect(config.installationMethod).toBe('none'); // Should be 'none'
-    expect(config.installParams).toBeUndefined();
+    expect(config.installationMethod).toBe('manual');
+    expect(config.installParams).toEqual({});
     expect(config.binaries).toEqual([]);
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
   });
 
-  test('build method returns NoInstallToolConfig if only symlinks are present', () => {
+  test('build method returns ManualToolConfig if only symlinks are present', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.symlink('a', 'b');
     const config = builder.build();
-    expect(config.installationMethod).toBe('none'); // Should be 'none'
-    expect(config.installParams).toBeUndefined();
+    expect(config.installationMethod).toBe('manual');
+    expect(config.installParams).toEqual({});
     expect(config.binaries).toEqual([]);
     expect(config.symlinks).toEqual([{ source: 'a', target: 'b' }]);
   });
@@ -189,12 +189,12 @@ describe('ToolConfigBuilder', () => {
     );
   });
 
-  test('build method returns NoInstallToolConfig with binaries if set, but no install method', () => {
+  test('build method returns ManualToolConfig with binaries if set, but no install method', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin('my-binary');
     const config = builder.build();
-    expect(config.installationMethod).toBe('none'); // Should be 'none'
-    expect(config.installParams).toBeUndefined();
+    expect(config.installationMethod).toBe('manual');
+    expect(config.installParams).toEqual({});
     expect(config.binaries).toEqual(['my-binary']);
   });
 
