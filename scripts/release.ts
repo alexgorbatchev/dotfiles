@@ -74,7 +74,7 @@ async function moveDistFiles(): Promise<void> {
 
   // Only copy essential release files (exclude .npmrc, bun.lock, etc.)
   const allowedFiles = ['cli.js', 'cli.js.map', 'package.json', 'schemas.d.ts'];
-  
+
   const distFiles = fs.readdirSync(releaseDistDir);
   for (const file of distFiles) {
     if (allowedFiles.includes(file)) {
@@ -93,7 +93,7 @@ async function moveDistFiles(): Promise<void> {
 
 async function removeBuildOnlyFiles(): Promise<void> {
   console.log('🧹 Removing build-only files from release directory...');
-  
+
   const releaseNpmrcPath = path.join(releaseDir, '.npmrc');
   if (fs.existsSync(releaseNpmrcPath)) {
     fs.unlinkSync(releaseNpmrcPath);
@@ -128,7 +128,11 @@ async function showFinalReleaseBranchContents(): Promise<void> {
   console.log('📋 Final release branch contents:');
   try {
     const result = await $`git ls-tree -r --name-only ${releaseBranchName}`.quiet();
-    const files = result.stdout.toString().trim().split('\n').filter(f => f);
+    const files = result.stdout
+      .toString()
+      .trim()
+      .split('\n')
+      .filter((f) => f);
     if (files.length > 0) {
       for (const file of files) {
         console.log(`   📄 ${file}`);
@@ -147,7 +151,9 @@ async function checkReleaseBranchExists(): Promise<void> {
   // Check if versioned release branch already exists locally
   try {
     await executeCommand(['git', 'show-ref', '--verify', '--quiet', `refs/heads/${releaseBranchName}`], rootDir);
-    console.error(`❌ Release branch '${releaseBranchName}' already exists locally. Please delete it first or bump the version.`);
+    console.error(
+      `❌ Release branch '${releaseBranchName}' already exists locally. Please delete it first or bump the version.`
+    );
     process.exit(1);
   } catch {
     // Branch doesn't exist locally which is what we want
@@ -156,7 +162,9 @@ async function checkReleaseBranchExists(): Promise<void> {
   // Check if versioned release branch already exists remotely
   try {
     await executeCommand(['git', 'ls-remote', '--exit-code', 'origin', `refs/heads/${releaseBranchName}`], rootDir);
-    console.error(`❌ Release branch '${releaseBranchName}' already exists remotely. Please delete it first or bump the version.`);
+    console.error(
+      `❌ Release branch '${releaseBranchName}' already exists remotely. Please delete it first or bump the version.`
+    );
     process.exit(1);
   } catch {
     // Branch doesn't exist remotely which is what we want

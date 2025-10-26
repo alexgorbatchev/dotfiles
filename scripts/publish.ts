@@ -12,7 +12,9 @@ async function checkReleaseBranchExists(): Promise<void> {
     await executeCommand(['git', 'show-ref', '--verify', '--quiet', `refs/heads/${releaseBranchName}`]);
     console.log(`✓ Release branch ${releaseBranchName} exists locally`);
   } catch {
-    throw new Error(`Release branch ${releaseBranchName} does not exist. Please run "bun run release" first to create it.`);
+    throw new Error(
+      `Release branch ${releaseBranchName} does not exist. Please run "bun run release" first to create it.`
+    );
   }
 }
 

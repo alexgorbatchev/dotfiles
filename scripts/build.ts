@@ -281,12 +281,12 @@ async function printBuildSummary(): Promise<void> {
 
   // Read all files from the output directory
   const files = fs.readdirSync(OUTPUT_DIR);
-  
+
   for (const file of files.sort()) {
     const filePath = path.join(OUTPUT_DIR, file);
     const relativePath = path.relative(process.cwd(), filePath);
     const stats = fs.statSync(filePath);
-    
+
     if (stats.isFile()) {
       console.log(`   - ${relativePath}`);
     }
