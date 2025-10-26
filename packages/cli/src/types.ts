@@ -41,6 +41,7 @@ export interface Services {
 export interface GlobalProgramOptions {
   config: string;
   dryRun: boolean;
+  log: string;
   verbose: boolean;
   quiet: boolean;
   platform?: string;

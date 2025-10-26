@@ -10,7 +10,7 @@ import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
-import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
+import { createTsLogger, getLogLevelFromFlags, LogLevel, type TsLogger } from '@dotfiles/logger';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -342,11 +342,11 @@ export async function main(argv: string[]) {
   const options: GlobalProgramOptions = program.opts() as GlobalProgramOptions;
 
   // Create logger with appropriate level based on CLI flags
-  const logLevel = getLogLevelFromFlags(options.quiet, options.verbose);
-  const rootLogger = createTsLogger({ name: 'cli', minLevel: logLevel });
+  const logLevel = getLogLevelFromFlags(options.log, options.quiet, options.verbose);
+  const rootLogger = createTsLogger({ name: 'cli', level: logLevel });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
-  logger.trace(cliLogMessages.cliStarted(),  argv);
+  logger.trace(cliLogMessages.cliStarted(), argv);
 
   // Create a factory function that will initialize services only when needed
   const servicesFactory = async () => {
@@ -365,7 +365,7 @@ export async function main(argv: string[]) {
 if (import.meta.main) {
   main(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
-    const fatalLogger = createTsLogger({ name: 'cli', minLevel: 5 }); // FATAL level only
+    const fatalLogger = createTsLogger({ name: 'cli', level: LogLevel.QUIET }); // QUIET level only shows errors
     fatalLogger.fatal(cliLogMessages.commandExecutionFailed('main', 1, 'Top-level unhandled error'), '%O', error);
     process.exit(1);
   });

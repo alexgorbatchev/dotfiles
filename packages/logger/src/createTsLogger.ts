@@ -1,13 +1,14 @@
 import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import type { ZodError } from 'zod';
 import { formatZodErrors } from './formatZodErrors';
+import { LogLevel, type LogLevelValue } from './LogLevel';
 import type { SafeLogMessage } from './types';
 
 export type TsLogger = SafeLogger<ILogObj>;
 
 export interface LoggerConfig {
   name: string;
-  minLevel?: number;
+  level?: LogLevelValue;
 }
 
 /**
@@ -73,7 +74,7 @@ class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
  *
  * @param config Logger configuration
  * @param config.name Logger name
- * @param config.minLevel Minimum log level (0=trace, 1=debug, 2=info, 3=warn, 4=error, 5=fatal)
+ * @param config.level Log level from LogLevel constants (TRACE, VERBOSE, DEFAULT, QUIET)
  * @returns SafeLogger instance that enforces type-safe logging
  */
 export function createTsLogger(name: string): TsLogger;
@@ -87,16 +88,19 @@ export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
     config = { ...configOrName };
   }
 
-  config.minLevel = config.minLevel ?? 3;
+  config.level = config.level ?? LogLevel.DEFAULT;
 
   const prettyLogTemplate =
-    config.minLevel < 3
+    // here if trace, we will add more details
+    config.level === LogLevel.TRACE
       ? // add full name in verbose mode
         '{{logLevelName}}\t{{filePathWithLine}} - '
-      : '{{logLevelName}}\t';
+      : // for all other levels this
+        '{{logLevelName}}\t';
 
   return new SafeLogger({
-    ...config,
+    name: config.name,
+    minLevel: config.level,
 
     prettyLogTemplate,
     hideLogPositionForProduction: false,

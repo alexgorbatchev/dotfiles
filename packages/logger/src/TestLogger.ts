@@ -4,7 +4,7 @@ import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tsl
 import type { ZodError } from 'zod';
 import { formatZodErrors } from './formatZodErrors';
 
-export type LogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
 export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
   public readonly logs: ILogObjMeta[] = [];
@@ -49,7 +49,7 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     }
   }
 
-  private getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] {
+  private getLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] {
     return this.logs.filter((log) => {
       const meta = log['_meta'];
       if (!meta) {
@@ -68,8 +68,8 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     });
   }
 
-  private isLevelMatch(levels: LogLevel[], meta: ILogObjMeta['_meta']): boolean {
-    return levels.includes('*') || levels.includes(meta.logLevelName as LogLevel);
+  private isLevelMatch(levels: TestLogLevel[], meta: ILogObjMeta['_meta']): boolean {
+    return levels.includes('*') || levels.includes(meta.logLevelName as TestLogLevel);
   }
 
   private isPathMatch(path: string[], meta: ILogObjMeta['_meta']): boolean {
@@ -103,7 +103,7 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     return false;
   }
 
-  printLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): void {
+  printLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): void {
     const logs = this.getLogs(levels, path, matcher);
     for (const log of logs) {
       const { _meta, ...rest } = log;
@@ -111,7 +111,7 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     }
   }
 
-  expect(levels: LogLevel[], path: string[], matchers: (string | RegExp)[]): void {
+  expect(levels: TestLogLevel[], path: string[], matchers: (string | RegExp)[]): void {
     const logs = this.getLogs(levels, path);
 
     if (logs.length < matchers.length) {

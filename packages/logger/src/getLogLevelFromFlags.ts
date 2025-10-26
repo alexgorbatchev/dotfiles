@@ -1,16 +1,22 @@
+import { LogLevel, parseLogLevel, type LogLevelValue } from './LogLevel';
+
 /**
  * Determines the appropriate log level based on CLI flags.
  *
- * @param quiet If true, only show errors and fatal messages (level 5)
- * @param verbose If true, show all messages including debug and trace (level 1)
- * @returns The appropriate log level (0=silly, 1=trace, 2=debug, 3=info, 4=warn, 5=error, 6=fatal)
+ * @param log The log level string from --log flag (default: 'default')
+ * @param quiet If true, only show errors and fatal messages (alias for --log=quiet)
+ * @param verbose If true, show all messages including debug and trace (alias for --log=verbose)
+ * @returns The appropriate LogLevel value
  */
-export function getLogLevelFromFlags(quiet: boolean, verbose: boolean): number {
+export function getLogLevelFromFlags(log: string, quiet: boolean, verbose: boolean): LogLevelValue {
+  // Handle alias flags first
   if (quiet) {
-    return 5; // ERROR level - only show errors and fatal (5=error, 6=fatal)
+    return LogLevel.QUIET;
   }
   if (verbose) {
-    return 1; // TRACE level - show everything including debug and trace (1=trace, 2=debug, 3=info, etc.)
+    return LogLevel.VERBOSE;
   }
-  return 3; // INFO level - default (3=info, 4=warn, 5=error, 6=fatal)
+
+  // Parse the --log flag value
+  return parseLogLevel(log);
 }

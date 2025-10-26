@@ -1,11 +1,6 @@
 import type { ToolConfig } from '@dotfiles/schemas';
 
 /**
- * Options for the `generateAll` method of the `IGeneratorOrchestrator`.
- */
-export type GenerateAllOptions = Record<string, never>;
-
-/**
  * Interface for the Generator Orchestrator.
  * This module is responsible for coordinating the generation of all artifacts,
  * including shims, shell initialization scripts, and symlinks.
@@ -21,8 +16,7 @@ export interface IGeneratorOrchestrator {
    * All file operations are tracked in the registry database for cleanup and audit purposes.
    *
    * @param toolConfigs A record of tool configurations, where the key is the tool name.
-   * @param options Optional parameters for the generation process.
    * @returns A promise that resolves when all operations are complete.
    */
-  generateAll(toolConfigs: Record<string, ToolConfig>, options?: GenerateAllOptions): Promise<void>;
+  generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void>;
 }

@@ -1,8 +1,7 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const downloaderLogMessages = {
-  strategyCreated: (strategyName: string, detail: string) =>
-    createSafeLogMessage(`Created ${strategyName}${detail}`),
+  strategyCreated: (strategyName: string, detail: string) => createSafeLogMessage(`Created ${strategyName}${detail}`),
   downloadStarted: (url: string) => createSafeLogMessage(`Downloading URL: ${url}`),
   downloadToFileStarted: (url: string, filePath: string) =>
     createSafeLogMessage(`Downloading URL ${url} to file: ${filePath}`),

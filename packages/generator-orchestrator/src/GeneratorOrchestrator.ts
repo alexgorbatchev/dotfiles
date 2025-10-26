@@ -5,7 +5,7 @@ import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
 import type { GenerateShellInitOptions, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { GenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import type { GenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
+import type { IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { generatorOrchestratorLogMessages } from './log-messages';
 
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
@@ -35,7 +35,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.systemInfo = systemInfo;
   }
 
-  async generateAll(toolConfigs: Record<string, ToolConfig>, options?: GenerateAllOptions): Promise<void> {
+  async generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
     const fileSystemName = this.fs.constructor.name;
 

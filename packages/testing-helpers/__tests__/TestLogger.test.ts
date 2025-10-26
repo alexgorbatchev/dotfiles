@@ -1,9 +1,9 @@
 import { describe, expect, it, spyOn } from 'bun:test';
-import { type LogLevel, TestLogger } from '@dotfiles/logger';
+import { type TestLogLevel, TestLogger } from '@dotfiles/logger';
 import type { ILogObjMeta } from 'tslog';
 
 interface TestLoggerWithPrivates {
-  getLogs(levels: LogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[];
+  getLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[];
 }
 
 describe('TestLogger', () => {
