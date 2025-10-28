@@ -15,8 +15,9 @@ export interface FilesCommandOptions extends BaseCommandOptions {
 
 function buildOperationsFilter(
   options: FilesCommandOptions,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): { filter: Record<string, unknown>; exitCode: ExitCode } {
+  const logger = parentLogger.getSubLogger({ name: 'buildOperationsFilter' });
   const { tool, type, since } = options;
   const filter: Record<string, unknown> = {};
 
@@ -41,11 +42,12 @@ function buildOperationsFilter(
 }
 
 async function showFileStates(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fileRegistry: IFileRegistry,
   fs: IFileSystem,
   tool?: string
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'showFileStates' });
   const allTools = await fileRegistry.getRegisteredTools();
   logger.info(messages.filesCheckingFileStates());
 
@@ -64,10 +66,11 @@ async function showFileStates(
 }
 
 async function logFileState(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fs: IFileSystem,
   state: { filePath: string; fileType: string; sizeBytes?: number; targetPath?: string }
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'logFileState' });
   const exists = await fs.exists(state.filePath);
   const statusIcon = exists ? '✓' : '✗';
   const statusText = exists ? 'exists' : 'MISSING';
@@ -128,13 +131,14 @@ function formatTimestamp(createdAt: number): string {
 }
 
 function logOperationByType(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   operation: FileOperation,
   timestamp: string,
   contractedPath: string,
   metadataString: string,
   yamlConfig: YamlConfig
 ): void {
+  const logger = parentLogger.getSubLogger({ name: 'logOperationByType' });
   switch (operation.operationType) {
     case 'writeFile': {
       const writeMessage = `[${operation.toolName}] write ${contractedPath}`;
@@ -201,7 +205,12 @@ function groupOperationsByTool(operations: FileOperation[]): Record<string, File
   return operationsByTool;
 }
 
-async function showOperations(logger: TsLogger, operations: FileOperation[], yamlConfig: YamlConfig): Promise<void> {
+async function showOperations(
+  parentLogger: TsLogger,
+  operations: FileOperation[],
+  yamlConfig: YamlConfig
+): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'showOperations' });
   if (operations.length === 0) {
     logger.info(messages.filesNoOperationsFound());
     return;

@@ -12,14 +12,16 @@ export interface InstallCommandOptions extends BaseCommandOptions {
 }
 
 async function loadToolConfigSafely(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
   yamlConfig: YamlConfig,
   configService: IConfigService
 ): Promise<ToolConfig | null> {
-  const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigSafely' });
+
+  const toolConfig = await configService.loadSingleToolConfig(parentLogger, toolName, toolConfigsDir, fs, yamlConfig);
 
   if (!toolConfig) {
     logger.error(messages.toolNotFound(toolName, toolConfigsDir));
@@ -30,11 +32,13 @@ async function loadToolConfigSafely(
 }
 
 function handleInstallationResult(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   result: { success: boolean; version?: string; error?: string },
   toolName: string,
   shimMode: boolean
 ): number | null {
+  const logger = parentLogger.getSubLogger({ name: 'handleInstallationResult' });
+
   if (result.success) {
     if (shimMode) {
       // In shim mode, exit silently on success
@@ -58,7 +62,9 @@ function handleInstallationResult(
   }
 }
 
-function handleInstallationError(logger: TsLogger, error: Error, toolName: string, shimMode: boolean): number {
+function handleInstallationError(parentLogger: TsLogger, error: Error, toolName: string, shimMode: boolean): number {
+  const logger = parentLogger.getSubLogger({ name: 'handleInstallationError' });
+
   if (shimMode) {
     // In shim mode, output user-friendly error message to stderr only
     process.stderr.write(`Failed to install '${toolName}': ${error.message}\n`);

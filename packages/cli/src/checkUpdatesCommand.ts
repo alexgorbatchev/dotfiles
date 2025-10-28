@@ -14,13 +14,13 @@ export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
 }
 
 async function loadToolConfigs(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   configService: IConfigService,
   toolName: string | undefined,
   yamlConfig: YamlConfig,
   fs: IFileSystem
 ): Promise<Record<string, ToolConfig> | null> {
-  const functionLogger = logger.getSubLogger({ name: 'loadToolConfigs' });
+  const functionLogger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
   let toolConfigs: Record<string, ToolConfig> = {};
   if (toolName) {
     functionLogger.debug(messages.commandCheckingUpdatesFor(toolName));
@@ -63,8 +63,8 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
-function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
-  const functionLogger = logger.getSubLogger({ name: 'validateGitHubRepoConfig' });
+function validateGitHubRepoConfig(parentLogger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
+  const functionLogger = parentLogger.getSubLogger({ name: 'validateGitHubRepoConfig' });
   if (config.installationMethod !== 'github-release') {
     return null;
   }
@@ -85,13 +85,13 @@ function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner
 }
 
 async function checkGitHubReleaseUpdate(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   config: ToolConfig,
   githubApiClient: IGitHubApiClient,
   versionChecker: IVersionChecker
 ): Promise<void> {
-  const functionLogger = logger.getSubLogger({ name: 'checkGitHubReleaseUpdate' });
-  const repoInfo = validateGitHubRepoConfig(functionLogger, config);
+  const functionLogger = parentLogger.getSubLogger({ name: 'checkGitHubReleaseUpdate' });
+  const repoInfo = validateGitHubRepoConfig(parentLogger, config);
   if (!repoInfo) return;
 
   const { owner, repo } = repoInfo;
@@ -110,7 +110,7 @@ async function checkGitHubReleaseUpdate(
     if (configuredVersion.toLowerCase() === 'latest') {
       functionLogger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
     } else {
-      await compareVersions(functionLogger, config, configuredVersion, latestVersion, versionChecker);
+      await compareVersions(parentLogger, config, configuredVersion, latestVersion, versionChecker);
     }
   } catch (error) {
     functionLogger.error(messages.serviceGithubApiFailed('get latest release', 0), error);
@@ -118,13 +118,13 @@ async function checkGitHubReleaseUpdate(
 }
 
 async function compareVersions(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   config: ToolConfig,
   configuredVersion: string,
   latestVersion: string,
   versionChecker: IVersionChecker
 ): Promise<void> {
-  const functionLogger = logger.getSubLogger({ name: 'compareVersions' });
+  const functionLogger = parentLogger.getSubLogger({ name: 'compareVersions' });
   const currentVersionToCompare = configuredVersion.replace(/^v/, '');
   const status = await versionChecker.checkVersionStatus(currentVersionToCompare, latestVersion);
 
@@ -140,27 +140,27 @@ async function compareVersions(
 }
 
 export async function checkUpdatesActionLogic(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   toolName: string | undefined,
   services: Services
 ): Promise<void> {
-  const functionLogger = logger.getSubLogger({ name: 'checkUpdatesActionLogic' });
+  const functionLogger = parentLogger.getSubLogger({ name: 'checkUpdatesActionLogic' });
   const { yamlConfig, fs, versionChecker, githubApiClient } = services;
 
   functionLogger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
-  const toolConfigs = await loadToolConfigs(functionLogger, services.configService, toolName, yamlConfig, fs);
+  const toolConfigs = await loadToolConfigs(parentLogger, services.configService, toolName, yamlConfig, fs);
   if (!toolConfigs) {
     return;
   }
 
   for (const config of Object.values(toolConfigs)) {
     if (config.installationMethod === 'github-release') {
-      await checkGitHubReleaseUpdate(functionLogger, config, githubApiClient, versionChecker);
+      await checkGitHubReleaseUpdate(parentLogger, config, githubApiClient, versionChecker);
     } else {
       functionLogger.info(
         messages.commandUnsupportedOperation(
-          'Check updates',
+          'check-updates',
           `installation method: "${config.installationMethod}" for tool "${config.name}"`
         )
       );

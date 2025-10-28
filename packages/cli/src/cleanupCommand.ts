@@ -13,12 +13,13 @@ export interface CleanupCommandOptions extends BaseCommandOptions {
 }
 
 async function cleanupAllTrackedFiles(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   homeDir: string,
   dryRun: boolean
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'cleanupAllTrackedFiles' });
   logger.info(messages.cleanupAllTrackedFiles());
   const allTools = await fileRegistry.getRegisteredTools();
 
@@ -36,7 +37,7 @@ async function cleanupAllTrackedFiles(
 }
 
 async function cleanupSpecificTool(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   toolName: string,
@@ -44,6 +45,7 @@ async function cleanupSpecificTool(
   fileType: string | undefined,
   dryRun: boolean
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'cleanupSpecificTool' });
   logger.info(messages.cleanupToolFiles(toolName));
   await cleanupToolFiles(logger, fs, fileRegistry, toolName, homeDir, fileType, dryRun);
 
@@ -56,13 +58,14 @@ async function cleanupSpecificTool(
 }
 
 async function cleanupSpecificType(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   fileType: string,
   homeDir: string,
   dryRun: boolean
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'cleanupSpecificType' });
   logger.info(messages.cleanupTypeFiles(fileType));
   const operations = await fileRegistry.getOperations({ fileType: fileType as FileOperation['fileType'] });
 
@@ -101,7 +104,7 @@ async function registryBasedCleanup(
 }
 
 async function cleanupToolFiles(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   toolName: string,
@@ -109,6 +112,7 @@ async function cleanupToolFiles(
   fileType?: string,
   dryRun?: boolean
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'cleanupToolFiles' });
   const fileStates = await fileRegistry.getFileStatesForTool(toolName);
 
   const filteredStates = fileType ? fileStates.filter((state: FileState) => state.fileType === fileType) : fileStates;
@@ -125,12 +129,13 @@ async function cleanupToolFiles(
 }
 
 async function removeFile(
-  logger: TsLogger,
+  parentLogger: TsLogger,
   fs: IFileSystem,
   filePath: string,
   homeDir: string,
   dryRun?: boolean
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'removeFile' });
   try {
     if (await fs.exists(filePath)) {
       if (!dryRun) {

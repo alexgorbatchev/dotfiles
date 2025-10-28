@@ -66,8 +66,9 @@ async function installBinariesManually(
   context: BaseInstallContext,
   toolFs: IFileSystem,
   binaryPath: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'installBinariesManually' });
   const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
 
   for (const binaryName of binaryNames) {
