@@ -53,42 +53,7 @@ export interface CombinedReadmeOptions {
   includeTableOfContents?: boolean;
 
   /**
-   * Maximum length of tool descriptions (0 = no limit)
-   */
-  maxDescriptionLength?: number;
-
-  /**
    * Whether to include version information
    */
   includeVersions?: boolean;
-}
-
-/**
- * Installed tool information from registry
- */
-export interface InstalledTool {
-  /**
-   * Tool name
-   */
-  name: string;
-
-  /**
-   * Tool version
-   */
-  version: string;
-
-  /**
-   * Installation method
-   */
-  installMethod: string;
-
-  /**
-   * Repository owner (for GitHub tools)
-   */
-  owner?: string;
-
-  /**
-   * Repository name (for GitHub tools)
-   */
-  repo?: string;
 }

@@ -1,10 +1,13 @@
+import path from 'node:path';
 import type { IDownloader } from '@dotfiles/downloader';
 import { FileCache } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
+import type { TrackedFileSystem } from '@dotfiles/registry/file';
+import type { ToolConfig } from '@dotfiles/schemas';
 import type { IReadmeService } from './IReadmeService';
-import type { CombinedReadmeOptions, InstalledTool, ReadmeContent } from './types';
+import type { CombinedReadmeOptions, ReadmeContent } from './types';
 import { ReadmeCache } from './ReadmeCache';
 import { GITHUB_RAW_BASE_URL, README_FILENAME, DEFAULT_README_CACHE_TTL } from './constants';
 import { messages } from './log-messages';
@@ -17,6 +20,7 @@ export class ReadmeService implements IReadmeService {
   private readonly downloader: IDownloader;
   private readonly registry: IToolInstallationRegistry;
   private readonly fileSystem: IFileSystem;
+  private readonly catalogFileSystem: TrackedFileSystem;
   private readonly readmeCache: ReadmeCache;
 
   constructor(
@@ -24,12 +28,14 @@ export class ReadmeService implements IReadmeService {
     downloader: IDownloader,
     registry: IToolInstallationRegistry,
     fileSystem: IFileSystem,
+    catalogFileSystem: TrackedFileSystem,
     cacheDir: string
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'ReadmeService' });
     this.downloader = downloader;
     this.registry = registry;
     this.fileSystem = fileSystem;
+    this.catalogFileSystem = catalogFileSystem;
 
     // Create dedicated cache for README content
     const cache = new FileCache(this.logger, fileSystem, {
@@ -93,9 +99,7 @@ export class ReadmeService implements IReadmeService {
 
       return readmeContent;
     } catch (error) {
-      this.logger.error(
-        messages.fetchError(owner, repo, version, error instanceof Error ? error.message : String(error))
-      );
+      this.logger.error(messages.fetchError(owner, repo, version, 'Download failed'), error);
       return null;
     }
   }
@@ -106,7 +110,7 @@ export class ReadmeService implements IReadmeService {
   }
 
   async generateCombinedReadme(options: CombinedReadmeOptions = {}): Promise<string> {
-    const tools: InstalledTool[] = await this.getGitHubTools();
+    const tools: ToolInstallation[] = await this.getGitHubTools();
 
     this.logger.debug(messages.generatingCombinedReadme(tools.length));
 
@@ -114,7 +118,6 @@ export class ReadmeService implements IReadmeService {
     const combinedOptions: Required<CombinedReadmeOptions> = {
       title: options.title || 'Installed Tools',
       includeTableOfContents: options.includeTableOfContents ?? true,
-      maxDescriptionLength: options.maxDescriptionLength || 200,
       includeVersions: options.includeVersions ?? true,
     };
 
@@ -142,95 +145,83 @@ export class ReadmeService implements IReadmeService {
     return result;
   }
 
-  private addTableOfContents(sections: string[], tools: InstalledTool[], includeVersions: boolean): void {
+  private addTableOfContents(sections: string[], tools: ToolInstallation[], includeVersions: boolean): void {
     sections.push('## Table of Contents\n');
     for (const tool of tools) {
       const versionSuffix: string = includeVersions ? ` (${tool.version})` : '';
-      sections.push(`- [${tool.name}${versionSuffix}](#${tool.name.toLowerCase().replace(/[^a-z0-9]/g, '-')})`);
+      sections.push(`- [${tool.toolName}${versionSuffix}](#${tool.toolName.toLowerCase().replace(/[^a-z0-9]/g, '-')})`);
     }
     sections.push('');
   }
 
   private async addToolSections(
     sections: string[],
-    tools: InstalledTool[],
+    tools: ToolInstallation[],
     options: Required<CombinedReadmeOptions>
   ): Promise<void> {
     for (const tool of tools) {
-      if (!tool.owner || !tool.repo) continue;
+      // Extract owner/repo from download URL
+      const githubMatch = tool.downloadUrl?.match(/github\.com\/([^/]+)\/([^/]+)/);
+      if (!githubMatch) continue;
+
+      const [, owner, repo] = githubMatch;
+      if (!owner || !repo) continue;
+
+      // Use configuredVersion if available, otherwise use the installed version
+      // If version is "latest", resolve to "main" for raw GitHub URLs
+      const version = tool.configuredVersion || tool.version;
+      const resolvedVersion = version === 'latest' ? 'main' : version;
 
       const readme: ReadmeContent | null = await this.fetchReadmeForVersion(
-        tool.owner,
-        tool.repo,
-        tool.version,
-        tool.name
+        owner,
+        repo,
+        resolvedVersion,
+        tool.toolName
       );
 
       const versionSuffix: string = options.includeVersions ? ` (${tool.version})` : '';
-      sections.push(`## ${tool.name}${versionSuffix}\n`);
+      sections.push(`## ${tool.toolName}${versionSuffix}\n`);
 
       if (readme) {
-        this.addToolWithReadme(sections, tool, readme, options.maxDescriptionLength);
+        this.addToolWithReadme(sections, tool, readme);
       } else {
-        this.addToolWithoutReadme(sections, tool);
+        this.addToolWithoutReadme(sections, owner, repo);
       }
     }
   }
 
-  private addToolWithReadme(
-    sections: string[],
-    tool: InstalledTool,
-    readme: ReadmeContent,
-    maxDescriptionLength: number
-  ): void {
-    let description: string = this.extractDescription(readme.content);
+  private addToolWithReadme(sections: string[], tool: ToolInstallation, readme: ReadmeContent): void {
+    sections.push(readme.content);
 
-    if (maxDescriptionLength > 0 && description.length > maxDescriptionLength) {
-      description = `${description.substring(0, maxDescriptionLength)}...`;
+    // Extract owner/repo from download URL
+    const githubMatch = tool.downloadUrl?.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (githubMatch) {
+      const [, owner, repo] = githubMatch;
+      sections.push(`\n**Source:** [${owner}/${repo}](https://github.com/${owner}/${repo})\n`);
     }
-
-    sections.push(description);
-    sections.push(`\n**Source:** [${tool.owner}/${tool.repo}](https://github.com/${tool.owner}/${tool.repo})\n`);
   }
 
-  private addToolWithoutReadme(sections: string[], tool: InstalledTool): void {
-    sections.push(`**Repository:** [${tool.owner}/${tool.repo}](https://github.com/${tool.owner}/${tool.repo})\n`);
+  private addToolWithoutReadme(sections: string[], owner: string, repo: string): void {
+    sections.push(`**Repository:** [${owner}/${repo}](https://github.com/${owner}/${repo})\n`);
     sections.push('*README not available*\n');
   }
 
-  async getGitHubTools(): Promise<InstalledTool[]> {
+  async getGitHubTools(): Promise<ToolInstallation[]> {
     this.logger.debug(messages.fetchingInstalledTools());
 
     try {
       const installations: ToolInstallation[] = await this.registry.getAllToolInstallations();
 
-      const githubTools: InstalledTool[] = installations
-        .filter((installation: ToolInstallation) => {
-          // For now, we'll use a simple heuristic to identify GitHub tools
-          // This could be enhanced with better metadata tracking
-          return (
-            installation.downloadUrl?.includes('github.com') || installation.downloadUrl?.includes('api.github.com')
-          );
-        })
-        .map((installation: ToolInstallation) => {
-          // Extract owner/repo from download URL
-          const githubMatch = installation.downloadUrl?.match(/github\.com\/([^/]+)\/([^/]+)/);
-          return {
-            name: installation.toolName,
-            version: installation.version,
-            installMethod: 'github-release', // Assumption for GitHub tools
-            owner: githubMatch?.[1],
-            repo: githubMatch?.[2],
-          };
-        })
-        .filter((tool: InstalledTool) => tool.owner && tool.repo);
+      const githubTools: ToolInstallation[] = installations.filter((installation) => {
+        // For now, we'll use a simple heuristic to identify GitHub tools
+        // This could be enhanced with better metadata tracking
+        return installation.downloadUrl?.includes('github.com') || installation.downloadUrl?.includes('api.github.com');
+      });
 
       this.logger.debug(messages.installedToolsFound(githubTools.length));
       return githubTools;
     } catch (error) {
-      this.logger.error(
-        messages.fetchError('registry', 'tools', 'unknown', error instanceof Error ? error.message : String(error))
-      );
+      this.logger.error(messages.fetchError('registry', 'tools', 'unknown', 'Failed to get installed tools'), error);
       return [];
     }
   }
@@ -272,9 +263,8 @@ export class ReadmeService implements IReadmeService {
 
       return filePath;
     } catch (error) {
-      const errorMessage: string = error instanceof Error ? error.message : String(error);
       const filePath: string = `${destPath}/${toolName}/${version}/README.md`;
-      this.logger.error(messages.readmeWriteError(toolName, version, filePath, errorMessage));
+      this.logger.error(messages.readmeWriteError(toolName, version, filePath, 'Write operation failed'), error);
       return null;
     }
   }
@@ -283,31 +273,121 @@ export class ReadmeService implements IReadmeService {
     return `${GITHUB_RAW_BASE_URL}/${owner}/${repo}/${version}/${README_FILENAME}`;
   }
 
-  private extractDescription(content: string): string {
-    // Remove the title (first # heading)
-    const lines: string[] = content.split('\n');
-    const descriptionLines: string[] = [];
-    let foundTitle: boolean = false;
+  async generateCatalogFromConfigs(
+    catalogPath: string,
+    toolConfigs: Record<string, ToolConfig>,
+    options: CombinedReadmeOptions = {}
+  ): Promise<string | null> {
+    try {
+      this.logger.debug(messages.catalogGeneration.started(catalogPath));
 
-    for (const line of lines) {
-      const trimmed: string = line.trim();
+      // Check if there are any installed GitHub tools
+      const installedTools: ToolInstallation[] = await this.getGitHubTools();
 
-      // Skip the first title
-      if (!foundTitle && trimmed.startsWith('# ')) {
-        foundTitle = true;
-        continue;
+      if (installedTools.length === 0) {
+        this.logger.warn(messages.catalogGeneration.noGitHubTools());
+        return null;
       }
 
-      // Stop at the next heading
-      if (foundTitle && (trimmed.startsWith('# ') || trimmed.startsWith('## '))) {
-        break;
-      }
+      // Generate catalog content directly from configs
+      const catalogContent: string = await this.generateCatalogContentFromConfigs(toolConfigs, options);
 
-      if (foundTitle && trimmed) {
-        descriptionLines.push(trimmed);
-      }
+      // Ensure the parent directory exists before writing
+      const parentDir: string = path.dirname(catalogPath);
+      await this.fileSystem.ensureDir(parentDir);
+
+      // Write the catalog to the specified path
+      await this.catalogFileSystem.writeFile(catalogPath, catalogContent);
+
+      this.logger.debug(messages.catalogGeneration.completed(catalogPath, catalogContent.length));
+      return catalogPath;
+    } catch (error) {
+      this.logger.error(messages.catalogGeneration.failed(catalogPath, 'Catalog generation failed'), error);
+      return null;
+    }
+  }
+
+  private async generateCatalogContentFromConfigs(
+    toolConfigs: Record<string, ToolConfig>,
+    options: CombinedReadmeOptions = {}
+  ): Promise<string> {
+    const combinedOptions: Required<CombinedReadmeOptions> = {
+      title: options.title || 'Tool Catalog',
+      includeTableOfContents: options.includeTableOfContents ?? true,
+      includeVersions: options.includeVersions ?? true,
+    };
+
+    const sections: string[] = [];
+    sections.push(`# ${combinedOptions.title}\n`);
+
+    const githubConfigs: [string, ToolConfig][] = this.filterGitHubConfigs(toolConfigs);
+
+    this.logger.debug(messages.githubToolsExtracted(githubConfigs.length));
+
+    if (combinedOptions.includeTableOfContents) {
+      this.addCatalogTableOfContents(sections, githubConfigs, combinedOptions.includeVersions);
     }
 
-    return descriptionLines.join(' ').trim() || 'No description available.';
+    await this.addCatalogToolSections(sections, githubConfigs, combinedOptions);
+
+    return sections.join('\n');
+  }
+
+  private filterGitHubConfigs(toolConfigs: Record<string, ToolConfig>): [string, ToolConfig][] {
+    return Object.entries(toolConfigs).filter(
+      ([, config]) => config.installationMethod === 'github-release' && config.installParams?.repo
+    );
+  }
+
+  private addCatalogTableOfContents(
+    sections: string[],
+    githubConfigs: [string, ToolConfig][],
+    includeVersions: boolean
+  ): void {
+    sections.push('## Table of Contents\n');
+    for (const [toolName, config] of githubConfigs) {
+      const versionSuffix: string = includeVersions ? ` (${config.version || 'main'})` : '';
+      sections.push(`- [${toolName}${versionSuffix}](#${toolName.toLowerCase().replace(/[^a-z0-9]/g, '-')})`);
+    }
+    sections.push('');
+  }
+
+  private async addCatalogToolSections(
+    sections: string[],
+    githubConfigs: [string, ToolConfig][],
+    options: Required<CombinedReadmeOptions>
+  ): Promise<void> {
+    for (const [toolName, config] of githubConfigs) {
+      if (config.installationMethod !== 'github-release') continue;
+
+      const githubParams = config.installParams;
+      const repo = githubParams.repo;
+      const [owner, repoName] = repo.split('/');
+      if (!owner || !repoName) continue;
+
+      const version = config.version || 'main';
+      const resolvedVersion = version === 'latest' ? 'main' : version;
+
+      const readme: ReadmeContent | null = await this.fetchReadmeForVersion(owner, repoName, resolvedVersion, toolName);
+
+      const versionSuffix: string = options.includeVersions ? ` (${version})` : '';
+      sections.push(`## ${toolName}${versionSuffix}\n`);
+
+      if (readme) {
+        this.addCatalogToolWithReadme(sections, readme, repo);
+      } else {
+        this.addCatalogToolWithoutReadme(sections, repo);
+      }
+    }
+  }
+
+  private addCatalogToolWithReadme(sections: string[], readme: ReadmeContent, repo: string): void {
+    sections.push(readme.content);
+    sections.push(`\n**Source:** [${repo}](https://github.com/${repo})\n`);
+  }
+
+  private addCatalogToolWithoutReadme(sections: string[], repo: string): void {
+    sections.push(`**Repository:** [${repo}](https://github.com/${repo})\n`);
+    sections.push('*README not available*\n');
   }
 }

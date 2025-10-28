@@ -6,13 +6,17 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import { Downloader } from '@dotfiles/downloader';
 import { ReadmeService } from '../ReadmeService';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
+import { TrackedFileSystem, createMockFileRegistry, type IFileRegistry } from '@dotfiles/registry/file';
 import type { ReadmeContent } from '../types';
+import type { ToolConfig } from '@dotfiles/schemas';
 
 describe('ReadmeService', () => {
   let logger: TestLogger;
   let fileSystem: IFileSystem;
   let downloader: Downloader;
   let mockRegistry: IToolInstallationRegistry;
+  let mockFileRegistry: IFileRegistry;
+  let catalogFileSystem: TrackedFileSystem;
   let readmeService: ReadmeService;
   let fetchMock: FetchMockHelper;
 
@@ -40,7 +44,18 @@ describe('ReadmeService', () => {
       close: mock(async () => {}),
     };
 
-    readmeService = new ReadmeService(logger, downloader, mockRegistry, fileSystem, CACHE_DIR);
+    mockFileRegistry = createMockFileRegistry();
+
+    // Create real TrackedFileSystem
+    catalogFileSystem = new TrackedFileSystem(
+      logger,
+      fileSystem,
+      mockFileRegistry,
+      TrackedFileSystem.createContext('readme-service', 'catalog'),
+      '/home/test'
+    );
+
+    readmeService = new ReadmeService(logger, downloader, mockRegistry, fileSystem, catalogFileSystem, CACHE_DIR);
   });
 
   afterEach(() => {
@@ -166,9 +181,8 @@ describe('ReadmeService', () => {
       const tools = await readmeService.getGitHubTools();
 
       expect(tools).toHaveLength(1);
-      expect(tools[0]!.name).toBe('github-tool');
-      expect(tools[0]!.owner).toBe('owner');
-      expect(tools[0]!.repo).toBe('repo');
+      expect(tools[0]!.toolName).toBe('github-tool');
+      expect(tools[0]!.downloadUrl).toContain('github.com/owner/repo');
     });
   });
 
@@ -243,7 +257,7 @@ describe('ReadmeService', () => {
       expect(result).toContain('[owner1/repo1](https://github.com/owner1/repo1)');
     });
 
-    test('should respect maxDescriptionLength option', async () => {
+    test('should include full README content', async () => {
       const mockInstallations: ToolInstallation[] = [
         {
           id: 1,
@@ -259,14 +273,14 @@ describe('ReadmeService', () => {
 
       (mockRegistry.getAllToolInstallations as ReturnType<typeof mock>).mockResolvedValueOnce(mockInstallations);
       fetchMock.mockTextResponseOnce(
-        '# Tool 1\n\nThis is a very long description that should be truncated when the maxDescriptionLength option is set to a small value.'
+        '# Tool 1\n\nThis is the full description of the tool with all its details and documentation.'
       );
 
-      const result: string = await readmeService.generateCombinedReadme({
-        maxDescriptionLength: 50,
-      });
+      const result: string = await readmeService.generateCombinedReadme();
 
-      expect(result).toContain('This is a very long description that should be tru...');
+      expect(result).toContain(
+        '# Tool 1\n\nThis is the full description of the tool with all its details and documentation.'
+      );
     });
   });
 
@@ -346,6 +360,66 @@ describe('ReadmeService', () => {
       expect(await fileSystem.exists('/output/test-tool')).toBe(true);
       expect(await fileSystem.exists('/output/test-tool/v1.0.0')).toBe(true);
       expect(await fileSystem.exists('/output/test-tool/v1.0.0/README.md')).toBe(true);
+    });
+  });
+
+  describe('generateCatalogFromConfigs', () => {
+    test('should warn and return null when no GitHub tools are installed', async () => {
+      const toolConfigs: Record<string, ToolConfig> = {
+        'manual-tool': {
+          name: 'manual-tool',
+          installationMethod: 'manual',
+          binaries: ['manual-tool'],
+        } as ToolConfig,
+      };
+
+      const result: string | null = await readmeService.generateCatalogFromConfigs('/catalog/CATALOG.md', toolConfigs);
+
+      expect(result).toBeNull();
+      logger.expect(
+        ['WARN'],
+        ['ReadmeService'],
+        ['No GitHub tools installed. Run the generate command to install tools before generating a catalog.']
+      );
+    });
+
+    test('should generate catalog for GitHub tools', async () => {
+      const toolConfigs: Record<string, ToolConfig> = {
+        'test-tool': {
+          name: 'test-tool',
+          installationMethod: 'github-release',
+          version: 'v1.0.0',
+          binaries: ['test-tool'],
+          installParams: {
+            repo: 'owner/repo',
+          },
+        } as ToolConfig,
+      };
+
+      // Mock registry to return installed GitHub tools
+      const installedTool: ToolInstallation = {
+        id: 1,
+        toolName: 'test-tool',
+        version: 'v1.0.0',
+        installPath: '/tools/test-tool',
+        timestamp: new Date().toISOString(),
+        installedAt: Date.now(),
+        binaryPaths: ['/bin/test-tool'],
+        downloadUrl: 'https://github.com/owner/repo/releases/download/v1.0.0/test-tool.tar.gz',
+        assetName: 'test-tool.tar.gz',
+      };
+      mockRegistry.getAllToolInstallations = mock(async () => [installedTool]);
+
+      fetchMock.mockTextResponseOnce('# Test Tool\n\nThis is a test tool.');
+
+      const result: string | null = await readmeService.generateCatalogFromConfigs('/catalog/CATALOG.md', toolConfigs);
+
+      expect(result).toBe('/catalog/CATALOG.md');
+
+      const catalogContent: string = await catalogFileSystem.readFile('/catalog/CATALOG.md');
+      expect(catalogContent).toContain('# Tool Catalog');
+      expect(catalogContent).toContain('## test-tool');
+      expect(catalogContent).toContain('This is a test tool.');
     });
   });
 });

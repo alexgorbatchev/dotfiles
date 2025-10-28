@@ -159,11 +159,11 @@ const featuresConfigSchema = z
       .object({
         /** Enables or disables catalog generation. Defaults to true. */
         generate: z.boolean().default(true),
-        /** Path where the catalog file will be generated. Defaults to dotfiles directory. */
-        filePath: z.string().default(`\${paths.dotfilesDir}`),
+        /** Path where the catalog file will be generated. Defaults to CATALOG.md in dotfiles directory. */
+        filePath: z.string().default(`\${paths.dotfilesDir}/CATALOG.md`),
       })
       .strict()
-      .default({ generate: true, filePath: `\${paths.dotfilesDir}` }),
+      .default({ generate: true, filePath: `\${paths.dotfilesDir}/CATALOG.md` }),
   })
   .strict();
 

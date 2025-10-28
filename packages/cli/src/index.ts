@@ -2,6 +2,7 @@ export * from './checkUpdatesCommand';
 export * from './cleanupCommand';
 export * from './createProgram';
 export * from './detectConflictsCommand';
+export * from './featuresCommand';
 export * from './filesCommand';
 export * from './generateCommand';
 export * from './installCommand';

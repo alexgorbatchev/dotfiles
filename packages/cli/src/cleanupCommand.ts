@@ -187,8 +187,8 @@ export function registerCleanupCommand(
     .option('--type <type>', 'Remove files of specific type only (registry-based)')
     .option('--all', 'Remove all tracked files (registry-based)')
     .option('--registry', 'Use registry-based cleanup instead of manifest-based')
-    .action(async (commandOptions: CleanupCommandSpecificOptions) => {
-      const combinedOptions: CleanupCommandOptions = { ...commandOptions, ...program.opts() };
+    .action(async (options: CleanupCommandSpecificOptions) => {
+      const combinedOptions: CleanupCommandOptions = { ...options, ...program.opts() };
       logger.debug(messages.commandActionCalled('cleanup'));
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);

@@ -11,6 +11,7 @@ import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
+import { ReadmeService } from '@dotfiles/readme-service';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -25,6 +26,7 @@ import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
+import { registerFeaturesCommand } from './featuresCommand';
 import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
@@ -149,6 +151,7 @@ function createTrackedFileSystems(
   shellInitTrackedFs: TrackedFileSystem;
   symlinkTrackedFs: TrackedFileSystem;
   installerTrackedFs: TrackedFileSystem;
+  catalogTrackedFs: TrackedFileSystem;
 } {
   const shimTrackedFs = new TrackedFileSystem(
     parentLogger,
@@ -182,7 +185,15 @@ function createTrackedFileSystems(
     systemInfo.homeDir
   );
 
-  return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs };
+  const catalogTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'catalog'),
+    systemInfo.homeDir
+  );
+
+  return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs };
 }
 
 export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<Services> {
@@ -257,12 +268,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const cargoClient = new CargoClient(parentLogger, yamlConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
 
   // Create tracked filesystem instances for each generator
-  const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs } = createTrackedFileSystems(
-    parentLogger,
-    fs,
-    fileRegistry,
-    systemInfo
-  );
+  const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
+    createTrackedFileSystems(parentLogger, fs, fileRegistry, systemInfo);
 
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, yamlConfig);
   const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, yamlConfig);
@@ -274,7 +281,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     shellInitGenerator,
     symlinkGenerator,
     fs,
-    yamlConfig,
     systemInfo
   );
 
@@ -292,12 +298,21 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();
+  const readmeService = new ReadmeService(
+    logger,
+    downloader,
+    toolInstallationRegistry,
+    fs,
+    catalogTrackedFs,
+    path.join(yamlConfig.paths.generatedDir, 'cache', 'readme')
+  );
 
   logger.trace(messages.servicesSetup());
   return {
     yamlConfig,
     fs,
     configService,
+    readmeService,
     fileRegistry,
     toolInstallationRegistry,
     downloadCache,
@@ -326,6 +341,7 @@ export function registerAllCommands(
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
   registerInstallCommand(logger, program, servicesFactory);
   registerGenerateCommand(logger, program, servicesFactory);
+  registerFeaturesCommand(logger, program, servicesFactory);
   registerCleanupCommand(logger, program, servicesFactory);
   registerCheckUpdatesCommand(logger, program, servicesFactory);
   registerUpdateCommand(logger, program, servicesFactory);

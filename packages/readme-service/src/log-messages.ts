@@ -29,6 +29,8 @@ export const messages = {
 
   installedToolsFound: (count: number) => createSafeLogMessage(`Found ${count} GitHub tools in registry`),
 
+  githubToolsExtracted: (count: number) => createSafeLogMessage(`Extracted ${count} GitHub tools from configurations`),
+
   clearingExpiredCache: () => createSafeLogMessage('Clearing expired README cache entries'),
 
   cacheCleared: (count: number) => createSafeLogMessage(`Cleared ${count} expired README cache entries`),
@@ -56,4 +58,19 @@ export const messages = {
 
   readmeNotAvailableForWrite: (toolName: string, version: string) =>
     createSafeLogMessage(`README not available for ${toolName}@${version}, skipping write`),
+
+  catalogGeneration: {
+    started: (catalogPath: string) => createSafeLogMessage(`Starting catalog generation at ${catalogPath}`),
+
+    completed: (catalogPath: string, contentLength: number) =>
+      createSafeLogMessage(`Catalog generated at ${catalogPath} (${contentLength} characters)`),
+
+    failed: (catalogPath: string, error: string) =>
+      createSafeLogMessage(`Failed to generate catalog at ${catalogPath}: ${error}`),
+
+    noGitHubTools: () =>
+      createSafeLogMessage(
+        'No GitHub tools installed. Run the generate command to install tools before generating a catalog.'
+      ),
+  },
 };

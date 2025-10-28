@@ -1,4 +1,6 @@
-import type { CombinedReadmeOptions, InstalledTool, ReadmeContent } from './types';
+import type { ToolConfig } from '@dotfiles/schemas';
+import type { ToolInstallation } from '@dotfiles/registry';
+import type { CombinedReadmeOptions, ReadmeContent } from './types';
 
 /**
  * Interface for a service that manages README files for tools
@@ -34,7 +36,7 @@ export interface IReadmeService {
    * Gets list of installed tools that have GitHub repositories
    * @returns Promise resolving to array of installed tool information
    */
-  getGitHubTools(): Promise<InstalledTool[]>;
+  getGitHubTools(): Promise<ToolInstallation[]>;
 
   /**
    * Clears expired README cache entries
@@ -57,6 +59,19 @@ export interface IReadmeService {
     version: string,
     owner: string,
     repo: string
+  ): Promise<string | null>;
+
+  /**
+   * Generates and writes a CATALOG.md file based on tool configurations
+   * @param catalogPath Path where the catalog file should be written
+   * @param toolConfigs Tool configurations to include in the catalog
+   * @param options Options for catalog generation
+   * @returns Promise resolving to the written file path or null if failed
+   */
+  generateCatalogFromConfigs(
+    catalogPath: string,
+    toolConfigs: Record<string, ToolConfig>,
+    options?: CombinedReadmeOptions
   ): Promise<string | null>;
 }
 

@@ -18,6 +18,7 @@
     "@dotfiles/generator-orchestrator": "workspace:*",
     "@dotfiles/installer": "workspace:*",
     "@dotfiles/logger": "workspace:*",
+    "@dotfiles/readme-service": "workspace:*",
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
     "@dotfiles/schemas": "workspace:*",

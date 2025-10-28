@@ -34,6 +34,7 @@ export function registerGenerateCommand(
         logger.debug(messages.toolConfigsLoaded(yamlConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
         await generatorOrchestrator.generateAll(toolConfigs);
+
         logger.info(messages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (error) {
         logger.error(messages.commandExecutionFailed('generate', 1), error);
