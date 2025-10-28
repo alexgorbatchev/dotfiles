@@ -168,6 +168,14 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
               close: mock(async () => {}),
             };
             break;
+          case 'cargoClient':
+            mockServices.cargoClient = {
+              getCrateMetadata: mock(async () => null),
+              buildCargoTomlUrl: mock(() => 'https://example.com/Cargo.toml'),
+              getCargoTomlPackage: mock(async () => null),
+              getLatestVersion: mock(async () => '1.0.0'),
+            };
+            break;
         }
       } else {
         // Use provided mock directly - bypass strict typing for test setup

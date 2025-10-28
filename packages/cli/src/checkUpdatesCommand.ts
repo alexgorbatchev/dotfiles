@@ -2,11 +2,18 @@ import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
-import type { GithubReleaseInstallParams, ToolConfig } from '@dotfiles/schemas';
+import type { 
+  GithubReleaseInstallParams, 
+  ToolConfig,
+  GithubReleaseToolConfig,
+  BrewToolConfig,
+  CargoToolConfig
+} from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';
+import { checkGitHubReleaseUpdate, checkBrewUpdate, checkCargoUpdate } from './updateCheckers';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
 
 export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
@@ -79,59 +86,6 @@ function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner
   return { owner, repo: repoName };
 }
 
-async function checkGitHubReleaseUpdate(
-  logger: TsLogger,
-  config: ToolConfig,
-  githubApiClient: IGitHubApiClient,
-  versionChecker: IVersionChecker
-): Promise<void> {
-  const repoInfo = validateGitHubRepoConfig(logger, config);
-  if (!repoInfo) return;
-
-  const { owner, repo } = repoInfo;
-  const configuredVersion = config.version || 'latest';
-
-  try {
-    const latestRelease = await githubApiClient.getLatestRelease(owner, repo);
-    if (!latestRelease || !latestRelease.tag_name) {
-      logger.warn(messages.serviceGithubResourceNotFound('release', `${config.name} latest release`));
-      return;
-    }
-
-    const latestVersion = latestRelease.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
-    logger.debug(messages.commandVersionComparison(config.name, configuredVersion, latestVersion));
-
-    if (configuredVersion.toLowerCase() === 'latest') {
-      logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
-    } else {
-      await compareVersions(logger, config, configuredVersion, latestVersion, versionChecker);
-    }
-  } catch (error) {
-    logger.error(messages.serviceGithubApiFailed('get latest release', 0), error);
-  }
-}
-
-async function compareVersions(
-  logger: TsLogger,
-  config: ToolConfig,
-  configuredVersion: string,
-  latestVersion: string,
-  versionChecker: IVersionChecker
-): Promise<void> {
-  const currentVersionToCompare = configuredVersion.replace(/^v/, '');
-  const status = await versionChecker.checkVersionStatus(currentVersionToCompare, latestVersion);
-
-  if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-    logger.info(messages.toolUpdateAvailable(config.name, currentVersionToCompare, latestVersion));
-  } else if (status === VersionComparisonStatus.UP_TO_DATE) {
-    logger.info(messages.toolUpToDate(config.name, currentVersionToCompare, latestVersion));
-  } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
-    logger.info(messages.toolAheadOfLatest(config.name, currentVersionToCompare, latestVersion));
-  } else {
-    logger.warn(messages.toolVersionComparisonFailed(config.name, currentVersionToCompare, latestVersion));
-  }
-}
-
 export async function checkUpdatesActionLogic(
   logger: TsLogger,
   toolName: string | undefined,
@@ -148,7 +102,11 @@ export async function checkUpdatesActionLogic(
 
   for (const config of Object.values(toolConfigs)) {
     if (config.installationMethod === 'github-release') {
-      await checkGitHubReleaseUpdate(logger, config, githubApiClient, versionChecker);
+      await checkGitHubReleaseUpdate(config as GithubReleaseToolConfig, githubApiClient, versionChecker, logger);
+    } else if (config.installationMethod === 'brew') {
+      await checkBrewUpdate(config as BrewToolConfig, logger);
+    } else if (config.installationMethod === 'cargo') {
+      await checkCargoUpdate(config as CargoToolConfig, services.cargoClient, versionChecker, logger);
     } else {
       logger.info(
         messages.commandUnsupportedOperation(
@@ -158,8 +116,6 @@ export async function checkUpdatesActionLogic(
       );
     }
   }
-
-  logger.info(messages.updatesCommandCompleted());
 }
 
 export function registerCheckUpdatesCommand(
