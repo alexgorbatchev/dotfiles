@@ -36,7 +36,7 @@ export interface InstallHookContext extends BaseToolContext {
    * This is available in all hooks.
    * @see SystemInfo
    */
-  systemInfo?: SystemInfo;
+  systemInfo: SystemInfo;
   /**
    * Bun's shell executor for running shell commands.
    * Use the $ tagged template literal to execute shell commands within hooks.
