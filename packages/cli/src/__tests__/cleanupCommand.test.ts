@@ -6,7 +6,7 @@ import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@ragelt
 import { registerCleanupCommand } from '../cleanupCommand';
 import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
-import { createMockFileRegistry } from './createMockFileRegistry';
+import { createMockFileRegistry } from '@dotfiles/registry/file';
 
 setupTestCleanup();
 

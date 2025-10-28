@@ -3,7 +3,16 @@ import type { $ } from 'bun';
 export interface MockShellExtensions {
   commands: string[];
   lastCommand: string | null;
+  responses: Map<string, MockShellResponse>;
   reset(): void;
+  mockResponse(command: string, response: MockShellResponse): void;
+}
+
+export interface MockShellResponse {
+  stdout: Buffer;
+  stderr: Buffer;
+  exitCode: number;
+  shouldThrow?: boolean;
 }
 
 export type MockShell = typeof $ & MockShellExtensions;
@@ -16,32 +25,45 @@ export type MockShell = typeof $ & MockShellExtensions;
  */
 export function createMock$(): MockShell {
   const commands: string[] = [];
+  const responses: Map<string, MockShellResponse> = new Map();
   let lastCommand: string | null = null;
 
   const mockBuffer = Buffer.from('');
-  const mockResult = {
-    stdout: mockBuffer,
-    stderr: mockBuffer,
-    exitCode: 0,
-    text: () => Promise.resolve(''),
-    json: () => Promise.resolve({}),
-    blob: () => Promise.resolve(new Blob()),
-    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-  };
 
   // Create a chainable result that supports Bun's $ methods
-  const createChainableResult = (): ReturnType<typeof $> => {
-    const result = Promise.resolve(mockResult);
+  const createChainableResult = (command: string, shouldNothrow = false): ReturnType<typeof $> => {
+    // Check if we have a mocked response for this command
+    const mockedResponse: MockShellResponse | undefined = responses.get(command);
+
+    const resultData = mockedResponse || {
+      stdout: mockBuffer,
+      stderr: mockBuffer,
+      exitCode: 0,
+    };
+
+    const mockResult = {
+      ...resultData,
+      text: () => Promise.resolve(resultData.stdout.toString()),
+      json: () => Promise.resolve(JSON.parse(resultData.stdout.toString() || '{}')),
+      blob: () => Promise.resolve(new Blob()),
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    };
+
+    // If shouldThrow is true and nothrow wasn't called, create a rejected promise
+    const shouldThrowError: boolean = Boolean(mockedResponse?.shouldThrow && !shouldNothrow);
+    const resultPromise: Promise<typeof mockResult> = shouldThrowError
+      ? Promise.reject(new Error(resultData.stderr.toString()))
+      : Promise.resolve(mockResult);
 
     // Add all Bun ShellPromise methods with proper chaining
-    const chainable = Object.assign(result, {
+    const chainable = Object.assign(resultPromise, {
       stdin: null,
-      cwd: (_dir: string) => createChainableResult(),
-      env: (_env: Record<string, string>) => createChainableResult(),
-      quiet: () => createChainableResult(),
-      nothrow: () => createChainableResult(),
-      text: () => Promise.resolve(''),
-      json: () => Promise.resolve({}),
+      cwd: (_dir: string) => createChainableResult(command, shouldNothrow),
+      env: (_env: Record<string, string>) => createChainableResult(command, shouldNothrow),
+      quiet: () => createChainableResult(command, shouldNothrow),
+      nothrow: () => createChainableResult(command, true),
+      text: () => Promise.resolve(resultData.stdout.toString()),
+      json: () => Promise.resolve(JSON.parse(resultData.stdout.toString() || '{}')),
       blob: () => Promise.resolve(new Blob()),
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
       lines: () => Promise.resolve([]),
@@ -69,22 +91,28 @@ export function createMock$(): MockShell {
       }
     }
 
-    commands.push(command.trim());
-    lastCommand = command.trim();
+    const trimmedCommand: string = command.trim();
+    commands.push(trimmedCommand);
+    lastCommand = trimmedCommand;
 
-    return createChainableResult();
+    return createChainableResult(trimmedCommand);
   };
 
   // Create the mock shell with additional properties
   const mockShell = Object.assign(mockShellFunction, {
     // Mock properties for testing
     commands,
+    responses,
     get lastCommand() {
       return lastCommand;
     },
     reset: () => {
       commands.length = 0;
+      responses.clear();
       lastCommand = null;
+    },
+    mockResponse: (command: string, response: MockShellResponse) => {
+      responses.set(command, response);
     },
 
     // Stub implementations of Bun $ static properties

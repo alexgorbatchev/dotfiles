@@ -13,7 +13,7 @@ export interface FileOperation {
   /** Target path for symlinks */
   targetPath?: string;
   /** Type of file being operated on */
-  fileType: 'shim' | 'binary' | 'symlink' | 'config' | 'completion' | 'init' | 'hook-generated';
+  fileType: 'shim' | 'binary' | 'symlink' | 'config' | 'completion' | 'init' | 'hook-generated' | 'catalog';
   /** Additional metadata as JSON */
   metadata?: Record<string, unknown>;
   /** File size in bytes */

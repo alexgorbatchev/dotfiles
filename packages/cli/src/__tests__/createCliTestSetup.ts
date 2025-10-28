@@ -12,7 +12,7 @@ import {
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { createProgram } from '../createProgram';
 import type { GlobalProgram, Services } from '../types';
-import { createMockFileRegistry } from './createMockFileRegistry';
+import { createMockFileRegistry } from '@dotfiles/registry/file';
 
 /**
  * Options for creating customizable service mocks.
@@ -168,6 +168,17 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
               close: mock(async () => {}),
             };
             break;
+          case 'readmeService':
+            mockServices.readmeService = {
+              fetchReadmeForVersion: mock(async () => null),
+              getCachedReadme: mock(async () => null),
+              generateCombinedReadme: mock(async () => 'Combined README'),
+              getGitHubTools: mock(async () => []),
+              clearExpiredCache: mock(async () => undefined),
+              writeReadmeToPath: mock(async () => null),
+              generateCatalogFromConfigs: mock(async () => '/path/to/catalog'),
+            };
+            break;
           case 'cargoClient':
             mockServices.cargoClient = {
               getCrateMetadata: mock(async () => null),
@@ -190,6 +201,20 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
     ({
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
+      // Default mocks for all required services
+      configService: {
+        loadSingleToolConfig: mock(async () => undefined),
+        loadToolConfigs: mock(async () => ({})),
+      },
+      readmeService: {
+        fetchReadmeForVersion: mock(async () => null),
+        getCachedReadme: mock(async () => null),
+        generateCombinedReadme: mock(async () => '# Combined README\n'),
+        getGitHubTools: mock(async () => []),
+        clearExpiredCache: mock(async () => {}),
+        writeReadmeToPath: mock(async () => null),
+        generateCatalogFromConfigs: mock(async () => '/path/to/catalog.md'),
+      },
       ...mockServices,
     }) as Services;
 
