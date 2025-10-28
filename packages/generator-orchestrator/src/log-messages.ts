@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const generatorOrchestratorLogMessages = {
+export const messages = {
   constructor: {
     initialized: () => createSafeLogMessage('Initializing GeneratorOrchestrator'),
   } satisfies SafeLogMessageMap,

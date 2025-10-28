@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ShellCompletionConfig, ShellType } from '@dotfiles/schemas';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
-import { completionGeneratorLogMessages } from './log-messages';
+import { messages } from './log-messages';
 import type {
   CompletionGenerationContext,
   GeneratedCompletion,
@@ -25,7 +25,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     shellType: ShellType,
     context: CompletionGenerationContext
   ): Promise<GeneratedCompletion> {
-    this.logger.debug(completionGeneratorLogMessages.generationStarted(toolName, shellType));
+    this.logger.debug(messages.generationStarted(toolName, shellType));
 
     if (config.cmd) {
       return this.generateFromCommand(config, toolName, shellType, context);

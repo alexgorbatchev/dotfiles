@@ -4,7 +4,7 @@ import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
 import { contractHomePath, formatPermissions } from '@dotfiles/utils';
 import type { FileOperation, IFileRegistry } from './IFileRegistry';
-import { fileRegistryLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Context for tracking filesystem operations.
@@ -46,7 +46,7 @@ export class TrackedFileSystem implements IFileSystem {
     this.context = context;
     this.homeDir = homeDir;
 
-    this.logger.debug(fileRegistryLogMessages.trackedFsCreated(), context.toolName, context.fileType);
+    this.logger.debug(messages.trackedFsCreated(), context.toolName, context.fileType);
   }
 
   /**
@@ -160,13 +160,9 @@ export class TrackedFileSystem implements IFileSystem {
 
     // Log user-facing filesystem changes
     if (!fileExists) {
-      this.logInfo(
-        fileRegistryLogMessages.fileCreated(this.context.toolName, contractHomePath(this.homeDir, filePath))
-      );
+      this.logInfo(messages.fileCreated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
-      this.logInfo(
-        fileRegistryLogMessages.fileUpdated(this.context.toolName, contractHomePath(this.homeDir, filePath))
-      );
+      this.logInfo(messages.fileUpdated(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     }
   }
 
@@ -193,7 +189,7 @@ export class TrackedFileSystem implements IFileSystem {
     });
 
     this.logInfo(
-      fileRegistryLogMessages.fileCopied(
+      messages.fileCopied(
         this.context.toolName,
         contractHomePath(this.homeDir, src),
         contractHomePath(this.homeDir, dest)
@@ -222,7 +218,7 @@ export class TrackedFileSystem implements IFileSystem {
     });
 
     this.logInfo(
-      fileRegistryLogMessages.fileMoved(
+      messages.fileMoved(
         this.context.toolName,
         contractHomePath(this.homeDir, oldPath),
         contractHomePath(this.homeDir, newPath)
@@ -246,7 +242,7 @@ export class TrackedFileSystem implements IFileSystem {
     });
 
     this.logInfo(
-      fileRegistryLogMessages.symlinkCreated(
+      messages.symlinkCreated(
         this.context.toolName,
         contractHomePath(this.homeDir, linkPath),
         contractHomePath(this.homeDir, target)
@@ -271,13 +267,9 @@ export class TrackedFileSystem implements IFileSystem {
     await this.fs.rm(filePath, options);
 
     if (options?.recursive) {
-      this.logInfo(
-        fileRegistryLogMessages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath))
-      );
+      this.logInfo(messages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     } else {
-      this.logInfo(
-        fileRegistryLogMessages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath))
-      );
+      this.logInfo(messages.fileRemoved(this.context.toolName, contractHomePath(this.homeDir, filePath)));
     }
   }
 
@@ -300,7 +292,7 @@ export class TrackedFileSystem implements IFileSystem {
     });
 
     this.logInfo(
-      fileRegistryLogMessages.permissionsChanged(
+      messages.permissionsChanged(
         this.context.toolName,
         contractHomePath(this.homeDir, filePath),
         formatPermissions(mode)
@@ -346,9 +338,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logInfo(
-        fileRegistryLogMessages.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath))
-      );
+      this.logInfo(messages.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -367,7 +357,7 @@ export class TrackedFileSystem implements IFileSystem {
     // Perform the actual operation
     await this.fs.rmdir(dirPath, options);
 
-    logger.debug(fileRegistryLogMessages.rmdirTracked(), dirPath);
+    logger.debug(messages.rmdirTracked(), dirPath);
   }
 
   async ensureDir(dirPath: string): Promise<void> {
@@ -387,9 +377,7 @@ export class TrackedFileSystem implements IFileSystem {
         metadata: this.context.metadata,
       });
 
-      this.logInfo(
-        fileRegistryLogMessages.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath))
-      );
+      this.logInfo(messages.directoryCreated(this.context.toolName, contractHomePath(this.homeDir, dirPath)));
     }
   }
 
@@ -443,7 +431,11 @@ export class TrackedFileSystem implements IFileSystem {
       // Track the directory itself
       await this.trackFileDeletion(dirPath);
     } catch (error) {
-      this.logger.debug(fileRegistryLogMessages.directoryDeletionError(), dirPath, error instanceof Error ? error.message : String(error));
+      this.logger.debug(
+        messages.directoryDeletionError(),
+        dirPath,
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 }

@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const extractorLogMessages = {
+export const messages = {
   shellCommandStarted: (command: string) => createSafeLogMessage(`Executing shell command: ${command}`),
   shellCommandFailed: (command: string, exitCode: number | null) =>
     createSafeLogMessage(`Shell command failed (exit ${exitCode ?? 'unknown'}): ${command}`),

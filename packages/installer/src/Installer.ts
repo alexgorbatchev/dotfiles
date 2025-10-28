@@ -31,7 +31,7 @@ import {
   installManually,
 } from './installers';
 import type { IInstaller, InstallOptions, InstallResult } from './types';
-import { HookExecutor, installerLogMessages } from './utils';
+import { HookExecutor, messages } from './utils';
 
 /**
  * Orchestrates the tool installation process by coordinating services like `Downloader`,
@@ -111,8 +111,8 @@ export class Installer implements IInstaller {
   private async checkExistingInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
-    options?: InstallOptions,
-    logger?: TsLogger
+    options: InstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult | null> {
     if (options?.force) {
       return null;
@@ -125,7 +125,7 @@ export class Installer implements IInstaller {
 
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion && existingInstallation.version === targetVersion) {
-      logger?.debug(installerLogMessages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
+      logger.debug(messages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
       return {
         success: true,
         message: `Tool ${toolName} version ${targetVersion} is already installed`,
@@ -135,9 +135,7 @@ export class Installer implements IInstaller {
       };
     }
 
-    logger?.debug(
-      installerLogMessages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown')
-    );
+    logger.debug(messages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown'));
     return null;
   }
 
@@ -154,7 +152,7 @@ export class Installer implements IInstaller {
       return null;
     }
 
-    logger.debug(installerLogMessages.lifecycle.hookExecution('beforeInstall'));
+    logger.debug(messages.lifecycle.hookExecution('beforeInstall'));
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
     const result = await this.hookExecutor.executeHook(
       'beforeInstall',
@@ -186,7 +184,7 @@ export class Installer implements IInstaller {
       return;
     }
 
-    logger.debug(installerLogMessages.lifecycle.hookExecution('afterInstall'));
+    logger.debug(messages.lifecycle.hookExecution('afterInstall'));
     const finalContext = {
       ...context,
       binaryPaths: result.binaryPaths,
@@ -230,9 +228,9 @@ export class Installer implements IInstaller {
             ? resolvedToolConfig.installParams.version
             : undefined,
       });
-      logger.debug(installerLogMessages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
-    } catch (registryError) {
-      logger.error(installerLogMessages.outcome.installFailed('registry-record', toolName), registryError);
+      logger.debug(messages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
+    } catch (error) {
+      logger.error(messages.outcome.installFailed('registry-record', toolName), error);
     }
   }
 
@@ -273,11 +271,9 @@ export class Installer implements IInstaller {
    */
   async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
     // Create logger with appropriate level for shim mode
-    const logger = options?.shimMode
-      ? this.logger.getSubLogger({ name: 'install', minLevel: 4 }) // Suppress INFO logs in shim mode (4=error, 3=warn, 2=info)
-      : this.logger.getSubLogger({ name: 'install' });
+    const logger = this.logger.getSubLogger({ name: 'install' });
 
-    logger.debug(installerLogMessages.lifecycle.methodParams(toolName), toolConfig, options);
+    logger.debug(messages.lifecycle.methodParams(toolName), toolConfig, options);
 
     // Resolve platform-specific configuration
     const systemInfo = this.getSystemInfo();
@@ -304,7 +300,7 @@ export class Installer implements IInstaller {
       const installDir = path.join(binariesDir, toolName, timestamp);
 
       await toolFs.ensureDir(installDir);
-      logger.debug(installerLogMessages.lifecycle.directoryCreated(installDir));
+      logger.debug(messages.lifecycle.directoryCreated(installDir));
 
       // Create context for installation hooks
       const context = this.createBaseInstallContext(toolName, installDir, timestamp, resolvedToolConfig, logger);
@@ -333,7 +329,7 @@ export class Installer implements IInstaller {
 
       return result;
     } catch (error) {
-      logger.error(installerLogMessages.outcome.installFailed('install', toolName), error);
+      logger.error(messages.outcome.installFailed('install', toolName), error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -486,7 +482,7 @@ export class Installer implements IInstaller {
       }
     } catch (error) {
       this.logger.debug(
-        installerLogMessages.outcome.unsupportedOperation(
+        messages.outcome.unsupportedOperation(
           'get-target-version',
           `Failed to get target version for ${toolName}: ${error}`
         )

@@ -26,7 +26,7 @@ import type {
   ToolConfigInstallParams,
   ToolConfigUpdateCheck,
 } from '@dotfiles/schemas';
-import { toolConfigBuilderLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Internal shell configuration storage organized by shell type
@@ -176,7 +176,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
     } else {
       this.logger.warn(
-        toolConfigBuilderLogMessages.configurationFieldIgnored(
+        messages.configurationFieldIgnored(
           'hooks',
           `hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
         )
@@ -359,7 +359,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     } else {
       targetArchitectures = architecturesOrConfigure;
       if (typeof configureCallback !== 'function') {
-        const missingCallbackError = toolConfigBuilderLogMessages.configurationFieldRequired(
+        const missingCallbackError = messages.configurationFieldRequired(
           'configure callback',
           `platform() called for tool "${this.toolName}" with architectures but without a configure callback`
         );
@@ -509,7 +509,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   private throwInvalidMethodError(): never {
-    const invalidMethodError = toolConfigBuilderLogMessages.configurationFieldInvalid(
+    const invalidMethodError = messages.configurationFieldInvalid(
       'installationMethod',
       this.currentInstallationMethod ?? 'unknown',
       'github-release | brew | curl-script | curl-tar | cargo | manual'
@@ -527,7 +527,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       (baseConfig.platformConfigs && baseConfig.platformConfigs.length > 0);
 
     if (!hasContent) {
-      const requiredConfigError = toolConfigBuilderLogMessages.configurationFieldRequired(
+      const requiredConfigError = messages.configurationFieldRequired(
         'tool definition',
         `Tool "${baseConfig.name}" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs`
       );

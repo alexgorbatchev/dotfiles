@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const cliLogMessages = {
+export const messages = {
   commandActionCalled: (commandName: string, targetTool?: string) =>
     createSafeLogMessage(`Action called for ${commandName}${targetTool ? ` "${targetTool}"` : ''}`),
   commandActionStarted: (commandName: string, targetTool?: string) =>

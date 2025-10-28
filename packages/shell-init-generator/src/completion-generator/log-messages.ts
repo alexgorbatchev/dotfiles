@@ -1,7 +1,7 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 import type { ShellType } from '@dotfiles/schemas';
 
-export const completionGeneratorLogMessages = {
+export const messages = {
   generationStarted: (toolName: string, shellType: ShellType) =>
     createSafeLogMessage(`Starting completion generation for "${toolName}" (shell: ${shellType})`),
   commandExecutionStarted: (toolName: string, command: string, shellType: ShellType) =>

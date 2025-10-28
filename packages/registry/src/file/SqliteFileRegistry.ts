@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
 import type { FileOperation, FileOperationFilter, FileState, IFileRegistry } from './IFileRegistry';
-import { fileRegistryLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 interface DatabaseRow {
   id: number;
@@ -57,12 +57,7 @@ export class SqliteFileRegistry implements IFileRegistry {
       operation.operationId
     );
 
-    logger.debug(
-      fileRegistryLogMessages.operationRecorded(),
-      operation.operationType,
-      operation.toolName,
-      operation.filePath
-    );
+    logger.debug(messages.operationRecorded(), operation.operationType, operation.toolName, operation.filePath);
   }
 
   async getOperations(filter: FileOperationFilter = {}): Promise<FileOperation[]> {
@@ -111,7 +106,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const stmt = this.db.prepare(sql);
     const rows = params.length > 0 ? (stmt.all(...params) as DatabaseRow[]) : (stmt.all() as DatabaseRow[]);
 
-    logger.debug(fileRegistryLogMessages.operationsRetrieved(), rows.length, filter);
+    logger.debug(messages.operationsRetrieved(), rows.length, filter);
 
     return rows.map((row) => ({
       id: row.id,
@@ -159,7 +154,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     // Return all active file states
     const activeStates = Array.from(fileStates.values());
 
-    logger.debug(fileRegistryLogMessages.fileStatesComputed(), activeStates.length, toolName);
+    logger.debug(messages.fileStatesComputed(), activeStates.length, toolName);
 
     return activeStates;
   }
@@ -171,7 +166,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const operations = await this.getOperations({ filePath });
 
     if (operations.length === 0) {
-      logger.debug(fileRegistryLogMessages.noOperationsFound(), filePath);
+      logger.debug(messages.noOperationsFound(), filePath);
       return null;
     }
 
@@ -198,7 +193,7 @@ export class SqliteFileRegistry implements IFileRegistry {
       }
     }
 
-    logger.debug(fileRegistryLogMessages.fileStateComputed(), filePath, state ? 'active' : 'deleted');
+    logger.debug(messages.fileStateComputed(), filePath, state ? 'active' : 'deleted');
 
     return state;
   }
@@ -208,7 +203,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const rows = stmt.all() as { tool_name: string }[];
 
     const tools = rows.map((row) => row.tool_name);
-    this.logger.debug(fileRegistryLogMessages.toolsFound(), tools.length);
+    this.logger.debug(messages.toolsFound(), tools.length);
 
     return tools;
   }
@@ -219,7 +214,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const stmt = this.db.prepare('DELETE FROM file_operations WHERE tool_name = ?');
     const result = stmt.run(toolName);
 
-    logger.debug(fileRegistryLogMessages.operationsRemoved(), result.changes, toolName);
+    logger.debug(messages.operationsRemoved(), result.changes, toolName);
   }
 
   async compact(): Promise<void> {
@@ -244,7 +239,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     }
 
     const after = await this.getStats();
-    logger.debug(fileRegistryLogMessages.compactionComplete(), before.totalOperations, after.totalOperations);
+    logger.debug(messages.compactionComplete(), before.totalOperations, after.totalOperations);
   }
 
   async validate(): Promise<{ valid: boolean; issues: string[]; repaired: string[] }> {
@@ -277,7 +272,7 @@ export class SqliteFileRegistry implements IFileRegistry {
       }
     }
 
-    logger.debug(fileRegistryLogMessages.validationComplete(), issues.length, repaired.length);
+    logger.debug(messages.validationComplete(), issues.length, repaired.length);
 
     return {
       valid: issues.length === 0,
@@ -315,7 +310,7 @@ export class SqliteFileRegistry implements IFileRegistry {
 
   async close(): Promise<void> {
     this.db.close();
-    this.logger.debug(fileRegistryLogMessages.registryClosed());
+    this.logger.debug(messages.registryClosed());
   }
 
   private initializeSchema(): void {
@@ -347,6 +342,6 @@ export class SqliteFileRegistry implements IFileRegistry {
       CREATE INDEX IF NOT EXISTS idx_operation_id ON file_operations(operation_id);
     `);
 
-    logger.debug(fileRegistryLogMessages.schemaInitialized());
+    logger.debug(messages.schemaInitialized());
   }
 }

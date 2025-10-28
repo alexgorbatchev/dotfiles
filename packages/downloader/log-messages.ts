@@ -20,10 +20,8 @@ export const cachedDownloadStrategyLogMessages = {
     const sizeDescription = size !== undefined ? `, size: ${size} bytes` : '';
     return createSafeLogMessage(`Cached data for key: ${key} (${strategy})${sizeDescription}, expires: ${expiresAt}`);
   },
-  cacheStorageFailed: (key: string) =>
-    createSafeLogMessage(`Error caching data for key: ${key}`),
-  cacheCheckFailed: (key: string) =>
-    createSafeLogMessage(`Error checking cache for key: ${key}`),
+  cacheStorageFailed: (key: string) => createSafeLogMessage(`Error caching data for key: ${key}`),
+  cacheCheckFailed: (key: string) => createSafeLogMessage(`Error checking cache for key: ${key}`),
   cacheMiss: (key: string) => createSafeLogMessage(`No cache entry found for key: ${key}`),
   cacheDisabledForProgress: (url: string) =>
     createSafeLogMessage(`Cache disabled, caching for key: ${url} (reason: progress callback)`),

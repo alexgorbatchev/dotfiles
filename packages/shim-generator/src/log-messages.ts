@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const shimGeneratorLogMessages = {
+export const messages = {
   constructor: {
     initialized: () => createSafeLogMessage('ShimGenerator initialized'),
   } satisfies SafeLogMessageMap,

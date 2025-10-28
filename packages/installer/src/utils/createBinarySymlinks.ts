@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { installerLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Create or update a symlink for a binary
@@ -32,7 +32,7 @@ export async function createBinarySymlink(
   // Verify the target binary exists before creating symlink
   if (!(await fs.exists(actualBinaryPath))) {
     const errorMsg = `Cannot create symlink: target binary does not exist at ${actualBinaryPath}`;
-    methodLogger.error(installerLogMessages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath));
+    methodLogger.error(messages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath));
     throw new Error(errorMsg);
   }
 
@@ -45,30 +45,30 @@ export async function createBinarySymlink(
   // Remove existing symlink if it exists
   try {
     if (await fs.exists(symlinkPath)) {
-      methodLogger.debug(installerLogMessages.binarySymlink.removingExisting(symlinkPath));
+      methodLogger.debug(messages.binarySymlink.removingExisting(symlinkPath));
       await fs.rm(symlinkPath, { force: true });
     }
   } catch (error) {
-    methodLogger.error(installerLogMessages.binarySymlink.removeExistingFailed(symlinkPath), error);
+    methodLogger.error(messages.binarySymlink.removeExistingFailed(symlinkPath), error);
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to remove old symlink ${symlinkPath}: ${reason}`);
   }
 
   // Create new symlink
   try {
-    methodLogger.debug(installerLogMessages.binarySymlink.creating(symlinkPath, targetPath));
+    methodLogger.debug(messages.binarySymlink.creating(symlinkPath, targetPath));
     await fs.symlink(targetPath, symlinkPath);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const errorMsg = `Failed to create symlink from ${symlinkPath} to ${targetPath}: ${reason}`;
-    methodLogger.error(installerLogMessages.binarySymlink.creationFailed(symlinkPath, targetPath), error);
+    methodLogger.error(messages.binarySymlink.creationFailed(symlinkPath, targetPath), error);
     throw new Error(errorMsg);
   }
 
   // Verify symlink was created successfully
   if (!(await fs.exists(symlinkPath))) {
     const errorMsg = `Symlink creation appeared to succeed but symlink does not exist at ${symlinkPath}`;
-    methodLogger.error(installerLogMessages.binarySymlink.verificationFailed(symlinkPath));
+    methodLogger.error(messages.binarySymlink.verificationFailed(symlinkPath));
     throw new Error(errorMsg);
   }
 
@@ -77,16 +77,16 @@ export async function createBinarySymlink(
     const linkTarget = await fs.readlink(symlinkPath);
     if (linkTarget !== targetPath) {
       const errorMsg = `Symlink points to wrong target. Expected: ${targetPath}, Actual: ${linkTarget}`;
-      methodLogger.error(installerLogMessages.binarySymlink.verificationMismatch(symlinkPath, targetPath, linkTarget));
+      methodLogger.error(messages.binarySymlink.verificationMismatch(symlinkPath, targetPath, linkTarget));
       throw new Error(errorMsg);
     }
   } catch (error) {
     const errorMsg = `Failed to verify symlink target at ${symlinkPath}: ${error}`;
-    methodLogger.error(installerLogMessages.binarySymlink.verificationFailed(symlinkPath), error);
+    methodLogger.error(messages.binarySymlink.verificationFailed(symlinkPath), error);
     throw new Error(errorMsg);
   }
 
-  methodLogger.debug(installerLogMessages.binarySymlink.createdAndVerified(symlinkPath, targetPath));
+  methodLogger.debug(messages.binarySymlink.createdAndVerified(symlinkPath, targetPath));
 }
 
 /**

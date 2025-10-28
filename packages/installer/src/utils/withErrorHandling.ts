@@ -1,6 +1,6 @@
 import type { TsLogger } from '@dotfiles/logger';
 import type { InstallResult } from '../types';
-import { installerLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Wraps installation operations with consistent error handling
@@ -15,7 +15,7 @@ export async function withInstallErrorHandling<T>(
   try {
     return await operation();
   } catch (error) {
-    logger.error(installerLogMessages.outcome.installFailed(methodName, toolName), error);
+    logger.error(messages.outcome.installFailed(methodName, toolName), error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

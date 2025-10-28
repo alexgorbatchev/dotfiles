@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IDownloader } from '@dotfiles/downloader';
 import { downloadWithProgress } from '../utils';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 
 export interface DownloadStepParams {
@@ -22,7 +22,7 @@ export class DownloadStep extends InstallationStep<DownloadStepParams> {
     const { url, filename, downloader } = this.params;
     const downloadPath = path.join(context.installDir, filename);
 
-    context.logger.debug(installerLogMessages.downloadStep.downloadingAsset(filename, url));
+    context.logger.debug(messages.downloadStep.downloadingAsset(filename, url));
 
     try {
       await downloadWithProgress(url, downloadPath, filename, downloader, context.options);

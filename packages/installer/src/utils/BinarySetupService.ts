@@ -3,7 +3,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/schemas';
 import { createBinarySymlink } from './createBinarySymlinks';
-import { installerLogMessages } from './log-messages';
+import { messages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
 
 /**
@@ -53,7 +53,7 @@ async function setupBinariesUsingPatterns(
     const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, methodLogger);
 
     if (!binaryPath) {
-      methodLogger.error(installerLogMessages.binarySetupService.binaryNotFound(binaryName, pattern));
+      methodLogger.error(messages.binarySetupService.binaryNotFound(binaryName, pattern));
       continue;
     }
 
@@ -76,7 +76,7 @@ async function findBinaryUsingPattern(
   logger: TsLogger
 ): Promise<string | null> {
   const methodLogger = logger.getSubLogger({ name: 'findBinaryUsingPattern' });
-  methodLogger.debug(installerLogMessages.binarySetupService.searchingWithPattern(pattern, extractDir));
+  methodLogger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));
 
   // Try the primary pattern first
   let result: string | null = null;
@@ -90,7 +90,7 @@ async function findBinaryUsingPattern(
   // If primary pattern failed and it's a wildcard pattern like '*/tool', try fallback patterns
   if (!result && pattern.startsWith('*/')) {
     const toolName = pattern.substring(2); // Remove '*/' prefix
-    methodLogger.debug(installerLogMessages.binarySetupService.fallbackPattern(toolName, extractDir));
+    methodLogger.debug(messages.binarySetupService.fallbackPattern(toolName, extractDir));
 
     // Try direct path as fallback
     result = await findBinaryWithDirectPath(fs, extractDir, toolName);
@@ -126,7 +126,7 @@ async function findBinaryWithWildcards(
     }
 
     if (!(await fs.exists(currentDir))) {
-      methodLogger.debug(installerLogMessages.binarySetupService.patternPathMissing(currentDir));
+      methodLogger.debug(messages.binarySetupService.patternPathMissing(currentDir));
       return null;
     }
   }
@@ -149,13 +149,13 @@ async function findWildcardMatch(
   const matches = entries.filter((entry) => regex.test(entry));
 
   if (matches.length === 0) {
-    methodLogger.debug(installerLogMessages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
+    methodLogger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
     return null;
   }
 
   const firstMatch = matches[0];
   if (!firstMatch) {
-    methodLogger.debug(installerLogMessages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
+    methodLogger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
     return null;
   }
 
@@ -204,8 +204,6 @@ export async function setupBinariesFromDirectDownload(
   );
 
   if (binaryConfigs.length > 1) {
-    methodLogger.debug(
-      installerLogMessages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary)
-    );
+    methodLogger.debug(messages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary));
   }
 }

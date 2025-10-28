@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const installerLogMessages = {
+export const messages = {
   binarySetupStep: {
     starting: (toolName: string, setupType: 'archive' | 'direct') =>
       createSafeLogMessage(`Setting up binaries for ${toolName} (${setupType})`),
@@ -26,16 +26,14 @@ export const installerLogMessages = {
         `Cannot create symlink for ${toolName}/${binaryName}: target binary missing at ${targetPath}`
       ),
     removingExisting: (symlinkPath: string) => createSafeLogMessage(`Removing old symlink: ${symlinkPath}`),
-    removeExistingFailed: (symlinkPath: string) =>
-      createSafeLogMessage(`Failed to remove old symlink ${symlinkPath}`),
+    removeExistingFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to remove old symlink ${symlinkPath}`),
     creating: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`Creating symlink: ${symlinkPath} -> ${targetPath}`),
     creationFailed: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`Failed to create symlink ${symlinkPath} -> ${targetPath}`),
     verificationMismatch: (symlinkPath: string, expectedTarget: string, actualTarget: string) =>
       createSafeLogMessage(`Symlink ${symlinkPath} points to ${actualTarget}, expected ${expectedTarget}`),
-    verificationFailed: (symlinkPath: string) =>
-      createSafeLogMessage(`Failed to verify symlink ${symlinkPath}`),
+    verificationFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to verify symlink ${symlinkPath}`),
     createdAndVerified: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`Successfully created and verified symlink: ${symlinkPath} -> ${targetPath}`),
   } satisfies SafeLogMessageMap,
@@ -77,9 +75,7 @@ export const installerLogMessages = {
         `Final download URL determined. Raw: "${rawUrl}", Configured Host: "${host}", Result: "${resolved}"`
       ),
     downloadUrlError: (rawUrl: string, host: string) =>
-      createSafeLogMessage(
-        `Download URL construction failed: Raw: "${rawUrl}", Configured Host: "${host}"`
-      ),
+      createSafeLogMessage(`Download URL construction failed: Raw: "${rawUrl}", Configured Host: "${host}"`),
     downloadingAsset: (downloadUrl: string) => createSafeLogMessage(`Downloading asset: ${downloadUrl}`),
     extractingArchive: (assetName: string) => createSafeLogMessage(`Extracting archive: ${assetName}`),
     archiveExtracted: () => createSafeLogMessage('Archive extracted: %o'),

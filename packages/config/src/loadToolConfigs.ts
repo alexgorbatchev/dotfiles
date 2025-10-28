@@ -10,7 +10,7 @@ import type {
 import { toolConfigSchema } from '@dotfiles/schemas';
 import type { YamlConfig } from '@dotfiles/schemas/config';
 import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
-import { configLoaderLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Validates a tool configuration with Zod schema and logs errors if validation fails.
@@ -26,7 +26,7 @@ function validateToolConfig(config: unknown, logger: TsLogger, filePath: string,
     return validationResult.data;
   }
 
-  logger.error(configLoaderLogMessages.configurationParseError(filePath, 'ToolConfig', `${context} validation failed`));
+  logger.error(messages.configurationParseError(filePath, 'ToolConfig', `${context} validation failed`));
   logger.zodErrors(validationResult.error);
   return null;
 }
@@ -55,7 +55,7 @@ async function processFunctionExport(
   if (result && typeof result === 'object' && 'name' in result) {
     const validatedConfig = validateToolConfig(result, logger, filePath, 'Function return');
     if (validatedConfig) {
-      logger.trace(configLoaderLogMessages.configurationLoaded(filePath, 1));
+      logger.trace(messages.configurationLoaded(filePath, 1));
     }
     return validatedConfig;
   }
@@ -64,7 +64,7 @@ async function processFunctionExport(
   const builtConfig = builder.build();
   const validatedConfig = validateToolConfig(builtConfig, logger, filePath, 'Builder');
   if (validatedConfig) {
-    logger.trace(configLoaderLogMessages.configurationLoaded(filePath, 1));
+    logger.trace(messages.configurationLoaded(filePath, 1));
   }
   return validatedConfig;
 }
@@ -85,15 +85,11 @@ function processDirectExport(
 ): ToolConfig | null {
   const validatedConfig = validateToolConfig(exportedObject, logger, filePath, 'Direct export');
   if (validatedConfig) {
-    logger.trace(configLoaderLogMessages.configurationValidated(filePath));
+    logger.trace(messages.configurationValidated(filePath));
     // Ensure the toolConfig.name matches the filename if it's a direct object export
     if (validatedConfig.name !== toolName) {
       logger.warn(
-        configLoaderLogMessages.configurationFieldInvalid(
-          'tool config object name',
-          validatedConfig.name,
-          `filename: ${toolName}`
-        ),
+        messages.configurationFieldInvalid('tool config object name', validatedConfig.name, `filename: ${toolName}`),
         filePath
       );
     }
@@ -136,14 +132,14 @@ async function loadToolConfigFromModule(
   try {
     const module = await import(filePath);
     if (!module.default) {
-      logger.error(configLoaderLogMessages.configurationParseError(filePath, 'ToolConfig', 'no default export'));
+      logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'no default export'));
       return null;
     }
 
     let toolConfig: ToolConfig | null;
 
     if (typeof module.default === 'function') {
-      logger.trace(configLoaderLogMessages.configurationValidated(filePath));
+      logger.trace(messages.configurationValidated(filePath));
       const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
       toolConfig = await processFunctionExport(configureToolFn, logger, toolName, filePath, yamlConfig);
     } else {
@@ -157,7 +153,7 @@ async function loadToolConfigFromModule(
 
     return toolConfig;
   } catch (error) {
-    logger.error(configLoaderLogMessages.configurationLoadFailed(path.relative(yamlConfig.configFileDir, filePath)), error);
+    logger.error(messages.configurationLoadFailed(path.relative(yamlConfig.configFileDir, filePath)), error);
     return null;
   }
 }
@@ -170,16 +166,11 @@ function validateAndStoreToolConfig(
 ): void {
   if (toolConfig?.name) {
     toolConfigs[toolConfig.name] = toolConfig;
-    logger.debug(configLoaderLogMessages.configurationLoaded(filePath, 1), toolConfig.name);
+    logger.debug(messages.configurationLoaded(filePath, 1), toolConfig.name);
   } else if (toolConfig) {
-    logger.warn(
-      configLoaderLogMessages.configurationFieldInvalid('tool config', 'missing name', 'valid name property'),
-      filePath
-    );
+    logger.warn(messages.configurationFieldInvalid('tool config', 'missing name', 'valid name property'), filePath);
   } else {
-    logger.error(
-      configLoaderLogMessages.configurationParseError(filePath, 'ToolConfig', 'Could not derive valid configuration')
-    );
+    logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'Could not derive valid configuration'));
   }
 }
 
@@ -215,11 +206,11 @@ async function scanDirectoryForToolFiles(
           });
         }
       } catch (error) {
-        logger.debug(configLoaderLogMessages.fsReadFailed(entryPath), error);
+        logger.debug(messages.fsReadFailed(entryPath), error);
       }
     }
   } catch (error) {
-    logger.debug(configLoaderLogMessages.fsReadFailed(dirPath), error);
+    logger.debug(messages.fsReadFailed(dirPath), error);
   }
 
   return results;
@@ -245,19 +236,19 @@ export async function loadToolConfigs(
   const toolConfigs: Record<string, ToolConfig> = {};
 
   if (toolName) {
-    logger.debug(configLoaderLogMessages.singleToolConfigLoadingStarted(toolName, toolConfigsDir));
+    logger.debug(messages.singleToolConfigLoadingStarted(toolName, toolConfigsDir));
   } else {
-    logger.debug(configLoaderLogMessages.toolConfigLoadingStarted(toolConfigsDir));
+    logger.debug(messages.toolConfigLoadingStarted(toolConfigsDir));
   }
 
   try {
     if (!(await fs.exists(toolConfigsDir))) {
-      logger.debug(configLoaderLogMessages.fsItemNotFound('tool configs directory', toolConfigsDir));
+      logger.debug(messages.fsItemNotFound('tool configs directory', toolConfigsDir));
       return {};
     }
 
     const files = await fs.readdir(toolConfigsDir);
-    logger.trace(configLoaderLogMessages.toolConfigDirectoryScan(toolConfigsDir), files);
+    logger.trace(messages.toolConfigDirectoryScan(toolConfigsDir), files);
 
     // Recursively scan for all .tool.ts files
     const allToolFiles = await scanDirectoryForToolFiles(fs, toolConfigsDir, logger);
@@ -268,13 +259,13 @@ export async function loadToolConfigs(
       : allToolFiles;
 
     for (const { filePath, toolName: discoveredToolName } of filesToProcess) {
-      logger.trace(configLoaderLogMessages.toolConfigEntryLoad(path.relative(yamlConfig.configFileDir, filePath)));
+      logger.trace(messages.toolConfigEntryLoad(path.relative(yamlConfig.configFileDir, filePath)));
 
       const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, yamlConfig);
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
   } catch (error) {
-    logger.error(configLoaderLogMessages.fsReadFailed(toolConfigsDir), error);
+    logger.error(messages.fsReadFailed(toolConfigsDir), error);
     return {};
   }
 
@@ -282,11 +273,11 @@ export async function loadToolConfigs(
   if (toolName) {
     logger.debug(
       configCount > 0
-        ? configLoaderLogMessages.configurationLoaded('single tool config', 1)
-        : configLoaderLogMessages.fsItemNotFound('Tool config', toolName)
+        ? messages.configurationLoaded('single tool config', 1)
+        : messages.fsItemNotFound('Tool config', toolName)
     );
   } else {
-    logger.debug(configLoaderLogMessages.toolConfigLoadingCompleted(), configCount);
+    logger.debug(messages.toolConfigLoadingCompleted(), configCount);
   }
 
   return toolConfigs;

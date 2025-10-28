@@ -71,7 +71,8 @@ function executeRegexMatch(fullRegex: string, received: string): { pass: boolean
   } catch (error) {
     return {
       pass: false,
-      message: () => `Invalid regex: ${error instanceof Error ? error.message : String(error)}\n\nPattern:\n${fullRegex}`,
+      message: () =>
+        `Invalid regex: ${error instanceof Error ? error.message : String(error)}\n\nPattern:\n${fullRegex}`,
     };
   }
 }

@@ -4,7 +4,7 @@ import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
-import { cliLogMessages } from './log-messages';
+import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 
 async function loadToolConfigs(
@@ -22,7 +22,7 @@ async function loadToolConfigs(
     );
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
-    logger.error(cliLogMessages.configLoadFailed('tool configurations'), error);
+    logger.error(messages.configLoadFailed('tool configurations'), error);
     return { toolConfigs: [], exitCode: ExitCode.ERROR };
   }
 }
@@ -46,7 +46,7 @@ async function checkShimConflicts(
           conflictMessages.push(`[${toolConfig.name}]: ${shimPath} (exists but is not a generator shim)`);
         }
       } catch (readError: unknown) {
-        logger.warn(cliLogMessages.fsReadFailed(shimPath), readError);
+        logger.warn(messages.fsReadFailed(shimPath), readError);
         conflictMessages.push(`[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`);
       }
     }
@@ -84,7 +84,7 @@ async function checkSymlinkConflicts(
       }
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        logger.warn(cliLogMessages.fsReadFailed(targetPath), error);
+        logger.warn(messages.fsReadFailed(targetPath), error);
       }
     }
   }
@@ -94,10 +94,10 @@ function reportConflicts(logger: TsLogger, conflictMessages: string[]): ExitCode
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
-    logger.warn(cliLogMessages.toolConflictsDetected(header, formattedConflicts));
+    logger.warn(messages.toolConflictsDetected(header, formattedConflicts));
     return ExitCode.ERROR;
   } else {
-    logger.info(cliLogMessages.noConflictsDetected());
+    logger.info(messages.noConflictsDetected());
     return ExitCode.SUCCESS;
   }
 }
@@ -120,7 +120,7 @@ export async function detectConflictsActionLogic(
   const toolConfigsArray = toolConfigsResult.toolConfigs;
 
   if (toolConfigsArray.length === 0) {
-    logger.info(cliLogMessages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
+    logger.info(messages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
     return ExitCode.SUCCESS;
   }
 
@@ -152,7 +152,7 @@ export function registerDetectConflictsCommand(
     .command('detect-conflicts')
     .description('Detects conflicts between potential generated artifacts and existing system files.')
     .action(async () => {
-      logger.debug(cliLogMessages.commandActionCalled('detect-conflicts'));
+      logger.debug(messages.commandActionCalled('detect-conflicts'));
 
       const combinedOptions = program.opts();
 
@@ -161,7 +161,7 @@ export function registerDetectConflictsCommand(
         const services = await servicesFactory();
         exitCode = await detectConflictsActionLogic(logger, combinedOptions, services);
       } catch (error) {
-        logger.error(cliLogMessages.commandExecutionFailed('detect-conflicts', ExitCode.ERROR), error);
+        logger.error(messages.commandExecutionFailed('detect-conflicts', ExitCode.ERROR), error);
         exitCode = ExitCode.ERROR;
       }
 

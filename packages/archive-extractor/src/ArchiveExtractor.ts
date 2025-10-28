@@ -5,7 +5,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/schemas';
 import type { IArchiveExtractor } from './IArchiveExtractor';
-import { extractorLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 interface ExecError extends Error {
   code?: number;
@@ -48,7 +48,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   private async executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
     try {
-      logger.debug(extractorLogMessages.shellCommandStarted(command));
+      logger.debug(messages.shellCommandStarted(command));
       const { stdout, stderr } = await this.promisedExec(command);
       return { stdout, stderr, exitCode: 0 };
     } catch (error: unknown) {
@@ -61,7 +61,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       augmentedError.stderr = execError.stderr || '';
       augmentedError.exitCode = typeof execError.code === 'number' ? execError.code : 1;
       augmentedError.originalError = execError; // Keep original error if needed
-      logger.debug(extractorLogMessages.shellCommandFailed(command, augmentedError.exitCode), augmentedError);
+      logger.debug(messages.shellCommandFailed(command, augmentedError.exitCode), augmentedError);
       throw augmentedError;
     }
   }
@@ -109,7 +109,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
       return this.detectFormatByMimeType(output);
     } catch (error) {
-      logger.debug(extractorLogMessages.fileCommandFallbackFailed(filePath), error);
+      logger.debug(messages.fileCommandFallbackFailed(filePath), error);
       return null;
     }
   }
@@ -199,7 +199,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       detectExecutables = true,
     } = options;
 
-    logger.debug(extractorLogMessages.extractionRequested(archivePath), options);
+    logger.debug(messages.extractionRequested(archivePath), options);
 
     const format = explicitFormat || (await this.detectFormat(archivePath));
 
@@ -252,14 +252,14 @@ export class ArchiveExtractor implements IArchiveExtractor {
           if (ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext)) {
             // Check if it's already executable (owner execute bit)
             if (!(stat.mode & 0o100)) {
-              logger.debug(extractorLogMessages.executableFlagApplied(filePath));
+              logger.debug(messages.executableFlagApplied(filePath));
               await this.fs.chmod(filePath, stat.mode | 0o100); // Add owner execute
             }
             executables.push(file);
           }
         }
       } catch (error) {
-        logger.debug(extractorLogMessages.executableCheckFailed(filePath), error);
+        logger.debug(messages.executableCheckFailed(filePath), error);
       }
     }
     return executables;

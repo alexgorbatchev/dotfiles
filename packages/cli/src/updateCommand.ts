@@ -6,7 +6,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { GitHubRelease, GithubReleaseInstallParams, ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
-import { cliLogMessages } from './log-messages';
+import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services, UpdateCommandSpecificOptions } from './types';
 
 export interface UpdateCommandOptions extends BaseCommandOptions {
@@ -26,13 +26,13 @@ async function loadToolConfigSafely(
     const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
 
     if (!toolConfig) {
-      logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
+      logger.error(messages.toolNotFound(toolName, toolConfigsDir));
       return { toolConfig: null, exitCode: ExitCode.ERROR };
     }
 
     return { toolConfig, exitCode: ExitCode.SUCCESS };
   } catch (error) {
-    logger.error(cliLogMessages.configLoadFailed(`tool "${toolName}"`), error);
+    logger.error(messages.configLoadFailed(`tool "${toolName}"`), error);
     return { toolConfig: null, exitCode: ExitCode.ERROR };
   }
 }
@@ -48,13 +48,13 @@ async function getLatestReleaseFromGitHub(
     const latestRelease = await githubApiClient.getLatestRelease(owner, repo);
 
     if (!latestRelease) {
-      logger.warn(cliLogMessages.serviceGithubResourceNotFound('release', `${toolName} from ${owner}/${repo}`));
+      logger.warn(messages.serviceGithubResourceNotFound('release', `${toolName} from ${owner}/${repo}`));
       return null;
     }
 
     return latestRelease;
   } catch (networkError) {
-    logger.error(cliLogMessages.serviceGithubApiFailed('get latest release', 0), networkError);
+    logger.error(messages.serviceGithubApiFailed('get latest release', 0), networkError);
     return null;
   }
 }
@@ -71,17 +71,14 @@ function validateGitHubRepo(
   const githubParams = toolConfig.installParams as GithubReleaseInstallParams;
   if (!githubParams?.repo) {
     logger.warn(
-      cliLogMessages.configParameterIgnored(
-        'repo',
-        `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`
-      )
+      messages.configParameterIgnored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
     );
     return null;
   }
 
   const [owner, repo] = githubParams.repo.split('/');
   if (!owner || !repo) {
-    logger.warn(cliLogMessages.configParameterInvalid('repo format', githubParams.repo, 'owner/repo'));
+    logger.warn(messages.configParameterInvalid('repo format', githubParams.repo, 'owner/repo'));
     return null;
   }
 
@@ -98,16 +95,16 @@ function logUpdateStatus(
 ): void {
   if (status === VersionComparisonStatus.UP_TO_DATE) {
     if (shimMode) {
-      logger.info(cliLogMessages.toolShimUpToDate(toolName, latestVersion));
+      logger.info(messages.toolShimUpToDate(toolName, latestVersion));
     } else {
-      logger.info(cliLogMessages.toolUpToDate(toolName, configuredVersion, latestVersion));
+      logger.info(messages.toolUpToDate(toolName, configuredVersion, latestVersion));
     }
   } else if (
     status === VersionComparisonStatus.AHEAD_OF_LATEST ||
     status === VersionComparisonStatus.INVALID_CURRENT_VERSION ||
     status === VersionComparisonStatus.INVALID_LATEST_VERSION
   ) {
-    logger.warn(cliLogMessages.toolVersionComparisonFailed(toolName, configuredVersion, latestVersion));
+    logger.warn(messages.toolVersionComparisonFailed(toolName, configuredVersion, latestVersion));
   }
 }
 
@@ -121,10 +118,10 @@ async function performUpdate(
   shimMode: boolean
 ): Promise<ExitCode> {
   if (shimMode) {
-    logger.info(cliLogMessages.toolShimUpdateStarting(toolName, configuredVersion, latestVersion));
+    logger.info(messages.toolShimUpdateStarting(toolName, configuredVersion, latestVersion));
   } else {
-    logger.info(cliLogMessages.toolUpdateAvailable(toolName, configuredVersion, latestVersion));
-    logger.info(cliLogMessages.toolProcessingUpdate(toolName, configuredVersion, latestVersion));
+    logger.info(messages.toolUpdateAvailable(toolName, configuredVersion, latestVersion));
+    logger.info(messages.toolProcessingUpdate(toolName, configuredVersion, latestVersion));
   }
 
   const toolConfigForUpdate: ToolConfig = {
@@ -135,13 +132,13 @@ async function performUpdate(
 
   if (installResult.success) {
     if (shimMode) {
-      logger.info(cliLogMessages.toolShimUpdateSuccess(toolName, latestVersion));
+      logger.info(messages.toolShimUpdateSuccess(toolName, latestVersion));
     } else {
-      logger.info(cliLogMessages.toolUpdated(toolName, configuredVersion, latestVersion));
+      logger.info(messages.toolUpdated(toolName, configuredVersion, latestVersion));
     }
     return ExitCode.SUCCESS;
   } else {
-    logger.error(cliLogMessages.toolUpdateFailed(toolName, installResult.error ?? 'Unknown error'));
+    logger.error(messages.toolUpdateFailed(toolName, installResult.error ?? 'Unknown error'));
     return ExitCode.ERROR;
   }
 }
@@ -166,9 +163,9 @@ async function handleGitHubReleaseUpdate(
   if (configuredVersion === 'latest') {
     // Even if configured to 'latest', we still need to install/update to ensure latest version is installed
     if (shimMode) {
-      logger.info(cliLogMessages.toolShimOnLatest(toolName, latestVersion));
+      logger.info(messages.toolShimOnLatest(toolName, latestVersion));
     } else {
-      logger.info(cliLogMessages.toolConfiguredToLatest(toolName, latestVersion));
+      logger.info(messages.toolConfiguredToLatest(toolName, latestVersion));
     }
     const updateExitCode = await performUpdate(
       logger,
@@ -218,7 +215,7 @@ export function registerUpdateCommand(
     .option('--shim-mode', 'Run in shim mode with minimal output', false)
     .action(async (toolName: string, commandOptions: UpdateCommandSpecificOptions) => {
       const actionLogger = logger.getSubLogger({ name: 'action' });
-      actionLogger.debug(cliLogMessages.commandActionCalled('update'));
+      actionLogger.debug(messages.commandActionCalled('update'));
 
       const combinedOptions: UpdateCommandOptions = { ...commandOptions, ...program.opts() };
 
@@ -241,7 +238,7 @@ export function registerUpdateCommand(
         }
 
         if (!toolConfigResult.toolConfig) {
-          logger.error(cliLogMessages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
+          logger.error(messages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
           exitCli(ExitCode.ERROR);
           return;
         }
@@ -249,21 +246,21 @@ export function registerUpdateCommand(
         const toolConfig = toolConfigResult.toolConfig;
 
         if (!combinedOptions.shimMode) {
-          logger.info(cliLogMessages.commandCheckingUpdatesFor(toolName));
+          logger.info(messages.commandCheckingUpdatesFor(toolName));
         }
 
         if (toolConfig.installationMethod === 'github-release') {
           await handleGitHubReleaseUpdate(logger, services, toolName, toolConfig, combinedOptions.shimMode);
         } else {
           logger.info(
-            cliLogMessages.commandUnsupportedOperation(
+            messages.commandUnsupportedOperation(
               'Update',
               `installation method: "${toolConfig.installationMethod}" for tool "${toolName}"`
             )
           );
         }
       } catch (error) {
-        logger.error(cliLogMessages.commandExecutionFailed('update', ExitCode.ERROR), error);
+        logger.error(messages.commandExecutionFailed('update', ExitCode.ERROR), error);
         exitCli(ExitCode.ERROR);
       }
     });

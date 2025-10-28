@@ -16,7 +16,7 @@ import type { GitHubRateLimit, GitHubRelease } from '@dotfiles/schemas';
 import semver from 'semver';
 import { GitHubApiClientError } from './GitHubApiClientError';
 import type { IGitHubApiClient } from './IGitHubApiClient';
-import { githubApiClientLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Implements the IGitHubApiClient interface for interacting with the GitHub API.
@@ -70,19 +70,19 @@ export class GitHubApiClient implements IGitHubApiClient {
     this.cacheEnabled = config.github.cache.enabled;
     this.cacheTtlMs = config.github.cache.ttl;
     const logger = this.logger.getSubLogger({ name: 'constructor' });
-    logger.debug(githubApiClientLogMessages.constructor.initialized(this.baseUrl, this.userAgent));
+    logger.debug(messages.constructor.initialized(this.baseUrl, this.userAgent));
     if (this.githubToken) {
-      logger.debug(githubApiClientLogMessages.constructor.authTokenPresent());
+      logger.debug(messages.constructor.authTokenPresent());
     } else {
-      logger.debug(githubApiClientLogMessages.constructor.authTokenMissing());
+      logger.debug(messages.constructor.authTokenMissing());
     }
 
     if (this.cache && this.cacheEnabled) {
-      logger.debug(githubApiClientLogMessages.cache.enabled(this.cacheTtlMs));
+      logger.debug(messages.cache.enabled(this.cacheTtlMs));
     } else if (this.cache && !this.cacheEnabled) {
-      logger.debug(githubApiClientLogMessages.cache.disabled());
+      logger.debug(messages.cache.disabled());
     } else {
-      logger.debug(githubApiClientLogMessages.cache.missing());
+      logger.debug(messages.cache.missing());
     }
   }
 
@@ -117,7 +117,7 @@ export class GitHubApiClient implements IGitHubApiClient {
       return cachedResult;
     }
 
-    logger.debug(githubApiClientLogMessages.request.performing(method, url));
+    logger.debug(messages.request.performing(method, url));
     const headers = this.buildRequestHeaders();
 
     try {
@@ -163,7 +163,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     const logger = this.logger.getSubLogger({ name: 'performRequest' });
     const responseBuffer = await this.downloader.download(url, { headers });
     if (!responseBuffer || responseBuffer.length === 0) {
-      logger.debug(githubApiClientLogMessages.request.emptyResponse(url));
+      logger.debug(messages.request.emptyResponse(url));
       throw new NetworkError(this.logger, 'Empty response received from API', url);
     }
     const responseText = responseBuffer.toString('utf-8');
@@ -184,10 +184,10 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleRequestError(error: unknown, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleRequestError' });
-    logger.debug(githubApiClientLogMessages.errors.requestFailure(url), error);
+    logger.debug(messages.errors.requestFailure(url), error);
 
     if (error instanceof NotFoundError) {
-      logger.debug(githubApiClientLogMessages.errors.notFound(url), error.responseBody);
+      logger.debug(messages.errors.notFound(url), error.responseBody);
       throw new Error(`GitHub resource not found: ${url}. Status: ${error.statusCode}`);
     }
     if (error instanceof RateLimitError) {
@@ -215,7 +215,7 @@ export class GitHubApiClient implements IGitHubApiClient {
   private handleRateLimitError(error: RateLimitError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleRateLimitError' });
     const resetTime = error.resetTimestamp ? new Date(error.resetTimestamp).toISOString() : 'N/A';
-    logger.debug(githubApiClientLogMessages.errors.rateLimit(url, resetTime), error.responseBody);
+    logger.debug(messages.errors.rateLimit(url, resetTime), error.responseBody);
     throw new GitHubApiClientError(
       `GitHub API rate limit exceeded for ${url}. Status: ${error.statusCode}. Resets at ${resetTime}.`,
       error.statusCode,
@@ -225,7 +225,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleForbiddenError(error: ForbiddenError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleForbiddenError' });
-    logger.debug(githubApiClientLogMessages.errors.forbidden(url), error.responseBody);
+    logger.debug(messages.errors.forbidden(url), error.responseBody);
     throw new GitHubApiClientError(
       `GitHub API request forbidden for ${url}. Status: ${error.statusCode}.`,
       error.statusCode,
@@ -235,7 +235,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleClientError(error: ClientError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleClientError' });
-    logger.debug(githubApiClientLogMessages.errors.client(url, error.statusCode), error.responseBody);
+    logger.debug(messages.errors.client(url, error.statusCode), error.responseBody);
     throw new GitHubApiClientError(
       `GitHub API client error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
       error.statusCode,
@@ -245,7 +245,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleServerError(error: ServerError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleServerError' });
-    logger.debug(githubApiClientLogMessages.errors.server(url, error.statusCode), error.responseBody);
+    logger.debug(messages.errors.server(url, error.statusCode), error.responseBody);
     throw new GitHubApiClientError(
       `GitHub API server error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
       error.statusCode,
@@ -255,7 +255,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleHttpError(error: HttpError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleHttpError' });
-    logger.debug(githubApiClientLogMessages.errors.http(url, error.statusCode), error);
+    logger.debug(messages.errors.http(url, error.statusCode), error);
     throw new GitHubApiClientError(
       `GitHub API HTTP error for ${url}. Status: ${error.statusCode} ${error.statusText}.`,
       error.statusCode,
@@ -265,13 +265,13 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleNetworkError(error: NetworkError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleNetworkError' });
-    logger.debug(githubApiClientLogMessages.errors.network(url), error);
+    logger.debug(messages.errors.network(url), error);
     throw new GitHubApiClientError(`Network error while requesting ${url}: ${error.message}`, undefined, error);
   }
 
   private handleUnknownError(error: unknown, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleUnknownError' });
-    logger.debug(githubApiClientLogMessages.errors.unknown(url), error);
+    logger.debug(messages.errors.unknown(url), error);
     if (error instanceof Error) {
       throw new GitHubApiClientError(
         `Unknown error during GitHub API request to ${url}: ${error.message}`,
@@ -284,30 +284,30 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   async getLatestRelease(owner: string, repo: string): Promise<GitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'getLatestRelease' });
-    logger.debug(githubApiClientLogMessages.releases.fetchingLatest(owner, repo));
+    logger.debug(messages.releases.fetchingLatest(owner, repo));
     try {
       return await this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/latest`);
     } catch (error) {
       if (error instanceof Error && error.message.includes('GitHub resource not found')) {
-        logger.debug(githubApiClientLogMessages.releases.latestNotFound(owner, repo));
+        logger.debug(messages.releases.latestNotFound(owner, repo));
         return null;
       }
-      logger.debug(githubApiClientLogMessages.releases.latestError(owner, repo), error);
+      logger.debug(messages.releases.latestError(owner, repo), error);
       throw error;
     }
   }
 
   async getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'getReleaseByTag' });
-    logger.debug(githubApiClientLogMessages.releases.fetchingByTag(tag, owner, repo));
+    logger.debug(messages.releases.fetchingByTag(tag, owner, repo));
     try {
       return await this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
     } catch (error) {
       if (error instanceof Error && error.message.includes('GitHub resource not found')) {
-        logger.debug(githubApiClientLogMessages.releases.tagNotFound(tag, owner, repo));
+        logger.debug(messages.releases.tagNotFound(tag, owner, repo));
         return null;
       }
-      logger.debug(githubApiClientLogMessages.releases.tagError(tag, owner, repo), error);
+      logger.debug(messages.releases.tagError(tag, owner, repo), error);
       throw error;
     }
   }
@@ -318,7 +318,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     options?: { perPage?: number; includePrerelease?: boolean }
   ): Promise<GitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: 'getAllReleases' });
-    logger.debug(githubApiClientLogMessages.releases.fetchingAll(owner, repo), options);
+    logger.debug(messages.releases.fetchingAll(owner, repo), options);
     const perPage = options?.perPage || 30; // Default to 30, max 100
     let page = 1;
     let allReleases: GitHubRelease[] = [];
@@ -326,7 +326,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
     while (keepFetching) {
       const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
-      logger.debug(githubApiClientLogMessages.releases.fetchingPage(page, endpoint));
+      logger.debug(messages.releases.fetchingPage(page, endpoint));
       const releasesPage = await this.request<GitHubRelease[]>(endpoint);
 
       if (releasesPage.length === 0) {
@@ -339,14 +339,14 @@ export class GitHubApiClient implements IGitHubApiClient {
         }
       }
     }
-    logger.debug(githubApiClientLogMessages.releases.totalFetched(allReleases.length, owner, repo));
+    logger.debug(messages.releases.totalFetched(allReleases.length, owner, repo));
 
     if (options?.includePrerelease === false) {
       // GitHub API doesn't directly filter out prereleases in the /releases endpoint AFAIK
       // We need to filter them client-side if includePrerelease is explicitly false.
       // If includePrerelease is true or undefined, we return all (including prereleases).
       const filteredReleases = allReleases.filter((release) => !release.prerelease);
-      logger.debug(githubApiClientLogMessages.releases.filteredPrereleases(filteredReleases.length));
+      logger.debug(messages.releases.filteredPrereleases(filteredReleases.length));
       return filteredReleases;
     }
 
@@ -355,7 +355,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   async getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'getReleaseByConstraint' });
-    logger.debug(githubApiClientLogMessages.constraints.searching(constraint, owner, repo));
+    logger.debug(messages.constraints.searching(constraint, owner, repo));
 
     if (constraint === 'latest') {
       return await this.handleLatestConstraint(owner, repo);
@@ -369,7 +369,7 @@ export class GitHubApiClient implements IGitHubApiClient {
       return await this.getLatestRelease(owner, repo);
     } catch (error) {
       const logger = this.logger.getSubLogger({ name: 'handleLatestConstraint' });
-      logger.debug(githubApiClientLogMessages.errors.constraintLatestError(), error);
+      logger.debug(messages.errors.constraintLatestError(), error);
       return null;
     }
   }
@@ -380,7 +380,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     constraint: string
   ): Promise<GitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'findReleaseByVersionConstraint' });
-    logger.debug(githubApiClientLogMessages.constraints.pageFetch(constraint));
+    logger.debug(messages.constraints.pageFetch(constraint));
 
     let latestSatisfyingRelease: GitHubRelease | null = null;
     let latestSatisfyingVersionClean: string | null = null;
@@ -430,12 +430,12 @@ export class GitHubApiClient implements IGitHubApiClient {
   ): Promise<GitHubRelease[] | null> {
     const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
     const logger = this.logger.getSubLogger({ name: 'fetchReleasesPage' });
-    logger.debug(githubApiClientLogMessages.constraints.pageRequest(page, owner, repo));
+    logger.debug(messages.constraints.pageRequest(page, owner, repo));
 
     try {
       return await this.request<GitHubRelease[]>(endpoint);
     } catch (error) {
-      logger.debug(githubApiClientLogMessages.errors.constraintError(constraint, owner, repo), error);
+      logger.debug(messages.errors.constraintError(constraint, owner, repo), error);
       return null;
     }
   }
@@ -461,7 +461,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         if (this.isBetterVersion(cleanVersion, bestVersion)) {
           bestRelease = release;
           bestVersion = cleanVersion;
-          logger.debug(githubApiClientLogMessages.constraints.bestCandidate(release.tag_name, cleanVersion));
+          logger.debug(messages.constraints.bestCandidate(release.tag_name, cleanVersion));
         }
       }
     }
@@ -480,15 +480,15 @@ export class GitHubApiClient implements IGitHubApiClient {
   private logConstraintResult(constraint: string, result: GitHubRelease | null): void {
     const logger = this.logger.getSubLogger({ name: 'logConstraintResult' });
     if (result) {
-      logger.debug(githubApiClientLogMessages.constraints.resultFound(constraint, result.tag_name));
+      logger.debug(messages.constraints.resultFound(constraint, result.tag_name));
     } else {
-      logger.debug(githubApiClientLogMessages.constraints.resultMissing(constraint));
+      logger.debug(messages.constraints.resultMissing(constraint));
     }
   }
 
   async getRateLimit(): Promise<GitHubRateLimit> {
     const logger = this.logger.getSubLogger({ name: 'getRateLimit' });
-    logger.debug(githubApiClientLogMessages.rateLimit.fetching());
+    logger.debug(messages.rateLimit.fetching());
     // The actual rate limit data is nested under "resources"
     type RateLimitResponse = {
       resources: {

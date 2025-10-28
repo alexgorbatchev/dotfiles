@@ -5,7 +5,7 @@ import type { BaseInstallContext, ManualToolConfig } from '@dotfiles/schemas';
 import { expandToolConfigPath } from '@dotfiles/utils';
 import type { InstallOptions, InstallResult } from '../types';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '../utils';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 
 /**
  * Install a tool manually
@@ -20,7 +20,7 @@ export async function installManually(
 ): Promise<InstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installManually' });
-  logger.debug(installerLogMessages.manual.installing(toolName));
+  logger.debug(messages.manual.installing(toolName));
 
   const params = toolConfig.installParams;
 
@@ -78,7 +78,7 @@ async function installBinariesManually(
       await toolFs.copyFile(binaryPath, finalBinaryPath);
       await toolFs.chmod(finalBinaryPath, 0o755);
     } else {
-      logger.debug(installerLogMessages.manual.multipleBinariesNotSupported(binaryName));
+      logger.debug(messages.manual.multipleBinariesNotSupported(binaryName));
     }
   }
 }

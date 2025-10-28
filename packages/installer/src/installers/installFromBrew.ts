@@ -3,7 +3,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
 import type { InstallOptions, InstallResult } from '../types';
 import { getBinaryPaths, withInstallErrorHandling } from '../utils';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 
 /**
  * Install a tool using Homebrew
@@ -16,7 +16,7 @@ export async function installFromBrew(
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
-  logger.debug(installerLogMessages.brew.installing(toolName), toolConfig.installParams);
+  logger.debug(messages.brew.installing(toolName), toolConfig.installParams);
 
   if (!toolConfig.installParams) {
     return {
@@ -32,7 +32,7 @@ export async function installFromBrew(
 
   const operation = async (): Promise<InstallResult> => {
     const command = buildBrewCommand(formula, isCask, tap, options?.force);
-    logger.debug(installerLogMessages.brew.executingCommand(command));
+    logger.debug(messages.brew.executingCommand(command));
 
     await installBinaries(toolConfig, toolName, context, logger);
 
@@ -89,6 +89,6 @@ async function installBinaries(
     const binaryName = typeof binary === 'string' ? binary : binary.name;
     const sourcePath = `/usr/local/bin/${binaryName}`;
     const finalBinaryPath = path.join(context.installDir, binaryName);
-    logger.debug(installerLogMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
+    logger.debug(messages.binaryMovement.moving(sourcePath, finalBinaryPath));
   }
 }

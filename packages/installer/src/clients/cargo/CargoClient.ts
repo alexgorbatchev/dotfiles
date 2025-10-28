@@ -6,7 +6,7 @@ import { parse } from 'smol-toml';
 import { z } from 'zod';
 import { CargoClientError } from './CargoClientError';
 import type { ICargoClient } from './ICargoClient';
-import { cargoClientLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Cargo crate metadata from crates.io API
@@ -102,12 +102,12 @@ export class CargoClient implements ICargoClient {
     this.githubRawCacheTtl = this.cargoConfig.githubRaw.cache.ttl;
 
     const logger = this.logger.getSubLogger({ name: 'constructor' });
-    logger.debug(cargoClientLogMessages.constructor.initialized('CargoClient', this.cargoConfig.userAgent));
+    logger.debug(messages.constructor.initialized('CargoClient', this.cargoConfig.userAgent));
   }
 
   private async request<T>(url: string, cacheOptions?: CargoCacheOptions): Promise<T> {
     const logger = this.logger.getSubLogger({ name: 'request' });
-    logger.debug(cargoClientLogMessages.request.makingRequest('GET', url));
+    logger.debug(messages.request.makingRequest('GET', url));
     const headers = this.buildRequestHeaders();
     const { useCache, cacheKey, cacheTtl } = this.resolveCacheOptions(url, cacheOptions);
     const cached = await this.tryReadCache<T>(cacheKey, useCache);
@@ -170,14 +170,14 @@ export class CargoClient implements ICargoClient {
   private parseJson<T>(buffer: Buffer, url: string): T {
     const logger = this.logger.getSubLogger({ name: 'parseJson' });
     if (!buffer || buffer.length === 0) {
-      logger.error(cargoClientLogMessages.errors.emptyResponse(url));
+      logger.error(messages.errors.emptyResponse(url));
       throw new NetworkError(logger, 'Empty response received from API', url);
     }
     try {
       return JSON.parse(buffer.toString('utf-8')) as T;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        logger.error(cargoClientLogMessages.errors.jsonParseError(url), error);
+        logger.error(messages.errors.jsonParseError(url), error);
         throw new CargoClientError(`Invalid JSON response from ${url}: ${error.message}`, undefined, error);
       }
       throw error;
@@ -188,7 +188,7 @@ export class CargoClient implements ICargoClient {
     const logger = this.logger.getSubLogger({ name: 'performDownload' });
     const result = await this.downloader.download(url, { headers });
     if (!result) {
-      logger.error(cargoClientLogMessages.errors.emptyResponse(url));
+      logger.error(messages.errors.emptyResponse(url));
       throw new NetworkError(logger, 'Empty response received from API', url);
     }
     return result;
@@ -203,16 +203,16 @@ export class CargoClient implements ICargoClient {
 
   async getCrateMetadata(crateName: string): Promise<CrateMetadata | null> {
     const logger = this.logger.getSubLogger({ name: 'getCrateMetadata' });
-    logger.debug(cargoClientLogMessages.cratesIo.querying(crateName));
+    logger.debug(messages.cratesIo.querying(crateName));
     const url = `${this.cargoConfig.cratesIo.host}/api/v1/crates/${crateName}`;
     try {
       return await this.request<CrateMetadata>(url, { kind: 'cratesIo' });
     } catch (error) {
       if (error instanceof NotFoundError) {
-        logger.error(cargoClientLogMessages.cratesIo.notFound(crateName));
+        logger.error(messages.cratesIo.notFound(crateName));
         return null;
       }
-      logger.error(cargoClientLogMessages.cratesIo.metadataError(crateName), error);
+      logger.error(messages.cratesIo.metadataError(crateName), error);
       throw error;
     }
   }
@@ -226,7 +226,7 @@ export class CargoClient implements ICargoClient {
 
   async getCargoTomlPackage(url: string): Promise<CargoTomlPackage | null> {
     const logger = this.logger.getSubLogger({ name: 'getCargoTomlPackage' });
-    logger.debug(cargoClientLogMessages.parsing.parsingCrateMetadata(url));
+    logger.debug(messages.parsing.parsingCrateMetadata(url));
     const { useCache, cacheKey } = this.resolveCacheOptions(url, { kind: 'githubRaw' });
     if (useCache) {
       const cached = await this.tryReadCache<CargoTomlPackage>(cacheKey, useCache);
@@ -238,7 +238,7 @@ export class CargoClient implements ICargoClient {
     try {
       const responseBuffer = await this.downloader.download(url, { headers: this.buildRequestHeaders() });
       if (!responseBuffer || responseBuffer.length === 0) {
-        logger.error(cargoClientLogMessages.errors.emptyResponse(url));
+        logger.error(messages.errors.emptyResponse(url));
         return null;
       }
       const pkg = this.parseCargoToml(responseBuffer);
@@ -252,7 +252,7 @@ export class CargoClient implements ICargoClient {
         return null;
       }
       // Let other downloader errors (NetworkError, etc.) bubble up
-      logger.error(cargoClientLogMessages.parsing.cargoTomlParseError(url), error);
+      logger.error(messages.parsing.cargoTomlParseError(url), error);
       throw error;
     }
   }

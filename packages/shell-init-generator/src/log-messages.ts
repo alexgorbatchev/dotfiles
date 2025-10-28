@@ -1,7 +1,7 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 import type { ShellType } from '@dotfiles/schemas';
 
-export const shellInitGeneratorLogMessages = {
+export const messages = {
   constructor: {
     initialized: () => createSafeLogMessage('ShellInitGenerator initialized'),
   } satisfies SafeLogMessageMap,
@@ -13,10 +13,8 @@ export const shellInitGeneratorLogMessages = {
       createSafeLogMessage(`Shell init output path resolved to ${outputPath}`),
     processingTool: (toolName: string) => createSafeLogMessage(`Processing shell init configuration for ${toolName}`),
     skippingTool: (toolName: string) => createSafeLogMessage(`Skipping shell init configuration for ${toolName}`),
-    shellTypeFailure: (shellType: ShellType) =>
-      createSafeLogMessage(`Shell init generation failed for ${shellType}`),
-    writeFailure: (targetPath: string) =>
-      createSafeLogMessage(`Failed to write shell init artifact ${targetPath}`),
+    shellTypeFailure: (shellType: ShellType) => createSafeLogMessage(`Shell init generation failed for ${shellType}`),
+    writeFailure: (targetPath: string) => createSafeLogMessage(`Failed to write shell init artifact ${targetPath}`),
   } satisfies SafeLogMessageMap,
   profiles: {
     starting: (entryCount: number) => createSafeLogMessage(`Updating ${entryCount} shell profile entries`),

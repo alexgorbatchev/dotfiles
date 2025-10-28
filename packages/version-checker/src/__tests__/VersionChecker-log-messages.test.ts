@@ -1,49 +1,43 @@
 import { describe, expect, test } from 'bun:test';
-import { versionCheckerLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 
-describe('versionCheckerLogMessages', () => {
+describe('messages', () => {
   test('initializing', () => {
-    expect(String(versionCheckerLogMessages.initializing())).toBe('Initializing VersionChecker with githubClient');
+    expect(String(messages.initializing())).toBe('Initializing VersionChecker with githubClient');
   });
 
   test('fetchingLatestRelease', () => {
-    expect(String(versionCheckerLogMessages.fetchingLatestRelease('owner', 'repo'))).toBe(
-      'Fetching latest version for owner/repo'
-    );
+    expect(String(messages.fetchingLatestRelease('owner', 'repo'))).toBe('Fetching latest version for owner/repo');
   });
 
   test('latestReleaseFound', () => {
-    expect(String(versionCheckerLogMessages.latestReleaseFound('1.2.3'))).toBe('Latest release found 1.2.3');
+    expect(String(messages.latestReleaseFound('1.2.3'))).toBe('Latest release found 1.2.3');
   });
 
   test('latestReleaseError', () => {
-    expect(String(versionCheckerLogMessages.latestReleaseError('owner', 'repo'))).toBe(
-      'Failed to fetch latest release for owner/repo'
-    );
+    expect(String(messages.latestReleaseError('owner', 'repo'))).toBe('Failed to fetch latest release for owner/repo');
   });
 
   test('noLatestRelease', () => {
-    expect(String(versionCheckerLogMessages.noLatestRelease('owner', 'repo'))).toBe(
-      'No latest release found for owner/repo'
-    );
+    expect(String(messages.noLatestRelease('owner', 'repo'))).toBe('No latest release found for owner/repo');
   });
 
   test('comparingVersions', () => {
-    expect(String(versionCheckerLogMessages.comparingVersions('1.0.0', '2.0.0'))).toBe(
+    expect(String(messages.comparingVersions('1.0.0', '2.0.0'))).toBe(
       'Comparing versions configured 1.0.0 vs latest 2.0.0'
     );
   });
 
   test('invalidConfiguredVersion', () => {
-    expect(String(versionCheckerLogMessages.invalidConfiguredVersion('bad'))).toBe('Configured version invalid bad');
+    expect(String(messages.invalidConfiguredVersion('bad'))).toBe('Configured version invalid bad');
   });
 
   test('invalidLatestVersion', () => {
-    expect(String(versionCheckerLogMessages.invalidLatestVersion('bad'))).toBe('Latest version invalid bad');
+    expect(String(messages.invalidLatestVersion('bad'))).toBe('Latest version invalid bad');
   });
 
   test('versionComparisonResult', () => {
-    expect(String(versionCheckerLogMessages.versionComparisonResult('NEWER_AVAILABLE'))).toBe(
+    expect(String(messages.versionComparisonResult('NEWER_AVAILABLE'))).toBe(
       'Version comparison result NEWER_AVAILABLE'
     );
   });

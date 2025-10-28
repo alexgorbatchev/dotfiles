@@ -1,5 +1,5 @@
 import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from '../utils/BinarySetupService';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 
 export interface BinarySetupStepParams {
@@ -18,7 +18,7 @@ export class BinarySetupStep extends InstallationStep<BinarySetupStepParams> {
   async execute(context: StepContext): Promise<StepContext> {
     const { toolName, setupType } = this.params;
     const logger = context.logger.getSubLogger({ name: this.getStepName() });
-    logger.debug(installerLogMessages.binarySetupStep.starting(toolName, setupType));
+    logger.debug(messages.binarySetupStep.starting(toolName, setupType));
 
     try {
       if (setupType === 'archive') {

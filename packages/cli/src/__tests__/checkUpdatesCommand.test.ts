@@ -7,7 +7,7 @@ import type { MockedInterface } from '@dotfiles/testing-helpers';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
-import { cliLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -118,7 +118,11 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'], [cliLogMessages.toolUpToDate('fzf', '0.40.0', '0.40.0')]);
+    logger.expect(
+      ['INFO'],
+      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'],
+      [messages.toolUpToDate('fzf', '0.40.0', '0.40.0')]
+    );
   });
 
   test('should report an update is available', async () => {
@@ -128,7 +132,11 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'], [cliLogMessages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0')]);
+    logger.expect(
+      ['INFO'],
+      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'],
+      [messages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0')]
+    );
   });
 
   test('should check all tools: one up-to-date, one with update', async () => {
@@ -148,10 +156,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'],
-      [
-        cliLogMessages.toolUpToDate('fzf', '0.40.0', '0.40.0'),
-        cliLogMessages.toolUpdateAvailable('lazygit', '0.35.0', '0.36.0'),
-      ]
+      [messages.toolUpToDate('fzf', '0.40.0', '0.40.0'), messages.toolUpdateAvailable('lazygit', '0.35.0', '0.36.0')]
     );
   });
 
@@ -162,7 +167,11 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['INFO'], ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate'], [cliLogMessages.toolConfiguredToLatest('fzf', '0.42.0')]);
+    logger.expect(
+      ['INFO'],
+      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate'],
+      [messages.toolConfiguredToLatest('fzf', '0.42.0')]
+    );
   });
 
   test('should report unsupported installation method', async () => {
@@ -173,12 +182,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['INFO'],
       ['checkUpdatesCommand', 'checkUpdatesActionLogic'],
-      [
-        cliLogMessages.commandUnsupportedOperation(
-          'Check updates',
-          'installation method: "manual" for tool "manualtool"'
-        ),
-      ]
+      [messages.commandUnsupportedOperation('Check updates', 'installation method: "manual" for tool "manualtool"')]
     );
   });
 
@@ -188,7 +192,11 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate'], [cliLogMessages.serviceGithubApiFailed('get latest release', 0)]);
+    logger.expect(
+      ['ERROR'],
+      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate'],
+      [messages.serviceGithubApiFailed('get latest release', 0)]
+    );
   });
 
   test('should handle tool config not found for specific tool', async () => {
@@ -199,7 +207,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
-      [cliLogMessages.toolNotFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -211,7 +219,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
-      [cliLogMessages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -227,7 +235,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'validateGitHubRepoConfig'],
-      [cliLogMessages.configParameterInvalid('repo', 'invalid-repo-format', 'owner/repo format')]
+      [messages.configParameterInvalid('repo', 'invalid-repo-format', 'owner/repo format')]
     );
   });
 
@@ -243,7 +251,7 @@ describe('checkUpdatesCommand', () => {
     logger.expect(
       ['ERROR'],
       ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'validateGitHubRepoConfig'],
-      [cliLogMessages.configParameterInvalid('repo', 'undefined', 'owner/repo format')]
+      [messages.configParameterInvalid('repo', 'undefined', 'owner/repo format')]
     );
   });
 
@@ -252,7 +260,11 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'], [cliLogMessages.configLoadFailed('tool configurations')]);
+    logger.expect(
+      ['ERROR'],
+      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
+      [messages.configLoadFailed('tool configurations')]
+    );
   });
 
   test('should handle error during loadSingleToolConfig', async () => {
@@ -260,6 +272,10 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'sometool'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'], [cliLogMessages.configLoadFailed('tool "sometool"')]);
+    logger.expect(
+      ['ERROR'],
+      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
+      [messages.configLoadFailed('tool "sometool"')]
+    );
   });
 });

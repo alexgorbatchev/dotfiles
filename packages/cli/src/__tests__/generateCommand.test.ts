@@ -6,7 +6,7 @@ import type { TestLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerGenerateCommand } from '../generateCommand';
-import { cliLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -71,7 +71,7 @@ describe('generateCommand', () => {
     );
 
     // Should log DONE message at the end
-    logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(false)]);
+    logger.expect(['INFO'], ['registerGenerateCommand'], [messages.commandCompleted(false)]);
   });
 
   test('should successfully generate artifacts in dry run mode', async () => {
@@ -85,7 +85,7 @@ describe('generateCommand', () => {
     );
 
     // Should log DONE (dry run) message at the end
-    logger.expect(['INFO'], ['registerGenerateCommand'], [cliLogMessages.commandCompleted(true)]);
+    logger.expect(['INFO'], ['registerGenerateCommand'], [messages.commandCompleted(true)]);
   });
 
   test('should handle errors during artifact generation', async () => {
@@ -95,6 +95,6 @@ describe('generateCommand', () => {
 
     expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['registerGenerateCommand'], [cliLogMessages.commandExecutionFailed('generate', 1)]);
+    logger.expect(['ERROR'], ['registerGenerateCommand'], [messages.commandExecutionFailed('generate', 1)]);
   });
 });

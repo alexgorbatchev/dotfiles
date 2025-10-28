@@ -6,7 +6,7 @@ import type { TestLogger } from '@dotfiles/logger';
 import type { GithubReleaseToolConfig, ManualToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerDetectConflictsCommand } from '../detectConflictsCommand';
-import { cliLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -87,7 +87,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [cliLogMessages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
+        [messages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
       );
     });
 
@@ -100,7 +100,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['ERROR'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [cliLogMessages.configLoadFailed('tool configurations')]
+        [messages.configLoadFailed('tool configurations')]
       );
     });
 
@@ -113,7 +113,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [cliLogMessages.noConflictsDetected()]
+        [messages.noConflictsDetected()]
       );
     });
 
@@ -129,7 +129,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${shimPath} (exists but is not a generator shim)`;
-      const expectedMessageShim = cliLogMessages.toolConflictsDetected(
+      const expectedMessageShim = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
@@ -149,7 +149,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [cliLogMessages.noConflictsDetected()]
+        [messages.noConflictsDetected()]
       );
     });
 
@@ -164,7 +164,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${configPath} (exists but is not a symlink)`;
-      const expectedMessageSymlinkFile = cliLogMessages.toolConflictsDetected(
+      const expectedMessageSymlinkFile = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
@@ -190,7 +190,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${symlinkTargetPath} (points to '${pointsToWrongAbsolutePath}', expected '${expectedSourcePath}')`;
-      const expectedMessage = cliLogMessages.toolConflictsDetected(
+      const expectedMessage = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
@@ -217,7 +217,7 @@ describe('detectConflictsCommand', () => {
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
       const conflictsMessage = `  - [toolA]: ${shimPathA} (exists but is not a generator shim)\n  - [toolB]: ${symlinkPathB} (exists but is not a symlink)`;
-      const expectedMessageMultiple = cliLogMessages.toolConflictsDetected(
+      const expectedMessageMultiple = messages.toolConflictsDetected(
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
 import type { AsyncInstallHook, GithubReleaseInstallParams } from '@dotfiles/schemas';
 import { always } from '@dotfiles/schemas';
-import { toolConfigBuilderLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 
 describe('ToolConfigBuilder', () => {
@@ -86,7 +86,7 @@ describe('ToolConfigBuilder', () => {
       ['WARN'],
       ['ToolConfigBuilder'],
       [
-        toolConfigBuilderLogMessages.configurationFieldIgnored(
+        messages.configurationFieldIgnored(
           'hooks',
           'hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.'
         ),
@@ -222,7 +222,7 @@ describe('ToolConfigBuilder', () => {
       ['ERROR'],
       ['ToolConfigBuilder'],
       [
-        toolConfigBuilderLogMessages.configurationFieldInvalid(
+        messages.configurationFieldInvalid(
           'installationMethod',
           'invalid-method',
           'github-release | brew | curl-script | curl-tar | cargo | manual'
@@ -250,7 +250,7 @@ describe('ToolConfigBuilder', () => {
       ['ERROR'],
       ['ToolConfigBuilder'],
       [
-        toolConfigBuilderLogMessages.configurationFieldRequired(
+        messages.configurationFieldRequired(
           'tool definition',
           'Tool "empty-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
         ),

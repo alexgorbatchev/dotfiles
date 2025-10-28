@@ -3,7 +3,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { exitCli } from '@dotfiles/utils';
-import { cliLogMessages } from './log-messages';
+import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, InstallCommandSpecificOptions, Services } from './types';
 
 export interface InstallCommandOptions extends BaseCommandOptions {
@@ -22,7 +22,7 @@ async function loadToolConfigSafely(
   const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
 
   if (!toolConfig) {
-    logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
+    logger.error(messages.toolNotFound(toolName, toolConfigsDir));
     return null;
   }
 
@@ -41,18 +41,18 @@ function handleInstallationResult(
       return 0;
     } else {
       // Normal mode: log success message and continue (don't exit)
-      logger.info(cliLogMessages.toolInstalled(toolName, result.version ?? 'unknown', 'CLI'));
+      logger.info(messages.toolInstalled(toolName, result.version ?? 'unknown', 'CLI'));
       return null; // Don't exit on success in normal mode
     }
   } else {
-    logger.debug(cliLogMessages.commandActionStarted('install-failed', toolName), result.error);
+    logger.debug(messages.commandActionStarted('install-failed', toolName), result.error);
 
     if (shimMode) {
       // In shim mode, output user-friendly error message to stderr only
       process.stderr.write(`Failed to install '${toolName}': ${result.error ?? 'Unknown error'}\n`);
     } else {
       // Normal mode: use logger only
-      logger.error(cliLogMessages.toolInstallFailed('unknown', toolName, result.error ?? 'Unknown error'));
+      logger.error(messages.toolInstallFailed('unknown', toolName, result.error ?? 'Unknown error'));
     }
     return 1;
   }
@@ -64,7 +64,7 @@ function handleInstallationError(logger: TsLogger, error: Error, toolName: strin
     process.stderr.write(`Failed to install '${toolName}': ${error.message}\n`);
   } else {
     // Normal mode: use logger only
-    logger.error(cliLogMessages.commandExecutionFailed('install', 1), error);
+    logger.error(messages.commandExecutionFailed('install', 1), error);
   }
   return 1;
 }
@@ -82,7 +82,7 @@ export function registerInstallCommand(
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName: string, commandOptions: InstallCommandSpecificOptions) => {
       const combinedOptions: InstallCommandOptions = { ...commandOptions, ...program.opts() };
-      logger.debug(cliLogMessages.commandActionCalled('install'));
+      logger.debug(messages.commandActionCalled('install'));
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer, configService } = services;
@@ -91,7 +91,7 @@ export function registerInstallCommand(
 
       try {
         logger.debug(
-          cliLogMessages.commandActionStarted('install', toolName),
+          messages.commandActionStarted('install', toolName),
           yamlConfig.paths.toolConfigsDir,
           fs.constructor.name
         );

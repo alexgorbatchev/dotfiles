@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const symlinkGeneratorLogMessages = {
+export const messages = {
   generate: {
     started: () => createSafeLogMessage('Starting symlink generation.'),
     processingTool: (toolName: string) => createSafeLogMessage(`Processing symlinks for tool "${toolName}"`),
@@ -21,10 +21,8 @@ export const symlinkGeneratorLogMessages = {
       createSafeLogMessage(`Target "${targetAbsPath}" exists and overwrite is false. Skipping symlink creation.`),
   } satisfies SafeLogMessageMap,
   filesystem: {
-    backupFailed: (targetAbsPath: string) =>
-      createSafeLogMessage(`Failed to write backup of ${targetAbsPath}`),
-    deleteFailed: (targetAbsPath: string) =>
-      createSafeLogMessage(`Failed to delete ${targetAbsPath}`),
+    backupFailed: (targetAbsPath: string) => createSafeLogMessage(`Failed to write backup of ${targetAbsPath}`),
+    deleteFailed: (targetAbsPath: string) => createSafeLogMessage(`Failed to delete ${targetAbsPath}`),
     directoryCreateFailed: (directoryPath: string) =>
       createSafeLogMessage(`Failed to create directory ${directoryPath}`),
     symlinkFailed: (source: string, target: string) =>

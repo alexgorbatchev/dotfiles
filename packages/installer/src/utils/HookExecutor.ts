@@ -8,7 +8,7 @@ import type {
   InstallHookContext,
 } from '@dotfiles/schemas';
 import { $ } from 'bun';
-import { installerLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Options for hook execution
@@ -65,7 +65,7 @@ export class HookExecutor {
     const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
     const startTime = Date.now();
 
-    methodLogger.debug(installerLogMessages.hookExecutor.executingHook(hookName, timeoutMs));
+    methodLogger.debug(messages.hookExecutor.executingHook(hookName, timeoutMs));
 
     // Create hook-specific logger and update context
     const hookSpecificLogger = context.logger.getSubLogger({ name: `${context.toolName}--${hookName}` });
@@ -78,7 +78,7 @@ export class HookExecutor {
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error(installerLogMessages.hookExecutor.timeoutExceeded(hookName, timeoutMs)));
+          reject(new Error(messages.hookExecutor.timeoutExceeded(hookName, timeoutMs)));
         }, timeoutMs);
       });
 
@@ -86,7 +86,7 @@ export class HookExecutor {
       await Promise.race([hookPromise, timeoutPromise]);
 
       const durationMs = Date.now() - startTime;
-      methodLogger.debug(installerLogMessages.hookExecutor.hookCompleted(hookName, durationMs));
+      methodLogger.debug(messages.hookExecutor.hookCompleted(hookName, durationMs));
 
       return {
         success: true,
@@ -96,13 +96,10 @@ export class HookExecutor {
     } catch (error) {
       const durationMs = Date.now() - startTime;
 
-      methodLogger.error(
-        installerLogMessages.outcome.installFailed(`${hookName} hook`, context.toolName),
-        error
-      );
+      methodLogger.error(messages.outcome.installFailed(`${hookName} hook`, context.toolName), error);
 
       if (continueOnError) {
-        methodLogger.debug(installerLogMessages.hookExecutor.continuingDespiteFailure(hookName));
+        methodLogger.debug(messages.hookExecutor.continuingDespiteFailure(hookName));
 
         return {
           success: false,
@@ -162,7 +159,7 @@ export class HookExecutor {
 
       // If hook failed and we're not continuing on error, stop execution
       if (!result.success && !options?.continueOnError) {
-        methodLogger.debug(installerLogMessages.hookExecutor.stoppingDueToFailure(name));
+        methodLogger.debug(messages.hookExecutor.stoppingDueToFailure(name));
         break;
       }
     }

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/schemas';
 import type { CompletionGenerationContext, CompletionGenerator } from '@dotfiles/shell-init-generator';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 
 export interface CompletionGenerationStepParams {
@@ -17,11 +17,11 @@ export class CompletionGenerationStep extends InstallationStep<CompletionGenerat
     const completionConfigs = this.extractCompletionConfigs(context.toolConfig);
 
     if (completionConfigs.length === 0) {
-      context.logger.debug(installerLogMessages.completion.noCompletionsConfigured());
+      context.logger.debug(messages.completion.noCompletionsConfigured());
       return context;
     }
 
-    context.logger.debug(installerLogMessages.completion.generatingCompletions(completionConfigs.length));
+    context.logger.debug(messages.completion.generatingCompletions(completionConfigs.length));
 
     const generationContext: CompletionGenerationContext = {
       toolName: context.toolName,
@@ -63,7 +63,7 @@ export class CompletionGenerationStep extends InstallationStep<CompletionGenerat
     await context.toolFs.mkdir(path.dirname(generated.targetPath), { recursive: true });
     await context.toolFs.writeFile(generated.targetPath, generated.content);
 
-    context.logger.debug(installerLogMessages.completion.generatedCompletion(generated.filename, generated.targetPath));
+    context.logger.debug(messages.completion.generatedCompletion(generated.filename, generated.targetPath));
   }
 
   private extractCompletionConfigs(

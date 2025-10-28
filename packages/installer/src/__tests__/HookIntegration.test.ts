@@ -365,9 +365,7 @@ describe('Hook Integration Tests', () => {
       setup.logger.expect(
         ['ERROR'],
         ['HookExecutor', 'executeHook'],
-        [
-          'Installation failed [afterDownload hook] for tool "failing-tool"',
-        ]
+        ['Installation failed [afterDownload hook] for tool "failing-tool"']
       );
     });
 

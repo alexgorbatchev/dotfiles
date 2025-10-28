@@ -6,7 +6,7 @@ import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { dedentString, getCliBinPath } from '@dotfiles/utils';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
-import { shimGeneratorLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Generates executable shims for tools.
@@ -27,7 +27,7 @@ export class ShimGenerator implements IShimGenerator {
     const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
     this.logger = logger;
     const constructorLogger = logger.getSubLogger({ name: 'constructor' });
-    constructorLogger.debug(shimGeneratorLogMessages.constructor.initialized());
+    constructorLogger.debug(messages.constructor.initialized());
     this.fs = fileSystem;
     this.config = config;
   }
@@ -35,7 +35,7 @@ export class ShimGenerator implements IShimGenerator {
   async generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const fileSystemName = this.fs.constructor.name;
-    logger.debug(shimGeneratorLogMessages.generate.started(fileSystemName));
+    logger.debug(messages.generate.started(fileSystemName));
     const generatedShimPaths: string[] = [];
 
     for (const toolName in toolConfigs) {
@@ -45,7 +45,7 @@ export class ShimGenerator implements IShimGenerator {
           const shimPaths = await this.generateForTool(toolName, toolConfig, options);
           generatedShimPaths.push(...shimPaths);
         } else {
-          logger.debug(shimGeneratorLogMessages.generate.missingToolConfig(toolName));
+          logger.debug(messages.generate.missingToolConfig(toolName));
         }
       }
     }
@@ -58,7 +58,7 @@ export class ShimGenerator implements IShimGenerator {
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
     const toolFileSystemName = toolFs.constructor.name;
-    logger.debug(shimGeneratorLogMessages.generateForTool.started(toolName, toolFileSystemName), toolConfig, options);
+    logger.debug(messages.generateForTool.started(toolName, toolFileSystemName), toolConfig, options);
 
     const generatedShimPaths: string[] = [];
     const overwrite = options?.overwrite ?? false;
@@ -89,7 +89,7 @@ export class ShimGenerator implements IShimGenerator {
     const shimDir = this.config.paths.targetDir;
     const shimFilePath = path.join(shimDir, binaryName);
 
-    logger.debug(shimGeneratorLogMessages.generateShim.resolvedShimPath(shimFilePath));
+    logger.debug(messages.generateShim.resolvedShimPath(shimFilePath));
 
     if (await toolFs.exists(shimFilePath)) {
       // Check if the existing file is one of our shims
@@ -97,13 +97,13 @@ export class ShimGenerator implements IShimGenerator {
 
       if (!isOurShim) {
         // Not our shim - log error and skip
-        logger.error(shimGeneratorLogMessages.generateShim.conflictingFile(toolName, shimFilePath));
+        logger.error(messages.generateShim.conflictingFile(toolName, shimFilePath));
         return null;
       }
 
       if (!overwrite) {
         // It's our shim but overwrite is false - skip silently
-        logger.debug(shimGeneratorLogMessages.generateShim.existingShim(shimFilePath));
+        logger.debug(messages.generateShim.existingShim(shimFilePath));
         return null;
       }
 
@@ -113,7 +113,7 @@ export class ShimGenerator implements IShimGenerator {
     // Use the new symlink-based path structure
     const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, binaryName);
 
-    logger.debug(shimGeneratorLogMessages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
+    logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
     const shimContent = dedentString(`
       #!/usr/bin/env bash
@@ -163,7 +163,7 @@ export class ShimGenerator implements IShimGenerator {
       fi
     `);
 
-    logger.debug(shimGeneratorLogMessages.generateShim.generatedContent(binaryName));
+    logger.debug(messages.generateShim.generatedContent(binaryName));
 
     // File system operations' behavior (dry or real) is determined by the injected IFileSystem.
     await toolFs.ensureDir(path.dirname(shimFilePath));
@@ -181,7 +181,7 @@ export class ShimGenerator implements IShimGenerator {
       // If we can't check permissions, try to set them anyway
       await toolFs.chmod(shimFilePath, desiredMode);
     }
-    logger.debug(shimGeneratorLogMessages.generateShim.success(binaryName, shimFilePath, toolFs.constructor.name));
+    logger.debug(messages.generateShim.success(binaryName, shimFilePath, toolFs.constructor.name));
     return shimFilePath;
   }
 

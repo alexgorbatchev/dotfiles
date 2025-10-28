@@ -1,6 +1,6 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ExtractResult } from '@dotfiles/schemas';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 
 export interface ExtractStepParams {
@@ -26,14 +26,14 @@ export class ExtractStep extends InstallationStep<ExtractStepParams> {
 
     const { archiveExtractor } = this.params;
 
-    context.logger.debug(installerLogMessages.extractStep.extractingArchive(context.downloadPath));
+    context.logger.debug(messages.extractStep.extractingArchive(context.downloadPath));
 
     try {
       const extractResult: ExtractResult = await archiveExtractor.extract(context.downloadPath, {
         targetDir: context.installDir,
       });
 
-      context.logger.debug(installerLogMessages.extractStep.archiveExtracted(), extractResult);
+      context.logger.debug(messages.extractStep.archiveExtracted(), extractResult);
 
       return {
         ...context,

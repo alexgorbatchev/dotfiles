@@ -9,7 +9,7 @@ import type { InstallOptions, InstallResult } from '../types';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { setupBinariesFromArchive } from '../utils/BinarySetupService';
 import type { HookExecutor } from '../utils/HookExecutor';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 
 /**
  * Install a tool using Cargo pre-compiled binaries
@@ -28,7 +28,7 @@ export async function installFromCargo(
   cargoGithubReleaseHost: string
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
-  logger.debug(installerLogMessages.cargo.installing(toolName), toolConfig['installParams']);
+  logger.debug(messages.cargo.installing(toolName), toolConfig['installParams']);
 
   if (!toolConfig['installParams']) {
     return {
@@ -45,11 +45,11 @@ export async function installFromCargo(
 
     // 1. Determine version
     const version = await determineVersion(crateName, params, cargoClient, logger);
-    logger.debug(installerLogMessages.cargo.foundVersion(crateName, version));
+    logger.debug(messages.cargo.foundVersion(crateName, version));
 
     // 2. Determine download URL based on binary source
     const downloadUrl = await buildDownloadUrl(crateName, version, params, context, cargoGithubReleaseHost);
-    logger.debug(installerLogMessages.cargo.downloadingAsset(`${crateName}-${version}`, downloadUrl));
+    logger.debug(messages.cargo.downloadingAsset(`${crateName}-${version}`, downloadUrl));
 
     // 3. Download and extract
     const filename = `${crateName}-${version}.tar.gz`;
@@ -74,7 +74,7 @@ export async function installFromCargo(
     const extractResult = await archiveExtractor.extract(downloadPath, {
       targetDir: context.installDir,
     });
-    logger.debug(installerLogMessages.cargo.archiveExtracted(), extractResult);
+    logger.debug(messages.cargo.archiveExtracted(), extractResult);
 
     // 6. Setup binaries
     await setupBinariesFromArchive(fileSystem, toolName, toolConfig, context, context.installDir, logger);
@@ -94,7 +94,7 @@ export async function installFromCargo(
     // 8. Cleanup downloaded archive
     if (await fileSystem.exists(downloadPath)) {
       await fileSystem.rm(downloadPath);
-      logger.debug(installerLogMessages.cargo.cleaningArchive(downloadPath));
+      logger.debug(messages.cargo.cleaningArchive(downloadPath));
     }
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
@@ -179,7 +179,7 @@ async function determineVersion(
         params.cargoTomlUrl ||
         cargoClient.buildCargoTomlUrl(params.githubRepo || `${crateName}-community/${crateName}`);
 
-      logger.debug(installerLogMessages.cargo.parsingMetadata(cargoTomlUrl));
+      logger.debug(messages.cargo.parsingMetadata(cargoTomlUrl));
 
       const packageInfo = await cargoClient.getCargoTomlPackage(cargoTomlUrl);
       if (!packageInfo) {
@@ -188,7 +188,7 @@ async function determineVersion(
       return packageInfo.version;
     }
     case 'crates-io': {
-      logger.debug(installerLogMessages.cargo.queryingCratesIo(crateName));
+      logger.debug(messages.cargo.queryingCratesIo(crateName));
 
       const version = await cargoClient.getLatestVersion(crateName);
       if (!version) {
@@ -212,7 +212,7 @@ async function determineVersion(
  */
 async function getVersionFromGitHubReleases(githubRepo: string, logger: TsLogger): Promise<string> {
   // This would integrate with the existing GitHub API client
-  logger.debug(installerLogMessages.cargo.queryingGitHubReleases(githubRepo));
+  logger.debug(messages.cargo.queryingGitHubReleases(githubRepo));
   throw new Error('GitHub releases version source not yet implemented');
 }
 

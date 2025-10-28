@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const configLoaderLogMessages = {
+export const messages = {
   configurationProcessing: () => createSafeLogMessage('config processing'),
   platformOverrides: (platform: string, arch: string) =>
     createSafeLogMessage(`platform overrides: ${platform} ${arch}`),

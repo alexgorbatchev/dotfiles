@@ -28,7 +28,7 @@ import { registerDetectConflictsCommand } from './detectConflictsCommand';
 import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
-import { cliLogMessages } from './log-messages';
+import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -49,12 +49,12 @@ type SetupServicesOptions = GlobalProgramOptions & {
 function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   let fs: IFileSystem;
   if (dryRun) {
-    logger.trace(cliLogMessages.dryRunEnabled());
+    logger.trace(messages.dryRunEnabled());
     fs = new MemFileSystem({});
   } else {
     fs = new NodeFileSystem();
   }
-  logger.trace(cliLogMessages.componentInitialized('filesystem'), fs.constructor.name);
+  logger.trace(messages.componentInitialized('filesystem'), fs.constructor.name);
   return fs;
 }
 
@@ -66,10 +66,10 @@ function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): Syst
   };
 
   if (options.platform) {
-    logger.warn(cliLogMessages.configParameterOverridden('platform', options.platform));
+    logger.warn(messages.configParameterOverridden('platform', options.platform));
   }
   if (options.arch) {
-    logger.warn(cliLogMessages.configParameterOverridden('arch', options.arch));
+    logger.warn(messages.configParameterOverridden('arch', options.arch));
   }
 
   return systemInfo;
@@ -86,9 +86,9 @@ async function copyToolConfigFile(
     const content = await nodeFs.readFile(filePath, 'utf8');
     await fs.ensureDir(path.dirname(filePath));
     await fs.writeFile(filePath, content);
-    logger.trace(cliLogMessages.fsWrite('memfs', contractHomePath(systemInfo.homeDir, filePath)));
+    logger.trace(messages.fsWrite('memfs', contractHomePath(systemInfo.homeDir, filePath)));
   } catch (readError: unknown) {
-    logger.error(cliLogMessages.fsReadFailed(filePath), readError);
+    logger.error(messages.fsReadFailed(filePath), readError);
   }
 }
 
@@ -98,17 +98,17 @@ async function loadToolConfigsForDryRun(
   yamlConfig: YamlConfig,
   systemInfo: SystemInfo
 ): Promise<void> {
-  logger.trace(cliLogMessages.toolConfigsForDryRun());
+  logger.trace(messages.toolConfigsForDryRun());
   const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
   const nodeFs = new NodeFileSystem();
 
   try {
     if (!(await nodeFs.exists(realToolConfigsDir))) {
-      logger.warn(cliLogMessages.fsItemNotFound('Tool configs directory', realToolConfigsDir));
+      logger.warn(messages.fsItemNotFound('Tool configs directory', realToolConfigsDir));
       return;
     }
 
-    logger.trace(cliLogMessages.toolConfigsLoaded(realToolConfigsDir, 0));
+    logger.trace(messages.toolConfigsLoaded(realToolConfigsDir, 0));
     const filesInDir = await nodeFs.readdir(realToolConfigsDir);
 
     for (const fileName of filesInDir) {
@@ -118,13 +118,13 @@ async function loadToolConfigsForDryRun(
       }
     }
   } catch (_error) {
-    logger.error(cliLogMessages.fsAccessDenied('accessing', realToolConfigsDir));
+    logger.error(messages.fsAccessDenied('accessing', realToolConfigsDir));
   }
 }
 
 function initializeDownloadCache(parentLogger: TsLogger, fs: IFileSystem, yamlConfig: YamlConfig): ICache | undefined {
   if (!yamlConfig.downloader.cache.enabled) {
-    parentLogger.info(cliLogMessages.cachingDisabled());
+    parentLogger.info(messages.cachingDisabled());
     return undefined;
   }
 
@@ -189,7 +189,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
   const { dryRun, env, config } = options;
 
-  logger.trace(cliLogMessages.operationStarted('setupServices'));
+  logger.trace(messages.operationStarted('setupServices'));
 
   // Initialize filesystem first
   const fs = initializeFileSystem(logger, dryRun);
@@ -225,7 +225,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Initialize file registry with shared database connection
   const fileRegistry = new SqliteFileRegistry(parentLogger, db);
-  parentLogger.debug(cliLogMessages.registryInitialized(registryPath));
+  parentLogger.debug(messages.registryInitialized(registryPath));
 
   // Initialize tool installation registry with shared database connection
   const toolInstallationRegistry = new SqliteToolInstallationRegistry(parentLogger, db);
@@ -293,7 +293,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();
 
-  logger.trace(cliLogMessages.servicesSetup());
+  logger.trace(messages.servicesSetup());
   return {
     yamlConfig,
     fs,
@@ -345,7 +345,7 @@ export async function main(argv: string[]) {
   const rootLogger = createTsLogger({ name: 'cli', level: logLevel });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
-  logger.trace(cliLogMessages.cliStarted(), argv);
+  logger.trace(messages.cliStarted(), argv);
 
   // Create a factory function that will initialize services only when needed
   const servicesFactory = async () => {
@@ -365,7 +365,7 @@ if (import.meta.main) {
   main(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
     const fatalLogger = createTsLogger({ name: 'cli' });
-    fatalLogger.fatal(cliLogMessages.commandExecutionFailed('main', 1), error);
+    fatalLogger.fatal(messages.commandExecutionFailed('main', 1), error);
     process.exit(1);
   });
 }

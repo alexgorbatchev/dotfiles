@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
 import type { ManualInstallParams } from '@dotfiles/schemas';
 import { Architecture, Platform } from '@dotfiles/schemas';
-import { toolConfigBuilderLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 
 describe('ToolConfigBuilder - Platform Support', () => {
@@ -175,7 +175,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
       ['ERROR'],
       ['ToolConfigBuilder'],
       [
-        toolConfigBuilderLogMessages.configurationFieldRequired(
+        messages.configurationFieldRequired(
           'configure callback',
           'platform() called for tool "test-tool" with architectures but without a configure callback'
         ),

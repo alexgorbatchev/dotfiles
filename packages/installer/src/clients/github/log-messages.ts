@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const githubApiClientLogMessages = {
+export const messages = {
   constructor: {
     initialized: (baseUrl: string, userAgent: string) =>
       createSafeLogMessage(`GitHub API client initialized with base URL ${baseUrl} and User-Agent ${userAgent}`),
@@ -30,12 +30,9 @@ export const githubApiClientLogMessages = {
       createSafeLogMessage(`GitHub API HTTP error for ${url} with status ${statusCode}`),
     network: (url: string) => createSafeLogMessage(`GitHub API network error for ${url}`),
     unknown: (url: string) => createSafeLogMessage(`Unknown GitHub API error for ${url}`),
-    constraintLatestError: () =>
-      createSafeLogMessage(`GitHub API latest constraint lookup failed`),
+    constraintLatestError: () => createSafeLogMessage(`GitHub API latest constraint lookup failed`),
     constraintError: (constraint: string, owner: string, repo: string) =>
-      createSafeLogMessage(
-        `GitHub API error while evaluating constraint ${constraint} for ${owner}/${repo}`
-      ),
+      createSafeLogMessage(`GitHub API error while evaluating constraint ${constraint} for ${owner}/${repo}`),
   } satisfies SafeLogMessageMap,
   releases: {
     fetchingLatest: (owner: string, repo: string) =>

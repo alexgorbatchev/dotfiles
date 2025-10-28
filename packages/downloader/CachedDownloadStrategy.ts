@@ -89,10 +89,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
         return null;
       }
     } catch (error) {
-      logger.trace(
-        cachedDownloadStrategyLogMessages.downloadedFileReadFailed(destinationPath),
-        error
-      );
+      logger.trace(cachedDownloadStrategyLogMessages.downloadedFileReadFailed(destinationPath), error);
       return null;
     }
   }

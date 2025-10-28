@@ -5,7 +5,7 @@ import type { TestLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerInstallCommand } from '../installCommand';
-import { cliLogMessages } from '../log-messages';
+import { messages } from '../log-messages';
 import type { GlobalProgram, Services } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
@@ -86,7 +86,7 @@ describe('installCommand', () => {
       verbose: false,
       shimMode: false,
     });
-    testLogger.expect(['INFO'], ['registerInstallCommand'], [cliLogMessages.toolInstalled('toolA', '1.0.0', 'CLI')]);
+    testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'CLI')]);
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
@@ -159,7 +159,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [cliLogMessages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -176,7 +176,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [cliLogMessages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
+      [messages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
     );
   });
 

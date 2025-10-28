@@ -2,7 +2,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { PostDownloadInstallContext, PostExtractInstallContext, ToolConfig } from '@dotfiles/schemas';
 import type { HookExecutor } from './HookExecutor';
-import { installerLogMessages } from './log-messages';
+import { messages } from './log-messages';
 
 /**
  * Result of hook execution
@@ -27,7 +27,7 @@ export async function executeAfterDownloadHook(
     return { success: true };
   }
 
-  logger.debug(installerLogMessages.hooks.afterDownload());
+  logger.debug(messages.hooks.afterDownload());
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
   const hookResult = await hookExecutor.executeHook(
@@ -61,7 +61,7 @@ export async function executeAfterExtractHook(
     return { success: true };
   }
 
-  logger.debug(installerLogMessages.hooks.afterExtract());
+  logger.debug(messages.hooks.afterExtract());
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
   const hookResult = await hookExecutor.executeHook(

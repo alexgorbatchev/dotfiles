@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const fileRegistryLogMessages = {
+export const messages = {
   trackedFsCreated: () => createSafeLogMessage('Created TrackedFileSystem for:'),
   directoryDeletionError: () => createSafeLogMessage('Error tracking directory deletion %s: %s'),
   rmdirTracked: () => createSafeLogMessage('Tracked rmdir operation: %s'),

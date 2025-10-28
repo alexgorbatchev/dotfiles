@@ -1,6 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
-export const cacheLogMessages = {
+export const messages = {
   initialized: (cacheDir: string, defaultTtl: number, strategy: string, enabled: boolean) =>
     createSafeLogMessage(
       `Cache directory: ${cacheDir}, TTL: ${defaultTtl} ms, Strategy: ${strategy}, Enabled: ${enabled}`

@@ -1,6 +1,6 @@
 import type { AsyncInstallHook } from '@dotfiles/schemas';
 import type { HookExecutor } from '../utils/HookExecutor';
-import { installerLogMessages } from '../utils/log-messages';
+import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 
 export interface HookStepParams {
@@ -20,7 +20,7 @@ export class HookStep extends InstallationStep<HookStepParams> {
   async execute(context: StepContext): Promise<StepContext> {
     const { hookType, hook, hookExecutor } = this.params;
 
-    context.logger.debug(installerLogMessages.hookStep.executingHook(hookType));
+    context.logger.debug(messages.hookStep.executingHook(hookType));
 
     try {
       const enhancedContext = hookExecutor.createEnhancedContext(context, context.toolFs);
