@@ -7,14 +7,11 @@ import type { GitHubRelease, GithubReleaseInstallParams, ToolConfig } from '@dot
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { BaseCommandOptions, GlobalProgram, Services, UpdateCommandSpecificOptions } from './types';
 
-export interface UpdateCommandOptions {
+export interface UpdateCommandOptions extends BaseCommandOptions {
   yes: boolean;
-  verbose: boolean;
-  quiet: boolean;
   shimMode: boolean;
-  dryRun: boolean;
 }
 
 async function loadToolConfigSafely(
@@ -225,11 +222,11 @@ export function registerUpdateCommand(
     .description('Updates a specified tool to its latest version.')
     .option('-y, --yes', 'Automatically confirm updates', false)
     .option('--shim-mode', 'Run in shim mode with minimal output', false)
-    // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
-    .action(async (toolName: string, _options: any) => {
+    .action(async (toolName: string, commandOptions: UpdateCommandSpecificOptions) => {
       const actionLogger = logger.getSubLogger({ name: 'action' });
-      const combinedOptions: UpdateCommandOptions = { ..._options, ...program.opts() } as UpdateCommandOptions;
-      actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName, combinedOptions);
+      actionLogger.debug(cliLogMessages.commandActionCalled('update'));
+
+      const combinedOptions: UpdateCommandOptions = { ...commandOptions, ...program.opts() };
 
       const services = await servicesFactory();
       const { yamlConfig, fs, configService } = services;

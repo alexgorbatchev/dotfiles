@@ -34,11 +34,11 @@ import { registerUpdateCommand } from './updateCommand';
 
 // biome-ignore lint:plugin/use-export-star Reexport these for the consumption
 export {
-  defineTool,
+  Architecture,
   always,
+  defineTool,
   once,
   Platform,
-  Architecture,
 } from '@dotfiles/schemas';
 
 type SetupServicesOptions = GlobalProgramOptions & {
@@ -340,7 +340,7 @@ export async function main(argv: string[]) {
 
   // Parse options first to get quiet/verbose flags
   program.parseOptions(argv);
-  const options: GlobalProgramOptions = program.opts() as GlobalProgramOptions;
+  const options: GlobalProgramOptions = program.opts();
 
   // Create logger with appropriate level based on CLI flags
   const logLevel = getLogLevelFromFlags(options.log, options.quiet, options.verbose);

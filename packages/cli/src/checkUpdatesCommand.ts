@@ -7,12 +7,10 @@ import { ExitCode, exitCli } from '@dotfiles/utils';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { BaseCommandOptions, GlobalProgram, Services } from './types';
 
-export interface CheckUpdatesCommandOptions {
-  verbose: boolean;
-  quiet: boolean;
-  dryRun: boolean;
+export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
+  // No command-specific options for check-updates command
 }
 
 async function loadToolConfigs(
@@ -176,14 +174,9 @@ export function registerCheckUpdatesCommand(
   program
     .command('check-updates [toolName]')
     .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')
-    // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
-    .action(async (toolName: string | undefined, _options: any) => {
-      const combinedOptions: CheckUpdatesCommandOptions = {
-        ..._options,
-        ...program.opts(),
-      } as CheckUpdatesCommandOptions;
+    .action(async (toolName: string | undefined) => {
+      logger.debug(cliLogMessages.commandActionCalled('check-updates'));
 
-      logger.debug(cliLogMessages.commandActionCalled('check-updates', toolName || 'all'), combinedOptions);
       try {
         const services = await servicesFactory();
         await checkUpdatesActionLogic(logger, toolName, services);

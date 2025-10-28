@@ -1,12 +1,10 @@
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { BaseCommandOptions, GlobalProgram, Services } from './types';
 
-export interface GenerateCommandOptions {
-  dryRun: boolean;
-  verbose: boolean;
-  quiet: boolean;
+export interface GenerateCommandOptions extends BaseCommandOptions {
+  // No command-specific options for generate command
 }
 
 export function registerGenerateCommand(
@@ -18,13 +16,12 @@ export function registerGenerateCommand(
   program
     .command('generate')
     .description('Generates shims, shell init files, and symlinks based on tool configurations.')
-    // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
-    .action(async (_options: any) => {
-      const combinedOptions: GenerateCommandOptions = program.opts() as GenerateCommandOptions;
+    .action(async () => {
+      logger.debug(cliLogMessages.commandActionCalled('generate'));
+
+      const combinedOptions: GenerateCommandOptions = program.opts();
       const services = await servicesFactory();
       const { yamlConfig, fs, generatorOrchestrator, configService } = services;
-
-      logger.debug(cliLogMessages.commandActionCalled('generate'));
 
       try {
         logger.debug(cliLogMessages.toolConfigsLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);

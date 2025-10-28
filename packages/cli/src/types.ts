@@ -48,4 +48,51 @@ export interface GlobalProgramOptions {
   arch?: string;
 }
 
-export type GlobalProgram = Command;
+/**
+ * Base interface for command options that includes global program options
+ */
+export interface BaseCommandOptions extends GlobalProgramOptions {}
+
+/**
+ * Command-specific options for install command (excludes global options)
+ */
+export interface InstallCommandSpecificOptions {
+  force: boolean;
+  shimMode: boolean;
+}
+
+/**
+ * Command-specific options for update command (excludes global options)
+ */
+export interface UpdateCommandSpecificOptions {
+  yes: boolean;
+  shimMode: boolean;
+}
+
+/**
+ * Command-specific options for cleanup command (excludes global options)
+ */
+export interface CleanupCommandSpecificOptions {
+  tool?: string;
+  type?: string;
+  all?: boolean;
+  registry?: boolean;
+}
+
+/**
+ * Command-specific options for files command (excludes global options)
+ */
+export interface FilesCommandSpecificOptions {
+  tool?: string;
+  type?: string;
+  status?: boolean;
+  since?: string;
+}
+
+export interface GlobalProgram extends Omit<Command, 'opts'> {
+  /**
+   * Get the parsed options for this command, properly typed as GlobalProgramOptions
+   * @returns The parsed global program options
+   */
+  opts(): GlobalProgramOptions;
+}

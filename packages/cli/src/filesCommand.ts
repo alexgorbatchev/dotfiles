@@ -4,12 +4,9 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { BaseCommandOptions, FilesCommandSpecificOptions, GlobalProgram, Services } from './types';
 
-export interface FilesCommandOptions {
-  dryRun: boolean;
-  verbose: boolean;
-  quiet: boolean;
+export interface FilesCommandOptions extends BaseCommandOptions {
   tool?: string;
   type?: string;
   status?: boolean;
@@ -269,10 +266,10 @@ export function registerFilesCommand(
     .option('--type <type>', 'Show files of specific type only (shim, binary, symlink, etc.)')
     .option('--status', 'Check file status (missing, broken links, etc.)')
     .option('--since <date>', 'Show files created since date (ISO format: 2025-08-01)')
-    // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
-    .action(async (_options: any) => {
-      const combinedOptions: FilesCommandOptions = { ..._options, ...program.opts() };
-      logger.debug(cliLogMessages.commandActionCalled('files', _options.tool));
+    .action(async (commandOptions: FilesCommandSpecificOptions) => {
+      logger.debug(cliLogMessages.commandActionCalled('files'));
+
+      const combinedOptions: FilesCommandOptions = { ...commandOptions, ...program.opts() };
       const services = await servicesFactory();
       await filesActionLogic(logger, combinedOptions, services);
     });

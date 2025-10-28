@@ -4,14 +4,11 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { BaseCommandOptions, GlobalProgram, InstallCommandSpecificOptions, Services } from './types';
 
-export interface InstallCommandOptions {
+export interface InstallCommandOptions extends BaseCommandOptions {
   force: boolean;
   shimMode: boolean;
-  dryRun: boolean;
-  verbose: boolean;
-  quiet: boolean;
 }
 
 async function loadToolConfigSafely(
@@ -85,10 +82,9 @@ export function registerInstallCommand(
     .description('Installs a tool if it is not already installed. Typically called by shims.')
     .option('--force', 'Force installation even if the tool is already installed', false)
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
-    // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
-    .action(async (toolName: string, _options: any) => {
-      const combinedOptions: InstallCommandOptions = { ..._options, ...program.opts() } as InstallCommandOptions;
-      logger.debug(cliLogMessages.commandActionCalled('install', toolName));
+    .action(async (toolName: string, commandOptions: InstallCommandSpecificOptions) => {
+      const combinedOptions: InstallCommandOptions = { ...commandOptions, ...program.opts() };
+      logger.debug(cliLogMessages.commandActionCalled('install'));
 
       const services = await servicesFactory();
       const { yamlConfig, fs, installer, configService } = services;

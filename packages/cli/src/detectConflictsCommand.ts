@@ -5,7 +5,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 
 async function loadToolConfigs(
   logger: TsLogger,
@@ -104,7 +104,7 @@ function reportConflicts(logger: TsLogger, conflictMessages: string[]): ExitCode
 
 export async function detectConflictsActionLogic(
   parentLogger: TsLogger,
-  _options: Record<string, unknown>, // No specific options for this command yet
+  _options: GlobalProgramOptions,
   services: Services
 ): Promise<ExitCode> {
   const logger = parentLogger.getSubLogger({ name: 'detectConflictsActionLogic' });
@@ -151,9 +151,10 @@ export function registerDetectConflictsCommand(
   program
     .command('detect-conflicts')
     .description('Detects conflicts between potential generated artifacts and existing system files.')
-    .action(async (options) => {
-      const combinedOptions = { ...options, ...program.opts() };
-      logger.debug(cliLogMessages.commandErrorDetails(), combinedOptions);
+    .action(async () => {
+      logger.debug(cliLogMessages.commandActionCalled('detect-conflicts'));
+
+      const combinedOptions = program.opts();
 
       let exitCode: ExitCode;
       try {

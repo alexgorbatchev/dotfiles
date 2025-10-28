@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from 'bun:test';
-import { type TestLogLevel, TestLogger } from '@dotfiles/logger';
+import { TestLogger, type TestLogLevel } from '@dotfiles/logger';
 import type { ILogObjMeta } from 'tslog';
 
 interface TestLoggerWithPrivates {

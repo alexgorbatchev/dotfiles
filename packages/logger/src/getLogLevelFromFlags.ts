@@ -1,4 +1,4 @@
-import { LogLevel, parseLogLevel, type LogLevelValue } from './LogLevel';
+import { LogLevel, type LogLevelValue, parseLogLevel } from './LogLevel';
 
 /**
  * Determines the appropriate log level based on CLI flags.

@@ -11,7 +11,6 @@ import { toolConfigSchema } from '@dotfiles/schemas';
 import type { YamlConfig } from '@dotfiles/schemas/config';
 import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 import { configLoaderLogMessages } from './log-messages';
-import { error } from 'node:console';
 
 /**
  * Validates a tool configuration with Zod schema and logs errors if validation fails.

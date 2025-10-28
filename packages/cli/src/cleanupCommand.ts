@@ -3,12 +3,9 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { FileOperation, FileState, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, exitCli } from '@dotfiles/utils';
 import { cliLogMessages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { BaseCommandOptions, CleanupCommandSpecificOptions, GlobalProgram, Services } from './types';
 
-export interface CleanupCommandOptions {
-  dryRun: boolean;
-  verbose: boolean;
-  quiet: boolean;
+export interface CleanupCommandOptions extends BaseCommandOptions {
   tool?: string;
   type?: string;
   all?: boolean;
@@ -194,9 +191,8 @@ export function registerCleanupCommand(
     .option('--type <type>', 'Remove files of specific type only (registry-based)')
     .option('--all', 'Remove all tracked files (registry-based)')
     .option('--registry', 'Use registry-based cleanup instead of manifest-based')
-    // biome-ignore lint/suspicious/noExplicitAny: Commander action callback types are not properly typed
-    .action(async (_options: any) => {
-      const combinedOptions: CleanupCommandOptions = { ..._options, ...program.opts() };
+    .action(async (commandOptions: CleanupCommandSpecificOptions) => {
+      const combinedOptions: CleanupCommandOptions = { ...commandOptions, ...program.opts() };
       logger.debug(cliLogMessages.commandActionCalled('cleanup'));
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);

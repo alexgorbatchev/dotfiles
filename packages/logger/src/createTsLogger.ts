@@ -106,7 +106,7 @@ export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
     hideLogPositionForProduction: false,
 
     prettyErrorTemplate: '\n{{errorName}} {{errorMessage}}\nerror stack:\n{{errorStack}}',
-    
+
     prettyLogStyles: {
       logLevelName: {
         FATAL: ['bold', 'red'],
@@ -120,7 +120,7 @@ export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
 
     prettyInspectOptions: {
       breakLength: Infinity,
-      compact: true
-    }
+      compact: true,
+    },
   });
 }

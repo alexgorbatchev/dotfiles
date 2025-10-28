@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';
 import cliPackageJson from '../package.json';
-import { cdToRepoRoot, executeCommand, validateGitRepository, printDirectoryContents } from './lib';
+import { cdToRepoRoot, executeCommand, printDirectoryContents, validateGitRepository } from './lib';
 
 cdToRepoRoot(import.meta.url);
 
