@@ -24,19 +24,15 @@ async function loadToolConfigSafely(
 ): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
   try {
     const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
-    logger.debug(cliLogMessages.commandErrorDetails(), toolName);
 
     if (!toolConfig) {
-      logger.debug(cliLogMessages.commandErrorDetails(), toolName);
       logger.error(cliLogMessages.toolNotFound(toolName, toolConfigsDir));
       return { toolConfig: null, exitCode: ExitCode.ERROR };
     }
 
     return { toolConfig, exitCode: ExitCode.SUCCESS };
   } catch (error) {
-    logger.debug(cliLogMessages.commandErrorDetails(), toolName, (error as Error).message);
-    logger.error(cliLogMessages.configLoadFailed(`tool "${toolName}"`, (error as Error).message));
-    logger.debug(cliLogMessages.commandErrorDetails(), error);
+    logger.error(cliLogMessages.configLoadFailed(`tool "${toolName}"`), error);
     return { toolConfig: null, exitCode: ExitCode.ERROR };
   }
 }
@@ -58,8 +54,7 @@ async function getLatestReleaseFromGitHub(
 
     return latestRelease;
   } catch (networkError) {
-    logger.error(cliLogMessages.serviceGithubApiFailed('get latest release', 0, (networkError as Error).message));
-    logger.debug(cliLogMessages.commandErrorDetails(), networkError);
+    logger.error(cliLogMessages.serviceGithubApiFailed('get latest release', 0), networkError);
     return null;
   }
 }
@@ -144,7 +139,6 @@ async function performUpdate(
     } else {
       logger.info(cliLogMessages.toolUpdated(toolName, configuredVersion, latestVersion));
     }
-    logger.debug(cliLogMessages.commandErrorDetails());
     return ExitCode.SUCCESS;
   } else {
     logger.error(cliLogMessages.toolUpdateFailed(toolName, installResult.error ?? 'Unknown error'));
@@ -232,8 +226,6 @@ export function registerUpdateCommand(
       const { yamlConfig, fs, configService } = services;
 
       try {
-        actionLogger.debug(cliLogMessages.commandErrorDetails(), toolName);
-
         const toolConfigResult = await loadToolConfigSafely(
           actionLogger,
           configService,
@@ -271,9 +263,7 @@ export function registerUpdateCommand(
           );
         }
       } catch (error) {
-        actionLogger.debug(cliLogMessages.commandErrorDetails(), error);
-        logger.error(cliLogMessages.commandExecutionFailed('update', ExitCode.ERROR, (error as Error).message));
-        logger.debug(cliLogMessages.commandErrorDetails(), error);
+        logger.error(cliLogMessages.commandExecutionFailed('update', ExitCode.ERROR), error);
         exitCli(ExitCode.ERROR);
       }
     });

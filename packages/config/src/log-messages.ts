@@ -9,7 +9,7 @@ export const configLoaderLogMessages = {
     createSafeLogMessage(`Configuration validation failed:\n${errors.join('\n')}`),
   configurationParseError: (configPath: string, format: string, reason: string) =>
     createSafeLogMessage(`Failed to parse ${format} configuration ${configPath}: ${reason}`),
-  configurationLoadFailed: (toolPath: string, reason: string) => createSafeLogMessage(`${toolPath}: ${reason}`),
+  configurationLoadFailed: (toolPath: string) => createSafeLogMessage(`Failed to load configuration: ${toolPath}`),
   configurationLoaded: (configPath: string, toolCount: number) =>
     createSafeLogMessage(`Configuration loaded from ${configPath} (${toolCount} tools configured)`),
   toolConfigLoadingStarted: (toolConfigsDir: string) => createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
@@ -21,5 +21,5 @@ export const configLoaderLogMessages = {
   configurationFieldInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),
-  fsReadFailed: (path: string, reason: string) => createSafeLogMessage(`Failed to read ${path}: ${reason}`),
+  fsReadFailed: (path: string) => createSafeLogMessage(`Failed to read ${path}`),
 } satisfies SafeLogMessageMap;

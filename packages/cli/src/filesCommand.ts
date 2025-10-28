@@ -246,8 +246,7 @@ async function filesActionLogic(
     const operations = await fileRegistry.getOperations(filterResult.filter);
     await showOperations(logger, operations, yamlConfig);
   } catch (error) {
-    logger.error(cliLogMessages.commandExecutionFailed('files', ExitCode.ERROR, (error as Error).message));
-    logger.debug(cliLogMessages.commandErrorDetails(), error);
+    logger.error(cliLogMessages.commandExecutionFailed('files', ExitCode.ERROR), error);
     exitCli(ExitCode.ERROR);
   }
 }

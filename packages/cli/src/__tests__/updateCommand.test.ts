@@ -214,11 +214,7 @@ describe('updateCommand', () => {
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['updateCommand'],
-      [cliLogMessages.serviceGithubApiFailed('get latest release', 0, 'GitHub API Down')]
-    );
+    logger.expect(['ERROR'], ['updateCommand'], [cliLogMessages.serviceGithubApiFailed('get latest release', 0)]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 

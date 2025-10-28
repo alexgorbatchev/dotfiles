@@ -143,7 +143,7 @@ async function removeFile(
       logger.debug(cliLogMessages.cleanupFileNotFound(filePath));
     }
   } catch (error) {
-    logger.error(cliLogMessages.cleanupDeleteFailed(filePath, String(error)));
+    logger.error(cliLogMessages.cleanupDeleteFailed(filePath), error);
   }
 }
 
@@ -172,8 +172,7 @@ async function cleanupActionLogic(
     );
     logger.trace(cliLogMessages.cleanupProcessFinished(dryRun));
   } catch (error) {
-    logger.error(cliLogMessages.commandExecutionFailed('cleanup', 1, (error as Error).message));
-    logger.debug(cliLogMessages.commandErrorDetails(), error);
+    logger.error(cliLogMessages.commandExecutionFailed('cleanup', 1), error);
     exitCli(1);
   }
 }

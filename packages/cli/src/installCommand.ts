@@ -59,14 +59,12 @@ function handleInstallationResult(
 }
 
 function handleInstallationError(logger: TsLogger, error: Error, toolName: string, shimMode: boolean): number {
-  logger.debug(cliLogMessages.commandUnhandledError(), error);
-
   if (shimMode) {
     // In shim mode, output user-friendly error message to stderr only
     process.stderr.write(`Failed to install '${toolName}': ${error.message}\n`);
   } else {
     // Normal mode: use logger only
-    logger.error(cliLogMessages.commandExecutionFailed('install', 1, error.message));
+    logger.error(cliLogMessages.commandExecutionFailed('install', 1), error);
   }
   return 1;
 }

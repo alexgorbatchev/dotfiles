@@ -38,8 +38,7 @@ export function registerGenerateCommand(
         await generatorOrchestrator.generateAll(toolConfigs);
         logger.info(cliLogMessages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (error) {
-        const failureMessage = cliLogMessages.commandExecutionFailed('generate', 1, (error as Error).message);
-        logger.error(failureMessage, error);
+        logger.error(cliLogMessages.commandExecutionFailed('generate', 1), error);
         exitCli(1);
       }
     });

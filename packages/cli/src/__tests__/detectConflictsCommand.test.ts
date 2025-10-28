@@ -100,7 +100,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['ERROR'],
         ['registerDetectConflictsCommand', 'detectConflictsActionLogic'],
-        [cliLogMessages.configLoadFailed('tool configurations', loadError.message)]
+        [cliLogMessages.configLoadFailed('tool configurations')]
       );
     });
 

@@ -5,7 +5,6 @@ export const cliLogMessages = {
     createSafeLogMessage(`Action called for ${commandName}${targetTool ? ` "${targetTool}"` : ''}`),
   commandActionStarted: (commandName: string, targetTool?: string) =>
     createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`),
-  commandErrorDetails: () => createSafeLogMessage('Error details: %O'),
   commandConfigErrorDetails: () => createSafeLogMessage('Configuration loading error details: %O'),
   dryRunEnabled: () => createSafeLogMessage('Dry run enabled. Initializing MemFileSystem'),
   componentInitialized: (component: string) => createSafeLogMessage(`${component} initialized`),
@@ -14,13 +13,10 @@ export const cliLogMessages = {
     createSafeLogMessage(`Configuration loaded from ${toolConfigsDir} (${toolCount} tools configured)`),
   toolConfigsForDryRun: () => createSafeLogMessage('tool configs for dry run'),
   commandCompleted: (isDryRun: boolean) => createSafeLogMessage(`DONE${isDryRun ? ' (dry run)' : ''}`),
-  commandExecutionFailed: (commandName: string, exitCode: number, errorMessage: string) =>
-    createSafeLogMessage(`Command failed [${commandName}] exit ${exitCode}: ${errorMessage}`),
-  commandUnhandledError: () => createSafeLogMessage('Unhandled error in action handler: %O'),
+  commandExecutionFailed: (commandName: string, exitCode: number) =>
+    createSafeLogMessage(`Command failed [${commandName}] exit ${exitCode}`),
   commandVersionComparison: (toolName: string, configuredVersion: string, latestVersion: string) =>
     createSafeLogMessage(`Tool: ${toolName}, Configured: ${configuredVersion}, Latest: ${latestVersion}`),
-  commandGithubApiErrorDetails: (toolName: string) =>
-    createSafeLogMessage(`GitHub API error details for ${toolName}: %O`),
   commandUnsupportedOperation: (operation: string, details: string) =>
     createSafeLogMessage(`${operation} not yet supported (${details})`),
   toolNotFound: (toolName: string, source: string) => createSafeLogMessage(`Tool "${toolName}" not found in ${source}`),
@@ -60,7 +56,8 @@ export const cliLogMessages = {
   toolUpdateFailed: (toolName: string, reason: string) =>
     createSafeLogMessage(`Update failed for tool "${toolName}": ${reason}`),
   commandCheckingUpdatesFor: (toolName: string) => createSafeLogMessage(`Checking "${toolName}" for updates`),
-  fsReadFailed: (path: string, reason: string) => createSafeLogMessage(`Failed to read ${path}: ${reason}`),
+  commandCheckingUpdatesForAll: () => createSafeLogMessage(`Checking all tools for updates`),
+  fsReadFailed: (path: string) => createSafeLogMessage(`Failed to read ${path}`),
   fsAccessDenied: (operation: string, path: string) => createSafeLogMessage(`Access denied ${operation}: ${path}`),
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),
   fsWrite: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] write ${path}`),
@@ -82,8 +79,7 @@ export const cliLogMessages = {
   cleanupFileRemoved: (path: string) => createSafeLogMessage(`[cleanup] rm ${path}`),
   fileCleanupDryRun: (filePath: string) => createSafeLogMessage(`Would delete: ${filePath}`),
   cleanupFileNotFound: (filePath: string) => createSafeLogMessage(`file not found ${filePath}`),
-  cleanupDeleteFailed: (filePath: string, reason: string) =>
-    createSafeLogMessage(`Failed to delete ${filePath}: ${reason}`),
+  cleanupDeleteFailed: (filePath: string) => createSafeLogMessage(`Failed to delete ${filePath}`),
   cleanupProcessStarted: (dryRun: boolean) => createSafeLogMessage(`starting cleanup process, dryRun=${dryRun}: %O`),
   operationStarted: (operation: string) => createSafeLogMessage(`${operation} started`),
   operationCompleted: (operation: string) => createSafeLogMessage(`${operation} completed`),
@@ -105,10 +101,9 @@ export const cliLogMessages = {
   cliStarted: () => createSafeLogMessage('CLI starting with arguments'),
   serviceGithubResourceNotFound: (resource: string, identifier: string) =>
     createSafeLogMessage(`GitHub ${resource} not found: ${identifier}`),
-  serviceGithubApiFailed: (operation: string, status: number, message: string) =>
-    createSafeLogMessage(`GitHub API failed [${operation}] ${status}: ${message}`),
-  configLoadFailed: (configPath: string, reason: string) =>
-    createSafeLogMessage(`Failed to load configuration from ${configPath}: ${reason}`),
+  serviceGithubApiFailed: (operation: string, status: number) =>
+    createSafeLogMessage(`GitHub API failed [${operation}] ${status}`),
+  configLoadFailed: (configPath: string) => createSafeLogMessage(`Failed to load configuration from ${configPath}`),
   configParameterIgnored: (field: string, reason: string) =>
     createSafeLogMessage(`Configuration field "${field}" ignored: ${reason}`),
   configParameterInvalid: (field: string, value: string, expected: string) =>

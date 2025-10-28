@@ -22,7 +22,7 @@ async function loadToolConfigs(
     );
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
-    logger.error(cliLogMessages.configLoadFailed('tool configurations', (error as Error).message));
+    logger.error(cliLogMessages.configLoadFailed('tool configurations'), error);
     return { toolConfigs: [], exitCode: ExitCode.ERROR };
   }
 }
@@ -46,7 +46,7 @@ async function checkShimConflicts(
           conflictMessages.push(`[${toolConfig.name}]: ${shimPath} (exists but is not a generator shim)`);
         }
       } catch (readError: unknown) {
-        logger.warn(cliLogMessages.fsReadFailed(shimPath, (readError as Error).message));
+        logger.warn(cliLogMessages.fsReadFailed(shimPath), readError);
         conflictMessages.push(`[${toolConfig.name}]: ${shimPath} (exists but could not be read/verified)`);
       }
     }
@@ -84,7 +84,7 @@ async function checkSymlinkConflicts(
       }
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        logger.warn(cliLogMessages.fsReadFailed(targetPath, (error as Error).message));
+        logger.warn(cliLogMessages.fsReadFailed(targetPath), error);
       }
     }
   }
@@ -161,10 +161,7 @@ export function registerDetectConflictsCommand(
         const services = await servicesFactory();
         exitCode = await detectConflictsActionLogic(logger, combinedOptions, services);
       } catch (error) {
-        logger.error(
-          cliLogMessages.commandExecutionFailed('detect-conflicts', ExitCode.ERROR, (error as Error).message)
-        );
-        logger.debug(cliLogMessages.commandErrorDetails(), error);
+        logger.error(cliLogMessages.commandExecutionFailed('detect-conflicts', ExitCode.ERROR), error);
         exitCode = ExitCode.ERROR;
       }
 

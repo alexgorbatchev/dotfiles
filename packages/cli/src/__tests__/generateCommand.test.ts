@@ -95,10 +95,6 @@ describe('generateCommand', () => {
 
     expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(
-      ['ERROR'],
-      ['registerGenerateCommand'],
-      [cliLogMessages.commandExecutionFailed('generate', 1, 'Generation failed')]
-    );
+    logger.expect(['ERROR'], ['registerGenerateCommand'], [cliLogMessages.commandExecutionFailed('generate', 1)]);
   });
 });

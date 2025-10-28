@@ -10,7 +10,7 @@ import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
-import { createTsLogger, getLogLevelFromFlags, LogLevel, type TsLogger } from '@dotfiles/logger';
+import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -88,9 +88,7 @@ async function copyToolConfigFile(
     await fs.writeFile(filePath, content);
     logger.trace(cliLogMessages.fsWrite('memfs', contractHomePath(systemInfo.homeDir, filePath)));
   } catch (readError: unknown) {
-    const errorMessage = readError instanceof Error ? readError.message : String(readError);
-    logger.warn(cliLogMessages.fsReadFailed(filePath, errorMessage));
-    logger.error(cliLogMessages.fsReadFailed(filePath, String(readError)), readError);
+    logger.error(cliLogMessages.fsReadFailed(filePath), readError);
   }
 }
 
@@ -366,8 +364,8 @@ export async function main(argv: string[]) {
 if (import.meta.main) {
   main(process.argv).catch((error) => {
     // Create a basic logger for fatal errors only, since we don't have parsed options yet
-    const fatalLogger = createTsLogger({ name: 'cli', level: LogLevel.QUIET }); // QUIET level only shows errors
-    fatalLogger.fatal(cliLogMessages.commandExecutionFailed('main', 1, 'Top-level unhandled error'), '%O', error);
+    const fatalLogger = createTsLogger({ name: 'cli' });
+    fatalLogger.fatal(cliLogMessages.commandExecutionFailed('main', 1), error);
     process.exit(1);
   });
 }

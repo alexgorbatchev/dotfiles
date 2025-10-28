@@ -156,8 +156,8 @@ async function loadToolConfigFromModule(
     }
 
     return toolConfig;
-  } catch (e) {
-    logger.error(configLoaderLogMessages.configurationLoadFailed(path.relative(yamlConfig.configFileDir, filePath), e));
+  } catch (error) {
+    logger.error(configLoaderLogMessages.configurationLoadFailed(path.relative(yamlConfig.configFileDir, filePath)), error);
     return null;
   }
 }
@@ -215,11 +215,11 @@ async function scanDirectoryForToolFiles(
           });
         }
       } catch (error) {
-        logger.debug(configLoaderLogMessages.fsReadFailed(entryPath, (error as Error).message));
+        logger.debug(configLoaderLogMessages.fsReadFailed(entryPath), error);
       }
     }
   } catch (error) {
-    logger.debug(configLoaderLogMessages.fsReadFailed(dirPath, (error as Error).message));
+    logger.debug(configLoaderLogMessages.fsReadFailed(dirPath), error);
   }
 
   return results;
@@ -273,9 +273,8 @@ export async function loadToolConfigs(
       const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, yamlConfig);
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    logger.error(configLoaderLogMessages.fsReadFailed(toolConfigsDir, errorMessage));
+  } catch (error) {
+    logger.error(configLoaderLogMessages.fsReadFailed(toolConfigsDir), error);
     return {};
   }
 
