@@ -2,7 +2,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
-import type { InstallOptions, InstallResult } from '../types';
+import type { BrewInstallMetadata, InstallOptions, InstallResult } from '../types';
 import { getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { messages } from '../utils/log-messages';
 
@@ -63,10 +63,18 @@ export async function installFromBrew(
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    const metadata: BrewInstallMetadata = {
+      method: 'brew',
+      formula,
+      isCask,
+      tap,
+    };
+
     const result: InstallResult = {
       success: true,
       binaryPaths,
       version: version || undefined,
+      metadata,
       info: {
         formula,
         isCask,
