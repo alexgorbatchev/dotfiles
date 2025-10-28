@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { $ } from 'bun';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -375,7 +376,7 @@ export class Installer implements IInstaller {
     context: BaseInstallContext,
     options?: InstallOptions
   ): Promise<InstallResult> {
-    return installFromBrew(toolName, toolConfig, context, options, this.logger);
+    return installFromBrew(toolName, toolConfig, context, options, this.logger, $);
   }
 
   /**

@@ -1,9 +1,11 @@
-import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
+import { $ } from 'bun';
 import type { InstallOptions, InstallResult } from '../types';
 import { getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { messages } from '../utils/log-messages';
+
+type ShellExecutor = typeof $;
 
 /**
  * Install a tool using Homebrew
@@ -13,7 +15,8 @@ export async function installFromBrew(
   toolConfig: BrewToolConfig,
   context: BaseInstallContext,
   options: InstallOptions | undefined,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
+  shellExecutor: ShellExecutor = $
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
   logger.debug(messages.brew.installing(toolName), toolConfig.installParams);
@@ -31,14 +34,10 @@ export async function installFromBrew(
   const tap = params.tap;
 
   const operation = async (): Promise<InstallResult> => {
-    const command = buildBrewCommand(formula, isCask, tap, options?.force);
-    logger.debug(messages.brew.executingCommand(command));
-
-    await installBinaries(toolConfig, toolName, context, logger);
-
+    await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-    return {
+    const result: InstallResult = {
       success: true,
       binaryPaths,
       info: {
@@ -47,48 +46,44 @@ export async function installFromBrew(
         tap,
       },
     };
+
+    return result;
   };
 
-  return withInstallErrorHandling('brew', toolName, logger, operation) as Promise<InstallResult>;
+  return withInstallErrorHandling('brew', toolName, logger, operation);
 }
 
-function buildBrewCommand(
+async function executeBrewInstall(
   formula: string,
   isCask: boolean,
   tap: string | string[] | undefined,
-  force?: boolean
-): string {
-  const brewCommand = 'brew';
-  let command = `${brewCommand} `;
-
+  force: boolean | undefined,
+  logger: TsLogger,
+  $: ShellExecutor
+): Promise<void> {
+  // Add taps if specified
   if (tap) {
     const taps = Array.isArray(tap) ? tap : [tap];
     for (const t of taps) {
-      command += `tap ${t} && ${brewCommand} `;
+      const tapCommand = `brew tap ${t}`;
+      logger.debug(messages.brew.executingCommand(tapCommand));
+      await $`brew tap ${t}`.quiet();
     }
   }
 
-  command += isCask ? 'install --cask ' : 'install ';
-  command += formula;
-
+  // Build install command
+  const installArgs = ['install'];
+  if (isCask) {
+    installArgs.push('--cask');
+  }
   if (force) {
-    command += ' --force';
+    installArgs.push('--force');
   }
+  installArgs.push(formula);
 
-  return command;
-}
+  const installCommand = `brew ${installArgs.join(' ')}`;
+  logger.debug(messages.brew.executingCommand(installCommand));
 
-async function installBinaries(
-  toolConfig: BrewToolConfig,
-  toolName: string,
-  context: BaseInstallContext,
-  logger: TsLogger
-): Promise<void> {
-  const binaries = toolConfig.binaries || [toolName];
-  for (const binary of binaries) {
-    const binaryName = typeof binary === 'string' ? binary : binary.name;
-    const sourcePath = `/usr/local/bin/${binaryName}`;
-    const finalBinaryPath = path.join(context.installDir, binaryName);
-    logger.debug(messages.binaryMovement.moving(sourcePath, finalBinaryPath));
-  }
+  // Execute the install command
+  await $`brew ${installArgs}`.quiet();
 }
