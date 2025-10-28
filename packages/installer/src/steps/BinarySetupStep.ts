@@ -63,7 +63,7 @@ export class BinarySetupStep extends InstallationStep<BinarySetupStepParams> {
       return {
         ...context,
         success: false,
-        error: `Binary setup failed: ${(error as Error).message}`,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

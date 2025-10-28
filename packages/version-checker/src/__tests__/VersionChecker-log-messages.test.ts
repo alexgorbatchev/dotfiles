@@ -17,8 +17,8 @@ describe('versionCheckerLogMessages', () => {
   });
 
   test('latestReleaseError', () => {
-    expect(String(versionCheckerLogMessages.latestReleaseError('owner', 'repo', 'boom'))).toBe(
-      'Failed to fetch latest release for owner/repo: boom'
+    expect(String(versionCheckerLogMessages.latestReleaseError('owner', 'repo'))).toBe(
+      'Failed to fetch latest release for owner/repo'
     );
   });
 

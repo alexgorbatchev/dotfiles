@@ -28,13 +28,13 @@ export const githubApiClientLogMessages = {
       createSafeLogMessage(`GitHub API server error for ${url} with status ${statusCode}`),
     http: (url: string, statusCode: number) =>
       createSafeLogMessage(`GitHub API HTTP error for ${url} with status ${statusCode}`),
-    network: (url: string, reason: string) => createSafeLogMessage(`GitHub API network error for ${url}: ${reason}`),
+    network: (url: string) => createSafeLogMessage(`GitHub API network error for ${url}`),
     unknown: (url: string) => createSafeLogMessage(`Unknown GitHub API error for ${url}`),
-    constraintLatestError: (message: string) =>
-      createSafeLogMessage(`GitHub API latest constraint lookup failed: ${message}`),
-    constraintError: (constraint: string, owner: string, repo: string, message: string) =>
+    constraintLatestError: () =>
+      createSafeLogMessage(`GitHub API latest constraint lookup failed`),
+    constraintError: (constraint: string, owner: string, repo: string) =>
       createSafeLogMessage(
-        `GitHub API error while evaluating constraint ${constraint} for ${owner}/${repo}: ${message}`
+        `GitHub API error while evaluating constraint ${constraint} for ${owner}/${repo}`
       ),
   } satisfies SafeLogMessageMap,
   releases: {
@@ -42,14 +42,14 @@ export const githubApiClientLogMessages = {
       createSafeLogMessage(`Fetching latest GitHub release for ${owner}/${repo}`),
     latestNotFound: (owner: string, repo: string) =>
       createSafeLogMessage(`Latest GitHub release not found for ${owner}/${repo}`),
-    latestError: (owner: string, repo: string, message: string) =>
-      createSafeLogMessage(`Error fetching latest GitHub release for ${owner}/${repo}: ${message}`),
+    latestError: (owner: string, repo: string) =>
+      createSafeLogMessage(`Error fetching latest GitHub release for ${owner}/${repo}`),
     fetchingByTag: (tag: string, owner: string, repo: string) =>
       createSafeLogMessage(`Fetching GitHub release ${tag} for ${owner}/${repo}`),
     tagNotFound: (tag: string, owner: string, repo: string) =>
       createSafeLogMessage(`GitHub release ${tag} not found for ${owner}/${repo}`),
-    tagError: (tag: string, owner: string, repo: string, message: string) =>
-      createSafeLogMessage(`Error fetching GitHub release ${tag} for ${owner}/${repo}: ${message}`),
+    tagError: (tag: string, owner: string, repo: string) =>
+      createSafeLogMessage(`Error fetching GitHub release ${tag} for ${owner}/${repo}`),
     fetchingAll: (owner: string, repo: string) =>
       createSafeLogMessage(`Fetching all GitHub releases for ${owner}/${repo}`),
     fetchingPage: (page: number, endpoint: string) =>

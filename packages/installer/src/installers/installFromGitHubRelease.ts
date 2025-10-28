@@ -247,6 +247,7 @@ function constructDownloadUrl(
   logger: TsLogger
 ): OperationResult<string> {
   const customHost = appConfig.github.host;
+  const host = customHost ?? '(public GitHub)';
   logger.debug(installerLogMessages.gitHubRelease.determiningDownloadUrl(rawBrowserDownloadUrl, customHost));
 
   try {
@@ -259,18 +260,15 @@ function constructDownloadUrl(
       return downloadUrl;
     }
 
-    const host = customHost ?? '(public GitHub)';
     logger.debug(installerLogMessages.gitHubRelease.finalDownloadUrl(rawBrowserDownloadUrl, host, downloadUrl.data));
 
     return downloadUrl;
   } catch (error) {
-    const host = customHost ?? '(public GitHub)';
-    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(installerLogMessages.gitHubRelease.invalidUrl(rawBrowserDownloadUrl));
-    logger.debug(installerLogMessages.gitHubRelease.downloadUrlError(rawBrowserDownloadUrl, host, errorMessage));
+    logger.debug(installerLogMessages.gitHubRelease.downloadUrlError(rawBrowserDownloadUrl, host), error);
     return {
       success: false,
-      error: `Failed to construct valid download URL. Raw: ${rawBrowserDownloadUrl}, Configured Host: ${host}, Error: ${errorMessage}`,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
@@ -325,7 +323,7 @@ async function downloadAsset(
   } catch (error) {
     return {
       success: false,
-      error: `Download failed: ${(error as Error).message}`,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

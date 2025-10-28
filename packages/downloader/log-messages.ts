@@ -20,10 +20,10 @@ export const cachedDownloadStrategyLogMessages = {
     const sizeDescription = size !== undefined ? `, size: ${size} bytes` : '';
     return createSafeLogMessage(`Cached data for key: ${key} (${strategy})${sizeDescription}, expires: ${expiresAt}`);
   },
-  cacheStorageFailed: (key: string, reason: string) =>
-    createSafeLogMessage(`Error caching data for key: ${key}, error: ${reason}`),
-  cacheCheckFailed: (key: string, reason: string) =>
-    createSafeLogMessage(`Error checking cache for key: ${key}, error: ${reason}`),
+  cacheStorageFailed: (key: string) =>
+    createSafeLogMessage(`Error caching data for key: ${key}`),
+  cacheCheckFailed: (key: string) =>
+    createSafeLogMessage(`Error checking cache for key: ${key}`),
   cacheMiss: (key: string) => createSafeLogMessage(`No cache entry found for key: ${key}`),
   cacheDisabledForProgress: (url: string) =>
     createSafeLogMessage(`Cache disabled, caching for key: ${url} (reason: progress callback)`),
@@ -33,7 +33,7 @@ export const cachedDownloadStrategyLogMessages = {
   downloadedFileCached: (path: string, size: number) =>
     createSafeLogMessage(`Successfully read file for caching from ${path}, size: ${size} bytes`),
   downloadedFileMissing: (path: string) => createSafeLogMessage(`Downloaded file not found: ${path}`),
-  downloadedFileReadFailed: (path: string, reason: string) => createSafeLogMessage(`Failed to read ${path}: ${reason}`),
+  downloadedFileReadFailed: (path: string) => createSafeLogMessage(`Failed to read ${path}`),
   downloadFromStrategy: (strategyName: string) => createSafeLogMessage(`download from ${strategyName}`),
   cachedFileWritten: (path: string) => createSafeLogMessage(`[CachedDownloadStrategy] write ${path}`),
 } satisfies SafeLogMessageMap;

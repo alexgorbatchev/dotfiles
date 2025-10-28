@@ -21,13 +21,13 @@ export const symlinkGeneratorLogMessages = {
       createSafeLogMessage(`Target "${targetAbsPath}" exists and overwrite is false. Skipping symlink creation.`),
   } satisfies SafeLogMessageMap,
   filesystem: {
-    backupFailed: (targetAbsPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to write backup of ${targetAbsPath}: ${reason}`),
-    deleteFailed: (targetAbsPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to delete ${targetAbsPath}: ${reason}`),
-    directoryCreateFailed: (directoryPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to create directory ${directoryPath}: ${reason}`),
-    symlinkFailed: (source: string, target: string, reason: string) =>
-      createSafeLogMessage(`Failed to create symlink ${source} → ${target}: ${reason}`),
+    backupFailed: (targetAbsPath: string) =>
+      createSafeLogMessage(`Failed to write backup of ${targetAbsPath}`),
+    deleteFailed: (targetAbsPath: string) =>
+      createSafeLogMessage(`Failed to delete ${targetAbsPath}`),
+    directoryCreateFailed: (directoryPath: string) =>
+      createSafeLogMessage(`Failed to create directory ${directoryPath}`),
+    symlinkFailed: (source: string, target: string) =>
+      createSafeLogMessage(`Failed to create symlink ${source} → ${target}`),
   } satisfies SafeLogMessageMap,
 } as const;

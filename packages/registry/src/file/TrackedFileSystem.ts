@@ -443,7 +443,7 @@ export class TrackedFileSystem implements IFileSystem {
       // Track the directory itself
       await this.trackFileDeletion(dirPath);
     } catch (error) {
-      this.logger.debug(fileRegistryLogMessages.directoryDeletionError(), dirPath, (error as Error).message);
+      this.logger.debug(fileRegistryLogMessages.directoryDeletionError(), dirPath, error instanceof Error ? error.message : String(error));
     }
   }
 }

@@ -461,7 +461,7 @@ describe('HookExecutor', () => {
       logger.expect(
         ['ERROR'],
         ['HookExecutor', 'executeHook'],
-        ['Installation failed [testHook hook] for tool "test-tool": Test hook error']
+        ['Installation failed [testHook hook] for tool "test-tool"']
       );
     });
 

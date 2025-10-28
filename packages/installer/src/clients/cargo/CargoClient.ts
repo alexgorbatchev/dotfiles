@@ -177,7 +177,7 @@ export class CargoClient implements ICargoClient {
       return JSON.parse(buffer.toString('utf-8')) as T;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        logger.error(cargoClientLogMessages.errors.jsonParseError(url, error.message), error);
+        logger.error(cargoClientLogMessages.errors.jsonParseError(url), error);
         throw new CargoClientError(`Invalid JSON response from ${url}: ${error.message}`, undefined, error);
       }
       throw error;
@@ -212,8 +212,7 @@ export class CargoClient implements ICargoClient {
         logger.error(cargoClientLogMessages.cratesIo.notFound(crateName));
         return null;
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(cargoClientLogMessages.cratesIo.metadataError(crateName, errorMessage), error);
+      logger.error(cargoClientLogMessages.cratesIo.metadataError(crateName), error);
       throw error;
     }
   }
@@ -253,8 +252,7 @@ export class CargoClient implements ICargoClient {
         return null;
       }
       // Let other downloader errors (NetworkError, etc.) bubble up
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(cargoClientLogMessages.parsing.cargoTomlParseError(url, errorMessage), error);
+      logger.error(cargoClientLogMessages.parsing.cargoTomlParseError(url), error);
       throw error;
     }
   }

@@ -265,7 +265,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private handleNetworkError(error: NetworkError, url: string): never {
     const logger = this.logger.getSubLogger({ name: 'handleNetworkError' });
-    logger.debug(githubApiClientLogMessages.errors.network(url, error.message));
+    logger.debug(githubApiClientLogMessages.errors.network(url), error);
     throw new GitHubApiClientError(`Network error while requesting ${url}: ${error.message}`, undefined, error);
   }
 
@@ -292,8 +292,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         logger.debug(githubApiClientLogMessages.releases.latestNotFound(owner, repo));
         return null;
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(githubApiClientLogMessages.releases.latestError(owner, repo, errorMessage));
+      logger.debug(githubApiClientLogMessages.releases.latestError(owner, repo), error);
       throw error;
     }
   }
@@ -308,8 +307,7 @@ export class GitHubApiClient implements IGitHubApiClient {
         logger.debug(githubApiClientLogMessages.releases.tagNotFound(tag, owner, repo));
         return null;
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(githubApiClientLogMessages.releases.tagError(tag, owner, repo, errorMessage));
+      logger.debug(githubApiClientLogMessages.releases.tagError(tag, owner, repo), error);
       throw error;
     }
   }
@@ -371,8 +369,7 @@ export class GitHubApiClient implements IGitHubApiClient {
       return await this.getLatestRelease(owner, repo);
     } catch (error) {
       const logger = this.logger.getSubLogger({ name: 'handleLatestConstraint' });
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(githubApiClientLogMessages.errors.constraintLatestError(errorMessage));
+      logger.debug(githubApiClientLogMessages.errors.constraintLatestError(), error);
       return null;
     }
   }
@@ -438,8 +435,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     try {
       return await this.request<GitHubRelease[]>(endpoint);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(githubApiClientLogMessages.errors.constraintError(constraint, owner, repo, errorMessage), error);
+      logger.debug(githubApiClientLogMessages.errors.constraintError(constraint, owner, repo), error);
       return null;
     }
   }

@@ -95,10 +95,10 @@ export class HookExecutor {
       };
     } catch (error) {
       const durationMs = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
 
       methodLogger.error(
-        installerLogMessages.outcome.installFailed(`${hookName} hook`, context.toolName, errorMessage)
+        installerLogMessages.outcome.installFailed(`${hookName} hook`, context.toolName),
+        error
       );
 
       if (continueOnError) {
@@ -106,14 +106,14 @@ export class HookExecutor {
 
         return {
           success: false,
-          error: errorMessage,
+          error: error instanceof Error ? error.message : String(error),
           durationMs,
           skipped: false,
         };
       } else {
         return {
           success: false,
-          error: errorMessage,
+          error: error instanceof Error ? error.message : String(error),
           durationMs,
           skipped: false,
         };

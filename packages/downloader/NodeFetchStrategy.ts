@@ -247,7 +247,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
       }
 
       let message = `Failed to download ${url}`;
-      if ((error as Error).name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         message = `Download timed out for ${url}`;
       } else if (error instanceof Error) {
         message = error.message;

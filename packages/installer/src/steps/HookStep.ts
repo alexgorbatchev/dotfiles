@@ -42,7 +42,7 @@ export class HookStep extends InstallationStep<HookStepParams> {
       return {
         ...context,
         success: false,
-        error: `${hookType} hook execution failed: ${(error as Error).message}`,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

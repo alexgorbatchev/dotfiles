@@ -216,8 +216,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       await toolFs.rename(targetAbsPath, backupPath);
       return { failed: false };
     } catch (error) {
-      const errorMsg = symlinkGeneratorLogMessages.filesystem.backupFailed(targetAbsPath, (error as Error).message);
-      methodLogger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.backupFailed(targetAbsPath);
+      methodLogger.error(errorMsg, error);
       return { failed: true, error: errorMsg };
     }
   }
@@ -239,8 +239,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
       return { failed: false };
     } catch (error) {
-      const errorMsg = symlinkGeneratorLogMessages.filesystem.deleteFailed(targetAbsPath, (error as Error).message);
-      methodLogger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.deleteFailed(targetAbsPath);
+      methodLogger.error(errorMsg, error);
       return { failed: true, error: errorMsg };
     }
   }
@@ -258,11 +258,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     try {
       await toolFs.ensureDir(targetDir);
     } catch (error) {
-      const errorMsg = symlinkGeneratorLogMessages.filesystem.directoryCreateFailed(
-        targetDir,
-        (error as Error).message
-      );
-      methodLogger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.directoryCreateFailed(targetDir);
+      methodLogger.error(errorMsg, error);
       return {
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
@@ -279,12 +276,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         status,
       };
     } catch (error) {
-      const errorMsg = symlinkGeneratorLogMessages.filesystem.symlinkFailed(
-        sourceAbsPath,
-        targetAbsPath,
-        (error as Error).message
-      );
-      methodLogger.error(errorMsg);
+      const errorMsg = symlinkGeneratorLogMessages.filesystem.symlinkFailed(sourceAbsPath, targetAbsPath);
+      methodLogger.error(errorMsg, error);
       return {
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,

@@ -366,7 +366,7 @@ describe('Hook Integration Tests', () => {
         ['ERROR'],
         ['HookExecutor', 'executeHook'],
         [
-          'Installation failed [afterDownload hook] for tool "failing-tool": Downloaded file validation failed: checksum mismatch',
+          'Installation failed [afterDownload hook] for tool "failing-tool"',
         ]
       );
     });

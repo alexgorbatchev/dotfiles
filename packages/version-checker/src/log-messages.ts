@@ -5,8 +5,8 @@ export const versionCheckerLogMessages = {
   fetchingLatestRelease: (owner: string, repo: string) =>
     createSafeLogMessage(`Fetching latest version for ${owner}/${repo}`),
   latestReleaseFound: (version: string) => createSafeLogMessage(`Latest release found ${version}`),
-  latestReleaseError: (owner: string, repo: string, reason: string) =>
-    createSafeLogMessage(`Failed to fetch latest release for ${owner}/${repo}: ${reason}`),
+  latestReleaseError: (owner: string, repo: string) =>
+    createSafeLogMessage(`Failed to fetch latest release for ${owner}/${repo}`),
   noLatestRelease: (owner: string, repo: string) =>
     createSafeLogMessage(`No latest release found for ${owner}/${repo}`),
   comparingVersions: (configuredVersion: string, latestVersion: string) =>

@@ -36,7 +36,7 @@ export class DownloadStep extends InstallationStep<DownloadStepParams> {
       return {
         ...context,
         success: false,
-        error: `Download failed: ${(error as Error).message}`,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

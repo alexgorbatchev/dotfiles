@@ -82,11 +82,10 @@ export class InstallationPipeline {
         info: stepContext.info,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(installerLogMessages.outcome.installFailed('pipeline', toolName, errorMessage));
+      logger.error(installerLogMessages.outcome.installFailed('pipeline', toolName), error);
       return {
         success: false,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

@@ -29,8 +29,7 @@ export class VersionChecker implements IVersionChecker {
       logger.debug(versionCheckerLogMessages.noLatestRelease(owner, repo));
       return null;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(versionCheckerLogMessages.latestReleaseError(owner, repo, errorMessage));
+      logger.debug(versionCheckerLogMessages.latestReleaseError(owner, repo), error);
       return null;
     }
   }

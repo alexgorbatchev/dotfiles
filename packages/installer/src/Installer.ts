@@ -232,8 +232,7 @@ export class Installer implements IInstaller {
       });
       logger.debug(installerLogMessages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
     } catch (registryError) {
-      const errorMessage = registryError instanceof Error ? registryError.message : String(registryError);
-      logger.error(installerLogMessages.outcome.installFailed('registry-record', toolName, errorMessage));
+      logger.error(installerLogMessages.outcome.installFailed('registry-record', toolName), registryError);
     }
   }
 
@@ -334,11 +333,10 @@ export class Installer implements IInstaller {
 
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(installerLogMessages.outcome.installFailed('install', toolName, errorMessage));
+      logger.error(installerLogMessages.outcome.installFailed('install', toolName), error);
       return {
         success: false,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

@@ -45,7 +45,7 @@ export class ExtractStep extends InstallationStep<ExtractStepParams> {
       return {
         ...context,
         success: false,
-        error: `Extraction failed: ${(error as Error).message}`,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

@@ -26,16 +26,16 @@ export const installerLogMessages = {
         `Cannot create symlink for ${toolName}/${binaryName}: target binary missing at ${targetPath}`
       ),
     removingExisting: (symlinkPath: string) => createSafeLogMessage(`Removing old symlink: ${symlinkPath}`),
-    removeExistingFailed: (symlinkPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to remove old symlink ${symlinkPath}: ${reason}`),
+    removeExistingFailed: (symlinkPath: string) =>
+      createSafeLogMessage(`Failed to remove old symlink ${symlinkPath}`),
     creating: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`Creating symlink: ${symlinkPath} -> ${targetPath}`),
-    creationFailed: (symlinkPath: string, targetPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to create symlink ${symlinkPath} -> ${targetPath}: ${reason}`),
+    creationFailed: (symlinkPath: string, targetPath: string) =>
+      createSafeLogMessage(`Failed to create symlink ${symlinkPath} -> ${targetPath}`),
     verificationMismatch: (symlinkPath: string, expectedTarget: string, actualTarget: string) =>
       createSafeLogMessage(`Symlink ${symlinkPath} points to ${actualTarget}, expected ${expectedTarget}`),
-    verificationFailed: (symlinkPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to verify symlink ${symlinkPath}: ${reason}`),
+    verificationFailed: (symlinkPath: string) =>
+      createSafeLogMessage(`Failed to verify symlink ${symlinkPath}`),
     createdAndVerified: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`Successfully created and verified symlink: ${symlinkPath} -> ${targetPath}`),
   } satisfies SafeLogMessageMap,
@@ -52,8 +52,8 @@ export const installerLogMessages = {
       createSafeLogMessage(`Tool "${toolName}" v${version} installed successfully using ${method}`),
     outdatedVersion: (toolName: string, currentVersion: string, latestVersion: string) =>
       createSafeLogMessage(`Tool "${toolName}" version ${currentVersion} is outdated (latest: ${latestVersion})`),
-    installFailed: (method: string, toolName: string, reason: string) =>
-      createSafeLogMessage(`Installation failed [${method}] for tool "${toolName}": ${reason}`),
+    installFailed: (method: string, toolName: string) =>
+      createSafeLogMessage(`Installation failed [${method}] for tool "${toolName}"`),
     unsupportedOperation: (operation: string, details: string) =>
       createSafeLogMessage(`${operation} not yet supported (${details})`),
   } satisfies SafeLogMessageMap,
@@ -76,9 +76,9 @@ export const installerLogMessages = {
       createSafeLogMessage(
         `Final download URL determined. Raw: "${rawUrl}", Configured Host: "${host}", Result: "${resolved}"`
       ),
-    downloadUrlError: (rawUrl: string, host: string, errorMessage: string) =>
+    downloadUrlError: (rawUrl: string, host: string) =>
       createSafeLogMessage(
-        `Download URL construction error details: Raw: "${rawUrl}", Configured Host: "${host}", Error: ${errorMessage}`
+        `Download URL construction failed: Raw: "${rawUrl}", Configured Host: "${host}"`
       ),
     downloadingAsset: (downloadUrl: string) => createSafeLogMessage(`Downloading asset: ${downloadUrl}`),
     extractingArchive: (assetName: string) => createSafeLogMessage(`Extracting archive: ${assetName}`),

@@ -90,7 +90,8 @@ export class CachedDownloadStrategy implements DownloadStrategy {
       }
     } catch (error) {
       logger.trace(
-        cachedDownloadStrategyLogMessages.downloadedFileReadFailed(destinationPath, (error as Error).message)
+        cachedDownloadStrategyLogMessages.downloadedFileReadFailed(destinationPath),
+        error
       );
       return null;
     }
@@ -130,9 +131,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
         { url }
       );
     } catch (error) {
-      logger.trace(cachedDownloadStrategyLogMessages.cacheStorageFailed(cacheKey, (error as Error).message), {
-        url,
-      });
+      logger.trace(cachedDownloadStrategyLogMessages.cacheStorageFailed(cacheKey), error);
       // Don't fail the download if caching fails
     }
   }
@@ -165,7 +164,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
 
       logger.trace(cachedDownloadStrategyLogMessages.cacheMiss(cacheKey), { url });
     } catch (error) {
-      logger.trace(cachedDownloadStrategyLogMessages.cacheCheckFailed(cacheKey, (error as Error).message), { url });
+      logger.trace(cachedDownloadStrategyLogMessages.cacheCheckFailed(cacheKey), error);
       // Continue with download if cache check fails
     }
 

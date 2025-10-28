@@ -89,11 +89,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       const writeResult = await this.writeShellFiles(outputPath, fileContent, additionalFiles);
       return writeResult ? { outputPath } : null;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(
-        shellInitGeneratorLogMessages.generate.shellTypeFailure(shellType, errorMessage),
-        this.fs.constructor.name
-      );
+      logger.debug(shellInitGeneratorLogMessages.generate.shellTypeFailure(shellType), error);
       return null;
     }
   }
@@ -142,11 +138,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
       return true;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(
-        shellInitGeneratorLogMessages.generate.writeFailure(outputPath, errorMessage),
-        this.fs.constructor.name
-      );
+      logger.debug(shellInitGeneratorLogMessages.generate.writeFailure(outputPath), error);
       return false;
     }
   }
@@ -157,11 +149,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
       await this.fs.writeFile(additionalFile.outputPath, additionalFile.content);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(
-        shellInitGeneratorLogMessages.generate.writeFailure(additionalFile.outputPath, errorMessage),
-        this.fs.constructor.name
-      );
+      logger.debug(shellInitGeneratorLogMessages.generate.writeFailure(additionalFile.outputPath), error);
     }
   }
 
@@ -215,8 +203,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
         }
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug(shellInitGeneratorLogMessages.cleanup.failure(onceDir, errorMessage));
+      logger.debug(shellInitGeneratorLogMessages.cleanup.failure(onceDir), error);
       // Continue generation even if cleanup fails
     }
   }

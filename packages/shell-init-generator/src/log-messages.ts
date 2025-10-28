@@ -13,17 +13,17 @@ export const shellInitGeneratorLogMessages = {
       createSafeLogMessage(`Shell init output path resolved to ${outputPath}`),
     processingTool: (toolName: string) => createSafeLogMessage(`Processing shell init configuration for ${toolName}`),
     skippingTool: (toolName: string) => createSafeLogMessage(`Skipping shell init configuration for ${toolName}`),
-    shellTypeFailure: (shellType: ShellType, reason: string) =>
-      createSafeLogMessage(`Shell init generation failed for ${shellType}: ${reason}`),
-    writeFailure: (targetPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to write shell init artifact ${targetPath}: ${reason}`),
+    shellTypeFailure: (shellType: ShellType) =>
+      createSafeLogMessage(`Shell init generation failed for ${shellType}`),
+    writeFailure: (targetPath: string) =>
+      createSafeLogMessage(`Failed to write shell init artifact ${targetPath}`),
   } satisfies SafeLogMessageMap,
   profiles: {
     starting: (entryCount: number) => createSafeLogMessage(`Updating ${entryCount} shell profile entries`),
   } satisfies SafeLogMessageMap,
   cleanup: {
     onceScriptRemoved: (scriptPath: string) => createSafeLogMessage(`Removed stale once script ${scriptPath}`),
-    failure: (directoryPath: string, reason: string) =>
-      createSafeLogMessage(`Failed to clean shell init once directory ${directoryPath}: ${reason}`),
+    failure: (directoryPath: string) =>
+      createSafeLogMessage(`Failed to clean shell init once directory ${directoryPath}`),
   } satisfies SafeLogMessageMap,
 } as const;

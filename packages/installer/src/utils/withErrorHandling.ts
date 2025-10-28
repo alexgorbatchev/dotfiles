@@ -15,11 +15,10 @@ export async function withInstallErrorHandling<T>(
   try {
     return await operation();
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(installerLogMessages.outcome.installFailed(methodName, toolName, errorMessage));
+    logger.error(installerLogMessages.outcome.installFailed(methodName, toolName), error);
     return {
       success: false,
-      error: errorMessage,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
