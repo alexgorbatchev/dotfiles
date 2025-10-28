@@ -108,21 +108,16 @@ function logUpdateStatus(
   }
 }
 
-async function performUpdate(
+async function performStandardUpdate(
   logger: TsLogger,
   installer: IInstaller,
   toolName: string,
   toolConfig: ToolConfig,
   latestVersion: string,
-  configuredVersion: string,
-  shimMode: boolean
+  configuredVersion: string
 ): Promise<ExitCode> {
-  if (shimMode) {
-    logger.info(messages.toolShimUpdateStarting(toolName, configuredVersion, latestVersion));
-  } else {
-    logger.info(messages.toolUpdateAvailable(toolName, configuredVersion, latestVersion));
-    logger.info(messages.toolProcessingUpdate(toolName, configuredVersion, latestVersion));
-  }
+  logger.info(messages.toolUpdateAvailable(toolName, configuredVersion, latestVersion));
+  logger.info(messages.toolProcessingUpdate(toolName, configuredVersion, latestVersion));
 
   const toolConfigForUpdate: ToolConfig = {
     ...toolConfig,
@@ -131,11 +126,32 @@ async function performUpdate(
   const installResult = await installer.install(toolName, toolConfigForUpdate, { force: true });
 
   if (installResult.success) {
-    if (shimMode) {
-      logger.info(messages.toolShimUpdateSuccess(toolName, latestVersion));
-    } else {
-      logger.info(messages.toolUpdated(toolName, configuredVersion, latestVersion));
-    }
+    logger.info(messages.toolUpdated(toolName, configuredVersion, latestVersion));
+    return ExitCode.SUCCESS;
+  } else {
+    logger.error(messages.toolUpdateFailed(toolName, installResult.error ?? 'Unknown error'));
+    return ExitCode.ERROR;
+  }
+}
+
+async function performShimUpdate(
+  logger: TsLogger,
+  installer: IInstaller,
+  toolName: string,
+  toolConfig: ToolConfig,
+  latestVersion: string,
+  configuredVersion: string
+): Promise<ExitCode> {
+  logger.info(messages.toolShimUpdateStarting(toolName, configuredVersion, latestVersion));
+
+  const toolConfigForUpdate: ToolConfig = {
+    ...toolConfig,
+    version: latestVersion,
+  };
+  const installResult = await installer.install(toolName, toolConfigForUpdate, { force: true });
+
+  if (installResult.success) {
+    logger.info(messages.toolShimUpdateSuccess(toolName, latestVersion));
     return ExitCode.SUCCESS;
   } else {
     logger.error(messages.toolUpdateFailed(toolName, installResult.error ?? 'Unknown error'));
@@ -167,15 +183,9 @@ async function handleGitHubReleaseUpdate(
     } else {
       logger.info(messages.toolConfiguredToLatest(toolName, latestVersion));
     }
-    const updateExitCode = await performUpdate(
-      logger,
-      services.installer,
-      toolName,
-      toolConfig,
-      latestVersion,
-      latestVersion, // Use latestVersion for both since we're on 'latest'
-      shimMode
-    );
+    const updateExitCode = shimMode
+      ? await performShimUpdate(logger, services.installer, toolName, toolConfig, latestVersion, latestVersion)
+      : await performStandardUpdate(logger, services.installer, toolName, toolConfig, latestVersion, latestVersion);
     if (updateExitCode !== ExitCode.SUCCESS) {
       exitCli(updateExitCode);
     }
@@ -185,15 +195,9 @@ async function handleGitHubReleaseUpdate(
   const status = await services.versionChecker.checkVersionStatus(configuredVersion, latestVersion);
 
   if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-    const updateExitCode = await performUpdate(
-      logger,
-      services.installer,
-      toolName,
-      toolConfig,
-      latestVersion,
-      configuredVersion,
-      shimMode
-    );
+    const updateExitCode = shimMode
+      ? await performShimUpdate(logger, services.installer, toolName, toolConfig, latestVersion, configuredVersion)
+      : await performStandardUpdate(logger, services.installer, toolName, toolConfig, latestVersion, configuredVersion);
     if (updateExitCode !== ExitCode.SUCCESS) {
       exitCli(updateExitCode);
     }
