@@ -118,11 +118,7 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['INFO'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'],
-      [messages.toolUpToDate('fzf', '0.40.0', '0.40.0')]
-    );
+    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolUpToDate('fzf', '0.40.0', '0.40.0')]);
   });
 
   test('should report an update is available', async () => {
@@ -132,11 +128,7 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['INFO'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'],
-      [messages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0')]
-    );
+    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0')]);
   });
 
   test('should check all tools: one up-to-date, one with update', async () => {
@@ -155,7 +147,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['INFO'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'compareVersions'],
+      ['registerCheckUpdatesCommand'],
       [messages.toolUpToDate('fzf', '0.40.0', '0.40.0'), messages.toolUpdateAvailable('lazygit', '0.35.0', '0.36.0')]
     );
   });
@@ -167,11 +159,7 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['INFO'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate'],
-      [messages.toolConfiguredToLatest('fzf', '0.42.0')]
-    );
+    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolConfiguredToLatest('fzf', '0.42.0')]);
   });
 
   test('should report unsupported installation method', async () => {
@@ -181,8 +169,8 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['INFO'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic'],
-      [messages.commandUnsupportedOperation('Check updates', 'installation method: "manual" for tool "manualtool"')]
+      ['registerCheckUpdatesCommand'],
+      [messages.commandUnsupportedOperation('check-updates', 'installation method: "manual" for tool "manualtool"')]
     );
   });
 
@@ -194,7 +182,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate'],
+      ['registerCheckUpdatesCommand'],
       [messages.serviceGithubApiFailed('get latest release', 0)]
     );
   });
@@ -206,7 +194,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
+      ['registerCheckUpdatesCommand'],
       [messages.toolNotFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
@@ -218,7 +206,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
+      ['registerCheckUpdatesCommand'],
       [messages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
     );
   });
@@ -234,7 +222,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'validateGitHubRepoConfig'],
+      ['registerCheckUpdatesCommand'],
       [messages.configParameterInvalid('repo', 'invalid-repo-format', 'owner/repo format')]
     );
   });
@@ -250,7 +238,7 @@ describe('checkUpdatesCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'checkGitHubReleaseUpdate', 'validateGitHubRepoConfig'],
+      ['registerCheckUpdatesCommand'],
       [messages.configParameterInvalid('repo', 'undefined', 'owner/repo format')]
     );
   });
@@ -260,11 +248,7 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
-      [messages.configLoadFailed('tool configurations')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.configLoadFailed('tool configurations')]);
   });
 
   test('should handle error during loadSingleToolConfig', async () => {
@@ -272,10 +256,6 @@ describe('checkUpdatesCommand', () => {
 
     await program.parseAsync(['check-updates', 'sometool'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['checkUpdatesCommand', 'checkUpdatesActionLogic', 'loadToolConfigs'],
-      [messages.configLoadFailed('tool "sometool"')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.configLoadFailed('tool "sometool"')]);
   });
 });

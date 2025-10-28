@@ -15,22 +15,13 @@ export async function setupBinariesFromArchive(
   toolConfig: ToolConfig,
   context: BaseInstallContext,
   extractDir: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromArchive' });
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
-  const methodLogger = logger.getSubLogger({ name: 'setupBinariesFromArchive' });
-
-  await setupBinariesUsingPatterns(
-    fs,
-    toolName,
-    binaryConfigs,
-    context.timestamp,
-    extractDir,
-    binariesDir,
-    methodLogger
-  );
+  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, context.timestamp, extractDir, binariesDir, logger);
 }
 
 /**
@@ -43,23 +34,23 @@ async function setupBinariesUsingPatterns(
   timestamp: string,
   extractDir: string,
   binariesDir: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<void> {
-  const methodLogger = logger.getSubLogger({ name: 'setupBinariesUsingPatterns' });
+  const logger = parentLogger.getSubLogger({ name: 'setupBinariesUsingPatterns' });
   for (const binaryConfig of binaryConfigs) {
     const { name: binaryName, pattern } = binaryConfig;
 
     // Find the binary using its pattern
-    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, methodLogger);
+    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, logger);
 
     if (!binaryPath) {
-      methodLogger.error(messages.binarySetupService.binaryNotFound(binaryName, pattern));
+      logger.error(messages.binarySetupService.binaryNotFound(binaryName, pattern));
       continue;
     }
 
     // Create symlink for this binary
     const relativePath = path.relative(extractDir, binaryPath);
-    await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, methodLogger);
+    await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, logger);
   }
 }
 
@@ -73,16 +64,16 @@ async function findBinaryUsingPattern(
   fs: IFileSystem,
   extractDir: string,
   pattern: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<string | null> {
-  const methodLogger = logger.getSubLogger({ name: 'findBinaryUsingPattern' });
-  methodLogger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));
+  const logger = parentLogger.getSubLogger({ name: 'findBinaryUsingPattern' });
+  logger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));
 
   // Try the primary pattern first
   let result: string | null = null;
 
   if (pattern.includes('*')) {
-    result = await findBinaryWithWildcards(fs, extractDir, pattern, methodLogger);
+    result = await findBinaryWithWildcards(fs, extractDir, pattern, logger);
   } else {
     result = await findBinaryWithDirectPath(fs, extractDir, pattern);
   }
@@ -90,7 +81,7 @@ async function findBinaryUsingPattern(
   // If primary pattern failed and it's a wildcard pattern like '*/tool', try fallback patterns
   if (!result && pattern.startsWith('*/')) {
     const toolName = pattern.substring(2); // Remove '*/' prefix
-    methodLogger.debug(messages.binarySetupService.fallbackPattern(toolName, extractDir));
+    logger.debug(messages.binarySetupService.fallbackPattern(toolName, extractDir));
 
     // Try direct path as fallback
     result = await findBinaryWithDirectPath(fs, extractDir, toolName);
@@ -106,9 +97,9 @@ async function findBinaryWithWildcards(
   fs: IFileSystem,
   extractDir: string,
   pattern: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<string | null> {
-  const methodLogger = logger.getSubLogger({ name: 'findBinaryWithWildcards' });
+  const logger = parentLogger.getSubLogger({ name: 'findBinaryWithWildcards' });
   const parts = pattern.split('/');
   let currentDir = extractDir;
 
@@ -116,7 +107,7 @@ async function findBinaryWithWildcards(
     if (!part) continue;
 
     if (part.includes('*')) {
-      const matchedDir = await findWildcardMatch(fs, currentDir, part, methodLogger);
+      const matchedDir = await findWildcardMatch(fs, currentDir, part, logger);
       if (!matchedDir) {
         return null;
       }
@@ -126,7 +117,7 @@ async function findBinaryWithWildcards(
     }
 
     if (!(await fs.exists(currentDir))) {
-      methodLogger.debug(messages.binarySetupService.patternPathMissing(currentDir));
+      logger.debug(messages.binarySetupService.patternPathMissing(currentDir));
       return null;
     }
   }
@@ -141,21 +132,21 @@ async function findWildcardMatch(
   fs: IFileSystem,
   currentDir: string,
   wildcardPart: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<string | null> {
-  const methodLogger = logger.getSubLogger({ name: 'findWildcardMatch' });
+  const logger = parentLogger.getSubLogger({ name: 'findWildcardMatch' });
   const entries = await fs.readdir(currentDir);
   const regex = new RegExp(`^${wildcardPart.replace(/\*/g, '.*')}$`);
   const matches = entries.filter((entry) => regex.test(entry));
 
   if (matches.length === 0) {
-    methodLogger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
+    logger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
     return null;
   }
 
   const firstMatch = matches[0];
   if (!firstMatch) {
-    methodLogger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
+    logger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
     return null;
   }
 
@@ -182,9 +173,9 @@ export async function setupBinariesFromDirectDownload(
   toolConfig: ToolConfig,
   context: BaseInstallContext,
   downloadPath: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<void> {
-  const methodLogger = logger.getSubLogger({ name: 'setupBinariesFromDirectDownload' });
+  const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromDirectDownload' });
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
   const primaryBinary = binaryConfigs[0]?.name || toolName;
 
@@ -193,17 +184,9 @@ export async function setupBinariesFromDirectDownload(
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const downloadFileName = path.basename(downloadPath);
 
-  await createBinarySymlink(
-    fs,
-    toolName,
-    primaryBinary,
-    context.timestamp,
-    downloadFileName,
-    binariesDir,
-    methodLogger
-  );
+  await createBinarySymlink(fs, toolName, primaryBinary, context.timestamp, downloadFileName, binariesDir, logger);
 
   if (binaryConfigs.length > 1) {
-    methodLogger.debug(messages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary));
+    logger.debug(messages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary));
   }
 }

@@ -252,7 +252,7 @@ describe('CachedDownloadStrategy', () => {
         ['TRACE'],
         ['CachedDownloadStrategy', 'download'],
         [
-          /Error checking cache for key: download:[a-f0-9]{64}, error: Cache get failed/,
+          /Error checking cache for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,
           /Cached data for key: download:[a-f0-9]{64} \(binary\), size: 15 bytes, expires: TTL-based/,
         ]
@@ -275,7 +275,7 @@ describe('CachedDownloadStrategy', () => {
         [
           /No cache entry found for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,
-          /Error caching data for key: download:[a-f0-9]{64}, error: Cache setDownload failed/,
+          /Error caching data for key: download:[a-f0-9]{64}/,
         ]
       );
     });

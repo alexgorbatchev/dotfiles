@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { $ } from 'bun';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -23,6 +22,7 @@ import type {
   ToolConfig,
 } from '@dotfiles/schemas';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
+import { $ } from 'bun';
 import {
   installFromBrew,
   installFromCargo,
@@ -113,8 +113,9 @@ export class Installer implements IInstaller {
     toolName: string,
     resolvedToolConfig: ToolConfig,
     options: InstallOptions | undefined,
-    logger: TsLogger
+    parentLogger: TsLogger
   ): Promise<InstallResult | null> {
+    const logger = parentLogger.getSubLogger({ name: 'checkExistingInstallation' });
     if (options?.force) {
       return null;
     }
@@ -147,8 +148,9 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     context: BaseInstallContext,
     toolFs: IFileSystem,
-    logger: TsLogger
+    parentLogger: TsLogger
   ): Promise<InstallResult | null> {
+    const logger = parentLogger.getSubLogger({ name: 'executeBeforeInstallHook' });
     if (!resolvedToolConfig.installParams?.hooks?.beforeInstall) {
       return null;
     }
@@ -179,8 +181,9 @@ export class Installer implements IInstaller {
     context: BaseInstallContext,
     result: InstallResult,
     toolFs: IFileSystem,
-    logger: TsLogger
+    parentLogger: TsLogger
   ): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'executeAfterInstallHook' });
     if (!resolvedToolConfig.installParams?.hooks?.afterInstall) {
       return;
     }
@@ -209,8 +212,9 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     context: BaseInstallContext,
     result: InstallResult,
-    logger: TsLogger
+    parentLogger: TsLogger
   ): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
     if (!result.success || !result.binaryPaths || !result.version) {
       return;
     }
@@ -601,8 +605,9 @@ export class Installer implements IInstaller {
     installDir: string,
     timestamp: string,
     toolConfig: ToolConfig,
-    logger: TsLogger
+    parentLogger: TsLogger
   ): BaseInstallContext {
+    const logger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
     const getToolDir = (name: string): string => {
       return path.join(this.appConfig.paths.binariesDir, name);
     };

@@ -126,9 +126,10 @@ describe('updateCommand', () => {
 
     logger.expect(
       ['INFO'],
-      ['updateCommand'],
+      ['registerUpdateCommand'],
       [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpToDate('fzf', '0.40.0', '0.40.0')]
     );
+
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
@@ -145,7 +146,7 @@ describe('updateCommand', () => {
 
     logger.expect(
       ['INFO'],
-      ['updateCommand'],
+      ['registerUpdateCommand'],
       [
         messages.commandCheckingUpdatesFor('fzf'),
         messages.toolUpdateAvailable('fzf', '0.40.0', '0.41.0'),
@@ -174,7 +175,7 @@ describe('updateCommand', () => {
 
     expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['updateCommand'], [messages.toolUpdateFailed('fzf', 'Install failed miserably')]);
+    logger.expect(['ERROR'], ['registerUpdateCommand'], [messages.toolUpdateFailed('fzf', 'Install failed miserably')]);
   });
 
   test('tool config not found', async () => {
@@ -186,7 +187,7 @@ describe('updateCommand', () => {
 
     logger.expect(
       ['ERROR'],
-      ['updateCommand', 'action'],
+      ['registerUpdateCommand'],
       [messages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
     );
   });
@@ -198,7 +199,7 @@ describe('updateCommand', () => {
 
     logger.expect(
       ['INFO'],
-      ['updateCommand'],
+      ['registerUpdateCommand'],
       [
         messages.commandCheckingUpdatesFor('manualtool'),
         messages.commandUnsupportedOperation('Update', 'installation method: "manual" for tool "manualtool"'),
@@ -214,7 +215,7 @@ describe('updateCommand', () => {
 
     await program.parseAsync(['update', 'fzf'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['updateCommand'], [messages.serviceGithubApiFailed('get latest release', 0)]);
+    logger.expect(['ERROR'], ['registerUpdateCommand'], [messages.serviceGithubApiFailed('get latest release', 0)]);
     expect(mockInstallerService.install).not.toHaveBeenCalled();
   });
 
@@ -233,7 +234,7 @@ describe('updateCommand', () => {
 
     logger.expect(
       ['INFO'],
-      ['updateCommand'],
+      ['registerUpdateCommand'],
       [
         messages.commandCheckingUpdatesFor('fzf'),
         messages.toolConfiguredToLatest('fzf', '0.50.0'),
@@ -266,7 +267,7 @@ describe('updateCommand', () => {
       // Should use concise shim-mode output instead of verbose template messages
       logger.expect(
         ['INFO'],
-        ['updateCommand'],
+        ['registerUpdateCommand'],
         [messages.toolShimUpdateStarting('fzf', '0.40.0', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')]
       );
     });
@@ -287,7 +288,7 @@ describe('updateCommand', () => {
       // Should use concise shim-mode output
       logger.expect(
         ['INFO'],
-        ['updateCommand'],
+        ['registerUpdateCommand'],
         [
           messages.toolShimOnLatest('fzf', '0.41.0'),
           messages.toolShimUpdateStarting('fzf', '0.41.0', '0.41.0'),
@@ -316,7 +317,7 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should use concise shim-mode output
-      logger.expect(['INFO'], ['updateCommand'], [messages.toolShimUpToDate('fzf', '0.40.0')]);
+      logger.expect(['INFO'], ['registerUpdateCommand'], [messages.toolShimUpToDate('fzf', '0.40.0')]);
       expect(mockInstallerService.install).not.toHaveBeenCalled();
     });
 
@@ -333,12 +334,12 @@ describe('updateCommand', () => {
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
       // Should not include the "checking updates" message in shim mode
-      logger.expect(['INFO'], ['updateCommand'], [messages.toolShimUpToDate('fzf', '0.40.0')]);
+      logger.expect(['INFO'], ['registerUpdateCommand'], [messages.toolShimUpToDate('fzf', '0.40.0')]);
 
       // Verify that exactly one log message was generated (no "updates check for" message)
       const updateCommandInfoLogs = logger.logs.filter((log) => {
         const meta = log['_meta'];
-        return meta && meta.logLevelName === 'INFO' && meta.name === 'updateCommand';
+        return meta && meta.logLevelName === 'INFO' && meta.name === 'registerUpdateCommand';
       });
       expect(updateCommandInfoLogs).toHaveLength(1);
     });

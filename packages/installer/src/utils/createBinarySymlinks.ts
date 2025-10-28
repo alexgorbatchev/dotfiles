@@ -21,9 +21,9 @@ export async function createBinarySymlink(
   timestamp: string,
   binaryPath: string,
   binariesDir: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<void> {
-  const methodLogger = logger.getSubLogger({ name: 'createBinarySymlink' });
+  const logger = parentLogger.getSubLogger({ name: 'createBinarySymlink' });
   const toolDir = path.join(binariesDir, toolName);
   const symlinkPath = path.join(toolDir, binaryName);
   const timestampedDir = path.join(toolDir, timestamp);
@@ -32,7 +32,7 @@ export async function createBinarySymlink(
   // Verify the target binary exists before creating symlink
   if (!(await fs.exists(actualBinaryPath))) {
     const errorMsg = `Cannot create symlink: target binary does not exist at ${actualBinaryPath}`;
-    methodLogger.error(messages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath));
+    logger.error(messages.binarySymlink.targetBinaryMissing(toolName, binaryName, actualBinaryPath));
     throw new Error(errorMsg);
   }
 
@@ -45,30 +45,30 @@ export async function createBinarySymlink(
   // Remove existing symlink if it exists
   try {
     if (await fs.exists(symlinkPath)) {
-      methodLogger.debug(messages.binarySymlink.removingExisting(symlinkPath));
+      logger.debug(messages.binarySymlink.removingExisting(symlinkPath));
       await fs.rm(symlinkPath, { force: true });
     }
   } catch (error) {
-    methodLogger.error(messages.binarySymlink.removeExistingFailed(symlinkPath), error);
+    logger.error(messages.binarySymlink.removeExistingFailed(symlinkPath), error);
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to remove old symlink ${symlinkPath}: ${reason}`);
   }
 
   // Create new symlink
   try {
-    methodLogger.debug(messages.binarySymlink.creating(symlinkPath, targetPath));
+    logger.debug(messages.binarySymlink.creating(symlinkPath, targetPath));
     await fs.symlink(targetPath, symlinkPath);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const errorMsg = `Failed to create symlink from ${symlinkPath} to ${targetPath}: ${reason}`;
-    methodLogger.error(messages.binarySymlink.creationFailed(symlinkPath, targetPath), error);
+    logger.error(messages.binarySymlink.creationFailed(symlinkPath, targetPath), error);
     throw new Error(errorMsg);
   }
 
   // Verify symlink was created successfully
   if (!(await fs.exists(symlinkPath))) {
     const errorMsg = `Symlink creation appeared to succeed but symlink does not exist at ${symlinkPath}`;
-    methodLogger.error(messages.binarySymlink.verificationFailed(symlinkPath));
+    logger.error(messages.binarySymlink.verificationFailed(symlinkPath));
     throw new Error(errorMsg);
   }
 
@@ -77,16 +77,16 @@ export async function createBinarySymlink(
     const linkTarget = await fs.readlink(symlinkPath);
     if (linkTarget !== targetPath) {
       const errorMsg = `Symlink points to wrong target. Expected: ${targetPath}, Actual: ${linkTarget}`;
-      methodLogger.error(messages.binarySymlink.verificationMismatch(symlinkPath, targetPath, linkTarget));
+      logger.error(messages.binarySymlink.verificationMismatch(symlinkPath, targetPath, linkTarget));
       throw new Error(errorMsg);
     }
   } catch (error) {
     const errorMsg = `Failed to verify symlink target at ${symlinkPath}: ${error}`;
-    methodLogger.error(messages.binarySymlink.verificationFailed(symlinkPath), error);
+    logger.error(messages.binarySymlink.verificationFailed(symlinkPath), error);
     throw new Error(errorMsg);
   }
 
-  methodLogger.debug(messages.binarySymlink.createdAndVerified(symlinkPath, targetPath));
+  logger.debug(messages.binarySymlink.createdAndVerified(symlinkPath, targetPath));
 }
 
 /**
@@ -107,11 +107,11 @@ export async function createAllBinarySymlinks(
   timestamp: string,
   binaryBasePath: string,
   binariesDir: string,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<void> {
-  const methodLogger = logger.getSubLogger({ name: 'createAllBinarySymlinks' });
+  const logger = parentLogger.getSubLogger({ name: 'createAllBinarySymlinks' });
   for (const binaryName of binaries) {
     const binaryPath = path.join(binaryBasePath, binaryName);
-    await createBinarySymlink(fs, toolName, binaryName, timestamp, binaryPath, binariesDir, methodLogger);
+    await createBinarySymlink(fs, toolName, binaryName, timestamp, binaryPath, binariesDir, logger);
   }
 }

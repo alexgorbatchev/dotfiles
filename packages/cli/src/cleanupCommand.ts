@@ -1,6 +1,6 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { FileOperation, FileState, IFileRegistry } from '@dotfiles/registry/file';
+import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, CleanupCommandSpecificOptions, GlobalProgram, Services } from './types';
@@ -13,31 +13,31 @@ export interface CleanupCommandOptions extends BaseCommandOptions {
 }
 
 async function cleanupAllTrackedFiles(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   homeDir: string,
   dryRun: boolean
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'cleanupAllTrackedFiles' });
   logger.info(messages.cleanupAllTrackedFiles());
-  const allTools = await fileRegistry.getRegisteredTools();
 
+  const allTools = await fileRegistry.getRegisteredTools();
   for (const toolName of allTools) {
     await cleanupToolFiles(logger, fs, fileRegistry, toolName, homeDir, undefined, dryRun);
   }
 
-  // Clean up the registry database itself
   if (!dryRun) {
+    for (const toolName of allTools) {
+      await fileRegistry.removeToolOperations(toolName);
+    }
     logger.info(messages.cleanupRegistryDatabase());
-    await fileRegistry.compact();
   } else {
     logger.info(messages.cleanupRegistryDryRun());
   }
 }
 
 async function cleanupSpecificTool(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   toolName: string,
@@ -45,7 +45,6 @@ async function cleanupSpecificTool(
   fileType: string | undefined,
   dryRun: boolean
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'cleanupSpecificTool' });
   logger.info(messages.cleanupToolFiles(toolName));
   await cleanupToolFiles(logger, fs, fileRegistry, toolName, homeDir, fileType, dryRun);
 
@@ -58,14 +57,13 @@ async function cleanupSpecificTool(
 }
 
 async function cleanupSpecificType(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   fileType: string,
   homeDir: string,
   dryRun: boolean
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'cleanupSpecificType' });
   logger.info(messages.cleanupTypeFiles(fileType));
   const operations = await fileRegistry.getOperations({ fileType: fileType as FileOperation['fileType'] });
 
@@ -78,11 +76,10 @@ async function cleanupSpecificType(
 }
 
 async function registryBasedCleanup(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   services: Services,
   options: CleanupCommandOptions
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'registryBasedCleanup' });
   const { fs, fileRegistry } = services;
   const { dryRun, tool, type, all } = options;
   const homeDir = services.yamlConfig.paths.homeDir;
@@ -104,7 +101,7 @@ async function registryBasedCleanup(
 }
 
 async function cleanupToolFiles(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
   toolName: string,
@@ -112,30 +109,32 @@ async function cleanupToolFiles(
   fileType?: string,
   dryRun?: boolean
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'cleanupToolFiles' });
   const fileStates = await fileRegistry.getFileStatesForTool(toolName);
 
-  const filteredStates = fileType ? fileStates.filter((state: FileState) => state.fileType === fileType) : fileStates;
+  let filteredStates = fileStates;
+  if (fileType) {
+    filteredStates = fileStates.filter((state) => state.fileType === fileType);
+  }
 
   logger.trace(messages.cleanupFoundFiles(filteredStates.length, toolName, fileType));
 
   for (const fileState of filteredStates) {
-    await removeFile(logger, fs, fileState.filePath, homeDir, dryRun);
-
-    if (fileState.targetPath) {
-      await removeFile(logger, fs, fileState.targetPath, homeDir, dryRun);
+    if (fileState.lastOperation !== 'rm') {
+      // For symlinks, remove the symlink (targetPath), not the original file (filePath)
+      const pathToRemove =
+        fileState.fileType === 'symlink' && fileState.targetPath ? fileState.targetPath : fileState.filePath;
+      await removeFile(logger, fs, pathToRemove, homeDir, dryRun || false);
     }
   }
 }
 
 async function removeFile(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   filePath: string,
   homeDir: string,
   dryRun?: boolean
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'removeFile' });
   try {
     if (await fs.exists(filePath)) {
       if (!dryRun) {
@@ -152,12 +151,7 @@ async function removeFile(
   }
 }
 
-async function cleanupActionLogic(
-  parentLogger: TsLogger,
-  options: CleanupCommandOptions,
-  services: Services
-): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'cleanupActionLogic' });
+async function cleanupActionLogic(logger: TsLogger, options: CleanupCommandOptions, services: Services): Promise<void> {
   const { dryRun, tool, type, all } = options;
 
   try {

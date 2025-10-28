@@ -8,12 +8,11 @@ import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 
 async function loadToolConfigs(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   yamlConfig: YamlConfig,
   fs: IFileSystem,
   configService: IConfigService
 ): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
-  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
   try {
     const toolConfigsRecord = await configService.loadToolConfigs(
       logger,
@@ -29,13 +28,12 @@ async function loadToolConfigs(
 }
 
 async function checkShimConflicts(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   toolConfig: ToolConfig,
   targetDir: string,
   conflictMessages: string[]
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'checkShimConflicts' });
   if (!toolConfig.binaries) return;
 
   for (const binary of toolConfig.binaries) {
@@ -56,14 +54,13 @@ async function checkShimConflicts(
 }
 
 async function checkSymlinkConflicts(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   fs: IFileSystem,
   toolConfig: ToolConfig,
   homeDir: string,
   dotfilesDir: string,
   conflictMessages: string[]
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'checkSymlinkConflicts' });
   if (!toolConfig.symlinks) return;
 
   for (const symlink of toolConfig.symlinks) {
@@ -93,8 +90,7 @@ async function checkSymlinkConflicts(
   }
 }
 
-function reportConflicts(parentLogger: TsLogger, conflictMessages: string[]): ExitCode {
-  const logger = parentLogger.getSubLogger({ name: 'reportConflicts' });
+function reportConflicts(logger: TsLogger, conflictMessages: string[]): ExitCode {
   if (conflictMessages.length > 0) {
     const header = 'Conflicts detected with files not owned by the generator:';
     const formattedConflicts = conflictMessages.map((msg) => `  - ${msg}`).join('\n');
@@ -107,11 +103,10 @@ function reportConflicts(parentLogger: TsLogger, conflictMessages: string[]): Ex
 }
 
 export async function detectConflictsActionLogic(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   _options: GlobalProgramOptions,
   services: Services
 ): Promise<ExitCode> {
-  const logger = parentLogger.getSubLogger({ name: 'detectConflictsActionLogic' });
   const { yamlConfig, fs, configService } = services;
   const conflictMessages: string[] = [];
 

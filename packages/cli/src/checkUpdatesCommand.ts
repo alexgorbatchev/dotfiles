@@ -14,19 +14,18 @@ export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
 }
 
 async function loadToolConfigs(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   configService: IConfigService,
   toolName: string | undefined,
   yamlConfig: YamlConfig,
   fs: IFileSystem
 ): Promise<Record<string, ToolConfig> | null> {
-  const functionLogger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
   let toolConfigs: Record<string, ToolConfig> = {};
   if (toolName) {
-    functionLogger.debug(messages.commandCheckingUpdatesFor(toolName));
+    logger.debug(messages.commandCheckingUpdatesFor(toolName));
     try {
       const config = await configService.loadSingleToolConfig(
-        functionLogger,
+        logger,
         toolName,
         yamlConfig.paths.toolConfigsDir,
         fs,
@@ -35,49 +34,45 @@ async function loadToolConfigs(
       if (config) {
         toolConfigs[toolName] = config;
       } else {
-        functionLogger.error(messages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
+        logger.error(messages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
         return null;
       }
     } catch (error) {
-      functionLogger.error(messages.configLoadFailed(`tool "${toolName}"`), error);
+      logger.error(messages.configLoadFailed(`tool "${toolName}"`), error);
       return null;
     }
   } else {
     try {
-      functionLogger.debug(messages.commandCheckingUpdatesForAll());
-      toolConfigs = await configService.loadToolConfigs(
-        functionLogger,
-        yamlConfig.paths.toolConfigsDir,
-        fs,
-        yamlConfig
-      );
+      logger.debug(messages.commandCheckingUpdatesForAll());
+      toolConfigs = await configService.loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
       if (Object.keys(toolConfigs).length === 0) {
-        functionLogger.error(messages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
+        logger.error(messages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
         return null;
       }
     } catch (error) {
-      functionLogger.error(messages.configLoadFailed('tool configurations'), error);
+      logger.error(messages.configLoadFailed('tool configurations'), error);
       return null;
     }
   }
   return toolConfigs;
 }
 
-function validateGitHubRepoConfig(parentLogger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
-  const functionLogger = parentLogger.getSubLogger({ name: 'validateGitHubRepoConfig' });
+function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
   if (config.installationMethod !== 'github-release') {
     return null;
   }
 
   const githubParams = config.installParams as GithubReleaseInstallParams;
-  if (!githubParams?.repo) {
-    functionLogger.error(messages.configParameterInvalid('repo', 'undefined', 'owner/repo format'));
+  const repo = githubParams?.repo;
+
+  if (!repo) {
+    logger.error(messages.configParameterInvalid('repo', 'undefined', 'owner/repo format'));
     return null;
   }
 
-  const [owner, repoName] = githubParams.repo.split('/');
+  const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
-    functionLogger.error(messages.configParameterInvalid('repo', githubParams.repo, 'owner/repo format'));
+    logger.error(messages.configParameterInvalid('repo', repo, 'owner/repo format'));
     return null;
   }
 
@@ -85,13 +80,12 @@ function validateGitHubRepoConfig(parentLogger: TsLogger, config: ToolConfig): {
 }
 
 async function checkGitHubReleaseUpdate(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   config: ToolConfig,
   githubApiClient: IGitHubApiClient,
   versionChecker: IVersionChecker
 ): Promise<void> {
-  const functionLogger = parentLogger.getSubLogger({ name: 'checkGitHubReleaseUpdate' });
-  const repoInfo = validateGitHubRepoConfig(parentLogger, config);
+  const repoInfo = validateGitHubRepoConfig(logger, config);
   if (!repoInfo) return;
 
   const { owner, repo } = repoInfo;
@@ -100,65 +94,63 @@ async function checkGitHubReleaseUpdate(
   try {
     const latestRelease = await githubApiClient.getLatestRelease(owner, repo);
     if (!latestRelease || !latestRelease.tag_name) {
-      functionLogger.warn(messages.serviceGithubResourceNotFound('release', `${config.name} latest release`));
+      logger.warn(messages.serviceGithubResourceNotFound('release', `${config.name} latest release`));
       return;
     }
 
     const latestVersion = latestRelease.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
-    functionLogger.debug(messages.commandVersionComparison(config.name, configuredVersion, latestVersion));
+    logger.debug(messages.commandVersionComparison(config.name, configuredVersion, latestVersion));
 
     if (configuredVersion.toLowerCase() === 'latest') {
-      functionLogger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
+      logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
     } else {
-      await compareVersions(parentLogger, config, configuredVersion, latestVersion, versionChecker);
+      await compareVersions(logger, config, configuredVersion, latestVersion, versionChecker);
     }
   } catch (error) {
-    functionLogger.error(messages.serviceGithubApiFailed('get latest release', 0), error);
+    logger.error(messages.serviceGithubApiFailed('get latest release', 0), error);
   }
 }
 
 async function compareVersions(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   config: ToolConfig,
   configuredVersion: string,
   latestVersion: string,
   versionChecker: IVersionChecker
 ): Promise<void> {
-  const functionLogger = parentLogger.getSubLogger({ name: 'compareVersions' });
   const currentVersionToCompare = configuredVersion.replace(/^v/, '');
   const status = await versionChecker.checkVersionStatus(currentVersionToCompare, latestVersion);
 
   if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
-    functionLogger.info(messages.toolUpdateAvailable(config.name, currentVersionToCompare, latestVersion));
+    logger.info(messages.toolUpdateAvailable(config.name, currentVersionToCompare, latestVersion));
   } else if (status === VersionComparisonStatus.UP_TO_DATE) {
-    functionLogger.info(messages.toolUpToDate(config.name, currentVersionToCompare, latestVersion));
+    logger.info(messages.toolUpToDate(config.name, currentVersionToCompare, latestVersion));
   } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
-    functionLogger.info(messages.toolAheadOfLatest(config.name, currentVersionToCompare, latestVersion));
+    logger.info(messages.toolAheadOfLatest(config.name, currentVersionToCompare, latestVersion));
   } else {
-    functionLogger.warn(messages.toolVersionComparisonFailed(config.name, currentVersionToCompare, latestVersion));
+    logger.warn(messages.toolVersionComparisonFailed(config.name, currentVersionToCompare, latestVersion));
   }
 }
 
 export async function checkUpdatesActionLogic(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   toolName: string | undefined,
   services: Services
 ): Promise<void> {
-  const functionLogger = parentLogger.getSubLogger({ name: 'checkUpdatesActionLogic' });
   const { yamlConfig, fs, versionChecker, githubApiClient } = services;
 
-  functionLogger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
+  logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
-  const toolConfigs = await loadToolConfigs(parentLogger, services.configService, toolName, yamlConfig, fs);
+  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, yamlConfig, fs);
   if (!toolConfigs) {
     return;
   }
 
   for (const config of Object.values(toolConfigs)) {
     if (config.installationMethod === 'github-release') {
-      await checkGitHubReleaseUpdate(parentLogger, config, githubApiClient, versionChecker);
+      await checkGitHubReleaseUpdate(logger, config, githubApiClient, versionChecker);
     } else {
-      functionLogger.info(
+      logger.info(
         messages.commandUnsupportedOperation(
           'check-updates',
           `installation method: "${config.installationMethod}" for tool "${config.name}"`
@@ -167,7 +159,7 @@ export async function checkUpdatesActionLogic(
     }
   }
 
-  functionLogger.info(messages.updatesCommandCompleted());
+  logger.info(messages.updatesCommandCompleted());
 }
 
 export function registerCheckUpdatesCommand(
@@ -175,7 +167,7 @@ export function registerCheckUpdatesCommand(
   program: GlobalProgram,
   servicesFactory: () => Promise<Services>
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'checkUpdatesCommand' });
+  const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
   program
     .command('check-updates [toolName]')
     .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')

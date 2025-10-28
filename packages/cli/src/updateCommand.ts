@@ -15,17 +15,15 @@ export interface UpdateCommandOptions extends BaseCommandOptions {
 }
 
 async function loadToolConfigSafely(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   configService: IConfigService,
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
   yamlConfig: YamlConfig
 ): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
-  const logger = parentLogger.getSubLogger({ name: 'loadToolConfigSafely' });
-
   try {
-    const toolConfig = await configService.loadSingleToolConfig(parentLogger, toolName, toolConfigsDir, fs, yamlConfig);
+    const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
 
     if (!toolConfig) {
       logger.error(messages.toolNotFound(toolName, toolConfigsDir));
@@ -40,14 +38,12 @@ async function loadToolConfigSafely(
 }
 
 async function getLatestReleaseFromGitHub(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   githubApiClient: IGitHubApiClient,
   owner: string,
   repo: string,
   toolName: string
 ): Promise<GitHubRelease | null> {
-  const logger = parentLogger.getSubLogger({ name: 'getLatestReleaseFromGitHub' });
-
   try {
     const latestRelease = await githubApiClient.getLatestRelease(owner, repo);
 
@@ -57,19 +53,17 @@ async function getLatestReleaseFromGitHub(
     }
 
     return latestRelease;
-  } catch (networkError) {
+  } catch (networkError: unknown) {
     logger.error(messages.serviceGithubApiFailed('get latest release', 0), networkError);
     return null;
   }
 }
 
 function validateGitHubRepo(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   toolName: string,
   toolConfig: ToolConfig
 ): { owner: string; repo: string } | null {
-  const logger = parentLogger.getSubLogger({ name: 'validateGitHubRepo' });
-
   if (toolConfig.installationMethod !== 'github-release') {
     return null;
   }
@@ -92,40 +86,36 @@ function validateGitHubRepo(
 }
 
 function logUpdateStatus(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   status: VersionComparisonStatus,
   toolName: string,
-  configuredVersion: string,
+  configuredVersion: string | undefined,
   latestVersion: string,
   shimMode: boolean
 ): void {
-  const logger = parentLogger.getSubLogger({ name: 'logUpdateStatus' });
-
   if (status === VersionComparisonStatus.UP_TO_DATE) {
     if (shimMode) {
       logger.info(messages.toolShimUpToDate(toolName, latestVersion));
     } else {
-      logger.info(messages.toolUpToDate(toolName, configuredVersion, latestVersion));
+      logger.info(messages.toolUpToDate(toolName, configuredVersion || 'unknown', latestVersion));
     }
   } else if (
     status === VersionComparisonStatus.AHEAD_OF_LATEST ||
     status === VersionComparisonStatus.INVALID_CURRENT_VERSION ||
     status === VersionComparisonStatus.INVALID_LATEST_VERSION
   ) {
-    logger.warn(messages.toolVersionComparisonFailed(toolName, configuredVersion, latestVersion));
+    logger.warn(messages.toolVersionComparisonFailed(toolName, configuredVersion || 'unknown', latestVersion));
   }
 }
 
 async function performStandardUpdate(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   installer: IInstaller,
   toolName: string,
   toolConfig: ToolConfig,
   latestVersion: string,
   configuredVersion: string
 ): Promise<ExitCode> {
-  const logger = parentLogger.getSubLogger({ name: 'performStandardUpdate' });
-
   logger.info(messages.toolUpdateAvailable(toolName, configuredVersion, latestVersion));
   logger.info(messages.toolProcessingUpdate(toolName, configuredVersion, latestVersion));
 
@@ -145,15 +135,13 @@ async function performStandardUpdate(
 }
 
 async function performShimUpdate(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   installer: IInstaller,
   toolName: string,
   toolConfig: ToolConfig,
   latestVersion: string,
   configuredVersion: string
 ): Promise<ExitCode> {
-  const logger = parentLogger.getSubLogger({ name: 'performShimUpdate' });
-
   logger.info(messages.toolShimUpdateStarting(toolName, configuredVersion, latestVersion));
 
   const toolConfigForUpdate: ToolConfig = {
@@ -172,19 +160,17 @@ async function performShimUpdate(
 }
 
 async function handleGitHubReleaseUpdate(
-  parentLogger: TsLogger,
+  logger: TsLogger,
   services: Services,
   toolName: string,
   toolConfig: ToolConfig,
   shimMode: boolean
 ): Promise<void> {
-  const logger = parentLogger.getSubLogger({ name: 'handleGitHubReleaseUpdate' });
-
-  const repoInfo = validateGitHubRepo(parentLogger, toolName, toolConfig);
+  const repoInfo = validateGitHubRepo(logger, toolName, toolConfig);
   if (!repoInfo) return;
 
   const { owner, repo } = repoInfo;
-  const latestRelease = await getLatestReleaseFromGitHub(parentLogger, services.githubApiClient, owner, repo, toolName);
+  const latestRelease = await getLatestReleaseFromGitHub(logger, services.githubApiClient, owner, repo, toolName);
   if (!latestRelease) return;
 
   const latestVersion = latestRelease.tag_name.replace(/^v/, ''); // Normalize tag
@@ -198,15 +184,8 @@ async function handleGitHubReleaseUpdate(
       logger.info(messages.toolConfiguredToLatest(toolName, latestVersion));
     }
     const updateExitCode = shimMode
-      ? await performShimUpdate(parentLogger, services.installer, toolName, toolConfig, latestVersion, latestVersion)
-      : await performStandardUpdate(
-          parentLogger,
-          services.installer,
-          toolName,
-          toolConfig,
-          latestVersion,
-          latestVersion
-        );
+      ? await performShimUpdate(logger, services.installer, toolName, toolConfig, latestVersion, latestVersion)
+      : await performStandardUpdate(logger, services.installer, toolName, toolConfig, latestVersion, latestVersion);
     if (updateExitCode !== ExitCode.SUCCESS) {
       exitCli(updateExitCode);
     }
@@ -217,27 +196,13 @@ async function handleGitHubReleaseUpdate(
 
   if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
     const updateExitCode = shimMode
-      ? await performShimUpdate(
-          parentLogger,
-          services.installer,
-          toolName,
-          toolConfig,
-          latestVersion,
-          configuredVersion
-        )
-      : await performStandardUpdate(
-          parentLogger,
-          services.installer,
-          toolName,
-          toolConfig,
-          latestVersion,
-          configuredVersion
-        );
+      ? await performShimUpdate(logger, services.installer, toolName, toolConfig, latestVersion, configuredVersion)
+      : await performStandardUpdate(logger, services.installer, toolName, toolConfig, latestVersion, configuredVersion);
     if (updateExitCode !== ExitCode.SUCCESS) {
       exitCli(updateExitCode);
     }
   } else {
-    logUpdateStatus(parentLogger, status, toolName, configuredVersion, latestVersion, shimMode);
+    logUpdateStatus(logger, status, toolName, configuredVersion, latestVersion, shimMode);
   }
 }
 
