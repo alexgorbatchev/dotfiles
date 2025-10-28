@@ -158,4 +158,88 @@ describe('Installer - installFromBrew', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBe('Install parameters not specified');
   });
+
+  it('should fetch and include version from brew info', async () => {
+    const brewInfoJson = JSON.stringify([
+      {
+        name: 'ripgrep',
+        versions: {
+          stable: '14.1.0',
+          head: 'HEAD',
+          bottle: true,
+        },
+      },
+    ]);
+
+    // Configure mock$ to return version info
+    mock$.mockResponse('brew info --json test-formula', {
+      stdout: Buffer.from(brewInfoJson),
+      stderr: Buffer.from(''),
+      exitCode: 0,
+    });
+
+    const toolConfig = createBrewToolConfig({
+      installParams: {
+        formula: 'test-formula',
+      },
+    });
+
+    const context = createTestContext(setup, {
+      installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+    });
+
+    const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
+
+    expect(result.success).toBe(true);
+    expect(result.version).toBe('14.1.0');
+    expect(mock$.commands).toContain('brew info --json test-formula');
+  });
+
+  it('should handle missing version gracefully', async () => {
+    // Configure mock$ to return info without stable version
+    mock$.mockResponse('brew info --json test-formula', {
+      stdout: Buffer.from(JSON.stringify([{ name: 'test-formula', versions: {} }])),
+      stderr: Buffer.from(''),
+      exitCode: 0,
+    });
+
+    const toolConfig = createBrewToolConfig({
+      installParams: {
+        formula: 'test-formula',
+      },
+    });
+
+    const context = createTestContext(setup, {
+      installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+    });
+
+    const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
+
+    expect(result.success).toBe(true);
+    expect(result.version).toBeUndefined();
+  });
+
+  it('should handle brew info failure gracefully', async () => {
+    // Configure mock$ to return empty output (simulating brew info failure)
+    mock$.mockResponse('brew info --json test-formula', {
+      stdout: Buffer.from(''),
+      stderr: Buffer.from('Error: No available formula with the name "test-formula"'),
+      exitCode: 1,
+    });
+
+    const toolConfig = createBrewToolConfig({
+      installParams: {
+        formula: 'test-formula',
+      },
+    });
+
+    const context = createTestContext(setup, {
+      installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+    });
+
+    const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
+
+    expect(result.success).toBe(true);
+    expect(result.version).toBeUndefined();
+  });
 });

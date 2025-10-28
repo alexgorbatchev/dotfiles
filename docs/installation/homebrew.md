@@ -71,11 +71,21 @@ c.install('brew', {
 - Well-maintained packages
 - Automatic dependency management
 - Native integration with macOS and Linux
+- **Version tracking**: Automatically records the installed version in the tool registry
 
 **Disadvantages:**
 - Platform-specific (macOS/Linux only)
 - Requires Homebrew to be installed
 - May not have the latest versions immediately
+
+## Version Tracking
+
+The installer automatically fetches and records the installed version using `brew info --json`. This enables:
+- Version upgrade detection
+- Tracking of installed tool versions
+- Registry-based tool management
+
+If version fetching fails (e.g., formula not found), the installation still succeeds but the version will not be recorded in the registry.
 
 ## Platform Support
 

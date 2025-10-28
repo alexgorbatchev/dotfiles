@@ -9,6 +9,27 @@ type ShellExecutor = typeof $;
 
 /**
  * Install a tool using Homebrew
+ *
+ * Installs tools via the Homebrew package manager on macOS and Linux.
+ * Automatically fetches the installed version using `brew info --json <formula>`.
+ *
+ * @param toolName - Name of the tool being installed
+ * @param toolConfig - Brew tool configuration with formula, cask, and tap settings
+ * @param context - Installation context with paths and system info
+ * @param options - Optional installation options (force, verbose, etc.)
+ * @param parentLogger - Logger instance for structured logging
+ * @param shellExecutor - Shell executor (defaults to Bun's $, injectable for testing)
+ * @returns Promise resolving to installation result with version and binary paths
+ *
+ * @remarks
+ * The function performs the following steps:
+ * 1. Adds any specified taps to Homebrew
+ * 2. Executes `brew install` with appropriate flags
+ * 3. Fetches version information via `brew info --json <formula>`
+ * 4. Returns binary paths and version (if available)
+ *
+ * Version fetching failures are handled gracefully - installation succeeds
+ * even if version information cannot be determined.
  */
 export async function installFromBrew(
   toolName: string,
@@ -35,11 +56,16 @@ export async function installFromBrew(
 
   const operation = async (): Promise<InstallResult> => {
     await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
+
+    // Fetch version information
+    const version: string | null = await getBrewVersion(formula, logger, shellExecutor);
+
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
     const result: InstallResult = {
       success: true,
       binaryPaths,
+      version: version || undefined,
       info: {
         formula,
         isCask,
@@ -51,6 +77,36 @@ export async function installFromBrew(
   };
 
   return withInstallErrorHandling('brew', toolName, logger, operation);
+}
+
+async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string | null> {
+  try {
+    logger.debug(messages.brew.fetchingVersion(formula));
+    const result = await $`brew info --json ${formula}`.quiet().nothrow();
+    const output: string = result.stdout.toString();
+    const info: BrewInfo[] = JSON.parse(output);
+
+    if (info.length > 0 && info[0]?.versions?.stable) {
+      const version: string = info[0].versions.stable;
+      logger.debug(messages.brew.versionFetched(formula, version));
+      return version;
+    }
+
+    logger.debug(messages.brew.versionNotFound(formula));
+    return null;
+  } catch (error) {
+    logger.debug(messages.brew.versionFetchFailed(formula), error);
+    return null;
+  }
+}
+
+interface BrewInfo {
+  name: string;
+  versions: {
+    stable: string;
+    head?: string;
+    bottle?: boolean;
+  };
 }
 
 async function executeBrewInstall(

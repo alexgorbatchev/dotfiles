@@ -155,6 +155,7 @@ Installs tools using the Homebrew package manager.
 - Formula and cask support
 - Custom tap support
 - Force reinstall option
+- **Automatic version tracking** via `brew info --json`
 
 **Example:**
 ```typescript
@@ -168,6 +169,9 @@ const toolConfig: BrewToolConfig = {
   }
 };
 ```
+
+**Version Information:**
+The installer automatically queries Homebrew for the installed version and includes it in the result. This enables the tool to be registered in the installation registry for upgrade tracking. If version fetching fails, the installation still succeeds but without version information.
 
 ### 3. Curl Script
 Downloads and executes installation scripts.
