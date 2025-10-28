@@ -69,8 +69,7 @@ describe('GeneratorOrchestrator', () => {
       mockShimGenerator,
       mockShellInitGenerator,
       mockSymlinkGenerator,
-      mockFileSystem,
-      mockAppConfig,
+      fs,
       systemInfo
     );
   });

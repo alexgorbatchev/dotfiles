@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -9,7 +8,7 @@ import { always, Platform } from '@dotfiles/schemas';
 import type { IShellInitGenerator, ShellInitGenerationResult } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 // Helper function to generate platform-specific content
@@ -48,7 +47,6 @@ function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemI
 
 describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let mockFileSystem: IFileSystem;
-  let mockAppConfig: YamlConfig;
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
   let mockShimGenerator: IShimGenerator;
@@ -64,17 +62,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     logger = new TestLogger();
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'orchestrator-platform-integration' });
-
-    mockAppConfig = await createMockYamlConfig({
-      config: {
-        paths: testDirs.paths,
-      },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
-      fileSystem: mockFileSystem,
-      logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir },
-      env: {},
-    });
 
     macosSystemInfo = {
       platform: 'darwin',
@@ -130,7 +117,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockFileSystem,
-        mockAppConfig,
         macosSystemInfo // macOS system info
       );
 
@@ -183,7 +169,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockFileSystem,
-        mockAppConfig,
         linuxSystemInfo // Linux system info
       );
 
@@ -241,7 +226,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockFileSystem,
-        mockAppConfig,
         macosSystemInfo
       );
 
@@ -279,7 +263,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockFileSystem,
-        mockAppConfig,
         macosSystemInfo
       );
 

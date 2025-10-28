@@ -1,4 +1,3 @@
-import type { YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
@@ -22,7 +21,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
     fs: IFileSystem,
-    _appConfig: YamlConfig,
     systemInfo: SystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
