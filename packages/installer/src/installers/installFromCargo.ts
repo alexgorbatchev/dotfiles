@@ -5,6 +5,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
+import { normalizeVersion } from '@dotfiles/utils';
 import type { InstallOptions, InstallResult } from '../types';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { setupBinariesFromArchive } from '../utils/BinarySetupService';
@@ -185,7 +186,7 @@ async function determineVersion(
       if (!packageInfo) {
         throw new Error(`Failed to fetch or parse Cargo.toml from ${cargoTomlUrl}`);
       }
-      return packageInfo.version;
+      return normalizeVersion(packageInfo.version);
     }
     case 'crates-io': {
       logger.debug(messages.cargo.queryingCratesIo(crateName));
@@ -194,7 +195,7 @@ async function determineVersion(
       if (!version) {
         throw new Error(`Failed to get latest version for crate ${crateName} from crates.io`);
       }
-      return version;
+      return normalizeVersion(version);
     }
     case 'github-releases': {
       if (!params.githubRepo) {
@@ -214,6 +215,7 @@ async function getVersionFromGitHubReleases(githubRepo: string, logger: TsLogger
   // This would integrate with the existing GitHub API client
   logger.debug(messages.cargo.queryingGitHubReleases(githubRepo));
   throw new Error('GitHub releases version source not yet implemented');
+  // When implemented, should return: normalizeVersion(version)
 }
 
 /**

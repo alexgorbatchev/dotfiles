@@ -11,7 +11,8 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@dotfiles/schemas": "workspace:*"
+    "@dotfiles/schemas": "workspace:*",
+    "semver": "^7.6.3"
   },
   "devDependencies": {
     "@dotfiles/config": "workspace:*",
@@ -20,6 +21,7 @@
     "@dotfiles/testing-helpers": "workspace:*",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
+    "@types/semver": "^7.5.8",
     "@rageltd/bun-test-utils": "catalog:testing",
     "typescript": "catalog:typescript",
     "@typescript/native-preview": "catalog:typescript"

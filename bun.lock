@@ -59,6 +59,7 @@
         "@dotfiles/generator-orchestrator": "workspace:*",
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/readme-service": "workspace:*",
         "@dotfiles/registry": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
         "@dotfiles/schemas": "workspace:*",
@@ -252,6 +253,7 @@
         "@dotfiles/utils": "workspace:*",
       },
       "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
@@ -391,6 +393,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@dotfiles/schemas": "workspace:*",
+        "semver": "^7.6.3",
       },
       "devDependencies": {
         "@dotfiles/config": "workspace:*",
@@ -400,6 +403,7 @@
         "@rageltd/bun-test-utils": "catalog:testing",
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
+        "@types/semver": "^7.5.8",
         "@typescript/native-preview": "catalog:typescript",
         "typescript": "catalog:typescript",
       },

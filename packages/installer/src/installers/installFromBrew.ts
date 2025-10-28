@@ -1,5 +1,6 @@
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
+import { normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
 import type { InstallOptions, InstallResult } from '../types';
 import { getBinaryPaths, withInstallErrorHandling } from '../utils';
@@ -87,7 +88,8 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
     const info: BrewInfo[] = JSON.parse(output);
 
     if (info.length > 0 && info[0]?.versions?.stable) {
-      const version: string = info[0].versions.stable;
+      const rawVersion: string = info[0].versions.stable;
+      const version: string = normalizeVersion(rawVersion);
       logger.debug(messages.brew.versionFetched(formula, version));
       return version;
     }

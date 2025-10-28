@@ -18,6 +18,7 @@ import type {
   PostExtractInstallContext,
   SystemInfo,
 } from '@dotfiles/schemas';
+import { normalizeVersion } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
 import type { InstallOptions, InstallResult } from '../types';
 import {
@@ -113,7 +114,7 @@ export async function installFromGitHubRelease(
     return {
       success: true,
       binaryPaths,
-      version: release.data.tag_name,
+      version: normalizeVersion(release.data.tag_name),
       info: {
         releaseUrl: release.data.html_url,
         publishedAt: release.data.published_at,
