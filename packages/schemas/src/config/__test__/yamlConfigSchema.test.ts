@@ -62,6 +62,12 @@ describe('yamlConfigSchemaTest', () => {
           ttl: 0,
         },
       },
+      features: {
+        catalog: {
+          generate: true,
+          filePath: `\${paths.dotfilesDir}`,
+        },
+      },
       platform: [
         {
           match: [{ os: 'macos' }, { arch: 'arm64' }],

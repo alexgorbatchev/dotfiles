@@ -50,7 +50,9 @@ function createHostSchema(options: {
  *
  * ```
  * ${HOME} (environment variable)
- * ├── homeDir
+ * └── homeDir
+ *
+ * ${configFileDir} (derived from config file location)
  * └── dotfilesDir
  *     ├── toolConfigsDir
  *     └── generatedDir
@@ -62,7 +64,7 @@ function createHostSchema(options: {
  *
  * Resolution order:
  * 1. `homeDir` - resolved from ${HOME}
- * 2. `dotfilesDir` - resolved from ${HOME}
+ * 2. `dotfilesDir` - resolved from ${configFileDir}
  * 3. `toolConfigsDir` - resolved from ${paths.dotfilesDir}
  * 4. `generatedDir` - resolved from ${paths.dotfilesDir}
  * 5. `shellScriptsDir` - resolved from ${paths.generatedDir}
@@ -71,27 +73,23 @@ function createHostSchema(options: {
  */
 const pathsConfigSchema = z
   .object({
+    /** The user's home directory. Defaults to the value of the HOME environment variable. */
+    homeDir: z.string().default(`\${HOME}`),
+
     /** Specifies the root directory of the dotfiles repository. Defaults to `~/.dotfiles`. You SHOULD set this value. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    dotfilesDir: z.string().default('${HOME}/.dotfiles'),
+    dotfilesDir: z.string().default(`\${configFileDir}`),
 
     /** Sets the target directory where executable shims for tools will be placed. Defaults to `/usr/local/bin`. */
     targetDir: z.string().default('/usr/local/bin'),
-    /** The user's home directory. Defaults to the value of the HOME environment variable. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    homeDir: z.string().default('${HOME}'),
+
     /** Defines the directory where all generated files will be stored. Defaults to `${paths.dotfilesDir}/.generated`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    generatedDir: z.string().default('${paths.dotfilesDir}/.generated'),
+    generatedDir: z.string().default(`\${paths.dotfilesDir}/.generated`),
     /** Specifies the directory containing `*.tool.ts` tool configuration files. Defaults to `${paths.dotfilesDir}/generator/configs/tools`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    toolConfigsDir: z.string().default('${paths.dotfilesDir}/tools'),
+    toolConfigsDir: z.string().default(`\${paths.dotfilesDir}/tools`),
     /** Specifies the directory where generated shell scripts are stored. Defaults to `${paths.generatedDir}/shell-scripts`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    shellScriptsDir: z.string().default('${paths.generatedDir}/shell-scripts'),
+    shellScriptsDir: z.string().default(`\${paths.generatedDir}/shell-scripts`),
     /** Defines the directory where downloaded tool binaries are stored. Defaults to `${paths.generatedDir}/binaries`. */
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Schema default value with variable expansion
-    binariesDir: z.string().default('${paths.generatedDir}/binaries'),
+    binariesDir: z.string().default(`\${paths.generatedDir}/binaries`),
   })
   .strict();
 
@@ -154,6 +152,21 @@ const downloaderConfigSchema = z
   })
   .strict();
 
+const featuresConfigSchema = z
+  .object({
+    /** Configuration for catalog-based dependency management. */
+    catalog: z
+      .object({
+        /** Enables or disables catalog generation. Defaults to true. */
+        generate: z.boolean().default(true),
+        /** Path where the catalog file will be generated. Defaults to dotfiles directory. */
+        filePath: z.string().default(`\${paths.dotfilesDir}`),
+      })
+      .strict()
+      .default({ generate: true, filePath: `\${paths.dotfilesDir}` }),
+  })
+  .strict();
+
 export const OS_VALUES = ['macos', 'linux', 'windows'] as const;
 export const ARCH_VALUES = ['x86_64', 'arm64'] as const;
 
@@ -181,6 +194,7 @@ const baseYamlConfigSchemaRequired = z
     github: gitHubConfigSchema.required().default(gitHubConfigSchema.parse({})),
     cargo: cargoConfigSchema.required().default(cargoConfigSchema.parse({})),
     downloader: downloaderConfigSchema.required().default(downloaderConfigSchema.parse({})),
+    features: featuresConfigSchema.required().default(featuresConfigSchema.parse({})),
   })
   .strict();
 
@@ -193,6 +207,7 @@ const baseYamlConfigSchemaPartial = z
     github: gitHubConfigSchema.partial().optional(),
     cargo: cargoConfigSchema.partial().optional(),
     downloader: downloaderConfigSchema.partial().optional(),
+    features: featuresConfigSchema.partial().optional(),
   })
   .strict();
 

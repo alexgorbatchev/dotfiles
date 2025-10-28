@@ -6,17 +6,12 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
 
   paths: {
     homeDir: '/home/testuser',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    dotfilesDir: '${paths.homeDir}/.dotfiles',
+    dotfilesDir: `\${paths.homeDir}/.dotfiles`,
     targetDir: '/usr/local/bin',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    generatedDir: '${paths.dotfilesDir}/.generated',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    toolConfigsDir: '${paths.dotfilesDir}/tools',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    shellScriptsDir: '${paths.generatedDir}/shell-scripts',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    binariesDir: '${paths.generatedDir}/bin',
+    generatedDir: `\${paths.dotfilesDir}/.generated`,
+    toolConfigsDir: `\${paths.dotfilesDir}/tools`,
+    shellScriptsDir: `\${paths.generatedDir}/shell-scripts`,
+    binariesDir: `\${paths.generatedDir}/bin`,
   },
   system: {
     sudoPrompt: 'Enter password for generator:',
@@ -29,8 +24,7 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
     checkInterval: 86400,
   },
   github: {
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    token: '${GITHUB_TOKEN}',
+    token: `\${GITHUB_TOKEN}`,
     host: 'https://api.github.com',
     userAgent: 'dotfiles-generator',
     cache: {
@@ -66,6 +60,12 @@ export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
     cache: {
       enabled: true,
       ttl: 86400000,
+    },
+  },
+  features: {
+    catalog: {
+      generate: true,
+      filePath: `\${paths.dotfilesDir}`,
     },
   },
 };

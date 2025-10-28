@@ -1,13 +1,7 @@
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type {
-  BrewToolConfig,
-  CargoToolConfig,
-  GithubReleaseInstallParams,
-  GithubReleaseToolConfig,
-  ToolConfig,
-} from '@dotfiles/schemas';
+import type { BrewToolConfig, CargoToolConfig, GithubReleaseToolConfig, ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
@@ -59,28 +53,6 @@ async function loadToolConfigs(
     }
   }
   return toolConfigs;
-}
-
-function _validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
-  if (config.installationMethod !== 'github-release') {
-    return null;
-  }
-
-  const githubParams = config.installParams as GithubReleaseInstallParams;
-  const repo = githubParams?.repo;
-
-  if (!repo) {
-    logger.error(messages.configParameterInvalid('repo', 'undefined', 'owner/repo format'));
-    return null;
-  }
-
-  const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    logger.error(messages.configParameterInvalid('repo', repo, 'owner/repo format'));
-    return null;
-  }
-
-  return { owner, repo: repoName };
 }
 
 export async function checkUpdatesActionLogic(

@@ -62,6 +62,12 @@ export function createTestInstallHookContext(
       retryDelay: 1000,
       cache: { enabled: true, ttl: 3600 },
     },
+    features: {
+      catalog: {
+        generate: true,
+        filePath: `\${paths.dotfilesDir}`,
+      },
+    },
     userConfigPath: '/home/user/.dotfiles/config.yaml',
     platform: [],
   };
