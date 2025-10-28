@@ -1,0 +1,25 @@
+{
+  "name": "@dotfiles/readme-service",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {},
+  "dependencies": {
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@rageltd/bun-test-utils": "catalog:testing",
+    "typescript": "catalog:typescript"
+  }
+}

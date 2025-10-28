@@ -223,6 +223,25 @@
         "typescript": "catalog:typescript",
       },
     },
+    "packages/readme-service": {
+      "name": "@dotfiles/readme-service",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/downloader": "workspace:*",
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/schemas": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+        "@rageltd/bun-test-utils": "catalog:testing",
+        "@types/bun": "catalog:system",
+        "@types/node": "catalog:system",
+        "typescript": "catalog:typescript",
+      },
+    },
     "packages/registry": {
       "name": "@dotfiles/registry",
       "version": "0.0.0",
@@ -467,6 +486,8 @@
     "@dotfiles/installer": ["@dotfiles/installer@workspace:packages/installer"],
 
     "@dotfiles/logger": ["@dotfiles/logger@workspace:packages/logger"],
+
+    "@dotfiles/readme-service": ["@dotfiles/readme-service@workspace:packages/readme-service"],
 
     "@dotfiles/registry": ["@dotfiles/registry@workspace:packages/registry"],
 
