@@ -113,11 +113,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [messages.serviceGithubApiFailed('get crate info', 0)]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('get crate info', 0)]);
   });
 
   test('should handle cargo API returning null version', async () => {

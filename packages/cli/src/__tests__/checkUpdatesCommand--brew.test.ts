@@ -62,7 +62,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
   // Note: These tests currently execute real brew commands
   // TODO: Refactor brew update implementation to use dependency injection for shell execution
-  
+
   test.skip('should report brew formula is up-to-date', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
     mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
@@ -78,7 +78,11 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolUpdateAvailable('ripgrep', '13.0.0', '14.0.0')]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand'],
+      [messages.toolUpdateAvailable('ripgrep', '13.0.0', '14.0.0')]
+    );
   });
 
   test.skip('should handle brew cask updates', async () => {
@@ -87,7 +91,11 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
     await program.parseAsync(['check-updates', 'vscode'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolUpdateAvailable('vscode', '1.85.0', '1.86.0')]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand'],
+      [messages.toolUpdateAvailable('vscode', '1.85.0', '1.86.0')]
+    );
   });
 
   test.skip('should handle brew tool configured with "latest" version', async () => {

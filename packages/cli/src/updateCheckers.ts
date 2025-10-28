@@ -1,15 +1,15 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { IVersionChecker } from '@dotfiles/version-checker';
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
+import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import type { TsLogger } from '@dotfiles/logger';
 import type {
   BrewToolConfig,
-  CargoToolConfig,
-  GithubReleaseToolConfig,
-  GithubReleaseInstallParams,
   CargoInstallParams,
+  CargoToolConfig,
+  GithubReleaseInstallParams,
+  GithubReleaseToolConfig,
 } from '@dotfiles/schemas';
+import type { IVersionChecker } from '@dotfiles/version-checker';
+import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';
 
 /**
@@ -60,10 +60,7 @@ export async function checkGitHubReleaseUpdate(
 /**
  * Checks for updates to a Brew tool by comparing configured version with latest brew formula
  */
-export async function checkBrewUpdate(
-  config: BrewToolConfig,
-  logger: TsLogger
-): Promise<void> {
+export async function checkBrewUpdate(config: BrewToolConfig, logger: TsLogger): Promise<void> {
   try {
     const configuredVersion = config.version || 'latest';
     if (configuredVersion === 'latest') {
@@ -123,8 +120,11 @@ async function performVersionComparison(
   versionChecker: IVersionChecker,
   logger: TsLogger
 ): Promise<void> {
-  const status: VersionComparisonStatus = await versionChecker.checkVersionStatus(currentVersionToCompare, latestVersion);
-  
+  const status: VersionComparisonStatus = await versionChecker.checkVersionStatus(
+    currentVersionToCompare,
+    latestVersion
+  );
+
   if (status === VersionComparisonStatus.NEWER_AVAILABLE) {
     logger.info(messages.toolUpdateAvailable(config.name, currentVersionToCompare, latestVersion));
   } else if (status === VersionComparisonStatus.UP_TO_DATE) {

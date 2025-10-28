@@ -15,7 +15,7 @@ applyTo: '**/*'
 - Code must not have any `console.[fn]` statements.
 - There must not be duplicate consequitive logger call with the same message, eg `logger.error('message')` followed by `logger.debug('message')`. 
 - packages/logger/README.md must be used for all log messages.
-- In a class, all methods must create a sublogger with the method name and use it (when modifying and exiting file and this pattern is not implemented, update the file to implement it).
+- All methods and functions that receive a logger instance (`parentLogger`) must create a sublogger with the method/function name and use it (when modifying and exiting file and this pattern is not implemented, update the file to implement it).
 - When calling a function or a method that uses a logger, there's no need to have a related logger call.
 - Logger calls in catch blocks must be error.
 - Do not pass objects or large amount of arguments into the logguing functions to avoid cluttering the logs. INFO, WARN and ERROR are always printed to the user and must easily readable.

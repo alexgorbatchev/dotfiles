@@ -1,20 +1,17 @@
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
-import type { 
-  GithubReleaseInstallParams, 
-  ToolConfig,
-  GithubReleaseToolConfig,
+import type {
   BrewToolConfig,
-  CargoToolConfig
+  CargoToolConfig,
+  GithubReleaseInstallParams,
+  GithubReleaseToolConfig,
+  ToolConfig,
 } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
-import type { IVersionChecker } from '@dotfiles/version-checker';
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';
-import { checkGitHubReleaseUpdate, checkBrewUpdate, checkCargoUpdate } from './updateCheckers';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
+import { checkBrewUpdate, checkCargoUpdate, checkGitHubReleaseUpdate } from './updateCheckers';
 
 export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
   // No command-specific options for check-updates command
@@ -64,7 +61,7 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
-function validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
+function _validateGitHubRepoConfig(logger: TsLogger, config: ToolConfig): { owner: string; repo: string } | null {
   if (config.installationMethod !== 'github-release') {
     return null;
   }
