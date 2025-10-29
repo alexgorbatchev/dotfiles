@@ -241,6 +241,7 @@ export class Installer implements IInstaller {
         configuredVersion: isGitHubReleaseToolConfig(resolvedToolConfig)
           ? resolvedToolConfig.installParams.version
           : undefined,
+        originalTag: result.originalTag,
       });
       logger.debug(messages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
     } catch (error) {

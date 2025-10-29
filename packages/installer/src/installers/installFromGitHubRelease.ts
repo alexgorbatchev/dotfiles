@@ -124,6 +124,7 @@ export async function installFromGitHubRelease(
       success: true,
       binaryPaths,
       version: normalizeVersion(release.data.tag_name),
+      originalTag: release.data.tag_name,
       metadata,
     };
   } catch (error) {

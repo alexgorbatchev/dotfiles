@@ -45,21 +45,27 @@ export async function installFromCargo(
     const toolFs = createToolFileSystem(fileSystem, toolName);
 
     // 1. Determine version
-    const version = await determineVersion(crateName, params, cargoClient, logger);
-    logger.debug(messages.cargo.foundVersion(crateName, version));
+    const versionResult = await determineVersion(crateName, params, cargoClient, logger);
+    logger.debug(messages.cargo.foundVersion(crateName, versionResult.version));
 
     // 2. Determine download URL based on binary source
-    const downloadUrl = await buildDownloadUrl(crateName, version, params, context, cargoGithubReleaseHost);
-    logger.debug(messages.cargo.downloadingAsset(`${crateName}-${version}`, downloadUrl));
+    const downloadUrl = await buildDownloadUrl(
+      crateName,
+      versionResult.version,
+      params,
+      context,
+      cargoGithubReleaseHost
+    );
+    logger.debug(messages.cargo.downloadingAsset(`${crateName}-${versionResult.version}`, downloadUrl));
 
     // 3. Download and extract
-    const filename = `${crateName}-${version}.tar.gz`;
+    const filename = `${crateName}-${versionResult.version}.tar.gz`;
     const downloadPath = path.join(context.installDir, filename);
 
     await downloadWithProgress(downloadUrl, downloadPath, filename, downloader, options);
 
     // 4. Execute afterDownload hook
-    const hookContext = { ...context, version };
+    const hookContext = { ...context, version: versionResult.version };
     const afterDownloadResult = await executeAfterDownloadHook(
       toolConfig,
       hookExecutor,
@@ -110,7 +116,8 @@ export async function installFromCargo(
     return {
       success: true,
       binaryPaths,
-      version,
+      version: versionResult.version,
+      originalTag: versionResult.originalTag,
       metadata,
     };
   };
@@ -174,7 +181,7 @@ async function determineVersion(
   params: CargoInstallParams,
   cargoClient: ICargoClient,
   logger: TsLogger
-): Promise<string> {
+): Promise<{ version: string; originalTag?: string }> {
   const versionSource = params.versionSource || 'cargo-toml';
 
   switch (versionSource) {
@@ -189,7 +196,7 @@ async function determineVersion(
       if (!packageInfo) {
         throw new Error(`Failed to fetch or parse Cargo.toml from ${cargoTomlUrl}`);
       }
-      return normalizeVersion(packageInfo.version);
+      return { version: normalizeVersion(packageInfo.version) };
     }
     case 'crates-io': {
       logger.debug(messages.cargo.queryingCratesIo(crateName));
@@ -198,7 +205,7 @@ async function determineVersion(
       if (!version) {
         throw new Error(`Failed to get latest version for crate ${crateName} from crates.io`);
       }
-      return normalizeVersion(version);
+      return { version: normalizeVersion(version) };
     }
     case 'github-releases': {
       if (!params.githubRepo) {
@@ -214,11 +221,14 @@ async function determineVersion(
 /**
  * Get version from GitHub releases (placeholder - would need GitHub API integration)
  */
-async function getVersionFromGitHubReleases(githubRepo: string, logger: TsLogger): Promise<string> {
+async function getVersionFromGitHubReleases(
+  githubRepo: string,
+  logger: TsLogger
+): Promise<{ version: string; originalTag?: string }> {
   // This would integrate with the existing GitHub API client
   logger.debug(messages.cargo.queryingGitHubReleases(githubRepo));
   throw new Error('GitHub releases version source not yet implemented');
-  // When implemented, should return: normalizeVersion(version)
+  // When implemented, should return: { version: normalizeVersion(tag), originalTag: tag }
 }
 
 /**

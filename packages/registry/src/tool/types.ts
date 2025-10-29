@@ -9,6 +9,7 @@ export interface ToolInstallation {
   downloadUrl?: string;
   assetName?: string;
   configuredVersion?: string;
+  originalTag?: string;
 }
 
 export type ToolInstallationInput = Omit<ToolInstallation, 'id' | 'installedAt'>;

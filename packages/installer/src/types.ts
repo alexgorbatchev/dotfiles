@@ -119,6 +119,11 @@ export interface InstallResult {
   version?: string;
 
   /**
+   * The original tag from the source (e.g., GitHub release tag before normalization)
+   */
+  originalTag?: string;
+
+  /**
    * Error message if installation failed
    */
   error?: string;

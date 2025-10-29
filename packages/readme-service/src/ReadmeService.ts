@@ -167,9 +167,9 @@ export class ReadmeService implements IReadmeService {
       const [, owner, repo] = githubMatch;
       if (!owner || !repo) continue;
 
-      // Use configuredVersion if available, otherwise use the installed version
+      // Use originalTag if available (for GitHub URLs), otherwise use configuredVersion or installed version
       // If version is "latest", resolve to "main" for raw GitHub URLs
-      const version = tool.configuredVersion || tool.version;
+      const version = tool.originalTag || tool.configuredVersion || tool.version;
       const resolvedVersion = version === 'latest' ? 'main' : version;
 
       const readme: ReadmeContent | null = await this.fetchReadmeForVersion(
