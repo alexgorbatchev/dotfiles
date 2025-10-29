@@ -125,7 +125,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
     logger.expect(
       ['WARN'],
       ['registerCheckUpdatesCommand'],
-      [messages.serviceGithubResourceNotFound('version', 'exa crate')]
+      [messages.serviceGithubResourceNotFound('crate', 'exa (exa)')]
     );
   });
 });

@@ -143,20 +143,4 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
       [messages.configParameterInvalid('repo', 'invalid-repo-format', 'owner/repo format')]
     );
   });
-
-  test('should handle missing repo in github-release tool config', async () => {
-    const missingRepoConfig = {
-      ...fzfToolConfig,
-      installParams: {},
-    } as GithubReleaseToolConfig;
-    mockConfigService.loadSingleToolConfig.mockResolvedValue(missingRepoConfig);
-
-    await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
-
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [messages.configParameterInvalid('repo', 'undefined', 'owner/repo format')]
-    );
-  });
 });

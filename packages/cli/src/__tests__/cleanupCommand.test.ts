@@ -2,11 +2,11 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun
 import type { YamlConfig } from '@dotfiles/config';
 import type { MockedFileSystem } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
+import { createMockFileRegistry } from '@dotfiles/registry/file';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerCleanupCommand } from '../cleanupCommand';
 import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
-import { createMockFileRegistry } from '@dotfiles/registry/file';
 
 setupTestCleanup();
 
@@ -131,8 +131,8 @@ describe('cleanupCommand', () => {
         'cleanup started',
         'Registry-based cleanup: Removing all tracked files',
         '[cleanup] rm /usr/bin/shim1',
-        '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
-        '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
+        '[cleanup] rm ~/.generated/bin/shim2',
+        '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
         '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
         'registry database cleanup',
         'Cleanup completed',
@@ -155,8 +155,8 @@ describe('cleanupCommand', () => {
         'cleanup started',
         "Registry-based cleanup: files for tool 'tool1'",
         '[cleanup] rm /usr/bin/shim1',
-        '[cleanup] rm ~/.dotfiles/.generated/bin/shim2',
-        '[cleanup] rm ~/.dotfiles/.generated/shell-scripts/main.zsh',
+        '[cleanup] rm ~/.generated/bin/shim2',
+        '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
         '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
         'Removed registry entries for tool: tool1',
         'Cleanup completed',
