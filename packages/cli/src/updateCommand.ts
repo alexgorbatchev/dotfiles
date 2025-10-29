@@ -3,7 +3,8 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { IInstaller } from '@dotfiles/installer';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
-import type { GitHubRelease, GithubReleaseInstallParams, ToolConfig } from '@dotfiles/schemas';
+import type { GitHubRelease, ToolConfig } from '@dotfiles/schemas';
+import { isGitHubReleaseToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';
@@ -68,7 +69,7 @@ function validateGitHubRepo(
     return null;
   }
 
-  const githubParams = toolConfig.installParams as GithubReleaseInstallParams;
+  const githubParams = toolConfig.installParams;
   if (!githubParams?.repo) {
     logger.warn(
       messages.configParameterIgnored('repo', `Tool "${toolName}" is 'github-release' but missing 'repo' parameter`)
@@ -252,7 +253,7 @@ export function registerUpdateCommand(
           logger.info(messages.commandCheckingUpdatesFor(toolName));
         }
 
-        if (toolConfig.installationMethod === 'github-release') {
+        if (isGitHubReleaseToolConfig(toolConfig)) {
           await handleGitHubReleaseUpdate(logger, services, toolName, toolConfig, combinedOptions.shimMode);
         } else {
           logger.info(

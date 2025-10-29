@@ -1,11 +1,18 @@
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BrewToolConfig, CargoToolConfig, GithubReleaseToolConfig, ToolConfig } from '@dotfiles/schemas';
+import type { ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
-import { checkBrewUpdate, checkCargoUpdate, checkGitHubReleaseUpdate } from './updateCheckers';
+import {
+  checkBrewUpdate,
+  checkCargoUpdate,
+  checkGitHubReleaseUpdate,
+  isBrewToolConfig,
+  isCargoToolConfig,
+  isGitHubReleaseToolConfig,
+} from './updateCheckers';
 
 export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
   // No command-specific options for check-updates command
@@ -70,12 +77,12 @@ export async function checkUpdatesActionLogic(
   }
 
   for (const config of Object.values(toolConfigs)) {
-    if (config.installationMethod === 'github-release') {
-      await checkGitHubReleaseUpdate(config as GithubReleaseToolConfig, githubApiClient, versionChecker, logger);
-    } else if (config.installationMethod === 'brew') {
-      await checkBrewUpdate(config as BrewToolConfig, logger);
-    } else if (config.installationMethod === 'cargo') {
-      await checkCargoUpdate(config as CargoToolConfig, services.cargoClient, versionChecker, logger);
+    if (isGitHubReleaseToolConfig(config)) {
+      await checkGitHubReleaseUpdate(config, githubApiClient, versionChecker, logger);
+    } else if (isBrewToolConfig(config)) {
+      await checkBrewUpdate(config, versionChecker, logger);
+    } else if (isCargoToolConfig(config)) {
+      await checkCargoUpdate(config, services.cargoClient, versionChecker, logger);
     } else {
       logger.info(
         messages.commandUnsupportedOperation(

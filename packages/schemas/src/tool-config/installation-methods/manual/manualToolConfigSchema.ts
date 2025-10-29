@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { baseToolConfigPropertiesSchema } from '../../base/baseToolConfigPropertiesSchema';
 import { binaryConfigSchema } from '../../base/binaryConfigSchema';
+import type { ToolConfig } from '../../toolConfigSchema';
 import { manualInstallParamsSchema } from './manualInstallParamsSchema';
 
 export const manualToolConfigSchema = baseToolConfigPropertiesSchema.extend({
@@ -14,3 +15,10 @@ export const manualToolConfigSchema = baseToolConfigPropertiesSchema.extend({
 
 /** Resolved tool configuration for the 'manual' installation method. */
 export type ManualToolConfig = z.infer<typeof manualToolConfigSchema>;
+
+/**
+ * Type guard to check if a config is a Manual tool config
+ */
+export function isManualToolConfig(config: ToolConfig): config is ManualToolConfig {
+  return config.installationMethod === 'manual';
+}

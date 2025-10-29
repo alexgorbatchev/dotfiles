@@ -5,7 +5,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ToolConfig } from '@dotfiles/schemas';
+import { isGitHubReleaseToolConfig, type ToolConfig } from '@dotfiles/schemas';
 import { DEFAULT_README_CACHE_TTL, GITHUB_RAW_BASE_URL, README_FILENAME } from './constants';
 import type { IReadmeService } from './IReadmeService';
 import { messages } from './log-messages';
@@ -335,7 +335,7 @@ export class ReadmeService implements IReadmeService {
 
   private filterGitHubConfigs(toolConfigs: Record<string, ToolConfig>): [string, ToolConfig][] {
     return Object.entries(toolConfigs).filter(
-      ([, config]) => config.installationMethod === 'github-release' && config.installParams?.repo
+      ([, config]) => isGitHubReleaseToolConfig(config) && config.installParams.repo
     );
   }
 

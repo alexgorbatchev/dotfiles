@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
-import type { AsyncInstallHook, GithubReleaseInstallParams } from '@dotfiles/schemas';
-import { always } from '@dotfiles/schemas';
+import {
+  always,
+  isGitHubReleaseToolConfig,
+  type AsyncInstallHook,
+  type GithubReleaseInstallParams,
+} from '@dotfiles/schemas';
 import { messages } from '../log-messages';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 
@@ -50,7 +54,7 @@ describe('ToolConfigBuilder', () => {
     const config = builder.build();
 
     expect(config.installationMethod).toBe('github-release');
-    if (config.installationMethod === 'github-release') {
+    if (isGitHubReleaseToolConfig(config)) {
       expect(config.installParams).toEqual(installParams);
     }
   });
@@ -66,7 +70,7 @@ describe('ToolConfigBuilder', () => {
     builder.hooks(hooks);
 
     const config = builder.build();
-    if (config.installationMethod === 'github-release') {
+    if (isGitHubReleaseToolConfig(config)) {
       expect(config.installParams?.hooks).toEqual(hooks);
     }
   });
@@ -140,7 +144,7 @@ describe('ToolConfigBuilder', () => {
     expect(config.binaries).toEqual(['tool-bin']);
     expect(config.version).toBe('1.0.0');
     expect(config.installationMethod).toBe('github-release');
-    if (config.installationMethod === 'github-release') {
+    if (isGitHubReleaseToolConfig(config)) {
       expect(config.installParams).toEqual({ ...installParams, hooks });
     }
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);

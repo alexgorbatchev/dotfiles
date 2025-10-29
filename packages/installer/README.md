@@ -117,7 +117,44 @@ const version = await client.getLatestVersion('ripgrep');
 
 ## Installation Methods
 
-The installer supports six installation methods:
+The installer supports six installation methods, each with its own typeguard for type-safe runtime checking:
+
+### Type Guards
+
+Each installation method has an associated typeguard function that provides runtime type checking and TypeScript type narrowing:
+
+```typescript
+import {
+  isGitHubReleaseToolConfig,
+  isBrewToolConfig,
+  isCargoToolConfig,
+  isCurlScriptToolConfig,
+  isCurlTarToolConfig,
+  isManualToolConfig,
+} from '@dotfiles/schemas';
+
+// Runtime type checking with automatic type narrowing
+if (isGitHubReleaseToolConfig(config)) {
+  // TypeScript knows config is GithubReleaseToolConfig
+  const repo = config.installParams.repo; // Type-safe access
+}
+
+// Use in switch statements
+switch (config.installationMethod) {
+  case 'github-release':
+    if (isGitHubReleaseToolConfig(config)) {
+      await handleGitHubRelease(config);
+    }
+    break;
+  // ... other cases
+}
+```
+
+**Benefits:**
+- **Type Safety**: TypeScript automatically narrows types after typeguard checks
+- **No Type Assertions**: Eliminates the need for `as` type assertions
+- **Runtime Validation**: Ensures configuration matches expected type at runtime
+- **Better IDE Support**: Full autocomplete and type checking within guarded blocks
 
 ### 1. GitHub Release
 Downloads and installs tools from GitHub releases with flexible asset selection.

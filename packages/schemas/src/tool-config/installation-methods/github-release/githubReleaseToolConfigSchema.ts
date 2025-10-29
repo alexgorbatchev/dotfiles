@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { baseToolConfigPropertiesSchema } from '../../base/baseToolConfigPropertiesSchema';
 import { binaryConfigSchema } from '../../base/binaryConfigSchema';
+import type { ToolConfig } from '../../toolConfigSchema';
 import { githubReleaseInstallParamsSchema } from './githubReleaseInstallParamsSchema';
 
 export const githubReleaseToolConfigSchema = baseToolConfigPropertiesSchema.extend({
@@ -14,3 +15,10 @@ export const githubReleaseToolConfigSchema = baseToolConfigPropertiesSchema.exte
 
 /** Resolved tool configuration for the 'github-release' installation method. */
 export type GithubReleaseToolConfig = z.infer<typeof githubReleaseToolConfigSchema>;
+
+/**
+ * Type guard to check if a config is a GitHub Release tool config
+ */
+export function isGitHubReleaseToolConfig(config: ToolConfig): config is GithubReleaseToolConfig {
+  return config.installationMethod === 'github-release';
+}

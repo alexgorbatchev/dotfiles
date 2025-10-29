@@ -9,15 +9,14 @@ import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import {
-  isGitHubReleaseToolConfig,
   type BaseInstallContext,
   type BrewToolConfig,
   type CargoInstallParams,
   type CargoToolConfig,
   type CurlScriptToolConfig,
   type CurlTarToolConfig,
-  type GithubReleaseInstallParams,
   type GithubReleaseToolConfig,
+  isGitHubReleaseToolConfig,
   type ManualToolConfig,
   type SystemInfo,
   type ToolConfig,

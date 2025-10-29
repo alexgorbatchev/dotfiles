@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { baseToolConfigPropertiesSchema } from '../../base/baseToolConfigPropertiesSchema';
 import { binaryConfigSchema } from '../../base/binaryConfigSchema';
+import type { ToolConfig } from '../../toolConfigSchema';
 import { curlScriptInstallParamsSchema } from './curlScriptInstallParamsSchema';
 
 export const curlScriptToolConfigSchema = baseToolConfigPropertiesSchema.extend({
@@ -14,3 +15,10 @@ export const curlScriptToolConfigSchema = baseToolConfigPropertiesSchema.extend(
 
 /** Resolved tool configuration for the 'curl-script' installation method. */
 export type CurlScriptToolConfig = z.infer<typeof curlScriptToolConfigSchema>;
+
+/**
+ * Type guard to check if a config is a Curl Script tool config
+ */
+export function isCurlScriptToolConfig(config: ToolConfig): config is CurlScriptToolConfig {
+  return config.installationMethod === 'curl-script';
+}
