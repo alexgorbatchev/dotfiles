@@ -317,7 +317,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     const logger = this.logger.getSubLogger({ name: 'initializeSchema' });
 
     // Create the main operations table
-    this.db.exec(`
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS file_operations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tool_name TEXT NOT NULL,
@@ -334,7 +334,7 @@ export class SqliteFileRegistry implements IFileRegistry {
     `);
 
     // Create indices for common queries
-    this.db.exec(`
+    this.db.run(`
       CREATE INDEX IF NOT EXISTS idx_tool_name ON file_operations(tool_name);
       CREATE INDEX IF NOT EXISTS idx_file_path ON file_operations(file_path);
       CREATE INDEX IF NOT EXISTS idx_operation_type ON file_operations(operation_type);

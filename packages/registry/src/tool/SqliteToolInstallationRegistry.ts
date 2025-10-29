@@ -29,7 +29,7 @@ export class SqliteToolInstallationRegistry implements IToolInstallationRegistry
 
   private initializeDatabase(): void {
     this.logger.debug(messages.schemaInitialized());
-    this.db.exec(`
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS tool_installations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tool_name TEXT NOT NULL UNIQUE,
