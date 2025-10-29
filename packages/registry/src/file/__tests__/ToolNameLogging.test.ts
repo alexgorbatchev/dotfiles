@@ -2,7 +2,7 @@ import { beforeEach, test } from 'bun:test';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteFileRegistry } from '../SqliteFileRegistry';
+import { SqliteFileRegistry } from '../FileRegistry';
 import { TrackedFileSystem } from '../TrackedFileSystem';
 
 let logger: TestLogger;

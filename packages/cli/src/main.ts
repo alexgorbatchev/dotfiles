@@ -13,7 +13,7 @@ import { GitHubApiClient } from '@dotfiles/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
 import { ReadmeService } from '@dotfiles/readme-service';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import type { SystemInfo } from '@dotfiles/schemas';
 import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
@@ -239,7 +239,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   parentLogger.debug(messages.registryInitialized(registryPath));
 
   // Initialize tool installation registry with shared database connection
-  const toolInstallationRegistry = new SqliteToolInstallationRegistry(parentLogger, db);
+  const toolInstallationRegistry = new ToolInstallationRegistry(parentLogger, db);
 
   // Initialize services with yamlConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);

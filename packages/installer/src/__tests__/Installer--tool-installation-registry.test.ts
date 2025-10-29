@@ -3,12 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { TestLogger } from '@dotfiles/logger';
-import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 
 describe('Installer Integration - Tool Installation Registry', () => {
   let logger: TestLogger;
-  let toolInstallationRegistry: SqliteToolInstallationRegistry;
+  let toolInstallationRegistry: ToolInstallationRegistry;
   let registryDatabase: RegistryDatabase;
   let dbPath: string;
 
@@ -16,7 +16,7 @@ describe('Installer Integration - Tool Installation Registry', () => {
     logger = new TestLogger();
     dbPath = path.join('/tmp', `test-installer-registry-${randomUUID()}.db`);
     registryDatabase = new RegistryDatabase(logger, dbPath);
-    toolInstallationRegistry = new SqliteToolInstallationRegistry(logger, registryDatabase.getConnection());
+    toolInstallationRegistry = new ToolInstallationRegistry(logger, registryDatabase.getConnection());
   });
 
   afterEach(async () => {

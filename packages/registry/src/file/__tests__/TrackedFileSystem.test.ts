@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteFileRegistry } from '../SqliteFileRegistry';
+import { SqliteFileRegistry } from '../FileRegistry';
 import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
 
 describe('TrackedFileSystem', () => {

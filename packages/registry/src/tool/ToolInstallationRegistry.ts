@@ -17,12 +17,12 @@ interface ToolInstallationRow {
   configured_version: string | null;
 }
 
-export class SqliteToolInstallationRegistry implements IToolInstallationRegistry {
+export class ToolInstallationRegistry implements IToolInstallationRegistry {
   private db: Database;
   private logger: TsLogger;
 
   constructor(parentLogger: TsLogger, db: Database) {
-    this.logger = parentLogger.getSubLogger({ name: 'SqliteToolInstallationRegistry' });
+    this.logger = parentLogger.getSubLogger({ name: 'ToolInstallationRegistry' });
     this.db = db;
     this.initializeDatabase();
   }

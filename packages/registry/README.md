@@ -24,8 +24,8 @@ await trackedFs.symlink('/source', '/target');
 ### Tool Installation Registry
 
 ```typescript
-import { SqliteToolInstallationRegistry } from '@dotfiles/registry/tool';
+import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 
-const registry = new SqliteToolInstallationRegistry(logger, registryDb);
+const registry = new ToolInstallationRegistry(logger, registryDb);
 await registry.saveInstallation('my-tool', '1.0.0', { /* metadata */ });
 ```

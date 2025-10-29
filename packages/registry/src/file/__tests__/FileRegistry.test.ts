@@ -4,7 +4,7 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteFileRegistry } from '../SqliteFileRegistry';
+import { SqliteFileRegistry } from '../FileRegistry';
 
 describe('SqliteFileRegistry', () => {
   let logger: TestLogger;
