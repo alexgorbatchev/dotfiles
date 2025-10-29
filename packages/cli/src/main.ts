@@ -11,7 +11,7 @@ import { Installer } from '@dotfiles/installer';
 import { CargoClient } from '@dotfiles/installer/clients/cargo';
 import { GitHubApiClient } from '@dotfiles/installer/clients/github';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
-import { ReadmeService } from '@dotfiles/readme-service';
+import { ReadmeService } from '@dotfiles/features';
 import { type IFileRegistry, SqliteFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';

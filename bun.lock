@@ -55,11 +55,11 @@
         "@dotfiles/archive-extractor": "workspace:*",
         "@dotfiles/config": "workspace:*",
         "@dotfiles/downloader": "workspace:*",
+        "@dotfiles/features": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/generator-orchestrator": "workspace:*",
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/logger": "workspace:*",
-        "@dotfiles/readme-service": "workspace:*",
         "@dotfiles/registry": "workspace:*",
         "@dotfiles/registry-database": "workspace:*",
         "@dotfiles/schemas": "workspace:*",
@@ -129,6 +129,25 @@
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
         "@typescript/native-preview": "catalog:typescript",
+        "typescript": "catalog:typescript",
+      },
+    },
+    "packages/features": {
+      "name": "@dotfiles/features",
+      "version": "0.0.0",
+      "dependencies": {
+        "@dotfiles/downloader": "workspace:*",
+        "@dotfiles/file-system": "workspace:*",
+        "@dotfiles/logger": "workspace:*",
+        "@dotfiles/registry": "workspace:*",
+        "@dotfiles/schemas": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@dotfiles/testing-helpers": "workspace:*",
+        "@rageltd/bun-test-utils": "catalog:testing",
+        "@types/bun": "catalog:system",
+        "@types/node": "catalog:system",
         "typescript": "catalog:typescript",
       },
     },
@@ -480,6 +499,8 @@
     "@dotfiles/downloader": ["@dotfiles/downloader@workspace:packages/downloader"],
 
     "@dotfiles/e2e-test": ["@dotfiles/e2e-test@workspace:packages/e2e-test"],
+
+    "@dotfiles/features": ["@dotfiles/features@workspace:packages/features"],
 
     "@dotfiles/file-registry": ["@dotfiles/file-registry@workspace:packages/file-registry"],
 

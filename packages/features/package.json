@@ -1,5 +1,5 @@
 {
-  "name": "@dotfiles/readme-service",
+  "name": "@dotfiles/features",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",

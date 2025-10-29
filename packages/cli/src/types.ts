@@ -6,7 +6,7 @@ import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller } from '@dotfiles/installer';
 import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
-import type { IReadmeService } from '@dotfiles/readme-service';
+import type { IReadmeService } from '@dotfiles/features';
 import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { SystemInfo } from '@dotfiles/schemas';
