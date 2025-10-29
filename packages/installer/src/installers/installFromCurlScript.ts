@@ -3,7 +3,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@dotfiles/schemas';
-import type { InstallOptions, InstallResult } from '../types';
+import type { CurlScriptInstallMetadata, InstallOptions, InstallResult } from '../types';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -91,13 +91,16 @@ export async function installFromCurlScript(
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    const metadata: CurlScriptInstallMetadata = {
+      method: 'curl-script',
+      scriptUrl: url,
+      shell,
+    };
+
     return {
       success: true,
       binaryPaths,
-      info: {
-        scriptUrl: url,
-        shell,
-      },
+      metadata,
     };
   };
 

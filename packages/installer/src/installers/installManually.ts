@@ -3,7 +3,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, ManualToolConfig } from '@dotfiles/schemas';
 import { expandToolConfigPath } from '@dotfiles/utils';
-import type { InstallOptions, InstallResult } from '../types';
+import type { InstallOptions, InstallResult, ManualInstallMetadata } from '../types';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { messages } from '../utils/log-messages';
 
@@ -47,13 +47,16 @@ export async function installManually(
       binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
     }
 
+    const metadata: ManualInstallMetadata = {
+      method: 'manual',
+      manualInstall: true,
+      originalPath: params?.binaryPath || null,
+    };
+
     return {
       success: true,
       binaryPaths,
-      info: {
-        manualInstall: true,
-        originalPath: params?.binaryPath || null,
-      },
+      metadata,
     };
   };
 

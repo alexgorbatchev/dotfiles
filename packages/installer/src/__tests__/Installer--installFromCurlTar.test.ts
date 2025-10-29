@@ -56,7 +56,8 @@ describe('Installer - installFromCurlTar', () => {
     // symlink should be called to create binary symlinks
     expect(setup.fileSystemMocks.symlink).toHaveBeenCalled();
     expect(result.success).toBe(true);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'curl-tar',
       tarballUrl: 'https://example.com/archive.tar.gz',
     });
   });

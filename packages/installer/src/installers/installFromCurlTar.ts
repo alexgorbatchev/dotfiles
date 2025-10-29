@@ -10,7 +10,7 @@ import type {
   PostDownloadInstallContext,
   PostExtractInstallContext,
 } from '@dotfiles/schemas';
-import type { InstallOptions, InstallResult } from '../types';
+import type { CurlTarInstallMetadata, InstallOptions, InstallResult } from '../types';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -119,12 +119,15 @@ export async function installFromCurlTar(
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    const metadata: CurlTarInstallMetadata = {
+      method: 'curl-tar',
+      tarballUrl: url,
+    };
+
     return {
       success: true,
       binaryPaths,
-      info: {
-        tarballUrl: url,
-      },
+      metadata,
     };
   };
 

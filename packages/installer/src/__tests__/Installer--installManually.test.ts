@@ -42,7 +42,8 @@ describe('Installer - installManually', () => {
     expect(setup.fileSystemMocks.chmod).not.toHaveBeenCalledWith();
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toEqual([expectedFinalPath]);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'manual',
       manualInstall: true,
       originalPath: manualBinaryPath,
     });
@@ -88,7 +89,8 @@ describe('Installer - installManually', () => {
     expect(setup.fileSystemMocks.copyFile).not.toHaveBeenCalled();
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toEqual([]);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'manual',
       manualInstall: true,
       originalPath: null,
     });

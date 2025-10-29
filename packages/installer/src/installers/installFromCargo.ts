@@ -6,7 +6,7 @@ import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
-import type { InstallOptions, InstallResult } from '../types';
+import type { CargoInstallMetadata, InstallOptions, InstallResult } from '../types';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { setupBinariesFromArchive } from '../utils/BinarySetupService';
 import type { HookExecutor } from '../utils/HookExecutor';
@@ -100,15 +100,18 @@ export async function installFromCargo(
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    const metadata: CargoInstallMetadata = {
+      method: 'cargo',
+      crateName,
+      binarySource: params.binarySource || 'cargo-quickinstall',
+      downloadUrl,
+    };
+
     return {
       success: true,
       binaryPaths,
       version,
-      info: {
-        crateName,
-        binarySource: params.binarySource || 'cargo-quickinstall',
-        downloadUrl,
-      },
+      metadata,
     };
   };
 

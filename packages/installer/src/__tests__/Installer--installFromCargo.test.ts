@@ -50,7 +50,10 @@ describe('Installer - installFromCargo', () => {
     expect(setup.mocks.cargoClient.getCargoTomlPackage).toHaveBeenCalledWith(
       'https://raw.githubusercontent.com/eza-community/eza/main/Cargo.toml'
     );
-    expect(result.info?.['binarySource']).toBe('cargo-quickinstall');
+    expect(result.metadata?.method).toBe('cargo');
+    if (result.metadata?.method === 'cargo') {
+      expect(result.metadata.binarySource).toBe('cargo-quickinstall');
+    }
   });
 
   it('should install tool from GitHub releases', async () => {
@@ -78,7 +81,10 @@ describe('Installer - installFromCargo', () => {
     expect(result.success).toBe(true);
     expect(result.binaryPaths).toHaveLength(1);
     expect(result.version).toBe('14.1.1');
-    expect(result.info?.['binarySource']).toBe('github-releases');
+    expect(result.metadata?.method).toBe('cargo');
+    if (result.metadata?.method === 'cargo') {
+      expect(result.metadata.binarySource).toBe('github-releases');
+    }
     expect(setup.mocks.cargoClient.getLatestVersion).toHaveBeenCalledWith('ripgrep');
   });
 
@@ -103,7 +109,10 @@ describe('Installer - installFromCargo', () => {
 
     expect(result.success).toBe(true);
     // The download URL should contain the correct platform/arch mapping
-    expect(result.info?.['downloadUrl']).toContain('aarch64-apple-darwin');
+    expect(result.metadata?.method).toBe('cargo');
+    if (result.metadata?.method === 'cargo') {
+      expect(result.metadata.downloadUrl).toContain('aarch64-apple-darwin');
+    }
     expect(setup.mocks.cargoClient.getLatestVersion).toHaveBeenCalledWith('fd-find');
   });
 });

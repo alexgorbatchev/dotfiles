@@ -79,7 +79,7 @@ export class InstallationPipeline {
         success: true,
         binaryPaths,
         version: stepContext.version,
-        info: stepContext.info,
+        metadata: stepContext.metadata,
       };
     } catch (error) {
       logger.error(messages.outcome.installFailed('pipeline', toolName), error);

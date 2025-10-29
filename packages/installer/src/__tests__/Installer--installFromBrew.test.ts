@@ -33,7 +33,8 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'brew',
       formula: 'test-formula',
       isCask: false,
       tap: undefined,
@@ -58,7 +59,8 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'brew',
       formula: 'test-cask',
       isCask: true,
       tap: undefined,
@@ -83,7 +85,8 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'brew',
       formula: 'test-formula',
       isCask: false,
       tap: 'custom/tap',

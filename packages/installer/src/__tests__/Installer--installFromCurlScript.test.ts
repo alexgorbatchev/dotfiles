@@ -52,7 +52,8 @@ describe('Installer - installFromCurlScript', () => {
 
     expect(setup.fileSystemMocks.chmod).toHaveBeenCalled();
     expect(result.success).toBe(true);
-    expect(result.info).toEqual({
+    expect(result.metadata).toEqual({
+      method: 'curl-script',
       scriptUrl: 'https://example.com/install.sh',
       shell: 'bash',
     });

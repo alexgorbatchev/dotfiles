@@ -20,7 +20,7 @@ import type {
 } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
-import type { InstallOptions, InstallResult } from '../types';
+import type { GitHubReleaseInstallMetadata, InstallOptions, InstallResult } from '../types';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
@@ -111,17 +111,20 @@ export async function installFromGitHubRelease(
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    const metadata: GitHubReleaseInstallMetadata = {
+      method: 'github-release',
+      releaseUrl: release.data.html_url,
+      publishedAt: release.data.published_at,
+      releaseName: release.data.name,
+      downloadUrl: downloadUrl.data,
+      assetName: asset.data.name,
+    };
+
     return {
       success: true,
       binaryPaths,
       version: normalizeVersion(release.data.tag_name),
-      info: {
-        releaseUrl: release.data.html_url,
-        publishedAt: release.data.published_at,
-        releaseName: release.data.name,
-        downloadUrl: downloadUrl.data,
-        assetName: asset.data.name,
-      },
+      metadata,
     };
   } catch (error) {
     return {

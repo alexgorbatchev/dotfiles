@@ -1,6 +1,75 @@
 import type { ToolConfig } from '@dotfiles/schemas';
 
 /**
+ * Metadata for Homebrew installations
+ */
+export interface BrewInstallMetadata {
+  method: 'brew';
+  formula: string;
+  isCask: boolean;
+  tap?: string | string[];
+}
+
+/**
+ * Metadata for GitHub Release installations
+ */
+export interface GitHubReleaseInstallMetadata {
+  method: 'github-release';
+  releaseUrl: string;
+  publishedAt: string;
+  releaseName: string;
+  downloadUrl: string;
+  assetName: string;
+}
+
+/**
+ * Metadata for Manual installations
+ */
+export interface ManualInstallMetadata {
+  method: 'manual';
+  manualInstall: boolean;
+  originalPath: string | null;
+}
+
+/**
+ * Metadata for Curl Script installations
+ */
+export interface CurlScriptInstallMetadata {
+  method: 'curl-script';
+  scriptUrl: string;
+  shell: string;
+}
+
+/**
+ * Metadata for Curl Tar installations
+ */
+export interface CurlTarInstallMetadata {
+  method: 'curl-tar';
+  tarballUrl: string;
+}
+
+/**
+ * Metadata for Cargo installations
+ */
+export interface CargoInstallMetadata {
+  method: 'cargo';
+  crateName: string;
+  binarySource: string;
+  downloadUrl?: string;
+}
+
+/**
+ * Discriminated union of all installation metadata types
+ */
+export type InstallMetadata =
+  | BrewInstallMetadata
+  | GitHubReleaseInstallMetadata
+  | ManualInstallMetadata
+  | CurlScriptInstallMetadata
+  | CurlTarInstallMetadata
+  | CargoInstallMetadata;
+
+/**
  * Options for the install operation
  */
 export interface InstallOptions {
@@ -60,9 +129,9 @@ export interface InstallResult {
   message?: string;
 
   /**
-   * Additional information about the installation
+   * Strongly typed metadata about the installation method and details
    */
-  info?: Record<string, unknown>;
+  metadata?: InstallMetadata;
 }
 
 /**

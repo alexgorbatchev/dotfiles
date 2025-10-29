@@ -75,11 +75,6 @@ export async function installFromBrew(
       binaryPaths,
       version: version || undefined,
       metadata,
-      info: {
-        formula,
-        isCask,
-        tap,
-      },
     };
 
     return result;

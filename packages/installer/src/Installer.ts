@@ -8,18 +8,19 @@ import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type {
-  BaseInstallContext,
-  BrewToolConfig,
-  CargoInstallParams,
-  CargoToolConfig,
-  CurlScriptToolConfig,
-  CurlTarToolConfig,
-  GithubReleaseInstallParams,
-  GithubReleaseToolConfig,
-  ManualToolConfig,
-  SystemInfo,
-  ToolConfig,
+import {
+  isGitHubReleaseToolConfig,
+  type BaseInstallContext,
+  type BrewToolConfig,
+  type CargoInstallParams,
+  type CargoToolConfig,
+  type CurlScriptToolConfig,
+  type CurlTarToolConfig,
+  type GithubReleaseInstallParams,
+  type GithubReleaseToolConfig,
+  type ManualToolConfig,
+  type SystemInfo,
+  type ToolConfig,
 } from '@dotfiles/schemas';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import { $ } from 'bun';
@@ -220,18 +221,27 @@ export class Installer implements IInstaller {
     }
 
     try {
+      let downloadUrl: string | undefined;
+      let assetName: string | undefined;
+
+      if (result.metadata?.method === 'github-release') {
+        downloadUrl = result.metadata.downloadUrl;
+        assetName = result.metadata.assetName;
+      } else if (result.metadata?.method === 'cargo') {
+        downloadUrl = result.metadata.downloadUrl;
+      }
+
       await this.toolInstallationRegistry.recordToolInstallation({
         toolName,
         version: result.version,
         installPath: context.installDir,
         timestamp: context.timestamp,
         binaryPaths: result.binaryPaths,
-        downloadUrl: result.info?.['downloadUrl'] as string | undefined,
-        assetName: result.info?.['assetName'] as string | undefined,
-        configuredVersion:
-          resolvedToolConfig.installationMethod === 'github-release'
-            ? resolvedToolConfig.installParams.version
-            : undefined,
+        downloadUrl,
+        assetName,
+        configuredVersion: isGitHubReleaseToolConfig(resolvedToolConfig)
+          ? resolvedToolConfig.installParams.version
+          : undefined,
       });
       logger.debug(messages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
     } catch (error) {
@@ -504,7 +514,7 @@ export class Installer implements IInstaller {
       return null;
     }
 
-    const params = toolConfig.installParams as GithubReleaseInstallParams;
+    const params = toolConfig.installParams;
     if (params.version === 'latest') {
       const [owner, repo] = params.repo.split('/');
       if (!owner || !repo) {
