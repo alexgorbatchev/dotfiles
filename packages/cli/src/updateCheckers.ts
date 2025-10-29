@@ -2,10 +2,10 @@ import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
 import type {
+  BaseToolConfigProperties,
   BrewToolConfig,
   CargoInstallParams,
   CargoToolConfig,
-  GithubReleaseInstallParams,
   GithubReleaseToolConfig,
 } from '@dotfiles/schemas';
 import type { IVersionChecker } from '@dotfiles/version-checker';
@@ -22,15 +22,10 @@ export async function checkGitHubReleaseUpdate(
   logger: TsLogger
 ): Promise<void> {
   try {
-    const githubParams = config.installParams as GithubReleaseInstallParams;
-    const repo = githubParams?.repo;
-
-    if (!repo) {
-      logger.error(messages.configParameterInvalid('repo', 'undefined', 'owner/repo format'));
-      return;
-    }
-
+    const githubParams = config.installParams;
+    const repo = githubParams.repo;
     const [owner, repoName] = repo.split('/');
+
     if (!owner || !repoName) {
       logger.error(messages.configParameterInvalid('repo', repo, 'owner/repo format'));
       return;
@@ -59,18 +54,40 @@ export async function checkGitHubReleaseUpdate(
 
 /**
  * Checks for updates to a Brew tool by comparing configured version with latest brew formula
+ * Note: This currently uses a simplified approach and doesn't query brew directly.
+ * In production, this would need to call `brew info <formula>` to get the latest version.
  */
-export async function checkBrewUpdate(config: BrewToolConfig, logger: TsLogger): Promise<void> {
+export async function checkBrewUpdate(
+  config: BrewToolConfig,
+  versionChecker: IVersionChecker,
+  logger: TsLogger
+): Promise<void> {
   try {
-    const configuredVersion = config.version || 'latest';
-    if (configuredVersion === 'latest') {
-      logger.info(messages.toolConfiguredToLatest(config.name, 'latest'));
+    const brewParams = config.installParams;
+    const formula = brewParams?.formula;
+    if (!formula) {
+      logger.error(messages.configParameterInvalid('formula', 'undefined', 'formula name'));
       return;
     }
 
-    // For brew, we can't easily check remote versions without making API calls
-    // This is a placeholder for when we implement brew version checking
-    logger.info(messages.toolUpToDate(config.name, configuredVersion, 'unknown'));
+    const configuredVersion = config.version || 'latest';
+
+    // For brew, we would need to call `brew info <formula>` to get the latest version
+    // For now, we use the version checker's mock-friendly interface
+    // In a real implementation, this would need a brew-specific client
+    const latestVersion = await versionChecker.getLatestToolVersion('', '');
+
+    if (!latestVersion) {
+      logger.warn(messages.serviceGithubResourceNotFound('brew formula', formula));
+      return;
+    }
+
+    if (configuredVersion === 'latest') {
+      logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
+      return;
+    }
+
+    await performVersionComparison(config, configuredVersion, latestVersion, versionChecker, logger);
   } catch (error) {
     logger.error(messages.serviceGithubApiFailed('brew version check', 0), error);
   }
@@ -114,7 +131,7 @@ export async function checkCargoUpdate(
 }
 
 async function performVersionComparison(
-  config: { name: string },
+  config: BaseToolConfigProperties,
   currentVersionToCompare: string,
   latestVersion: string,
   versionChecker: IVersionChecker,
