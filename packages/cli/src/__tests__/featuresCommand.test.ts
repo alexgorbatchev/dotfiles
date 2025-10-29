@@ -6,7 +6,7 @@ import type { ToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerFeaturesCommand } from '../featuresCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram, Services } from '../types';
+import type { GlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
@@ -89,32 +89,41 @@ describe('featuresCommand', () => {
     const generationError = new Error('Catalog generation failed');
 
     // Create a new program for this test to avoid command conflicts
-    const { program: errorTestProgram } = await createCliTestSetup({
+    const {
+      program: errorTestProgram,
+      logger: errorLogger,
+      createServices,
+    } = await createCliTestSetup({
       testName: 'features-command-error',
     });
 
     // Mock the service to throw an error
     const mockReadmeService = {
+      fetchReadmeForVersion: mock(async () => null),
+      getCachedReadme: mock(async () => null),
+      generateCombinedReadme: mock(async () => ''),
+      getGitHubTools: mock(async () => []),
+      clearExpiredCache: mock(async () => {}),
+      writeReadmeToPath: mock(async () => null),
       generateCatalogFromConfigs: mock(async () => {
         throw generationError;
       }),
     };
 
-    registerFeaturesCommand(
-      logger,
-      errorTestProgram,
-      async () =>
-        ({
-          configService: mockConfigService,
-          readmeService: mockReadmeService,
-          // Other services are not needed for this test
-        }) as unknown as Services
-    );
+    registerFeaturesCommand(errorLogger, errorTestProgram, async () => ({
+      ...createServices(),
+      configService: mockConfigService,
+      readmeService: mockReadmeService,
+    }));
 
     expect(errorTestProgram.parseAsync(['features', 'catalog'], { from: 'user' })).rejects.toThrow(
       'MOCK_EXIT_CLI_CALLED_WITH_1'
     );
 
-    logger.expect(['ERROR'], ['registerFeaturesCommand'], [messages.commandExecutionFailed('features catalog', 1)]);
+    errorLogger.expect(
+      ['ERROR'],
+      ['registerFeaturesCommand'],
+      [messages.commandExecutionFailed('features catalog', 1)]
+    );
   });
 });

@@ -2,17 +2,11 @@ import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { ToolConfig } from '@dotfiles/schemas';
+import { isBrewToolConfig, isCargoToolConfig, isGitHubReleaseToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
-import {
-  checkBrewUpdate,
-  checkCargoUpdate,
-  checkGitHubReleaseUpdate,
-  isBrewToolConfig,
-  isCargoToolConfig,
-  isGitHubReleaseToolConfig,
-} from './updateCheckers';
+import { checkBrewUpdate, checkCargoUpdate, checkGitHubReleaseUpdate } from './updateCheckers';
 
 export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
   // No command-specific options for check-updates command

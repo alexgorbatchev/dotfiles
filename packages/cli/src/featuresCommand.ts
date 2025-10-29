@@ -1,4 +1,5 @@
 import type { TsLogger } from '@dotfiles/logger';
+import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
 
@@ -11,11 +12,16 @@ async function catalogActionLogic(
   _options: FeaturesCommandOptions,
   services: Services
 ): Promise<void> {
-  const { yamlConfig, fs, configService, readmeService } = services;
+  try {
+    const { yamlConfig, fs, configService, readmeService } = services;
 
-  const toolConfigs = await configService.loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+    const toolConfigs = await configService.loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
 
-  await readmeService.generateCatalogFromConfigs(yamlConfig.features.catalog.filePath, toolConfigs);
+    await readmeService.generateCatalogFromConfigs(yamlConfig.features.catalog.filePath, toolConfigs);
+  } catch (error) {
+    logger.error(messages.commandExecutionFailed('features catalog', 1), error);
+    exitCli(1);
+  }
 }
 
 export function registerFeaturesCommand(
