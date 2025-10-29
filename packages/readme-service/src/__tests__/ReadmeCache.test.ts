@@ -1,7 +1,7 @@
-import { describe, beforeEach, test, expect, mock } from 'bun:test';
-import { TestLogger } from '@dotfiles/logger';
-import type { TsLogger } from '@dotfiles/logger';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { ICache } from '@dotfiles/downloader';
+import type { TsLogger } from '@dotfiles/logger';
+import { TestLogger } from '@dotfiles/logger';
 import { ReadmeCache } from '../ReadmeCache';
 import type { ReadmeContent } from '../types';
 

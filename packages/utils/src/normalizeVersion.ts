@@ -31,7 +31,7 @@ export function normalizeVersion(version: string): string {
   // Handle uppercase V prefix (semver.clean handles lowercase v)
   let normalized: string = version;
   if (normalized.startsWith('V')) {
-    normalized = 'v' + normalized.slice(1);
+    normalized = `v${normalized.slice(1)}`;
   }
 
   // Use semver.clean to normalize to proper semver format

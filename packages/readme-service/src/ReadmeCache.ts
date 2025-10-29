@@ -1,9 +1,9 @@
 import type { ICache } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
-import type { IReadmeCache } from './IReadmeService';
-import type { ReadmeContent } from './types';
 import { DEFAULT_README_CACHE_TTL } from './constants';
+import type { IReadmeCache } from './IReadmeService';
 import { messages } from './log-messages';
+import type { ReadmeContent } from './types';
 
 /**
  * Cache wrapper specifically for README content

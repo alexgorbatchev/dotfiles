@@ -1,5 +1,5 @@
-import type { ToolConfig } from '@dotfiles/schemas';
 import type { ToolInstallation } from '@dotfiles/registry';
+import type { ToolConfig } from '@dotfiles/schemas';
 import type { CombinedReadmeOptions, ReadmeContent } from './types';
 
 /**

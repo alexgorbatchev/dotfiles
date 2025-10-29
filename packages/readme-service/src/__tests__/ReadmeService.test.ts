@@ -1,14 +1,14 @@
-import { describe, beforeEach, afterEach, test, expect, mock } from 'bun:test';
-import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { Downloader } from '@dotfiles/downloader';
+import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { IFileSystem } from '@dotfiles/file-system';
-import { Downloader } from '@dotfiles/downloader';
-import { ReadmeService } from '../ReadmeService';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
-import { TrackedFileSystem, createMockFileRegistry, type IFileRegistry } from '@dotfiles/registry/file';
-import type { ReadmeContent } from '../types';
+import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ToolConfig } from '@dotfiles/schemas';
+import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { ReadmeService } from '../ReadmeService';
+import type { ReadmeContent } from '../types';
 
 describe('ReadmeService', () => {
   let logger: TestLogger;

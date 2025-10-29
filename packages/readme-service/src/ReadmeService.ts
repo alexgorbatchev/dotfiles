@@ -6,11 +6,11 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ToolConfig } from '@dotfiles/schemas';
+import { DEFAULT_README_CACHE_TTL, GITHUB_RAW_BASE_URL, README_FILENAME } from './constants';
 import type { IReadmeService } from './IReadmeService';
-import type { CombinedReadmeOptions, ReadmeContent } from './types';
-import { ReadmeCache } from './ReadmeCache';
-import { GITHUB_RAW_BASE_URL, README_FILENAME, DEFAULT_README_CACHE_TTL } from './constants';
 import { messages } from './log-messages';
+import { ReadmeCache } from './ReadmeCache';
+import type { CombinedReadmeOptions, ReadmeContent } from './types';
 
 /**
  * Service for fetching and managing README files from GitHub repositories

@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { createMockFileRegistry } from '@dotfiles/registry/file';
 import {
   createMockYamlConfig,
   createTestDirectories,
@@ -12,7 +13,6 @@ import {
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { createProgram } from '../createProgram';
 import type { GlobalProgram, Services } from '../types';
-import { createMockFileRegistry } from '@dotfiles/registry/file';
 
 /**
  * Options for creating customizable service mocks.
