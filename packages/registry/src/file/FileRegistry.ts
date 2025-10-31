@@ -21,7 +21,7 @@ interface DatabaseRow {
  * SQLite-based implementation of the file registry.
  * Uses append-only design for crash safety.
  */
-export class SqliteFileRegistry implements IFileRegistry {
+export class FileRegistry implements IFileRegistry {
   private readonly db: Database;
   private readonly logger: TsLogger;
 

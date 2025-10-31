@@ -310,30 +310,35 @@ export async function getDefaultConfig(
 }
 
 /**
- * Loads the default YAML configuration file from the filesystem and returns it as a raw object.
+ * Loads the default YAML configuration as a plain object.
  *
- * @param fileSystem - The file system interface for reading files.
- * @returns A promise that resolves to the raw YAML object.
+ * Returns the default configuration defined by the yamlConfigSchema. This serves as the
+ * base configuration that user configurations merge into.
+ *
+ * @param _fileSystem - File system interface (currently unused, kept for API consistency).
+ * @returns A promise that resolves to the default configuration object.
  */
 export async function loadDefaultYamlConfigAsRecord(_fileSystem: IFileSystem): Promise<Record<string, unknown>> {
   return yamlConfigSchema.parse({});
 }
 
 /**
- * Creates a validated YAML configuration by loading and merging default and user config files from the filesystem.
- * Applies platform-specific overrides and performs token substitution.
+ * Loads and validates the YAML configuration from the filesystem.
  *
- * @param fileSystem - The file system interface used to read configuration files
- * @param userConfigPath - Path to the user's configuration file
- * @param systemInfo - System information for platform detection
- * @param env - Environment variables for token substitution
- * @returns A promise that resolves to the validated YAML configuration
+ * Reads the user's configuration file, merges it with default configuration, applies
+ * platform-specific overrides based on the current system, and performs token substitution
+ * for environment variables and config references.
+ *
+ * @param parentLogger - Parent logger instance (a sublogger will be created).
+ * @param fileSystem - File system interface for reading configuration files.
+ * @param userConfigPath - Path to the user's `config.yaml` file.
+ * @param systemInfo - System information for platform detection and path expansion.
+ * @param env - Environment variables for token substitution.
+ * @returns A promise that resolves to the fully validated and processed YAML configuration.
  *
  * @testing
- * For unit and integration tests, this function is tested using a mock file system.
- * - `createMemFileSystem`: Used to create an in-memory file system with
- *   `default-config.yaml` and a user `config.yaml` to simulate real-world usage.
- *   (import from `@testing-helpers`)
+ * For unit and integration tests, use `createMemFileSystem` (from `@dotfiles/testing-helpers`)
+ * to create an in-memory file system with mock configuration files.
  */
 export async function loadYamlConfig(
   parentLogger: TsLogger,
@@ -364,17 +369,22 @@ export async function loadYamlConfig(
 }
 
 /**
- * Creates a validated YAML configuration by merging default and user config objects.  Applies platform-specific
- * overrides and performs token substitution.
+ * Creates a validated YAML configuration from in-memory objects.
  *
- * @param defaultConfig - The default configuration object
- * @param userConfig - The user configuration object that overrides default values
- * @param systemInfo - System information for platform detection
- * @param env - Environment variables for token substitution
- * @returns A promise that resolves to the validated YAML configuration
+ * Useful for testing or programmatic configuration creation. Merges the user configuration
+ * with default configuration, applies platform overrides, and performs token substitution,
+ * but does not read from the filesystem.
+ *
+ * @param parentLogger - Parent logger instance (a sublogger will be created).
+ * @param fileSystem - File system interface (used to load default config).
+ * @param userConfig - User configuration object that overrides default values.
+ * @param systemInfo - System information for platform detection and path expansion.
+ * @param env - Environment variables for token substitution.
+ * @returns A promise that resolves to the fully validated and processed YAML configuration.
  *
  * @testing
- * When writing tests, `createMockYamlConfig` should be used to create a mock configuration object.
+ * When writing tests, use `createMockYamlConfig` (from `@dotfiles/testing-helpers`) to create
+ * a mock configuration object with sensible defaults.
  */
 export async function createYamlConfigFromObject(
   parentLogger: TsLogger,

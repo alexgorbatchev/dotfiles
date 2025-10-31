@@ -1,12 +1,36 @@
 import { LogLevel, type LogLevelValue, parseLogLevel } from './LogLevel';
 
 /**
- * Determines the appropriate log level based on CLI flags.
+ * Determines the appropriate log level based on command-line flags.
  *
- * @param log The log level string from --log flag (default: 'default')
- * @param quiet If true, only show errors and fatal messages (alias for --log=quiet)
- * @param verbose If true, show all messages including debug and trace (alias for --log=verbose)
- * @returns The appropriate LogLevel value
+ * This function interprets a combination of `--log`, `--quiet`, and `--verbose`
+ * flags to determine the final log level. The `--quiet` and `--verbose` flags
+ * act as aliases for `--log=quiet` and `--log=verbose`, respectively, and take
+ * precedence over the `--log` flag.
+ *
+ * @param log - The value of the `--log` flag (e.g., 'default', 'verbose').
+ * @param quiet - A boolean indicating if the `--quiet` flag is present.
+ * @param verbose - A boolean indicating if the `--verbose` flag is present.
+ * @returns The appropriate {@link LogLevelValue}.
+ *
+ * @example
+ * ```typescript
+ * import { getLogLevelFromFlags, LogLevel } from '@dotfiles/logger';
+ *
+ * // --quiet flag is present
+ * getLogLevelFromFlags('default', true, false); // LogLevel.QUIET
+ *
+ * // --verbose flag is present
+ * getLogLevelFromFlags('default', false, true); // LogLevel.VERBOSE
+ *
+ * // --log=trace flag is present
+ * getLogLevelFromFlags('trace', false, false); // LogLevel.TRACE
+ * ```
+ *
+ * @see {@link LogLevel}
+ * @see {@link parseLogLevel}
+ *
+ * @public
  */
 export function getLogLevelFromFlags(log: string, quiet: boolean, verbose: boolean): LogLevelValue {
   // Handle alias flags first

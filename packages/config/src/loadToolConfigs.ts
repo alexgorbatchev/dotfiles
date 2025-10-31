@@ -13,12 +13,16 @@ import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 import { messages } from './log-messages';
 
 /**
- * Validates a tool configuration with Zod schema and logs errors if validation fails.
- * @param config The configuration to validate
- * @param logger The logger instance
- * @param filePath The file path for error reporting
- * @param context Description of what's being validated
- * @returns The validated config or null if validation failed
+ * Validates a tool configuration against the Zod schema.
+ *
+ * Performs runtime validation of a tool configuration object and logs detailed error
+ * information if validation fails.
+ *
+ * @param config - The configuration object to validate.
+ * @param logger - Logger instance for error reporting.
+ * @param filePath - Path to the configuration file being validated (for error messages).
+ * @param context - Description of the validation context (e.g., "Builder", "Direct export").
+ * @returns The validated configuration object, or null if validation failed.
  */
 function validateToolConfig(config: unknown, logger: TsLogger, filePath: string, context: string): ToolConfig | null {
   const validationResult = toolConfigSchema.safeParse(config);
@@ -33,12 +37,17 @@ function validateToolConfig(config: unknown, logger: TsLogger, filePath: string,
 
 /**
  * Processes a function-based tool configuration export.
- * @param configureToolFn The configuration function
- * @param logger The logger instance
- * @param toolName The tool name
- * @param filePath The file path
- * @param yamlConfig The YAML configuration
- * @returns The processed tool config or null
+ *
+ * Handles `.tool.ts` files that export a configuration function. The function is called
+ * with a builder instance and context, and can either use the builder pattern or return
+ * a configuration object directly.
+ *
+ * @param configureToolFn - The configuration function exported from the `.tool.ts` file.
+ * @param logger - Logger instance for operations.
+ * @param toolName - Name of the tool being configured.
+ * @param filePath - Path to the configuration file (for error reporting).
+ * @param yamlConfig - Parsed YAML configuration for creating context.
+ * @returns The validated tool configuration, or null if processing failed.
  */
 async function processFunctionExport(
   configureToolFn: AsyncConfigureTool | AsyncConfigureToolWithReturn,
@@ -71,11 +80,15 @@ async function processFunctionExport(
 
 /**
  * Processes a direct object export tool configuration.
- * @param exportedObject The exported object
- * @param logger The logger instance
- * @param filePath The file path
- * @param toolName The expected tool name
- * @returns The processed tool config or null
+ *
+ * Handles `.tool.ts` files that directly export a configuration object rather than
+ * a function. Validates the object and ensures the name matches the filename.
+ *
+ * @param exportedObject - The configuration object exported from the `.tool.ts` file.
+ * @param logger - Logger instance for operations.
+ * @param filePath - Path to the configuration file (for error reporting).
+ * @param toolName - Expected tool name (derived from filename).
+ * @returns The validated tool configuration, or null if processing failed.
  */
 function processDirectExport(
   exportedObject: unknown,
@@ -98,11 +111,15 @@ function processDirectExport(
 }
 
 /**
- * Creates a ToolConfigContext from YamlConfig for the specified tool.
- * @param yamlConfig The application configuration containing path information.
- * @param currentToolName The name of the tool currently being configured.
- * @param logger The logger instance for structured logging.
- * @returns A ToolConfigContext with all necessary path information.
+ * Creates a {@link @dotfiles/schemas#ToolConfigContext} for use in tool configuration functions.
+ *
+ * The context provides access to all relevant paths and configuration data that a tool
+ * might need during configuration, along with a tool-specific logger.
+ *
+ * @param yamlConfig - The application configuration containing all path information.
+ * @param currentToolName - The name of the tool currently being configured.
+ * @param logger - Parent logger instance (a sublogger will be created).
+ * @returns A fully populated ToolConfigContext for the tool.
  */
 function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string, logger: TsLogger): ToolConfigContext {
   const getToolDir = (toolName: string): string => {
@@ -175,7 +192,15 @@ function validateAndStoreToolConfig(
 }
 
 /**
- * Recursively scans a directory for .tool.ts files.
+ * Recursively scans a directory tree for `.tool.ts` configuration files.
+ *
+ * Traverses the directory structure starting from the given path, collecting all files
+ * that end with `.tool.ts` and extracting the tool name from each filename.
+ *
+ * @param fs - File system interface for directory operations.
+ * @param dirPath - Root directory path to start scanning from.
+ * @param logger - Logger instance for debug messages.
+ * @returns Array of objects containing file paths and corresponding tool names.
  */
 async function scanDirectoryForToolFiles(
   fs: IFileSystem,
@@ -217,13 +242,18 @@ async function scanDirectoryForToolFiles(
 }
 
 /**
- * Loads tool configurations from a directory, optionally filtering by tool name.
- * @param parentLogger The parent logger instance.
- * @param toolConfigsDir The directory containing .tool.ts files.
- * @param fs The file system implementation.
- * @param yamlConfig The YAML configuration.
- * @param toolName Optional tool name to load. If not provided, loads all tools.
- * @returns A record of tool configurations.
+ * Loads tool configurations from a directory.
+ *
+ * Recursively scans the specified directory for `.tool.ts` files, loads and validates
+ * each configuration, and returns them as a record. Can optionally filter to load only
+ * a specific tool by name.
+ *
+ * @param parentLogger - Parent logger instance (a sublogger will be created).
+ * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
+ * @param fs - File system interface for reading files and directories.
+ * @param yamlConfig - Parsed YAML configuration for context creation.
+ * @param toolName - Optional tool name to filter by. If provided, only loads that tool's configuration.
+ * @returns A record mapping tool names to their configurations.
  */
 export async function loadToolConfigs(
   parentLogger: TsLogger,
@@ -284,13 +314,17 @@ export async function loadToolConfigs(
 }
 
 /**
- * Loads a single tool configuration for a specific tool name.
- * @param parentLogger The parent logger instance.
- * @param toolName The name of the tool to load.
- * @param toolConfigsDir The directory containing .tool.ts files.
- * @param fs The file system implementation.
- * @param yamlConfig The YAML configuration.
- * @returns The tool configuration or undefined if not found.
+ * Loads configuration for a single tool by name.
+ *
+ * Convenience wrapper around {@link loadToolConfigs} that filters for a specific tool
+ * and returns just that tool's configuration.
+ *
+ * @param parentLogger - Parent logger instance (a sublogger will be created).
+ * @param toolName - The name of the tool to load configuration for.
+ * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
+ * @param fs - File system interface for reading files and directories.
+ * @param yamlConfig - Parsed YAML configuration for context creation.
+ * @returns The tool's configuration if found, undefined otherwise.
  */
 export async function loadSingleToolConfig(
   parentLogger: TsLogger,

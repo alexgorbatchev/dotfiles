@@ -5,20 +5,37 @@ export type { DirectoryJSON }; // Re-export DirectoryJSON
 import type { Stats } from 'node:fs'; // memfs Stats is compatible
 
 /**
- * In-memory implementation of the `IFileSystem` interface using `memfs`.
+ * In-memory implementation of the {@link IFileSystem} interface using `memfs`.
  *
  * This class provides a virtual file system that is useful for testing and
  * dry-run scenarios, allowing file operations to be performed without
  * affecting the actual file system.
  *
- * @testing
- * For unit and integration tests:
- * - `createMemFileSystem`: A simple factory to create an instance of this
- *   class, optionally seeding it with an initial directory structure.
+ * @example
+ * ```typescript
+ * import { MemFileSystem } from '@dotfiles/file-system';
+ *
+ * const fs = new MemFileSystem({
+ *   '/home/user/file.txt': 'Hello, world!',
+ * });
+ *
+ * const content = await fs.readFile('/home/user/file.txt');
+ * console.log(content); // 'Hello, world!'
+ * ```
+ *
+ * @see {@link createMemFileSystem}
+ * @see {@link IFileSystem}
+ * @see {@link NodeFileSystem}
+ *
+ * @beta
  */
 export class MemFileSystem implements IFileSystem {
   private vol: Volume;
 
+  /**
+   * Constructs a new `MemFileSystem` instance.
+   * @param json - An optional directory structure to initialize the file system with.
+   */
   constructor(json?: DirectoryJSON) {
     // Always create a new, clean volume instance.
     // If json is provided, then populate. Otherwise, it's an empty volume.
@@ -28,6 +45,9 @@ export class MemFileSystem implements IFileSystem {
     }
   }
 
+  /**
+   * @inheritdoc IFileSystem.readFile
+   */
   public async readFile(path: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
     // memfs vol.promises.readFile returns a string if encoding is provided, otherwise a Buffer.
     // Our IFileSystem interface expects a string.
@@ -35,12 +55,18 @@ export class MemFileSystem implements IFileSystem {
     return content.toString(); // Ensure it's treated as string, as per memfs behavior with encoding.
   }
 
+  /**
+   * @inheritdoc IFileSystem.readFileBuffer
+   */
   public async readFileBuffer(path: string): Promise<Buffer> {
     // memfs vol.promises.readFile returns a Buffer when no encoding is provided
     const content = await this.vol.promises.readFile(path);
     return Buffer.from(content);
   }
 
+  /**
+   * @inheritdoc IFileSystem.writeFile
+   */
   public async writeFile(
     path: string,
     content: string | NodeJS.ArrayBufferView,
@@ -60,6 +86,9 @@ export class MemFileSystem implements IFileSystem {
     await this.vol.promises.writeFile(path, data, { encoding });
   }
 
+  /**
+   * @inheritdoc IFileSystem.exists
+   */
   public async exists(path: string): Promise<boolean> {
     try {
       await this.vol.promises.access(path);
@@ -70,10 +99,16 @@ export class MemFileSystem implements IFileSystem {
     }
   }
 
+  /**
+   * @inheritdoc IFileSystem.mkdir
+   */
   public async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
     await this.vol.promises.mkdir(path, options);
   }
 
+  /**
+   * @inheritdoc IFileSystem.readdir
+   */
   public async readdir(path: string): Promise<string[]> {
     // memfs.promises.readdir returns string[] | Buffer[] | Dirent[]
     // IFileSystem expects string[], so we map and convert to string.
@@ -81,6 +116,9 @@ export class MemFileSystem implements IFileSystem {
     return entries.map((entry) => entry.toString());
   }
 
+  /**
+   * @inheritdoc IFileSystem.rm
+   */
   public async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     // memfs.promises.rm handles both files and directories.
     // The `force` option in memfs.promises.rm will suppress ENOENT errors.
@@ -97,10 +135,16 @@ export class MemFileSystem implements IFileSystem {
     }
   }
 
+  /**
+   * @inheritdoc IFileSystem.rmdir
+   */
   public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
     await this.vol.promises.rmdir(path, options);
   }
 
+  /**
+   * @inheritdoc IFileSystem.stat
+   */
   public async stat(path: string): Promise<Stats> {
     // memfs.promises.stat returns a Promise<Stats>.
     // The Stats object from memfs is generally compatible with node:fs Stats.
@@ -110,12 +154,18 @@ export class MemFileSystem implements IFileSystem {
     return stats as Stats; // Cast to Node's Stats type for interface compatibility
   }
 
+  /**
+   * @inheritdoc IFileSystem.lstat
+   */
   public async lstat(path: string): Promise<Stats> {
     // memfs.promises.lstat returns a Promise<Stats> for the link itself.
     const stats = await this.vol.promises.lstat(path);
     return stats as Stats; // Cast to Node's Stats type
   }
 
+  /**
+   * @inheritdoc IFileSystem.symlink
+   */
   public async symlink(
     target: string,
     path: string,
@@ -126,6 +176,9 @@ export class MemFileSystem implements IFileSystem {
     await this.vol.promises.symlink(target, path, type);
   }
 
+  /**
+   * @inheritdoc IFileSystem.readlink
+   */
   public async readlink(path: string): Promise<string> {
     // memfs.promises.readlink returns a Promise<string | Buffer>.
     // IFileSystem expects Promise<string>.
@@ -133,10 +186,16 @@ export class MemFileSystem implements IFileSystem {
     return linkString.toString();
   }
 
+  /**
+   * @inheritdoc IFileSystem.chmod
+   */
   public async chmod(path: string, mode: number | string): Promise<void> {
     await this.vol.promises.chmod(path, typeof mode === 'string' ? parseInt(mode, 8) : mode);
   }
 
+  /**
+   * @inheritdoc IFileSystem.copyFile
+   */
   public async copyFile(src: string, dest: string, flags?: number): Promise<void> {
     // memfs.promises.copyFile is available and preferred.
     // The `flags` argument is part of the Node.js fs.copyFile signature,
@@ -144,17 +203,32 @@ export class MemFileSystem implements IFileSystem {
     await this.vol.promises.copyFile(src, dest, flags);
   }
 
+  /**
+   * @inheritdoc IFileSystem.rename
+   */
   public async rename(oldPath: string, newPath: string): Promise<void> {
     await this.vol.promises.rename(oldPath, newPath);
   }
 
+  /**
+   * @inheritdoc IFileSystem.ensureDir
+   */
   public async ensureDir(path: string): Promise<void> {
     // ensureDir is equivalent to mkdir with recursive: true.
     // memfs.promises.mkdir will not throw if the directory already exists when recursive is true.
     await this.vol.promises.mkdir(path, { recursive: true });
   }
 
-  // Utility to get the underlying volume for testing or direct manipulation if needed
+  /**
+   * Returns the underlying `memfs` volume instance.
+   *
+   * This method is intended for testing purposes, allowing direct manipulation
+   * and inspection of the in-memory file system.
+   *
+   * @returns The `Volume` instance.
+   *
+   * @internal
+   */
   public getVolume(): Volume {
     return this.vol;
   }

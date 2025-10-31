@@ -5,13 +5,13 @@ import path from 'node:path';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteFileRegistry } from '../FileRegistry';
+import { FileRegistry } from '../FileRegistry';
 import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
 
 describe('TrackedFileSystem', () => {
   let logger: TestLogger;
   let fs: IFileSystem;
-  let registry: SqliteFileRegistry;
+  let registry: FileRegistry;
   let registryDatabase: RegistryDatabase;
   let trackedFs: TrackedFileSystem;
   let context: TrackingContext;
@@ -24,7 +24,7 @@ describe('TrackedFileSystem', () => {
 
     dbPath = path.join('/tmp', `test-tracked-fs-${randomUUID()}.db`);
     registryDatabase = new RegistryDatabase(logger, dbPath);
-    registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
+    registry = new FileRegistry(logger, registryDatabase.getConnection());
 
     context = TrackedFileSystem.createContext('test-tool', 'shim');
     trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
@@ -139,7 +139,7 @@ describe('TrackedFileSystem', () => {
       await registry.close();
       registryDatabase.close();
       registryDatabase = new RegistryDatabase(logger, dbPath);
-      registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
+      registry = new FileRegistry(logger, registryDatabase.getConnection());
       trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
 
       // Try to write identical content
@@ -243,7 +243,7 @@ describe('TrackedFileSystem', () => {
       await registry.close();
       registryDatabase.close();
       registryDatabase = new RegistryDatabase(logger, dbPath);
-      registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
+      registry = new FileRegistry(logger, registryDatabase.getConnection());
       trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
 
       // Try to write identical buffer content

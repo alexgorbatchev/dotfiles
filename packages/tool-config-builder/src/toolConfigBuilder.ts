@@ -52,6 +52,31 @@ export interface BinaryConfig {
   pattern: string;
 }
 
+/**
+ * A fluent API for creating {@link @dotfiles/schemas#ToolConfig} objects.
+ *
+ * This builder provides a chainable interface to define all aspects of a tool's
+ * configuration, from its name and version to complex, platform-specific
+ * installation instructions and shell integrations.
+ *
+ * @example
+ * ```typescript
+ * const nodeConfig = new ToolConfigBuilder(logger, 'node')
+ *   .version('20.0.0')
+ *   .bin('node')
+ *   .bin('npm')
+ *   .install('github-release', { repo: 'nodejs/node' })
+ *   .zsh({
+ *     environment: { NODE_ENV: 'development' },
+ *   })
+ *   .platform(Platform.Windows, (p) => {
+ *     p.install('manual', {
+ *       // ... windows specific install
+ *     });
+ *   })
+ *   .build();
+ * ```
+ */
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
   public toolName: string;
@@ -73,30 +98,16 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
 
   private isPlatformScope: boolean;
 
-  constructor(parentLogger: TsLogger, toolName: string, isPlatformScope = false) {
-    this.logger = parentLogger.getSubLogger({ name: 'ToolConfigBuilder' });
-    this.toolName = toolName;
-    this.isPlatformScope = isPlatformScope;
-  }
-
-  get shellConfigs(): Readonly<InternalShellConfigs> {
-    return this.internalShellConfigs;
-  }
-
   /**
-   * Defines a binary that this tool provides. A shim will be generated for each binary.
+   * Defines a binary executable provided by the tool.
    *
-   * **Can be called multiple times** - each call adds to the binaries array.
+   * A shim will be generated for each binary, making it available in the system's PATH.
+   * **This method can be called multiple times** to define all binaries for a tool.
    *
-   * @param name The name of the binary executable
-   * @param pattern Optional search pattern for finding the binary (defaults to star-slash-name)
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * ```typescript
-   * c.bin('tool')
-   * c.bin('tool1').bin('tool2')  // Multiple calls
-   * ```
+   * @param name - The name of the binary (e.g., `node`, `npm`).
+   * @param pattern - An optional glob pattern to locate the binary within the installed files.
+   *   If not provided, it defaults to `* /${name}`.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   bin(name: string, pattern?: string): this {
     const binaryPattern = pattern || `*/${name}`;
@@ -105,19 +116,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Sets the tool version.
+   * Sets the version of the tool to be installed.
    *
-   * **Should be called only once** - subsequent calls replace the previous value.
+   * This can be a specific version string, a semantic versioning range, or 'latest'.
+   * **This method should only be called once**; subsequent calls will override the previous value.
    *
-   * @param version The version string, SemVer constraint, or 'latest'
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * ```typescript
-   * c.version('1.2.3')
-   * c.version('latest')
-   * c.version('^2.0.0')
-   * ```
+   * @param version - The version identifier.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   version(version: string): this {
     this.versionNum = version;
@@ -125,20 +130,16 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Sets the installation method and parameters for this tool.
+   * Specifies the installation method and its required parameters.
    *
-   * **Should be called only once** - subsequent calls replace the previous installation method.
+   * This is a critical step that defines how the tool is acquired and installed.
+   * The method is overloaded to provide type safety for the parameters of each
+   * installation strategy.
+   * **This method should only be called once**; subsequent calls will override the previous value.
    *
-   * @param method The installation method to use
-   * @param params Parameters specific to the installation method
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * ```typescript
-   * c.install('github-release', { repo: 'owner/repo' })
-   * c.install('brew', { formula: 'tool' })
-   * c.install('manual', { binaryPath: './bin/tool' })
-   * ```
+   * @param method - The installation method (e.g., 'github-release', 'brew').
+   * @param params - A configuration object specific to the chosen method.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   // Overloaded install method
   install(method: 'github-release', params: GithubReleaseInstallParams): this;
@@ -154,17 +155,15 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Sets installation hooks for this tool.
+   * Attaches asynchronous hooks to the installation process.
    *
-   * **Can be called multiple times** - subsequent calls merge with existing hooks.
-   * **Must be called after install()** - will be ignored with warning if called before.
+   * These hooks allow for custom logic to be executed at different stages of the
+   * installation lifecycle, such as before installation or after extraction.
+   * **This method must be called after {@link ToolConfigBuilder.install}**.
+   * **This method can be called multiple times**; subsequent calls will merge with existing hooks.
    *
-   * @param hooks Object containing hook functions for different installation phases
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.install('github-release', { repo: 'owner/repo' })
-   *  .hooks({ afterInstall: async (context) => { } })
+   * @param hooks - An object containing one or more hook functions.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   hooks(hooks: {
     beforeInstall?: AsyncInstallHook;
@@ -186,16 +185,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Configures zsh shell integration (scripts, aliases, environment, completions).
+   * Configures shell integration for Zsh.
    *
-   * **Can be called multiple times** - configuration is merged (scripts are appended, aliases/environment are merged).
+   * This method allows defining shell scripts, environment variables, aliases,
+   * and completion scripts that should be sourced by Zsh.
+   * **This method can be called multiple times**; configurations are merged.
    *
-   * @param config Shell configuration object
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.zsh({ aliases: { ll: 'ls -la' } })
-   *  .zsh({ environment: { EDITOR: 'vim' } })  // Multiple calls merge
+   * @param config - A {@link @dotfiles/schemas#ShellConfig} object for Zsh.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   zsh(config: ShellConfig): this {
     if (config.shellInit) {
@@ -220,16 +217,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Configures bash shell integration (scripts, aliases, environment, completions).
+   * Configures shell integration for Bash.
    *
-   * **Can be called multiple times** - configuration is merged (scripts are appended, aliases/environment are merged).
+   * This method allows defining shell scripts, environment variables, aliases,
+   * and completion scripts that should be sourced by Bash.
+   * **This method can be called multiple times**; configurations are merged.
    *
-   * @param config Shell configuration object
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.bash({ aliases: { ll: 'ls -la' } })
-   *  .bash({ environment: { EDITOR: 'vim' } })  // Multiple calls merge
+   * @param config - A {@link @dotfiles/schemas#ShellConfig} object for Bash.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   bash(config: ShellConfig): this {
     if (config.shellInit) {
@@ -254,16 +249,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Configures PowerShell integration (scripts, aliases, environment, completions).
+   * Configures shell integration for PowerShell.
    *
-   * **Can be called multiple times** - configuration is merged (scripts are appended, aliases/environment are merged).
+   * This method allows defining shell scripts, environment variables, aliases,
+   * and completion scripts that should be sourced by PowerShell.
+   * **This method can be called multiple times**; configurations are merged.
    *
-   * @param config Shell configuration object
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.powershell({ aliases: { ll: 'Get-ChildItem' } })
-   *  .powershell({ environment: { EDITOR: 'code' } })  // Multiple calls merge
+   * @param config - A {@link @dotfiles/schemas#ShellConfig} object for PowerShell.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   powershell(config: ShellConfig): this {
     if (config.shellInit) {
@@ -287,6 +280,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this;
   }
 
+  /**
+   * Builds the final shell configurations object by consolidating internal shell storage.
+   *
+   * Iterates through all shell types (zsh, bash, powershell) and creates a ShellConfigs
+   * object containing only the shell types that have actual configuration data.
+   *
+   * @returns A ShellConfigs object if any shell has configuration, undefined otherwise.
+   */
   private buildShellConfigs(): ShellConfigs | undefined {
     const shellTypes = ['zsh', 'bash', 'powershell'] as const;
     const result: ShellConfigs = {};
@@ -314,17 +315,15 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Adds a symbolic link to be created when the tool is installed.
+   * Defines a symbolic link to be created.
    *
-   * **Can be called multiple times** - each call adds to the symlinks array.
+   * This is useful for linking configuration files from a tool's installation
+   * directory to a standard location in the user's home directory.
+   * **This method can be called multiple times**.
    *
-   * @param source Path to the source file relative to the tool config directory
-   * @param target Absolute path where the symlink should be created
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.symlink('./config/tool.conf', '~/.config/tool.conf')
-   *  .symlink('./scripts/helper.sh', '~/bin/helper')  // Multiple calls
+   * @param source - The path to the source file, relative to the location of the current `.tool.ts` file.
+   * @param target - The absolute path where the symbolic link should be created.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   symlink(source: string, target: string): this {
     this.symlinkPairs.push({ source, target });
@@ -332,18 +331,20 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Adds platform-specific configuration overrides.
+   * Defines platform-specific configuration overrides.
    *
-   * **Can be called multiple times** - each call adds a new platform config entry.
+   * This powerful feature allows for different installation methods, binaries,
+   * or versions depending on the operating system and architecture.
+   * **This method can be called multiple times** to define overrides for different platforms.
    *
-   * @param platforms Target platform(s) using Platform enum (can be combined with bitwise OR)
-   * @param architecturesOrConfigure Either Architecture enum or configuration callback function
-   * @param configureCallback Optional configuration callback when architectures are specified
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.platform(Platform.MacOS, (pb) => pb.install('brew', { formula: 'tool' }))
-   *  .platform(Platform.Linux, (pb) => pb.install('cargo', { crateName: 'tool' }))
+   * @param platforms - The target platform(s), using the {@link @dotfiles/schemas#Platform} enum.
+   *   Multiple platforms can be combined with a bitwise OR (e.g., `Platform.MacOS | Platform.Linux`).
+   * @param architecturesOrConfigure - Either an {@link @dotfiles/schemas#Architecture} enum to target
+   *   specific CPU architectures, or the configuration callback function if architecture is not specified.
+   * @param configureCallback - The callback function that receives a new `ToolConfigBuilder`
+   *   instance to define the platform-specific overrides. This is required if `architecturesOrConfigure`
+   *   is an architecture.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   platform(
     platforms: Platform,
@@ -383,21 +384,26 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Configures update checking behavior for this tool.
+   * Configures the behavior for checking for tool updates.
    *
-   * **Should be called only once** - subsequent calls replace the previous configuration.
+   * **This method should only be called once**; subsequent calls will override the previous value.
    *
-   * @param config Update check configuration object
-   * @returns The ToolConfigBuilder instance for chaining
-   *
-   * @example
-   * c.updateCheck({ enabled: true, constraint: '^1.0.0' })
+   * @param config - A {@link @dotfiles/schemas#ToolConfigUpdateCheck} object.
+   * @returns The `ToolConfigBuilder` instance for chaining.
    */
   updateCheck(config: ToolConfig['updateCheck']): this {
     this.updateCheckConfig = config;
     return this;
   }
 
+  /**
+   * Finalizes the configuration and returns the complete {@link @dotfiles/schemas#ToolConfig} object.
+   *
+   * This method validates the constructed configuration and returns the final, immutable
+   * tool configuration object.
+   *
+   * @returns The built {@link @dotfiles/schemas#ToolConfig}.
+   */
   build(): ToolConfig {
     const baseConfig = this.buildBaseConfig();
 
@@ -409,6 +415,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return this.buildConfigurationOnlyTool(baseConfig);
   }
 
+  /**
+   * Builds the base configuration object containing common fields shared by all tool configs.
+   *
+   * This includes name, binaries, version, shell configurations, symlinks, update check settings,
+   * and platform-specific configurations. Optional fields are only included if they have values.
+   *
+   * @returns The base configuration object.
+   */
   private buildBaseConfig() {
     return {
       name: this.toolName,
@@ -421,14 +435,19 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       platformConfigs: this.isPlatformScope
         ? undefined
         : this.platformConfigEntries.length > 0
-          ? this.platformConfigEntries
-          : undefined,
+        ? this.platformConfigEntries
+        : undefined,
     };
   }
 
   /**
-   * Builds a platform config object that excludes name and platformConfigs fields.
-   * This is used when creating platform-specific configurations to avoid circular references.
+   * Builds a platform-specific configuration object.
+   *
+   * This creates a configuration object suitable for use within a platform override.
+   * It excludes the 'name' and 'platformConfigs' fields to avoid circular references,
+   * as platform configs are nested within the main tool config.
+   *
+   * @returns A platform configuration object with undefined values removed.
    */
   private buildPlatformConfig() {
     const config: Record<string, unknown> = {
@@ -456,10 +475,25 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     return config;
   }
 
+  /**
+   * Checks if an installation method and parameters have been configured.
+   *
+   * @returns True if both installation method and params are set, false otherwise.
+   */
   private hasInstallationMethod(): boolean {
     return Boolean(this.currentInstallationMethod && this.currentInstallParams);
   }
 
+  /**
+   * Builds the final tool configuration for tools with an installation method.
+   *
+   * Takes the base configuration and adds the installation method and parameters,
+   * returning a properly typed configuration object based on the installation method.
+   * Ensures binaries array is always defined for installable tools.
+   *
+   * @param baseConfig - The base configuration object.
+   * @returns A typed ToolConfig based on the installation method.
+   */
   private buildInstallableToolConfig(baseConfig: ReturnType<typeof this.buildBaseConfig>): ToolConfig {
     const installableBase = {
       ...baseConfig,
@@ -508,6 +542,14 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     }
   }
 
+  /**
+   * Throws an error for invalid installation methods.
+   *
+   * This is called when the installation method doesn't match any of the known types,
+   * which should not happen due to TypeScript's type checking but provides a runtime safeguard.
+   *
+   * @throws Always throws an error with details about the invalid method.
+   */
   private throwInvalidMethodError(): never {
     const invalidMethodError = messages.configurationFieldInvalid(
       'installationMethod',
@@ -518,6 +560,15 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     throw new Error(invalidMethodError);
   }
 
+  /**
+   * Validates that configuration-only tools (without installation method) have meaningful content.
+   *
+   * Ensures that tools without an installation method still define at least one of:
+   * binaries, shell configurations, symlinks, or platform configurations.
+   *
+   * @param baseConfig - The base configuration object to validate.
+   * @throws Error if the configuration is empty and provides no functionality.
+   */
   private validateConfigurationOnly(baseConfig: ReturnType<typeof this.buildBaseConfig>): void {
     const finalBinaries = baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [];
     const hasContent =
@@ -536,6 +587,16 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     }
   }
 
+  /**
+   * Builds the final configuration for tools without an installation method.
+   *
+   * These are configuration-only tools that provide shell integration, symlinks, or other
+   * functionality without being installed through the system. The installation method
+   * is set to 'manual' with empty params.
+   *
+   * @param baseConfig - The base configuration object.
+   * @returns A ManualToolConfig representing the configuration-only tool.
+   */
   private buildConfigurationOnlyTool(baseConfig: ReturnType<typeof this.buildBaseConfig>): ToolConfig {
     return {
       ...baseConfig,
@@ -544,4 +605,31 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       installParams: {},
     } as ManualToolConfig;
   }
+
+  /**
+   * Creates a new ToolConfigBuilder instance.
+   *
+   * @param parentLogger - The parent logger from which a sublogger will be created.
+   * @param toolName - The name of the tool being configured.
+   * @param isPlatformScope - Whether this builder is used for platform-specific configuration.
+   *   When true, the builder will not include platformConfigs in the output to avoid circular references.
+   */
+  constructor(parentLogger: TsLogger, toolName: string, isPlatformScope = false) {
+    this.logger = parentLogger.getSubLogger({ name: 'ToolConfigBuilder' });
+    this.toolName = toolName;
+    this.isPlatformScope = isPlatformScope;
+  }
+
+  /**
+   * Provides read-only access to the internal shell configurations.
+   *
+   * This getter is used primarily for testing to verify that shell configurations
+   * are being stored correctly before they are transformed into the final format.
+   *
+   * @returns A read-only view of the internal shell configurations.
+   */
+  get shellConfigs(): Readonly<InternalShellConfigs> {
+    return this.internalShellConfigs;
+  }
+
 }

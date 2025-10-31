@@ -1,48 +1,101 @@
 # @dotfiles/config
 
-Configuration loading and management for the dotfiles generator system. Handles YAML configuration parsing, tool configuration loading, and validation.
+Configuration loading and management for the dotfiles tool installer system.
 
 ## Overview
 
-The config package provides a centralized way to load and validate configuration from YAML files. It handles both the main application configuration (`config.yaml`) and individual tool configurations.
+This package provides functionality to load, validate, and process configuration files for the dotfiles system. It handles both the main YAML configuration (`config.yaml`) and individual tool configurations (`.tool.ts` files), applying platform-specific overrides and performing token substitution.
 
 ## Features
 
-- **YAML Configuration Loading**: Parse and validate YAML configuration files
-- **Tool Configuration Discovery**: Automatically find and load tool configuration files
-- **Schema Validation**: Validate configuration against Zod schemas
-- **Type Safety**: Fully typed configuration with TypeScript
-- **Error Handling**: Clear error messages for configuration problems
+- **YAML Configuration**: Load and validate the main `config.yaml` file
+- **Tool Configuration Discovery**: Recursively scan directories for `.tool.ts` configuration files
+- **Platform Overrides**: Apply OS and architecture-specific configuration overrides
+- **Token Substitution**: Replace environment variables and config references in configuration values
+- **Path Expansion**: Expand home directory (`~`) in path values
+- **Schema Validation**: Runtime validation using Zod schemas
+- **Dependency Injection**: `IConfigService` interface for testable code
 
-## API
+## Core API
 
-### `yamlConfigLoader(configPath: string, logger: Logger): Promise<YamlConfig>`
+### `loadYamlConfig(logger, fileSystem, userConfigPath, systemInfo, env): Promise<YamlConfig>`
 
-Loads and validates the main YAML configuration file.
+Loads and validates the main YAML configuration file from the filesystem.
 
 ```typescript
-import { yamlConfigLoader } from '@dotfiles/config';
+import { loadYamlConfig } from '@dotfiles/config';
+import { createRealFileSystem } from '@dotfiles/file-system';
 
-const config = await yamlConfigLoader('./config.yaml', logger);
+const yamlConfig = await loadYamlConfig(
+  logger,
+  createRealFileSystem(),
+  './config.yaml',
+  { platform: 'darwin', arch: 'x64', homeDir: '/Users/username' },
+  process.env
+);
 
-console.log(config.directories.tools);
-console.log(config.directories.bin);
-console.log(config.directories.cache);
+console.log(yamlConfig.paths.binariesDir);
+console.log(yamlConfig.paths.targetDir);
 ```
 
-### `loadToolConfigs(toolsConfigDir: string, logger: Logger): Promise<ToolConfigs>`
+### `loadToolConfigs(logger, toolConfigsDir, fs, yamlConfig): Promise<Record<string, ToolConfig>>`
 
-Loads all tool configuration files from a directory.
+Recursively loads all `.tool.ts` configuration files from a directory.
 
 ```typescript
 import { loadToolConfigs } from '@dotfiles/config';
 
-const toolConfigs = await loadToolConfigs('./configs/tools', logger);
+const toolConfigs = await loadToolConfigs(
+  logger,
+  yamlConfig.paths.toolConfigsDir,
+  fileSystem,
+  yamlConfig
+);
 
 // Access specific tool config
-const fzfConfig = toolConfigs.fzf;
-console.log(fzfConfig.version);
-console.log(fzfConfig.installationMethod);
+const fzfConfig = toolConfigs['fzf'];
+if (fzfConfig) {
+  console.log(fzfConfig.version);
+  console.log(fzfConfig.installationMethod);
+}
+```
+
+### `loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig): Promise<ToolConfig | undefined>`
+
+Loads configuration for a single tool by name.
+
+```typescript
+import { loadSingleToolConfig } from '@dotfiles/config';
+
+const fzfConfig = await loadSingleToolConfig(
+  logger,
+  'fzf',
+  yamlConfig.paths.toolConfigsDir,
+  fileSystem,
+  yamlConfig
+);
+
+if (fzfConfig) {
+  console.log(`Installing ${fzfConfig.name} version ${fzfConfig.version}`);
+}
+```
+
+### `ConfigService`
+
+Default implementation of `IConfigService` for dependency injection.
+
+```typescript
+import { ConfigService } from '@dotfiles/config';
+
+const configService = new ConfigService();
+
+const toolConfig = await configService.loadSingleToolConfig(
+  logger,
+  'fzf',
+  toolConfigsDir,
+  fileSystem,
+  yamlConfig
+);
 ```
 
 ## Configuration File Structure
@@ -50,352 +103,354 @@ console.log(fzfConfig.installationMethod);
 ### Main Configuration (config.yaml)
 
 ```yaml
-# Dotfiles system configuration
-directories:
-  tools: ~/.dotfiles/tools
-  bin: ~/.dotfiles/bin
-  cache: ~/.dotfiles/.cache
-  configs: ~/.dotfiles/configs
-  toolsConfig: ~/.dotfiles/configs/tools
+paths:
+  homeDir: ~
+  dotfilesDir: ~/.dotfiles
+  binariesDir: ~/.dotfiles/binaries
+  targetDir: ~/.local/bin
+  toolConfigsDir: ~/.dotfiles/tools
+  shellScriptsDir: ~/.dotfiles/shell-scripts
+  generatedDir: ~/.dotfiles/generated
 
-# Shell configuration
-shellInit:
-  targetDirectory: ~/.dotfiles/shell
-  shells:
-    - zsh
-    - bash
-
-# Symlink configuration
-symlinks:
-  - source: ~/.dotfiles/configs/git/.gitconfig
-    target: ~/.gitconfig
-  - source: ~/.dotfiles/configs/vim/.vimrc
-    target: ~/.vimrc
-
-# Installation options
-installOptions:
-  parallel: true
-  maxConcurrency: 4
-  continueOnError: false
-
-# Cache configuration
-cache:
-  enabled: true
-  ttl: 86400 # 24 hours
-
-# Update checking
-updateCheck:
-  enabled: true
-  frequency: daily
+# Platform-specific overrides
+platform:
+  - match:
+      - os: macos
+    config:
+      paths:
+        targetDir: ~/bin
+  - match:
+      - os: linux
+        arch: arm64
+    config:
+      paths:
+        binariesDir: ~/.dotfiles/binaries-arm64
 ```
 
 ### Tool Configuration Files
 
-Tool configurations are TypeScript files that export a configuration builder:
+Tool configuration files are TypeScript modules (`.tool.ts`) that export a configuration function:
 
 ```typescript
-// configs/tools/fzf.tool.ts
-import type { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
+// tools/fzf.tool.ts
+import type { ToolConfigBuilder, ToolConfigContext } from '@dotfiles/schemas';
 
-export default async (c: ToolConfigBuilder): Promise<void> => {
+export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
   c.bin('fzf')
-    .version('latest')
+    .version('0.54.0')
     .install('github-release', {
       repo: 'junegunn/fzf',
-      assetPattern: '*linux*amd64*.tar.gz',
+      assetPattern: 'fzf-*-linux_amd64.tar.gz',
+    })
+    .zsh({
+      shellInit: [
+        'source <(fzf --zsh)',
+      ],
     });
 };
 ```
 
+Tool configs can also be placed in subdirectories for better organization:
+
+```
+tools/
+├── cli/
+│   ├── fzf.tool.ts
+│   └── ripgrep.tool.ts
+├── dev/
+│   ├── node.tool.ts
+│   └── rust.tool.ts
+└── git.tool.ts
+```
+
 ## Usage Examples
 
-### Loading Main Configuration
+### Loading Configuration
 
 ```typescript
-import { yamlConfigLoader } from '@dotfiles/config';
+import { loadYamlConfig, loadToolConfigs } from '@dotfiles/config';
+import { createRealFileSystem } from '@dotfiles/file-system';
 import { createTsLogger } from '@dotfiles/logger';
 
 const logger = createTsLogger();
+const fs = createRealFileSystem();
 
-try {
-  const config = await yamlConfigLoader('./config.yaml', logger);
-  
-  // Access configuration values
-  const toolsDir = config.directories.tools;
-  const binDir = config.directories.bin;
-  
-  // Use configuration
-  console.log(`Tools will be installed to: ${toolsDir}`);
-} catch (error) {
-  console.error('Failed to load configuration:', error);
-}
-```
-
-### Loading Tool Configurations
-
-```typescript
-import { loadToolConfigs } from '@dotfiles/config';
-import { createTsLogger } from '@dotfiles/logger';
-
-const logger = createTsLogger();
-
-const toolConfigs = await loadToolConfigs('./configs/tools', logger);
-
-// Iterate over all tool configurations
-for (const [toolName, config] of Object.entries(toolConfigs)) {
-  console.log(`Tool: ${toolName}`);
-  console.log(`  Version: ${config.version}`);
-  console.log(`  Method: ${config.installationMethod}`);
-}
-```
-
-### Using Configuration in Application
-
-```typescript
-import { yamlConfigLoader, loadToolConfigs } from '@dotfiles/config';
-import { Installer } from '@dotfiles/installer';
-
-// Load configurations
-const appConfig = await yamlConfigLoader('./config.yaml', logger);
-const toolConfigs = await loadToolConfigs(
-  appConfig.directories.toolsConfig,
-  logger
-);
-
-// Initialize installer with configuration
-const installer = new Installer(
+// Load main configuration
+const yamlConfig = await loadYamlConfig(
   logger,
-  fileSystem,
-  downloader,
-  githubApiClient,
-  cargoClient,
-  archiveExtractor,
-  appConfig,
-  toolRegistry,
-  systemInfo
+  fs,
+  './config.yaml',
+  {
+    platform: process.platform,
+    arch: process.arch,
+    homeDir: process.env.HOME || '~',
+  },
+  process.env
 );
 
-// Install tools using configurations
-for (const [toolName, toolConfig] of Object.entries(toolConfigs)) {
-  await installer.install(toolName, toolConfig);
+// Load all tool configurations
+const toolConfigs = await loadToolConfigs(
+  logger,
+  yamlConfig.paths.toolConfigsDir,
+  fs,
+  yamlConfig
+);
+
+console.log(`Loaded ${Object.keys(toolConfigs).length} tool configurations`);
+```
+
+### Loading a Single Tool Configuration
+
+```typescript
+import { loadSingleToolConfig } from '@dotfiles/config';
+
+const ripgrepConfig = await loadSingleToolConfig(
+  logger,
+  'ripgrep',
+  yamlConfig.paths.toolConfigsDir,
+  fs,
+  yamlConfig
+);
+
+if (ripgrepConfig) {
+  console.log(`Will install ${ripgrepConfig.name} ${ripgrepConfig.version}`);
 }
 ```
 
-### Configuration Validation
+### Using Dependency Injection
 
 ```typescript
-import { yamlConfigLoader } from '@dotfiles/config';
+import { ConfigService, type IConfigService } from '@dotfiles/config';
 
-try {
-  const config = await yamlConfigLoader('./config.yaml', logger);
-  // Configuration is valid and typed
-} catch (error) {
-  if (error instanceof Error && error.message.includes('validation')) {
-    console.error('Invalid configuration:');
-    console.error(error.message);
-    // Handle validation errors
+class MyApp {
+  constructor(
+    private logger: TsLogger,
+    private configService: IConfigService
+  ) {}
+
+  async loadToolConfig(toolName: string) {
+    return this.configService.loadSingleToolConfig(
+      this.logger,
+      toolName,
+      this.toolConfigsDir,
+      this.fs,
+      this.yamlConfig
+    );
   }
 }
+
+// Use real implementation in production
+const app = new MyApp(logger, new ConfigService());
+
+// Use mock in tests
+const mockConfigService = {
+  loadSingleToolConfig: async () => mockToolConfig,
+  loadToolConfigs: async () => ({ fzf: mockToolConfig }),
+};
+const testApp = new MyApp(logger, mockConfigService);
 ```
 
-## Configuration Schema
+## Platform Overrides
 
-The configuration is validated using Zod schemas from `@dotfiles/schemas`:
+Configuration can include platform-specific overrides that are applied based on the current OS and architecture:
 
+```yaml
+paths:
+  binariesDir: ~/.dotfiles/binaries
+  targetDir: ~/.local/bin
+
+platform:
+  # macOS override
+  - match:
+      - os: macos
+    config:
+      paths:
+        targetDir: ~/bin
+  
+  # Linux ARM64 override
+  - match:
+      - os: linux
+        arch: arm64
+    config:
+      paths:
+        binariesDir: ~/.dotfiles/binaries-arm64
+  
+  # Multiple platforms
+  - match:
+      - os: macos
+      - os: linux
+    config:
+      someSharedSetting: value
+```
+
+## Token Substitution
+
+Configuration values support token substitution for environment variables and config references:
+
+```yaml
+paths:
+  homeDir: ${HOME}
+  dotfilesDir: ${HOME}/.dotfiles
+  binariesDir: ${paths.dotfilesDir}/binaries
+  targetDir: ${CUSTOM_BIN_DIR:-~/.local/bin}  # With default value
+```
+
+Supported token formats:
+- `${ENV_VAR}` - Environment variable
+- `${paths.dotfilesDir}` - Reference to another config value
+- `${VAR:-default}` - Environment variable with default value
+- `~` - Home directory expansion
+
+## Tool Configuration Loading Process
+
+The `loadToolConfigs` function performs the following steps:
+
+1. **Recursive Scan**: Recursively scans the directory tree for all `.tool.ts` files
+2. **Dynamic Import**: Dynamically imports each module using `import()`
+3. **Function Detection**: Detects whether the export is a function or direct object
+4. **Builder Execution**: If function, creates a `ToolConfigBuilder` and executes the function
+5. **Context Provision**: Provides a `ToolConfigContext` with paths and utilities
+6. **Validation**: Validates the resulting configuration against Zod schemas
+7. **Return Mapping**: Returns a record mapping tool names to validated configurations
+
+### Tool Configuration Patterns
+
+**Function Export (Recommended)**:
 ```typescript
-import { yamlConfigSchema } from '@dotfiles/schemas/config';
-
-// The loader validates against this schema
-const config = yamlConfigSchema.parse(yamlData);
+export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
+  c.bin('tool')
+    .version('1.0.0')
+    .install('github-release', { repo: 'owner/tool' });
+};
 ```
 
-### YamlConfig Type
-
+**Function with Return Value**:
 ```typescript
-interface YamlConfig {
-  directories: {
-    tools: string;
-    bin: string;
-    cache: string;
-    configs: string;
-    toolsConfig: string;
+export default (c: ToolConfigBuilder, ctx: ToolConfigContext): ToolConfig => {
+  return {
+    name: 'tool',
+    version: '1.0.0',
+    binaries: ['tool'],
+    installationMethod: 'github-release',
+    installParams: { repo: 'owner/tool' },
   };
-  shellInit?: {
-    targetDirectory: string;
-    shells: string[];
-  };
-  symlinks?: Array<{
-    source: string;
-    target: string;
-  }>;
-  installOptions?: {
-    parallel?: boolean;
-    maxConcurrency?: number;
-    continueOnError?: boolean;
-  };
-  cache?: {
-    enabled: boolean;
-    ttl?: number;
-  };
-  updateCheck?: {
-    enabled: boolean;
-    frequency?: 'daily' | 'weekly' | 'monthly';
-  };
-}
+};
 ```
 
-## Tool Configuration Discovery
-
-The `loadToolConfigs` function:
-
-1. **Scans Directory**: Finds all `.tool.ts` files in the specified directory
-2. **Loads Modules**: Dynamically imports each tool configuration module
-3. **Executes Builders**: Runs the configuration builder function
-4. **Validates**: Validates the resulting configuration against schemas
-5. **Returns Map**: Returns a map of tool name to configuration
+**Direct Object Export**:
+```typescript
+export default {
+  name: 'tool',
+  version: '1.0.0',
+  binaries: ['tool'],
+  installationMethod: 'manual',
+  installParams: {},
+};
+```
 
 ## Error Handling
 
-### Configuration File Not Found
+The package provides detailed error messages and logging for various failure scenarios:
 
-```typescript
-Error: Configuration file not found: ./config.yaml
+### Configuration File Not Found
+```
+ERROR Config file not found: /path/to/config.yaml
 ```
 
-### Invalid YAML Syntax
-
-```typescript
-Error: Failed to parse YAML: unexpected token at line 5
+### YAML Parse Errors
+```
+ERROR Failed to parse YAML configuration /path/to/config.yaml: Unexpected token
 ```
 
 ### Schema Validation Errors
-
-```typescript
-Error: Invalid configuration:
-  - directories.tools: Required field missing
-  - directories.bin: Must be a valid path
+```
+ERROR Configuration validation failed:
+  paths.binariesDir: Expected string, received undefined
+  paths.targetDir: Expected string, received undefined
 ```
 
 ### Tool Configuration Errors
+```
+ERROR Failed to load configuration: tools/fzf.tool.ts
+ERROR Failed to parse ToolConfig configuration tools/fzf.tool.ts: Builder validation failed
+  installParams.repo: Required for github-release installation method
+```
 
-```typescript
-Error: Failed to load tool configuration: fzf.tool.ts
-  - installParams.repo: Required for github-release method
+### Tool Name Mismatch
+```
+WARN Invalid tool config object name: "fzf-tool" (expected filename: fzf)
 ```
 
 ## Dependencies
 
-### Internal Dependencies
-- `@dotfiles/file-system` - File reading operations
+- `@dotfiles/file-system` - File system operations
 - `@dotfiles/logger` - Structured logging
-- `@dotfiles/schemas` - Configuration schemas and validation
-- `@dotfiles/tool-config-builder` - Tool configuration builder
-- `@dotfiles/utils` - Shared utilities
-
-### External Dependencies
-- `yaml` - YAML parsing library
+- `@dotfiles/schemas` - Configuration schemas and type definitions
+- `@dotfiles/tool-config-builder` - Builder for tool configurations
+- `@dotfiles/utils` - Utilities including path expansion and CLI helpers
+- `zod` - Runtime schema validation
 
 ## Testing
 
-Run tests with:
+Run tests:
 ```bash
 bun test packages/config
 ```
 
-The package includes tests for:
-- YAML parsing
-- Configuration validation
-- Tool configuration loading
-- Error handling
-- Schema compliance
-
-## Logging
-
-The config package uses structured logging:
+### Testing Helpers
 
 ```typescript
-// Log messages defined in log-messages.ts
-logger.debug('Loading configuration', { path: configPath });
-logger.info('Configuration loaded successfully', { toolCount });
-logger.error('Configuration validation failed', { errors });
+import { createMemFileSystem, createMockYamlConfig } from '@dotfiles/testing-helpers';
+
+// Create in-memory file system with config files
+const fs = createMemFileSystem({
+  '/config.yaml': 'paths:\n  homeDir: /test',
+  '/tools/fzf.tool.ts': 'export default (c) => c.bin("fzf")',
+});
+
+// Create mock YAML config
+const yamlConfig = createMockYamlConfig({
+  paths: {
+    toolConfigsDir: '/custom/tools',
+  },
+});
+
+// Load configuration in tests
+const config = await loadYamlConfig(logger, fs, '/config.yaml', systemInfo, {});
 ```
 
-## Best Practices
+## Type Safety
 
-### Validate Early
+All configurations are fully typed:
+
 ```typescript
-// Load and validate configuration at application startup
-const config = await yamlConfigLoader('./config.yaml', logger);
-// Use validated config throughout application
+import type { YamlConfig, ToolConfig } from '@dotfiles/schemas';
+
+const yamlConfig: YamlConfig = await loadYamlConfig(/*...*/);
+const toolConfigs: Record<string, ToolConfig> = await loadToolConfigs(/*...*/);
+
+// TypeScript provides full autocomplete and type checking
+console.log(yamlConfig.paths.binariesDir);  // string
+console.log(yamlConfig.configFilePath);      // string (injected by loader)
+console.log(toolConfigs['fzf'].version);     // string
 ```
 
-### Use Type Guards
-```typescript
-import { isGithubReleaseToolConfig } from '@dotfiles/schemas';
+## Design Philosophy
 
-if (isGithubReleaseToolConfig(toolConfig)) {
-  // TypeScript knows this is a GithubReleaseToolConfig
-  console.log(toolConfig.installParams.repo);
-}
-```
+### Type-Safe Configuration
+All configuration is validated at runtime with Zod schemas and provides full TypeScript types, catching errors early in the development process.
 
-### Handle Missing Optionals
-```typescript
-const maxConcurrency = config.installOptions?.maxConcurrency ?? 4;
-const cacheEnabled = config.cache?.enabled ?? true;
-```
+### Platform Awareness
+Built-in support for platform-specific overrides allows a single configuration file to work across macOS, Linux, and Windows with different architectures.
 
-### Provide Defaults
-```typescript
-const directories = {
-  tools: config.directories?.tools ?? '~/.dotfiles/tools',
-  bin: config.directories?.bin ?? '~/.dotfiles/bin',
-  // ...
-};
-```
+### Flexible Tool Configuration
+Tool configurations can be:
+- Simple objects for basic tools
+- Functions for complex configuration logic
+- Organized in subdirectories for better structure
 
-## Environment Variable Support
+### Token Substitution
+Environment variables and config references can be used throughout configuration, enabling flexible deployment across different environments.
 
-Configuration values can reference environment variables:
-
-```yaml
-directories:
-  tools: ${HOME}/.dotfiles/tools
-  bin: ${DOTFILES_BIN:-~/.dotfiles/bin}
-```
-
-The loader expands environment variables during parsing.
-
-## Design Decisions
-
-### Why YAML?
-YAML provides:
-- Human-readable format
-- Comment support
-- Hierarchical structure
-- Wide tool support
-
-### Why Separate Tool Configs?
-Separating tool configurations:
-- Improves organization
-- Enables selective loading
-- Simplifies maintenance
-- Allows tool-specific logic
-
-### Why TypeScript Tool Configs?
-Using TypeScript for tool configurations:
-- Provides type safety
-- Enables code reuse
-- Allows computed values
-- Supports complex logic
-
-## Future Enhancements
-
-Potential improvements:
-- Configuration inheritance
-- Configuration profiles (dev, prod, etc.)
-- Remote configuration loading
-- Configuration migration tools
-- Configuration schema evolution
-- Live configuration reloading
-- Configuration encryption
+### Dependency Injection
+The `IConfigService` interface allows for easy mocking in tests and swapping implementations without changing consuming code.

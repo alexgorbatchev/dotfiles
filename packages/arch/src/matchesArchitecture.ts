@@ -1,11 +1,20 @@
 import type { ArchitectureRegex } from './types';
 
 /**
- * Utility function to check if an asset name matches the architecture.
- * This can be used to filter GitHub release assets.
+ * Checks if a given asset name matches the specified architecture patterns.
  *
- * Based on zinit's filtering logic in .zinit-get-latest-gh-r-url-part:
+ * This utility function is used to filter a list of release assets (e.g., from
+ * a GitHub release) to find those that are compatible with the current system's
+ * architecture. It performs a case-insensitive match against the system and CPU
+ * patterns.
  *
+ * The logic is based on Zinit's filtering mechanism, where `system` and `cpu`
+ * patterns are required for a primary match. `variant` patterns are not strictly
+ * required here but can be used by a caller (like `selectBestMatch`) to
+ * disambiguate when multiple assets match.
+ *
+ * ```shell
+ * # zinit filtering logic
  * for part in "${parts[@]}"; do
  *   if (( $#list > 1 )); then
  *     filtered=( ${(M)list[@]:#(#i)*${~part}*} ) && (( $#filtered > 0 )) && list=( ${filtered[@]} )
@@ -13,29 +22,19 @@ import type { ArchitectureRegex } from './types';
  *     break
  *   fi
  * done
+ * ```
+ * 
+ * @param assetName - The name of the release asset to check (e.g., `mytool-linux-amd64.tar.gz`).
+ * @param architectureRegex - An object containing the regex patterns for system and CPU.
+ * @returns `true` if the asset name matches both the system and CPU patterns, otherwise `false`.
  *
- * Key insights:
- * 1. Patterns filter sequentially: system, then cpu, then variants
- * 2. Each pattern only filters IF it produces matches (otherwise keeps current list)
- * 3. Loop BREAKS if only 1 item remains (no further filtering needed)
- *
- * This means variants are used for TIE-BREAKING when multiple assets match system+cpu,
- * but are NOT required - most binaries don't include variant info in their names.
- *
- * Our simplified implementation:
- * - We check system + cpu patterns (required)
- * - We don't enforce variant patterns (they're for disambiguation in zinit's multi-match logic)
- * - When multiple matches exist, the caller can use variants to narrow down further
- *
- * @param assetName - Name of the GitHub release asset
- * @param architectureRegex - Regex patterns from getArchitectureRegex
- * @returns True if the asset matches the current architecture
+ * @public
  */
 export function matchesArchitecture(assetName: string, architectureRegex: ArchitectureRegex): boolean {
   const lowerAssetName = assetName.toLowerCase();
 
-  // System and CPU patterns are the primary filters
-  // Both must match for an asset to be considered compatible
+  // System and CPU patterns are the primary filters.
+  // Both must match for an asset to be considered compatible.
   const systemMatch = architectureRegex.systemPattern
     ? new RegExp(architectureRegex.systemPattern, 'i').test(lowerAssetName)
     : true;
@@ -52,8 +51,5 @@ export function matchesArchitecture(assetName: string, architectureRegex: Archit
   //
   // We don't require variants here. If the caller needs to disambiguate
   // multiple matches, they can apply variant filtering as a second pass.
-
-  const matches = systemMatch && cpuMatch;
-
-  return matches;
+  return systemMatch && cpuMatch;
 }

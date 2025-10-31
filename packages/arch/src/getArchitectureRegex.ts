@@ -4,11 +4,17 @@ import { getArchitecturePatterns } from './getArchitecturePatterns';
 import type { ArchitectureRegex } from './types';
 
 /**
- * Main function that combines pattern generation and regex creation.
- * This is the primary entry point for architecture detection.
+ * The main function that combines pattern generation and regex creation.
  *
- * @param systemInfo - System information from os module
- * @returns Combined regex patterns for GitHub release asset matching
+ * This is the primary entry point for generating the architecture-specific
+ * regular expressions used to match release assets. It takes system information,
+ * generates the corresponding string patterns, and then compiles them into
+ * a set of regex patterns.
+ *
+ * @param systemInfo - An object containing system information, such as OS and CPU architecture.
+ * @returns An object containing combined regex patterns for asset matching.
+ *
+ * @public
  */
 export function getArchitectureRegex(systemInfo: SystemInfo): ArchitectureRegex {
   const patterns = getArchitecturePatterns(systemInfo);

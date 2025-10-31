@@ -1,0 +1,122 @@
+- [x] @dotfiles/file-system
+- [x] @dotfiles/logger
+- [x] @dotfiles/schemas
+- [x] @dotfiles/arch
+  - @dotfiles/schemas
+- [x] @dotfiles/registry-database
+  - @dotfiles/logger
+- [x] @dotfiles/tool-config-builder
+  - @dotfiles/logger
+  - @dotfiles/schemas
+- [x] @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/schemas
+  - @dotfiles/tool-config-builder
+  - @dotfiles/utils
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/utils
+  - @dotfiles/schemas
+  - @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/testing-helpers
+  - @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/schemas
+  - @dotfiles/utils
+- [ ] @dotfiles/downloader
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/archive-extractor
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/schemas
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/registry
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/registry-database
+  - @dotfiles/utils
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/shell-init-generator
+  - @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/schemas
+  - @dotfiles/utils
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/symlink-generator
+  - @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/registry
+  - @dotfiles/schemas
+  - @dotfiles/utils
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/shim-generator
+  - @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/registry
+  - @dotfiles/schemas
+  - @dotfiles/utils
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/generator-orchestrator
+  - @dotfiles/config
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/schemas
+  - @dotfiles/shell-init-generator
+  - @dotfiles/shim-generator
+  - @dotfiles/symlink-generator
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/installer
+  - @dotfiles/arch
+  - @dotfiles/archive-extractor
+  - @dotfiles/config
+  - @dotfiles/downloader
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/registry
+  - @dotfiles/schemas
+  - @dotfiles/shell-init-generator
+  - @dotfiles/utils
+  - @dotfiles/testing-helpers
+  - @dotfiles/registry-database
+- [ ] @dotfiles/version-checker
+  - @dotfiles/installer
+  - @dotfiles/logger
+  - @dotfiles/schemas
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/features
+  - @dotfiles/downloader
+  - @dotfiles/file-system
+  - @dotfiles/logger
+  - @dotfiles/registry
+  - @dotfiles/schemas
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/cli
+  - @dotfiles/archive-extractor
+  - @dotfiles/config
+  - @dotfiles/downloader
+  - @dotfiles/file-system
+  - @dotfiles/generator-orchestrator
+  - @dotfiles/installer
+  - @dotfiles/logger
+  - @dotfiles/features
+  - @dotfiles/registry
+  - @dotfiles/registry-database
+  - @dotfiles/schemas
+  - @dotfiles/shell-init-generator
+  - @dotfiles/shim-generator
+  - @dotfiles/symlink-generator
+  - @dotfiles/utils
+  - @dotfiles/version-checker
+  - @dotfiles/testing-helpers
+- [ ] @dotfiles/e2e-test
+  - @dotfiles/cli
+  - @dotfiles/schemas

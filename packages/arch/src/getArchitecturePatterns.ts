@@ -2,13 +2,20 @@ import type { SystemInfo } from '@dotfiles/schemas';
 import type { ArchitecturePatterns } from './types';
 
 /**
- * Generates architecture patterns for the given system information.
- * Based on Zinit's `.zi::get-architecture` function logic.
+ * Generates a set of architecture-specific patterns based on the provided
+ * system information.
  *
- * Original zinit implementation: packages/arch/zinit/zinit-install.zsh:1392-1432
+ * This function translates system properties like OS and CPU architecture into a
+ * collection of string patterns that are commonly found in the names of release
+ * assets on platforms like GitHub. The logic is based on the architecture
+ * detection mechanism used in Zinit.
  *
- * @param systemInfo - System information from os module
- * @returns Architecture patterns for matching GitHub release assets
+ * @param systemInfo - An object containing system information, typically from `os.platform()` and `os.arch()`.
+ * @returns An object containing arrays of patterns for the system, CPU, and variants.
+ *
+ * @see {@link https://github.com/zdharma-continuum/zinit/blob/master/zinit-install.zsh} for the original implementation.
+ *
+ * @public
  */
 export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePatterns {
   const patterns: ArchitecturePatterns = {
@@ -17,8 +24,15 @@ export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePat
     variants: [],
   };
 
+  // Based on the Zinit script, the order of pattern matching is roughly:
+  // 1. OS (e.g., 'darwin', 'linux')
+  // 2. Architecture (e.g., 'amd64', 'arm64')
+  // 3. Variants (e.g., 'musl', 'gnu', 'eabihf')
+  // This function generates the patterns; the matching logic is in `selectBestMatch`.
+
   // Handle OS/Platform patterns
-  // Zinit original: case "$_os" in
+  // Zinit logic for OS detection:
+  // https://github.com/zdharma-continuum/zinit/blob/158796e49c553293228c02b043c6373878500533/zinit-install.zsh#L194-L208
   switch (systemInfo.platform.toLowerCase()) {
     case 'darwin':
       // Zinit original:
@@ -62,7 +76,8 @@ export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePat
   }
 
   // Handle CPU Architecture patterns
-  // Zinit original: case "$_cpu" in
+  // Zinit logic for architecture detection:
+  // https://github.com/zdharma-continuum/zinit/blob/158796e49c553293228c02b043c6373878500533/zinit-install.zsh#L210-L228
   switch (systemInfo.arch.toLowerCase()) {
     case 'arm64':
     case 'aarch64':
@@ -131,7 +146,5 @@ export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePat
       break;
   }
 
-  // Zinit returns: echo "${_sys};${_cpu};${_os}"
-  // We return a structured object with system, cpu, and variants arrays
   return patterns;
 }

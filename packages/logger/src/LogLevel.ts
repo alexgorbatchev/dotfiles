@@ -1,11 +1,22 @@
 /**
- * Log levels for controlling the verbosity of output.
+ * Defines the log levels for controlling the verbosity of application output.
  *
- * Each level corresponds to a specific tslog level number:
- * - TRACE: 0 (most verbose - shows all messages)
- * - VERBOSE: 1 (debug level - shows debug, info, warn, error, fatal)
- * - DEFAULT: 3 (info level - shows info, warn, error, fatal)
- * - QUIET: 5 (error level - shows only error and fatal)
+ * Each level corresponds to a specific `tslog` level number, determining which
+ * messages are displayed based on their severity.
+ *
+ * @property TRACE - Level 0: The most verbose level, showing all messages.
+ * @property VERBOSE - Level 1: Equivalent to a debug level, showing debug, info, warn, error, and fatal messages.
+ * @property DEFAULT - Level 3: The standard info level, showing info, warn, error, and fatal messages.
+ * @property QUIET - Level 5: The error level, showing only error and fatal messages.
+ *
+ * @example
+ * ```typescript
+ * import { LogLevel } from '@dotfiles/logger';
+ *
+ * const logLevel = LogLevel.VERBOSE;
+ * ```
+ *
+ * @public
  */
 export const LogLevel = {
   TRACE: 0,
@@ -14,16 +25,36 @@ export const LogLevel = {
   QUIET: 5,
 } as const;
 
+/**
+ * Represents the numeric value of a log level.
+ * @public
+ */
 export type LogLevelValue = (typeof LogLevel)[keyof typeof LogLevel];
 
 /**
- * Valid string representations of log levels for CLI parsing.
+ * Defines the valid string representations of log levels, typically used for
+ * parsing command-line arguments or configuration values.
+ * @public
  */
 export const LOG_LEVEL_NAMES = ['trace', 'verbose', 'default', 'quiet'] as const;
+
+/**
+ * A type representing the string name of a log level.
+ * @public
+ */
 export type LogLevelName = (typeof LOG_LEVEL_NAMES)[number];
 
 /**
- * Maps log level names to their numeric values.
+ * A mapping from log level names to their corresponding numeric values.
+ *
+ * @example
+ * ```typescript
+ * import { LOG_LEVEL_MAP } from '@dotfiles/logger';
+ *
+ * const logLevel = LOG_LEVEL_MAP['verbose']; // 1
+ * ```
+ *
+ * @public
  */
 export const LOG_LEVEL_MAP: Record<LogLevelName, LogLevelValue> = {
   trace: LogLevel.TRACE,
@@ -33,11 +64,23 @@ export const LOG_LEVEL_MAP: Record<LogLevelName, LogLevelValue> = {
 };
 
 /**
- * Parses a log level name string to its numeric value.
+ * Parses a log level name string and returns its corresponding numeric value.
  *
- * @param levelName The log level name to parse
- * @returns The numeric log level
- * @throws Error if the level name is invalid
+ * The function is case-insensitive. If the provided name is not a valid log
+ * level, it throws an error.
+ *
+ * @param levelName - The log level name to parse (e.g., 'trace', 'verbose').
+ * @returns The numeric {@link LogLevelValue}.
+ * @throws An `Error` if the `levelName` is invalid.
+ *
+ * @example
+ * ```typescript
+ * import { parseLogLevel } from '@dotfiles/logger';
+ *
+ * const logLevel = parseLogLevel('VERBOSE'); // 1
+ * ```
+ *
+ * @public
  */
 export function parseLogLevel(levelName: string): LogLevelValue {
   const normalizedName = levelName.toLowerCase() as LogLevelName;

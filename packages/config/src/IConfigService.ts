@@ -5,11 +5,20 @@ import type { YamlConfig } from '@dotfiles/schemas/config';
 
 /**
  * Interface for configuration loading services.
- * This allows dependency injection instead of direct module imports.
+ *
+ * This service provides methods to load tool configurations from the filesystem,
+ * allowing dependency injection instead of direct module imports for better testability.
  */
 export interface IConfigService {
   /**
-   * Load configuration for a single tool.
+   * Loads configuration for a single tool.
+   *
+   * @param logger - Logger instance for logging operations.
+   * @param toolName - The name of the tool to load configuration for.
+   * @param toolConfigsDir - Directory containing tool configuration files.
+   * @param fs - File system interface for reading configuration files.
+   * @param yamlConfig - Parsed YAML configuration object.
+   * @returns The tool configuration if found, undefined otherwise.
    */
   loadSingleToolConfig(
     logger: TsLogger,
@@ -20,7 +29,13 @@ export interface IConfigService {
   ): Promise<ToolConfig | undefined>;
 
   /**
-   * Load all tool configurations from a directory.
+   * Loads all tool configurations from a directory.
+   *
+   * @param logger - Logger instance for logging operations.
+   * @param toolConfigsDir - Directory containing tool configuration files.
+   * @param fs - File system interface for reading configuration files.
+   * @param yamlConfig - Parsed YAML configuration object.
+   * @returns A record mapping tool names to their configurations.
    */
   loadToolConfigs(
     logger: TsLogger,

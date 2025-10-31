@@ -46,9 +46,10 @@ Your job is to diligently update JSDoc to represent current implementation and f
 # Important
 - DO NOT make any changes to the code, only update JSDoc
 - DO NOT include links to external resources in JSDoc
-- DO NOT use `@public` or `@private`
+- DO NOT add `@public`, `@private` or `@internal` tags to JSDoc
 - Existing testing helpers MUST be documented
 - Details referring to external systems must be preserved
+- All functions and methods need JSDoc, even private.
 - Do not make ANY assumptions about how something works, you must verify every detail
 - For interfaces, types and schemas you must review actual implementation, DO NOT assume how something functions solely based on the name or existing JSDoc
 - To derive actual functionality you must drill down into every function call top to bottom first and review the entire flow within the package

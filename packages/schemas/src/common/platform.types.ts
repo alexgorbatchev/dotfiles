@@ -1,32 +1,64 @@
 import { z } from 'zod';
 
 /**
- * Enum representing different operating system platforms.
- * Values are bitwise, allowing for combinations.
+ * Represents operating system platforms using a bitwise enum, allowing for
+ * combinations of multiple platforms.
+ *
+ * @example
+ * ```typescript
+ * const supported = Platform.Linux | Platform.MacOS;
+ * if (supported & Platform.Linux) {
+ *   // Supported on Linux
+ * }
+ * ```
+ *
+ * @public
  */
 export enum Platform {
+  /** Represents no specific platform. */
   None = 0,
+  /** The Linux operating system. */
   Linux = 1 << 0, // 1
+  /** The macOS operating system. */
   MacOS = 1 << 1, // 2
+  /** The Windows operating system. */
   Windows = 1 << 2, // 4
+  /** A combination of Unix-like systems (Linux and macOS). */
   Unix = Platform.Linux | Platform.MacOS, // 3
+  /** A combination of all supported platforms. */
   All = Platform.Linux | Platform.MacOS | Platform.Windows, // 7
 }
 
 /**
- * Enum representing different CPU architectures.
- * Values are bitwise, allowing for combinations.
+ * Represents CPU architectures using a bitwise enum, allowing for combinations.
+ *
+ * @example
+ * ```typescript
+ * const supported = Architecture.X86_64 | Architecture.Arm64;
+ * if (supported & Architecture.Arm64) {
+ *   // Supported on ARM64
+ * }
+ * ```
+ *
+ * @public
  */
 export enum Architecture {
+  /** Represents no specific architecture. */
   None = 0,
+  /** The 64-bit x86 architecture (also known as AMD64). */
   X86_64 = 1 << 0, // 1
+  /** The 64-bit ARM architecture. */
   Arm64 = 1 << 1, // 2
+  /** A combination of all supported architectures. */
   All = Architecture.X86_64 | Architecture.Arm64, // 3
 }
 
 /**
- * Zod schema for Platform enum values.
- * Validates that a number is a valid Platform bitmask.
+ * A Zod schema for validating `Platform` enum values.
+ *
+ * Ensures that a given number is a valid bitmask composed of `Platform` enum members.
+ *
+ * @public
  */
 export const platformSchema = z
   .number()
@@ -41,13 +73,16 @@ export const platformSchema = z
     },
     {
       message:
-        'Must be a valid Platform value. Use: Platform.None, Platform.Linux, Platform.MacOS, Platform.Windows, Platform.Unix, or Platform.All. You can combine values with bitwise OR (e.g., Platform.Linux | Platform.MacOS).',
+        'Must be a valid Platform value. Use `Platform.None`, `Platform.Linux`, `Platform.MacOS`, `Platform.Windows`, `Platform.Unix`, or `Platform.All`. You can combine values with a bitwise OR (e.g., `Platform.Linux | Platform.MacOS`).',
     }
   );
 
 /**
- * Zod schema for Architecture enum values.
- * Validates that a number is a valid Architecture bitmask.
+ * A Zod schema for validating `Architecture` enum values.
+ *
+ * Ensures that a given number is a valid bitmask composed of `Architecture` enum members.
+ *
+ * @public
  */
 export const architectureSchema = z
   .number()
@@ -62,15 +97,18 @@ export const architectureSchema = z
     },
     {
       message:
-        'Must be a valid Architecture value. Use: Architecture.None, Architecture.X86_64, Architecture.Arm64, or Architecture.All. You can combine values with bitwise OR (e.g., Architecture.X86_64 | Architecture.Arm64).',
+        'Must be a valid Architecture value. Use `Architecture.None`, `Architecture.X86_64`, `Architecture.Arm64`, or `Architecture.All`. You can combine values with a bitwise OR (e.g., `Architecture.X86_64 | Architecture.Arm64`).',
     }
   );
 
 /**
- * Checks if a given platform is included in a set of target platforms.
- * @param targetPlatforms - The bitmask of target platforms.
- * @param platform - The platform to check.
- * @returns True if the platform is included, false otherwise.
+ * Checks if a specific platform is included within a bitmask of target platforms.
+ *
+ * @param targetPlatforms - A bitmask representing the set of allowed platforms.
+ * @param platform - The platform to check for inclusion.
+ * @returns `true` if the `platform` is included in `targetPlatforms`, otherwise `false`.
+ *
+ * @public
  */
 export function hasPlatform(targetPlatforms: Platform, platform: Platform): boolean {
   if (platform === Platform.None) {
@@ -80,10 +118,13 @@ export function hasPlatform(targetPlatforms: Platform, platform: Platform): bool
 }
 
 /**
- * Checks if a given architecture is included in a set of target architectures.
- * @param targetArchitectures - The bitmask of target architectures.
- * @param architecture - The architecture to check.
- * @returns True if the architecture is included, false otherwise.
+ * Checks if a specific architecture is included within a bitmask of target architectures.
+ *
+ * @param targetArchitectures - A bitmask representing the set of allowed architectures.
+ * @param architecture - The architecture to check for inclusion.
+ * @returns `true` if the `architecture` is included in `targetArchitectures`, otherwise `false`.
+ *
+ * @public
  */
 export function hasArchitecture(targetArchitectures: Architecture, architecture: Architecture): boolean {
   if (architecture === Architecture.None) {

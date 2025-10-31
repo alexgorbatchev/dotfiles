@@ -1,59 +1,74 @@
 /**
  * Defines the set of supported archive formats that the system can handle.
- * This type is used to specify the format of an archive for extraction
- * or to indicate a detected format.
+ *
+ * This type is used to specify the format of an archive for extraction or to
+ * indicate a detected format.
+ *
+ * @public
  */
 export type ArchiveFormat =
-  /** Auto-detect the archive format based on the file extension. */
+  /**
+   * Instructs the extractor to auto-detect the archive format based on the
+   * file's extension or magic bytes.
+   */
   | 'auto'
-  /** Plain TAR archive (Tape Archive). */
+  /** A plain TAR archive (Tape Archive), typically with a `.tar` extension. */
   | 'tar'
-  /** Gzip compressed TAR archive. Commonly `.tar.gz` or `.tgz`. */
+  /** A Gzip-compressed TAR archive, commonly `.tar.gz` or `.tgz`. */
   | 'tar.gz'
-  /** Bzip2 compressed TAR archive. Commonly `.tar.bz2`. */
+  /** A Bzip2-compressed TAR archive, commonly `.tar.bz2`. */
   | 'tar.bz2'
-  /** XZ compressed TAR archive. Commonly `.tar.xz`. */
+  /** An XZ-compressed TAR archive, commonly `.tar.xz`. */
   | 'tar.xz'
-  /** LZMA compressed TAR archive. Commonly `.tar.lzma`. */
+  /** An LZMA-compressed TAR archive, commonly `.tar.lzma`. */
   | 'tar.lzma'
-  /** ZIP archive. Commonly `.zip`. */
+  /** A ZIP archive, commonly `.zip`. */
   | 'zip'
-  /** RAR archive. Commonly `.rar`. */
+  /** A RAR archive, commonly `.rar`. */
   | 'rar'
-  /** 7-Zip archive. Commonly `.7z`. */
+  /** A 7-Zip archive, commonly `.7z`. */
   | '7z'
-  /** Debian software package. Commonly `.deb`. */
+  /** A Debian software package, commonly `.deb`. */
   | 'deb'
-  /** RPM Package Manager package. Commonly `.rpm`. */
+  /** An RPM Package Manager package, commonly `.rpm`. */
   | 'rpm'
-  /** macOS Disk Image. Commonly `.dmg`. */
+  /** A macOS Disk Image, commonly `.dmg`. */
   | 'dmg';
 
 /**
  * Defines the options available when extracting an archive.
- * These options allow customization of the extraction process, such as specifying
- * the format, stripping leading directory components, or preserving permissions.
+ *
+ * These options allow for customization of the extraction process, such as
+ * specifying the format, stripping leading directory components, or preserving
+ * permissions.
+ *
+ * @public
  */
 export interface ExtractOptions {
   /**
-   * The format of the archive. If not provided, the extractor will attempt to auto-detect it.
-   * @see ArchiveFormat
+   * The format of the archive. If not provided, the extractor will attempt to
+   * auto-detect it.
+   * @see {@link ArchiveFormat}
    */
   format?: ArchiveFormat;
+
   /**
    * The directory where the archive contents should be extracted.
-   * If not specified, a temporary directory might be used or extraction might occur in place,
-   * depending on the extractor implementation.
+   *
+   * If not specified, the behavior depends on the extractor implementation; it
+   * may use a temporary directory or extract in place.
    */
   targetDir?: string;
+
   /**
-   * Whether to preserve the original file permissions from the archive.
+   * If `true`, preserves the original file permissions from the archive.
    * @default false
    */
   preservePermissions?: boolean;
+
   /**
-   * Whether to attempt to detect and make executable files executable after extraction.
-   * This is particularly useful for binaries within archives.
+   * If `true`, attempts to detect and set executable permissions on files
+   * after extraction. This is particularly useful for binaries within archives.
    * @default false
    */
   detectExecutables?: boolean;
@@ -61,49 +76,66 @@ export interface ExtractOptions {
 
 /**
  * Represents the result of an archive extraction operation.
- * It includes a list of all extracted files, any files that were made executable,
- * and the root directory if the archive had a single top-level directory.
+ *
+ * It includes a list of all extracted files, any files that were made
+ * executable, and the root directory if the archive had a single top-level
+ * directory.
+ *
+ * @public
  */
 export interface ExtractResult {
-  /** An array of paths to all files that were successfully extracted. */
+  /** An array of absolute paths to all files that were successfully extracted. */
   extractedFiles: string[];
-  /** An array of paths to files that were identified as executables and had their permissions set accordingly. */
-  executables: string[];
+
   /**
-   * The path to the top-level directory if the archive contained a single root directory.
-   * This is useful for archives that wrap all their content in one folder (e.g., `mytool-1.0/bin/mytool`).
-   * If the archive does not have a single root directory, this will be undefined.
+   * An array of absolute paths to files that were identified as executables
+   * and had their permissions set accordingly.
+   */
+  executables: string[];
+
+  /**
+   * The path to the top-level directory if the archive contained a single root
+   * directory (e.g., `mytool-1.0/bin/mytool`).
+   *
+   * If the archive does not have a single root directory, this will be `undefined`.
    */
   rootDir?: string;
 }
 
 /**
  * Defines the contract for an archive extraction service.
+ *
  * Implementations of this interface are responsible for handling the extraction
  * of various archive formats.
+ *
+ * @public
  */
 export interface IArchiveExtractor {
   /**
    * Extracts the contents of the specified archive file.
-   * @param archivePath The path to the archive file to be extracted.
-   * @param options Optional configuration for the extraction process.
+   *
+   * @param archivePath - The path to the archive file to be extracted.
+   * @param options - Optional configuration for the extraction process.
    * @returns A promise that resolves with the result of the extraction.
-   * @see ExtractOptions
-   * @see ExtractResult
+   *
+   * @see {@link ExtractOptions}
+   * @see {@link ExtractResult}
    */
   extract(archivePath: string, options?: ExtractOptions): Promise<ExtractResult>;
 
   /**
    * Detects the format of an archive file based on its content or extension.
-   * @param filePath The path to the file whose archive format needs to be detected.
+   *
+   * @param filePath - The path to the file whose archive format needs to be detected.
    * @returns A promise that resolves with the detected {@link ArchiveFormat}.
-   *          Returns 'auto' or throws an error if detection fails.
+   *          Returns `'auto'` or throws an error if detection fails.
    */
   detectFormat(filePath: string): Promise<ArchiveFormat>;
 
   /**
    * Checks if a given archive format is supported by this extractor.
-   * @param format The {@link ArchiveFormat} to check.
+   *
+   * @param format - The {@link ArchiveFormat} to check.
    * @returns `true` if the format is supported, `false` otherwise.
    */
   isSupported(format: ArchiveFormat): boolean;

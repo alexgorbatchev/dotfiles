@@ -2,12 +2,12 @@ import { beforeEach, test } from 'bun:test';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteFileRegistry } from '../FileRegistry';
+import { FileRegistry } from '../FileRegistry';
 import { TrackedFileSystem } from '../TrackedFileSystem';
 
 let logger: TestLogger;
 let fs: MemFileSystem;
-let registry: SqliteFileRegistry;
+let registry: FileRegistry;
 let registryDatabase: RegistryDatabase;
 let trackedFs: TrackedFileSystem;
 
@@ -15,7 +15,7 @@ beforeEach(() => {
   logger = new TestLogger();
   fs = new MemFileSystem({});
   registryDatabase = new RegistryDatabase(logger, ':memory:');
-  registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
+  registry = new FileRegistry(logger, registryDatabase.getConnection());
   trackedFs = new TrackedFileSystem(
     logger,
     fs,

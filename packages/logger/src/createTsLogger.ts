@@ -4,42 +4,83 @@ import { formatZodErrors } from './formatZodErrors';
 import { LogLevel, type LogLevelValue } from './LogLevel';
 import type { SafeLogMessage } from './types';
 
+/**
+ * A type alias for a {@link SafeLogger} instance with a default log object type.
+ * @public
+ */
 export type TsLogger = SafeLogger<ILogObj>;
 
+/**
+ * Configuration options for creating a logger instance.
+ * @public
+ */
 export interface LoggerConfig {
+  /**
+   * The name of the logger, which will be included in log messages.
+   */
   name: string;
+  /**
+   * The minimum log level to be processed.
+   * @default LogLevel.DEFAULT
+   */
   level?: LogLevelValue;
 }
 
 /**
- * Type-safe logger that extends Logger and overrides methods to only accept SafeLogMessage objects.
- * This prevents raw strings from being passed to log methods.
+ * A type-safe logger that extends `tslog`'s `Logger` to enforce the use of
+ * {@link SafeLogMessage} objects for all log messages.
+ *
+ * This class prevents raw strings from being passed to log methods, ensuring
+ * that all logged messages are constructed through approved template functions.
+ *
+ * @public
  */
 class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
+  /**
+   * @inheritdoc
+   */
   override trace(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.trace(message as string, ...args);
   }
 
+  /**
+   * @inheritdoc
+   */
   override debug(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.debug(message as string, ...args);
   }
 
+  /**
+   * @inheritdoc
+   */
   override info(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.info(message as string, ...args);
   }
 
+  /**
+   * @inheritdoc
+   */
   override warn(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.warn(message as string, ...args);
   }
 
+  /**
+   * @inheritdoc
+   */
   override error(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.error(message as string, ...args);
   }
 
+  /**
+   * @inheritdoc
+   */
   override fatal(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.fatal(message as string, ...args);
   }
 
+  /**
+   * @inheritdoc
+   */
   override getSubLogger(settings?: ISettingsParam<LogObj>): SafeLogger<LogObj> {
     const parentNames = [...(this.settings.parentNames ?? [])];
     if (this.settings.name) {
@@ -54,8 +95,8 @@ class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
   }
 
   /**
-   * Logs Zod validation errors in a readable format using error level logging.
-   * @param error The Zod error object
+   * Logs Zod validation errors in a readable format using the `error` log level.
+   * @param error - The `ZodError` object to log.
    */
   zodErrors(error: ZodError): void {
     const messages = formatZodErrors(error);
@@ -66,18 +107,48 @@ class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
 }
 
 /**
- * Creates a type-safe TSLog logger instance with configurable log level.
+ * Creates a type-safe `tslog` logger instance with a configurable name and log level.
  *
- * The returned SafeLogger only accepts SafeLogMessage objects as the first argument
- * to log methods, preventing arbitrary strings from being logged. Use ErrorTemplates
- * or SuccessTemplates to create safe log messages.
+ * The returned {@link SafeLogger} only accepts {@link SafeLogMessage} objects as the
+ * first argument to its log methods, preventing arbitrary strings from being
+ * logged. This ensures that all log messages are constructed through
+ * predefined template functions.
  *
- * @param config Logger configuration
- * @param config.name Logger name
- * @param config.level Log level from LogLevel constants (TRACE, VERBOSE, DEFAULT, QUIET)
- * @returns SafeLogger instance that enforces type-safe logging
+ * @param name - The name of the logger.
+ * @returns A {@link TsLogger} instance.
+ *
+ * @example
+ * ```typescript
+ * import { createTsLogger, messages } from '@dotfiles/logger';
+ *
+ * const logger = createTsLogger('my-app');
+ * logger.info(messages.info.appStarted());
+ * ```
+ *
+ * @public
  */
 export function createTsLogger(name: string): TsLogger;
+/**
+ * Creates a type-safe `tslog` logger instance with a configurable name and log level.
+ *
+ * The returned {@link SafeLogger} only accepts {@link SafeLogMessage} objects as the
+ * first argument to its log methods, preventing arbitrary strings from being
+ * logged. This ensures that all log messages are constructed through
+ * predefined template functions.
+ *
+ * @param config - The logger configuration.
+ * @returns A {@link TsLogger} instance.
+ *
+ * @example
+ * ```typescript
+ * import { createTsLogger, LogLevel, messages } from '@dotfiles/logger';
+ *
+ * const logger = createTsLogger({ name: 'my-app', level: LogLevel.VERBOSE });
+ * logger.debug(messages.debug.configLoaded({ config: { setting: 'value' } }));
+ * ```
+ *
+ * @public
+ */
 export function createTsLogger(config: LoggerConfig): TsLogger;
 export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
   let config: LoggerConfig = {} as LoggerConfig;

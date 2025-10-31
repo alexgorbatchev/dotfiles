@@ -6,9 +6,47 @@ import { formatZodErrors } from './formatZodErrors';
 
 export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
+/**
+ * Defines the log levels available for filtering in `TestLogger`.
+ * The `'*'` level can be used to match all log levels.
+ * @public
+ */
+
+/**
+ * An extended logger for testing purposes that captures log messages in memory.
+ *
+ * `TestLogger` allows you to make assertions about logs that were emitted
+ * during a test, providing methods to filter and match log messages against
+ * expected values.
+ *
+ * @example
+ * ```typescript
+ * import { TestLogger } from '@dotfiles/logger';
+ *
+ * const logger = new TestLogger();
+ * logger.info('Hello, world!');
+ *
+ * logger.expect(['INFO'], [], ['Hello, world!']);
+ * ```
+ *
+ * @see {@link https://tslog.js.org}
+ *
+ * @public
+ */
 export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
+  /**
+   * An array containing all log objects captured by this logger instance.
+   * @public
+   */
   public readonly logs: ILogObjMeta[] = [];
 
+  /**
+   * Constructs a new `TestLogger` instance.
+   * @param settings - Optional `tslog` settings to configure the logger.
+   * @param logs - An optional array to use for storing logs.
+   *
+   * @internal
+   */
   constructor(settings?: ISettingsParam<LogObj>, logs: ILogObjMeta[] = []) {
     super({
       ...settings,
@@ -21,6 +59,15 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     this.logs = logs;
   }
 
+  /**
+   * Creates a sub-logger that inherits the settings of its parent.
+   *
+   * All logs from the sub-logger are captured in the same log array as the
+   * parent logger, allowing for centralized log inspection.
+   *
+   * @param settings - Optional `tslog` settings to override the parent's settings.
+   * @returns A new `TestLogger` instance.
+   */
   override getSubLogger(settings?: ISettingsParam<LogObj>): TestLogger<LogObj> {
     const parentNames = [...(this.settings.parentNames ?? [])];
     if (this.settings.name) {
@@ -39,8 +86,8 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
   }
 
   /**
-   * Logs Zod validation errors in a readable format using error level logging.
-   * @param error The Zod error object
+   * Logs Zod validation errors in a readable format using the `error` log level.
+   * @param error - The `ZodError` object to log.
    */
   zodErrors(error: ZodError): void {
     const messages = formatZodErrors(error);
@@ -103,6 +150,16 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     return false;
   }
 
+  /**
+   * Prints captured logs to the console, filtered by level, path, and an optional matcher.
+   *
+   * This method is useful for debugging tests by inspecting the logs that were
+   * captured during a test run.
+   *
+   * @param levels - An array of log levels to match.
+   * @param path - An array of logger names representing the path to the logger.
+   * @param matcher - An optional string or regex to match against the log message.
+   */
   printLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): void {
     const logs = this.getLogs(levels, path, matcher);
     for (const log of logs) {
@@ -111,6 +168,18 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     }
   }
 
+  /**
+   * Asserts that the captured logs match a set of expected matchers.
+   *
+   * This method filters logs by level and path, then compares the resulting
+   * log messages against the provided matchers. The test will fail if the
+   * number of logs does not match the number of matchers, or if any log
+   * message does not match its corresponding matcher.
+   *
+   * @param levels - An array of log levels to match.
+   * @param path - An array of logger names representing the path to the logger.
+   * @param matchers - An array of strings or regular expressions to match against the log messages.
+   */
   expect(levels: TestLogLevel[], path: string[], matchers: (string | RegExp)[]): void {
     const logs = this.getLogs(levels, path);
 
@@ -189,3 +258,4 @@ function getIndexedProperties(obj: ILogObjMeta): unknown[] {
 
   return properties;
 }
+

@@ -4,11 +4,11 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { SqliteFileRegistry } from '../FileRegistry';
+import { FileRegistry } from '../FileRegistry';
 
 describe('SqliteFileRegistry', () => {
   let logger: TestLogger;
-  let registry: SqliteFileRegistry;
+  let registry: FileRegistry;
   let registryDatabase: RegistryDatabase;
   let dbPath: string;
 
@@ -16,7 +16,7 @@ describe('SqliteFileRegistry', () => {
     logger = new TestLogger();
     dbPath = path.join('/tmp', `test-registry-${randomUUID()}.db`);
     registryDatabase = new RegistryDatabase(logger, dbPath);
-    registry = new SqliteFileRegistry(logger, registryDatabase.getConnection());
+    registry = new FileRegistry(logger, registryDatabase.getConnection());
   });
 
   afterEach(async () => {

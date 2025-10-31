@@ -2,59 +2,73 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { YamlConfig } from '../config';
 
 /**
- * Base context providing common functionality across tool configuration and installation phases.
- * Contains shared properties like tool identity, path utilities, configuration access, and logging.
+ * Provides a base context with common properties and utilities that are shared
+ * across various phases of tool configuration and installation.
+ *
+ * This interface includes essential information such as the tool's identity,
+ * important directory paths, application configuration, and a logger instance.
+ *
+ * @see {@link ToolConfigContext}
+ * @see {@link InstallerContext}
+ *
+ * @public
  */
 export interface BaseToolContext {
   /**
-   * The name of the tool
+   * The name of the tool currently being processed.
    */
   toolName: string;
 
   /**
-   * Current tool's installation directory
+   * The absolute path to the installation directory for the current tool.
+   * This is equivalent to calling `getToolDir(toolName)`.
    */
   toolDir: string;
 
   /**
-   * Get the installation directory for any tool
-   * @param toolName - Name of the tool
-   * @returns Full path to the specified tool's installation directory
+   * Returns the installation directory for a specified tool.
+   * @param toolName - The name of the tool.
+   * @returns The absolute path to the tool's installation directory.
    */
   getToolDir(toolName: string): string;
 
   /**
-   * User's home directory path (from yamlConfig.paths.homeDir)
+   * The absolute path to the user's home directory, as defined in the
+   * application configuration (`yamlConfig.paths.homeDir`).
    */
   homeDir: string;
 
   /**
-   * Generated binaries directory (from yamlConfig.paths.binariesDir)
+   * The absolute path to the directory where generated binaries (shims) are
+   * stored, as defined in `yamlConfig.paths.binariesDir`.
    */
   binDir: string;
 
   /**
-   * Generated shell scripts directory (from yamlConfig.paths.shellScriptsDir)
+   * The absolute path to the directory where generated shell scripts are
+   * stored, as defined in `yamlConfig.paths.shellScriptsDir`.
    */
   shellScriptsDir: string;
 
   /**
-   * Root dotfiles directory (from yamlConfig.paths.dotfilesDir)
+   * The absolute path to the root directory containing the user's dotfiles,
+   * as defined in `yamlConfig.paths.dotfilesDir`.
    */
   dotfilesDir: string;
 
   /**
-   * Generated files directory (from yamlConfig.paths.generatedDir)
+   * The absolute path to the directory where all generated files are stored,
+   * as defined in `yamlConfig.paths.generatedDir`.
    */
   generatedDir: string;
 
   /**
-   * The user's application configuration (YAML config)
+   * The user's parsed application configuration from the main `config.yaml` file.
    */
   appConfig: YamlConfig;
 
   /**
-   * Logger instance for structured logging
+   * A logger instance for structured, type-safe logging.
    */
   logger: TsLogger;
 }

@@ -5,8 +5,15 @@ import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 
 /**
- * Registry database connection for the dotfiles generator.
- * Manages the shared SQLite database used by file registry and tool installation registry.
+ * @public
+ * Manages the shared SQLite database connection for the dotfiles project.
+ *
+ * This class is responsible for initializing and providing access to a centralized
+ * SQLite database. It ensures that different parts of the application, such as the
+ * file registry and tool installation registry, can share a single database connection.
+ *
+ * @param parentLogger - The parent logger instance for creating a sub-logger.
+ * @param registryDbPath - The file system path to the SQLite database file.
  */
 export class RegistryDatabase {
   private db: Database;
@@ -21,14 +28,21 @@ export class RegistryDatabase {
   }
 
   /**
-   * Get the database connection
+   * @public
+   * Retrieves the active SQLite database connection.
+   *
+   * @returns The `Database` instance from `bun:sqlite`.
    */
   getConnection(): Database {
     return this.db;
   }
 
   /**
-   * Close the database connection
+   * @public
+   * Closes the database connection.
+   *
+   * This method should be called during application shutdown to ensure a graceful
+   * termination of the database connection.
    */
   close(): void {
     this.db.close();
