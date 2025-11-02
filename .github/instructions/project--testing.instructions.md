@@ -9,7 +9,7 @@ applyTo: '**/*'
 
 ## Available Testing Helpers
 
-Before creating any bespoke mocks, check the `@dotfiles/testing-helpers` package to see if there is a utility that can be used. If not, create a new utility in that package.
+Before creating any bespoke mocks, check for existing testing utilities. Shared utilities are located in the `@dotfiles/testing-helpers` package. Package-specific helpers may be co-located within the package's `src/testing-helpers` directory. Always verify the location of a helper before assuming it resides in the shared package.
 
 - **FetchMockHelper** - Helper for spying on and mocking `globalThis.fetch` in tests with configurable responses and error simulation
 - **TestLogger** - Extended logger for tests that captures logs for verification with `expect()` methods and filtering capabilities

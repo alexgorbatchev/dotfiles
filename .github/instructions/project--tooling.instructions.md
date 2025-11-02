@@ -4,7 +4,7 @@ applyTo: '**/*'
 ---
 # Project Tooling Requirements
 
-The project is using Bun as run the main run time.
+The project is using Bun as the main run time.
 
 ## TypeScript Tooling
 

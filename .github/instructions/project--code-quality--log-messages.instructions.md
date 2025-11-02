@@ -4,6 +4,8 @@ applyTo: '**/log-messages.ts'
 ---
 # TypeScript Code Quality Requirements
 
+- `log-messages.ts` files DO NOT need any comments.
+
 **Exception for Log Message Objects**: Log message objects that follow the project's logging patterns can rely on type inference when:
 - The object contains only log message functions using `createSafeLogMessage` or similar logging utilities
 - Each property is a function that returns a log message

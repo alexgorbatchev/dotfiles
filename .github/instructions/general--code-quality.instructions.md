@@ -14,7 +14,7 @@ applyTo: '**/*'
 ## Code Clarity
 
 - Write self-documenting code with clear naming
-- Add comments for complex business logic or non-obvious decisions  
+- Add comments for complex business logic or non-obvious decisions. When logic is ported or inspired by an external source, retain comments that map the implementation back to the original source's specific sections or reasoning, even if a general link is provided. This context is critical for future maintenance and debugging. For example, if a shell script loop is ported to TypeScript, the original shell code should be kept in a comment block next to the new implementation for direct comparison.  
 - Remove dead code rather than commenting it out
 - Use meaningful variable and function names that express intent
 

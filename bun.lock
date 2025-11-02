@@ -151,17 +151,6 @@
         "typescript": "catalog:typescript",
       },
     },
-    "packages/file-registry": {
-      "name": "@dotfiles/file-registry",
-      "version": "0.0.0",
-      "devDependencies": {
-        "@rageltd/bun-test-utils": "catalog:testing",
-        "@types/bun": "catalog:system",
-        "@types/node": "catalog:system",
-        "@typescript/native-preview": "catalog:typescript",
-        "typescript": "catalog:typescript",
-      },
-    },
     "packages/file-system": {
       "name": "@dotfiles/file-system",
       "version": "0.0.0",
@@ -240,25 +229,6 @@
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
         "@typescript/native-preview": "catalog:typescript",
-        "typescript": "catalog:typescript",
-      },
-    },
-    "packages/readme-service": {
-      "name": "@dotfiles/readme-service",
-      "version": "0.0.0",
-      "dependencies": {
-        "@dotfiles/downloader": "workspace:*",
-        "@dotfiles/file-system": "workspace:*",
-        "@dotfiles/logger": "workspace:*",
-        "@dotfiles/registry": "workspace:*",
-        "@dotfiles/schemas": "workspace:*",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@dotfiles/testing-helpers": "workspace:*",
-        "@rageltd/bun-test-utils": "catalog:testing",
-        "@types/bun": "catalog:system",
-        "@types/node": "catalog:system",
         "typescript": "catalog:typescript",
       },
     },
@@ -502,8 +472,6 @@
 
     "@dotfiles/features": ["@dotfiles/features@workspace:packages/features"],
 
-    "@dotfiles/file-registry": ["@dotfiles/file-registry@workspace:packages/file-registry"],
-
     "@dotfiles/file-system": ["@dotfiles/file-system@workspace:packages/file-system"],
 
     "@dotfiles/generator-orchestrator": ["@dotfiles/generator-orchestrator@workspace:packages/generator-orchestrator"],
@@ -511,8 +479,6 @@
     "@dotfiles/installer": ["@dotfiles/installer@workspace:packages/installer"],
 
     "@dotfiles/logger": ["@dotfiles/logger@workspace:packages/logger"],
-
-    "@dotfiles/readme-service": ["@dotfiles/readme-service@workspace:packages/readme-service"],
 
     "@dotfiles/registry": ["@dotfiles/registry@workspace:packages/registry"],
 

@@ -2,11 +2,15 @@
   "name": "dotfiles",
   "version": "1.0.0",
   "module": "cli.ts",
-  "type": "module",
-  "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "@typescript/native-preview": "catalog:typescript",
+    "dts-bundle-generator": "^9.5.1",
+    "lefthook": "^2.0.1",
+    "typescript": "catalog:typescript"
+  },
   "catalog": {
     "type-fest": "^5.1.0",
     "zod": "^4.1.12",
@@ -27,6 +31,7 @@
       "typescript": "^5.9.3"
     }
   },
+  "private": true,
   "scripts": {
     "lint": "biome lint",
     "typecheck": "tsgo -p tsconfig.json",
@@ -40,13 +45,8 @@
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"
   },
-  "devDependencies": {
-    "@biomejs/biome": "catalog:",
-    "@types/bun": "catalog:system",
-    "@types/node": "catalog:system",
-    "@typescript/native-preview": "catalog:typescript",
-    "dts-bundle-generator": "^9.5.1",
-    "lefthook": "^2.0.1",
-    "typescript": "catalog:typescript"
-  }
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ]
 }
