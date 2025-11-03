@@ -21,11 +21,28 @@ export async function setupBinariesFromArchive(
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
-  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, context.timestamp, extractDir, binariesDir, logger);
+  const foundAnyBinary = await setupBinariesUsingPatterns(
+    fs,
+    toolName,
+    binaryConfigs,
+    context.timestamp,
+    extractDir,
+    binariesDir,
+    logger
+  );
+
+  // If no binaries were found, clean up the installation directory to avoid accumulating failed attempts
+  if (!foundAnyBinary && binaryConfigs.length > 0) {
+    logger.error(messages.binarySetupService.cleaningFailedInstall(extractDir));
+    if (await fs.exists(extractDir)) {
+      await fs.rm(extractDir, { recursive: true, force: true });
+    }
+  }
 }
 
 /**
  * Setup binaries using pattern-based location (new approach)
+ * @returns true if at least one binary was found and set up, false otherwise
  */
 async function setupBinariesUsingPatterns(
   fs: IFileSystem,
@@ -35,8 +52,10 @@ async function setupBinariesUsingPatterns(
   extractDir: string,
   binariesDir: string,
   parentLogger: TsLogger
-): Promise<void> {
+): Promise<boolean> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesUsingPatterns' });
+  let foundAnyBinary = false;
+
   for (const binaryConfig of binaryConfigs) {
     const { name: binaryName, pattern } = binaryConfig;
 
@@ -53,13 +72,18 @@ async function setupBinariesUsingPatterns(
         logger.error(messages.binarySetupService.extractedFilesTree(extractDir, treeString));
       }
 
+      // Continue to next binary - don't fail the installation
+      // The extracted files remain cached so user can fix the pattern and re-run
       continue;
     }
 
     // Create symlink for this binary
     const relativePath = path.relative(extractDir, binaryPath);
     await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, logger);
+    foundAnyBinary = true;
   }
+
+  return foundAnyBinary;
 }
 
 /**

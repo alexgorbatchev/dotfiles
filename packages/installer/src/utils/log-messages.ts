@@ -10,6 +10,8 @@ export const messages = {
       createSafeLogMessage(`Binary ${binaryName} not found at ${pattern}, skipping`),
     extractedFilesTree: (extractDir: string, treeLines: string) =>
       createSafeLogMessage(`Extracted files in ${extractDir}:\n${treeLines}`),
+    cleaningFailedInstall: (extractDir: string) =>
+      createSafeLogMessage(`No binaries found, cleaning up installation directory: ${extractDir}`),
     searchingWithPattern: (pattern: string, directoryPath: string) =>
       createSafeLogMessage(`Searching for binary using pattern ${pattern} in directory ${directoryPath}`),
     fallbackPattern: (pattern: string, directoryPath: string) =>
