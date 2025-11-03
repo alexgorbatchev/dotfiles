@@ -15,8 +15,8 @@ export const messages = {
   toolConfigLoadingStarted: (toolConfigsDir: string) => createSafeLogMessage(`tool config loading: ${toolConfigsDir}`),
   singleToolConfigLoadingStarted: (toolName: string, toolConfigsDir: string) =>
     createSafeLogMessage(`single tool config load: ${toolName} in ${toolConfigsDir}`),
-  toolConfigDirectoryScan: (toolConfigsDir: string) => createSafeLogMessage(`directory scan: ${toolConfigsDir}`),
-  toolConfigEntryLoad: (filePath: string) => createSafeLogMessage(`tool config load: ${filePath}`),
+  toolConfigDirectoryScan: (toolConfigsDir: string) => createSafeLogMessage(`Directory scan: ${toolConfigsDir}`),
+  toolConfigEntryLoad: (filePath: string) => createSafeLogMessage(`Tool config load: ${filePath}`),
   toolConfigLoadingCompleted: () => createSafeLogMessage('tool config loading completed'),
   configurationFieldInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),

@@ -12,6 +12,8 @@ export const messages = {
       createSafeLogMessage(`Extracted files in ${extractDir}:\n${treeLines}`),
     cleaningFailedInstall: (extractDir: string) =>
       createSafeLogMessage(`No binaries found, cleaning up installation directory: ${extractDir}`),
+    fallbackCleanup: (extractDir: string) =>
+      createSafeLogMessage(`Directory still exists after rm(), trying rmdir: ${extractDir}`),
     searchingWithPattern: (pattern: string, directoryPath: string) =>
       createSafeLogMessage(`Searching for binary using pattern ${pattern} in directory ${directoryPath}`),
     fallbackPattern: (pattern: string, directoryPath: string) =>
@@ -50,12 +52,12 @@ export const messages = {
       createSafeLogMessage(`Successfully created and verified symlink: ${symlinkPath} -> ${targetPath}`),
   } satisfies SafeLogMessageMap,
   lifecycle: {
-    methodStarted: (toolName: string) => createSafeLogMessage(`Starting installation for ${toolName}`),
-    methodParams: (toolName: string) =>
-      createSafeLogMessage(`toolName=${toolName}; tool configuration and options attached`),
+    startingInstallation: (toolName: string) => createSafeLogMessage(`Starting installation for ${toolName}`),
     hookExecution: (hookName: string) => createSafeLogMessage(`install: Running ${hookName} hook`),
     directoryCreated: (installDir: string) =>
       createSafeLogMessage(`install: Created installation directory: ${installDir}`),
+    cleaningFailedInstallDir: (installDir: string) =>
+      createSafeLogMessage(`install: Cleaning up failed installation directory: ${installDir}`),
   } satisfies SafeLogMessageMap,
   outcome: {
     installSuccess: (toolName: string, version: string, method: string) =>

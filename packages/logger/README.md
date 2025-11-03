@@ -66,18 +66,18 @@ export function runExample(logger: TsLogger) {
 
 ### Design Rules for `log-messages.ts`
 
-1.  **Single Purpose**: Only include messages that are local to the package.
-2.  **No Duplication**: If a message is needed in multiple packages, promote it to a shared helper package.
-3.  **Descriptive Naming**: Use action-oriented function names (e.g., `configResolved`, `downloadPlanned`).
-4.  **Type Safety**: Always return values created via `createSafeLogMessage()`.
-5.  **Group by Intent**: Do not create log-level sub-objects (`error`, `debug`). The log level is chosen at the call site.
-6.  **No Method Names**: Do not embed method names in messages; the logger's sub-logger name provides this context.
-7.  **Pure Functions**: Templates should only perform formatting.
-8.  **Stay Current**: Remove stale or unused messages promptly.
+1. **Single Purpose**: Only include messages that are local to the package.
+2. **No Duplication**: If a message is needed in multiple packages, promote it to a shared helper package.
+3. **Descriptive Naming**: Use action-oriented function names (e.g., `configResolved`, `downloadPlanned`).
+4. **Type Safety**: Always return values created via `createSafeLogMessage()`.
+5. **Group by Intent**: Do not create log-level sub-objects (`error`, `debug`). The log level is chosen at the call site.
+6. **No Method Names**: Do not embed method names in messages; the logger's sub-logger name provides this context.
+7. **Pure Functions**: Templates should only perform formatting.
+8. **Stay Current**: Remove stale or unused messages promptly.
 
 ## Log Level Guidelines (Call Site Responsibility)
 
-- **`error`**: Critical failures that prevent an operation from completing (e.g., file not found, network failure).
+- **`error`**: Critical failures that prevent an operation from completing (e.g., file not found, network failure, try/catch).
 - **`warn`**: Recoverable issues or potential problems (e.g., using a deprecated feature, fallback behavior triggered).
 - **`info`**: Successful completion of significant operations (e.g., tool installed, operation completed).
 - **`debug`**: Internal state details for debugging (e.g., cache hits, intermediate steps, variable values).

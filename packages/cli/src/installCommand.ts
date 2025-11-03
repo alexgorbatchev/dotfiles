@@ -45,8 +45,6 @@ function handleInstallationResult(
       return null; // Don't exit on success in normal mode
     }
   } else {
-    logger.debug(messages.commandActionStarted('install-failed', toolName), result.error);
-
     if (shimMode) {
       // In shim mode, output user-friendly error message to stderr only
       process.stderr.write(`Failed to install '${toolName}': ${result.error ?? 'Unknown error'}\n`);

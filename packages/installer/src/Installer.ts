@@ -285,10 +285,7 @@ export class Installer implements IInstaller {
    * Install a tool based on its configuration
    */
   async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
-    // Create logger with appropriate level for shim mode
     const logger = this.logger.getSubLogger({ name: 'install' });
-
-    logger.debug(messages.lifecycle.methodParams(toolName), toolConfig, options);
 
     // Resolve platform-specific configuration
     const systemInfo = this.getSystemInfo();
@@ -335,6 +332,23 @@ export class Installer implements IInstaller {
         logger,
         toolFs
       );
+
+      // If installation failed, clean up the empty installation directory
+      if (!result.success && (await toolFs.exists(installDir))) {
+        logger.debug(messages.lifecycle.cleaningFailedInstallDir(installDir));
+        await toolFs.rm(installDir, { recursive: true, force: true });
+
+        // Also try to remove the parent tool directory if it's now empty
+        const toolDir = path.dirname(installDir);
+        try {
+          const entries = await toolFs.readdir(toolDir);
+          if (entries.length === 0) {
+            await toolFs.rmdir(toolDir);
+          }
+        } catch {
+          // Parent directory might not be empty or might not exist, which is fine
+        }
+      }
 
       // Run afterInstall hook if defined
       await this.executeAfterInstallHook(resolvedToolConfig, context, result, toolFs, logger);

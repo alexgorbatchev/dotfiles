@@ -48,7 +48,7 @@ export async function installFromGitHubRelease(
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
-  logger.debug(messages.lifecycle.methodStarted(toolName));
+  logger.debug(messages.lifecycle.startingInstallation(toolName));
 
   if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
     return {

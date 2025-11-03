@@ -277,8 +277,7 @@ export async function loadToolConfigs(
       return {};
     }
 
-    const files = await fs.readdir(toolConfigsDir);
-    logger.trace(messages.toolConfigDirectoryScan(toolConfigsDir), files);
+    logger.trace(messages.toolConfigDirectoryScan(toolConfigsDir));
 
     // Recursively scan for all .tool.ts files
     const allToolFiles = await scanDirectoryForToolFiles(fs, toolConfigsDir, logger);
@@ -297,17 +296,6 @@ export async function loadToolConfigs(
   } catch (error) {
     logger.error(messages.fsReadFailed(toolConfigsDir), error);
     return {};
-  }
-
-  const configCount = Object.keys(toolConfigs).length;
-  if (toolName) {
-    logger.debug(
-      configCount > 0
-        ? messages.configurationLoaded('single tool config', 1)
-        : messages.fsItemNotFound('Tool config', toolName)
-    );
-  } else {
-    logger.debug(messages.toolConfigLoadingCompleted(), configCount);
   }
 
   return toolConfigs;
