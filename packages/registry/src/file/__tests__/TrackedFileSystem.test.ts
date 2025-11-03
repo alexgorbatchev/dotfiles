@@ -399,6 +399,30 @@ describe('TrackedFileSystem', () => {
       });
       expect(operations[0]?.permissions).toBeDefined();
     });
+
+    it('should store and retrieve permissions as decimal numbers', async () => {
+      const filePath = '/test/file.txt';
+      const mode755 = 0o755; // 493 decimal
+      const mode644 = 0o644; // 420 decimal
+
+      await fs.mkdir('/test', { recursive: true });
+      await fs.writeFile(filePath, 'content');
+
+      // Test 0o755 (rwxr-xr-x)
+      await trackedFs.chmod(filePath, mode755);
+      let operations = await registry.getOperations();
+      expect(operations).toHaveLength(1);
+      expect(operations[0]?.permissions).toBe(493); // Decimal value
+
+      // Reset registry
+      await registry.removeToolOperations('test-tool');
+
+      // Test 0o644 (rw-r--r--)
+      await trackedFs.chmod(filePath, mode644);
+      operations = await registry.getOperations();
+      expect(operations).toHaveLength(1);
+      expect(operations[0]?.permissions).toBe(420); // Decimal value
+    });
   });
 
   describe('ensureDir', () => {

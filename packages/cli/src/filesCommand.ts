@@ -85,24 +85,24 @@ async function logFileState(
   }
 }
 
-function buildMetadataString(
-  operation: { sizeBytes?: number; permissions?: number; targetPath?: string; metadata?: Record<string, unknown> },
-  yamlConfig: YamlConfig
-): string {
+function buildMetadataString(operation: {
+  operationType: string;
+  sizeBytes?: number;
+  permissions?: number;
+  targetPath?: string;
+  metadata?: Record<string, unknown>;
+}): string {
   const metadataParts: string[] = [];
 
-  if (operation.sizeBytes) {
+  // Only include size for write operations (not for chmod)
+  if (operation.sizeBytes && operation.operationType === 'writeFile') {
     metadataParts.push(`size: ${operation.sizeBytes}`);
   }
 
-  if (operation.permissions) {
-    metadataParts.push(`permissions: ${formatPermissions(operation.permissions)}`);
-  }
+  // Never include permissions - they're shown in chmod/write commands when relevant
+  // Never include targetPath - it's shown in ln/cp/mv commands
 
-  if (operation.targetPath) {
-    metadataParts.push(`target: ${contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)}`);
-  }
-
+  // Include custom metadata
   if (operation.metadata && Object.keys(operation.metadata).length > 0) {
     for (const [key, value] of Object.entries(operation.metadata)) {
       if (key === 'newMode') {
@@ -221,7 +221,7 @@ async function showOperations(
   for (const [, toolOperations] of Object.entries(operationsByTool)) {
     for (const operation of toolOperations) {
       const timestamp = formatTimestamp(operation.createdAt);
-      const metadataString = buildMetadataString(operation, yamlConfig);
+      const metadataString = buildMetadataString(operation);
       const contractedPath = contractHomePath(yamlConfig.paths.homeDir, operation.filePath);
 
       logOperationByType(logger, operation, timestamp, contractedPath, metadataString, yamlConfig);

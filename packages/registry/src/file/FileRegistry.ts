@@ -117,7 +117,7 @@ export class FileRegistry implements IFileRegistry {
       fileType: row.file_type,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
       sizeBytes: row.size_bytes ?? undefined,
-      permissions: row.permissions ? parseInt(row.permissions, 8) : undefined,
+      permissions: row.permissions ? parseInt(row.permissions, 10) : undefined,
       createdAt: parseInt(row.created_at, 10),
       operationId: row.operation_id,
     }));
