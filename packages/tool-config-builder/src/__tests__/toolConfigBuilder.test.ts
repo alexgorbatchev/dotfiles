@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
 import {
-  always,
-  isGitHubReleaseToolConfig,
   type AsyncInstallHook,
+  always,
   type GithubReleaseInstallParams,
+  isGitHubReleaseToolConfig,
 } from '@dotfiles/schemas';
 import { messages } from '../log-messages';
 import { ToolConfigBuilder } from '../toolConfigBuilder';

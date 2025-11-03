@@ -1,12 +1,12 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
+import type { IReadmeService } from '@dotfiles/features';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller } from '@dotfiles/installer';
 import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
-import type { IReadmeService } from '@dotfiles/features';
 import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { SystemInfo } from '@dotfiles/schemas';
