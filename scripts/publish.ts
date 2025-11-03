@@ -1,44 +1,45 @@
 #!/usr/bin/env bun
 
-import cliPackageJson from '../package.json';
-import { cdToRepoRoot, executeCommand, validateGitRepository } from './lib';
+import fs from 'node:fs';
+import path from 'node:path';
+import { cdToRepoRoot, executeCommand } from './lib';
 
 cdToRepoRoot(import.meta.url);
 
-const releaseBranchName = `release-${cliPackageJson.version}`;
+const rootDir = process.cwd();
+const distDir = path.join(rootDir, '.dist');
 
-async function checkReleaseBranchExists(): Promise<void> {
-  try {
-    await executeCommand(['git', 'show-ref', '--verify', '--quiet', `refs/heads/${releaseBranchName}`]);
-    console.log(`✓ Release branch ${releaseBranchName} exists locally`);
-  } catch {
-    throw new Error(
-      `Release branch ${releaseBranchName} does not exist. Please run "bun run release" first to create it.`
-    );
+async function checkDistExists(): Promise<void> {
+  if (!fs.existsSync(distDir)) {
+    throw new Error('Build output not found. Please run "bun run release" first to create the build.');
   }
+
+  const packageJsonPath = path.join(distDir, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error('package.json not found in .dist directory');
+  }
+
+  console.log('✓ Build output found in .dist directory');
 }
 
-async function pushReleaseBranch(): Promise<void> {
-  console.log(`📤 Pushing release branch ${releaseBranchName} to origin...`);
-  await executeCommand(['git', 'push', '-f', 'origin', releaseBranchName], {});
-  console.log(`✅ Release branch ${releaseBranchName} pushed successfully!`);
+async function publishToNpm(): Promise<void> {
+  console.log('📤 Publishing to npm registry...');
+  await executeCommand(['npm', 'publish'], { cwd: distDir });
+  console.log('✅ Package published successfully!');
 }
 
 export async function publish(): Promise<void> {
   console.log('🚀 Starting publish process...');
 
   try {
-    // Step 1: Validate environment
-    await validateGitRepository();
+    // Step 1: Check that build exists
+    await checkDistExists();
 
-    // Step 2: Check that release branch exists
-    await checkReleaseBranchExists();
-
-    // Step 3: Push release branch
-    await pushReleaseBranch();
+    // Step 2: Publish to npm
+    await publishToNpm();
 
     console.log('✅ Publish completed successfully!');
-    console.log('🌐 The release branch is now available on the remote repository');
+    console.log('🌐 The package is now available on the npm registry');
   } catch (error) {
     console.error('❌ Publish failed:', error);
     throw error;

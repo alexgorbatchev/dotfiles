@@ -235,7 +235,7 @@ async function generateSchemaTypes(): Promise<void> {
 
 async function generatePackageJson(dependencyVersions: DependencyVersions): Promise<void> {
   const packageJson = {
-    name: 'dotfiles',
+    name: '@gitea/dotfiles',
     version: cliPackageJson.version,
     type: 'module',
     bin: {
