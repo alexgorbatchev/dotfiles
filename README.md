@@ -56,8 +56,8 @@ import { defineTool } from '@dotfiles/schemas';
 
 export default defineTool((c, ctx) =>
   c
-    // 1. Define the binary name and its location pattern within the archive
-    .bin('rg', 'ripgrep-*/rg')
+    // 1. Define the binary name (default pattern {,*/}rg handles most archives)
+    .bin('rg')
     // 2. Specify the installation method
     .install('github-release', {
       repo: 'BurntSushi/ripgrep',

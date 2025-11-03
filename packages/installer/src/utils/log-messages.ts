@@ -23,6 +23,14 @@ export const messages = {
       createSafeLogMessage(
         `Direct download only provides one binary, but ${configuredCount} were configured. Only ${primaryBinary} will be available.`
       ),
+    patternDebug: (pattern: string, parts: string[], extractDir: string) =>
+      createSafeLogMessage(`Pattern: ${pattern}, Parts: [${parts.join(', ')}], ExtractDir: ${extractDir}`),
+    processingPart: (part: string, currentDir: string) =>
+      createSafeLogMessage(`Processing part: "${part}", currentDir: ${currentDir}`),
+    wildcardMatchResult: (matchedDir: string | null) =>
+      createSafeLogMessage(`Wildcard match result: ${matchedDir ?? 'null'}`),
+    directPath: (currentDir: string) => createSafeLogMessage(`Direct path: ${currentDir}`),
+    finalResult: (currentDir: string) => createSafeLogMessage(`Final result: ${currentDir}`),
   } satisfies SafeLogMessageMap,
   binarySymlink: {
     targetBinaryMissing: (toolName: string, binaryName: string, targetPath: string) =>

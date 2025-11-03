@@ -221,7 +221,9 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
       await fs.ensureDir(options.targetDir);
       // Create both the specific tool name and a generic 'tool' file for hooks to use
       await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), 'mock-binary-content');
+      await fs.chmod(path.join(options.targetDir, MOCK_TOOL_NAME), 0o755);
       await fs.writeFile(path.join(options.targetDir, 'tool'), 'mock-binary-content');
+      await fs.chmod(path.join(options.targetDir, 'tool'), 0o755);
       await fs.writeFile(path.join(options.targetDir, 'README.md'), 'mock-readme');
       await fs.writeFile(path.join(options.targetDir, 'LICENSE'), 'mock-license');
       await fs.writeFile(path.join(options.targetDir, 'Makefile'), 'CC=gcc\nall:\n\tgcc -o tool tool.c');

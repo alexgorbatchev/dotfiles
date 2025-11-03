@@ -2,28 +2,53 @@
 
 This section covers the essential methods available on the `ToolConfigBuilder` for configuring tools.
 
-## `.bin(names: string | string[])`
+## `.bin(name: string, pattern?: string)`
 
-Defines the executable binaries this tool provides. Shims are generated for each binary name.
+Defines an executable binary this tool provides. A shim is generated for the binary name.
 
 **Parameters:**
-- `names`: Single binary name or array of binary names
+- `name`: Binary name (required)
+- `pattern`: Glob pattern to locate the binary in extracted archives (optional)
 
 **Examples:**
 ```typescript
-// Single binary
-c.bin('fzf')
+// Single binary with default pattern
+c.bin('fzf')  // Uses pattern: {,*/}fzf
 
-// Multiple binaries
-c.bin(['git', 'git-lfs', 'git-credential-manager'])
+// Custom pattern for nested binaries
+c.bin('gh', '*/bin/gh')
 
-// Tool that provides many binaries
-c.bin(['kubectl', 'kubeadm', 'kubelet'])
+// Multiple binaries - chain .bin() calls
+c.bin('git').bin('git-lfs').bin('git-credential-manager')
 ```
+
+### Binary Pattern Matching
+
+When using archive-based installation methods (`github-release`, `curl-tar`), the pattern determines how to locate the binary within the extracted archive.
+
+**Default Pattern**: `{,*/}name`
+- Matches `name` (binary at archive root)
+- Matches `*/name` (binary one level deep)
+- Handles ~95% of real-world archive structures
+
+**Custom Patterns**:
+```typescript
+// Binary in a bin subdirectory
+c.bin('tool', '*/bin/tool')
+
+// Versioned directory structure
+c.bin('tool', 'tool-*/tool')
+
+// Binary at exact root (no subdirectory)
+c.bin('tool', 'tool')
+```
+
+**Pattern Syntax**: Uses [minimatch](https://github.com/isaacs/minimatch) glob patterns with brace expansion support.
 
 **Important Notes:**
 - Each binary name gets a shim in the generated bin directory
 - Shims point to the actual installed binary location
+- Only executables matching the pattern basename are selected
 - Binary names should match the actual executable names
 
 ## `.version(version: string)`

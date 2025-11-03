@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { minimatch } from 'minimatch';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/schemas';
@@ -60,7 +61,7 @@ async function setupBinariesUsingPatterns(
     const { name: binaryName, pattern } = binaryConfig;
 
     // Find the binary using its pattern
-    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, logger);
+    const binaryPath = await findBinaryUsingPattern(fs, extractDir, pattern, binaryName, logger);
 
     if (!binaryPath) {
       logger.error(messages.binarySetupService.binaryNotFound(binaryName, pattern));
@@ -169,110 +170,75 @@ async function formatDirectoryEntry(
 }
 
 /**
- * Find a binary using a glob pattern within the extract directory
+ * Recursively collect all file paths in a directory
+ */
+async function getAllFiles(fs: IFileSystem, dirPath: string, basePath = dirPath): Promise<string[]> {
+  const files: string[] = [];
+  const entries = await fs.readdir(dirPath);
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry);
+    const stats = await fs.stat(fullPath);
+
+    if (stats.isDirectory()) {
+      const subFiles = await getAllFiles(fs, fullPath, basePath);
+      files.push(...subFiles);
+    } else {
+      files.push(path.relative(basePath, fullPath));
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Check if a file is executable
+ */
+async function isExecutable(fs: IFileSystem, filePath: string): Promise<boolean> {
+  const stats = await fs.stat(filePath);
+  const mode = stats.mode;
+  return (mode & 0o111) !== 0;
+}
+
+/**
+ * Find binary file using minimatch pattern, returns executable matching binaryName
  */
 async function findBinaryUsingPattern(
   fs: IFileSystem,
   extractDir: string,
   pattern: string,
+  binaryName: string,
   parentLogger: TsLogger
 ): Promise<string | null> {
   const logger = parentLogger.getSubLogger({ name: 'findBinaryUsingPattern' });
   logger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));
 
-  // Try the primary pattern first
-  let result: string | null = null;
+  const allFiles = await getAllFiles(fs, extractDir);
+  const matchedFiles = allFiles.filter((file) => minimatch(file, pattern));
 
-  if (pattern.includes('*')) {
-    result = await findBinaryWithWildcards(fs, extractDir, pattern, logger);
-  } else {
-    result = await findBinaryWithDirectPath(fs, extractDir, pattern);
-  }
-
-  // If primary pattern failed and it's a wildcard pattern like '*/tool', try fallback patterns
-  if (!result && pattern.startsWith('*/')) {
-    const toolName = pattern.substring(2); // Remove '*/' prefix
-    logger.debug(messages.binarySetupService.fallbackPattern(toolName, extractDir));
-
-    // Try direct path as fallback
-    result = await findBinaryWithDirectPath(fs, extractDir, toolName);
-  }
-
-  return result;
-}
-
-/**
- * Handle patterns with wildcards like 'ripgrep-star/rg' or 'star/bin/kubectl'
- */
-async function findBinaryWithWildcards(
-  fs: IFileSystem,
-  extractDir: string,
-  pattern: string,
-  parentLogger: TsLogger
-): Promise<string | null> {
-  const logger = parentLogger.getSubLogger({ name: 'findBinaryWithWildcards' });
-  const parts = pattern.split('/');
-  let currentDir = extractDir;
-
-  for (const part of parts) {
-    if (!part) continue;
-
-    if (part.includes('*')) {
-      const matchedDir = await findWildcardMatch(fs, currentDir, part, logger);
-      if (!matchedDir) {
-        return null;
-      }
-      currentDir = matchedDir;
-    } else {
-      currentDir = path.join(currentDir, part);
-    }
-
-    if (!(await fs.exists(currentDir))) {
-      logger.debug(messages.binarySetupService.patternPathMissing(currentDir));
-      return null;
-    }
-  }
-
-  return currentDir;
-}
-
-/**
- * Find the first directory/file matching a wildcard pattern
- */
-async function findWildcardMatch(
-  fs: IFileSystem,
-  currentDir: string,
-  wildcardPart: string,
-  parentLogger: TsLogger
-): Promise<string | null> {
-  const logger = parentLogger.getSubLogger({ name: 'findWildcardMatch' });
-  const entries = await fs.readdir(currentDir);
-  const regex = new RegExp(`^${wildcardPart.replace(/\*/g, '.*')}$`);
-  const matches = entries.filter((entry) => regex.test(entry));
-
-  if (matches.length === 0) {
-    logger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
+  if (matchedFiles.length === 0) {
     return null;
   }
 
-  const firstMatch = matches[0];
-  if (!firstMatch) {
-    logger.debug(messages.binarySetupService.noPatternMatch(wildcardPart, currentDir));
+  const executables: string[] = [];
+  for (const file of matchedFiles) {
+    const fullPath = path.join(extractDir, file);
+    if (await isExecutable(fs, fullPath)) {
+      executables.push(file);
+    }
+  }
+
+  if (executables.length === 0) {
     return null;
   }
 
-  return path.join(currentDir, firstMatch);
-}
+  const matchingBinary = executables.find((file) => path.basename(file) === binaryName);
 
-/**
- * Handle direct path patterns without wildcards
- */
-async function findBinaryWithDirectPath(fs: IFileSystem, extractDir: string, pattern: string): Promise<string | null> {
-  const directPath = path.join(extractDir, pattern);
-  if (await fs.exists(directPath)) {
-    return directPath;
+  if (!matchingBinary) {
+    return null;
   }
-  return null;
+
+  return path.join(extractDir, matchingBinary);
 }
 
 /**

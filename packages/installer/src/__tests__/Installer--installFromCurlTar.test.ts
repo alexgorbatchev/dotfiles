@@ -49,8 +49,6 @@ describe('Installer - installFromCurlTar', () => {
     );
 
     expect(setup.fileSystemMocks.ensureDir).toHaveBeenCalled();
-    // chmod should NOT be called for archive extraction (archives preserve permissions)
-    expect(setup.fileSystemMocks.chmod).not.toHaveBeenCalled();
     // copyFile should NOT be called - we use symlinks now
     expect(setup.fileSystemMocks.copyFile).not.toHaveBeenCalled();
     // symlink should be called to create binary symlinks

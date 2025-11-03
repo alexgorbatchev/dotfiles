@@ -12,14 +12,22 @@ applyTo: '**/*'
 - Create foundational files and type definitions before they are used by other modules.
 - Start by defining functions or methods and their types. Then incrementally write the implementation, ensuring tests pass and linting issues are addressed at each step.
 
+## Troubleshooting Workflow
+
+When user reports an issue
+- First reproduce the issue locally if possible.
+- Then write a test that reproduces the issue.
+- Fix the issue and ensure the test passes.
+- Ensure all tests pass.
+
 ## Task Completion Definition
 
 A task is ONLY complete when ALL of the following are true:
-- All production code changes are implemented
-- Full test suite passes with 0 failures
-- Type checking passes (`bun typecheck`)
-- Linting passes (`bun lint`)
-- Code is formatted (`bun fmt`)
+- All production code changes are implemented.
+- Full test suite passes with no failures or warnings (`bun test`).
+- Type checking passes (`bun typecheck`).
+- Code is formatted (`bun fix`).
+- Linting passes (`bun lint`).
 
 Partial implementation with failing tests is NOT task completion - it is work in progress that must continue until all tests pass.
 

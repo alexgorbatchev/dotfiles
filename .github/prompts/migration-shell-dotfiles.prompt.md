@@ -78,31 +78,37 @@ configs/
 
 ```typescript
 // fzf releases: fzf-0.54.0-darwin_arm64.tar.gz contains fzf-0.54.0/fzf
-c.bin('fzf', 'fzf-*/fzf')
+c.bin('fzf')  // Default pattern handles this automatically
 
 // ripgrep releases: ripgrep-14.1.1-aarch64-apple-darwin.tar.gz contains ripgrep-14.1.1-aarch64-apple-darwin/rg  
-c.bin('rg', 'ripgrep-*/rg')
+c.bin('rg')  // Default pattern handles this automatically
 
 // GitHub CLI: gh_2.40.1_darwin_arm64.tar.gz contains gh_2.40.1_darwin_arm64/bin/gh
-c.bin('gh', '*/bin/gh')
+c.bin('gh', '*/bin/gh')  // Custom pattern needed for nested bin directory
 
 // Neovim: nvim-macos-arm64.tar.gz contains nvim-macos-arm64/bin/nvim
-c.bin('nvim', '*/bin/nvim')
+c.bin('nvim', '*/bin/nvim')  // Custom pattern needed for nested bin directory
 ```
 
 > **💡 More Examples**: See [Common Patterns](../../docs/common-patterns.md) for additional real-world configuration examples.
 
 ## Default Pattern Behavior
 
-When no pattern is specified, `c.bin('name')` automatically uses the pattern `'*/name'`:
+When no pattern is specified, `c.bin('name')` automatically uses the flexible pattern `'{,*/}name'`:
 
 ```typescript
 // These are equivalent:
 c.bin('tool')
-c.bin('tool', '*/tool')
+c.bin('tool', '{,*/}tool')
 ```
 
-This default assumes the binary is located in a subdirectory, which matches most real-world GitHub releases.
+**Pattern Explanation:**
+- `{,*/}tool` uses minimatch brace expansion
+- Matches `tool` (flat archive extraction)
+- Matches `*/tool` (archive with single subdirectory)
+- Does NOT match deeply nested paths like `dir/subdir/tool`
+
+This flexible default handles both flat and single-level nested archives, covering ~95% of real-world GitHub releases. For deeper nesting (e.g., `*/bin/tool`), specify a custom pattern.
 
 ## Shell-to-TypeScript Migration Patterns
 

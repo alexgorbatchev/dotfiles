@@ -58,15 +58,17 @@ Based on your analysis, select the most appropriate installation method. Priorit
   - See: [Manual Installation Guide](../../docs/installation/manual.md)
 
 ### Step 2: Configure Binary Patterns
-If using an archive-based installer (`github-release`, `curl-tar`), determine the correct binary patterns based on the archive's structure.
+If using an archive-based installer (`github-release`, `curl-tar`), specify binary patterns based on the archive's structure.
 
 ```typescript
 // Examples of common patterns:
-c.bin('tool')                    // Default: '*/tool' (binary in any subdirectory)
+c.bin('tool')                    // Default: '{,*/}tool' (matches both 'tool' and '*/tool')
 c.bin('tool', 'tool-*/tool')     // Versioned directory name (e.g., tool-1.2.3/tool)
 c.bin('tool', '*/bin/tool')      // Binary in a 'bin' subdirectory
-c.bin('tool', 'tool')            // Binary at the archive root
+c.bin('tool', 'tool')            // Binary exactly at the archive root (no subdirectory)
 ```
+
+**Note**: The default pattern `{,*/}tool` handles both flat archives (binary at root) and nested archives (binary in a subdirectory), covering most common cases automatically.
 
 **Reference**: [Path Resolution Guide](../../docs/path-resolution.md)
 
@@ -181,7 +183,7 @@ import { defineTool } from '@dotfiles/schemas';
  */
 export default defineTool((c, ctx) =>
   c
-    .bin('rg', 'ripgrep-*/rg')
+    .bin('rg')  // Default pattern {,*/}rg handles ripgrep's archive structure
     .version('latest')
     .install('github-release', {
       repo: 'BurntSushi/ripgrep',
