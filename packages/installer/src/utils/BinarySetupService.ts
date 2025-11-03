@@ -45,6 +45,14 @@ async function setupBinariesUsingPatterns(
 
     if (!binaryPath) {
       logger.error(messages.binarySetupService.binaryNotFound(binaryName, pattern));
+
+      // Show extracted files to help user find the correct binary
+      const tree = await generateDirectoryTree(fs, extractDir);
+      if (tree.length > 0) {
+        const treeString = tree.join('\n');
+        logger.error(messages.binarySetupService.extractedFilesTree(extractDir, treeString));
+      }
+
       continue;
     }
 
@@ -55,10 +63,89 @@ async function setupBinariesUsingPatterns(
 }
 
 /**
- * Find a binary using a glob pattern within the extract directory
+ * Generate a tree-like listing of directory contents
  */
+async function generateDirectoryTree(
+  fs: IFileSystem,
+  dirPath: string,
+  prefix = '',
+  maxDepth = 3,
+  currentDepth = 0
+): Promise<string[]> {
+  const lines: string[] = [];
+
+  if (currentDepth >= maxDepth) {
+    return lines;
+  }
+
+  let entries: string[] = [];
+  try {
+    entries = await fs.readdir(dirPath);
+  } catch {
+    return lines; // Skip directories that can't be read
+  }
+
+  const sortedEntries = entries.sort();
+
+  for (let i = 0; i < sortedEntries.length; i++) {
+    const entry = sortedEntries[i];
+    if (!entry) continue;
+
+    const isLastEntry = i === sortedEntries.length - 1;
+    const entryPath = path.join(dirPath, entry);
+    const connector = isLastEntry ? '└── ' : '├── ';
+    const childPrefix = prefix + (isLastEntry ? '    ' : '│   ');
+
+    const entryLines = await formatDirectoryEntry(
+      fs,
+      entryPath,
+      entry,
+      prefix,
+      connector,
+      childPrefix,
+      maxDepth,
+      currentDepth
+    );
+    lines.push(...entryLines);
+  }
+
+  return lines;
+}
+
 /**
- * Find a binary using a glob pattern
+ * Format a single directory entry for tree output
+ */
+async function formatDirectoryEntry(
+  fs: IFileSystem,
+  entryPath: string,
+  entry: string,
+  prefix: string,
+  connector: string,
+  childPrefix: string,
+  maxDepth: number,
+  currentDepth: number
+): Promise<string[]> {
+  const lines: string[] = [];
+
+  try {
+    const stat = await fs.stat(entryPath);
+    const displayName = stat.isDirectory() ? `${entry}/` : entry;
+    lines.push(`${prefix}${connector}${displayName}`);
+
+    if (stat.isDirectory() && currentDepth < maxDepth - 1) {
+      const childLines = await generateDirectoryTree(fs, entryPath, childPrefix, maxDepth, currentDepth + 1);
+      lines.push(...childLines);
+    }
+  } catch {
+    // Skip entries that can't be accessed
+    lines.push(`${prefix}${connector}${entry} (inaccessible)`);
+  }
+
+  return lines;
+}
+
+/**
+ * Find a binary using a glob pattern within the extract directory
  */
 async function findBinaryUsingPattern(
   fs: IFileSystem,

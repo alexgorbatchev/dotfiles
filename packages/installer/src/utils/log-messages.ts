@@ -8,6 +8,8 @@ export const messages = {
   binarySetupService: {
     binaryNotFound: (binaryName: string, pattern: string) =>
       createSafeLogMessage(`Binary ${binaryName} not found at ${pattern}, skipping`),
+    extractedFilesTree: (extractDir: string, treeLines: string) =>
+      createSafeLogMessage(`Extracted files in ${extractDir}:\n${treeLines}`),
     searchingWithPattern: (pattern: string, directoryPath: string) =>
       createSafeLogMessage(`Searching for binary using pattern ${pattern} in directory ${directoryPath}`),
     fallbackPattern: (pattern: string, directoryPath: string) =>
