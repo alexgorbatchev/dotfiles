@@ -1,9 +1,16 @@
 import { $ } from 'bun';
 
-export async function executeCommand(args: string[], cwd: string = process.cwd()): Promise<void> {
+export async function executeCommand(
+  args: string[],
+  cwd: string = process.cwd(),
+  env?: Record<string, string>
+): Promise<void> {
   const command = args.join(' ');
   console.log(`🔧 Running: ${command}`);
-  const result = await $`${args}`.cwd(cwd).quiet();
+  const result = await $`${args}`
+    .cwd(cwd)
+    .env(env ?? {})
+    .quiet();
 
   if (result.exitCode !== 0) {
     console.error(`❌ Command failed: ${command}`);

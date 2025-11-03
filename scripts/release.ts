@@ -51,7 +51,9 @@ async function installDependencies(): Promise<void> {
 
 async function runBuildScript(): Promise<void> {
   console.log('🏗️  Running build script...');
-  await executeCommand(['bun', 'run', 'build'], releaseDir);
+  await executeCommand(['bun', 'run', 'build'], releaseDir, {
+    DOTENV_VERSION: cliPackageJson.version,
+  });
 }
 
 async function createOrphanedReleaseBranch(): Promise<void> {

@@ -66,8 +66,6 @@ async function buildCli(): Promise<Bun.BuildOutput> {
   console.log(`📍 Entry: ${ENTRY_POINT}`);
   console.log(`📦 Output: ${CLI_OUTPUT_FILE}`);
 
-  process.env['DOTFILES_VERSION'] = cliPackageJson.version;
-
   const result = await Bun.build({
     entrypoints: [ENTRY_POINT],
     outdir: OUTPUT_DIR,
@@ -80,7 +78,7 @@ async function buildCli(): Promise<Bun.BuildOutput> {
     define: {
       'import.meta.main': 'true',
     },
-    env: 'DOTFILES_*',
+    env: 'inline',
   });
 
   if (!result.success) {
