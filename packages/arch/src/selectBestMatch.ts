@@ -27,7 +27,7 @@ import { matchesArchitecture } from './matchesArchitecture';
  *   fi
  * done
  * ```
- * 
+ *
  * @param assetNames - An array of asset names to select from.
  * @param systemInfo - An object containing the system's architecture information.
  * @returns The name of the best matching asset, or `undefined` if no suitable match is found.

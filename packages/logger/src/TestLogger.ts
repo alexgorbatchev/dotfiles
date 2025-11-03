@@ -258,4 +258,3 @@ function getIndexedProperties(obj: ILogObjMeta): unknown[] {
 
   return properties;
 }
-

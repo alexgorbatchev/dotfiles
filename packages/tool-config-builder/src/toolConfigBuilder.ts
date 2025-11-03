@@ -435,8 +435,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       platformConfigs: this.isPlatformScope
         ? undefined
         : this.platformConfigEntries.length > 0
-        ? this.platformConfigEntries
-        : undefined,
+          ? this.platformConfigEntries
+          : undefined,
     };
   }
 
@@ -631,5 +631,4 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   get shellConfigs(): Readonly<InternalShellConfigs> {
     return this.internalShellConfigs;
   }
-
 }

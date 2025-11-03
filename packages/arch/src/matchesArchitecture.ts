@@ -23,7 +23,7 @@ import type { ArchitectureRegex } from './types';
  *   fi
  * done
  * ```
- * 
+ *
  * @param assetName - The name of the release asset to check (e.g., `mytool-linux-amd64.tar.gz`).
  * @param architectureRegex - An object containing the regex patterns for system and CPU.
  * @returns `true` if the asset name matches both the system and CPU patterns, otherwise `false`.

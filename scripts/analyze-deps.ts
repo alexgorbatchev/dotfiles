@@ -96,9 +96,7 @@ async function analyzeDependencies(
       ...(pkg.peerDependencies || {}),
     };
 
-    const internalDependencies = Object.keys(allDependencies).filter((depName) =>
-      packageNames.includes(depName)
-    );
+    const internalDependencies = Object.keys(allDependencies).filter((depName) => packageNames.includes(depName));
 
     const packagePath = packagePaths.get(name);
     const srcSize = packagePath ? await getDirectorySize(path.join(packagePath, 'src')) : 0;
@@ -143,5 +141,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
-
