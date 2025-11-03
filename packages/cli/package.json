@@ -4,7 +4,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "bin": {
-    "dotfiles": "bin/dotfiles"
+    "dotfiles": "./bin/dotfiles.ts"
   },
   "exports": {
     ".": "./src/index.ts",

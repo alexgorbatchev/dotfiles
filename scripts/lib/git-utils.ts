@@ -1,22 +1,33 @@
 import { $ } from 'bun';
 
-export async function executeCommand(
-  args: string[],
-  cwd: string = process.cwd(),
-  env?: Record<string, string>
-): Promise<void> {
+interface ExecuteCommandOptions {
+  cwd?: string;
+  env?: Record<string, string>;
+  expectToFail?: boolean;
+}
+
+export async function executeCommand(args: string[], opts: ExecuteCommandOptions = {}): Promise<void> {
+  const { cwd = process.cwd(), env, expectToFail = false } = opts;
   const command = args.join(' ');
-  console.log(`🔧 Running: ${command}`);
-  const result = await $`${args}`
-    .cwd(cwd)
-    .env(env ?? {})
-    .quiet();
+
+  if (!expectToFail) {
+    console.log(`🔧 Running: ${command}`);
+  }
+
+  const mergedEnv = env ? { ...process.env, ...env } : process.env;
+  const result = await $`${args}`.cwd(cwd).env(mergedEnv).quiet().nothrow();
 
   if (result.exitCode !== 0) {
-    console.error(`❌ Command failed: ${command}`);
-    console.error(`Exit code: ${result.exitCode}`);
-    console.error(`Error output: ${result.stderr.toString()}`);
-    throw new Error(`Command failed with exit code ${result.exitCode}`);
+    if (!expectToFail) {
+      const stdout = result.stdout.toString();
+      const stderr = result.stderr.toString();
+
+      console.error(`❌ Command failed: ${command}`);
+      console.error(`Exit code: ${result.exitCode}`);
+      if (stdout) console.error(stdout);
+      if (stderr) console.error(stderr);
+    }
+    throw new Error(`Command failed: ${command}`);
   }
 }
 

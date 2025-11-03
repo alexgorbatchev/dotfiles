@@ -50,10 +50,10 @@ async function updatePackageJsonVersion(newVersion: string): Promise<void> {
 
 async function stageAndCommit(version: string): Promise<void> {
   console.log('📝 Staging package.json...');
-  await executeCommand(['git', 'add', 'package.json'], rootDir);
+  await executeCommand(['git', 'add', 'package.json'], { cwd: rootDir });
 
   console.log('💾 Creating commit...');
-  await executeCommand(['git', 'commit', '-m', `Version ${version}`], rootDir);
+  await executeCommand(['git', 'commit', '-m', `Version ${version}`], { cwd: rootDir });
 
   console.log(`✅ Committed version ${version}`);
 }

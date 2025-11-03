@@ -33,7 +33,7 @@ async function cleanupReleaseDir(): Promise<void> {
 
 async function cloneRepository(): Promise<void> {
   console.log('📂 Cloning repository to .release...');
-  await executeCommand(['git', 'clone', '.', releaseDir], rootDir);
+  await executeCommand(['git', 'clone', '.', releaseDir], { cwd: rootDir });
 
   // Copy .npmrc if it exists in the root
   const npmrcPath = path.join(rootDir, '.npmrc');
@@ -46,13 +46,14 @@ async function cloneRepository(): Promise<void> {
 
 async function installDependencies(): Promise<void> {
   console.log('📦 Installing dependencies...');
-  await executeCommand(['bun', 'install'], releaseDir);
+  await executeCommand(['bun', 'install'], { cwd: releaseDir });
 }
 
 async function runBuildScript(): Promise<void> {
   console.log('🏗️  Running build script...');
-  await executeCommand(['bun', 'run', 'build'], releaseDir, {
-    DOTENV_VERSION: cliPackageJson.version,
+  await executeCommand(['bun', 'run', 'build'], {
+    cwd: releaseDir,
+    env: { DOTENV_VERSION: cliPackageJson.version },
   });
 }
 
@@ -60,10 +61,10 @@ async function createOrphanedReleaseBranch(): Promise<void> {
   console.log(`🌿 Creating orphaned release branch: ${releaseBranchName}...`);
 
   // Create new orphaned branch with versioned name
-  await executeCommand(['git', 'checkout', '--orphan', releaseBranchName], releaseDir);
+  await executeCommand(['git', 'checkout', '--orphan', releaseBranchName], { cwd: releaseDir });
 
   // Remove all files from staging
-  await executeCommand(['git', 'rm', '-rf', '.'], releaseDir);
+  await executeCommand(['git', 'rm', '-rf', '.'], { cwd: releaseDir });
 }
 
 async function moveDistFiles(): Promise<void> {
@@ -107,16 +108,16 @@ async function commitAndPush(): Promise<void> {
   console.log('💾 Committing and pushing release...');
 
   // Add all files
-  await executeCommand(['git', 'add', '.'], releaseDir);
+  await executeCommand(['git', 'add', '.'], { cwd: releaseDir });
 
   // Get version from imported package.json for commit message
   const version = cliPackageJson.version;
 
   // Commit with version info
-  await executeCommand(['git', 'commit', '-m', `Release v${version}`], releaseDir);
+  await executeCommand(['git', 'commit', '-m', `Release v${version}`], { cwd: releaseDir });
 
   // Push to versioned release branch (force push since it's orphaned)
-  await executeCommand(['git', 'push', '-f', 'origin', releaseBranchName], releaseDir);
+  await executeCommand(['git', 'push', '-f', 'origin', releaseBranchName], { cwd: releaseDir });
 }
 
 async function cleanup(): Promise<void> {
@@ -152,7 +153,10 @@ async function checkReleaseBranchExists(): Promise<void> {
 
   // Check if versioned release branch already exists locally
   try {
-    await executeCommand(['git', 'show-ref', '--verify', '--quiet', `refs/heads/${releaseBranchName}`], rootDir);
+    await executeCommand(['git', 'show-ref', '--verify', '--quiet', `refs/heads/${releaseBranchName}`], {
+      cwd: rootDir,
+      expectToFail: true,
+    });
     console.error(
       `❌ Release branch '${releaseBranchName}' already exists locally. Please delete it first or bump the version.`
     );
@@ -163,7 +167,10 @@ async function checkReleaseBranchExists(): Promise<void> {
 
   // Check if versioned release branch already exists remotely
   try {
-    await executeCommand(['git', 'ls-remote', '--exit-code', 'origin', `refs/heads/${releaseBranchName}`], rootDir);
+    await executeCommand(['git', 'ls-remote', '--exit-code', 'origin', `refs/heads/${releaseBranchName}`], {
+      cwd: rootDir,
+      expectToFail: true,
+    });
     console.error(
       `❌ Release branch '${releaseBranchName}' already exists remotely. Please delete it first or bump the version.`
     );

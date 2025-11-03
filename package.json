@@ -41,6 +41,7 @@
     "build": "scripts/build.ts",
     "version": "scripts/version.ts",
     "release": "scripts/release.ts",
+    "release-next": "bun run version && bun run release",
     "publish": "scripts/publish.ts",
     "compile": "scripts/compile.ts",
     "test:agent": "AGENT=1 bun test",

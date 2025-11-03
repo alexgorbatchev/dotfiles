@@ -9,4 +9,4 @@ set -e
 
 mkdir -p node_modules/.bin
 cd node_modules/.bin
-[ ! -L ./dotfiles ] && ln -s ../@dotfiles/cli/bin/dotfiles . || true
+[ ! -L ./dotfiles ] && ln -s ../@dotfiles/cli/bin/dotfiles.ts ./dotfiles || true

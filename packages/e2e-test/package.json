@@ -2,8 +2,7 @@
   "name": "@dotfiles/e2e-test",
   "version": "0.0.0",
   "scripts": {
-    "test": "dotfiles",
-    "postinstall": "scripts/fix-bun-bug"
+    "postinstall": "./scripts/fix-bun-bug"
   },
   "dependencies": {
     "@dotfiles/cli": "workspace:*",

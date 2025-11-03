@@ -20,7 +20,7 @@ async function checkReleaseBranchExists(): Promise<void> {
 
 async function pushReleaseBranch(): Promise<void> {
   console.log(`📤 Pushing release branch ${releaseBranchName} to origin...`);
-  await executeCommand(['git', 'push', '-f', 'origin', releaseBranchName]);
+  await executeCommand(['git', 'push', '-f', 'origin', releaseBranchName], {});
   console.log(`✅ Release branch ${releaseBranchName} pushed successfully!`);
 }
 
