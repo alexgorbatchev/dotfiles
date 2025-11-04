@@ -35,6 +35,16 @@ describe('Installer - install (orchestrator)', () => {
     const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
       success: true,
       binaryPaths: [setup.mockToolBinaryPath],
+      version: '1.0.0',
+      originalTag: 'v1.0.0',
+      metadata: {
+        method: 'github-release',
+        releaseUrl: 'https://github.com/test/repo/releases/tag/v1.0.0',
+        publishedAt: '2024-01-01T00:00:00Z',
+        releaseName: 'Release v1.0.0',
+        downloadUrl: 'https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz',
+        assetName: 'test-asset.tar.gz',
+      },
     });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
@@ -84,6 +94,16 @@ describe('Installer - install (orchestrator)', () => {
     const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
       success: true,
       binaryPaths: [setup.mockToolBinaryPath],
+      version: '1.0.0',
+      originalTag: 'v1.0.0',
+      metadata: {
+        method: 'github-release',
+        releaseUrl: 'https://github.com/test/repo/releases/tag/v1.0.0',
+        publishedAt: '2024-01-01T00:00:00Z',
+        releaseName: 'Release v1.0.0',
+        downloadUrl: 'https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz',
+        assetName: 'test-asset.tar.gz',
+      },
     });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
@@ -135,6 +155,12 @@ describe('Installer - install (orchestrator)', () => {
     const installFromCargoSpy = spyOn(setup.installer, 'installFromCargo').mockResolvedValue({
       success: true,
       binaryPaths: [setup.mockToolBinaryPath],
+      version: '1.0.0',
+      metadata: {
+        method: 'cargo',
+        crateName: 'eza',
+        binarySource: 'cargo-quickinstall',
+      },
     });
 
     // This should resolve the platform-specific config and call installFromCargo

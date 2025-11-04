@@ -6,7 +6,6 @@ export * from './executeHooks';
 export * from './getBinaryNames';
 export * from './getBinaryPaths';
 export * from './HookExecutor';
-export * from './InstallationPipeline';
 export * from './log-messages';
 export * from './normalizeBinaries';
 export * from './stepFactories';

@@ -2,7 +2,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
-import type { BrewInstallMetadata, InstallOptions, InstallResult } from '../types';
+import type { BrewInstallMetadata, BrewInstallResult, InstallOptions } from '../types';
 import { getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { messages } from '../utils/log-messages';
 
@@ -39,7 +39,7 @@ export async function installFromBrew(
   options: InstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: ShellExecutor = $
-): Promise<InstallResult> {
+): Promise<BrewInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
   logger.debug(messages.brew.installing(toolName), toolConfig.installParams);
 
@@ -55,7 +55,7 @@ export async function installFromBrew(
   const isCask = params.cask || false;
   const tap = params.tap;
 
-  const operation = async (): Promise<InstallResult> => {
+  const operation = async (): Promise<BrewInstallResult> => {
     await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
 
     // Fetch version information
@@ -70,7 +70,7 @@ export async function installFromBrew(
       tap,
     };
 
-    const result: InstallResult = {
+    const result: BrewInstallResult = {
       success: true,
       binaryPaths,
       version: version || undefined,

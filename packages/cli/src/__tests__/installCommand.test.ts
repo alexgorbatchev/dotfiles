@@ -38,6 +38,11 @@ describe('installCommand', () => {
           success: true,
           binaryPaths: ['/fake/bin/toolA'],
           version: '1.0.0',
+          metadata: {
+            method: 'brew',
+            formula: 'test',
+            isCask: false,
+          },
         })
       ),
     };

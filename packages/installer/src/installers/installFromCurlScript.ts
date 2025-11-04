@@ -3,7 +3,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@dotfiles/schemas';
-import type { CurlScriptInstallMetadata, InstallOptions, InstallResult } from '../types';
+import type { CurlScriptInstallMetadata, CurlScriptInstallResult, InstallOptions } from '../types';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -27,7 +27,7 @@ export async function installFromCurlScript(
   downloader: IDownloader,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
-): Promise<InstallResult> {
+): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
   logger.debug(messages.curlScript.installing(toolName));
@@ -43,7 +43,7 @@ export async function installFromCurlScript(
   const url = params.url;
   const shell = params.shell;
 
-  const operation = async (): Promise<InstallResult> => {
+  const operation = async (): Promise<CurlScriptInstallResult> => {
     // Download the script
     logger.debug(messages.curlScript.downloadingScript(url));
     const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
@@ -101,5 +101,5 @@ export async function installFromCurlScript(
     };
   };
 
-  return withInstallErrorHandling('curl-script', toolName, logger, operation) as Promise<InstallResult>;
+  return withInstallErrorHandling('curl-script', toolName, logger, operation);
 }

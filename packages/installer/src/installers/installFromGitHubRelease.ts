@@ -20,7 +20,7 @@ import type {
 } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
-import type { GitHubReleaseInstallMetadata, InstallOptions, InstallResult } from '../types';
+import type { GitHubReleaseInstallMetadata, GitHubReleaseInstallResult, InstallOptions } from '../types';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
@@ -46,7 +46,7 @@ export async function installFromGitHubRelease(
   appConfig: YamlConfig,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
-): Promise<InstallResult> {
+): Promise<GitHubReleaseInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
   logger.debug(messages.lifecycle.startingInstallation(toolName));
 

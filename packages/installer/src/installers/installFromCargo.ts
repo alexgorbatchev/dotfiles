@@ -6,7 +6,13 @@ import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
-import type { CargoInstallMetadata, InstallOptions, InstallResult, OperationFailure, OperationSuccess } from '../types';
+import type {
+  CargoInstallMetadata,
+  CargoInstallResult,
+  InstallOptions,
+  OperationFailure,
+  OperationSuccess,
+} from '../types';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { setupBinariesFromArchive } from '../utils/BinarySetupService';
 import type { HookExecutor } from '../utils/HookExecutor';
@@ -20,14 +26,14 @@ export async function installFromCargo(
   toolConfig: CargoToolConfig,
   context: BaseInstallContext,
   options: InstallOptions | undefined,
-  fileSystem: IFileSystem,
+  fs: IFileSystem,
   downloader: IDownloader,
   cargoClient: ICargoClient,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger,
-  cargoGithubReleaseHost: string
-): Promise<InstallResult> {
+  githubHost: string
+): Promise<CargoInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
   logger.debug(messages.cargo.installing(toolName), toolConfig['installParams']);
 
@@ -41,21 +47,15 @@ export async function installFromCargo(
   const params = toolConfig['installParams'];
   const crateName = params.crateName || toolName;
 
-  const operation = async (): Promise<InstallResult> => {
-    const toolFs = createToolFileSystem(fileSystem, toolName);
+  const operation = async (): Promise<CargoInstallResult> => {
+    const toolFs = createToolFileSystem(fs, toolName);
 
     // 1. Determine version
     const versionResult = await determineVersion(crateName, params, cargoClient, logger);
     logger.debug(messages.cargo.foundVersion(crateName, versionResult.version));
 
     // 2. Determine download URL based on binary source
-    const downloadUrl = await buildDownloadUrl(
-      crateName,
-      versionResult.version,
-      params,
-      context,
-      cargoGithubReleaseHost
-    );
+    const downloadUrl = await buildDownloadUrl(crateName, versionResult.version, params, context, githubHost);
     logger.debug(messages.cargo.downloadingAsset(`${crateName}-${versionResult.version}`, downloadUrl));
 
     // 3. Download and extract
@@ -84,7 +84,7 @@ export async function installFromCargo(
     logger.debug(messages.cargo.archiveExtracted(), extractResult);
 
     // 6. Setup binaries
-    await setupBinariesFromArchive(fileSystem, toolName, toolConfig, context, context.installDir, logger);
+    await setupBinariesFromArchive(fs, toolName, toolConfig, context, context.installDir, logger);
 
     // 7. Execute afterInstall hook
     const afterInstallResult = await executeAfterInstallHook(
@@ -98,9 +98,9 @@ export async function installFromCargo(
       return afterInstallResult;
     }
 
-    // 8. Cleanup downloaded archive
-    if (await fileSystem.exists(downloadPath)) {
-      await fileSystem.rm(downloadPath);
+    // 8. Clean up downloaded archive
+    if (await fs.exists(downloadPath)) {
+      await fs.rm(downloadPath);
       logger.debug(messages.cargo.cleaningArchive(downloadPath));
     }
 
@@ -134,7 +134,7 @@ async function executeAfterDownloadHook(
   hookContext: BaseInstallContext & { version: string },
   downloadPath: string,
   toolFs: IFileSystem
-): Promise<InstallResult | { success: true }> {
+): Promise<CargoInstallResult | { success: true }> {
   if (toolConfig.installParams?.hooks?.afterDownload) {
     const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs);
     const hookResult = await hookExecutor.executeHook(

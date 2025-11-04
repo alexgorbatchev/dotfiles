@@ -19,7 +19,10 @@ describe('createCliTestSetup', () => {
 
   it('should work with custom mock objects', async () => {
     const customInstaller = {
-      install: mock(async () => ({ success: false, error: 'Custom mock' })),
+      install: mock(async () => ({
+        success: false as const,
+        error: 'Custom mock',
+      })),
     };
 
     const setup = await createCliTestSetup({
@@ -40,7 +43,10 @@ describe('createCliTestSetup', () => {
 
   it('should work with mixed true and custom mocks', async () => {
     const customInstaller = {
-      install: mock(async () => ({ success: false, error: 'Custom mock' })),
+      install: mock(async () => ({
+        success: false as const,
+        error: 'Custom mock',
+      })),
     };
 
     const setup = await createCliTestSetup({

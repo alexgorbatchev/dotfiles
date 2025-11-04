@@ -67,6 +67,11 @@ describe('updateCommand', () => {
               success: true,
               binaryPaths: [`${setup.mockYamlConfig.paths.binariesDir}/${toolName}`],
               version: tc.version || 'installed-version',
+              metadata: {
+                method: 'brew',
+                formula: 'test',
+                isCask: false,
+              },
             })
           ),
         },

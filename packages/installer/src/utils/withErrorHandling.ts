@@ -6,12 +6,12 @@ import { messages } from './log-messages';
  * Wraps installation operations with consistent error handling
  * Extracted from duplicated error handling across all installation methods
  */
-export async function withInstallErrorHandling<T>(
+export async function withInstallErrorHandling<T extends InstallResult>(
   methodName: string,
   toolName: string,
   logger: TsLogger,
   operation: () => Promise<T>
-): Promise<T | InstallResult> {
+): Promise<T> {
   try {
     return await operation();
   } catch (error) {
@@ -19,6 +19,6 @@ export async function withInstallErrorHandling<T>(
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-    };
+    } as T;
   }
 }

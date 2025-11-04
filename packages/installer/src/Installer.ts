@@ -32,6 +32,7 @@ import {
   installManually,
 } from './installers';
 import type { IInstaller, InstallOptions, InstallResult } from './types';
+import { hasOriginalTag, hasVersion } from './types';
 import { HookExecutor, messages } from './utils';
 
 /**
@@ -107,38 +108,33 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Check if tool is already installed and return early if appropriate
+   * Check if tool is already installed and skip installation if appropriate
+   * Returns true if installation should be skipped
    */
-  private async checkExistingInstallation(
+  private async shouldSkipInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
     options: InstallOptions | undefined,
     parentLogger: TsLogger
-  ): Promise<InstallResult | null> {
-    const logger = parentLogger.getSubLogger({ name: 'checkExistingInstallation' });
+  ): Promise<boolean> {
+    const logger = parentLogger.getSubLogger({ name: 'shouldSkipInstallation' });
     if (options?.force) {
-      return null;
+      return false;
     }
 
     const existingInstallation = await this.toolInstallationRegistry.getToolInstallation(toolName);
     if (!existingInstallation) {
-      return null;
+      return false;
     }
 
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
     if (targetVersion && existingInstallation.version === targetVersion) {
       logger.debug(messages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
-      return {
-        success: true,
-        message: `Tool ${toolName} version ${targetVersion} is already installed`,
-        installPath: existingInstallation.installPath,
-        version: existingInstallation.version,
-        binaryPaths: existingInstallation.binaryPaths,
-      };
+      return true;
     }
 
     logger.debug(messages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown'));
-    return null;
+    return false;
   }
 
   /**
@@ -189,13 +185,11 @@ export class Installer implements IInstaller {
     }
 
     logger.debug(messages.lifecycle.hookExecution('afterInstall'));
-    const finalContext = {
-      ...context,
-      binaryPaths: result.success ? result.binaryPaths : undefined,
-      version: result.success ? result.version : undefined,
-    };
 
-    const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs);
+    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
+    enhancedContext.binaryPath = result.success && result.binaryPaths.length > 0 ? result.binaryPaths[0] : undefined;
+    enhancedContext.version = hasVersion(result) ? result.version : undefined;
+
     await this.hookExecutor.executeHook(
       'afterInstall',
       resolvedToolConfig.installParams.hooks.afterInstall,
@@ -215,7 +209,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
-    if (!result.success || !result.binaryPaths || !result.version) {
+    if (!hasVersion(result)) {
       return;
     }
 
@@ -241,7 +235,7 @@ export class Installer implements IInstaller {
         configuredVersion: isGitHubReleaseToolConfig(resolvedToolConfig)
           ? resolvedToolConfig.installParams.version
           : undefined,
-        originalTag: result.originalTag,
+        originalTag: hasOriginalTag(result) ? result.originalTag : undefined,
       });
       logger.debug(messages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
     } catch (error) {
@@ -301,9 +295,12 @@ export class Installer implements IInstaller {
 
     try {
       // Check if tool is already installed (unless force option is used)
-      const existingResult = await this.checkExistingInstallation(toolName, resolvedToolConfig, options, logger);
-      if (existingResult) {
-        return existingResult;
+      const shouldSkip = await this.shouldSkipInstallation(toolName, resolvedToolConfig, options, logger);
+      if (shouldSkip) {
+        return {
+          success: false,
+          error: `Tool ${toolName} is already installed at the target version. Use --force to reinstall.`,
+        };
       }
 
       // Create timestamped installation directory
@@ -350,7 +347,7 @@ export class Installer implements IInstaller {
         }
       }
 
-      // Run afterInstall hook if defined
+      // Run afterInstall hook if defined (runs even on failure for cleanup)
       await this.executeAfterInstallHook(resolvedToolConfig, context, result, toolFs, logger);
 
       // Record successful installation in the registry

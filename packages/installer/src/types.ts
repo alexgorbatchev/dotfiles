@@ -111,42 +111,114 @@ export interface InstallOptions {
 }
 
 /**
- * Result of a tool installation operation.
- * This is a discriminated union - check the success property to determine which properties are available.
+ * Success result for Homebrew installations
+ */
+export interface BrewInstallSuccess extends OperationSuccess {
+  binaryPaths: string[];
+  version?: string;
+  metadata: BrewInstallMetadata;
+}
+
+/**
+ * Result type for Brew installations
+ */
+export type BrewInstallResult = BrewInstallSuccess | OperationFailure;
+
+/**
+ * Success result for GitHub Release installations
+ */
+export interface GitHubReleaseInstallSuccess extends OperationSuccess {
+  binaryPaths: string[];
+  version: string;
+  originalTag: string;
+  metadata: GitHubReleaseInstallMetadata;
+}
+
+/**
+ * Result type for GitHub Release installations
+ */
+export type GitHubReleaseInstallResult = GitHubReleaseInstallSuccess | OperationFailure;
+
+/**
+ * Success result for Manual installations
+ */
+export interface ManualInstallSuccess extends OperationSuccess {
+  binaryPaths: string[];
+  metadata: ManualInstallMetadata;
+}
+
+/**
+ * Result type for Manual installations
+ */
+export type ManualInstallResult = ManualInstallSuccess | OperationFailure;
+
+/**
+ * Success result for Curl Script installations
+ */
+export interface CurlScriptInstallSuccess extends OperationSuccess {
+  binaryPaths: string[];
+  metadata: CurlScriptInstallMetadata;
+}
+
+/**
+ * Result type for Curl Script installations
+ */
+export type CurlScriptInstallResult = CurlScriptInstallSuccess | OperationFailure;
+
+/**
+ * Success result for Curl Tar installations
+ */
+export interface CurlTarInstallSuccess extends OperationSuccess {
+  binaryPaths: string[];
+  metadata: CurlTarInstallMetadata;
+}
+
+/**
+ * Result type for Curl Tar installations
+ */
+export type CurlTarInstallResult = CurlTarInstallSuccess | OperationFailure;
+
+/**
+ * Success result for Cargo installations
+ */
+export interface CargoInstallSuccess extends OperationSuccess {
+  binaryPaths: string[];
+  version: string;
+  originalTag?: string;
+  metadata: CargoInstallMetadata;
+}
+
+/**
+ * Result type for Cargo installations
+ */
+export type CargoInstallResult = CargoInstallSuccess | OperationFailure;
+
+/**
+ * Union of all possible installation results
  */
 export type InstallResult =
-  | (OperationSuccess & {
-      /**
-       * All binary paths for the installed tool
-       */
-      binaryPaths?: string[];
+  | BrewInstallResult
+  | GitHubReleaseInstallResult
+  | ManualInstallResult
+  | CurlScriptInstallResult
+  | CurlTarInstallResult
+  | CargoInstallResult;
 
-      /**
-       * The installation path (timestamped directory)
-       */
-      installPath?: string;
+/**
+ * Type guard to check if result has a defined version property
+ */
+export function hasVersion(
+  result: InstallResult
+): result is (BrewInstallSuccess & { version: string }) | GitHubReleaseInstallSuccess | CargoInstallSuccess {
+  return result.success && 'version' in result && result.version !== undefined;
+}
 
-      /**
-       * The version of the installed tool
-       */
-      version?: string;
-
-      /**
-       * The original tag from the source (e.g., GitHub release tag before normalization)
-       */
-      originalTag?: string;
-
-      /**
-       * Success message for the installation
-       */
-      message?: string;
-
-      /**
-       * Strongly typed metadata about the installation method and details
-       */
-      metadata?: InstallMetadata;
-    })
-  | OperationFailure;
+/**
+ * Type guard to check if result has originalTag property
+ */
+export function hasOriginalTag(result: InstallResult): result is GitHubReleaseInstallSuccess | CargoInstallSuccess {
+  return result.success && 'originalTag' in result;
+}
 
 /**
  * Interface for the tool installer

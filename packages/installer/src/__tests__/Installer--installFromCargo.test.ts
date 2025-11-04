@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import type { CargoToolConfig } from '@dotfiles/schemas';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
+import { hasVersion } from '../types';
 import { createInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - installFromCargo', () => {
@@ -45,7 +46,9 @@ describe('Installer - installFromCargo', () => {
     }
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.binaryPaths).toHaveLength(1);
+    assert(hasVersion(result));
     expect(result.version).toBe('0.18.2');
     expect(setup.mocks.cargoClient.buildCargoTomlUrl).toHaveBeenCalledWith('eza-community/eza');
     expect(setup.mocks.cargoClient.getCargoTomlPackage).toHaveBeenCalledWith(
@@ -82,6 +85,7 @@ describe('Installer - installFromCargo', () => {
     expect(result.success).toBe(true);
     assert(result.success);
     expect(result.binaryPaths).toHaveLength(1);
+    assert(hasVersion(result));
     expect(result.version).toBe('14.1.1');
     expect(result.metadata?.method).toBe('cargo');
     if (result.metadata?.method === 'cargo') {

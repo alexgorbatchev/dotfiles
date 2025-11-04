@@ -117,6 +117,11 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
                 success: true as const,
                 binaryPaths: ['/fake/bin/tool'],
                 version: '1.0.0',
+                metadata: {
+                  method: 'brew' as const,
+                  formula: 'test',
+                  isCask: false,
+                },
               })),
             };
             break;

@@ -10,7 +10,7 @@ import type {
   PostDownloadInstallContext,
   PostExtractInstallContext,
 } from '@dotfiles/schemas';
-import type { CurlTarInstallMetadata, InstallOptions, InstallResult } from '../types';
+import type { CurlTarInstallMetadata, CurlTarInstallResult, InstallOptions } from '../types';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -36,7 +36,7 @@ export async function installFromCurlTar(
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
-): Promise<InstallResult> {
+): Promise<CurlTarInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
   logger.debug(messages.curlTar.installing(toolName));
@@ -55,7 +55,7 @@ export async function installFromCurlTar(
   const params = toolConfig.installParams;
   const url = params.url;
 
-  const operation = async (): Promise<InstallResult> => {
+  const operation = async (): Promise<CurlTarInstallResult> => {
     // Download the tarball
     logger.debug(messages.curlTar.downloadingTarball(url));
     const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`);
@@ -131,5 +131,5 @@ export async function installFromCurlTar(
     };
   };
 
-  return withInstallErrorHandling('curl-tar', toolName, logger, operation) as Promise<InstallResult>;
+  return withInstallErrorHandling('curl-tar', toolName, logger, operation);
 }
