@@ -6,18 +6,14 @@ applyTo: '**/*'
 
 ## Tool Usage Principles
 
-- Never filter tooling output with grep, awk, sed, or similar content-filtering tools. Only use `head` or `tail` to limit output length. To find specific content, output the full result (or use head/tail to limit length) and search within the displayed output.
-- Use the most appropriate tool available in the environment for each task
-- Prefer tools that provide clear, parseable output for automation
-- Choose tools that maintain data integrity and provide error handling
-- Don't use `cat << EOF` style commands to make file changes
+- DO NOT use ` << EOF` when running CLI commands, no exceptions!
+- DO NOT change multiple files via CLI commands, no exceptions!
 
-## Available Tooling
+## Available CLI Tooling
 
-- `rg` is available to be used to search for files and text
-- Use all available tools in the environment to accomplish tasks efficiently
-- Use similar batch command to read multiple files at the same time:
-  ```
+- Use all additional available tools in the environment to accomplish tasks efficiently: rg, jq
+- To read multiple files at the same time use this kind of batch command:
+  ```shell
   rg --files {dir} -g '*.ts' -g '*.tsx' | while read -r file; do \
     echo ""; \
     echo "=== $(basename "$file") ==="; \
@@ -29,5 +25,5 @@ applyTo: '**/*'
 
 ## Documentation and References
 
-- Use context7 tool calling to retrieve up-to-date documentation for general tooling when needed
-- Verify tool capabilities and syntax from authoritative sources before providing guidance
+- Use context7 tool calling to retrieve up-to-date documentation for general tooling when needed.
+- Always verify tool capabilities and syntax from authoritative sources before providing guidance.

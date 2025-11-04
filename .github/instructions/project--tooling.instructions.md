@@ -8,8 +8,8 @@ The project is using Bun as the main run time.
 
 ## TypeScript Tooling
 
-- Using `tsc` directly is PROHIBITED. Use `bun typecheck` instead
-- Use `bun lint` and `bun fmt` before task completion.
+- Using `tsc` directly is PROHIBITED. Use `bun typecheck` instead.
+- Use `bun fix` and `bun test` before task completion, make sure all issues are addressed.
 
 ## Data Validation
 

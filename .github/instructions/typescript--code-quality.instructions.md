@@ -83,15 +83,34 @@ Only use `as` for:
 - When editing files with `as Foo` imports, replace them with the actual binding name
 - When using `@foo/bar` imports use the shortest path possible (e.g., `@foo/bar` instead of `@foo/bar/baz`)
 
-## Variable Types
+## Returns Types
+Return types MUST NEVER be defined inline.
 
+```typescript
+// ✅ Good - Returns known type
+function getResults(): Promise<OperationResults>
+
+// ❌ Bad - Defines type inline
+function getResults(): Promise<{ success: boolean }>
+```
+
+## Parameter Types
+Function argument types MUST NEVER be defined inline.
+```typescript
+// ✅ Good - Uses known type
+function load(record: ID)
+
+// ❌ Bad - Defines type inline
+function load(record: { id: string })
+```
+
+## Variable Types
 - **camelCase**: Variables, functions, methods, properties
 - **PascalCase**: Classes, interfaces, types, enums
 - **SCREAMING_SNAKE_CASE**: Constants
 - **kebab-case**: CSS classes
 
 ## Variable Type Annotations
-
 - **Explicit Types Required**: Every declared variable that is not a result of a function call must have an explicit type annotation
 - **Function Call Results**: Variables assigned from function calls can rely on type inference
 - **Primitive Literals Exception**: String, number, and boolean literals can rely on type inference
@@ -211,6 +230,38 @@ const finalBinaryPathTar = determinePath();
 const finalBinaryPath = determinePath();
 ```
 
+## Stongest Type Possible
+
+**Clear and unambiguous**: The type definitions must be clear and unambigous without deeply nested extends or Use the strongest type possible to make the code clear and unambiguous. 
+**Use type guards**: Instead of using `typeof`, `instanceof` or `if` checks, use type guard functions to validate types.
+**Use Strongest Type Possible**: Instead of a single type with multiple possible values you must use generics to define the possible values.
+
+```typescript
+// ✅ Good
+type Success = { success: true; data: string };
+type Failure = { success: false; error: string };
+type ReturnType<TMetadata> = (Success & {
+  metadata: TMetadata;
+}) | Failure; 
+
+// ✅ Good
+const finalContext: BaseContext & AdditionalContext = {
+
+// ❌ Bad
+type ReturnType = {
+  success: boolean;
+  error?: string;
+  metadata: {
+    method: 'curl-tar';
+    tarballUrl: string;
+  };
+};
+
+// ❌ Bad
+const finalContext: BaseContext & { binaryPaths?: string[]; version?: string } = {
+```
+
+
 ## Module Import Rules
 
 - **Index File Requirement**: All modules and submodules must re-export their public API through `index.ts` files
@@ -221,13 +272,11 @@ const finalBinaryPath = determinePath();
 ```typescript
 // ✅ Good - Import from module path
 import { UserService, createUser } from '@modules/user';
-import { Logger } from '@dotfiles/logger';
+import { Logger } from '@modules/logger';
 
 // ❌ Bad - Deep imports from subpaths
 import { UserService } from '@modules/user/UserService';
 import { createUser } from '@modules/user/utils/createUser';
-import { Logger } from '@dotfiles/logger/Logger';
-import { validateEmail } from '@modules/user/validation/emailValidator';
 ```
 
 **Package Structure Example**:
@@ -276,7 +325,6 @@ export type { User, UserConfig } from './types';
 ```
 
 ## Project Analysis and Tooling
-
 - Use TypeScript tool calling to access LSP-based project analysis for the current codebase
 - Leverage TypeScript tooling to understand project structure, types, and dependencies before making changes
 
