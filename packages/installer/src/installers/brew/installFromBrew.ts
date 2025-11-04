@@ -2,9 +2,10 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
-import type { BrewInstallMetadata, BrewInstallResult, InstallOptions } from '../types';
-import { getBinaryPaths, withInstallErrorHandling } from '../utils';
-import { messages } from '../utils/log-messages';
+import type { InstallOptions } from '../../types';
+import { getBinaryPaths, withInstallErrorHandling } from '../../utils';
+import { messages } from './log-messages';
+import type { BrewInstallMetadata, BrewInstallResult } from './types';
 
 type ShellExecutor = typeof $;
 
@@ -41,7 +42,7 @@ export async function installFromBrew(
   shellExecutor: ShellExecutor = $
 ): Promise<BrewInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromBrew' });
-  logger.debug(messages.brew.installing(toolName), toolConfig.installParams);
+  logger.debug(messages.installing(toolName), toolConfig.installParams);
 
   if (!toolConfig.installParams) {
     return {
@@ -85,7 +86,7 @@ export async function installFromBrew(
 
 async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string | null> {
   try {
-    logger.debug(messages.brew.fetchingVersion(formula));
+    logger.debug(messages.fetchingVersion(formula));
     const result = await $`brew info --json ${formula}`.quiet().nothrow();
     const output: string = result.stdout.toString();
     const info: BrewInfo[] = JSON.parse(output);
@@ -93,14 +94,14 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
     if (info.length > 0 && info[0]?.versions?.stable) {
       const rawVersion: string = info[0].versions.stable;
       const version: string = normalizeVersion(rawVersion);
-      logger.debug(messages.brew.versionFetched(formula, version));
+      logger.debug(messages.versionFetched(formula, version));
       return version;
     }
 
-    logger.debug(messages.brew.versionNotFound(formula));
+    logger.debug(messages.versionNotFound(formula));
     return null;
   } catch (error) {
-    logger.debug(messages.brew.versionFetchFailed(formula), error);
+    logger.debug(messages.versionFetchFailed(formula), error);
     return null;
   }
 }
@@ -127,7 +128,7 @@ async function executeBrewInstall(
     const taps = Array.isArray(tap) ? tap : [tap];
     for (const t of taps) {
       const tapCommand = `brew tap ${t}`;
-      logger.debug(messages.brew.executingCommand(tapCommand));
+      logger.debug(messages.executingCommand(tapCommand));
       await $`brew tap ${t}`.quiet();
     }
   }
@@ -143,7 +144,7 @@ async function executeBrewInstall(
   installArgs.push(formula);
 
   const installCommand = `brew ${installArgs.join(' ')}`;
-  logger.debug(messages.brew.executingCommand(installCommand));
+  logger.debug(messages.executingCommand(installCommand));
 
   // Execute the install command
   await $`brew ${installArgs}`.quiet();

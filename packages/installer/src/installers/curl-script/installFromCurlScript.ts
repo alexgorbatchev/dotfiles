@@ -3,7 +3,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CurlScriptToolConfig } from '@dotfiles/schemas';
-import type { CurlScriptInstallMetadata, CurlScriptInstallResult, InstallOptions } from '../types';
+import type { InstallOptions } from '../../types';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -11,9 +11,11 @@ import {
   getBinaryNames,
   getBinaryPaths,
   withInstallErrorHandling,
-} from '../utils';
-import type { HookExecutor } from '../utils/HookExecutor';
-import { messages } from '../utils/log-messages';
+} from '../../utils';
+import type { HookExecutor } from '../../utils/HookExecutor';
+import { messages as utilMessages } from '../../utils/log-messages';
+import { messages } from './log-messages';
+import type { CurlScriptInstallMetadata, CurlScriptInstallResult } from './types';
 
 /**
  * Install a tool using a curl script
@@ -30,7 +32,7 @@ export async function installFromCurlScript(
 ): Promise<CurlScriptInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlScript' });
-  logger.debug(messages.curlScript.installing(toolName));
+  logger.debug(messages.installing(toolName));
 
   if (!toolConfig.installParams || !('url' in toolConfig.installParams) || !('shell' in toolConfig.installParams)) {
     return {
@@ -45,7 +47,7 @@ export async function installFromCurlScript(
 
   const operation = async (): Promise<CurlScriptInstallResult> => {
     // Download the script
-    logger.debug(messages.curlScript.downloadingScript(url));
+    logger.debug(messages.downloadingScript(url));
     const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
 
     await downloadWithProgress(url, scriptPath, `${toolName}-install.sh`, downloader, options);
@@ -71,7 +73,7 @@ export async function installFromCurlScript(
     }
 
     // Execute the script
-    logger.debug(messages.curlScript.executingScript(shell));
+    logger.debug(messages.executingScript(shell));
 
     // [TODO] In a real implementation, we would execute the script here
     // For now, we'll just simulate success
@@ -82,7 +84,7 @@ export async function installFromCurlScript(
       const sourcePath = path.join('/usr/local/bin', binaryName);
       const finalBinaryPath = path.join(context.installDir, binaryName);
 
-      logger.debug(messages.binaryMovement.moving(sourcePath, finalBinaryPath));
+      logger.debug(utilMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
     }
 
     // Return paths to all binaries

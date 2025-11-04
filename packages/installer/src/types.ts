@@ -1,4 +1,21 @@
 import type { ToolConfig } from '@dotfiles/schemas';
+import type {
+  BrewInstallMetadata,
+  BrewInstallResult,
+  BrewInstallSuccess,
+  CargoInstallMetadata,
+  CargoInstallResult,
+  CargoInstallSuccess,
+  CurlScriptInstallMetadata,
+  CurlScriptInstallResult,
+  CurlTarInstallMetadata,
+  CurlTarInstallResult,
+  GitHubReleaseInstallMetadata,
+  GitHubReleaseInstallResult,
+  GitHubReleaseInstallSuccess,
+  ManualInstallMetadata,
+  ManualInstallResult,
+} from './installers';
 
 /**
  * Standard success result for operations.
@@ -14,64 +31,6 @@ export interface OperationSuccess {
 export interface OperationFailure {
   success: false;
   error: string;
-}
-
-/**
- * Metadata for Homebrew installations
- */
-export interface BrewInstallMetadata {
-  method: 'brew';
-  formula: string;
-  isCask: boolean;
-  tap?: string | string[];
-}
-
-/**
- * Metadata for GitHub Release installations
- */
-export interface GitHubReleaseInstallMetadata {
-  method: 'github-release';
-  releaseUrl: string;
-  publishedAt: string;
-  releaseName: string;
-  downloadUrl: string;
-  assetName: string;
-}
-
-/**
- * Metadata for Manual installations
- */
-export interface ManualInstallMetadata {
-  method: 'manual';
-  manualInstall: boolean;
-  originalPath: string | null;
-}
-
-/**
- * Metadata for Curl Script installations
- */
-export interface CurlScriptInstallMetadata {
-  method: 'curl-script';
-  scriptUrl: string;
-  shell: string;
-}
-
-/**
- * Metadata for Curl Tar installations
- */
-export interface CurlTarInstallMetadata {
-  method: 'curl-tar';
-  tarballUrl: string;
-}
-
-/**
- * Metadata for Cargo installations
- */
-export interface CargoInstallMetadata {
-  method: 'cargo';
-  crateName: string;
-  binarySource: string;
-  downloadUrl?: string;
 }
 
 /**
@@ -109,89 +68,6 @@ export interface InstallOptions {
    */
   shimMode?: boolean;
 }
-
-/**
- * Success result for Homebrew installations
- */
-export interface BrewInstallSuccess extends OperationSuccess {
-  binaryPaths: string[];
-  version?: string;
-  metadata: BrewInstallMetadata;
-}
-
-/**
- * Result type for Brew installations
- */
-export type BrewInstallResult = BrewInstallSuccess | OperationFailure;
-
-/**
- * Success result for GitHub Release installations
- */
-export interface GitHubReleaseInstallSuccess extends OperationSuccess {
-  binaryPaths: string[];
-  version: string;
-  originalTag: string;
-  metadata: GitHubReleaseInstallMetadata;
-}
-
-/**
- * Result type for GitHub Release installations
- */
-export type GitHubReleaseInstallResult = GitHubReleaseInstallSuccess | OperationFailure;
-
-/**
- * Success result for Manual installations
- */
-export interface ManualInstallSuccess extends OperationSuccess {
-  binaryPaths: string[];
-  metadata: ManualInstallMetadata;
-}
-
-/**
- * Result type for Manual installations
- */
-export type ManualInstallResult = ManualInstallSuccess | OperationFailure;
-
-/**
- * Success result for Curl Script installations
- */
-export interface CurlScriptInstallSuccess extends OperationSuccess {
-  binaryPaths: string[];
-  metadata: CurlScriptInstallMetadata;
-}
-
-/**
- * Result type for Curl Script installations
- */
-export type CurlScriptInstallResult = CurlScriptInstallSuccess | OperationFailure;
-
-/**
- * Success result for Curl Tar installations
- */
-export interface CurlTarInstallSuccess extends OperationSuccess {
-  binaryPaths: string[];
-  metadata: CurlTarInstallMetadata;
-}
-
-/**
- * Result type for Curl Tar installations
- */
-export type CurlTarInstallResult = CurlTarInstallSuccess | OperationFailure;
-
-/**
- * Success result for Cargo installations
- */
-export interface CargoInstallSuccess extends OperationSuccess {
-  binaryPaths: string[];
-  version: string;
-  originalTag?: string;
-  metadata: CargoInstallMetadata;
-}
-
-/**
- * Result type for Cargo installations
- */
-export type CargoInstallResult = CargoInstallSuccess | OperationFailure;
 
 /**
  * Union of all possible installation results

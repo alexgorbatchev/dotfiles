@@ -6,17 +6,12 @@ import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
-import type {
-  CargoInstallMetadata,
-  CargoInstallResult,
-  InstallOptions,
-  OperationFailure,
-  OperationSuccess,
-} from '../types';
-import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
-import { setupBinariesFromArchive } from '../utils/BinarySetupService';
-import type { HookExecutor } from '../utils/HookExecutor';
-import { messages } from '../utils/log-messages';
+import type { InstallOptions, OperationFailure, OperationSuccess } from '../../types';
+import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../../utils';
+import { setupBinariesFromArchive } from '../../utils/BinarySetupService';
+import type { HookExecutor } from '../../utils/HookExecutor';
+import { messages } from './log-messages';
+import type { CargoInstallMetadata, CargoInstallResult } from './types';
 
 /**
  * Install a tool using Cargo pre-compiled binaries
@@ -35,7 +30,7 @@ export async function installFromCargo(
   githubHost: string
 ): Promise<CargoInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
-  logger.debug(messages.cargo.installing(toolName), toolConfig['installParams']);
+  logger.debug(messages.installing(toolName), toolConfig['installParams']);
 
   if (!toolConfig['installParams']) {
     return {
@@ -52,11 +47,11 @@ export async function installFromCargo(
 
     // 1. Determine version
     const versionResult = await determineVersion(crateName, params, cargoClient, logger);
-    logger.debug(messages.cargo.foundVersion(crateName, versionResult.version));
+    logger.debug(messages.foundVersion(crateName, versionResult.version));
 
     // 2. Determine download URL based on binary source
     const downloadUrl = await buildDownloadUrl(crateName, versionResult.version, params, context, githubHost);
-    logger.debug(messages.cargo.downloadingAsset(`${crateName}-${versionResult.version}`, downloadUrl));
+    logger.debug(messages.downloadingAsset(`${crateName}-${versionResult.version}`, downloadUrl));
 
     // 3. Download and extract
     const filename = `${crateName}-${versionResult.version}.tar.gz`;
@@ -81,7 +76,7 @@ export async function installFromCargo(
     const extractResult = await archiveExtractor.extract(downloadPath, {
       targetDir: context.installDir,
     });
-    logger.debug(messages.cargo.archiveExtracted(), extractResult);
+    logger.debug(messages.archiveExtracted(), extractResult);
 
     // 6. Setup binaries
     await setupBinariesFromArchive(fs, toolName, toolConfig, context, context.installDir, logger);
@@ -101,7 +96,7 @@ export async function installFromCargo(
     // 8. Clean up downloaded archive
     if (await fs.exists(downloadPath)) {
       await fs.rm(downloadPath);
-      logger.debug(messages.cargo.cleaningArchive(downloadPath));
+      logger.debug(messages.cleaningArchive(downloadPath));
     }
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
@@ -190,7 +185,7 @@ async function determineVersion(
         params.cargoTomlUrl ||
         cargoClient.buildCargoTomlUrl(params.githubRepo || `${crateName}-community/${crateName}`);
 
-      logger.debug(messages.cargo.parsingMetadata(cargoTomlUrl));
+      logger.debug(messages.parsingMetadata(cargoTomlUrl));
 
       const packageInfo = await cargoClient.getCargoTomlPackage(cargoTomlUrl);
       if (!packageInfo) {
@@ -199,7 +194,7 @@ async function determineVersion(
       return { version: normalizeVersion(packageInfo.version) };
     }
     case 'crates-io': {
-      logger.debug(messages.cargo.queryingCratesIo(crateName));
+      logger.debug(messages.queryingCratesIo(crateName));
 
       const version = await cargoClient.getLatestVersion(crateName);
       if (!version) {
@@ -226,7 +221,7 @@ async function getVersionFromGitHubReleases(
   logger: TsLogger
 ): Promise<{ version: string; originalTag?: string }> {
   // This would integrate with the existing GitHub API client
-  logger.debug(messages.cargo.queryingGitHubReleases(githubRepo));
+  logger.debug(messages.queryingGitHubReleases(githubRepo));
   throw new Error('GitHub releases version source not yet implemented');
   // When implemented, should return: { version: normalizeVersion(tag), originalTag: tag }
 }

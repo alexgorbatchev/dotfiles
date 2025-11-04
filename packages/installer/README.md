@@ -14,43 +14,89 @@ packages/installer/
 │   │   ├── cargo/                  # Cargo/crates.io client
 │   │   │   ├── CargoClient.ts
 │   │   │   ├── CargoClientError.ts
-│   │   │   └── ICargoClient.ts
+│   │   │   ├── ICargoClient.ts
+│   │   │   └── index.ts
 │   │   └── github/                 # GitHub API client
 │   │       ├── GitHubApiClient.ts
 │   │       ├── GitHubApiClientError.ts
-│   │       └── IGitHubApiClient.ts
-│   ├── methods/                    # Installation methods
-│   │   ├── installFromBrew.ts
-│   │   ├── installFromCargo.ts
-│   │   ├── installFromCurlScript.ts
-│   │   ├── installFromCurlTar.ts
-│   │   ├── installFromGitHubRelease.ts
-│   │   └── installManually.ts
+│   │       ├── IGitHubApiClient.ts
+│   │       └── index.ts
+│   ├── installers/                 # Installation methods (organized by method)
+│   │   ├── brew/
+│   │   │   ├── installFromBrew.ts
+│   │   │   ├── log-messages.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   ├── cargo/
+│   │   │   ├── installFromCargo.ts
+│   │   │   ├── log-messages.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   ├── curl-script/
+│   │   │   ├── installFromCurlScript.ts
+│   │   │   ├── log-messages.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   ├── curl-tar/
+│   │   │   ├── installFromCurlTar.ts
+│   │   │   ├── log-messages.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   ├── github-release/
+│   │   │   ├── installFromGitHubRelease.ts
+│   │   │   ├── log-messages.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   ├── manual/
+│   │   │   ├── installManually.ts
+│   │   │   ├── log-messages.ts
+│   │   │   ├── types.ts
+│   │   │   └── index.ts
+│   │   └── index.ts
+│   ├── steps/                      # Installation pipeline steps
 │   ├── utils/                      # Shared utilities
 │   │   ├── BinarySetupService.ts
 │   │   ├── HookExecutor.ts
-│   │   ├── InstallationPipeline.ts
-│   │   ├── commonUtils.ts
-│   │   ├── hookExecutors.ts
+│   │   ├── createBinarySymlinks.ts
+│   │   ├── createToolFileSystem.ts
+│   │   ├── downloadWithProgress.ts
+│   │   ├── executeHooks.ts
+│   │   ├── getBinaryNames.ts
+│   │   ├── getBinaryPaths.ts
 │   │   ├── log-messages.ts
-│   │   └── stepFactories.ts
+│   │   ├── normalizeBinaries.ts
+│   │   ├── stepFactories.ts
+│   │   ├── withErrorHandling.ts
+│   │   └── index.ts
 │   └── __tests__/                  # Comprehensive test suite
 └── README.md
 ```
 
 ## Architecture Overview
 
-The installer system is built around three core architectural patterns:
+The installer is built around a clean separation of concerns:
 
-### 1. Method-Based Installation
-Traditional installation methods for different sources (GitHub releases, Homebrew, curl scripts, Cargo, etc.)
+### 1. Installer Orchestrator
+The main `Installer` class coordinates the installation process by:
+- Resolving platform-specific configurations
+- Managing installation directories and context
+- Delegating to appropriate installation methods
+- Tracking installations in the registry
+- Executing lifecycle hooks
 
-### 2. Client-Based API Access
-Specialized API clients for external services:
+### 2. Installation Methods
+Standalone functions organized by installation method (brew, cargo, curl-script, curl-tar, github-release, manual). Each method:
+- Is a pure function that receives all dependencies as parameters
+- Has its own types and log messages co-located in its directory
+- Returns a discriminated union result type
+- Handles method-specific concerns in isolation
+
+### 3. API Clients
+Specialized clients for external services:
 - **GitHubApiClient**: Interfaces with GitHub API for releases and rate limits
 - **CargoClient**: Interfaces with crates.io and cargo-quickinstall
 
-### 3. Shared Utilities
+### 4. Shared Utilities
 Common functionality to eliminate code duplication:
 - Download management with progress tracking
 - Hook execution framework
@@ -193,6 +239,7 @@ Installs tools using the Homebrew package manager.
 - Custom tap support
 - Force reinstall option
 - **Automatic version tracking** via `brew info --json`
+- **Zod schema validation** for brew info JSON responses
 
 **Example:**
 ```typescript
@@ -209,6 +256,9 @@ const toolConfig: BrewToolConfig = {
 
 **Version Information:**
 The installer automatically queries Homebrew for the installed version and includes it in the result. This enables the tool to be registered in the installation registry for upgrade tracking. If version fetching fails, the installation still succeeds but without version information.
+
+**Data Validation:**
+The installer validates the JSON response from `brew info --json` using a Zod schema to ensure type safety and catch any unexpected API response format changes at runtime.
 
 ### 3. Curl Script
 Downloads and executes installation scripts.
@@ -781,17 +831,17 @@ export class ToolConfigBuilderImpl implements ToolConfigBuilderInterface {
 ### 3. Create Installation Function
 
 ```typescript
-// src/modules/installer/installFromMyCustom.ts
+// src/installers/my-custom/installFromMyCustom.ts
 import path from 'node:path';
-import type { IDownloader } from '@modules/downloader/IDownloader';
+import type { IDownloader } from '@dotfiles/downloader';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { installerLogMessages } from './log-messages';
-import type { BaseInstallContext, MyCustomInstallParams, MyCustomToolConfig } from '@types';
-import type { HookExecutor } from './HookExecutor';
-import type { InstallOptions, InstallResult } from './IInstaller';
-import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from './utils';
+import type { BaseInstallContext, MyCustomToolConfig } from '@dotfiles/schemas';
+import type { HookExecutor } from '../../utils';
+import type { InstallOptions, InstallResult } from '../../types';
+import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../../utils';
+import { messages } from './log-messages';
 
 export async function installFromMyCustom(
   toolName: string,
@@ -918,8 +968,8 @@ async function executeAfterInstallHook(
 ### 4. Add to Main Installer Class
 
 ```typescript
-// In src/modules/installer/Installer.ts
-import { installFromMyCustom } from './installFromMyCustom';
+// In src/Installer.ts
+import { installFromMyCustom } from './installers';
 
 export class Installer implements IInstaller {
   // Add to the switch statement in the install method
@@ -972,10 +1022,10 @@ export const installerDebugTemplates = {
 ### 6. Create Comprehensive Tests
 
 ```typescript
-// src/modules/installer/__tests__/Installer--installFromMyCustom.test.ts
+// src/__tests__/Installer--installFromMyCustom.test.ts
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import type { MyCustomToolConfig } from '@types';
-import { FetchMockHelper } from '@testing-helpers';
+import type { MyCustomToolConfig } from '@dotfiles/schemas';
+import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { createInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - installFromMyCustom', () => {
@@ -1123,9 +1173,8 @@ Instead of complex manual hooks and shell commands.
 For more complex installation methods, consider using the step-based pipeline:
 
 ```typescript
-// src/modules/installer/installFromMyCustomPipeline.ts
-import { InstallationPipeline } from './InstallationPipeline';
-import { createDownloadStep, createBinarySetupStep } from './utils/stepFactories';
+// src/installers/my-custom/installFromMyCustomPipeline.ts
+import { createDownloadStep, createBinarySetupStep } from '../../utils';
 
 export async function installFromMyCustomPipeline(
   toolName: string,

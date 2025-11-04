@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import type { AssetSelectionContext, AssetSelector } from '@dotfiles/schemas';
-import { messages } from '../utils/log-messages';
+import { messages } from '../installers/github-release/log-messages';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -121,7 +121,7 @@ describe('Installer - Asset Selector Context API', () => {
 
       const modernAssetSelector: AssetSelector = (context: AssetSelectionContext) => {
         // Test that logger is available and functional
-        context.logger.debug(messages.gitHubRelease.assetSelectorCustom());
+        context.logger.debug(messages.assetSelectorCustom());
         return context.assets.find((asset) => asset.name.includes('linux'));
       };
 

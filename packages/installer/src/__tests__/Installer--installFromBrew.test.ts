@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import { createMock$, type MockShell } from '@dotfiles/testing-helpers';
-import { installFromBrew } from '../installers/installFromBrew';
+import { installFromBrew } from '../installers/brew';
 import {
   createBrewToolConfig,
   createInstallerTestSetup,

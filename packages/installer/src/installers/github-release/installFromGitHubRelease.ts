@@ -20,16 +20,18 @@ import type {
 } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
-import type { GitHubReleaseInstallMetadata, GitHubReleaseInstallResult, InstallOptions } from '../types';
+import type { InstallOptions } from '../../types';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
   executeAfterExtractHook as executeAfterExtractHookUtil,
   getBinaryPaths,
-} from '../utils';
-import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from '../utils/BinarySetupService';
-import type { HookExecutor } from '../utils/HookExecutor';
-import { messages } from '../utils/log-messages';
+} from '../../utils';
+import { setupBinariesFromArchive, setupBinariesFromDirectDownload } from '../../utils/BinarySetupService';
+import type { HookExecutor } from '../../utils/HookExecutor';
+import { messages as utilMessages } from '../../utils/log-messages';
+import { messages } from './log-messages';
+import type { GitHubReleaseInstallMetadata, GitHubReleaseInstallResult } from './types';
 
 /**
  * Install a tool from GitHub releases
@@ -48,7 +50,7 @@ export async function installFromGitHubRelease(
   parentLogger: TsLogger
 ): Promise<GitHubReleaseInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
-  logger.debug(messages.lifecycle.startingInstallation(toolName));
+  logger.debug(utilMessages.lifecycle.startingInstallation(toolName));
 
   if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
     return {
@@ -153,10 +155,10 @@ async function fetchGitHubRelease(
 
   let release: GitHubRelease | null;
   if (version === 'latest') {
-    logger.debug(messages.gitHubRelease.fetchLatest(repo));
+    logger.debug(messages.fetchLatest(repo));
     release = await githubApiClient.getLatestRelease(owner, repoName);
   } else {
-    logger.debug(messages.gitHubRelease.fetchByTag(version, repo));
+    logger.debug(messages.fetchByTag(version, repo));
     release = await githubApiClient.getReleaseByTag(owner, repoName, version);
   }
 
@@ -179,7 +181,7 @@ async function selectAsset(
   let asset: GitHubReleaseAsset | undefined;
 
   if (params.assetSelector) {
-    logger.debug(messages.gitHubRelease.assetSelectorCustom());
+    logger.debug(messages.assetSelectorCustom());
     const selectionContext: AssetSelectionContext = {
       ...context,
       assets: release.assets,
@@ -188,11 +190,11 @@ async function selectAsset(
     };
     asset = params.assetSelector(selectionContext);
   } else if (params.assetPattern) {
-    logger.debug(messages.gitHubRelease.assetPatternMatch(params.assetPattern));
+    logger.debug(messages.assetPatternMatch(params.assetPattern));
     const pattern = params.assetPattern;
     asset = release.assets.find((a) => minimatch(a.name, pattern));
   } else {
-    logger.debug(messages.gitHubRelease.assetPlatformMatch(context.systemInfo.platform, context.systemInfo.arch));
+    logger.debug(messages.assetPlatformMatch(context.systemInfo.platform, context.systemInfo.arch));
     asset = findPlatformAsset(release.assets, context.systemInfo);
   }
 
@@ -251,7 +253,7 @@ function constructDownloadUrl(
 ): OperationResult<string> {
   const customHost = appConfig.github.host;
   const host = customHost ?? '(public GitHub)';
-  logger.debug(messages.gitHubRelease.determiningDownloadUrl(rawBrowserDownloadUrl, customHost));
+  logger.debug(messages.determiningDownloadUrl(rawBrowserDownloadUrl, customHost));
 
   try {
     const isAbsolute = isAbsoluteUrl(rawBrowserDownloadUrl);
@@ -263,12 +265,12 @@ function constructDownloadUrl(
       return downloadUrl;
     }
 
-    logger.debug(messages.gitHubRelease.finalDownloadUrl(rawBrowserDownloadUrl, host, downloadUrl.data));
+    logger.debug(messages.finalDownloadUrl(rawBrowserDownloadUrl, host, downloadUrl.data));
 
     return downloadUrl;
   } catch (error) {
-    logger.error(messages.gitHubRelease.invalidUrl(rawBrowserDownloadUrl));
-    logger.debug(messages.gitHubRelease.downloadUrlError(rawBrowserDownloadUrl, host), error);
+    logger.error(messages.invalidUrl(rawBrowserDownloadUrl));
+    logger.debug(messages.downloadUrlError(rawBrowserDownloadUrl, host), error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -286,13 +288,13 @@ function isAbsoluteUrl(url: string): boolean {
 }
 
 function handleAbsoluteUrl(url: string, logger: TsLogger): OperationResult<string> {
-  logger.debug(messages.gitHubRelease.usingAbsoluteUrl(url));
+  logger.debug(messages.usingAbsoluteUrl(url));
   return { success: true, data: url };
 }
 
 function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logger: TsLogger): OperationResult<string> {
   if (!rawUrl.startsWith('/')) {
-    logger.debug(messages.gitHubRelease.invalidRelativeUrl(rawUrl));
+    logger.debug(messages.invalidRelativeUrl(rawUrl));
     return {
       success: false,
       error: `Invalid asset download URL format: ${rawUrl}`,
@@ -305,7 +307,7 @@ function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logge
   }
   const finalUrl = new URL(rawUrl, base);
   const downloadUrl = finalUrl.toString();
-  logger.debug(messages.gitHubRelease.resolvedRelativeUrl(base, rawUrl, downloadUrl));
+  logger.debug(messages.resolvedRelativeUrl(base, rawUrl, downloadUrl));
   return { success: true, data: downloadUrl };
 }
 
@@ -317,7 +319,7 @@ async function downloadAsset(
   options: InstallOptions | undefined,
   logger: TsLogger
 ): Promise<OperationResult<{ downloadPath: string }>> {
-  logger.debug(messages.gitHubRelease.downloadingAsset(downloadUrl));
+  logger.debug(messages.downloadingAsset(downloadUrl));
   const downloadPath = path.join(context.installDir, asset.name);
 
   try {
@@ -396,12 +398,12 @@ async function processArchiveInstallation(
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<OperationResult<void>> {
-  logger.debug(messages.gitHubRelease.extractingArchive(asset.name));
+  logger.debug(messages.extractingArchive(asset.name));
 
   const extractResult: ExtractResult = await archiveExtractor.extract(downloadPath, {
     targetDir: context.installDir,
   });
-  logger.debug(messages.gitHubRelease.archiveExtracted(), extractResult);
+  logger.debug(messages.archiveExtracted(), extractResult);
 
   const postExtractContext = {
     ...postDownloadContext,
@@ -417,7 +419,7 @@ async function processArchiveInstallation(
   await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
 
   if (await toolFs.exists(downloadPath)) {
-    logger.debug(messages.gitHubRelease.cleaningArchive(downloadPath));
+    logger.debug(messages.cleaningArchive(downloadPath));
     await toolFs.rm(downloadPath);
   }
 

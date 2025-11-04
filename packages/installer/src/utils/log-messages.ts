@@ -69,33 +69,7 @@ export const messages = {
     unsupportedOperation: (operation: string, details: string) =>
       createSafeLogMessage(`${operation} not yet supported (${details})`),
   } satisfies SafeLogMessageMap,
-  gitHubRelease: {
-    fetchLatest: (repo: string) => createSafeLogMessage(`Getting latest release for ${repo}`),
-    fetchByTag: (version: string, repo: string) => createSafeLogMessage(`Fetching release ${version} for ${repo}`),
-    assetSelectorCustom: () => createSafeLogMessage('Using custom asset selector'),
-    assetPatternMatch: (pattern: string) => createSafeLogMessage(`Finding asset matching pattern: ${pattern}`),
-    assetPlatformMatch: (platform: string, arch: string) =>
-      createSafeLogMessage(`Selecting asset for platform ${platform} and architecture ${arch}`),
-    determiningDownloadUrl: (rawUrl: string, customHost: string | undefined) =>
-      createSafeLogMessage(
-        `Determining download URL. rawBrowserDownloadUrl="${rawUrl}", customHost="${customHost ?? '(public GitHub)'}"`
-      ),
-    usingAbsoluteUrl: (url: string) => createSafeLogMessage(`Using absolute browser_download_url directly: "${url}"`),
-    invalidRelativeUrl: (rawUrl: string) => createSafeLogMessage(`Invalid asset download URL format: ${rawUrl}`),
-    resolvedRelativeUrl: (base: string, rawUrl: string, resolved: string) =>
-      createSafeLogMessage(`Resolved relative URL. Base: "${base}", Relative Path: "${rawUrl}", Result: "${resolved}"`),
-    finalDownloadUrl: (rawUrl: string, host: string, resolved: string) =>
-      createSafeLogMessage(
-        `Final download URL determined. Raw: "${rawUrl}", Configured Host: "${host}", Result: "${resolved}"`
-      ),
-    downloadUrlError: (rawUrl: string, host: string) =>
-      createSafeLogMessage(`Download URL construction failed: Raw: "${rawUrl}", Configured Host: "${host}"`),
-    downloadingAsset: (downloadUrl: string) => createSafeLogMessage(`Downloading asset: ${downloadUrl}`),
-    extractingArchive: (assetName: string) => createSafeLogMessage(`Extracting archive: ${assetName}`),
-    archiveExtracted: () => createSafeLogMessage('Archive extracted: %o'),
-    cleaningArchive: (downloadPath: string) => createSafeLogMessage(`Cleaning up downloaded archive: ${downloadPath}`),
-    invalidUrl: (url: string) => createSafeLogMessage(`Invalid URL: ${url}`),
-  } satisfies SafeLogMessageMap,
+
   archive: {
     extracting: (pathOrName: string) => createSafeLogMessage(`Extracting archive: ${pathOrName}`),
     extracted: () => createSafeLogMessage('Archive extracted: %o'),
@@ -105,45 +79,7 @@ export const messages = {
     moving: (sourcePath: string, targetPath: string) =>
       createSafeLogMessage(`Moving binary from ${sourcePath} to ${targetPath}`),
   } satisfies SafeLogMessageMap,
-  curlScript: {
-    installing: (toolName: string) => createSafeLogMessage(`installFromCurlScript: toolName=${toolName}`),
-    downloadingScript: (url: string) => createSafeLogMessage(`installFromCurlScript: Downloading script from ${url}`),
-    executingScript: (shell: string) => createSafeLogMessage(`installFromCurlScript: Executing script with ${shell}`),
-  } satisfies SafeLogMessageMap,
-  curlTar: {
-    installing: (toolName: string) => createSafeLogMessage(`installFromCurlTar: toolName=${toolName}`),
-    downloadingTarball: (url: string) => createSafeLogMessage(`installFromCurlTar: Downloading tarball from ${url}`),
-    extractingTarball: () => createSafeLogMessage('installFromCurlTar: Extracting tarball'),
-    tarballExtracted: () => createSafeLogMessage('installFromCurlTar: Tarball extracted: %o'),
-    cleaningArchive: (tarballPath: string) =>
-      createSafeLogMessage(`installFromCurlTar: Cleaning up downloaded archive: ${tarballPath}`),
-  } satisfies SafeLogMessageMap,
-  cargo: {
-    installing: (toolName: string) => createSafeLogMessage(`Installing from cargo: toolName=${toolName}`),
-    foundVersion: (crateName: string, version: string) =>
-      createSafeLogMessage(`Found crate ${crateName} version ${version}`),
-    downloadingAsset: (assetName: string, url: string) =>
-      createSafeLogMessage(`Downloading asset ${assetName} from ${url}`),
-    archiveExtracted: () => createSafeLogMessage('Archive extracted: %o'),
-    cleaningArchive: (archivePath: string) => createSafeLogMessage(`Cleaning up downloaded archive: ${archivePath}`),
-    parsingMetadata: (cargoTomlUrl: string) => createSafeLogMessage(`Parsing crate metadata from: ${cargoTomlUrl}`),
-    queryingCratesIo: (crateName: string) => createSafeLogMessage(`Querying crates.io API for crate: ${crateName}`),
-    queryingGitHubReleases: (repo: string) => createSafeLogMessage(`Querying GitHub releases for ${repo}`),
-  } satisfies SafeLogMessageMap,
-  brew: {
-    installing: (toolName: string) => createSafeLogMessage(`Installing from brew: toolName=${toolName}`),
-    executingCommand: (command: string) => createSafeLogMessage(`installFromBrew: Executing command: ${command}`),
-    fetchingVersion: (formula: string) => createSafeLogMessage(`Fetching version info for formula: ${formula}`),
-    versionFetched: (formula: string, version: string) =>
-      createSafeLogMessage(`Fetched version ${version} for formula ${formula}`),
-    versionNotFound: (formula: string) => createSafeLogMessage(`No stable version found for formula ${formula}`),
-    versionFetchFailed: (formula: string) => createSafeLogMessage(`Failed to fetch version for formula ${formula}`),
-  } satisfies SafeLogMessageMap,
-  manual: {
-    installing: (toolName: string) => createSafeLogMessage(`installManually: toolName=${toolName}`),
-    multipleBinariesNotSupported: (binaryName: string) =>
-      createSafeLogMessage(`Manual installation with multiple binaries not fully supported for ${binaryName}`),
-  } satisfies SafeLogMessageMap,
+
   pipeline: {
     starting: (toolName: string, stepCount: number) =>
       createSafeLogMessage(`Starting installation pipeline for ${toolName} with ${stepCount} steps`),
