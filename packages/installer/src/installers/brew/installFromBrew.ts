@@ -2,12 +2,24 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
+import { z } from 'zod';
 import type { InstallOptions } from '../../types';
 import { getBinaryPaths, withInstallErrorHandling } from '../../utils';
 import { messages } from './log-messages';
 import type { BrewInstallMetadata, BrewInstallResult } from './types';
 
 type ShellExecutor = typeof $;
+
+const BrewInfoSchema = z.object({
+  name: z.string(),
+  versions: z.object({
+    stable: z.string(),
+    head: z.string().optional(),
+    bottle: z.boolean().optional(),
+  }),
+});
+
+type BrewInfo = z.infer<typeof BrewInfoSchema>;
 
 /**
  * Install a tool using Homebrew
@@ -89,9 +101,10 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
     logger.debug(messages.fetchingVersion(formula));
     const result = await $`brew info --json ${formula}`.quiet().nothrow();
     const output: string = result.stdout.toString();
-    const info: BrewInfo[] = JSON.parse(output);
+    const rawData = JSON.parse(output);
+    const info: BrewInfo[] = z.array(BrewInfoSchema).parse(rawData);
 
-    if (info.length > 0 && info[0]?.versions?.stable) {
+    if (info.length > 0 && info[0]?.versions.stable) {
       const rawVersion: string = info[0].versions.stable;
       const version: string = normalizeVersion(rawVersion);
       logger.debug(messages.versionFetched(formula, version));
@@ -104,15 +117,6 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
     logger.debug(messages.versionFetchFailed(formula), error);
     return null;
   }
-}
-
-interface BrewInfo {
-  name: string;
-  versions: {
-    stable: string;
-    head?: string;
-    bottle?: boolean;
-  };
 }
 
 async function executeBrewInstall(
