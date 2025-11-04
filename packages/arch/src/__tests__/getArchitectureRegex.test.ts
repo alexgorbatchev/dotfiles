@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { getArchitectureRegex } from '@dotfiles/arch';
-import type { SystemInfo } from '@dotfiles/schemas';
+import type { SystemInfo } from '@dotfiles/core';
 
 describe('getArchitectureRegex', () => {
   it('should combine pattern generation and regex creation for macOS ARM64', () => {

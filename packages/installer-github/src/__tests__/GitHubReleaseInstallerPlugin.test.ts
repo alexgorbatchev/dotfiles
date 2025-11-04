@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GithubReleaseToolConfig } from '@dotfiles/schemas';
-import { GitHubReleaseInstallerPlugin } from '../GitHubReleaseInstallerPlugin';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IGitHubApiClient } from '@dotfiles/installer';
+import type { HookExecutor } from '@dotfiles/installer';
+import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
+import { GitHubReleaseInstallerPlugin } from '../GitHubReleaseInstallerPlugin';
+import type { IGitHubApiClient } from '../github-client';
 
 describe('GitHubReleaseInstallerPlugin', () => {
   let plugin: GitHubReleaseInstallerPlugin;
@@ -23,7 +24,7 @@ describe('GitHubReleaseInstallerPlugin', () => {
     mockArchiveExtractor = {} as IArchiveExtractor;
     mockAppConfig = {} as YamlConfig;
     mockHookExecutor = {} as HookExecutor;
-    
+
     plugin = new GitHubReleaseInstallerPlugin(
       mockFs,
       mockDownloader,

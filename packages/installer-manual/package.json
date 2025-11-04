@@ -8,9 +8,8 @@
   "dependencies": {
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/installer": "workspace:*",
-    "@dotfiles/installer-plugin-system": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "zod": "catalog:"
   },

@@ -11,4 +11,5 @@ export const messages = {
   parsingMetadata: (cargoTomlUrl: string) => createSafeLogMessage(`Parsing crate metadata from: ${cargoTomlUrl}`),
   queryingCratesIo: (crateName: string) => createSafeLogMessage(`Querying crates.io API for crate: ${crateName}`),
   queryingGitHubReleases: (repo: string) => createSafeLogMessage(`Querying GitHub releases for ${repo}`),
+  updateCheckFailed: (toolName: string) => createSafeLogMessage(`Failed to check update for cargo tool: ${toolName}`),
 } as const satisfies SafeLogMessageMap;

@@ -1,29 +1,18 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { BaseInstallContext, InstallerPlugin, InstallOptions, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, CurlTarInstallParams, CurlTarToolConfig } from '@dotfiles/schemas';
-import { z } from 'zod';
-import type { InstallerPlugin, InstallResult, InstallOptions } from '@dotfiles/installer-plugin-system';
 import { installFromCurlTar } from './installFromCurlTar';
+import {
+  type CurlTarInstallParams,
+  type CurlTarToolConfig,
+  curlTarInstallParamsSchema,
+  curlTarToolConfigSchema,
+} from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
-
-const curlTarParamsSchema = z.object({
-  url: z.string(),
-  archivePattern: z.string().optional(),
-  env: z.record(z.string()).optional(),
-  hooks: z.any().optional(),
-}) satisfies z.ZodType<CurlTarInstallParams>;
-
-const curlTarToolConfigSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  binaries: z.array(z.string()),
-  installationMethod: z.literal('curl-tar'),
-  installParams: curlTarParamsSchema,
-}) satisfies z.ZodType<CurlTarToolConfig>;
 
 type CurlTarPluginMetadata = {
   method: 'curl-tar';
@@ -36,7 +25,7 @@ export class CurlTarInstallerPlugin
   readonly method = 'curl-tar';
   readonly displayName = 'Curl Tar Installer';
   readonly version = PLUGIN_VERSION;
-  readonly paramsSchema = curlTarParamsSchema;
+  readonly paramsSchema = curlTarInstallParamsSchema;
   readonly toolConfigSchema = curlTarToolConfigSchema;
 
   constructor(
@@ -80,5 +69,17 @@ export class CurlTarInstallerPlugin
     };
 
     return installResult;
+  }
+
+  supportsUpdateCheck(): boolean {
+    return false; // curl-tar doesn't support version checking
+  }
+
+  supportsUpdate(): boolean {
+    return false;
+  }
+
+  supportsReadme(): boolean {
+    return false;
   }
 }

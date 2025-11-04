@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
+import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import { always, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
-import { always, Platform } from '@dotfiles/schemas';
 import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
@@ -239,11 +239,6 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
               platforms: Platform.MacOS,
               config: {
                 binaries: ['aerospace'],
-                installationMethod: 'brew',
-                installParams: {
-                  formula: 'nikitabobko/tap/aerospace',
-                  cask: true,
-                },
                 symlinks: [{ source: './aerospace.toml', target: '~/.config/aerospace/aerospace.toml' }],
                 // Aerospace might have shell init for keybindings or env vars
                 shellConfigs: { zsh: { scripts: [always`# Aerospace window manager integration`] } },
@@ -322,8 +317,6 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
               platforms: Platform.Linux,
               config: {
                 binaries: ['eza'],
-                installationMethod: 'github-release',
-                installParams: { repo: 'eza-community/eza' },
                 shellConfigs: { zsh: { scripts: [always`# Linux specific eza setup`] } },
               },
             },

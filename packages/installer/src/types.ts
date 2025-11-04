@@ -1,21 +1,5 @@
-import type { ToolConfig } from '@dotfiles/schemas';
-import type {
-  BrewInstallMetadata,
-  BrewInstallResult,
-  BrewInstallSuccess,
-  CargoInstallMetadata,
-  CargoInstallResult,
-  CargoInstallSuccess,
-  CurlScriptInstallMetadata,
-  CurlScriptInstallResult,
-  CurlTarInstallMetadata,
-  CurlTarInstallResult,
-  GitHubReleaseInstallMetadata,
-  GitHubReleaseInstallResult,
-  GitHubReleaseInstallSuccess,
-  ManualInstallMetadata,
-  ManualInstallResult,
-} from './installers';
+// Import aggregated plugin types from plugin system
+import type { AggregateInstallResult, ToolConfig } from '@dotfiles/core';
 
 /**
  * Standard success result for operations.
@@ -32,17 +16,6 @@ export interface OperationFailure {
   success: false;
   error: string;
 }
-
-/**
- * Discriminated union of all installation metadata types
- */
-export type InstallMetadata =
-  | BrewInstallMetadata
-  | GitHubReleaseInstallMetadata
-  | ManualInstallMetadata
-  | CurlScriptInstallMetadata
-  | CurlTarInstallMetadata
-  | CargoInstallMetadata;
 
 /**
  * Options for the install operation
@@ -70,31 +43,9 @@ export interface InstallOptions {
 }
 
 /**
- * Union of all possible installation results
+ * Union of all possible installation results - automatically composed from registered plugins
  */
-export type InstallResult =
-  | BrewInstallResult
-  | GitHubReleaseInstallResult
-  | ManualInstallResult
-  | CurlScriptInstallResult
-  | CurlTarInstallResult
-  | CargoInstallResult;
-
-/**
- * Type guard to check if result has a defined version property
- */
-export function hasVersion(
-  result: InstallResult
-): result is (BrewInstallSuccess & { version: string }) | GitHubReleaseInstallSuccess | CargoInstallSuccess {
-  return result.success && 'version' in result && result.version !== undefined;
-}
-
-/**
- * Type guard to check if result has originalTag property
- */
-export function hasOriginalTag(result: InstallResult): result is GitHubReleaseInstallSuccess | CargoInstallSuccess {
-  return result.success && 'originalTag' in result;
-}
+export type InstallResult = AggregateInstallResult;
 
 /**
  * Interface for the tool installer

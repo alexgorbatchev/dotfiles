@@ -1,15 +1,13 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IDownloader } from '@dotfiles/downloader';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
 import type {
   BaseInstallContext,
-  CurlTarToolConfig,
   ExtractResult,
   PostDownloadInstallContext,
   PostExtractInstallContext,
-} from '@dotfiles/schemas';
+} from '@dotfiles/core';
+import type { IDownloader } from '@dotfiles/downloader';
+import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, InstallOptions } from '@dotfiles/installer';
 import {
   createToolFileSystem,
@@ -20,7 +18,9 @@ import {
   setupBinariesFromArchive,
   withInstallErrorHandling,
 } from '@dotfiles/installer';
+import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
+import type { CurlTarToolConfig } from './schemas';
 import type { CurlTarInstallMetadata, CurlTarInstallResult } from './types';
 
 /**
@@ -121,6 +121,7 @@ export async function installFromCurlTar(
 
     const metadata: CurlTarInstallMetadata = {
       method: 'curl-tar',
+      downloadUrl: url,
       tarballUrl: url,
     };
 

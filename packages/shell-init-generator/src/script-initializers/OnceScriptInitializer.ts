@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ShellType } from '@dotfiles/schemas';
+import type { ShellType } from '@dotfiles/core';
 import { dedentString } from '@dotfiles/utils';
 import type { InitializationOutput, IScriptInitializer } from './IScriptInitializer';
 

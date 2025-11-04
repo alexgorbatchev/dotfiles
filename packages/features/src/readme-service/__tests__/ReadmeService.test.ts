@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { ToolConfig } from '@dotfiles/core';
 import { Downloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
 import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ToolConfig } from '@dotfiles/schemas';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { ReadmeService } from '../ReadmeService';
 import type { ReadmeContent } from '../types';

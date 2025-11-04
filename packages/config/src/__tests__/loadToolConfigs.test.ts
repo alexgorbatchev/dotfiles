@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
+import type { AsyncConfigureTool, InstallFunction, ToolConfigContext, YamlConfig } from '@dotfiles/core';
+import { always } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { AsyncConfigureTool, ToolConfigBuilder, ToolConfigContext } from '@dotfiles/schemas';
-import { always } from '@dotfiles/schemas';
-import type { YamlConfig } from '@dotfiles/schemas/config';
 import { createMockYamlConfig, createTestDirectories } from '@dotfiles/testing-helpers';
-import { ToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
+import { createInstallFunction, ToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
 
 // Helper function to create ToolConfigContext (extracted from loadToolConfigs.ts)
 function createToolConfigContext(
@@ -79,16 +78,12 @@ describe('ToolConfigContext', () => {
 
     it('should work correctly with ToolConfigBuilder and context', async () => {
       const context = createToolConfigContext(mockYamlConfig, 'shell-tool', logger);
-      const builder = new ToolConfigBuilderImpl(logger, 'shell-tool');
 
       // Test that context can be used in a tool configuration function
-      const configureToolFn: AsyncConfigureTool = async (
-        c: ToolConfigBuilder,
-        ctx: ToolConfigContext
-      ): Promise<void> => {
-        c.bin('shell-tool')
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+        return install('manual', { binaryPath: '/usr/bin/shell-tool' })
+          .bin('shell-tool')
           .version('latest')
-          .install('manual', { binaryPath: '/usr/bin/shell-tool' })
           .zsh({
             shellInit: [
               always /* zsh */`
@@ -105,8 +100,15 @@ describe('ToolConfigContext', () => {
           });
       };
 
-      await configureToolFn(builder, context);
-      const toolConfig = builder.build();
+      const install = createInstallFunction(logger, 'shell-tool');
+      const result = await configureToolFn(install, context);
+
+      if (!result) {
+        throw new Error('Result should not be undefined');
+      }
+
+      // Result can be either a ToolConfig or a ToolConfigBuilder
+      const toolConfig = 'build' in result ? result.build() : result;
 
       expect(toolConfig).toBeDefined();
       expect(toolConfig.name).toBe('shell-tool');
@@ -118,16 +120,12 @@ describe('ToolConfigContext', () => {
 
     it('should handle tool dependencies using getToolDir', async () => {
       const context = createToolConfigContext(mockYamlConfig, 'dependent-tool', logger);
-      const builder = new ToolConfigBuilderImpl(logger, 'dependent-tool');
 
       // Test a tool that references other tools
-      const configureToolFn: AsyncConfigureTool = async (
-        c: ToolConfigBuilder,
-        ctx: ToolConfigContext
-      ): Promise<void> => {
-        c.bin('dependent-tool')
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+        return install('manual', { binaryPath: '/usr/bin/dependent-tool' })
+          .bin('dependent-tool')
           .version('latest')
-          .install('manual', { binaryPath: '/usr/bin/dependent-tool' })
           .zsh({
             shellInit: [
               always /* zsh */`
@@ -144,8 +142,11 @@ describe('ToolConfigContext', () => {
           });
       };
 
-      await configureToolFn(builder, context);
-      const toolConfig = builder.build();
+      const result = await configureToolFn(createInstallFunction(logger, 'dependent-tool'), context);
+      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
+        throw new Error('Expected ToolConfigBuilder result');
+      }
+      const toolConfig = result.build();
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
@@ -158,16 +159,12 @@ describe('ToolConfigContext', () => {
 
     it('should handle tools that generate completions to the correct directory', async () => {
       const context = createToolConfigContext(mockYamlConfig, 'completion-tool', logger);
-      const builder = new ToolConfigBuilderImpl(logger, 'completion-tool');
 
       // Test a tool that generates completions
-      const configureToolFn: AsyncConfigureTool = async (
-        c: ToolConfigBuilder,
-        ctx: ToolConfigContext
-      ): Promise<void> => {
-        c.bin('completion-tool')
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+        return install('manual', { binaryPath: '/usr/bin/completion-tool' })
+          .bin('completion-tool')
           .version('latest')
-          .install('manual', { binaryPath: '/usr/bin/completion-tool' })
           .zsh({
             shellInit: [
               always /* zsh */`
@@ -180,8 +177,11 @@ describe('ToolConfigContext', () => {
           });
       };
 
-      await configureToolFn(builder, context);
-      const toolConfig = builder.build();
+      const result = await configureToolFn(createInstallFunction(logger, 'completion-tool'), context);
+      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
+        throw new Error('Expected ToolConfigBuilder result');
+      }
+      const toolConfig = result.build();
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
@@ -222,41 +222,15 @@ describe('ToolConfigContext', () => {
     });
   });
 
-  describe('Backward compatibility', () => {
-    it('should support old-style tool configuration functions without context parameter', async () => {
-      const builder = new ToolConfigBuilderImpl(logger, 'old-style-tool');
-
-      // Test that old-style functions still work (they will just ignore the context)
-      const oldStyleConfigureToolFn = async (c: ToolConfigBuilder): Promise<void> => {
-        c.bin('old-style-tool').version('latest').install('manual', { binaryPath: '/usr/bin/old-style-tool' });
-      };
-
-      // This should not throw an error, even though the function signature doesn't include context
-      // biome-ignore lint/suspicious/noExplicitAny: Testing backward compatibility with old function signatures
-      await (oldStyleConfigureToolFn as any)(
-        builder,
-        createToolConfigContext(mockYamlConfig, 'old-style-tool', logger)
-      );
-      const toolConfig = builder.build();
-
-      expect(toolConfig.name).toBe('old-style-tool');
-      expect(toolConfig.binaries).toContain('old-style-tool');
-    });
-  });
-
   describe('Real-world tool patterns', () => {
     it('should work with fzf-like tool pattern', async () => {
       const context = createToolConfigContext(mockYamlConfig, 'fzf-like', logger);
-      const builder = new ToolConfigBuilderImpl(logger, 'fzf-like');
 
       // Test fzf-like pattern with context
-      const configureToolFn: AsyncConfigureTool = async (
-        c: ToolConfigBuilder,
-        ctx: ToolConfigContext
-      ): Promise<void> => {
-        c.bin('fzf-like')
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+        return install('github-release', { repo: 'owner/fzf-like' })
+          .bin('fzf-like')
           .version('latest')
-          .install('github-release', { repo: 'owner/fzf-like' })
           .zsh({
             completions: { source: 'shell/completion.zsh' },
             shellInit: [
@@ -273,8 +247,11 @@ describe('ToolConfigContext', () => {
           });
       };
 
-      await configureToolFn(builder, context);
-      const toolConfig = builder.build();
+      const result = await configureToolFn(createInstallFunction(logger, 'fzf-like'), context);
+      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
+        throw new Error('Expected ToolConfigBuilder result');
+      }
+      const toolConfig = result.build();
 
       expect(toolConfig.installationMethod).toBe('github-release');
       expect(toolConfig.shellConfigs?.zsh?.completions).toBeDefined();
@@ -286,16 +263,12 @@ describe('ToolConfigContext', () => {
 
     it('should work with atuin-like tool pattern', async () => {
       const context = createToolConfigContext(mockYamlConfig, 'atuin-like', logger);
-      const builder = new ToolConfigBuilderImpl(logger, 'atuin-like');
 
       // Test atuin-like pattern with context
-      const configureToolFn: AsyncConfigureTool = async (
-        c: ToolConfigBuilder,
-        ctx: ToolConfigContext
-      ): Promise<void> => {
-        c.bin('atuin-like')
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+        return install('github-release', { repo: 'owner/atuin-like' })
+          .bin('atuin-like')
           .version('latest')
-          .install('github-release', { repo: 'owner/atuin-like' })
           .symlink('./config.toml', '~/.config/atuin-like/config.toml')
           .zsh({
             shellInit: [
@@ -311,8 +284,11 @@ describe('ToolConfigContext', () => {
           });
       };
 
-      await configureToolFn(builder, context);
-      const toolConfig = builder.build();
+      const result = await configureToolFn(createInstallFunction(logger, 'atuin-like'), context);
+      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
+        throw new Error('Expected ToolConfigBuilder result');
+      }
+      const toolConfig = result.build();
 
       expect(toolConfig.symlinks).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();

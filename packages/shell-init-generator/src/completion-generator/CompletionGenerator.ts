@@ -1,6 +1,6 @@
 import path from 'node:path';
+import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ShellCompletionConfig, ShellType } from '@dotfiles/schemas';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
 import { messages } from './log-messages';
 import type {

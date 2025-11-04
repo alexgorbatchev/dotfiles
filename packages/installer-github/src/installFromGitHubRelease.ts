@@ -2,9 +2,18 @@ import path from 'node:path';
 import { selectBestMatch } from '@dotfiles/arch';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
+import type {
+  BaseInstallContext,
+  ExtractResult,
+  GitHubRelease,
+  GitHubReleaseAsset,
+  PostDownloadInstallContext,
+  PostExtractInstallContext,
+  SystemInfo,
+} from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, IGitHubApiClient, InstallOptions } from '@dotfiles/installer';
+import type { HookExecutor, InstallOptions } from '@dotfiles/installer';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
@@ -14,21 +23,15 @@ import {
   setupBinariesFromDirectDownload,
   messages as utilMessages,
 } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
 import type {
   AssetSelectionContext,
-  BaseInstallContext,
-  ExtractResult,
-  GitHubRelease,
-  GitHubReleaseAsset,
   GithubReleaseInstallParams,
   GithubReleaseToolConfig,
-  PostDownloadInstallContext,
-  PostExtractInstallContext,
-  SystemInfo,
-} from '@dotfiles/schemas';
+} from '@dotfiles/installer-github';
+import type { TsLogger } from '@dotfiles/logger';
 import { normalizeVersion } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
+import type { IGitHubApiClient } from './github-client';
 import { messages } from './log-messages';
 import type { GitHubReleaseInstallMetadata, GitHubReleaseInstallResult } from './types';
 
@@ -93,6 +96,8 @@ export async function installFromGitHubRelease(
       return hookResult;
     }
 
+    const resolvedVersion = normalizeVersion(release.data.tag_name);
+
     const installResult = await processAssetInstallation(
       asset.data,
       downloadResult.data.downloadPath,
@@ -124,7 +129,7 @@ export async function installFromGitHubRelease(
     return {
       success: true,
       binaryPaths,
-      version: normalizeVersion(release.data.tag_name),
+      version: resolvedVersion,
       originalTag: release.data.tag_name,
       metadata,
     };

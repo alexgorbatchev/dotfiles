@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { ExtractResult } from '@dotfiles/schemas';
+import type { ExtractResult } from '@dotfiles/core';
 import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
 

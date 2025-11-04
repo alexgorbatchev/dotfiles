@@ -11,7 +11,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "semver": "^7.6.3"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { AsyncInstallHook, ToolConfig } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
-import type { AsyncInstallHook, ToolConfig } from '@dotfiles/schemas';
 import { BinarySetupStep, DownloadStep, ExtractStep, HookStep, type InstallationStep } from '../steps';
 import type { HookExecutor } from './HookExecutor';
 

@@ -1,4 +1,4 @@
-import type { BinaryConfig } from '@dotfiles/schemas';
+import type { BinaryConfig } from '@dotfiles/core';
 import { normalizeBinaries } from './normalizeBinaries';
 
 /**

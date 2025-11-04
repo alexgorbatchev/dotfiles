@@ -1,24 +1,16 @@
+import type {
+  BaseInstallContext,
+  InstallerPlugin,
+  InstallOptions,
+  InstallResult,
+  UpdateCheckResult,
+} from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, BrewInstallParams, BrewToolConfig } from '@dotfiles/schemas';
-import { z } from 'zod';
-import type { InstallerPlugin, InstallResult, InstallOptions } from '@dotfiles/installer-plugin-system';
 import { installFromBrew } from './installFromBrew';
+import { messages } from './log-messages';
+import { type BrewInstallParams, type BrewToolConfig, brewInstallParamsSchema, brewToolConfigSchema } from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
-
-const brewParamsSchema = z.object({
-  formula: z.string().optional(),
-  cask: z.boolean().optional(),
-  tap: z.union([z.string(), z.array(z.string())]).optional(),
-}) satisfies z.ZodType<BrewInstallParams>;
-
-const brewToolConfigSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  binaries: z.array(z.string()),
-  installationMethod: z.literal('brew'),
-  installParams: brewParamsSchema,
-}) satisfies z.ZodType<BrewToolConfig>;
 
 type BrewPluginMetadata = {
   method: 'brew';
@@ -33,7 +25,7 @@ export class BrewInstallerPlugin
   readonly method = 'brew';
   readonly displayName = 'Homebrew Installer';
   readonly version = PLUGIN_VERSION;
-  readonly paramsSchema = brewParamsSchema;
+  readonly paramsSchema = brewInstallParamsSchema;
   readonly toolConfigSchema = brewToolConfigSchema;
 
   constructor(private readonly logger: TsLogger) {}
@@ -44,13 +36,7 @@ export class BrewInstallerPlugin
     context: BaseInstallContext,
     options?: InstallOptions
   ): Promise<InstallResult<BrewPluginMetadata>> {
-    const result = await installFromBrew(
-      toolName,
-      toolConfig,
-      context,
-      options,
-      this.logger
-    );
+    const result = await installFromBrew(toolName, toolConfig, context, options, this.logger);
 
     if (!result.success) {
       return {
@@ -67,5 +53,32 @@ export class BrewInstallerPlugin
     };
 
     return installResult;
+  }
+
+  supportsUpdateCheck(): boolean {
+    return true;
+  }
+
+  async checkUpdate(
+    toolName: string,
+    toolConfig: BrewToolConfig,
+    _context: BaseInstallContext,
+    logger: TsLogger
+  ): Promise<UpdateCheckResult> {
+    // TODO: Implement actual brew info check
+    // For now, return a placeholder result
+    logger.warn(messages.updateCheckNotImplemented(toolName));
+    return {
+      hasUpdate: false,
+      currentVersion: toolConfig.version || 'latest',
+    };
+  }
+
+  supportsUpdate(): boolean {
+    return false; // Not implemented yet
+  }
+
+  supportsReadme(): boolean {
+    return false; // Brew formulas don't have direct README URLs
   }
 }

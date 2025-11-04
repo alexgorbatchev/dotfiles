@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/schemas';
+import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import type { CompletionGenerationContext, CompletionGenerator } from '@dotfiles/shell-init-generator';
 import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';
@@ -68,8 +68,8 @@ export class CompletionGenerationStep extends InstallationStep<CompletionGenerat
 
   private extractCompletionConfigs(
     toolConfig: ToolConfig
-  ): Array<{ shellType: ShellType; config: import('@dotfiles/schemas').ShellCompletionConfig }> {
-    const configs: Array<{ shellType: ShellType; config: import('@dotfiles/schemas').ShellCompletionConfig }> = [];
+  ): Array<{ shellType: ShellType; config: import('@dotfiles/core').ShellCompletionConfig }> {
+    const configs: Array<{ shellType: ShellType; config: import('@dotfiles/core').ShellCompletionConfig }> = [];
 
     if (toolConfig.shellConfigs?.zsh?.completions) {
       configs.push({ shellType: 'zsh', config: toolConfig.shellConfigs.zsh.completions });

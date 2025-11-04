@@ -1,5 +1,5 @@
+import type { InstallHookContext } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
-import type { InstallHookContext } from '@dotfiles/schemas';
 import { createMock$ } from '@dotfiles/testing-helpers';
 
 /**

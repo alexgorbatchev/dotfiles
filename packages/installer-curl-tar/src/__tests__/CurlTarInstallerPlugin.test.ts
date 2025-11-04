@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { TestLogger } from '@dotfiles/logger';
-import type { CurlTarToolConfig } from '@dotfiles/schemas';
-import { CurlTarInstallerPlugin } from '../CurlTarInstallerPlugin';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
+import type { CurlTarToolConfig } from '@dotfiles/installer-curl-tar';
+import { TestLogger } from '@dotfiles/logger';
+import { CurlTarInstallerPlugin } from '../CurlTarInstallerPlugin';
 
 describe('CurlTarInstallerPlugin', () => {
   let logger: TestLogger;
@@ -21,14 +21,8 @@ describe('CurlTarInstallerPlugin', () => {
     mockDownloader = {} as IDownloader;
     mockArchiveExtractor = {} as IArchiveExtractor;
     mockHookExecutor = {} as HookExecutor;
-    
-    plugin = new CurlTarInstallerPlugin(
-      logger,
-      mockFs,
-      mockDownloader,
-      mockArchiveExtractor,
-      mockHookExecutor
-    );
+
+    plugin = new CurlTarInstallerPlugin(logger, mockFs, mockDownloader, mockArchiveExtractor, mockHookExecutor);
   });
 
   it('should have correct plugin metadata', () => {

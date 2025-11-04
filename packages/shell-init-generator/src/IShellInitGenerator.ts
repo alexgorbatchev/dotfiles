@@ -1,6 +1,6 @@
 import type { YamlConfig } from '@dotfiles/config';
+import type { ShellType, SystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ShellType, SystemInfo, ToolConfig } from '@dotfiles/schemas';
 import type { ProfileUpdateResult } from './profile-updater/IProfileUpdater';
 
 /**

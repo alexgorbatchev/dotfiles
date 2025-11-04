@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { ToolConfig } from '@dotfiles/schemas';
-import { always } from '@dotfiles/schemas';
+import type { ToolConfig } from '@dotfiles/core';
+import { always } from '@dotfiles/core';
 import { createSectionHeader } from '../../shellTemplates';
 import { ZshGenerator } from '../ZshGenerator';
 import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';

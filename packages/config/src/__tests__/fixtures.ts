@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/schemas/config';
+import type { YamlConfig } from '@dotfiles/core';
 
 export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
   configFilePath: '',

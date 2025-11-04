@@ -1,5 +1,5 @@
 import type { YamlConfig } from '@dotfiles/config';
-import type { ShellType } from '@dotfiles/schemas';
+import type { ShellType } from '@dotfiles/core';
 import { BashGenerator } from './BashGenerator';
 import type { IShellGenerator } from './IShellGenerator';
 import { PowerShellGenerator } from './PowerShellGenerator';

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
+import type { ShellType, ToolConfig } from '@dotfiles/core';
+import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { ShellType, ToolConfig } from '@dotfiles/schemas';
-import { always } from '@dotfiles/schemas';
 import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import { dedentString } from '@dotfiles/utils';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';

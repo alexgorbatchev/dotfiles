@@ -1,4 +1,4 @@
-import type { ShellScript, ShellType } from '@dotfiles/schemas';
+import type { ShellScript, ShellType } from '@dotfiles/core';
 
 /**
  * Output from script formatter containing formatted content and metadata

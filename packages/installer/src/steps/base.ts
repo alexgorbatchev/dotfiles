@@ -1,7 +1,7 @@
+import type { BaseInstallContext, ExtractResult, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, ExtractResult, ToolConfig } from '@dotfiles/schemas';
-import type { InstallMetadata, InstallOptions } from '../types';
+import type { InstallOptions } from '../types';
 
 /**
  * Context passed between installation steps
@@ -17,7 +17,7 @@ export interface StepContext extends BaseInstallContext {
   extractDir?: string;
   extractResult?: ExtractResult;
   version?: string;
-  metadata?: InstallMetadata;
+  metadata?: Record<string, unknown>;
 }
 
 /**

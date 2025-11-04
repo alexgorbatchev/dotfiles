@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
-import { GitHubApiClientError } from '@dotfiles/installer/clients/github';
+import type { GitHubRelease } from '@dotfiles/core';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
-import type { GitHubRelease } from '@dotfiles/schemas';
 import { VersionComparisonStatus } from '../IVersionChecker.ts';
 import { VersionChecker } from '../VersionChecker.ts';
 
@@ -120,7 +119,7 @@ describe('VersionChecker', () => {
     });
 
     it('should return null if GitHub client throws an error', async () => {
-      mockGithubClient.getLatestRelease.mockRejectedValueOnce(new GitHubApiClientError('API Error', 500));
+      mockGithubClient.getLatestRelease.mockRejectedValueOnce(new Error('API Error'));
       const version = await versionChecker.getLatestToolVersion('owner', 'repo');
       expect(version).toBeNull();
     });

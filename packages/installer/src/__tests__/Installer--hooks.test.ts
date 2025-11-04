@@ -1,114 +1,19 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { YamlConfig } from '@dotfiles/config';
-import type { DownloadOptions, IDownloader } from '@dotfiles/downloader';
-import { createMemFileSystem, type IFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
-import { TestLogger } from '@dotfiles/logger';
-import type { ExtractOptions, GithubReleaseToolConfig } from '@dotfiles/schemas';
-import { Installer } from '../Installer';
-import { createMockCargoClient, createMockToolInstallationRegistry } from './installer-test-helpers';
+import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
+import type { Installer } from '../Installer';
+import { createInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Enhanced Hooks', () => {
-  let logger: TestLogger;
   let installer: Installer;
-  let memFs: MemFileSystemReturn;
-  let mockDownloader: IDownloader;
-  let mockGitHubClient: IGitHubApiClient;
-  let mockArchiveExtractor: IArchiveExtractor;
-  let mockConfig: YamlConfig;
 
   const mockToolName = 'test-tool';
   const mockToolVersion = '1.0.0';
   const mockToolRepo = 'owner/test-tool';
 
   beforeEach(async () => {
-    logger = new TestLogger();
-    memFs = await createMemFileSystem();
-
-    mockDownloader = {
-      download: mock(async (_url: string, options?: DownloadOptions) => {
-        // Mock the actual download by creating the destination file
-        if (options?.destinationPath) {
-          await memFs.fs.writeFile(options.destinationPath, 'mock-downloaded-file-content');
-        }
-      }),
-      registerStrategy: mock(),
-      downloadToFile: mock(),
-    } as IDownloader;
-
-    mockGitHubClient = {
-      getLatestRelease: mock(() =>
-        Promise.resolve({
-          id: 12345,
-          tag_name: mockToolVersion,
-          html_url: 'https://github.com/owner/test-tool/releases/tag/v1.0.0',
-          published_at: '2023-01-01T00:00:00Z',
-          created_at: '2023-01-01T00:00:00Z',
-          name: 'Release v1.0.0',
-          draft: false,
-          prerelease: false,
-          assets: [
-            {
-              id: 123,
-              name: 'test-tool-darwin-arm64.tar.gz',
-              browser_download_url:
-                'https://github.com/owner/test-tool/releases/download/v1.0.0/test-tool-darwin-arm64.tar.gz',
-              size: 1024000,
-              content_type: 'application/gzip',
-              state: 'uploaded',
-              download_count: 42,
-              created_at: '2023-01-01T00:00:00Z',
-              updated_at: '2023-01-01T00:00:00Z',
-            },
-          ],
-        })
-      ),
-      getReleaseByTag: mock(),
-      getAllReleases: mock(),
-      getReleaseByConstraint: mock(),
-      getRateLimit: mock(),
-    } as IGitHubApiClient;
-
-    mockArchiveExtractor = {
-      extract: mock(async (_archivePath: string, options?: ExtractOptions) => {
-        // Mock the extraction by creating extracted files in the target directory
-        const targetDir = options?.targetDir;
-        if (targetDir) {
-          await memFs.fs.ensureDir(targetDir);
-          await memFs.fs.writeFile(`${targetDir}/test-tool`, 'mock-binary-content');
-        }
-        return {
-          extractedFiles: ['test-tool'],
-          executables: ['test-tool'],
-        };
-      }),
-      detectFormat: mock(),
-      isSupported: mock(),
-    } as IArchiveExtractor;
-
-    mockConfig = {
-      paths: {
-        generatedDir: '/test/generated',
-        binariesDir: '/test/generated/binaries',
-      },
-      github: {
-        host: 'github.com',
-      },
-    } as YamlConfig;
-
-    installer = new Installer(
-      logger,
-      memFs.fs,
-      mockDownloader,
-      mockGitHubClient,
-      createMockCargoClient(),
-      mockArchiveExtractor,
-      mockConfig,
-      createMockToolInstallationRegistry(),
-      { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' }
-    );
+    const setup = await createInstallerTestSetup();
+    installer = setup.installer;
   });
 
   describe('beforeInstall hook', () => {
@@ -467,11 +372,12 @@ describe('Installer - Enhanced Hooks', () => {
 
   describe('hook context filesystem operations', () => {
     it('should allow hooks to perform filesystem operations that are tracked', async () => {
-      let capturedFileSystem: IFileSystem | undefined;
+      let capturedFileSystem: unknown | undefined;
 
       const afterExtractHook = mock(async (context) => {
         capturedFileSystem = context.fileSystem;
         // Simulate hook performing filesystem operations
+        await context.fileSystem.ensureDir('/test');
         await context.fileSystem.writeFile('/test/hook-file.txt', 'hook content');
         await context.fileSystem.chmod('/test/hook-file.txt', 0o755);
       });
@@ -493,8 +399,12 @@ describe('Installer - Enhanced Hooks', () => {
 
       expect(result.success).toBe(true);
       expect(capturedFileSystem).toBeDefined();
-      expect(capturedFileSystem!.writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
-      expect(capturedFileSystem!.chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
+      // biome-ignore lint/suspicious/noExplicitAny: Test helper needs dynamic access
+      expect((capturedFileSystem as any).ensureDir).toHaveBeenCalledWith('/test');
+      // biome-ignore lint/suspicious/noExplicitAny: Test helper needs dynamic access
+      expect((capturedFileSystem as any).writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
+      // biome-ignore lint/suspicious/noExplicitAny: Test helper needs dynamic access
+      expect((capturedFileSystem as any).chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
     });
   });
 });

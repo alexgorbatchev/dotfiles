@@ -1,7 +1,6 @@
+import type { ToolConfig, YamlConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
-import type { YamlConfig } from '@dotfiles/schemas/config';
 
 /**
  * Interface for configuration loading services.

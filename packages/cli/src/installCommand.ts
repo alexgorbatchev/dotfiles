@@ -1,7 +1,7 @@
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, InstallCommandSpecificOptions, Services } from './types';

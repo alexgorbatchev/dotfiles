@@ -1,4 +1,4 @@
-import type { ShellType } from '@dotfiles/schemas';
+import type { ShellType } from '@dotfiles/core';
 
 /**
  * Gets the comment prefix for a given shell type.

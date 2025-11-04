@@ -4,18 +4,23 @@ import os from 'node:os';
 import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import { ConfigService, loadYamlConfig, type YamlConfig } from '@dotfiles/config';
+import type { SystemInfo } from '@dotfiles/core';
+import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
 import { type IFileSystem, MemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
-import { Installer } from '@dotfiles/installer';
-import { CargoClient } from '@dotfiles/installer/clients/cargo';
-import { GitHubApiClient } from '@dotfiles/installer/clients/github';
+import { HookExecutor, Installer } from '@dotfiles/installer';
+import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
+import { CargoClient, CargoInstallerPlugin } from '@dotfiles/installer-cargo';
+import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
+import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
+import { GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
+import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
 import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
 import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import type { SystemInfo } from '@dotfiles/schemas';
 import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
@@ -34,14 +39,12 @@ import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
-// biome-ignore lint:plugin/use-export-star Reexport these for the consumption
-export {
-  Architecture,
-  always,
-  defineTool,
-  once,
-  Platform,
-} from '@dotfiles/schemas';
+// biome-ignore lint/plugin: Named exports required for selective API exposure
+export { Architecture, always, once, Platform } from '@dotfiles/core';
+
+// Export typed defineTool that uses the global plugin registry
+// biome-ignore lint/plugin: Named exports required for selective API exposure
+export { defineTool } from './defineTool';
 
 type SetupServicesOptions = GlobalProgramOptions & {
   cwd: string;
@@ -285,16 +288,40 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   );
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, fs);
+
+  // Initialize plugin registry
+  const pluginRegistry = new InstallerPluginRegistry(parentLogger);
+
+  // Initialize hook executor for plugins
+  const hookExecutor = new HookExecutor(parentLogger);
+
+  // Register all installer plugins
+  pluginRegistry.register(
+    new GitHubReleaseInstallerPlugin(fs, downloader, githubApiClient, archiveExtractor, yamlConfig, hookExecutor)
+  );
+  pluginRegistry.register(new BrewInstallerPlugin(parentLogger));
+  pluginRegistry.register(
+    new CargoInstallerPlugin(
+      parentLogger,
+      fs,
+      downloader,
+      cargoClient,
+      archiveExtractor,
+      hookExecutor,
+      yamlConfig.cargo.githubRaw.host
+    )
+  );
+  pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, fs, downloader, hookExecutor));
+  pluginRegistry.register(new CurlTarInstallerPlugin(parentLogger, fs, downloader, archiveExtractor, hookExecutor));
+  pluginRegistry.register(new ManualInstallerPlugin(parentLogger, fs));
+
   const installer = new Installer(
     logger,
     installerTrackedFs,
-    downloader,
-    githubApiClient,
-    cargoClient,
-    archiveExtractor,
     yamlConfig,
     toolInstallationRegistry,
-    finalSystemInfo
+    finalSystemInfo,
+    pluginRegistry
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();
@@ -329,6 +356,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     installer,
     archiveExtractor,
     versionChecker,
+    pluginRegistry,
     systemInfo,
   };
 }

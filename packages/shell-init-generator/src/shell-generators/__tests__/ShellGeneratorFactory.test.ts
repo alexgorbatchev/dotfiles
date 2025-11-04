@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@dotfiles/config';
-import type { ShellType } from '@dotfiles/schemas';
+import type { ShellType } from '@dotfiles/core';
 import { BashGenerator } from '../BashGenerator';
 import { PowerShellGenerator } from '../PowerShellGenerator';
 import * as ShellGeneratorFactory from '../ShellGeneratorFactory';

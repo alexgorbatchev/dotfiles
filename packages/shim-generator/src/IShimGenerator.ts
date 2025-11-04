@@ -1,4 +1,4 @@
-import type { ToolConfig } from '@dotfiles/schemas';
+import type { ToolConfig } from '@dotfiles/core';
 
 /**
  * Options for generating shims.

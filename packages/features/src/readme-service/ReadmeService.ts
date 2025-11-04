@@ -1,11 +1,12 @@
 import path from 'node:path';
+import type { ToolConfig } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { FileCache } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
+import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
-import { isGitHubReleaseToolConfig, type ToolConfig } from '@dotfiles/schemas';
 import { DEFAULT_README_CACHE_TTL, GITHUB_RAW_BASE_URL, README_FILENAME } from './constants';
 import type { IReadmeService } from './IReadmeService';
 import { messages } from './log-messages';

@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
+import { type AsyncInstallHook, always } from '@dotfiles/core';
+import type { GithubReleaseInstallParams } from '@dotfiles/installer-github';
+import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
-import {
-  type AsyncInstallHook,
-  always,
-  type GithubReleaseInstallParams,
-  isGitHubReleaseToolConfig,
-} from '@dotfiles/schemas';
 import { messages } from '../log-messages';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 

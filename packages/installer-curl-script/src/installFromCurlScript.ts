@@ -1,8 +1,7 @@
 import path from 'node:path';
+import type { BaseInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, CurlScriptToolConfig } from '@dotfiles/schemas';
 import type { HookExecutor, InstallOptions } from '@dotfiles/installer';
 import {
   createToolFileSystem,
@@ -10,10 +9,12 @@ import {
   executeAfterDownloadHook,
   getBinaryNames,
   getBinaryPaths,
+  messages as utilMessages,
   withInstallErrorHandling,
 } from '@dotfiles/installer';
-import { messages as utilMessages } from '@dotfiles/installer';
+import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
+import type { CurlScriptToolConfig } from './schemas';
 import type { CurlScriptInstallMetadata, CurlScriptInstallResult } from './types';
 
 /**

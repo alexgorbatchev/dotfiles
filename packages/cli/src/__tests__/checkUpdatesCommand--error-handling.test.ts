@@ -1,7 +1,7 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { InstallerPlugin, ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
@@ -13,6 +13,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
   let mockYamlConfig: YamlConfig;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
+  let mockPlugin: Partial<InstallerPlugin> | undefined;
 
   const manualToolConfig: ToolConfig = {
     name: 'manualtool',
@@ -29,11 +30,22 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
       loadToolConfigs: mock(async () => ({})),
     };
 
+    // Create mock plugin that does NOT support update checking (for manual method)
+    mockPlugin = {
+      supportsUpdateCheck: mock(() => false),
+    };
+
     const setup = await createCliTestSetup({
       testName: 'check-updates-errors',
       memFileSystem: { exists: mock(async () => true) },
       services: {
         configService: mockConfigService,
+        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
+        pluginRegistry: {
+          get: mock((method: string) => (method === 'manual' ? (mockPlugin as InstallerPlugin) : undefined)),
+          register: mock(() => Promise.resolve()),
+          getAll: mock(() => []),
+        } as any,
       },
     });
 

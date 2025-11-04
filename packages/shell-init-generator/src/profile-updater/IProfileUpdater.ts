@@ -1,5 +1,5 @@
+import type { ShellType } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ShellType } from '@dotfiles/schemas';
 
 /**
  * Configuration for updating a specific profile file.

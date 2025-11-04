@@ -11,7 +11,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@dotfiles/schemas": "workspace:*"
+    "@dotfiles/core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "catalog:system",

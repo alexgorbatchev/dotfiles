@@ -1,10 +1,9 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
-import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
+import type { InstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
+import type { CargoToolConfig } from '@dotfiles/installer-cargo';
 import type { TestLogger } from '@dotfiles/logger';
-import type { CargoToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
-import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
@@ -13,8 +12,7 @@ import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Cargo Updates', () => {
   let program: GlobalProgram;
-  let mockVersionChecker: MockedInterface<IVersionChecker>;
-  let mockCargoClient: MockedInterface<ICargoClient>;
+  let mockPlugin: Partial<InstallerPlugin>;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
 
@@ -33,20 +31,32 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
       loadToolConfigs: mock(async () => ({})),
     };
 
+    // Create mock plugin that implements checkUpdate capability
+    mockPlugin = {
+      supportsUpdateCheck: mock(() => true),
+      checkUpdate: mock(
+        async (): Promise<UpdateCheckResult> => ({
+          hasUpdate: false,
+          currentVersion: '0.10.1',
+          latestVersion: '0.10.1',
+        })
+      ),
+    };
+
     const setup = await createCliTestSetup({
       testName: 'check-updates-cargo',
       memFileSystem: { exists: mock(async () => true) },
       services: {
         configService: mockConfigService,
+        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
+        pluginRegistry: {
+          get: mock((method: string) => (method === 'cargo' ? (mockPlugin as InstallerPlugin) : undefined)),
+          register: mock(() => Promise.resolve()),
+          getAll: mock(() => []),
+        } as any,
         versionChecker: {
-          checkVersionStatus: mock(async () => VersionComparisonStatus.NEWER_AVAILABLE),
-          getLatestToolVersion: mock(async () => '0.11.0'),
-        },
-        cargoClient: {
-          getCrateMetadata: mock(async () => null),
-          buildCargoTomlUrl: mock(() => 'https://example.com/Cargo.toml'),
-          getCargoTomlPackage: mock(async () => null),
-          getLatestVersion: mock(async () => '0.11.0'),
+          checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
+          getLatestToolVersion: mock(async () => '0.10.1'),
         },
       },
     });
@@ -54,17 +64,16 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
     program = setup.program;
     logger = setup.logger;
 
-    // Extract the mocks for individual test manipulation
-    mockVersionChecker = setup.mockServices.versionChecker!;
-    mockCargoClient = setup.mockServices.cargoClient!;
-
     registerCheckUpdatesCommand(logger, program, async () => setup.createServices());
   });
 
   test('should report cargo crate is up-to-date', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
-    mockCargoClient.getLatestVersion.mockResolvedValue('0.10.1');
-    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '0.10.1',
+      latestVersion: '0.10.1',
+    });
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
@@ -73,8 +82,11 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
   test('should report cargo crate update available', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
-    mockCargoClient.getLatestVersion.mockResolvedValue('0.11.0');
-    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: true,
+      currentVersion: '0.10.1',
+      latestVersion: '0.11.0',
+    });
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
@@ -84,7 +96,11 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
   test('should handle cargo tool configured with "latest" version', async () => {
     const cargoLatestConfig: CargoToolConfig = { ...cargoToolConfig, version: 'latest' };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoLatestConfig);
-    mockCargoClient.getLatestVersion.mockResolvedValue('0.12.0');
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: 'latest',
+      latestVersion: '0.12.0',
+    });
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
@@ -97,35 +113,43 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
       installParams: {},
     } as CargoToolConfig;
     mockConfigService.loadSingleToolConfig.mockResolvedValue(missingCrateConfig);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '0.10.1',
+      latestVersion: undefined,
+      error: 'Invalid crateName: undefined',
+    });
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [messages.configParameterInvalid('crateName', 'undefined', 'crate name')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 
   test('should handle cargo client error gracefully', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
-    mockCargoClient.getLatestVersion.mockRejectedValue(new Error('Cargo API Down'));
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '0.10.1',
+      latestVersion: undefined,
+      error: 'Cargo API Down',
+    });
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('get crate info', 0)]);
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 
   test('should handle cargo API returning null version', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
-    mockCargoClient.getLatestVersion.mockResolvedValue(null);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '0.10.1',
+      latestVersion: undefined,
+      error: 'Could not retrieve version',
+    });
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(
-      ['WARN'],
-      ['registerCheckUpdatesCommand'],
-      [messages.serviceGithubResourceNotFound('crate', 'exa (exa)')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 });

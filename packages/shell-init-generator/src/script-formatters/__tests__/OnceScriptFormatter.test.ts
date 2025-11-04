@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { ShellType } from '@dotfiles/schemas';
-import { always, once } from '@dotfiles/schemas';
+import type { ShellType } from '@dotfiles/core';
+import { always, once } from '@dotfiles/core';
 import { OnceScriptFormatter } from '../OnceScriptFormatter';
 
 import '@dotfiles/testing-helpers';

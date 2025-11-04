@@ -1,4 +1,4 @@
-import type { SystemInfo } from '@dotfiles/schemas';
+import type { SystemInfo } from '@dotfiles/core';
 import { getArchitecturePatterns } from './getArchitecturePatterns';
 import { getArchitectureRegex } from './getArchitectureRegex';
 import { matchesArchitecture } from './matchesArchitecture';

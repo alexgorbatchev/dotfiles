@@ -4,9 +4,9 @@ import { realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { EnhancedInstallHookContext, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { EnhancedInstallHookContext, ToolConfig } from '@dotfiles/schemas';
 import { HookExecutor } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 

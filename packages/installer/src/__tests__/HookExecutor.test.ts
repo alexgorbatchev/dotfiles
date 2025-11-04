@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
+import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import type { SafeLogMessage } from '@dotfiles/logger';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@dotfiles/schemas';
 import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 import type { $ } from 'bun';
 import { type HookExecutionOptions, HookExecutor } from '../utils/HookExecutor';

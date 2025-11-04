@@ -1,5 +1,5 @@
+import type { ShellType } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ShellType } from '@dotfiles/schemas';
 import { $ } from 'bun';
 import { messages } from './log-messages';
 import type { ICompletionCommandExecutor } from './types';

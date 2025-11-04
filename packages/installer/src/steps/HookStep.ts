@@ -1,4 +1,4 @@
-import type { AsyncInstallHook } from '@dotfiles/schemas';
+import type { AsyncInstallHook } from '@dotfiles/core';
 import type { HookExecutor } from '../utils/HookExecutor';
 import { messages } from '../utils/log-messages';
 import { InstallationStep, type StepContext } from './base';

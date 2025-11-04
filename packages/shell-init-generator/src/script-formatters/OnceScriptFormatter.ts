@@ -1,6 +1,6 @@
 import path from 'node:path';
-import type { ShellScript, ShellType } from '@dotfiles/schemas';
-import { getScriptContent, isOnceScript } from '@dotfiles/schemas';
+import type { ShellScript, ShellType } from '@dotfiles/core';
+import { getScriptContent, isOnceScript } from '@dotfiles/core';
 import { dedentString, dedentTemplate } from '@dotfiles/utils';
 import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 

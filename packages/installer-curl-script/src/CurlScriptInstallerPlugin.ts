@@ -1,28 +1,17 @@
+import type { BaseInstallContext, InstallerPlugin, InstallOptions, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, CurlScriptInstallParams, CurlScriptToolConfig } from '@dotfiles/schemas';
-import { z } from 'zod';
-import type { InstallerPlugin, InstallResult, InstallOptions } from '@dotfiles/installer-plugin-system';
 import { installFromCurlScript } from './installFromCurlScript';
+import {
+  type CurlScriptInstallParams,
+  type CurlScriptToolConfig,
+  curlScriptInstallParamsSchema,
+  curlScriptToolConfigSchema,
+} from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
-
-const curlScriptParamsSchema = z.object({
-  url: z.string(),
-  shell: z.string(),
-  env: z.record(z.string()).optional(),
-  hooks: z.any().optional(),
-}) satisfies z.ZodType<CurlScriptInstallParams>;
-
-const curlScriptToolConfigSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  binaries: z.array(z.string()),
-  installationMethod: z.literal('curl-script'),
-  installParams: curlScriptParamsSchema,
-}) satisfies z.ZodType<CurlScriptToolConfig>;
 
 type CurlScriptPluginMetadata = {
   method: 'curl-script';
@@ -36,7 +25,7 @@ export class CurlScriptInstallerPlugin
   readonly method = 'curl-script';
   readonly displayName = 'Curl Script Installer';
   readonly version = PLUGIN_VERSION;
-  readonly paramsSchema = curlScriptParamsSchema;
+  readonly paramsSchema = curlScriptInstallParamsSchema;
   readonly toolConfigSchema = curlScriptToolConfigSchema;
 
   constructor(
@@ -77,5 +66,17 @@ export class CurlScriptInstallerPlugin
     };
 
     return installResult;
+  }
+
+  supportsUpdateCheck(): boolean {
+    return false; // curl-script doesn't support version checking
+  }
+
+  supportsUpdate(): boolean {
+    return false;
+  }
+
+  supportsReadme(): boolean {
+    return false;
   }
 }

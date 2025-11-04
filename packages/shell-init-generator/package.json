@@ -9,7 +9,7 @@
     "@dotfiles/config": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {

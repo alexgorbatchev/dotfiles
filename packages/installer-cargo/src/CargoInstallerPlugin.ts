@@ -1,33 +1,26 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type {
+  BaseInstallContext,
+  InstallerPlugin,
+  InstallOptions,
+  InstallResult,
+  UpdateCheckResult,
+} from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ICargoClient, HookExecutor } from '@dotfiles/installer';
+import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, CargoInstallParams, CargoToolConfig } from '@dotfiles/schemas';
-import { z } from 'zod';
-import type { InstallerPlugin, InstallResult, InstallOptions } from '@dotfiles/installer-plugin-system';
+import type { ICargoClient } from './cargo-client';
 import { installFromCargo } from './installFromCargo';
+import { messages } from './log-messages';
+import {
+  type CargoInstallParams,
+  type CargoToolConfig,
+  cargoInstallParamsSchema,
+  cargoToolConfigSchema,
+} from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
-
-const cargoParamsSchema = z.object({
-  crateName: z.string().optional(),
-  versionSource: z.enum(['cargo-toml', 'crates-io', 'github-releases']).optional(),
-  binarySource: z.enum(['cargo-quickinstall', 'github-releases']).optional(),
-  githubRepo: z.string().optional(),
-  cargoTomlUrl: z.string().optional(),
-  assetPattern: z.string().optional(),
-  env: z.record(z.string()).optional(),
-  hooks: z.any().optional(),
-}) satisfies z.ZodType<CargoInstallParams>;
-
-const cargoToolConfigSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  binaries: z.array(z.string()),
-  installationMethod: z.literal('cargo'),
-  installParams: cargoParamsSchema,
-}) satisfies z.ZodType<CargoToolConfig>;
 
 type CargoPluginMetadata = {
   method: 'cargo';
@@ -42,7 +35,7 @@ export class CargoInstallerPlugin
   readonly method = 'cargo';
   readonly displayName = 'Cargo Installer';
   readonly version = PLUGIN_VERSION;
-  readonly paramsSchema = cargoParamsSchema;
+  readonly paramsSchema = cargoInstallParamsSchema;
   readonly toolConfigSchema = cargoToolConfigSchema;
 
   constructor(
@@ -90,5 +83,66 @@ export class CargoInstallerPlugin
     };
 
     return installResult;
+  }
+
+  supportsUpdateCheck(): boolean {
+    return true;
+  }
+
+  async checkUpdate(
+    toolName: string,
+    toolConfig: CargoToolConfig,
+    _context: BaseInstallContext,
+    logger: TsLogger
+  ): Promise<UpdateCheckResult> {
+    try {
+      const cargoParams = toolConfig.installParams;
+      const crateName = cargoParams?.crateName;
+
+      if (!crateName) {
+        return {
+          hasUpdate: false,
+          error: 'Missing crateName in install params',
+        };
+      }
+
+      const latestVersion = await this.cargoClient.getLatestVersion(crateName);
+      if (!latestVersion) {
+        return {
+          hasUpdate: false,
+          error: `Could not fetch latest version for crate: ${crateName}`,
+        };
+      }
+
+      const configuredVersion = toolConfig.version || 'latest';
+
+      if (configuredVersion === 'latest') {
+        return {
+          hasUpdate: false,
+          currentVersion: latestVersion,
+          latestVersion,
+        };
+      }
+
+      return {
+        hasUpdate: configuredVersion !== latestVersion,
+        currentVersion: configuredVersion,
+        latestVersion,
+      };
+    } catch (error) {
+      logger.error(messages.updateCheckFailed(toolName), error);
+      return {
+        hasUpdate: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  supportsUpdate(): boolean {
+    return false; // Not implemented yet
+  }
+
+  supportsReadme(): boolean {
+    return false; // Could be implemented to fetch from crates.io
   }
 }

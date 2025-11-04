@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
+import type { ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ShellType, ToolConfig } from '@dotfiles/schemas';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import type { GenerateShellInitOptions, IShellInitGenerator, ShellInitGenerationResult } from './IShellInitGenerator';
 import { messages } from './log-messages';

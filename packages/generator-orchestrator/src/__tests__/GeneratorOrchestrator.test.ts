@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
+import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import { always } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
-import { always } from '@dotfiles/schemas';
 import type { IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';

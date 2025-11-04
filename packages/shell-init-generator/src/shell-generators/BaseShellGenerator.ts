@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
-import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@dotfiles/schemas';
-import { getScriptContent, isAlwaysScript, isOnceScript } from '@dotfiles/schemas';
+import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@dotfiles/core';
+import { getScriptContent, isAlwaysScript, isOnceScript } from '@dotfiles/core';
 import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
 import {

@@ -1,8 +1,8 @@
 import type { YamlConfig } from '@dotfiles/config';
 import { createYamlConfigFromObject } from '@dotfiles/config';
+import type { SystemInfo } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { SystemInfo } from '@dotfiles/schemas';
 import type { PartialDeep } from 'type-fest';
 
 /**

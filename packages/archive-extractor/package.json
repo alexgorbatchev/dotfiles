@@ -13,7 +13,7 @@
   "dependencies": {
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*"
+    "@dotfiles/core": "workspace:*"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",

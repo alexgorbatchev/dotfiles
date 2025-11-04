@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { SystemInfo } from '@dotfiles/schemas';
+import type { SystemInfo } from '@dotfiles/core';
 import { expandHomePath } from './expandHomePath';
 
 /**

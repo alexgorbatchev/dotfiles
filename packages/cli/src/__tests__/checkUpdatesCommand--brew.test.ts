@@ -1,9 +1,9 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
+import type { InstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
+import type { BrewToolConfig } from '@dotfiles/installer-brew';
 import type { TestLogger } from '@dotfiles/logger';
-import type { BrewToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
-import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
@@ -12,7 +12,7 @@ import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Brew Updates', () => {
   let program: GlobalProgram;
-  let mockVersionChecker: MockedInterface<IVersionChecker>;
+  let mockPlugin: Partial<InstallerPlugin>;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
 
@@ -39,14 +39,32 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       loadToolConfigs: mock(async () => ({})),
     };
 
+    // Create mock plugin that implements checkUpdate capability
+    mockPlugin = {
+      supportsUpdateCheck: mock(() => true),
+      checkUpdate: mock(
+        async (): Promise<UpdateCheckResult> => ({
+          hasUpdate: false,
+          currentVersion: '13.0.0',
+          latestVersion: '13.0.0',
+        })
+      ),
+    };
+
     const setup = await createCliTestSetup({
       testName: 'check-updates-brew',
       memFileSystem: { exists: mock(async () => true) },
       services: {
         configService: mockConfigService,
+        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
+        pluginRegistry: {
+          get: mock((method: string) => (method === 'brew' ? (mockPlugin as InstallerPlugin) : undefined)),
+          register: mock(() => Promise.resolve()),
+          getAll: mock(() => []),
+        } as any,
         versionChecker: {
-          checkVersionStatus: mock(async () => VersionComparisonStatus.NEWER_AVAILABLE),
-          getLatestToolVersion: mock(async () => '14.0.0'),
+          checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
+          getLatestToolVersion: mock(async () => '13.0.0'),
         },
       },
     });
@@ -54,16 +72,16 @@ describe('checkUpdatesCommand - Brew Updates', () => {
     program = setup.program;
     logger = setup.logger;
 
-    // Extract the mocks for individual test manipulation
-    mockVersionChecker = setup.mockServices.versionChecker!;
-
     registerCheckUpdatesCommand(logger, program, async () => setup.createServices());
   });
 
   test('should report brew formula is up-to-date', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
-    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.UP_TO_DATE);
-    mockVersionChecker.getLatestToolVersion.mockResolvedValue('13.0.0');
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '13.0.0',
+      latestVersion: '13.0.0',
+    });
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
@@ -72,7 +90,11 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
   test('should report brew formula update available', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
-    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: true,
+      currentVersion: '13.0.0',
+      latestVersion: '14.0.0',
+    });
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
@@ -85,8 +107,11 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
   test('should handle brew cask updates', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewCaskToolConfig);
-    mockVersionChecker.checkVersionStatus.mockResolvedValue(VersionComparisonStatus.NEWER_AVAILABLE);
-    mockVersionChecker.getLatestToolVersion.mockResolvedValue('1.86.0');
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: true,
+      currentVersion: '1.85.0',
+      latestVersion: '1.86.0',
+    });
 
     await program.parseAsync(['check-updates', 'vscode'], { from: 'user' });
 
@@ -100,6 +125,11 @@ describe('checkUpdatesCommand - Brew Updates', () => {
   test('should handle brew tool configured with "latest" version', async () => {
     const brewLatestConfig: BrewToolConfig = { ...brewToolConfig, version: 'latest' };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewLatestConfig);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: 'latest',
+      latestVersion: '14.0.0',
+    });
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
@@ -112,26 +142,29 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       installParams: {},
     };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(missingFormulaConfig);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '13.0.0',
+      latestVersion: undefined,
+      error: 'Invalid formula: undefined',
+    });
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [messages.configParameterInvalid('formula', 'undefined', 'formula name')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 
   test('should handle brew info command failure', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
-    mockVersionChecker.getLatestToolVersion.mockResolvedValue(null);
+    (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      hasUpdate: false,
+      currentVersion: '13.0.0',
+      latestVersion: undefined,
+      error: 'Brew info command failed',
+    });
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
-    logger.expect(
-      ['WARN'],
-      ['registerCheckUpdatesCommand'],
-      [messages.serviceGithubResourceNotFound('brew formula', 'ripgrep')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 });

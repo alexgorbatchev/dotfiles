@@ -1,38 +1,12 @@
 import path from 'node:path';
-import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
-import type { IDownloader } from '@dotfiles/downloader';
+import type { BaseInstallContext, InstallerPluginRegistry, SystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import {
-  type BaseInstallContext,
-  type BrewToolConfig,
-  type CargoInstallParams,
-  type CargoToolConfig,
-  type CurlScriptToolConfig,
-  type CurlTarToolConfig,
-  type GithubReleaseToolConfig,
-  isGitHubReleaseToolConfig,
-  type ManualToolConfig,
-  type SystemInfo,
-  type ToolConfig,
-} from '@dotfiles/schemas';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
-import { $ } from 'bun';
-import {
-  installFromBrew,
-  installFromCargo,
-  installFromCurlScript,
-  installFromCurlTar,
-  installFromGitHubRelease,
-  installManually,
-} from './installers';
 import type { IInstaller, InstallOptions, InstallResult } from './types';
-import { hasOriginalTag, hasVersion } from './types';
 import { HookExecutor, messages } from './utils';
 
 /**
@@ -75,36 +49,72 @@ import { HookExecutor, messages } from './utils';
 export class Installer implements IInstaller {
   private readonly logger: TsLogger;
   private readonly fs: IFileSystem;
-  private readonly downloader: IDownloader;
-  private readonly githubApiClient: IGitHubApiClient;
-  private readonly cargoClient: ICargoClient;
-  private readonly archiveExtractor: IArchiveExtractor;
   private readonly appConfig: YamlConfig;
   private readonly hookExecutor: HookExecutor;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: SystemInfo;
+  private readonly registry: InstallerPluginRegistry;
+  private currentToolConfig?: ToolConfig;
 
   constructor(
     parentLogger: TsLogger,
     fileSystem: IFileSystem,
-    downloader: IDownloader,
-    githubApiClient: IGitHubApiClient,
-    cargoClient: ICargoClient,
-    archiveExtractor: IArchiveExtractor,
     appConfig: YamlConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
-    systemInfo: SystemInfo
+    systemInfo: SystemInfo,
+    registry: InstallerPluginRegistry
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
-    this.downloader = downloader;
-    this.githubApiClient = githubApiClient;
-    this.cargoClient = cargoClient;
-    this.archiveExtractor = archiveExtractor;
     this.appConfig = appConfig;
     this.hookExecutor = new HookExecutor(parentLogger);
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
+    this.registry = registry;
+
+    // Register event handler for installation events to execute hooks
+    this.registry.onEvent(async (event) => {
+      await this.handleInstallEvent(event);
+    });
+  }
+
+  /**
+   * Handle installation events by executing corresponding hooks
+   */
+  private async handleInstallEvent(event: {
+    type: string;
+    toolName: string;
+    context: BaseInstallContext & Record<string, unknown>;
+  }): Promise<void> {
+    if (!this.currentToolConfig) {
+      return;
+    }
+
+    const hooks = (this.currentToolConfig.installParams as Record<string, unknown>)?.['hooks'] as
+      | Record<string, unknown>
+      | undefined;
+    if (!hooks) {
+      return;
+    }
+
+    const hook = hooks[event.type];
+    if (typeof hook !== 'function') {
+      return;
+    }
+
+    // Create enhanced context with fileSystem from event
+    const toolFs = (event.context['fileSystem'] as typeof this.fs) || this.fs;
+    const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs);
+
+    // Execute the hook with the enhanced context
+    // biome-ignore lint/suspicious/noExplicitAny: Hook type varies by event, runtime check ensures it's a function
+    const result = await this.hookExecutor.executeHook(event.type, hook as any, enhancedContext);
+
+    // If hook failed, throw error to propagate back to plugin
+    if (!result.success) {
+      const errorMessage = result.error ? `${event.type} hook failed: ${result.error}` : `Hook ${event.type} failed`;
+      throw new Error(errorMessage);
+    }
   }
 
   /**
@@ -188,7 +198,7 @@ export class Installer implements IInstaller {
 
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
     enhancedContext.binaryPath = result.success && result.binaryPaths.length > 0 ? result.binaryPaths[0] : undefined;
-    enhancedContext.version = hasVersion(result) ? result.version : undefined;
+    enhancedContext.version = result.success && 'version' in result ? result.version : undefined;
 
     await this.hookExecutor.executeHook(
       'afterInstall',
@@ -201,6 +211,7 @@ export class Installer implements IInstaller {
   /**
    * Record successful installation in the registry
    */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex metadata extraction logic requires multiple conditionals
   private async recordInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
@@ -209,7 +220,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
-    if (!hasVersion(result)) {
+    if (!result.success || !('version' in result)) {
       return;
     }
 
@@ -217,27 +228,61 @@ export class Installer implements IInstaller {
       let downloadUrl: string | undefined;
       let assetName: string | undefined;
 
-      if (result.metadata?.method === 'github-release') {
-        downloadUrl = result.metadata.downloadUrl;
-        assetName = result.metadata.assetName;
-      } else if (result.metadata?.method === 'cargo') {
-        downloadUrl = result.metadata.downloadUrl;
+      if (result.success && result.metadata) {
+        const metadata: unknown = result.metadata;
+        if (
+          typeof metadata === 'object' &&
+          metadata !== null &&
+          'method' in metadata &&
+          metadata.method === 'github-release'
+        ) {
+          if ('downloadUrl' in metadata && typeof metadata.downloadUrl === 'string') {
+            downloadUrl = metadata.downloadUrl;
+          }
+          if ('assetName' in metadata && typeof metadata.assetName === 'string') {
+            assetName = metadata.assetName;
+          }
+        } else if (
+          typeof metadata === 'object' &&
+          metadata !== null &&
+          'method' in metadata &&
+          metadata.method === 'cargo'
+        ) {
+          if ('downloadUrl' in metadata && typeof metadata.downloadUrl === 'string') {
+            downloadUrl = metadata.downloadUrl;
+          }
+        }
       }
+
+      const version = result.version;
+      if (!version) {
+        return;
+      }
+
+      const installParams: unknown = resolvedToolConfig.installParams;
+      const configuredVersion: string | undefined =
+        installParams &&
+        typeof installParams === 'object' &&
+        'version' in installParams &&
+        typeof installParams.version === 'string'
+          ? installParams.version
+          : undefined;
+
+      const originalTag: string | undefined =
+        'originalTag' in result && typeof result.originalTag === 'string' ? result.originalTag : undefined;
 
       await this.toolInstallationRegistry.recordToolInstallation({
         toolName,
-        version: result.version,
+        version,
         installPath: context.installDir,
         timestamp: context.timestamp,
         binaryPaths: result.binaryPaths,
         downloadUrl,
         assetName,
-        configuredVersion: isGitHubReleaseToolConfig(resolvedToolConfig)
-          ? resolvedToolConfig.installParams.version
-          : undefined,
-        originalTag: hasOriginalTag(result) ? result.originalTag : undefined,
+        configuredVersion,
+        originalTag,
       });
-      logger.debug(messages.outcome.installSuccess(toolName, result.version, 'registry-recorded'));
+      logger.debug(messages.outcome.installSuccess(toolName, version, 'registry-recorded'));
     } catch (error) {
       logger.error(messages.outcome.installFailed('registry-record', toolName), error);
     }
@@ -251,28 +296,18 @@ export class Installer implements IInstaller {
     resolvedToolConfig: ToolConfig,
     context: BaseInstallContext,
     options?: InstallOptions,
-    logger?: TsLogger,
-    toolFs?: IFileSystem
+    _logger?: TsLogger
   ): Promise<InstallResult> {
-    switch (resolvedToolConfig.installationMethod) {
-      case 'github-release':
-        return await this.installFromGitHubRelease(toolName, resolvedToolConfig, context, options, logger, toolFs);
-      case 'brew':
-        return await this.installFromBrew(toolName, resolvedToolConfig, context, options);
-      case 'cargo':
-        return await this.installFromCargo(toolName, resolvedToolConfig, context, options);
-      case 'curl-script':
-        return await this.installFromCurlScript(toolName, resolvedToolConfig, context, options);
-      case 'curl-tar':
-        return await this.installFromCurlTar(toolName, resolvedToolConfig, context, options);
-      case 'manual':
-        return await this.installManually(toolName, resolvedToolConfig, context, options);
-      default:
-        return {
-          success: false,
-          error: `Unsupported installation method: ${(resolvedToolConfig as { installationMethod: string }).installationMethod}`,
-        };
-    }
+    const result = await this.registry.install(
+      resolvedToolConfig.installationMethod,
+      toolName,
+      resolvedToolConfig,
+      context,
+      options
+    );
+    // The registry returns InstallResult<unknown>, but we know each plugin
+    // returns a specific result type from the InstallResult union
+    return result as InstallResult;
   }
 
   /**
@@ -284,6 +319,9 @@ export class Installer implements IInstaller {
     // Resolve platform-specific configuration
     const systemInfo = this.getSystemInfo();
     const resolvedToolConfig = resolvePlatformConfig(toolConfig, systemInfo);
+
+    // Store current tool config for event handler access
+    this.currentToolConfig = resolvedToolConfig;
 
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
@@ -320,15 +358,17 @@ export class Installer implements IInstaller {
         return beforeInstallResult;
       }
 
-      // Install based on the installation method
-      const result = await this.executeInstallationMethod(
-        toolName,
-        resolvedToolConfig,
-        context,
-        options,
-        logger,
-        toolFs
-      );
+      let result: InstallResult;
+      try {
+        // Install based on the installation method
+        result = await this.executeInstallationMethod(toolName, resolvedToolConfig, context, options, logger);
+      } catch (error) {
+        // If installation method throws (e.g., from hook failure), create failure result
+        result = {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
 
       // If installation failed, clean up the empty installation directory
       if (!result.success && (await toolFs.exists(installDir))) {
@@ -364,258 +404,18 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Install a tool from GitHub releases
+   * Get the target version that would be installed for a tool.
+   * For most installation methods, version resolution is handled by the plugins.
+   * This method provides a simple fallback for version checking.
    */
-  public async installFromGitHubRelease(
-    toolName: string,
-    toolConfig: GithubReleaseToolConfig,
-    context: BaseInstallContext,
-    options?: InstallOptions,
-    logger?: TsLogger,
-    providedToolFs?: IFileSystem
-  ): Promise<InstallResult> {
-    // Use the provided filesystem or create a tool-specific one
-    const toolFs = providedToolFs || (this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs);
-
-    return installFromGitHubRelease(
-      toolName,
-      toolConfig,
-      context,
-      options,
-      toolFs,
-      this.downloader,
-      this.githubApiClient,
-      this.archiveExtractor,
-      this.appConfig,
-      this.hookExecutor,
-      logger || this.logger
-    );
-  }
-
-  /**
-   * Install a tool using Homebrew
-   */
-  public async installFromBrew(
-    toolName: string,
-    toolConfig: BrewToolConfig,
-    context: BaseInstallContext,
-    options?: InstallOptions
-  ): Promise<InstallResult> {
-    return installFromBrew(toolName, toolConfig, context, options, this.logger, $);
-  }
-
-  /**
-   * Install a tool using Cargo pre-compiled binaries
-   */
-  public async installFromCargo(
-    toolName: string,
-    toolConfig: CargoToolConfig,
-    context: BaseInstallContext,
-    options?: InstallOptions
-  ): Promise<InstallResult> {
-    return installFromCargo(
-      toolName,
-      toolConfig,
-      context,
-      options,
-      this.fs,
-      this.downloader,
-      this.cargoClient,
-      this.archiveExtractor,
-      this.hookExecutor,
-      this.logger,
-      this.appConfig.cargo.githubRelease.host
-    );
-  }
-
-  /**
-   * Install a tool using a curl script
-   */
-  public async installFromCurlScript(
-    toolName: string,
-    toolConfig: CurlScriptToolConfig,
-    context: BaseInstallContext,
-    options?: InstallOptions
-  ): Promise<InstallResult> {
-    return installFromCurlScript(
-      toolName,
-      toolConfig,
-      context,
-      options,
-      this.fs,
-      this.downloader,
-      this.hookExecutor,
-      this.logger
-    );
-  }
-
-  /**
-   * Install a tool from a tarball using curl
-   */
-  public async installFromCurlTar(
-    toolName: string,
-    toolConfig: CurlTarToolConfig,
-    context: BaseInstallContext,
-    options?: InstallOptions
-  ): Promise<InstallResult> {
-    return installFromCurlTar(
-      toolName,
-      toolConfig,
-      context,
-      options,
-      this.fs,
-      this.downloader,
-      this.archiveExtractor,
-      this.hookExecutor,
-      this.logger
-    );
-  }
-
-  /**
-   * Install a tool manually
-   */
-  public async installManually(
-    toolName: string,
-    toolConfig: ManualToolConfig,
-    context: BaseInstallContext,
-    options?: InstallOptions
-  ): Promise<InstallResult> {
-    return installManually(toolName, toolConfig, context, options, this.fs, this.logger);
-  }
-
-  /**
-   * Get the target version that would be installed for a tool
-   */
-  private async getTargetVersion(toolName: string, toolConfig: ToolConfig): Promise<string | null> {
-    try {
-      switch (toolConfig.installationMethod) {
-        case 'github-release':
-          return this.getGitHubReleaseTargetVersion(toolConfig);
-
-        case 'cargo':
-          return this.getCargoTargetVersion(toolName, toolConfig);
-
-        case 'brew':
-        case 'curl-script':
-        case 'curl-tar':
-        case 'manual':
-          // For these methods, we can't easily determine the target version
-          // so we'll just return null and skip the version check
-          return null;
-
-        default:
-          return null;
-      }
-    } catch (error) {
-      this.logger.debug(
-        messages.outcome.unsupportedOperation(
-          'get-target-version',
-          `Failed to get target version for ${toolName}: ${error}`
-        )
-      );
-      return null;
+  private async getTargetVersion(_toolName: string, toolConfig: ToolConfig): Promise<string | null> {
+    // If the version is explicitly set and not 'latest', return it
+    if (toolConfig.version && toolConfig.version !== 'latest') {
+      return toolConfig.version;
     }
-  }
-
-  /**
-   * Get target version for GitHub release installations
-   */
-  private async getGitHubReleaseTargetVersion(toolConfig: ToolConfig): Promise<string | null> {
-    if (toolConfig.installationMethod !== 'github-release' || !toolConfig.installParams) {
-      return null;
-    }
-
-    const params = toolConfig.installParams;
-    if (params.version === 'latest') {
-      const [owner, repo] = params.repo.split('/');
-      if (!owner || !repo) {
-        return null;
-      }
-      const release = await this.githubApiClient.getLatestRelease(owner, repo);
-      return release?.tag_name || null;
-    }
-    return params.version || null;
-  }
-
-  /**
-   * Get target version for Cargo installations
-   */
-  private async getCargoTargetVersion(toolName: string, toolConfig: ToolConfig): Promise<string | null> {
-    if (toolConfig.installationMethod !== 'cargo') {
-      return null;
-    }
-
-    if (toolConfig.version === 'latest') {
-      const params = toolConfig.installParams as CargoInstallParams;
-      const crateName = params?.crateName || toolName;
-      const versionSource = params?.versionSource || 'cargo-toml';
-      return this.getCargoVersionBySource(crateName, versionSource, toolConfig);
-    }
-    return toolConfig.version || null;
-  }
-
-  /**
-   * Get cargo version based on version source
-   */
-  private async getCargoVersionBySource(
-    crateName: string,
-    versionSource: string,
-    toolConfig: ToolConfig
-  ): Promise<string | null> {
-    switch (versionSource) {
-      case 'cargo-toml':
-        return this.getVersionFromCargoToml(crateName, toolConfig);
-      case 'crates-io':
-        return this.getVersionFromCratesIo(crateName);
-      case 'github-releases':
-        return this.getVersionFromGitHubReleases(toolConfig);
-      default:
-        return null;
-    }
-  }
-
-  /**
-   * Get version from Cargo.toml file
-   */
-  private async getVersionFromCargoToml(crateName: string, toolConfig: ToolConfig): Promise<string | null> {
-    const params = toolConfig.installParams as CargoInstallParams;
-    const cargoTomlUrl =
-      params?.cargoTomlUrl ||
-      this.cargoClient.buildCargoTomlUrl(params?.githubRepo || `${crateName}-community/${crateName}`);
-
-    try {
-      const packageInfo = await this.cargoClient.getCargoTomlPackage(cargoTomlUrl);
-      return packageInfo?.version || null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Get version from crates.io
-   */
-  private async getVersionFromCratesIo(crateName: string): Promise<string | null> {
-    try {
-      return await this.cargoClient.getLatestVersion(crateName);
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Get version from GitHub releases
-   */
-  private async getVersionFromGitHubReleases(toolConfig: ToolConfig): Promise<string | null> {
-    const params = toolConfig.installParams as CargoInstallParams;
-    if (!params?.githubRepo) {
-      return null;
-    }
-    const [owner, repo] = params.githubRepo.split('/');
-    if (!owner || !repo) {
-      return null;
-    }
-    const release = await this.githubApiClient.getLatestRelease(owner, repo);
-    return release?.tag_name || null;
+    // For 'latest' or unspecified versions, we can't determine the target version
+    // without executing the plugin logic, so return null to skip the version check
+    return null;
   }
 
   /**
@@ -627,7 +427,7 @@ export class Installer implements IInstaller {
     timestamp: string,
     toolConfig: ToolConfig,
     parentLogger: TsLogger
-  ): BaseInstallContext {
+  ): BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } {
     const logger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
     const getToolDir = (name: string): string => {
       return path.join(this.appConfig.paths.binariesDir, name);
@@ -649,6 +449,17 @@ export class Installer implements IInstaller {
       dotfilesDir: this.appConfig.paths.dotfilesDir,
       generatedDir: this.appConfig.paths.generatedDir,
       logger: logger.getSubLogger({ name: `install-${toolName}` }),
+      // Event emitter for plugins to trigger hooks
+      emitEvent: async (type: string, data: Record<string, unknown>) => {
+        await this.registry.emitEvent({
+          type: type as 'afterDownload' | 'afterExtract',
+          toolName,
+          context: {
+            ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger),
+            ...data,
+          },
+        });
+      },
     };
   }
 

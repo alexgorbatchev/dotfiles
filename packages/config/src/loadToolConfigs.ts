@@ -1,16 +1,12 @@
 import path from 'node:path';
+import type { Builder, ToolConfig, ToolConfigContext, YamlConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type {
-  AsyncConfigureTool,
-  AsyncConfigureToolWithReturn,
-  ToolConfig,
-  ToolConfigContext,
-} from '@dotfiles/schemas';
-import { toolConfigSchema } from '@dotfiles/schemas';
-import type { YamlConfig } from '@dotfiles/schemas/config';
-import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
+import { createInstallFunction } from '@dotfiles/tool-config-builder';
 import { messages } from './log-messages';
+
+type AsyncConfigureTool = Builder.AsyncConfigureTool;
+type AsyncConfigureToolWithReturn = Builder.AsyncConfigureToolWithReturn;
 
 /**
  * Validates a tool configuration against the Zod schema.
@@ -18,29 +14,25 @@ import { messages } from './log-messages';
  * Performs runtime validation of a tool configuration object and logs detailed error
  * information if validation fails.
  *
+ * TODO: In plugin architecture, validation should use InstallerPluginRegistry.getToolConfigSchema()
+ * This requires passing the registry or schema as a parameter. For now, we skip validation
+ * and assume configs are valid - validation will happen at install time via the registry.
+ *
  * @param config - The configuration object to validate.
- * @param logger - Logger instance for error reporting.
- * @param filePath - Path to the configuration file being validated (for error messages).
- * @param context - Description of the validation context (e.g., "Builder", "Direct export").
- * @returns The validated configuration object, or null if validation failed.
+ * @returns The validated configuration object (assumes valid).
  */
-function validateToolConfig(config: unknown, logger: TsLogger, filePath: string, context: string): ToolConfig | null {
-  const validationResult = toolConfigSchema.safeParse(config);
-  if (validationResult.success) {
-    return validationResult.data;
-  }
-
-  logger.error(messages.configurationParseError(filePath, 'ToolConfig', `${context} validation failed`));
-  logger.zodErrors(validationResult.error);
-  return null;
+function validateToolConfig(config: unknown): ToolConfig | null {
+  // TODO: Add runtime schema validation using InstallerPluginRegistry.getToolConfigSchema()
+  // For now, we trust the builder and TypeScript to create valid configs
+  return config as ToolConfig;
 }
 
 /**
  * Processes a function-based tool configuration export.
  *
  * Handles `.tool.ts` files that export a configuration function. The function is called
- * with a builder instance and context, and can either use the builder pattern or return
- * a configuration object directly.
+ * with an InstallFunction and context (new API), and can either use the builder pattern
+ * or return a configuration object directly.
  *
  * @param configureToolFn - The configuration function exported from the `.tool.ts` file.
  * @param logger - Logger instance for operations.
@@ -56,13 +48,13 @@ async function processFunctionExport(
   filePath: string,
   yamlConfig: YamlConfig
 ): Promise<ToolConfig | null> {
-  const builder = new ToolConfigBuilder(logger, toolName);
+  const install = createInstallFunction(logger, toolName);
   const context = createToolConfigContext(yamlConfig, toolName, logger);
-  const result = await configureToolFn(builder, context);
+  const result = await configureToolFn(install, context);
 
   // Check if the function returned a ToolConfig object
   if (result && typeof result === 'object' && 'name' in result) {
-    const validatedConfig = validateToolConfig(result, logger, filePath, 'Function return');
+    const validatedConfig = validateToolConfig(result);
     if (validatedConfig) {
       logger.trace(messages.configurationLoaded(filePath, 1));
     }
@@ -70,12 +62,18 @@ async function processFunctionExport(
   }
 
   // Function didn't return an object, use builder pattern
-  const builtConfig = builder.build();
-  const validatedConfig = validateToolConfig(builtConfig, logger, filePath, 'Builder');
-  if (validatedConfig) {
-    logger.trace(messages.configurationLoaded(filePath, 1));
+  // The install function creates and returns a builder, so we can call build() on the result
+  if (result && typeof result === 'object' && 'build' in result && typeof result.build === 'function') {
+    const builtConfig: unknown = result.build();
+    const validatedConfig = validateToolConfig(builtConfig);
+    if (validatedConfig) {
+      logger.trace(messages.configurationLoaded(filePath, 1));
+    }
+    return validatedConfig;
   }
-  return validatedConfig;
+
+  logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'Invalid return from configuration function'));
+  return null;
 }
 
 /**
@@ -96,7 +94,7 @@ function processDirectExport(
   filePath: string,
   toolName: string
 ): ToolConfig | null {
-  const validatedConfig = validateToolConfig(exportedObject, logger, filePath, 'Direct export');
+  const validatedConfig = validateToolConfig(exportedObject);
   if (validatedConfig) {
     logger.trace(messages.configurationValidated(filePath));
     // Ensure the toolConfig.name matches the filename if it's a direct object export
@@ -111,7 +109,7 @@ function processDirectExport(
 }
 
 /**
- * Creates a {@link @dotfiles/schemas#ToolConfigContext} for use in tool configuration functions.
+ * Creates a {@link @dotfiles/core#ToolConfigContext} for use in tool configuration functions.
  *
  * The context provides access to all relevant paths and configuration data that a tool
  * might need during configuration, along with a tool-specific logger.

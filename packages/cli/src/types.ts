@@ -1,15 +1,15 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { InstallerPluginRegistry, SystemInfo } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { IReadmeService } from '@dotfiles/features';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller } from '@dotfiles/installer';
-import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import type { ICargoClient } from '@dotfiles/installer-cargo';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type { SystemInfo } from '@dotfiles/schemas';
 import type { IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
@@ -37,6 +37,7 @@ export interface Services {
   installer: IInstaller;
   archiveExtractor: IArchiveExtractor;
   versionChecker: IVersionChecker;
+  pluginRegistry: InstallerPluginRegistry;
   systemInfo: SystemInfo;
 }
 

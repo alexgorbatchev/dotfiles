@@ -1,13 +1,17 @@
 import path from 'node:path';
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { Architecture, hasArchitecture, hasPlatform, Platform, type SystemInfo } from '@dotfiles/schemas';
 import {
+  Architecture,
+  hasArchitecture,
+  hasPlatform,
+  Platform,
   privateYamlConfigFields,
+  type SystemInfo,
   type YamlConfig,
   type YamlConfigPartial,
   yamlConfigSchema,
-} from '@dotfiles/schemas/config';
+} from '@dotfiles/core';
+import type { IFileSystem } from '@dotfiles/file-system';
+import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, expandHomePath } from '@dotfiles/utils';
 import { z } from 'zod';
 import { messages } from './log-messages';

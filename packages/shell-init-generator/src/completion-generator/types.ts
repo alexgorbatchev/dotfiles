@@ -1,4 +1,4 @@
-import type { ShellCompletionConfig, ShellType } from '@dotfiles/schemas';
+import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
 
 export interface CompletionGenerationContext {
   toolName: string;

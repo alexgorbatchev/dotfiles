@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { TestLogger } from '@dotfiles/logger';
-import type { CargoToolConfig } from '@dotfiles/schemas';
-import { CargoInstallerPlugin } from '../CargoInstallerPlugin';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ICargoClient, HookExecutor } from '@dotfiles/installer';
+import type { HookExecutor } from '@dotfiles/installer';
+import type { CargoToolConfig } from '@dotfiles/installer-cargo';
+import { TestLogger } from '@dotfiles/logger';
+import { CargoInstallerPlugin } from '../CargoInstallerPlugin';
+import type { ICargoClient } from '../cargo-client';
 
 describe('CargoInstallerPlugin', () => {
   let logger: TestLogger;
@@ -23,7 +24,7 @@ describe('CargoInstallerPlugin', () => {
     mockCargoClient = {} as ICargoClient;
     mockArchiveExtractor = {} as IArchiveExtractor;
     mockHookExecutor = {} as HookExecutor;
-    
+
     plugin = new CargoInstallerPlugin(
       logger,
       mockFs,

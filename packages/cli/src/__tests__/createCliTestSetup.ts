@@ -45,7 +45,7 @@ interface CliTestSetup {
   testDirs: TestDirectories;
   mockYamlConfig: YamlConfig;
   mockServices: MockedServices;
-  createServices: () => Services;
+  createServices: () => MockedInterface<Services>;
 }
 
 /**
@@ -202,14 +202,15 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
     }
   }
 
-  const createServices = (): Services =>
+  const createServices = (): MockedInterface<Services> =>
     ({
       yamlConfig: mockYamlConfig,
       fs: mockFs.fs.asIFileSystem,
       // Default mocks for all required services
       configService: {
         loadSingleToolConfig: mock(async () => undefined),
-        loadToolConfigs: mock(async () => ({})),
+        // biome-ignore lint/suspicious/noExplicitAny: Mock returns empty array for testing
+        loadToolConfigs: mock(async () => [] as any),
       },
       readmeService: {
         fetchReadmeForVersion: mock(async () => null),
@@ -220,8 +221,14 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
         writeReadmeToPath: mock(async () => null),
         generateCatalogFromConfigs: mock(async () => '/path/to/catalog.md'),
       },
+      pluginRegistry: {
+        get: mock(() => undefined),
+        register: mock(async () => undefined),
+        getAll: mock(() => []),
+      },
       ...mockServices,
-    }) as Services;
+      // biome-ignore lint/suspicious/noExplicitAny: Partial mocks for testing
+    }) as any;
 
   return {
     program,

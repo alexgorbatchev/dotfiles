@@ -12,11 +12,11 @@
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/installer": "workspace:*",
-    "@dotfiles/installer-plugin-system": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "minimatch": "^10.0.1",
+    "semver": "^7.6.3",
     "zod": "catalog:"
   },
   "devDependencies": {

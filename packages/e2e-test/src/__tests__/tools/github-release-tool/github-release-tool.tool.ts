@@ -1,12 +1,12 @@
-import { always, defineTool, once } from '@dotfiles/schemas';
+import { defineTool } from '@dotfiles/cli';
+import { always, once } from '@dotfiles/core';
 
-export default defineTool((c) =>
-  c
+export default defineTool((install) =>
+  install('github-release', {
+    repo: 'repo/github-release-tool',
+  })
     .bin('github-release-tool')
     .version('latest')
-    .install('github-release', {
-      repo: 'repo/github-release-tool',
-    })
     .zsh({
       environment: {
         GITHUB_RELEASE_TOOL_DEFAULT_OPTS: '--color=fg',

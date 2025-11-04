@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
+import type { ShellType } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import type { ShellType } from '@dotfiles/schemas';
 import { dedentString } from '@dotfiles/utils';
 import type { ProfileUpdateConfig } from '../IProfileUpdater';
 import { ProfileUpdater } from '../ProfileUpdater';

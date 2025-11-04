@@ -1,25 +1,15 @@
+import type { BaseInstallContext, InstallerPlugin, InstallOptions, InstallResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, ManualInstallParams, ManualToolConfig } from '@dotfiles/schemas';
-import { z } from 'zod';
-import type { InstallerPlugin, InstallResult, InstallOptions } from '@dotfiles/installer-plugin-system';
 import { installManually } from './installManually';
+import {
+  type ManualInstallParams,
+  type ManualToolConfig,
+  manualInstallParamsSchema,
+  manualToolConfigSchema,
+} from './schemas';
 
 const PLUGIN_VERSION = '1.0.0';
-
-const manualParamsSchema = z.object({
-  env: z.record(z.string()).optional(),
-  hooks: z.any().optional(),
-}) satisfies z.ZodType<ManualInstallParams>;
-
-const manualToolConfigSchema = z.object({
-  name: z.string(),
-  version: z.string(),
-  binaries: z.array(z.string()),
-  installationMethod: z.literal('manual'),
-  installParams: manualParamsSchema,
-}) satisfies z.ZodType<ManualToolConfig>;
 
 type ManualPluginMetadata = {
   method: 'manual';
@@ -31,13 +21,12 @@ export class ManualInstallerPlugin
   readonly method = 'manual';
   readonly displayName = 'Manual Installer';
   readonly version = PLUGIN_VERSION;
-  readonly paramsSchema = manualParamsSchema;
+  readonly paramsSchema = manualInstallParamsSchema;
   readonly toolConfigSchema = manualToolConfigSchema;
 
   constructor(
     private readonly logger: TsLogger,
-    private readonly fs: IFileSystem,
-    private readonly hookExecutor: HookExecutor
+    private readonly fs: IFileSystem
   ) {}
 
   async install(
@@ -46,15 +35,7 @@ export class ManualInstallerPlugin
     context: BaseInstallContext,
     options?: InstallOptions
   ): Promise<InstallResult<ManualPluginMetadata>> {
-    const result = await installManually(
-      toolName,
-      toolConfig,
-      context,
-      options,
-      this.fs,
-      this.hookExecutor,
-      this.logger
-    );
+    const result = await installManually(toolName, toolConfig, context, options, this.fs, this.logger);
 
     if (!result.success) {
       return {
@@ -70,5 +51,17 @@ export class ManualInstallerPlugin
     };
 
     return installResult;
+  }
+
+  supportsUpdateCheck(): boolean {
+    return false; // manual installation doesn't support version checking
+  }
+
+  supportsUpdate(): boolean {
+    return false;
+  }
+
+  supportsReadme(): boolean {
+    return false;
   }
 }

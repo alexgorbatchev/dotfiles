@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import type { ShellCompletionConfig } from '@dotfiles/core';
 import { createTsLogger } from '@dotfiles/logger';
-import type { ShellCompletionConfig } from '@dotfiles/schemas';
 import { CompletionGenerator } from '../CompletionGenerator';
 import type { ICompletionCommandExecutor } from '../types';
 

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { TestLogger } from '@dotfiles/logger';
-import type { CurlScriptToolConfig } from '@dotfiles/schemas';
-import { CurlScriptInstallerPlugin } from '../CurlScriptInstallerPlugin';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
+import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
+import { TestLogger } from '@dotfiles/logger';
+import { CurlScriptInstallerPlugin } from '../CurlScriptInstallerPlugin';
 
 describe('CurlScriptInstallerPlugin', () => {
   let logger: TestLogger;
@@ -18,7 +18,7 @@ describe('CurlScriptInstallerPlugin', () => {
     mockFs = {} as IFileSystem;
     mockDownloader = {} as IDownloader;
     mockHookExecutor = {} as HookExecutor;
-    
+
     plugin = new CurlScriptInstallerPlugin(logger, mockFs, mockDownloader, mockHookExecutor);
   });
 

@@ -1,11 +1,18 @@
-import type { CurlTarInstallParams } from '@dotfiles/schemas';
-
 export * from './CurlTarInstallerPlugin';
+export * from './CurlTarPluginDefinition';
 export * from './installFromCurlTar';
+export * from './schemas';
 export * from './types';
 
-declare module '@dotfiles/tool-config-builder' {
-  interface ToolConfigBuilder {
-    install(method: 'curl-tar', params: CurlTarInstallParams): this;
+// Module augmentation for curl-tar plugin
+import type { RegisterPluginResult } from '@dotfiles/core';
+
+declare module '@dotfiles/core' {
+  interface InstallParamsRegistry {
+    'curl-tar': import('./schemas').CurlTarInstallParams;
   }
+  interface ToolConfigRegistry {
+    'curl-tar': import('./schemas').CurlTarToolConfig;
+  }
+  interface PluginResultRegistry extends RegisterPluginResult<'curl-tar', import('./types').CurlTarInstallResult> {}
 }

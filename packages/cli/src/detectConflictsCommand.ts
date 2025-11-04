@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';

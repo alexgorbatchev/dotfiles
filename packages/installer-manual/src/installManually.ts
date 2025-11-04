@@ -1,11 +1,12 @@
 import path from 'node:path';
+import type { BaseInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, ManualToolConfig } from '@dotfiles/schemas';
-import { expandToolConfigPath } from '@dotfiles/utils';
 import type { InstallOptions } from '@dotfiles/installer';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
+import type { TsLogger } from '@dotfiles/logger';
+import { expandToolConfigPath } from '@dotfiles/utils';
 import { messages } from './log-messages';
+import type { ManualToolConfig } from './schemas';
 import type { ManualInstallMetadata, ManualInstallResult } from './types';
 
 /**
@@ -51,7 +52,6 @@ export async function installManually(
     const metadata: ManualInstallMetadata = {
       method: 'manual',
       manualInstall: true,
-      originalPath: params?.binaryPath || null,
     };
 
     return {
@@ -83,7 +83,7 @@ async function installBinariesManually(
       await toolFs.copyFile(binaryPath, finalBinaryPath);
       await toolFs.chmod(finalBinaryPath, 0o755);
     } else {
-      logger.debug(messages.multipleBinariesNotSupported(binaryName));
+      logger.debug(messages.multipleBinariesNotSupported());
     }
   }
 }

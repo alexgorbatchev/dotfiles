@@ -1,4 +1,4 @@
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import { eq, gt, valid } from 'semver';
 import type { IVersionChecker } from './IVersionChecker.ts';

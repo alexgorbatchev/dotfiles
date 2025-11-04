@@ -1,11 +1,18 @@
-import type { BrewInstallParams } from '@dotfiles/schemas';
-
 export * from './BrewInstallerPlugin';
+export * from './BrewPluginDefinition';
 export * from './installFromBrew';
+export * from './schemas';
 export * from './types';
 
-declare module '@dotfiles/tool-config-builder' {
-  interface ToolConfigBuilder {
-    install(method: 'brew', params: BrewInstallParams): this;
+// Module augmentation for brew plugin
+import type { RegisterPluginResult } from '@dotfiles/core';
+
+declare module '@dotfiles/core' {
+  interface InstallParamsRegistry {
+    brew: import('./schemas').BrewInstallParams;
   }
+  interface ToolConfigRegistry {
+    brew: import('./schemas').BrewToolConfig;
+  }
+  interface PluginResultRegistry extends RegisterPluginResult<'brew', import('./types').BrewInstallResult> {}
 }

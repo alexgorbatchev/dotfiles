@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
+import type { AsyncInstallHook, EnhancedInstallHookContext } from '@dotfiles/core';
+import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
-import type { AsyncInstallHook, EnhancedInstallHookContext, GithubReleaseToolConfig } from '@dotfiles/schemas';
 import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 // Helper function for tests to create SafeLogMessage

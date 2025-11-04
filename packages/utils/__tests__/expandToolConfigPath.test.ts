@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { YamlConfig } from '@dotfiles/config';
+import type { SystemInfo } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { SystemInfo } from '@dotfiles/schemas';
 import { createMockYamlConfig } from '@dotfiles/testing-helpers';
 import { expandToolConfigPath } from '../src/expandToolConfigPath';
 

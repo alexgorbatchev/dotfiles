@@ -1,5 +1,5 @@
-import type { ShellScript, ShellType } from '@dotfiles/schemas';
-import { getScriptContent, isAlwaysScript } from '@dotfiles/schemas';
+import type { ShellScript, ShellType } from '@dotfiles/core';
+import { getScriptContent, isAlwaysScript } from '@dotfiles/core';
 import { dedentString } from '@dotfiles/utils';
 import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 

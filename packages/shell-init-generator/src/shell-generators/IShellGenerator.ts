@@ -1,4 +1,4 @@
-import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@dotfiles/schemas';
+import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@dotfiles/core';
 
 /**
  * Represents shell-specific initialization content for a single tool.

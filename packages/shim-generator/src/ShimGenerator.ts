@@ -1,9 +1,9 @@
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ToolConfig } from '@dotfiles/schemas';
 import { dedentString, getCliBinPath } from '@dotfiles/utils';
 import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 import { messages } from './log-messages';

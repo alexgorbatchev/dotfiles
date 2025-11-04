@@ -2,17 +2,18 @@
   "name": "@dotfiles/e2e-test",
   "version": "0.0.0",
   "scripts": {
-    "postinstall": "./scripts/fix-bun-bug"
+    "postinstall": "./scripts/fix-bun-bug",
+    "test:types": "tsd"
   },
   "dependencies": {
     "@dotfiles/cli": "workspace:*",
-    "@dotfiles/schemas": "workspace:*"
+    "@dotfiles/core": "workspace:*"
   },
   "devDependencies": {
+    "@rageltd/bun-test-utils": "catalog:testing",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
-    "@rageltd/bun-test-utils": "catalog:testing",
-    "typescript": "catalog:typescript",
-    "@typescript/native-preview": "catalog:typescript"
+    "@typescript/native-preview": "catalog:typescript",
+    "typescript": "catalog:typescript"
   }
 }

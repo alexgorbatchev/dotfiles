@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import type { CargoInstallParams, PlatformConfigEntry, ToolConfig } from '@dotfiles/schemas';
-import { Platform } from '@dotfiles/schemas';
+import type { PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
+import { Platform } from '@dotfiles/core';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
@@ -32,7 +32,7 @@ describe('Installer - install (orchestrator)', () => {
   it('should call the appropriate installation method based on installationMethod', async () => {
     const toolConfig = createGithubReleaseToolConfig();
 
-    const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockResolvedValue({
       success: true,
       binaryPaths: [setup.mockToolBinaryPath],
       version: '1.0.0',
@@ -49,23 +49,22 @@ describe('Installer - install (orchestrator)', () => {
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
-    expect(installFromGitHubReleaseSpy).toHaveBeenCalledWith(
-      MOCK_TOOL_NAME,
-      toolConfig,
-      expect.objectContaining({ toolName: MOCK_TOOL_NAME }),
-      undefined,
-      expect.any(Object), // logger parameter
-      expect.any(Object) // toolFs parameter
+    expect(installSpy).toHaveBeenCalledWith(
+      'github-release', // method
+      MOCK_TOOL_NAME, // toolName
+      toolConfig, // toolConfig
+      expect.objectContaining({ toolName: MOCK_TOOL_NAME }), // context
+      undefined // options
     );
 
-    installFromGitHubReleaseSpy.mockRestore();
+    installSpy.mockRestore();
   });
 
   it('should handle errors during installation', async () => {
     const toolConfig = createGithubReleaseToolConfig();
 
     const error = new Error('Test error');
-    const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockRejectedValue(error);
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockRejectedValue(error);
 
     const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
@@ -74,7 +73,7 @@ describe('Installer - install (orchestrator)', () => {
       error: 'Test error',
     });
 
-    installFromGitHubReleaseSpy.mockRestore();
+    installSpy.mockRestore();
   });
 
   it('should run hooks if defined', async () => {
@@ -91,7 +90,7 @@ describe('Installer - install (orchestrator)', () => {
       },
     });
 
-    const installFromGitHubReleaseSpy = spyOn(setup.installer, 'installFromGitHubRelease').mockResolvedValue({
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockResolvedValue({
       success: true,
       binaryPaths: [setup.mockToolBinaryPath],
       version: '1.0.0',
@@ -111,26 +110,18 @@ describe('Installer - install (orchestrator)', () => {
     expect(beforeInstallHook).toHaveBeenCalledTimes(1);
     expect(afterInstallHook).toHaveBeenCalledTimes(1);
 
-    installFromGitHubReleaseSpy.mockRestore();
+    installSpy.mockRestore();
   });
 
   it('should work when only platform-specific configurations are defined', async () => {
-    // Create a tool config that mimics the eza configuration:
-    // - Root level has installationMethod: 'manual'
-    // - Platform-specific configs have installationMethod: 'cargo'
-    const cargoInstallParams: CargoInstallParams = {
-      crateName: 'eza',
-      binarySource: 'cargo-quickinstall',
-      versionSource: 'cargo-toml',
-      githubRepo: 'eza-community/eza',
-    };
+    // Test that platform configs can customize binaries while
+    // maintaining the base installation method
 
     const macosConfig: PlatformConfigEntry = {
       platforms: Platform.MacOS,
       architectures: undefined,
       config: {
-        installationMethod: 'cargo',
-        installParams: cargoInstallParams,
+        binaries: ['eza-macos'],
       },
     };
 
@@ -138,12 +129,11 @@ describe('Installer - install (orchestrator)', () => {
       platforms: Platform.Linux,
       architectures: undefined,
       config: {
-        installationMethod: 'cargo',
-        installParams: cargoInstallParams,
+        binaries: ['eza-linux'],
       },
     };
 
-    const toolConfigWithPlatformSpecificCargo: ToolConfig = {
+    const toolConfig: ToolConfig = {
       name: 'eza',
       binaries: ['eza'],
       version: 'latest',
@@ -152,34 +142,30 @@ describe('Installer - install (orchestrator)', () => {
       platformConfigs: [macosConfig, linuxConfig],
     };
 
-    const installFromCargoSpy = spyOn(setup.installer, 'installFromCargo').mockResolvedValue({
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockResolvedValue({
       success: true,
       binaryPaths: [setup.mockToolBinaryPath],
       version: '1.0.0',
       metadata: {
-        method: 'cargo',
-        crateName: 'eza',
-        binarySource: 'cargo-quickinstall',
+        method: 'manual',
+        manualInstall: true,
       },
     });
 
-    // This should resolve the platform-specific config and call installFromCargo
-    // instead of failing with "Unsupported installation method: none"
-    const result = await setup.installer.install('eza', toolConfigWithPlatformSpecificCargo);
+    const result = await setup.installer.install('eza', toolConfig);
     expect(result.success).toBe(true);
-    expect(installFromCargoSpy).toHaveBeenCalledWith(
-      'eza',
+    expect(installSpy).toHaveBeenCalledWith(
+      'manual', // method stays manual
+      'eza', // toolName
       expect.objectContaining({
-        installationMethod: 'cargo',
-        installParams: expect.objectContaining({
-          crateName: 'eza',
-          binarySource: 'cargo-quickinstall',
-        }),
+        installationMethod: 'manual',
+        // Platform config should have customized binaries based on current platform
+        binaries: expect.arrayContaining(['eza-macos']), // Assuming test runs on macOS
       }),
       expect.objectContaining({ toolName: 'eza' }),
-      undefined
+      undefined // options
     );
 
-    installFromCargoSpy.mockRestore();
+    installSpy.mockRestore();
   });
 });

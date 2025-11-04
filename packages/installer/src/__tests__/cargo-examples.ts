@@ -1,7 +1,7 @@
 // Example Cargo tool configurations
 
 import path from 'node:path';
-import type { CargoToolConfig } from '@dotfiles/schemas';
+import type { CargoToolConfig } from '@dotfiles/installer-cargo';
 
 // 1. Using cargo-quickinstall (fastest, most common)
 export const ezaConfig: CargoToolConfig = {

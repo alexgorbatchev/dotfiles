@@ -1,12 +1,12 @@
-import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
-import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type {
   AsyncInstallHook,
   BaseInstallContext,
   EnhancedInstallHookContext,
   InstallHookContext,
-} from '@dotfiles/schemas';
+} from '@dotfiles/core';
+import type { IFileSystem } from '@dotfiles/file-system';
+import type { TsLogger } from '@dotfiles/logger';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { $ } from 'bun';
 import { messages } from './log-messages';
 

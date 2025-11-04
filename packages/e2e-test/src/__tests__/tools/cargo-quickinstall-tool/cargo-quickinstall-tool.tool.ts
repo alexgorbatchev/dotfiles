@@ -1,15 +1,12 @@
-import { always, defineTool, once } from '@dotfiles/schemas';
+import { defineTool } from '@dotfiles/cli';
+import { always, once } from '@dotfiles/core';
 
-export default defineTool((c) =>
-  c
+export default defineTool((install) =>
+  install('cargo', {
+    crateName: 'cargo-quickinstall-tool',
+  })
     .bin('cargo-quickinstall-tool')
     .version('latest')
-    .install('cargo', {
-      crateName: 'cargo-quickinstall-tool',
-      binarySource: 'cargo-quickinstall',
-      versionSource: 'cargo-toml',
-      githubRepo: 'repo/cargo-quickinstall-tool',
-    })
     .zsh({
       environment: {
         CARGO_QUICKINSTALL_TOOL_DEFAULT_OPTS: '--color=fg',

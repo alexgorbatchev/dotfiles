@@ -1,11 +1,11 @@
-import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, BrewToolConfig } from '@dotfiles/schemas';
-import { normalizeVersion } from '@dotfiles/utils';
+import type { BaseInstallContext, InstallOptions } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
+import type { TsLogger } from '@dotfiles/logger';
+import { normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
 import { z } from 'zod';
-import type { InstallOptions } from '@dotfiles/installer-plugin-system';
 import { messages } from './log-messages';
+import type { BrewToolConfig } from './schemas';
 import type { BrewInstallMetadata, BrewInstallResult } from './types';
 
 type ShellExecutor = typeof $;

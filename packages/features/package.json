@@ -10,9 +10,10 @@
   "dependencies": {
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/installer-github": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
-    "@dotfiles/schemas": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

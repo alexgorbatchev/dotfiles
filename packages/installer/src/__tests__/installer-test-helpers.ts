@@ -2,20 +2,15 @@ import { mock } from 'bun:test';
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
+import type { BaseInstallContext, ExtractResult, GitHubRelease, InstallerPluginRegistry } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import type { BrewToolConfig } from '@dotfiles/installer-brew';
+import type { CargoToolConfig } from '@dotfiles/installer-cargo';
+import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
+import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
+import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
-import type {
-  BaseInstallContext,
-  BrewToolConfig,
-  CargoToolConfig,
-  CurlScriptToolConfig,
-  ExtractResult,
-  GitHubRelease,
-  GithubReleaseToolConfig,
-  ManualToolConfig,
-} from '@dotfiles/schemas';
 import {
   createMock$,
   createMockYamlConfig,
@@ -23,7 +18,9 @@ import {
   type TestDirectories,
 } from '@dotfiles/testing-helpers';
 import type { ILogObj } from 'tslog';
-import { Installer } from '../Installer';
+import { z } from 'zod';
+import type { Installer } from '../Installer';
+import type { InstallResult } from '../types';
 import type { HookExecutor } from '../utils/HookExecutor';
 
 // Common test data
@@ -157,6 +154,7 @@ export interface InstallerTestSetup {
   mockArchiveExtractor: IArchiveExtractor;
   mockAppConfig: YamlConfig;
   mockToolInstallationRegistry: ReturnType<typeof createMockToolInstallationRegistry>;
+  pluginRegistry: InstallerPluginRegistry;
   installer: Installer;
   fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
   testDirs: TestDirectories;
@@ -269,19 +267,91 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     executeHooks: mock(async () => [{ success: true, durationMs: 100, skipped: false }]),
   } as unknown as HookExecutor;
 
-  // Create installer instance
+  // Create real plugin registry and register a mock plugin
+  const { InstallerPluginRegistry } = await import('@dotfiles/core');
+  const pluginRegistry = new InstallerPluginRegistry(logger);
+
+  // Register a mock plugin that emits events
+  await pluginRegistry.register({
+    method: 'github-release',
+    displayName: 'GitHub Release (Mock)',
+    version: '1.0.0',
+    toolConfigSchema: z.object({}) as z.ZodTypeAny,
+    paramsSchema: z.object({}) as z.ZodTypeAny,
+    install: async (
+      toolName: string,
+      _toolConfig: unknown,
+      context: BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> }
+    ): Promise<InstallResult> => {
+      // Simulate download event - this will throw if hook throws
+      if (context.emitEvent) {
+        await context.emitEvent('afterDownload', {
+          downloadPath: `${context.installDir}/${toolName}-darwin-arm64.tar.gz`,
+          fileSystem: fs,
+        });
+      }
+
+      // Create extract directory and mock extracted files for hooks to use
+      const extractDir = `${context.installDir}/extract`;
+      await fs.ensureDir(extractDir);
+
+      // Create a basic 'tool' file that hooks can copy/manipulate
+      const toolFile = `${extractDir}/tool`;
+      await fs.writeFile(toolFile, '#!/bin/bash\necho "mock tool"');
+      await fs.chmod(toolFile, 0o755);
+
+      // Create mock documentation files
+      await fs.writeFile(`${extractDir}/README.md`, '# Mock Tool\nThis is a mock tool.');
+      await fs.writeFile(`${extractDir}/LICENSE`, 'MIT License');
+
+      // For source-tool specifically, create a Makefile to simulate source distribution
+      if (toolName === 'source-tool') {
+        await fs.writeFile(`${extractDir}/Makefile`, 'all:\n\t@echo "Building..."');
+      }
+
+      // Simulate extract event - this will throw if hook throws
+      if (context.emitEvent) {
+        await context.emitEvent('afterExtract', {
+          extractDir,
+          extractResult: {
+            extractedFiles: [toolName, 'tool', 'README.md', 'LICENSE'],
+            executables: [toolName, 'tool'],
+            extractDir,
+          },
+          fileSystem: fs,
+        });
+      }
+
+      return {
+        success: true,
+        binaryPaths: [mockToolBinaryPath],
+        version: '1.0.0',
+        originalTag: 'v1.0.0',
+        metadata: {
+          method: 'github-release',
+          releaseUrl: 'https://github.com/test/repo/releases/tag/v1.0.0',
+          publishedAt: '2024-01-01T00:00:00Z',
+          releaseName: 'Release v1.0.0',
+          downloadUrl: 'https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz',
+          assetName: 'test-asset.tar.gz',
+        },
+      };
+    },
+  });
+
+  pluginRegistry.composeSchemas();
+
+  // Create installer instance - import here to avoid circular dependency
+  const { Installer } = await import('../Installer.js');
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
   const mockSystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir };
   const installer = new Installer(
     logger,
     fs,
-    mockDownloader,
-    mockGitHubApiClient,
-    mockCargoClient,
-    mockArchiveExtractor,
     mockAppConfig,
     mockToolInstallationRegistry,
-    mockSystemInfo
+    mockSystemInfo,
+    pluginRegistry
   );
 
   return {
@@ -293,6 +363,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     mockArchiveExtractor,
     mockAppConfig,
     mockToolInstallationRegistry,
+    pluginRegistry,
     installer,
     fileSystemMocks: spies,
     testDirs,

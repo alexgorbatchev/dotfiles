@@ -1,5 +1,5 @@
 import type { YamlConfig } from '@dotfiles/config';
-import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/schemas';
+import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { PowerShellStringProducer } from './PowerShellStringProducer';
 

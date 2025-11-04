@@ -1,7 +1,7 @@
 import path from 'node:path';
+import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/schemas';
 import { minimatch } from 'minimatch';
 import { createBinarySymlink } from './createBinarySymlinks';
 import { messages } from './log-messages';
@@ -22,7 +22,11 @@ export async function setupBinariesFromArchive(
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
-  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, context.timestamp, extractDir, binariesDir, logger);
+  // Extract subdirectory name from context.installDir
+  // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")
+  const subdirName = path.basename(context.installDir);
+
+  await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, subdirName, extractDir, binariesDir, logger);
 }
 
 /**
@@ -33,7 +37,7 @@ async function setupBinariesUsingPatterns(
   fs: IFileSystem,
   toolName: string,
   binaryConfigs: BinaryConfig[],
-  timestamp: string,
+  versionOrTimestamp: string,
   extractDir: string,
   binariesDir: string,
   parentLogger: TsLogger
@@ -64,7 +68,7 @@ async function setupBinariesUsingPatterns(
 
     // Create symlink for this binary
     const relativePath = path.relative(extractDir, binaryPath);
-    await createBinarySymlink(fs, toolName, binaryName, timestamp, relativePath, binariesDir, logger);
+    await createBinarySymlink(fs, toolName, binaryName, versionOrTimestamp, relativePath, binariesDir, logger);
     foundAnyBinary = true;
   }
 
@@ -245,7 +249,11 @@ export async function setupBinariesFromDirectDownload(
   const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
   const downloadFileName = path.basename(downloadPath);
 
-  await createBinarySymlink(fs, toolName, primaryBinary, context.timestamp, downloadFileName, binariesDir, logger);
+  // Extract subdirectory name from context.installDir
+  // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")
+  const subdirName = path.basename(context.installDir);
+
+  await createBinarySymlink(fs, toolName, primaryBinary, subdirName, downloadFileName, binariesDir, logger);
 
   if (binaryConfigs.length > 1) {
     logger.debug(messages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary));

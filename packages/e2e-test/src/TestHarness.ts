@@ -1,6 +1,6 @@
 import { expect } from 'bun:test';
 import path from 'node:path';
-import type { Architecture, Platform } from '@dotfiles/schemas';
+import type { Architecture, Platform } from '@dotfiles/core';
 import { $ } from 'bun';
 import { architectureToString, platformToString } from './platformUtils';
 

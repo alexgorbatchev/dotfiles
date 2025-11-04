@@ -83,6 +83,17 @@ export function withMockServer(): void {
           return new Response('Version not found', { status: 404 });
         },
 
+        // GitHub release API - returns specific version by tag
+        '/repos/:org/:repo/releases/tags/:tag': (req) => {
+          const toolKey = `${req.params.org}/${req.params.repo}`;
+          const tag = req.params.tag.replace(/^v/, ''); // Strip 'v' prefix if present
+          const toolData = GITHUB_DEFAULTS[toolKey];
+          if (toolData?.[tag]) {
+            return Response.json(toolData[tag]);
+          }
+          return new Response('Version not found', { status: 404 });
+        },
+
         '/set-tool-version/:org/:repo/:version': (req) => {
           const toolKey = `${req.params.org}/${req.params.repo}`;
           currentVersions[toolKey] = req.params.version;

@@ -1,6 +1,6 @@
 import path from 'node:path';
+import type { ShellType } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ShellType } from '@dotfiles/schemas';
 import { generateProfileHeader, generateSourceLine } from '../shellTemplates';
 import type { IProfileUpdater, ProfileUpdateConfig, ProfileUpdateResult } from './IProfileUpdater';
 

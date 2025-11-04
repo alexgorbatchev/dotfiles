@@ -9,9 +9,8 @@
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/installer": "workspace:*",
-    "@dotfiles/installer-plugin-system": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

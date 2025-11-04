@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerInstallCommand } from '../installCommand';
 import { messages } from '../log-messages';

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { Architecture, always, Platform, type SystemInfo, type ToolConfig } from '@dotfiles/schemas';
+import type { ToolConfig } from '@dotfiles/core';
+import { Architecture, always, Platform, type SystemInfo } from '@dotfiles/core';
 import { resolvePlatformConfig } from '../src/resolvePlatformConfig';
 
 describe('resolvePlatformConfig', () => {
@@ -315,8 +316,7 @@ describe('resolvePlatformConfig', () => {
             platforms: Platform.MacOS,
             config: {
               version: '2.0.0-macos',
-              installationMethod: 'brew',
-              installParams: { formula: 'test-tool' },
+              binaries: ['test-tool-macos'],
             },
           },
         ],
@@ -324,9 +324,12 @@ describe('resolvePlatformConfig', () => {
 
       const result = resolvePlatformConfig(configWithOverrides, macosSystemInfo);
 
+      // Platform config overrides scalar properties
       expect(result.version).toBe('2.0.0-macos');
-      expect(result.installationMethod).toBe('brew');
-      expect(result.installParams).toEqual({ formula: 'test-tool' });
+      expect(result.binaries).toEqual(['test-tool-macos']);
+      // Base config properties remain unchanged
+      expect(result.installationMethod).toBe('github-release');
+      expect(result.installParams).toEqual({ repo: 'test/repo' });
     });
 
     it('should merge array properties (zshInit, bashInit, symlinks)', () => {

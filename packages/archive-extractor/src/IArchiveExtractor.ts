@@ -1,4 +1,4 @@
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/schemas';
+import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/core';
 
 /**
  * Interface for a service that extracts various archive formats.

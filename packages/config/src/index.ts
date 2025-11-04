@@ -1,4 +1,4 @@
-export * from '@dotfiles/schemas/config';
+export * from '@dotfiles/core';
 export * from './ConfigService';
 export * from './IConfigService';
 export * from './loadToolConfigs';

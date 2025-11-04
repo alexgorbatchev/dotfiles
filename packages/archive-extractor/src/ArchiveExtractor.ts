@@ -1,9 +1,9 @@
 import { exec as execCallback } from 'node:child_process';
 import { basename, extname, join } from 'node:path';
 import { promisify } from 'node:util';
+import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/schemas';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import { messages } from './log-messages';
 

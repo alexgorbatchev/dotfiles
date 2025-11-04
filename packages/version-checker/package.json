@@ -12,8 +12,9 @@
   },
   "dependencies": {
     "@dotfiles/installer": "workspace:*",
+    "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/core": "workspace:*",
     "semver": "^7.6.3"
   },
   "devDependencies": {

@@ -1,21 +1,21 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { BaseInstallContext, ExtractResult, InstallOptions } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { ICargoClient } from '@dotfiles/installer';
-import type { TsLogger } from '@dotfiles/logger';
-import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
-import { normalizeVersion } from '@dotfiles/utils';
+import type { HookExecutor } from '@dotfiles/installer';
 import {
   createToolFileSystem,
   downloadWithProgress,
   getBinaryPaths,
-  withInstallErrorHandling,
   setupBinariesFromArchive,
+  withInstallErrorHandling,
 } from '@dotfiles/installer';
-import type { HookExecutor } from '@dotfiles/installer';
-import type { InstallOptions } from '@dotfiles/installer-plugin-system';
+import type { TsLogger } from '@dotfiles/logger';
+import { normalizeVersion } from '@dotfiles/utils';
+import type { ICargoClient } from './cargo-client';
 import { messages } from './log-messages';
+import type { CargoInstallParams, CargoToolConfig } from './schemas';
 import type { CargoInstallMetadata, CargoInstallResult } from './types';
 
 export async function installFromCargo(

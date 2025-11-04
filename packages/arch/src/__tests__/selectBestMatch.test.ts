@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { SystemInfo } from '@dotfiles/schemas';
+import type { SystemInfo } from '@dotfiles/core';
 import { selectBestMatch } from '../selectBestMatch';
 
 describe('selectBestMatch', () => {

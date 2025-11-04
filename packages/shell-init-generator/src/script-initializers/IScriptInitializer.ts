@@ -1,4 +1,4 @@
-import type { ShellType } from '@dotfiles/schemas';
+import type { ShellType } from '@dotfiles/core';
 
 /**
  * Output from script initializer containing initialization content

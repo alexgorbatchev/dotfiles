@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { ShellCompletionConfig } from '@dotfiles/schemas';
+import type { ShellCompletionConfig } from '@dotfiles/core';
 import { BashStringProducer } from '../shell-generators/BashStringProducer';
 import { PowerShellStringProducer } from '../shell-generators/PowerShellStringProducer';
 import { ZshStringProducer } from '../shell-generators/ZshStringProducer';

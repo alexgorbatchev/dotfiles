@@ -1,22 +1,19 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { TestLogger } from '@dotfiles/logger';
-import type { ManualToolConfig } from '@dotfiles/schemas';
-import { ManualInstallerPlugin } from '../ManualInstallerPlugin';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor } from '@dotfiles/installer';
+import type { ManualToolConfig } from '@dotfiles/installer-manual';
+import { TestLogger } from '@dotfiles/logger';
+import { ManualInstallerPlugin } from '../ManualInstallerPlugin';
 
 describe('ManualInstallerPlugin', () => {
   let logger: TestLogger;
   let plugin: ManualInstallerPlugin;
   let mockFs: IFileSystem;
-  let mockHookExecutor: HookExecutor;
 
   beforeEach(() => {
     logger = new TestLogger();
     mockFs = {} as IFileSystem;
-    mockHookExecutor = {} as HookExecutor;
-    
-    plugin = new ManualInstallerPlugin(logger, mockFs, mockHookExecutor);
+
+    plugin = new ManualInstallerPlugin(logger, mockFs);
   });
 
   it('should have correct plugin metadata', () => {

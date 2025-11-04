@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { yamlConfigSchema } from '@dotfiles/schemas/config';
+import { yamlConfigSchema } from '@dotfiles/core';
 
 /**
  * Tests focused on the new per-host configuration + cache behavior for network services.

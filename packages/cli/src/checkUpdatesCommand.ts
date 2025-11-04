@@ -1,12 +1,11 @@
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { BaseInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
-import { isBrewToolConfig, isCargoToolConfig, isGitHubReleaseToolConfig } from '@dotfiles/schemas';
 import { ExitCode, exitCli } from '@dotfiles/utils';
+import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
-import { checkBrewUpdate, checkCargoUpdate, checkGitHubReleaseUpdate } from './updateCheckers';
 
 export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
   // No command-specific options for check-updates command
@@ -61,7 +60,7 @@ export async function checkUpdatesActionLogic(
   toolName: string | undefined,
   services: Services
 ): Promise<void> {
-  const { yamlConfig, fs, versionChecker, githubApiClient } = services;
+  const { yamlConfig, fs, versionChecker, pluginRegistry, systemInfo } = services;
 
   logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
@@ -71,19 +70,80 @@ export async function checkUpdatesActionLogic(
   }
 
   for (const config of Object.values(toolConfigs)) {
-    if (isGitHubReleaseToolConfig(config)) {
-      await checkGitHubReleaseUpdate(config, githubApiClient, versionChecker, logger);
-    } else if (isBrewToolConfig(config)) {
-      await checkBrewUpdate(config, versionChecker, logger);
-    } else if (isCargoToolConfig(config)) {
-      await checkCargoUpdate(config, services.cargoClient, versionChecker, logger);
-    } else {
+    const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+    const getToolDir = (toolName: string): string => `${yamlConfig.paths.binariesDir}/${toolName}`;
+
+    const context: BaseInstallContext = {
+      toolName: config.name,
+      installDir: yamlConfig.paths.binariesDir,
+      timestamp: timestamp || '',
+      systemInfo,
+      toolConfig: config,
+      appConfig: yamlConfig,
+      toolDir: getToolDir(config.name),
+      getToolDir,
+      homeDir: yamlConfig.paths.homeDir,
+      binDir: yamlConfig.paths.targetDir,
+      shellScriptsDir: yamlConfig.paths.shellScriptsDir,
+      dotfilesDir: yamlConfig.paths.dotfilesDir,
+      generatedDir: yamlConfig.paths.generatedDir,
+      logger,
+    };
+
+    const plugin = pluginRegistry.get(config.installationMethod);
+
+    if (!plugin) {
+      logger.warn(
+        messages.commandUnsupportedOperation(
+          'check-updates',
+          `installation method: "${config.installationMethod}" for tool "${config.name}"`
+        )
+      );
+      continue;
+    }
+
+    if (!plugin.supportsUpdateCheck || !plugin.supportsUpdateCheck()) {
       logger.info(
         messages.commandUnsupportedOperation(
           'check-updates',
           `installation method: "${config.installationMethod}" for tool "${config.name}"`
         )
       );
+      continue;
+    }
+
+    const updateCheckResult = await plugin.checkUpdate?.(config.name, config, context, logger);
+
+    if (!updateCheckResult) {
+      logger.warn(messages.commandUnsupportedOperation('check-updates', config.name));
+      continue;
+    }
+
+    if (updateCheckResult.error) {
+      logger.error(messages.serviceGithubApiFailed('check update', 0), new Error(updateCheckResult.error));
+      continue;
+    }
+
+    const currentVersion = updateCheckResult.currentVersion || config.version || 'unknown';
+    const latestVersion = updateCheckResult.latestVersion || 'unknown';
+
+    if (currentVersion === 'latest') {
+      logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
+      continue;
+    }
+
+    if (updateCheckResult.hasUpdate) {
+      logger.info(messages.toolUpdateAvailable(config.name, currentVersion, latestVersion));
+    } else {
+      const status = await versionChecker.checkVersionStatus(currentVersion, latestVersion);
+
+      if (status === VersionComparisonStatus.UP_TO_DATE) {
+        logger.info(messages.toolUpToDate(config.name, currentVersion, latestVersion));
+      } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
+        logger.info(messages.toolAheadOfLatest(config.name, currentVersion, latestVersion));
+      } else {
+        logger.warn(messages.toolVersionComparisonFailed(config.name, currentVersion, latestVersion));
+      }
     }
   }
 }

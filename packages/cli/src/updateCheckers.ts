@@ -1,13 +1,8 @@
-import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
-import type { IGitHubApiClient } from '@dotfiles/installer/clients/github';
+import type { BaseToolConfigProperties } from '@dotfiles/core';
+import type { BrewToolConfig } from '@dotfiles/installer-brew';
+import type { CargoInstallParams, CargoToolConfig, ICargoClient } from '@dotfiles/installer-cargo';
+import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
-import type {
-  BaseToolConfigProperties,
-  BrewToolConfig,
-  CargoInstallParams,
-  CargoToolConfig,
-  GithubReleaseToolConfig,
-} from '@dotfiles/schemas';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';

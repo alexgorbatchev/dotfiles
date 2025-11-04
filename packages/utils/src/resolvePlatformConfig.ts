@@ -1,5 +1,5 @@
-import type { PlatformConfig, PlatformConfigEntry, SystemInfo, ToolConfig } from '@dotfiles/schemas';
-import { Architecture, hasArchitecture, hasPlatform, Platform } from '@dotfiles/schemas';
+import type { PlatformConfig, PlatformConfigEntry, SystemInfo, ToolConfig } from '@dotfiles/core';
+import { Architecture, hasArchitecture, hasPlatform, Platform } from '@dotfiles/core';
 
 /**
  * Detects the current operating system using the same logic as yamlConfigLoader
@@ -148,12 +148,6 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
   if (platformConfig.version !== undefined) {
     finalConfig.version = platformConfig.version;
   }
-  if (platformConfig.installationMethod !== undefined) {
-    finalConfig.installationMethod = platformConfig.installationMethod;
-  }
-  if (platformConfig.installParams !== undefined) {
-    finalConfig.installParams = platformConfig.installParams;
-  }
   if (platformConfig.updateCheck !== undefined) {
     finalConfig.updateCheck = platformConfig.updateCheck;
   }
@@ -184,9 +178,7 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
   }
 
   // Find matching platform configurations
-  const matchingConfigs = toolConfig.platformConfigs.filter((entry: PlatformConfigEntry) =>
-    matchesPlatform(entry, systemInfo)
-  );
+  const matchingConfigs = toolConfig.platformConfigs.filter((entry) => matchesPlatform(entry, systemInfo));
 
   // If no matches found, return the original config without platformConfigs
   if (matchingConfigs.length === 0) {
@@ -199,16 +191,17 @@ export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: System
 
   // Apply each matching platform config in order
   for (const match of matchingConfigs) {
+    const config = match.config;
     // Merge shell configs
-    mergeShellConfigs(finalConfig, match.config.shellConfigs);
+    mergeShellConfigs(finalConfig, config.shellConfigs);
 
     // Merge symlinks arrays
-    if (match.config.symlinks) {
-      finalConfig.symlinks = [...(finalConfig.symlinks || []), ...match.config.symlinks];
+    if (config.symlinks) {
+      finalConfig.symlinks = [...(finalConfig.symlinks || []), ...config.symlinks];
     }
 
     // Override other properties
-    applyPlatformOverrides(finalConfig, match.config);
+    applyPlatformOverrides(finalConfig, config);
   }
 
   return finalConfig;

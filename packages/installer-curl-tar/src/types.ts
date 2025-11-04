@@ -3,6 +3,7 @@ import type { OperationFailure, OperationSuccess } from '@dotfiles/installer';
 export interface CurlTarInstallMetadata {
   method: 'curl-tar';
   downloadUrl: string;
+  tarballUrl: string;
 }
 
 export interface CurlTarInstallSuccess extends OperationSuccess {

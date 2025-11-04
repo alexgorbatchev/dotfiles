@@ -1,4 +1,4 @@
-import type { BinaryConfig } from '@dotfiles/schemas';
+import type { BinaryConfig } from '@dotfiles/core';
 
 /**
  * Normalizes a mixed array of strings and BinaryConfig objects to a consistent BinaryConfig array.

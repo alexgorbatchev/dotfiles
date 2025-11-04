@@ -1,4 +1,4 @@
-import { Architecture, Platform } from '@dotfiles/schemas';
+import { Architecture, Platform } from '@dotfiles/core';
 
 /**
  * Convert Platform enum to CLI string value

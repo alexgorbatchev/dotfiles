@@ -1,11 +1,19 @@
-import type { CurlScriptInstallParams } from '@dotfiles/schemas';
-
 export * from './CurlScriptInstallerPlugin';
+export * from './CurlScriptPluginDefinition';
 export * from './installFromCurlScript';
+export * from './schemas';
 export * from './types';
 
-declare module '@dotfiles/tool-config-builder' {
-  interface ToolConfigBuilder {
-    install(method: 'curl-script', params: CurlScriptInstallParams): this;
+// Module augmentation for curl-script plugin
+import type { RegisterPluginResult } from '@dotfiles/core';
+
+declare module '@dotfiles/core' {
+  interface InstallParamsRegistry {
+    'curl-script': import('./schemas').CurlScriptInstallParams;
   }
+  interface ToolConfigRegistry {
+    'curl-script': import('./schemas').CurlScriptToolConfig;
+  }
+  interface PluginResultRegistry
+    extends RegisterPluginResult<'curl-script', import('./types').CurlScriptInstallResult> {}
 }

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
-import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@dotfiles/schemas';
+import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@dotfiles/core';
 import { generateCompletionSetup } from '../shellTemplates';
 import type { IShellStringProducer } from './BaseShellGenerator';
 

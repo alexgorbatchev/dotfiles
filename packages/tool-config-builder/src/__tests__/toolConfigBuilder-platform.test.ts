@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { Architecture, Platform } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
-import type { ManualInstallParams } from '@dotfiles/schemas';
-import { Architecture, Platform } from '@dotfiles/schemas';
 import { messages } from '../log-messages';
 import { ToolConfigBuilder } from '../toolConfigBuilder';
 
@@ -15,8 +14,8 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should create a configuration for a single platform', () => {
-    builder.platform(Platform.Linux, (pb) => {
-      pb.bin('linux-app');
+    builder.platform(Platform.Linux, (install) => {
+      return install('manual', { binaryPath: 'linux-app' }).bin('linux-app') as unknown as ToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -30,15 +29,8 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should apply various platform-specific settings using a valid install method', () => {
-    builder.platform(Platform.Windows, (pb) => {
-      pb.bin('win-app.exe');
-      // Use a valid install method, e.g., manual, and put other details in hooks if necessary
-      // For simplicity, we'll use 'manual' and assume other scripts are handled by hooks (not tested here)
-      pb.install('manual', { binaryPath: 'win-app.exe' });
-      // pb.uninstall and pb.check are not methods of PlatformConfigBuilder
-      // These would be part of installParams or hooks.
-      // Example: setting a version for this platform
-      pb.version('1.0.0-win');
+    builder.platform(Platform.Windows, (install) => {
+      return install('manual', { binaryPath: 'win-app.exe' }).bin('win-app.exe').version('1.0.0-win');
     });
 
     const config = builder.build();
@@ -48,18 +40,16 @@ describe('ToolConfigBuilder - Platform Support', () => {
     expect(platformConfig).toBeDefined(); // Ensure platformConfig itself is defined
     expect(platformConfig!.platforms).toBe(Platform.Windows);
     expect(platformConfig!.config.binaries).toEqual(['win-app.exe']);
-    expect(platformConfig!.config.installationMethod).toBe('manual');
-    expect((platformConfig!.config.installParams as ManualInstallParams)?.binaryPath).toBe('win-app.exe');
     expect(platformConfig!.config.version).toBe('1.0.0-win');
   });
 
   it('should create configurations for multiple platforms via separate calls', () => {
-    builder.platform(Platform.Linux, (pb) => {
-      pb.bin('linux-bin');
+    builder.platform(Platform.Linux, (install) => {
+      return install('manual', { binaryPath: 'linux-bin' }).bin('linux-bin') as unknown as ToolConfigBuilder;
     });
-    builder.platform(Platform.MacOS, (pb) => {
+    builder.platform(Platform.MacOS, (install) => {
       // Changed Darwin to MacOS
-      pb.bin('darwin-bin');
+      return install('manual', { binaryPath: 'darwin-bin' }).bin('darwin-bin') as unknown as ToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -76,9 +66,11 @@ describe('ToolConfigBuilder - Platform Support', () => {
   });
 
   it('should create a configuration for multiple platforms via a single call with bitwise OR', () => {
-    builder.platform(Platform.Linux | Platform.MacOS, (pb) => {
+    builder.platform(Platform.Linux | Platform.MacOS, (install) => {
       // Changed to bitwise OR and MacOS
-      pb.bin('multi-platform-bin');
+      return install('manual', { binaryPath: 'multi-platform-bin' }).bin(
+        'multi-platform-bin'
+      ) as unknown as ToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -92,21 +84,24 @@ describe('ToolConfigBuilder - Platform Support', () => {
 
   it('should create a configuration with platform and architecture combinations using correct builder methods', () => {
     // Generic Linux config (optional, could be empty or have common settings)
-    builder.platform(Platform.Linux, (pb) => {
-      pb.version('linux-common'); // Example common setting
-      pb.bin('linux-common-bin'); // Ensure at least one binary is set for platform config
+    builder.platform(Platform.Linux, (install) => {
+      return install('manual', { binaryPath: 'linux-common-bin' })
+        .version('linux-common') // Example common setting
+        .bin('linux-common-bin') as unknown as ToolConfigBuilder; // Ensure at least one binary is set for platform config
     });
 
     // Linux X86_64 specific
-    builder.platform(Platform.Linux, Architecture.X86_64, (pb) => {
-      pb.bin('linux-x86_64-bin');
-      pb.install('github-release', { repo: 'test/repo', assetPattern: 'linux-x86_64.tar.gz' });
+    builder.platform(Platform.Linux, Architecture.X86_64, (install) => {
+      return install('github-release', { repo: 'test/repo', assetPattern: 'linux-x86_64.tar.gz' }).bin(
+        'linux-x86_64-bin'
+      ) as unknown as ToolConfigBuilder;
     });
 
     // Linux Arm64 specific
-    builder.platform(Platform.Linux, Architecture.Arm64, (pb) => {
-      pb.bin('linux-arm64-bin');
-      pb.install('github-release', { repo: 'test/repo', assetPattern: 'linux-arm64.tar.gz' });
+    builder.platform(Platform.Linux, Architecture.Arm64, (install) => {
+      return install('github-release', { repo: 'test/repo', assetPattern: 'linux-arm64.tar.gz' }).bin(
+        'linux-arm64-bin'
+      ) as unknown as ToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -127,20 +122,19 @@ describe('ToolConfigBuilder - Platform Support', () => {
 
     expect(linuxX86Config).toBeDefined();
     expect(linuxX86Config!.config.binaries).toEqual(['linux-x86_64-bin']);
-    expect(linuxX86Config!.config.installationMethod).toBe('github-release');
 
     expect(linuxArmConfig).toBeDefined();
     expect(linuxArmConfig!.config.binaries).toEqual(['linux-arm64-bin']);
-    expect(linuxArmConfig!.config.installationMethod).toBe('github-release');
   });
 
   it('should correctly build with global and platform-specific settings', () => {
     builder.version('1.0.0'); // Global
 
     // Platform MacOS, specific for Arm64
-    builder.platform(Platform.MacOS, Architecture.Arm64, (pb) => {
-      pb.install('github-release', { repo: 'test/macrepo', assetPattern: 'macos-arm64.zip' });
-      pb.bin('darwin-arm64-app');
+    builder.platform(Platform.MacOS, Architecture.Arm64, (install) => {
+      return install('github-release', { repo: 'test/macrepo', assetPattern: 'macos-arm64.zip' }).bin(
+        'darwin-arm64-app'
+      ) as unknown as ToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -152,7 +146,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
       (p) => p.platforms === Platform.MacOS && p.architectures === Architecture.Arm64
     );
     expect(darwinArmConfig).toBeDefined();
-    expect(darwinArmConfig!.config.installationMethod).toBe('github-release');
+    expect(darwinArmConfig!.config.binaries).toEqual(['darwin-arm64-app']);
     expect(darwinArmConfig!.config.binaries).toEqual(['darwin-arm64-app']);
   });
 

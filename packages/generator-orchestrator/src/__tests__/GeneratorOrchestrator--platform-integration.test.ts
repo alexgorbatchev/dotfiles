@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
+import type { PlatformConfig, SystemInfo, ToolConfig } from '@dotfiles/core';
+import { always, Platform } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { SystemInfo, ToolConfig } from '@dotfiles/schemas';
-import { always, Platform } from '@dotfiles/schemas';
 import type { IShellInitGenerator, ShellInitGenerationResult } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
@@ -19,11 +19,12 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
     if (config.platformConfigs) {
       for (const platformConfig of config.platformConfigs) {
         const isMatch =
-          (platformConfig.platforms & Platform.MacOS && systemInfo.platform === 'darwin') ||
-          (platformConfig.platforms & Platform.Linux && systemInfo.platform === 'linux');
+          ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === 'darwin') ||
+          ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === 'linux');
 
-        if (isMatch && platformConfig.config.shellConfigs?.zsh?.scripts) {
-          content += `# Platform-specific content for ${toolName}: ${platformConfig.config.shellConfigs.zsh.scripts.join(' ')}\n`;
+        const config = platformConfig.config as PlatformConfig;
+        if (isMatch && config.shellConfigs?.zsh?.scripts) {
+          content += `# Platform-specific content for ${toolName}: ${config.shellConfigs.zsh.scripts.join(' ')}\n`;
         }
       }
     }
@@ -288,8 +289,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
                   },
                 },
                 symlinks: [{ source: './macos.conf', target: '~/.macos.conf' }],
-                installationMethod: 'brew',
-                installParams: { formula: 'test-formula' },
               },
             },
           ],

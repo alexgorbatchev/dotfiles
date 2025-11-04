@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { ToolConfig } from '@dotfiles/core';
 import type { MemFileSystemReturn } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
-import type { ToolConfig } from '@dotfiles/schemas';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerFeaturesCommand } from '../featuresCommand';
 import { messages } from '../log-messages';

@@ -1,22 +1,12 @@
-import type { InstallerPluginRegistry } from '@dotfiles/installer-plugin-system';
-import type { TsLogger } from '@dotfiles/logger';
 import type {
   Architecture,
   AsyncInstallHook,
-  BrewInstallParams,
-  BrewToolConfig,
-  CargoInstallParams,
-  CargoToolConfig,
-  CurlScriptInstallParams,
-  CurlScriptToolConfig,
-  CurlTarInstallParams,
-  CurlTarToolConfig,
-  GithubReleaseInstallParams,
-  GithubReleaseToolConfig,
-  ManualInstallParams,
-  ManualToolConfig,
+  InstallerPluginRegistry,
   Platform,
+  PlatformConfig,
+  PlatformConfigBuilder as PlatformConfigBuilderInterface,
   PlatformConfigEntry,
+  PlatformInstallFunction,
   ShellCompletionConfig,
   ShellConfig,
   ShellConfigs,
@@ -24,7 +14,8 @@ import type {
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigUpdateCheck,
-} from '@dotfiles/schemas';
+} from '@dotfiles/core';
+import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 
 /**
@@ -52,7 +43,7 @@ export interface BinaryConfig {
 }
 
 /**
- * A fluent API for creating {@link @dotfiles/schemas#ToolConfig} objects.
+ * A fluent API for creating {@link @dotfiles/core#ToolConfig} objects.
  *
  * This builder provides a chainable interface to define all aspects of a tool's
  * configuration, from its name and version to complex, platform-specific
@@ -133,21 +124,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * Specifies the installation method and its required parameters.
    *
    * This is a critical step that defines how the tool is acquired and installed.
-   * The method is overloaded to provide type safety for the parameters of each
-   * installation strategy.
+   * Type safety for the parameters is provided by each plugin through module augmentation.
    * **This method should only be called once**; subsequent calls will override the previous value.
    *
    * @param method - The installation method (e.g., 'github-release', 'brew').
    * @param params - A configuration object specific to the chosen method.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  // Overloaded install method
-  install(method: 'github-release', params: GithubReleaseInstallParams): this;
-  install(method: 'brew', params: BrewInstallParams): this;
-  install(method: 'curl-script', params: CurlScriptInstallParams): this;
-  install(method: 'curl-tar', params: CurlTarInstallParams): this;
-  install(method: 'cargo', params: CargoInstallParams): this;
-  install(method: 'manual', params: ManualInstallParams): this;
   install(method: string, params: Record<string, unknown>): this {
     this.currentInstallationMethod = method;
     this.currentInstallParams = params;
@@ -192,7 +175,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * and completion scripts that should be sourced by Zsh.
    * **This method can be called multiple times**; configurations are merged.
    *
-   * @param config - A {@link @dotfiles/schemas#ShellConfig} object for Zsh.
+   * @param config - A {@link @dotfiles/core#ShellConfig} object for Zsh.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
   zsh(config: ShellConfig): this {
@@ -224,7 +207,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * and completion scripts that should be sourced by Bash.
    * **This method can be called multiple times**; configurations are merged.
    *
-   * @param config - A {@link @dotfiles/schemas#ShellConfig} object for Bash.
+   * @param config - A {@link @dotfiles/core#ShellConfig} object for Bash.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
   bash(config: ShellConfig): this {
@@ -256,7 +239,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * and completion scripts that should be sourced by PowerShell.
    * **This method can be called multiple times**; configurations are merged.
    *
-   * @param config - A {@link @dotfiles/schemas#ShellConfig} object for PowerShell.
+   * @param config - A {@link @dotfiles/core#ShellConfig} object for PowerShell.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
   powershell(config: ShellConfig): this {
@@ -338,9 +321,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * or versions depending on the operating system and architecture.
    * **This method can be called multiple times** to define overrides for different platforms.
    *
-   * @param platforms - The target platform(s), using the {@link @dotfiles/schemas#Platform} enum.
+   * @param platforms - The target platform(s), using the {@link @dotfiles/core#Platform} enum.
    *   Multiple platforms can be combined with a bitwise OR (e.g., `Platform.MacOS | Platform.Linux`).
-   * @param architecturesOrConfigure - Either an {@link @dotfiles/schemas#Architecture} enum to target
+   * @param architecturesOrConfigure - Either an {@link @dotfiles/core#Architecture} enum to target
    *   specific CPU architectures, or the configuration callback function if architecture is not specified.
    * @param configureCallback - The callback function that receives a new `ToolConfigBuilder`
    *   instance to define the platform-specific overrides. This is required if `architecturesOrConfigure`
@@ -349,11 +332,11 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   platform(
     platforms: Platform,
-    architecturesOrConfigure: Architecture | ((builder: ToolConfigBuilderInterface) => void),
-    configureCallback?: (builder: ToolConfigBuilderInterface) => void
+    architecturesOrConfigure: Architecture | ((install: PlatformInstallFunction) => PlatformConfigBuilderInterface),
+    configureCallback?: (install: PlatformInstallFunction) => PlatformConfigBuilderInterface
   ): this {
     let targetArchitectures: Architecture | undefined;
-    let configureFn: (builder: ToolConfigBuilderInterface) => void;
+    let configureFn: (install: PlatformInstallFunction) => PlatformConfigBuilderInterface;
 
     if (typeof architecturesOrConfigure === 'function') {
       configureFn = architecturesOrConfigure;
@@ -372,7 +355,16 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     }
 
     const platformBuilder = new ToolConfigBuilder(this.logger, this.toolName, true);
-    configureFn(platformBuilder);
+
+    // Create platform install function that works like the main install function
+    const platformInstall: PlatformInstallFunction = ((method?: string, params?: Record<string, unknown>) => {
+      if (method) {
+        platformBuilder.install(method, params || {});
+      }
+      return platformBuilder as unknown as PlatformConfigBuilderInterface;
+    }) as PlatformInstallFunction;
+
+    configureFn(platformInstall);
     const platformConfig = platformBuilder.buildPlatformConfig();
 
     this.platformConfigEntries.push({
@@ -389,7 +381,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * **This method should only be called once**; subsequent calls will override the previous value.
    *
-   * @param config - A {@link @dotfiles/schemas#ToolConfigUpdateCheck} object.
+   * @param config - A {@link @dotfiles/core#ToolConfigUpdateCheck} object.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
   updateCheck(config: ToolConfig['updateCheck']): this {
@@ -398,12 +390,12 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Finalizes the configuration and returns the complete {@link @dotfiles/schemas#ToolConfig} object.
+   * Finalizes the configuration and returns the complete {@link @dotfiles/core#ToolConfig} object.
    *
    * This method validates the constructed configuration and returns the final, immutable
    * tool configuration object. If a registry was provided, it will be used for schema validation.
    *
-   * @returns The built {@link @dotfiles/schemas#ToolConfig}.
+   * @returns The built {@link @dotfiles/core#ToolConfig}.
    */
   build(): ToolConfig {
     const baseConfig = this.buildBaseConfig();
@@ -476,7 +468,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @returns A platform configuration object with undefined values removed.
    */
-  private buildPlatformConfig() {
+  private buildPlatformConfig(): PlatformConfig {
     const config: Record<string, unknown> = {
       binaries:
         this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
@@ -499,7 +491,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       }
     });
 
-    return config;
+    return config as PlatformConfig;
   }
 
   /**
@@ -538,47 +530,19 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       } as ToolConfig;
     }
 
-    // Fallback to hardcoded methods for backward compatibility
-    switch (this.currentInstallationMethod) {
-      case 'github-release':
-        return {
-          ...installableBase,
-          installationMethod: 'github-release',
-          installParams: this.currentInstallParams,
-        } as GithubReleaseToolConfig;
-      case 'brew':
-        return {
-          ...installableBase,
-          installationMethod: 'brew',
-          installParams: this.currentInstallParams,
-        } as BrewToolConfig;
-      case 'curl-script':
-        return {
-          ...installableBase,
-          installationMethod: 'curl-script',
-          installParams: this.currentInstallParams,
-        } as CurlScriptToolConfig;
-      case 'curl-tar':
-        return {
-          ...installableBase,
-          installationMethod: 'curl-tar',
-          installParams: this.currentInstallParams,
-        } as CurlTarToolConfig;
-      case 'cargo':
-        return {
-          ...installableBase,
-          installationMethod: 'cargo',
-          installParams: this.currentInstallParams,
-        } as CargoToolConfig;
-      case 'manual':
-        return {
-          ...installableBase,
-          installationMethod: 'manual',
-          installParams: this.currentInstallParams,
-        } as ManualToolConfig;
-      default:
-        return this.throwInvalidMethodError();
+    // Without registry, validate against known core methods
+    const validMethods: string[] = ['github-release', 'brew', 'curl-script', 'curl-tar', 'cargo', 'manual'];
+
+    if (this.currentInstallationMethod && validMethods.includes(this.currentInstallationMethod)) {
+      return {
+        ...installableBase,
+        installationMethod: this.currentInstallationMethod,
+        installParams: this.currentInstallParams,
+      } as ToolConfig;
     }
+
+    // Invalid method without registry
+    return this.throwInvalidMethodError();
   }
 
   /**
@@ -642,7 +606,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
       installationMethod: 'manual',
       installParams: {},
-    } as ManualToolConfig;
+    } as unknown as ToolConfig;
   }
 
   /**
