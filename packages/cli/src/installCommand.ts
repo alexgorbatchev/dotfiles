@@ -31,8 +31,9 @@ async function loadToolConfigSafely(
 
 function handleInstallationResult(
   logger: TsLogger,
-  result: { success: boolean; version?: string; error?: string },
+  result: { success: true; version?: string } | { success: false; error: string },
   toolName: string,
+  installationMethod: string,
   shimMode: boolean
 ): number | null {
   if (result.success) {
@@ -41,7 +42,7 @@ function handleInstallationResult(
       return 0;
     } else {
       // Normal mode: log success message and continue (don't exit)
-      logger.info(messages.toolInstalled(toolName, result.version ?? 'unknown', 'CLI'));
+      logger.info(messages.toolInstalled(toolName, result.version ?? 'unknown', installationMethod));
       return null; // Don't exit on success in normal mode
     }
   } else {
@@ -50,7 +51,7 @@ function handleInstallationResult(
       process.stderr.write(`Failed to install '${toolName}': ${result.error ?? 'Unknown error'}\n`);
     } else {
       // Normal mode: use logger only
-      logger.error(messages.toolInstallFailed('unknown', toolName, result.error ?? 'Unknown error'));
+      logger.error(messages.toolInstallFailed(installationMethod, toolName, result.error ?? 'Unknown error'));
     }
     return 1;
   }
@@ -113,7 +114,13 @@ export function registerInstallCommand(
             shimMode: combinedOptions.shimMode,
           });
 
-          shouldExitWithCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
+          shouldExitWithCode = handleInstallationResult(
+            logger,
+            result,
+            toolName,
+            toolConfig.installationMethod,
+            combinedOptions.shimMode
+          );
         }
       } catch (error) {
         shouldExitWithCode = handleInstallationError(logger, error as Error, toolName, combinedOptions.shimMode);

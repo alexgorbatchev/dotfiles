@@ -86,7 +86,7 @@ describe('installCommand', () => {
       verbose: false,
       shimMode: false,
     });
-    testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'CLI')]);
+    testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'manual')]);
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
@@ -176,7 +176,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [messages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
+      [messages.toolInstallFailed('manual', 'toolA', 'Installation failed')]
     );
   });
 

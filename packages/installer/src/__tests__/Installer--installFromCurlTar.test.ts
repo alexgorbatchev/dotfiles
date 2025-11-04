@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import type { CurlTarToolConfig } from '@dotfiles/schemas';
 import {
@@ -54,6 +55,7 @@ describe('Installer - installFromCurlTar', () => {
     // symlink should be called to create binary symlinks
     expect(setup.fileSystemMocks.symlink).toHaveBeenCalled();
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.metadata).toEqual({
       method: 'curl-tar',
       tarballUrl: 'https://example.com/archive.tar.gz',

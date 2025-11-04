@@ -191,8 +191,8 @@ export class Installer implements IInstaller {
     logger.debug(messages.lifecycle.hookExecution('afterInstall'));
     const finalContext = {
       ...context,
-      binaryPaths: result.binaryPaths,
-      version: result.version,
+      binaryPaths: result.success ? result.binaryPaths : undefined,
+      version: result.success ? result.version : undefined,
     };
 
     const enhancedContext = this.hookExecutor.createEnhancedContext(finalContext, toolFs);

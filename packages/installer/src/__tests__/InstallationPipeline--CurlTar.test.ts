@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import { InstallationPipeline } from '../utils/InstallationPipeline';
 import { createArchivePipeline } from '../utils/stepFactories';
@@ -53,6 +54,7 @@ describe('InstallationPipeline - CurlTar', () => {
     const result = await pipeline.execute(MOCK_TOOL_NAME, toolConfig, context, setup.fs, undefined, steps);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.binaryPaths).toBeDefined();
     expect(setup.mocks.downloader.download).toHaveBeenCalledWith(
       'https://example.com/test-tool.tar.gz',

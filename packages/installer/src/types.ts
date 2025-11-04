@@ -1,6 +1,22 @@
 import type { ToolConfig } from '@dotfiles/schemas';
 
 /**
+ * Standard success result for operations.
+ */
+export interface OperationSuccess {
+  success: true;
+}
+
+/**
+ * Standard failure result for operations.
+ * When an operation fails, it MUST provide an error explaining why.
+ */
+export interface OperationFailure {
+  success: false;
+  error: string;
+}
+
+/**
  * Metadata for Homebrew installations
  */
 export interface BrewInstallMetadata {
@@ -95,49 +111,42 @@ export interface InstallOptions {
 }
 
 /**
- * Result of the install operation
+ * Result of a tool installation operation.
+ * This is a discriminated union - check the success property to determine which properties are available.
  */
-export interface InstallResult {
-  /**
-   * Whether the installation was successful
-   */
-  success: boolean;
+export type InstallResult =
+  | (OperationSuccess & {
+      /**
+       * All binary paths for the installed tool
+       */
+      binaryPaths?: string[];
 
-  /**
-   * All binary paths for the installed tool
-   */
-  binaryPaths?: string[];
+      /**
+       * The installation path (timestamped directory)
+       */
+      installPath?: string;
 
-  /**
-   * The installation path (timestamped directory)
-   */
-  installPath?: string;
+      /**
+       * The version of the installed tool
+       */
+      version?: string;
 
-  /**
-   * The version of the installed tool
-   */
-  version?: string;
+      /**
+       * The original tag from the source (e.g., GitHub release tag before normalization)
+       */
+      originalTag?: string;
 
-  /**
-   * The original tag from the source (e.g., GitHub release tag before normalization)
-   */
-  originalTag?: string;
+      /**
+       * Success message for the installation
+       */
+      message?: string;
 
-  /**
-   * Error message if installation failed
-   */
-  error?: string;
-
-  /**
-   * Success message for the installation
-   */
-  message?: string;
-
-  /**
-   * Strongly typed metadata about the installation method and details
-   */
-  metadata?: InstallMetadata;
-}
+      /**
+       * Strongly typed metadata about the installation method and details
+       */
+      metadata?: InstallMetadata;
+    })
+  | OperationFailure;
 
 /**
  * Interface for the tool installer

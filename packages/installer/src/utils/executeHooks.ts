@@ -1,16 +1,14 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { PostDownloadInstallContext, PostExtractInstallContext, ToolConfig } from '@dotfiles/schemas';
+import type { OperationFailure, OperationSuccess } from '../types';
 import type { HookExecutor } from './HookExecutor';
 import { messages } from './log-messages';
 
 /**
  * Result of hook execution
  */
-export interface ExecuteHooksResult {
-  success: boolean;
-  error?: string;
-}
+export type ExecuteHooksResult = OperationSuccess | OperationFailure;
 
 /**
  * Execute afterDownload hook if defined in tool config

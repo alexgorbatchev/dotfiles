@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import type { CargoToolConfig } from '@dotfiles/schemas';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { createInstallerTestSetup } from './installer-test-helpers';
@@ -79,6 +80,7 @@ describe('Installer - installFromCargo', () => {
     const result = await setup.installer.install('ripgrep', toolConfig);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.binaryPaths).toHaveLength(1);
     expect(result.version).toBe('14.1.1');
     expect(result.metadata?.method).toBe('cargo');
@@ -108,6 +110,7 @@ describe('Installer - installFromCargo', () => {
     const result = await setup.installer.install('fd', toolConfig);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     // The download URL should contain the correct platform/arch mapping
     expect(result.metadata?.method).toBe('cargo');
     if (result.metadata?.method === 'cargo') {

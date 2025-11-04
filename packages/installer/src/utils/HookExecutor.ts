@@ -23,16 +23,21 @@ export interface HookExecutionOptions {
 /**
  * Result of hook execution
  */
-export interface HookExecutionResult {
-  /** Whether the hook executed successfully */
-  success: boolean;
-  /** Error message if hook failed */
-  error?: string;
-  /** Duration of hook execution in milliseconds */
-  durationMs: number;
-  /** Whether hook was skipped due to timeout or other reason */
-  skipped: boolean;
-}
+import type { OperationFailure, OperationSuccess } from '../types';
+
+export type HookExecutionResult =
+  | (OperationSuccess & {
+      /** Duration of hook execution in milliseconds */
+      durationMs: number;
+      /** Whether hook was skipped due to timeout or other reason */
+      skipped: boolean;
+    })
+  | (OperationFailure & {
+      /** Duration of hook execution in milliseconds */
+      durationMs: number;
+      /** Whether hook was skipped due to timeout or other reason */
+      skipped: boolean;
+    });
 
 /**
  * Executes installation hooks with proper error handling, timeouts, and tracking

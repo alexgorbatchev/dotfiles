@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import assert from 'node:assert';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import type { SafeLogMessage } from '@dotfiles/logger';
 import { TestLogger } from '@dotfiles/logger';
@@ -50,7 +51,8 @@ describe('HookExecutor', () => {
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(true);
-      expect(result.error).toBeUndefined();
+      assert(result.success);
+      expect(result).not.toHaveProperty('error');
     });
 
     it('should create hook-specific logger with correct naming format', async () => {
@@ -80,6 +82,7 @@ describe('HookExecutor', () => {
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toBe(errorMessage);
       expect(result.durationMs).toBeGreaterThanOrEqual(0);
       expect(result.skipped).toBe(false);
@@ -96,6 +99,7 @@ describe('HookExecutor', () => {
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('timed out');
       expect(result.skipped).toBe(false);
     });
@@ -111,6 +115,7 @@ describe('HookExecutor', () => {
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toBe(errorMessage);
     });
 
@@ -476,6 +481,7 @@ describe('HookExecutor', () => {
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toBe('String error');
     });
   });

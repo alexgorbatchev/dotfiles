@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import assert from 'node:assert';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { YamlConfig } from '@dotfiles/config';
 import type { DownloadOptions, IDownloader } from '@dotfiles/downloader';
@@ -163,6 +164,7 @@ describe('Installer - Enhanced Hooks', () => {
       const result = await installer.install(mockToolName, toolConfig);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('beforeInstall hook failed');
       expect(result.error).toContain(errorMessage);
     });
@@ -198,6 +200,7 @@ describe('Installer - Enhanced Hooks', () => {
       const result = await installer.install(mockToolName, toolConfig);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('beforeInstall hook failed');
       expect(result.error).toContain('timed out');
 
@@ -311,6 +314,7 @@ describe('Installer - Enhanced Hooks', () => {
       const result = await installer.install(mockToolName, toolConfig);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('afterDownload hook failed');
       expect(result.error).toContain(errorMessage);
     });
@@ -369,6 +373,7 @@ describe('Installer - Enhanced Hooks', () => {
       const result = await installer.install(mockToolName, toolConfig);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('afterExtract hook failed');
       expect(result.error).toContain(errorMessage);
     });

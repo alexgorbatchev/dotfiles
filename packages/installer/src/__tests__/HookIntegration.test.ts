@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
 import type { AsyncInstallHook, EnhancedInstallHookContext, GithubReleaseToolConfig } from '@dotfiles/schemas';
 import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
@@ -358,6 +359,7 @@ describe('Hook Integration Tests', () => {
       const result = await setup.installer.install('failing-tool', toolConfig);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('afterDownload hook failed');
       expect(result.error).toContain('Downloaded file validation failed: checksum mismatch');
 

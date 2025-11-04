@@ -114,8 +114,8 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
           case 'installer':
             mockServices.installer = {
               install: mock(async () => ({
-                success: true,
-                binaryPath: '/fake/bin/tool',
+                success: true as const,
+                binaryPaths: ['/fake/bin/tool'],
                 version: '1.0.0',
               })),
             };

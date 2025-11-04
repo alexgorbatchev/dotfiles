@@ -6,7 +6,7 @@ import type { ICargoClient } from '@dotfiles/installer/clients/cargo';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, CargoInstallParams, CargoToolConfig, ExtractResult } from '@dotfiles/schemas';
 import { normalizeVersion } from '@dotfiles/utils';
-import type { CargoInstallMetadata, InstallOptions, InstallResult } from '../types';
+import type { CargoInstallMetadata, InstallOptions, InstallResult, OperationFailure, OperationSuccess } from '../types';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../utils';
 import { setupBinariesFromArchive } from '../utils/BinarySetupService';
 import type { HookExecutor } from '../utils/HookExecutor';
@@ -158,7 +158,7 @@ async function executeAfterInstallHook(
   hookContext: BaseInstallContext & { version: string },
   extractResult: ExtractResult,
   toolFs: IFileSystem
-): Promise<InstallResult | { success: true }> {
+): Promise<OperationSuccess | OperationFailure> {
   if (toolConfig.installParams?.hooks?.afterInstall) {
     const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs);
     const finalHookResult = await hookExecutor.executeHook(

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import {
   createCurlScriptToolConfig,
@@ -52,6 +53,7 @@ describe('Installer - installFromCurlScript', () => {
 
     expect(setup.fileSystemMocks.chmod).toHaveBeenCalled();
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.metadata).toEqual({
       method: 'curl-script',
       scriptUrl: 'https://example.com/install.sh',

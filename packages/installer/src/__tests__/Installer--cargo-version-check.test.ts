@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import {
   createCargoToolConfig,
   createInstallerTestSetup,
@@ -50,6 +51,7 @@ describe('Installer - Cargo Version Check', () => {
 
     // Should return early with already-installed result instead of downloading again
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.message).toContain('already installed');
     expect(result.installPath).toBe('/existing/install/path');
     expect(result.version).toBe('0.18.2');
@@ -99,6 +101,7 @@ describe('Installer - Cargo Version Check', () => {
 
     // Should proceed with installation since versions don't match
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.version).toBe('0.18.2');
 
     // Should have called the downloader since it needs to install the new version

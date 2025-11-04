@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import { createMock$, type MockShell } from '@dotfiles/testing-helpers';
 import { installFromBrew } from '../installers/installFromBrew';
@@ -33,6 +34,7 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.metadata).toEqual({
       method: 'brew',
       formula: 'test-formula',
@@ -59,6 +61,7 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.metadata).toEqual({
       method: 'brew',
       formula: 'test-cask',
@@ -85,6 +88,7 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.metadata).toEqual({
       method: 'brew',
       formula: 'test-formula',
@@ -159,6 +163,7 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(false);
+    assert(!result.success);
     expect(result.error).toBe('Install parameters not specified');
   });
 
@@ -194,6 +199,7 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.version).toBe('14.1.0');
     expect(mock$.commands).toContain('brew info --json test-formula');
   });
@@ -219,10 +225,11 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.version).toBeUndefined();
   });
 
-  it('should handle brew info failure gracefully', async () => {
+  it('should handle invalid JSON from brew info gracefully', async () => {
     // Configure mock$ to return empty output (simulating brew info failure)
     mock$.mockResponse('brew info --json test-formula', {
       stdout: Buffer.from(''),
@@ -243,6 +250,7 @@ describe('Installer - installFromBrew', () => {
     const result = await installFromBrew(MOCK_TOOL_NAME, toolConfig, context, undefined, setup.logger, mock$);
 
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.version).toBeUndefined();
   });
 });

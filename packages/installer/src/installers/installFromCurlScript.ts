@@ -67,10 +67,7 @@ export async function installFromCurlScript(
       logger
     );
     if (!afterDownloadResult.success) {
-      return {
-        success: false,
-        error: afterDownloadResult.error,
-      };
+      return afterDownloadResult;
     }
 
     // Execute the script

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import type { AssetSelectionContext, AssetSelector } from '@dotfiles/schemas';
 import { messages } from '../utils/log-messages';
@@ -110,6 +111,7 @@ describe('Installer - Asset Selector Context API', () => {
       const result = await setup.installer.installFromGitHubRelease(MOCK_TOOL_NAME, toolConfig, context);
 
       expect(result.success).toBe(false);
+      assert(!result.success);
       expect(result.error).toContain('No suitable asset found');
       expect(result.error).toContain('using a custom assetSelector function');
     });

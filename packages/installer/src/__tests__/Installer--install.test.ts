@@ -140,11 +140,6 @@ describe('Installer - install (orchestrator)', () => {
     // This should resolve the platform-specific config and call installFromCargo
     // instead of failing with "Unsupported installation method: none"
     const result = await setup.installer.install('eza', toolConfigWithPlatformSpecificCargo);
-
-    if (!result.success) {
-      throw new Error(`Expected installation to succeed, but got error: ${result.error}`);
-    }
-
     expect(result.success).toBe(true);
     expect(installFromCargoSpy).toHaveBeenCalledWith(
       'eza',

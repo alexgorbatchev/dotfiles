@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, type mock } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import {
   createInstallerTestSetup,
@@ -41,6 +42,7 @@ describe('Installer - installManually', () => {
     expect(setup.fileSystemMocks.copyFile).toHaveBeenCalledWith(manualBinaryPath, expectedFinalPath);
     expect(setup.fileSystemMocks.chmod).not.toHaveBeenCalledWith();
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.binaryPaths).toEqual([expectedFinalPath]);
     expect(result.metadata).toEqual({
       method: 'manual',
@@ -66,6 +68,7 @@ describe('Installer - installManually', () => {
     const result = await setup.installer.installManually(MOCK_TOOL_NAME, toolConfig, context);
 
     expect(result.success).toBe(false);
+    assert(!result.success);
     expect(result.error).toContain('Binary not found');
   });
 
@@ -88,6 +91,7 @@ describe('Installer - installManually', () => {
     expect(setup.fileSystemMocks.exists).not.toHaveBeenCalled();
     expect(setup.fileSystemMocks.copyFile).not.toHaveBeenCalled();
     expect(result.success).toBe(true);
+    assert(result.success);
     expect(result.binaryPaths).toEqual([]);
     expect(result.metadata).toEqual({
       method: 'manual',
