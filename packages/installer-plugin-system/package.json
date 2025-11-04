@@ -1,5 +1,5 @@
 {
-  "name": "@dotfiles/tool-config-builder",
+  "name": "@dotfiles/installer-plugin-system",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -8,12 +8,12 @@
   },
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dotfiles/installer-plugin-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/schemas": "workspace:*"
+    "@dotfiles/schemas": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:system",

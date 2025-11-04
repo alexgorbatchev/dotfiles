@@ -1,0 +1,20 @@
+{
+  "name": "@dotfiles/installer-curl-script",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/installer-plugin-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*"
+  }
+}

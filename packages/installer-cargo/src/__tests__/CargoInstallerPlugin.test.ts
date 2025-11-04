@@ -1,0 +1,73 @@
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { TestLogger } from '@dotfiles/logger';
+import type { CargoToolConfig } from '@dotfiles/schemas';
+import { CargoInstallerPlugin } from '../CargoInstallerPlugin';
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { IDownloader } from '@dotfiles/downloader';
+import type { IFileSystem } from '@dotfiles/file-system';
+import type { ICargoClient, HookExecutor } from '@dotfiles/installer';
+
+describe('CargoInstallerPlugin', () => {
+  let logger: TestLogger;
+  let plugin: CargoInstallerPlugin;
+  let mockFs: IFileSystem;
+  let mockDownloader: IDownloader;
+  let mockCargoClient: ICargoClient;
+  let mockArchiveExtractor: IArchiveExtractor;
+  let mockHookExecutor: HookExecutor;
+
+  beforeEach(() => {
+    logger = new TestLogger();
+    mockFs = {} as IFileSystem;
+    mockDownloader = {} as IDownloader;
+    mockCargoClient = {} as ICargoClient;
+    mockArchiveExtractor = {} as IArchiveExtractor;
+    mockHookExecutor = {} as HookExecutor;
+    
+    plugin = new CargoInstallerPlugin(
+      logger,
+      mockFs,
+      mockDownloader,
+      mockCargoClient,
+      mockArchiveExtractor,
+      mockHookExecutor,
+      'https://github.com'
+    );
+  });
+
+  it('should have correct plugin metadata', () => {
+    expect(plugin.method).toBe('cargo');
+    expect(plugin.displayName).toBe('Cargo Installer');
+    expect(plugin.version).toBe('1.0.0');
+  });
+
+  it('should have valid schemas', () => {
+    expect(plugin.paramsSchema).toBeDefined();
+    expect(plugin.toolConfigSchema).toBeDefined();
+  });
+
+  it('should validate correct params', () => {
+    const validParams = {
+      crateName: 'test-crate',
+      versionSource: 'cargo-toml' as const,
+    };
+
+    const result = plugin.paramsSchema.safeParse(validParams);
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate correct tool config', () => {
+    const validConfig: CargoToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['test-tool'],
+      installationMethod: 'cargo',
+      installParams: {
+        crateName: 'test-crate',
+      },
+    };
+
+    const result = plugin.toolConfigSchema.safeParse(validConfig);
+    expect(result.success).toBe(true);
+  });
+});

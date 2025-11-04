@@ -1,0 +1,19 @@
+{
+  "name": "@dotfiles/installer-brew",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/installer-plugin-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*"
+  }
+}

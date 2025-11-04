@@ -83,7 +83,7 @@ describe('ToolConfigBuilder', () => {
     builder.hooks(hooksData); // Call hooks without install
 
     // Check internal state directly
-    expect(builder.currentInstallParams?.hooks).toBeUndefined();
+    expect(builder.currentInstallParams?.['hooks']).toBeUndefined();
 
     // Use TestLogger.expect() to verify the warning was logged
     testLogger.expect(
@@ -208,7 +208,6 @@ describe('ToolConfigBuilder', () => {
     builder.bin('test-binary');
     // Test error handling by forcing an invalid installation method
     // This simulates a corrupted state that should never occur in normal usage
-    // @ts-expect-error - Intentionally setting invalid state for error testing
     builder.currentInstallationMethod = 'invalid-method';
     builder.currentInstallParams = { repo: 'test/repo' };
 

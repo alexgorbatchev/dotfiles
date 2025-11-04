@@ -1,0 +1,22 @@
+{
+  "name": "@dotfiles/installer-cargo",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dotfiles/archive-extractor": "workspace:*",
+    "@dotfiles/downloader": "workspace:*",
+    "@dotfiles/file-system": "workspace:*",
+    "@dotfiles/installer": "workspace:*",
+    "@dotfiles/installer-plugin-system": "workspace:*",
+    "@dotfiles/logger": "workspace:*",
+    "@dotfiles/schemas": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dotfiles/testing-helpers": "workspace:*"
+  }
+}

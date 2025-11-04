@@ -1,3 +1,4 @@
+import type { InstallerPluginRegistry } from '@dotfiles/installer-plugin-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type {
   Architecture,
@@ -22,8 +23,6 @@ import type {
   ShellScript,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
-  ToolConfigInstallationMethod,
-  ToolConfigInstallParams,
   ToolConfigUpdateCheck,
 } from '@dotfiles/schemas';
 import { messages } from './log-messages';
@@ -79,11 +78,12 @@ export interface BinaryConfig {
  */
 export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
+  private registry?: InstallerPluginRegistry;
   public toolName: string;
   public binaries: BinaryConfig[] = [];
   public versionNum: string = 'latest';
-  public currentInstallationMethod?: ToolConfigInstallationMethod;
-  public currentInstallParams?: ToolConfigInstallParams;
+  public currentInstallationMethod?: string;
+  public currentInstallParams?: Record<string, unknown>;
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
@@ -148,7 +148,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   install(method: 'curl-tar', params: CurlTarInstallParams): this;
   install(method: 'cargo', params: CargoInstallParams): this;
   install(method: 'manual', params: ManualInstallParams): this;
-  install(method: ToolConfigInstallationMethod, params: ToolConfigInstallParams): this {
+  install(method: string, params: Record<string, unknown>): this {
     this.currentInstallationMethod = method;
     this.currentInstallParams = params;
     return this;
@@ -172,7 +172,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     afterInstall?: AsyncInstallHook;
   }): this {
     if (this.currentInstallParams) {
-      this.currentInstallParams.hooks = { ...this.currentInstallParams.hooks, ...hooks };
+      const existingHooks = (this.currentInstallParams['hooks'] as Record<string, unknown>) || {};
+      this.currentInstallParams['hooks'] = { ...existingHooks, ...hooks };
     } else {
       this.logger.warn(
         messages.configurationFieldIgnored(
@@ -400,7 +401,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * Finalizes the configuration and returns the complete {@link @dotfiles/schemas#ToolConfig} object.
    *
    * This method validates the constructed configuration and returns the final, immutable
-   * tool configuration object.
+   * tool configuration object. If a registry was provided, it will be used for schema validation.
    *
    * @returns The built {@link @dotfiles/schemas#ToolConfig}.
    */
@@ -408,7 +409,33 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const baseConfig = this.buildBaseConfig();
 
     if (this.hasInstallationMethod()) {
-      return this.buildInstallableToolConfig(baseConfig);
+      const config = this.buildInstallableToolConfig(baseConfig);
+
+      // Validate against registry schema if available
+      if (this.registry) {
+        try {
+          const schema = this.registry.getToolConfigSchema();
+          const result = schema.safeParse(config);
+
+          if (!result.success) {
+            const validationError = messages.configurationFieldInvalid(
+              'tool configuration',
+              this.toolName,
+              result.error.message
+            );
+            this.logger.error(validationError);
+            throw new Error(validationError);
+          }
+        } catch (error) {
+          // If registry doesn't have composed schema yet, proceed without validation
+          // This maintains backward compatibility
+          if (error instanceof Error && !error.message.includes('not composed')) {
+            throw error;
+          }
+        }
+      }
+
+      return config;
     }
 
     this.validateConfigurationOnly(baseConfig);
@@ -488,7 +515,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * Builds the final tool configuration for tools with an installation method.
    *
    * Takes the base configuration and adds the installation method and parameters,
-   * returning a properly typed configuration object based on the installation method.
+   * returning a properly typed configuration object. When a registry is available,
+   * it supports dynamic plugin-provided installation methods. Otherwise, it uses
+   * the hardcoded switch statement for backward compatibility.
    * Ensures binaries array is always defined for installable tools.
    *
    * @param baseConfig - The base configuration object.
@@ -500,6 +529,16 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       binaries: baseConfig.binaries && baseConfig.binaries.length > 0 ? baseConfig.binaries : [],
     };
 
+    // If registry is available, support dynamic methods
+    if (this.registry) {
+      return {
+        ...installableBase,
+        installationMethod: this.currentInstallationMethod,
+        installParams: this.currentInstallParams,
+      } as ToolConfig;
+    }
+
+    // Fallback to hardcoded methods for backward compatibility
     switch (this.currentInstallationMethod) {
       case 'github-release':
         return {
@@ -611,13 +650,31 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @param parentLogger - The parent logger from which a sublogger will be created.
    * @param toolName - The name of the tool being configured.
+   * @param registryOrIsPlatformScope - Either an InstallerPluginRegistry for validation or a boolean
+   *   indicating if this is platform scope (for backward compatibility).
    * @param isPlatformScope - Whether this builder is used for platform-specific configuration.
    *   When true, the builder will not include platformConfigs in the output to avoid circular references.
    */
-  constructor(parentLogger: TsLogger, toolName: string, isPlatformScope = false) {
+  constructor(
+    parentLogger: TsLogger,
+    toolName: string,
+    registryOrIsPlatformScope?: InstallerPluginRegistry | boolean,
+    isPlatformScope = false
+  ) {
     this.logger = parentLogger.getSubLogger({ name: 'ToolConfigBuilder' });
     this.toolName = toolName;
-    this.isPlatformScope = isPlatformScope;
+
+    // Handle overloaded constructor
+    if (typeof registryOrIsPlatformScope === 'boolean') {
+      this.isPlatformScope = registryOrIsPlatformScope;
+      this.registry = undefined;
+    } else if (registryOrIsPlatformScope) {
+      this.registry = registryOrIsPlatformScope;
+      this.isPlatformScope = isPlatformScope;
+    } else {
+      this.registry = undefined;
+      this.isPlatformScope = isPlatformScope;
+    }
   }
 
   /**
