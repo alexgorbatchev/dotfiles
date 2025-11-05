@@ -3,6 +3,8 @@ import type {
   BaseInstallContext,
   EnhancedInstallHookContext,
   InstallHookContext,
+  OperationFailure,
+  OperationSuccess,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -23,7 +25,6 @@ export interface HookExecutionOptions {
 /**
  * Result of hook execution
  */
-import type { OperationFailure, OperationSuccess } from '../types';
 
 export type HookExecutionResult =
   | (OperationSuccess & {

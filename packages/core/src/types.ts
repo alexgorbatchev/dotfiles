@@ -3,6 +3,22 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { z } from 'zod';
 
 /**
+ * Standard success result for operations.
+ */
+export interface OperationSuccess {
+  success: true;
+}
+
+/**
+ * Standard failure result for operations.
+ * When an operation fails, it MUST provide an error explaining why.
+ */
+export interface OperationFailure {
+  success: false;
+  error: string;
+}
+
+/**
  * Options passed to plugin install method
  */
 export interface InstallOptions {
@@ -11,25 +27,42 @@ export interface InstallOptions {
 }
 
 /**
- * Result from plugin installation
+ * Result from plugin installation - success case
  */
-export interface InstallResult<TMetadata = unknown> {
-  success: boolean;
-  error?: string;
+export type InstallResultSuccess<TMetadata = unknown> = OperationSuccess & {
   version?: string;
   binaryPaths?: string[];
   metadata?: TMetadata;
-}
+};
+
+/**
+ * Result from plugin installation - failure case
+ */
+export type InstallResultFailure = OperationFailure;
+
+/**
+ * Result from plugin installation
+ */
+export type InstallResult<TMetadata = unknown> = InstallResultSuccess<TMetadata> | InstallResultFailure;
+
+/**
+ * Result from plugin update check - success case
+ */
+export type UpdateCheckResultSuccess = OperationSuccess & {
+  hasUpdate: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+};
+
+/**
+ * Result from plugin update check - failure case
+ */
+export type UpdateCheckResultFailure = OperationFailure;
 
 /**
  * Result from plugin update check
  */
-export interface UpdateCheckResult {
-  hasUpdate: boolean;
-  currentVersion?: string;
-  latestVersion?: string;
-  error?: string;
-}
+export type UpdateCheckResult = UpdateCheckResultSuccess | UpdateCheckResultFailure;
 
 /**
  * Options for updating a tool
@@ -40,14 +73,22 @@ export interface UpdateOptions {
 }
 
 /**
- * Result from plugin update
+ * Result from plugin update - success case
  */
-export interface UpdateResult {
-  success: boolean;
-  error?: string;
+export type UpdateResultSuccess = OperationSuccess & {
   oldVersion?: string;
   newVersion?: string;
-}
+};
+
+/**
+ * Result from plugin update - failure case
+ */
+export type UpdateResultFailure = OperationFailure;
+
+/**
+ * Result from plugin update
+ */
+export type UpdateResult = UpdateResultSuccess | UpdateResultFailure;
 
 /**
  * Registry of plugin install parameter types - plugins extend this interface via module augmentation

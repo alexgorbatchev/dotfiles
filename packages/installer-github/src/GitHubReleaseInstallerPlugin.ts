@@ -93,42 +93,49 @@ export class GitHubReleaseInstallerPlugin
       const [owner, repoName] = repo.split('/');
 
       if (!owner || !repoName) {
-        return {
-          hasUpdate: false,
+        const result: UpdateCheckResult = {
+          success: false,
           error: `Invalid repo format: ${repo}. Expected owner/repo`,
         };
+        return result;
       }
 
       const latestRelease = await this.githubApiClient.getLatestRelease(owner, repoName);
       if (!latestRelease || !latestRelease.tag_name) {
-        return {
-          hasUpdate: false,
+        const result: UpdateCheckResult = {
+          success: false,
           error: `Could not fetch latest release for ${toolName}`,
         };
+        return result;
       }
 
       const configuredVersion = toolConfig.version || 'latest';
       const latestVersion = latestRelease.tag_name.replace(/^v/, '');
 
       if (configuredVersion === 'latest') {
-        return {
+        const result: UpdateCheckResult = {
+          success: true,
           hasUpdate: false,
           currentVersion: latestVersion,
           latestVersion,
         };
+        return result;
       }
 
-      return {
+      const result: UpdateCheckResult = {
+        success: true,
         hasUpdate: configuredVersion !== latestVersion,
         currentVersion: configuredVersion,
         latestVersion,
       };
+      return result;
     } catch (error) {
       logger.error(messages.updateCheckFailed(toolName), error);
-      return {
-        hasUpdate: false,
+      const result: UpdateCheckResult = {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+      return result;
     }
   }
 
@@ -194,25 +201,25 @@ export class GitHubReleaseInstallerPlugin
       );
 
       if (installResult.success) {
-        return {
+        const result: UpdateResult = {
           success: true,
           oldVersion,
           newVersion,
         };
-      } else {
-        return {
-          success: false,
-          error: installResult.error || 'Installation failed',
-          oldVersion,
-          newVersion,
-        };
+        return result;
       }
+      const result: UpdateResult = {
+        success: false,
+        error: installResult.error,
+      };
+      return result;
     } catch (error) {
       logger.error(messages.updateFailed(toolName), error);
-      return {
+      const result: UpdateResult = {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+      return result;
     }
   }
 

@@ -1,7 +1,12 @@
-import type { PostDownloadInstallContext, PostExtractInstallContext, ToolConfig } from '@dotfiles/core';
+import type {
+  OperationFailure,
+  OperationSuccess,
+  PostDownloadInstallContext,
+  PostExtractInstallContext,
+  ToolConfig,
+} from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { OperationFailure, OperationSuccess } from '../types';
 import type { HookExecutor } from './HookExecutor';
 import { messages } from './log-messages';
 

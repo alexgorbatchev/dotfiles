@@ -89,18 +89,12 @@ async function handleToolUpdate(
   const updateResult = await plugin.updateTool?.(toolName, toolConfig, context, { force: true }, logger);
 
   if (!updateResult) {
-    logger.info(messages.commandUnsupportedOperation('update', toolName));
-    return;
-  }
-
-  if (updateResult.error) {
-    logger.error(messages.toolUpdateFailed(toolName, updateResult.error));
-    exitCli(ExitCode.ERROR);
+    logger.debug(messages.commandUnsupportedOperation('update', toolName));
     return;
   }
 
   if (!updateResult.success) {
-    logger.error(messages.toolUpdateFailed(toolName, 'Unknown error'));
+    logger.error(messages.toolUpdateFailed(toolName, updateResult.error));
     exitCli(ExitCode.ERROR);
     return;
   }

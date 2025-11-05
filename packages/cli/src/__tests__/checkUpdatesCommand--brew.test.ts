@@ -44,6 +44,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       supportsUpdateCheck: mock(() => true),
       checkUpdate: mock(
         async (): Promise<UpdateCheckResult> => ({
+          success: true,
           hasUpdate: false,
           currentVersion: '13.0.0',
           latestVersion: '13.0.0',
@@ -78,6 +79,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
   test('should report brew formula is up-to-date', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: false,
       currentVersion: '13.0.0',
       latestVersion: '13.0.0',
@@ -91,6 +93,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
   test('should report brew formula update available', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: true,
       currentVersion: '13.0.0',
       latestVersion: '14.0.0',
@@ -108,6 +111,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
   test('should handle brew cask updates', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewCaskToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: true,
       currentVersion: '1.85.0',
       latestVersion: '1.86.0',
@@ -126,6 +130,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
     const brewLatestConfig: BrewToolConfig = { ...brewToolConfig, version: 'latest' };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewLatestConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: false,
       currentVersion: 'latest',
       latestVersion: '14.0.0',
@@ -143,9 +148,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
     };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(missingFormulaConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '13.0.0',
-      latestVersion: undefined,
+      success: false,
       error: 'Invalid formula: undefined',
     });
 
@@ -157,9 +160,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
   test('should handle brew info command failure', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(brewToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '13.0.0',
-      latestVersion: undefined,
+      success: false,
       error: 'Brew info command failed',
     });
 

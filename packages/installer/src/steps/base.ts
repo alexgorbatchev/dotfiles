@@ -1,24 +1,37 @@
-import type { BaseInstallContext, ExtractResult, ToolConfig } from '@dotfiles/core';
+import type { BaseInstallContext, ExtractResult, OperationFailure, OperationSuccess, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { InstallOptions } from '../types';
 
 /**
- * Context passed between installation steps
+ * Base context properties shared by all installation steps
  */
-export interface StepContext extends BaseInstallContext {
+type BaseStepContext = BaseInstallContext & {
   toolFs: IFileSystem;
   logger: TsLogger;
   toolConfig: ToolConfig;
   options?: InstallOptions;
-  success: boolean;
-  error?: string;
   downloadPath?: string;
   extractDir?: string;
   extractResult?: ExtractResult;
   version?: string;
   metadata?: Record<string, unknown>;
-}
+};
+
+/**
+ * Context passed between installation steps - success case
+ */
+export type StepContextSuccess = BaseStepContext & OperationSuccess;
+
+/**
+ * Context passed between installation steps - failure case
+ */
+export type StepContextFailure = BaseStepContext & OperationFailure;
+
+/**
+ * Context passed between installation steps
+ */
+export type StepContext = StepContextSuccess | StepContextFailure;
 
 /**
  * Base class for all installation steps

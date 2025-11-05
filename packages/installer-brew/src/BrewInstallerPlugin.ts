@@ -68,10 +68,12 @@ export class BrewInstallerPlugin
     // TODO: Implement actual brew info check
     // For now, return a placeholder result
     logger.warn(messages.updateCheckNotImplemented(toolName));
-    return {
+    const result: UpdateCheckResult = {
+      success: true,
       hasUpdate: false,
       currentVersion: toolConfig.version || 'latest',
     };
+    return result;
   }
 
   supportsUpdate(): boolean {

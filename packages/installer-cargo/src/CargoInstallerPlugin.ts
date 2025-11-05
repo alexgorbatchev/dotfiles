@@ -100,41 +100,48 @@ export class CargoInstallerPlugin
       const crateName = cargoParams?.crateName;
 
       if (!crateName) {
-        return {
-          hasUpdate: false,
+        const result: UpdateCheckResult = {
+          success: false,
           error: 'Missing crateName in install params',
         };
+        return result;
       }
 
       const latestVersion = await this.cargoClient.getLatestVersion(crateName);
       if (!latestVersion) {
-        return {
-          hasUpdate: false,
+        const result: UpdateCheckResult = {
+          success: false,
           error: `Could not fetch latest version for crate: ${crateName}`,
         };
+        return result;
       }
 
       const configuredVersion = toolConfig.version || 'latest';
 
       if (configuredVersion === 'latest') {
-        return {
+        const result: UpdateCheckResult = {
+          success: true,
           hasUpdate: false,
           currentVersion: latestVersion,
           latestVersion,
         };
+        return result;
       }
 
-      return {
+      const result: UpdateCheckResult = {
+        success: true,
         hasUpdate: configuredVersion !== latestVersion,
         currentVersion: configuredVersion,
         latestVersion,
       };
+      return result;
     } catch (error) {
       logger.error(messages.updateCheckFailed(toolName), error);
-      return {
-        hasUpdate: false,
+      const result: UpdateCheckResult = {
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+      return result;
     }
   }
 

@@ -185,7 +185,9 @@ describe('GeneratorOrchestrator', () => {
       const mockShellInitPath = path.join(mockAppConfig.paths.shellScriptsDir, 'main.zsh');
       const mockSymlinkResults: SymlinkOperationResult[] = [
         {
+          success: true,
           sourcePath: path.join(mockAppConfig.paths.dotfilesDir, 'a.conf'),
+
           targetPath: path.join('/test/home', '.a.conf'),
           status: 'created',
         },
@@ -218,7 +220,9 @@ describe('GeneratorOrchestrator', () => {
       const mockShellInitPathWrite = path.join(mockAppConfig.paths.shellScriptsDir, 'init-write.zsh');
       const mockSymlinkResultsWrite: SymlinkOperationResult[] = [
         {
+          success: true,
           sourcePath: path.join(mockAppConfig.paths.dotfilesDir, 'b.conf'),
+
           targetPath: path.join('/test/home', '.b.conf'),
           status: 'updated_target',
         },
@@ -267,7 +271,7 @@ describe('GeneratorOrchestrator', () => {
         const mockTestShimPaths = ['/memfs/shim1'];
         const mockTestShellInitPath = '/memfs/init.sh';
         const mockTestSymlinkResults: SymlinkOperationResult[] = [
-          { sourcePath: 's', targetPath: 't', status: 'created' },
+          { success: true, sourcePath: 's', targetPath: 't', status: 'created' },
         ];
 
         (mockShimGenerator.generate as ReturnType<typeof mock>).mockResolvedValue(mockTestShimPaths);

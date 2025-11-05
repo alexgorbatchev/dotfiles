@@ -1,4 +1,4 @@
-import type { ToolConfig } from '@dotfiles/core';
+import type { OperationFailure, OperationSuccess, ToolConfig } from '@dotfiles/core';
 
 /**
  * Options for generating symlinks.
@@ -19,21 +19,38 @@ export interface GenerateSymlinksOptions {
 }
 
 /**
- * Represents the result of a single symlink operation.
+ * Status values for symlink operation success cases
  */
-export type SymlinkOperationResult = {
+export type SymlinkOperationStatus =
+  | 'created'
+  | 'updated_target'
+  | 'backed_up'
+  | 'skipped_exists'
+  | 'skipped_correct'
+  | 'skipped_source_missing';
+
+/**
+ * Represents the result of a single symlink operation - success case
+ */
+export type SymlinkOperationResultSuccess = OperationSuccess & {
   sourcePath: string;
   targetPath: string;
-  status:
-    | 'created'
-    | 'updated_target'
-    | 'backed_up'
-    | 'skipped_exists'
-    | 'skipped_correct'
-    | 'skipped_source_missing'
-    | 'failed';
-  error?: string;
+  status: SymlinkOperationStatus;
 };
+
+/**
+ * Represents the result of a single symlink operation - failure case
+ */
+export type SymlinkOperationResultFailure = OperationFailure & {
+  sourcePath: string;
+  targetPath: string;
+  status: 'failed';
+};
+
+/**
+ * Represents the result of a single symlink operation
+ */
+export type SymlinkOperationResult = SymlinkOperationResultSuccess | SymlinkOperationResultFailure;
 
 /**
  * Interface for a service that generates symbolic links for dotfiles.

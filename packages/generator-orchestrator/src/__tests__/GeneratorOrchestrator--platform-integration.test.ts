@@ -101,7 +101,9 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     mockSymlinkGenerator = {
       generate: async () => {
         const mockResult: SymlinkOperationResult = {
+          success: true,
           sourcePath: '/test/src',
+
           targetPath: '/test/target',
           status: 'created',
         };

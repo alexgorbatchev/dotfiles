@@ -97,11 +97,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
     if (!(await toolFs.exists(sourceAbsPath))) {
       methodLogger.warn(messages.process.sourceMissing(toolConfig.name, sourceAbsPath));
-      return {
+      const result: SymlinkOperationResult = {
+        success: true,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
         status: 'skipped_source_missing',
       };
+      return result;
     }
 
     const targetHandlingResult = await this.handleExistingTarget(
@@ -113,12 +115,23 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     );
 
     if (targetHandlingResult.shouldSkip) {
-      return {
+      if (targetHandlingResult.status === 'failed') {
+        const result: SymlinkOperationResult = {
+          success: false,
+          sourcePath: sourceAbsPath,
+          targetPath: targetAbsPath,
+          status: 'failed',
+          error: targetHandlingResult.error ?? 'Unknown error',
+        };
+        return result;
+      }
+      const result: SymlinkOperationResult = {
+        success: true,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
         status: targetHandlingResult.status,
-        error: targetHandlingResult.error,
       };
+      return result;
     }
 
     return await this.createSymlink(sourceAbsPath, targetAbsPath, toolFs, targetHandlingResult.status, methodLogger);
@@ -130,7 +143,10 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolFs: IFileSystem,
     options: { overwrite: boolean; backup: boolean },
     logger: TsLogger
-  ): Promise<{ shouldSkip: boolean; status: SymlinkOperationResult['status']; error?: string }> {
+  ): Promise<
+    | { shouldSkip: false; status: 'created' | 'updated_target' | 'backed_up' }
+    | { shouldSkip: true; status: 'skipped_correct' | 'skipped_exists' | 'failed'; error?: string }
+  > {
     const methodLogger = logger.getSubLogger({ name: 'handleExistingTarget' });
     const targetExists = await toolFs.exists(targetAbsPath);
 
@@ -177,7 +193,10 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolFs: IFileSystem,
     backup: boolean,
     logger: TsLogger
-  ): Promise<{ shouldSkip: boolean; status: SymlinkOperationResult['status']; error?: string }> {
+  ): Promise<
+    | { shouldSkip: false; status: 'updated_target' | 'backed_up' }
+    | { shouldSkip: true; status: 'failed'; error: string }
+  > {
     const methodLogger = logger.getSubLogger({ name: 'handleOverwrite' });
     let status: SymlinkOperationResult['status'] = 'updated_target';
 
@@ -201,7 +220,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     targetAbsPath: string,
     toolFs: IFileSystem,
     logger: TsLogger
-  ): Promise<{ failed: boolean; error?: string }> {
+  ): Promise<{ failed: false } | { failed: true; error: string }> {
     const methodLogger = logger.getSubLogger({ name: 'createBackup' });
     const backupPath = `${targetAbsPath}.bak`;
     try {
@@ -221,7 +240,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     targetAbsPath: string,
     toolFs: IFileSystem,
     logger: TsLogger
-  ): Promise<{ failed: boolean; error?: string }> {
+  ): Promise<{ failed: false } | { failed: true; error: string }> {
     const methodLogger = logger.getSubLogger({ name: 'deleteTarget' });
     try {
       const targetStat = await toolFs.stat(targetAbsPath);
@@ -244,7 +263,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     sourceAbsPath: string,
     targetAbsPath: string,
     toolFs: IFileSystem,
-    status: SymlinkOperationResult['status'],
+    status: 'created' | 'updated_target' | 'backed_up',
     logger: TsLogger
   ): Promise<SymlinkOperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'createSymlink' });
@@ -255,30 +274,36 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     } catch (error) {
       const errorMsg = messages.filesystem.directoryCreateFailed(targetDir);
       methodLogger.error(errorMsg, error);
-      return {
+      const result: SymlinkOperationResult = {
+        success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
         status: 'failed',
         error: errorMsg,
       };
+      return result;
     }
 
     try {
       await toolFs.symlink(sourceAbsPath, targetAbsPath);
-      return {
+      const result: SymlinkOperationResult = {
+        success: true,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
         status,
       };
+      return result;
     } catch (error) {
       const errorMsg = messages.filesystem.symlinkFailed(sourceAbsPath, targetAbsPath);
       methodLogger.error(errorMsg, error);
-      return {
+      const result: SymlinkOperationResult = {
+        success: false,
         sourcePath: sourceAbsPath,
         targetPath: targetAbsPath,
         status: 'failed',
         error: errorMsg,
       };
+      return result;
     }
   }
 }

@@ -71,7 +71,9 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetFullPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
+
         targetPath: targetFullPath,
         status: 'created',
       },
@@ -95,6 +97,7 @@ describe('SymlinkGenerator', () => {
 
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'created',
@@ -115,6 +118,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.exists(targetPath)).toBe(false);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'skipped_source_missing',
@@ -149,6 +153,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readFile(targetPath)).toBe('existing target content'); // Should not be overwritten
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'skipped_exists',
@@ -176,6 +181,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'updated_target', // Or 'created' if it considers the final link as new after delete
@@ -206,6 +212,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'backed_up',
@@ -232,6 +239,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'created',
@@ -264,6 +272,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'backed_up',
@@ -330,6 +339,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'backed_up',
@@ -361,6 +371,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'updated_target',
@@ -388,6 +399,7 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
         targetPath,
         status: 'created',
@@ -411,7 +423,9 @@ describe('SymlinkGenerator', () => {
     expect(await mockFs.fs.readlink(expectedTargetPath)).toBe(sourceFullPath);
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
+
         targetPath: expectedTargetPath,
         status: 'created',
       },
@@ -437,7 +451,9 @@ describe('SymlinkGenerator', () => {
     // Should not recreate the symlink - just skip with correct status
     expect(results).toEqual([
       {
+        success: true,
         sourcePath: sourceFullPath,
+
         targetPath: expectedTargetPath,
         status: 'skipped_correct',
       },
@@ -464,6 +480,7 @@ describe('SymlinkGenerator', () => {
 
     expect(results).toEqual([
       {
+        success: false,
         sourcePath: sourceFullPath,
         targetPath: getTargetPath('.file.txt'),
         status: 'failed',

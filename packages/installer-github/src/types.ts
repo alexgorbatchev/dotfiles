@@ -1,4 +1,4 @@
-import type { OperationFailure, OperationSuccess } from '@dotfiles/installer';
+import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
 
 /**
  * Metadata for GitHub Release installations

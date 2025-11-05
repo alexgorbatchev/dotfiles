@@ -36,6 +36,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
       supportsUpdateCheck: mock(() => true),
       checkUpdate: mock(
         async (): Promise<UpdateCheckResult> => ({
+          success: true,
           hasUpdate: false,
           currentVersion: '0.10.1',
           latestVersion: '0.10.1',
@@ -70,6 +71,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
   test('should report cargo crate is up-to-date', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: false,
       currentVersion: '0.10.1',
       latestVersion: '0.10.1',
@@ -83,6 +85,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
   test('should report cargo crate update available', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: true,
       currentVersion: '0.10.1',
       latestVersion: '0.11.0',
@@ -97,6 +100,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
     const cargoLatestConfig: CargoToolConfig = { ...cargoToolConfig, version: 'latest' };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoLatestConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: false,
       currentVersion: 'latest',
       latestVersion: '0.12.0',
@@ -114,9 +118,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
     } as CargoToolConfig;
     mockConfigService.loadSingleToolConfig.mockResolvedValue(missingCrateConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '0.10.1',
-      latestVersion: undefined,
+      success: false,
       error: 'Invalid crateName: undefined',
     });
 
@@ -128,9 +130,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
   test('should handle cargo client error gracefully', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '0.10.1',
-      latestVersion: undefined,
+      success: false,
       error: 'Cargo API Down',
     });
 
@@ -142,9 +142,7 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
   test('should handle cargo API returning null version', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(cargoToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '0.10.1',
-      latestVersion: undefined,
+      success: false,
       error: 'Could not retrieve version',
     });
 

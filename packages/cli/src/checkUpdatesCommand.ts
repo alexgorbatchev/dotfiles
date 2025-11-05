@@ -119,7 +119,7 @@ export async function checkUpdatesActionLogic(
       continue;
     }
 
-    if (updateCheckResult.error) {
+    if (!updateCheckResult.success) {
       logger.error(messages.serviceGithubApiFailed('check update', 0), new Error(updateCheckResult.error));
       continue;
     }

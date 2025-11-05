@@ -36,6 +36,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
       supportsUpdateCheck: mock(() => true),
       checkUpdate: mock(
         async (): Promise<UpdateCheckResult> => ({
+          success: true,
           hasUpdate: true,
           currentVersion: '0.40.0',
           latestVersion: '0.41.0',
@@ -70,6 +71,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
   test('should report a tool is up-to-date', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: false,
       currentVersion: '0.40.0',
       latestVersion: '0.40.0',
@@ -83,6 +85,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
   test('should report an update is available', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: true,
       currentVersion: '0.40.0',
       latestVersion: '0.41.0',
@@ -97,6 +100,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
     const fzfLatestConfig: GithubReleaseToolConfig = { ...fzfToolConfig, version: 'latest' };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfLatestConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
+      success: true,
       hasUpdate: false,
       currentVersion: 'latest',
       latestVersion: '0.42.0',
@@ -110,9 +114,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
   test('should handle GitHub API error gracefully', async () => {
     mockConfigService.loadSingleToolConfig.mockResolvedValue(fzfToolConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '0.40.0',
-      latestVersion: undefined,
+      success: false,
       error: 'GitHub API Down',
     });
 
@@ -128,9 +130,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
     };
     mockConfigService.loadSingleToolConfig.mockResolvedValue(invalidRepoConfig);
     (mockPlugin.checkUpdate as ReturnType<typeof mock>).mockResolvedValue({
-      hasUpdate: false,
-      currentVersion: '0.40.0',
-      latestVersion: undefined,
+      success: false,
       error: 'Invalid repo format: invalid-repo-format',
     });
 

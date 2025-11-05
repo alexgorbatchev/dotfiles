@@ -44,6 +44,7 @@ describe('checkUpdatesCommand - Mixed Tool Types', () => {
       supportsUpdateCheck: mock(() => true),
       checkUpdate: mock(
         async (): Promise<UpdateCheckResult> => ({
+          success: true,
           hasUpdate: false,
           currentVersion: '0.40.0',
           latestVersion: '0.40.0',
@@ -83,11 +84,13 @@ describe('checkUpdatesCommand - Mixed Tool Types', () => {
 
     (mockPlugin.checkUpdate as ReturnType<typeof mock>)
       .mockResolvedValueOnce({
+        success: true,
         hasUpdate: false,
         currentVersion: '0.40.0',
         latestVersion: '0.40.0',
       })
       .mockResolvedValueOnce({
+        success: true,
         hasUpdate: true,
         currentVersion: '0.35.0',
         latestVersion: '0.36.0',

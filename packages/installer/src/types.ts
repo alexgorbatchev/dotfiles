@@ -2,22 +2,6 @@
 import type { AggregateInstallResult, ToolConfig } from '@dotfiles/core';
 
 /**
- * Standard success result for operations.
- */
-export interface OperationSuccess {
-  success: true;
-}
-
-/**
- * Standard failure result for operations.
- * When an operation fails, it MUST provide an error explaining why.
- */
-export interface OperationFailure {
-  success: false;
-  error: string;
-}
-
-/**
  * Options for the install operation
  */
 export interface InstallOptions {
