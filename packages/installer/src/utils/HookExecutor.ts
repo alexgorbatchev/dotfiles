@@ -13,7 +13,7 @@ import { $ } from 'bun';
 import { messages } from './log-messages';
 
 /**
- * Options for hook execution
+ * Configuration options for controlling hook execution behavior.
  */
 export interface HookExecutionOptions {
   /** Timeout in milliseconds for hook execution (default: 60000ms) */
@@ -23,7 +23,8 @@ export interface HookExecutionOptions {
 }
 
 /**
- * Result of hook execution
+ * Result of hook execution including success status, error details, and timing information.
+ * Indicates whether hook completed successfully or failed, and whether it was skipped.
  */
 
 export type HookExecutionResult =
@@ -41,15 +42,41 @@ export type HookExecutionResult =
     });
 
 /**
- * Executes installation hooks with proper error handling, timeouts, and tracking
+ * Complete definition of a hook including the function, name, and execution options.
+ * Used by `executeHooks` to run multiple hooks in sequence.
  */
+export interface HookDefinition {
+  /** Name of the hook */
+  name: string;
+  /** Hook function to execute */
+  hook: AsyncInstallHook;
+  /** Optional execution options */
+  options?: HookExecutionOptions;
+}
+
 /**
- * Type guard to check if a context has a toolConfig property
+ * Type guard that checks if a context has a toolConfig property.
+ * Distinguishes BaseInstallContext from InstallHookContext based on toolConfig presence.
+ *
+ * @param context - Context to check
+ * @returns True if context is BaseInstallContext with toolConfig, false otherwise
  */
 function hasToolConfig(context: BaseInstallContext | InstallHookContext): context is BaseInstallContext {
   return 'toolConfig' in context && context.toolConfig !== undefined;
 }
 
+/**
+ * Executes installation hooks with proper error handling, timeouts, and context management.
+ * Provides a consistent way to run beforeInstall, afterDownload, afterExtract, and afterInstall hooks.
+ *
+ * Features:
+ * - Timeout enforcement (default 60 seconds)
+ * - Error handling with optional continue-on-error
+ * - Execution duration tracking
+ * - Tool-specific logging via subloggers
+ * - Enhanced context creation with file system and shell access
+ * - Sequential execution of multiple hooks
+ */
 export class HookExecutor {
   private readonly logger: TsLogger;
   private readonly defaultTimeoutMs = 60000; // 1 minute default
@@ -59,7 +86,20 @@ export class HookExecutor {
   }
 
   /**
-   * Execute a single hook with error handling and timeout
+   * Executes a single hook with proper error handling, timeout enforcement, and logging.
+   * Creates a hook-specific logger and races the hook execution against a timeout promise.
+   *
+   * The hook receives an enhanced context with:
+   * - fileSystem: Tool-specific TrackedFileSystem for file operations
+   * - toolConfig: Tool configuration (if available in base context)
+   * - $: Bun's shell operator for executing commands
+   * - logger: Hook-specific logger with tool name and hook name
+   *
+   * @param hookName - Name of the hook for logging (e.g., 'beforeInstall', 'afterDownload')
+   * @param hook - Hook function to execute
+   * @param context - Enhanced context with file system and shell access
+   * @param options - Execution options (timeout, continueOnError)
+   * @returns Result with success status, duration, and error details if failed
    */
   async executeHook(
     hookName: string,
@@ -75,7 +115,7 @@ export class HookExecutor {
 
     // Create hook-specific logger and update context
     const hookSpecificLogger = context.logger.getSubLogger({ name: `${context.toolName}--${hookName}` });
-    const hookContext = { ...context, logger: hookSpecificLogger };
+    const hookContext: EnhancedInstallHookContext = { ...context, logger: hookSpecificLogger };
 
     try {
       // Create a promise that resolves when the hook completes
@@ -94,11 +134,12 @@ export class HookExecutor {
       const durationMs = Date.now() - startTime;
       methodLogger.debug(messages.hookExecutor.hookCompleted(hookName, durationMs));
 
-      return {
+      const result: HookExecutionResult = {
         success: true,
         durationMs,
         skipped: false,
       };
+      return result;
     } catch (error) {
       const durationMs = Date.now() - startTime;
 
@@ -107,25 +148,40 @@ export class HookExecutor {
       if (continueOnError) {
         methodLogger.debug(messages.hookExecutor.continuingDespiteFailure(hookName));
 
-        return {
+        const result: HookExecutionResult = {
           success: false,
           error: error instanceof Error ? error.message : String(error),
           durationMs,
           skipped: false,
         };
+        return result;
       } else {
-        return {
+        const result: HookExecutionResult = {
           success: false,
           error: error instanceof Error ? error.message : String(error),
           durationMs,
           skipped: false,
         };
+        return result;
       }
     }
   }
 
   /**
-   * Create enhanced context for hook execution with proper filesystem tracking
+   * Creates an enhanced context for hook execution by adding file system, shell access, and toolConfig.
+   * Ensures hooks have all necessary dependencies while maintaining file tracking capabilities.
+   *
+   * Enhancements:
+   * - fileSystem: Tool-specific TrackedFileSystem or provided filesystem
+   * - toolConfig: Extracted from BaseInstallContext if available
+   * - $: Bun's shell operator for executing commands
+   *
+   * The TrackedFileSystem integration allows proper tracking of file operations
+   * performed by hooks for registry management.
+   *
+   * @param baseContext - Base install or hook context with tool information
+   * @param fileSystem - File system instance (may be TrackedFileSystem)
+   * @returns Enhanced context ready for hook execution
    */
   createEnhancedContext(
     baseContext: BaseInstallContext | InstallHookContext,
@@ -141,19 +197,28 @@ export class HookExecutor {
     // With Bun's $, we provide the shell operator directly
     // Hooks can use `cd` commands if they need to change directories
     // The cwd is available via toolConfig.configFilePath if needed
-    return {
+    const result: EnhancedInstallHookContext = {
       ...baseContext,
       fileSystem: enhancedFileSystem,
       toolConfig,
       $,
     };
+    return result;
   }
 
   /**
-   * Execute multiple hooks in sequence with proper logging and error handling
+   * Executes multiple hooks in sequence with proper error handling and result tracking.
+   * Stops execution if a hook fails and continueOnError is not set for that hook.
+   *
+   * Use this method to run a series of hooks at once, useful for batch operations
+   * or when hooks have dependencies on each other's execution order.
+   *
+   * @param hooks - Array of hook definitions with names, functions, and options
+   * @param context - Enhanced context shared across all hooks
+   * @returns Array of execution results for each hook
    */
   async executeHooks(
-    hooks: Array<{ name: string; hook: AsyncInstallHook; options?: HookExecutionOptions }>,
+    hooks: HookDefinition[],
     context: EnhancedInstallHookContext
   ): Promise<HookExecutionResult[]> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
@@ -170,6 +235,7 @@ export class HookExecutor {
       }
     }
 
-    return results;
+    const finalResults: HookExecutionResult[] = results;
+    return finalResults;
   }
 }

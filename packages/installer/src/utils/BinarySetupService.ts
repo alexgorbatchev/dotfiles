@@ -8,7 +8,24 @@ import { messages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
 
 /**
- * Setup binaries from extracted archive - creates symlinks for all binaries using their patterns
+ * Sets up binaries from an extracted archive by finding them using patterns and creating symlinks.
+ * Primary function for handling binaries after archive extraction (tar.gz, zip, etc.).
+ *
+ * Process:
+ * 1. Normalizes binary configurations to include default patterns
+ * 2. Uses minimatch patterns to locate binaries in extracted directory
+ * 3. Creates symlinks in binaries directory pointing to found binaries
+ * 4. Logs errors and shows directory tree if binaries not found
+ *
+ * The subdirectory name (version or timestamp) is extracted from context.installDir
+ * and used for creating the symlink structure.
+ *
+ * @param fs - File system interface for file operations
+ * @param toolName - Name of the tool being installed
+ * @param toolConfig - Tool configuration with binary definitions
+ * @param context - Install context with paths
+ * @param extractDir - Directory where archive was extracted
+ * @param parentLogger - Logger for diagnostic messages
  */
 export async function setupBinariesFromArchive(
   fs: IFileSystem,

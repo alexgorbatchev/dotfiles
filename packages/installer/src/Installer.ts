@@ -1,6 +1,12 @@
 import path from 'node:path';
 import type { YamlConfig } from '@dotfiles/config';
-import type { BaseInstallContext, InstallerPluginRegistry, SystemInfo, ToolConfig } from '@dotfiles/core';
+import type {
+  AsyncInstallHook,
+  BaseInstallContext,
+  InstallerPluginRegistry,
+  SystemInfo,
+  ToolConfig,
+} from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -10,41 +16,56 @@ import type { IInstaller, InstallOptions, InstallResult } from './types';
 import { HookExecutor, messages } from './utils';
 
 /**
- * Orchestrates the tool installation process by coordinating services like `Downloader`,
- * `ArchiveExtractor`, and `GitHubApiClient`. It manages the entire lifecycle, including
- * directory setup, hooks, and artifact tracking.
+ * Orchestrates the tool installation process by delegating to plugin-based installation methods
+ * registered in the `InstallerPluginRegistry`. Manages the entire installation lifecycle including
+ * timestamped directory creation, hook execution, installation tracking, and cleanup.
  *
- * The installer determines the installation method from the `ToolConfig` and delegates
- * to the appropriate private method (e.g., `installFromGitHubRelease`).
+ * ### Installation Flow
+ * 1. Resolves platform-specific configuration using `resolvePlatformConfig`
+ * 2. Creates tool-specific file system instance for tracking
+ * 3. Checks if tool is already installed (unless force option is used)
+ * 4. Creates timestamped installation directory (e.g., `binaries/toolname/2025-11-05-12-34-56`)
+ * 5. Executes beforeInstall hook if defined
+ * 6. Delegates to plugin for actual installation via `registry.install()`
+ * 7. Cleans up failed installations by removing empty directories
+ * 8. Executes afterInstall hook if defined
+ * 9. Records successful installation in tool installation registry
  *
- * It is responsible for populating the `InstallResult` object with rich details.
+ * ### Plugin System Integration
+ * The installer acts as an orchestrator that coordinates with the plugin registry:
+ * - Determines installation method from `toolConfig.installationMethod`
+ * - Delegates to appropriate plugin via `registry.install()`
+ * - Plugins handle method-specific logic (GitHub releases, Homebrew, Cargo, etc.)
+ * - Plugins emit events that trigger corresponding hooks
  *
- * ### Public Installation Method Wrappers
- * The class exposes public methods for each installation type (e.g., `installFromGitHubRelease`,
- * `installFromBrew`) that wrap the corresponding standalone functions. These wrappers serve
- * important purposes:
- * - **Testing API**: Allow tests to focus on individual installation methods in isolation
- * - **Dependency Injection**: Properly inject all required services into standalone functions
- * - **Spying/Mocking**: Enable test spies and mocks on specific installation methods
- * - **API Consistency**: Provide uniform method signatures across all installation types
+ * ### Hook Execution
+ * Hooks are executed at different stages of installation:
+ * - `beforeInstall`: Before any installation steps begin
+ * - `afterDownload`: After asset download (emitted by plugins)
+ * - `afterExtract`: After archive extraction (emitted by plugins)
+ * - `afterInstall`: After installation completes successfully or fails
  *
- * ### GitHub Asset Selection
- * For `github-release` installations, the asset selection follows this order of precedence:
- * 1. **`assetSelector` function:** A custom function in the `ToolConfig` for complex selection logic.
- * 2. **`assetPattern` regex:** A regular expression to match against asset filenames.
- * 3. **Default Heuristics:** If the above are not provided, it attempts to find a suitable asset
- *    by matching common platform and architecture names (e.g., "darwin", "linux", "amd64")
- *    in the asset filenames.
+ * The installer registers an event handler with the plugin registry to execute hooks
+ * when plugins emit installation events. Hook execution uses `HookExecutor` for proper
+ * error handling, timeouts, and context management.
  *
- * ### Installation Hooks
- * The installer supports several hooks defined in the `ToolConfig` to allow for
- * custom logic at various stages of the installation process:
- * - `beforeInstall`: Runs before any installation steps.
- * - `afterDownload`: Runs after the tool's asset has been downloaded.
- * - `afterExtract`: Runs after an archive has been extracted.
- * - `afterInstall`: Runs after the main installation process is complete.
+ * ### File System Tracking
+ * Uses `TrackedFileSystem` to track all file operations performed during installation.
+ * This enables the registry to record which files belong to which tools for proper
+ * management and cleanup. Logging can be suppressed in shim mode.
  *
- * Each hook receives an `InstallHookContext` object with relevant paths and system info.
+ * ### Installation Registry
+ * Records successful installations with metadata including:
+ * - Tool name and version
+ * - Installation path and timestamp
+ * - Binary paths created
+ * - Download URL and asset name (when applicable)
+ * - Configured version and original tag (when applicable)
+ *
+ * ### Error Handling and Cleanup
+ * - Failed installations trigger cleanup of empty directories
+ * - afterInstall hook runs even on failure for cleanup tasks
+ * - Errors are logged with context and returned in InstallResult
  */
 export class Installer implements IInstaller {
   private readonly logger: TsLogger;
@@ -79,7 +100,30 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Handle installation events by executing corresponding hooks
+   * Type guard that validates if a value is an AsyncInstallHook function.
+   * Used to safely access hook functions from tool configuration before execution.
+   *
+   * @param value - Unknown value to check
+   * @returns True if value is a function (AsyncInstallHook), false otherwise
+   */
+  private isAsyncInstallHook(value: unknown): value is AsyncInstallHook {
+    return typeof value === 'function';
+  }
+
+  /**
+   * Handles installation events emitted by plugins by executing corresponding hooks.
+   * Registered with the plugin registry during constructor initialization.
+   *
+   * Flow:
+   * 1. Checks if current tool config exists
+   * 2. Extracts hooks from tool config install params
+   * 3. Finds hook function matching event type (e.g., 'afterDownload')
+   * 4. Creates enhanced context with file system from event
+   * 5. Executes hook with proper error handling
+   * 6. Throws error if hook fails to propagate back to plugin
+   *
+   * @param event - Installation event containing type, tool name, and context
+   * @throws Error if hook execution fails
    */
   private async handleInstallEvent(event: {
     type: string;
@@ -98,7 +142,7 @@ export class Installer implements IInstaller {
     }
 
     const hook = hooks[event.type];
-    if (typeof hook !== 'function') {
+    if (!this.isAsyncInstallHook(hook)) {
       return;
     }
 
@@ -107,8 +151,7 @@ export class Installer implements IInstaller {
     const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs);
 
     // Execute the hook with the enhanced context
-    // biome-ignore lint/suspicious/noExplicitAny: Hook type varies by event, runtime check ensures it's a function
-    const result = await this.hookExecutor.executeHook(event.type, hook as any, enhancedContext);
+    const result = await this.hookExecutor.executeHook(event.type, hook, enhancedContext);
 
     // If hook failed, throw error to propagate back to plugin
     if (!result.success) {
@@ -118,8 +161,23 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Check if tool is already installed and skip installation if appropriate
-   * Returns true if installation should be skipped
+   * Determines if installation should be skipped based on existing installation and version.
+   * Returns true when tool is already installed at target version and force option is not used.
+   *
+   * Logic:
+   * 1. Returns false if force option is enabled (always install)
+   * 2. Queries tool installation registry for existing installation
+   * 3. Returns false if tool is not currently installed
+   * 4. Gets target version from resolved tool config
+   * 5. Compares existing version with target version
+   * 6. Returns true if versions match (skip installation)
+   * 7. Returns false if versions differ (outdated, needs update)
+   *
+   * @param toolName - Name of the tool to check
+   * @param resolvedToolConfig - Platform-resolved tool configuration
+   * @param options - Installation options (checks force flag)
+   * @param parentLogger - Logger for diagnostic messages
+   * @returns True if installation should be skipped, false otherwise
    */
   private async shouldSkipInstallation(
     toolName: string,
@@ -148,7 +206,19 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Execute beforeInstall hook if defined
+   * Executes the beforeInstall hook if defined in tool configuration.
+   * Returns InstallResult with failure if hook fails, null if hook succeeds or doesn't exist.
+   *
+   * The beforeInstall hook runs before any installation steps and can be used for:
+   * - Pre-installation validation
+   * - Environment setup
+   * - Custom preparation tasks
+   *
+   * @param resolvedToolConfig - Platform-resolved tool configuration with hooks
+   * @param context - Base install context with paths and system info
+   * @param toolFs - Tool-specific file system instance for tracking
+   * @param parentLogger - Logger for hook execution messages
+   * @returns Null if hook succeeds or doesn't exist, InstallResult with error on failure
    */
   private async executeBeforeInstallHook(
     resolvedToolConfig: ToolConfig,
@@ -170,17 +240,36 @@ export class Installer implements IInstaller {
     );
 
     if (!result.success) {
-      return {
+      const failureResult: InstallResult = {
         success: false,
         error: `beforeInstall hook failed: ${result.error}`,
       };
+      return failureResult;
     }
 
     return null;
   }
 
   /**
-   * Execute afterInstall hook if defined
+   * Executes the afterInstall hook if defined in tool configuration.
+   * Runs regardless of installation success or failure to allow cleanup tasks.
+   * Uses continueOnError option so hook failures don't stop the installation flow.
+   *
+   * The afterInstall hook receives enhanced context including:
+   * - binaryPath: Path to first binary if installation succeeded
+   * - version: Installed version if installation succeeded
+   *
+   * Common uses:
+   * - Post-installation configuration
+   * - Cleanup of temporary files
+   * - Additional binary setup
+   * - Environment modifications
+   *
+   * @param resolvedToolConfig - Platform-resolved tool configuration with hooks
+   * @param context - Base install context with paths and system info
+   * @param result - Installation result with success status and binary paths
+   * @param toolFs - Tool-specific file system instance for tracking
+   * @param parentLogger - Logger for hook execution messages
    */
   private async executeAfterInstallHook(
     resolvedToolConfig: ToolConfig,
@@ -209,9 +298,30 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Record successful installation in the registry
+   * Records successful installation in the tool installation registry with comprehensive metadata.
+   * Only records when installation succeeds and version information is available.
+   *
+   * Extracts and stores metadata based on installation method:
+   * - github-release: downloadUrl, assetName
+   * - cargo: downloadUrl
+   * - Other methods: basic installation info
+   *
+   * Recorded information includes:
+   * - Tool name and installed version
+   * - Installation path and timestamp
+   * - Binary paths created
+   * - Download URL (if applicable)
+   * - Asset name (if applicable)
+   * - Configured version from tool config
+   * - Original tag from release (if applicable)
+   *
+   * @param toolName - Name of the installed tool
+   * @param resolvedToolConfig - Platform-resolved tool configuration
+   * @param context - Base install context with paths
+   * @param result - Installation result with success status and metadata
+   * @param parentLogger - Logger for registry operations
    */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex metadata extraction logic requires multiple conditionals
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: metadata extraction logic requires checking multiple installation methods
   private async recordInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
@@ -289,7 +399,16 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Execute the appropriate installation method
+   * Delegates installation to the appropriate plugin based on installation method.
+   * Calls `registry.install()` which routes to the registered plugin for the method.
+   * The plugin returns a result that conforms to the InstallResult union type.
+   *
+   * @param toolName - Name of the tool being installed
+   * @param resolvedToolConfig - Platform-resolved tool configuration
+   * @param context - Base install context with paths and system info
+   * @param options - Installation options (force, quiet, verbose, shimMode)
+   * @param _logger - Unused logger parameter (plugins use context.logger)
+   * @returns Installation result from the plugin
    */
   private async executeInstallationMethod(
     toolName: string,
@@ -311,8 +430,15 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Install a tool based on its configuration
+   * Installs a tool based on its configuration through a multi-stage process.
+   * Main entry point that coordinates the entire installation flow.
+   *
+   * @param toolName - Name of the tool to install
+   * @param toolConfig - Tool configuration with installation method and parameters
+   * @param options - Optional installation options (force, quiet, verbose, shimMode)
+   * @returns Installation result with success status, binary paths, version, and metadata
    */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multiple stages require sequential checks
   async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
 
@@ -335,10 +461,11 @@ export class Installer implements IInstaller {
       // Check if tool is already installed (unless force option is used)
       const shouldSkip = await this.shouldSkipInstallation(toolName, resolvedToolConfig, options, logger);
       if (shouldSkip) {
-        return {
+        const skipResult: InstallResult = {
           success: false,
           error: `Tool ${toolName} is already installed at the target version. Use --force to reinstall.`,
         };
+        return skipResult;
       }
 
       // Create timestamped installation directory
@@ -396,17 +523,28 @@ export class Installer implements IInstaller {
       return result;
     } catch (error) {
       logger.error(messages.outcome.installFailed('install', toolName), error);
-      return {
+      const errorResult: InstallResult = {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       };
+      return errorResult;
     }
   }
 
   /**
-   * Get the target version that would be installed for a tool.
-   * For most installation methods, version resolution is handled by the plugins.
-   * This method provides a simple fallback for version checking.
+   * Determines the target version that would be installed for a tool.
+   * Used by `shouldSkipInstallation` to compare with existing installation.
+   *
+   * Logic:
+   * - Returns explicit version if set and not 'latest'
+   * - Returns null for 'latest' or unspecified (requires plugin execution to determine)
+   *
+   * Most version resolution is handled by plugins during actual installation.
+   * This method provides a quick check for explicit version matches.
+   *
+   * @param _toolName - Tool name (unused, reserved for future use)
+   * @param toolConfig - Tool configuration with version information
+   * @returns Target version string or null if cannot be determined without plugin execution
    */
   private async getTargetVersion(_toolName: string, toolConfig: ToolConfig): Promise<string | null> {
     // If the version is explicitly set and not 'latest', return it
@@ -419,7 +557,24 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Create a BaseInstallContext with all required properties from BaseToolContext
+   * Creates a complete BaseInstallContext with all required properties for installation.
+   * Includes properties from BaseToolContext plus installation-specific fields.
+   *
+   * The context provides plugins with:
+   * - Tool identification (toolName)
+   * - Directory paths (installDir, toolDir, binDir, etc.)
+   * - System information (platform, arch)
+   * - Application configuration
+   * - Logger instance
+   * - Helper functions (getToolDir)
+   * - Event emitter for triggering hooks
+   *
+   * @param toolName - Name of the tool being installed
+   * @param installDir - Timestamped installation directory path
+   * @param timestamp - Installation timestamp string
+   * @param toolConfig - Tool configuration
+   * @param parentLogger - Parent logger for creating context logger
+   * @returns Complete install context with all required properties and event emitter
    */
   private createBaseInstallContext(
     toolName: string,
@@ -433,38 +588,43 @@ export class Installer implements IInstaller {
       return path.join(this.appConfig.paths.binariesDir, name);
     };
 
-    return {
-      toolName,
-      installDir,
-      timestamp,
-      systemInfo: this.getSystemInfo(),
-      toolConfig,
-      appConfig: this.appConfig,
-      // BaseToolContext properties
-      toolDir: getToolDir(toolName),
-      getToolDir,
-      homeDir: this.appConfig.paths.homeDir,
-      binDir: this.appConfig.paths.targetDir,
-      shellScriptsDir: this.appConfig.paths.shellScriptsDir,
-      dotfilesDir: this.appConfig.paths.dotfilesDir,
-      generatedDir: this.appConfig.paths.generatedDir,
-      logger: logger.getSubLogger({ name: `install-${toolName}` }),
-      // Event emitter for plugins to trigger hooks
-      emitEvent: async (type: string, data: Record<string, unknown>) => {
-        await this.registry.emitEvent({
-          type: type as 'afterDownload' | 'afterExtract',
-          toolName,
-          context: {
-            ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger),
-            ...data,
-          },
-        });
-      },
-    };
+    const context: BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } =
+      {
+        toolName,
+        installDir,
+        timestamp,
+        systemInfo: this.getSystemInfo(),
+        toolConfig,
+        appConfig: this.appConfig,
+        // BaseToolContext properties
+        toolDir: getToolDir(toolName),
+        getToolDir,
+        homeDir: this.appConfig.paths.homeDir,
+        binDir: this.appConfig.paths.targetDir,
+        shellScriptsDir: this.appConfig.paths.shellScriptsDir,
+        dotfilesDir: this.appConfig.paths.dotfilesDir,
+        generatedDir: this.appConfig.paths.generatedDir,
+        logger: logger.getSubLogger({ name: `install-${toolName}` }),
+        // Event emitter for plugins to trigger hooks
+        emitEvent: async (type: string, data: Record<string, unknown>) => {
+          await this.registry.emitEvent({
+            type: type as 'afterDownload' | 'afterExtract',
+            toolName,
+            context: {
+              ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger),
+              ...data,
+            },
+          });
+        },
+      };
+    return context;
   }
 
   /**
-   * Get system information for architecture detection
+   * Returns the system information used for platform-specific configuration resolution.
+   * Provides platform and architecture details needed for asset selection and binary matching.
+   *
+   * @returns System information with platform and architecture
    */
   private getSystemInfo(): SystemInfo {
     return this.systemInfo;
