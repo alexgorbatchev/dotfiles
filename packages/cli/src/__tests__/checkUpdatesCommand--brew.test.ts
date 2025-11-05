@@ -57,11 +57,11 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       memFileSystem: { exists: mock(async () => true) },
       services: {
         configService: mockConfigService,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
         pluginRegistry: {
           get: mock((method: string) => (method === 'brew' ? (mockPlugin as InstallerPlugin) : undefined)),
           register: mock(() => Promise.resolve()),
           getAll: mock(() => []),
+          // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
         } as any,
         versionChecker: {
           checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),

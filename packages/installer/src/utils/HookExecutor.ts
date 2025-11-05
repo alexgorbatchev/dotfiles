@@ -217,10 +217,7 @@ export class HookExecutor {
    * @param context - Enhanced context shared across all hooks
    * @returns Array of execution results for each hook
    */
-  async executeHooks(
-    hooks: HookDefinition[],
-    context: EnhancedInstallHookContext
-  ): Promise<HookExecutionResult[]> {
+  async executeHooks(hooks: HookDefinition[], context: EnhancedInstallHookContext): Promise<HookExecutionResult[]> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 

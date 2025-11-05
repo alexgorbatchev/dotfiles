@@ -4,15 +4,33 @@ import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 
 /**
- * Create or update a symlink for a binary
+ * Creates or updates a symlink in the tool directory pointing to an installed binary.
+ * The symlink provides stable access to the binary regardless of version/timestamp.
  *
- * @param fs File system interface
- * @param toolName Name of the tool
- * @param binaryName Name of the binary
- * @param timestamp Installation timestamp
- * @param binaryPath Path to the binary within the timestamped directory
- * @param binariesDir Root binaries directory
- * @param logger Logger instance
+ * Process:
+ * 1. Verifies target binary exists at the timestamped location
+ * 2. Calculates relative path from tool directory to binary
+ * 3. Removes existing symlink if present
+ * 4. Creates new symlink using relative path
+ * 5. Verifies symlink was created and points to correct target
+ *
+ * Example structure:
+ * ```
+ * binaries/
+ *   ripgrep/
+ *     2025-11-05-12-34-56/
+ *       rg                    # Actual binary
+ *     rg -> 2025-11-05-12-34-56/rg  # Symlink
+ * ```
+ *
+ * @param fs - File system interface for file operations
+ * @param toolName - Name of the tool (used for directory structure)
+ * @param binaryName - Name of the binary file
+ * @param timestamp - Installation timestamp directory name
+ * @param binaryPath - Relative path to binary within timestamped directory
+ * @param binariesDir - Root binaries directory path
+ * @param parentLogger - Logger for diagnostic messages
+ * @throws Error if target binary doesn't exist or symlink creation/verification fails
  */
 export async function createBinarySymlink(
   fs: IFileSystem,
@@ -90,15 +108,21 @@ export async function createBinarySymlink(
 }
 
 /**
- * Create symlinks for all binaries defined in tool configuration
+ * Creates symlinks for all binaries defined in a tool's configuration.
+ * Iterates through the binaries array and creates a symlink for each one.
  *
- * @param fs File system interface
- * @param toolName Name of the tool
- * @param binaries Array of binary names from tool config
- * @param timestamp Installation timestamp
- * @param binaryBasePath Base path where binaries are located within timestamped directory
- * @param binariesDir Root binaries directory
- * @param logger Logger instance
+ * This is a convenience wrapper around `createBinarySymlink` for handling
+ * multiple binaries at once. All binaries are expected to be in the same
+ * base path within the timestamped directory.
+ *
+ * @param fs - File system interface for file operations
+ * @param toolName - Name of the tool
+ * @param binaries - Array of binary names to create symlinks for
+ * @param timestamp - Installation timestamp directory name
+ * @param binaryBasePath - Base path where binaries are located within timestamped directory
+ * @param binariesDir - Root binaries directory path
+ * @param parentLogger - Logger for diagnostic messages
+ * @throws Error if any binary symlink creation fails
  */
 export async function createAllBinarySymlinks(
   fs: IFileSystem,

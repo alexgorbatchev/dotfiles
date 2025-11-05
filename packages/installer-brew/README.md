@@ -1,52 +1,153 @@
 # @dotfiles/installer-brew
 
-Homebrew installer plugin for the dotfiles tool installer system.
+Installer plugin for the Homebrew package manager.
 
-## Installation
+## Overview
 
-This package is part of the dotfiles tool installer monorepo and is typically used via the main CLI.
+This plugin enables installation of CLI tools via Homebrew formulas and casks on macOS and Linux. It handles tap management, version detection, and supports both standard formulas and GUI applications via casks.
 
 ## Usage
 
-```typescript
-import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
-import { InstallerPluginRegistry } from '@dotfiles/installer-plugin-system';
-
-const registry = new InstallerPluginRegistry(logger);
-const brewPlugin = new BrewInstallerPlugin(logger);
-
-await registry.register(brewPlugin);
-```
-
-## Module Augmentation
-
-This package automatically extends `ToolConfigBuilder` with type-safe `brew` method:
+Tools are configured using `defineTool` with the `install()` function:
 
 ```typescript
-import '@dotfiles/installer-brew';
+import { defineTool } from '@dotfiles/cli';
 
-builder.install('brew', {
-  formula: 'my-tool',
-  cask: false,
-  tap: 'my-org/my-tap',
-});
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'ripgrep',
+    tap: 'homebrew/core',
+  })
+    .bin('rg')
+);
 ```
 
-## API
+### Parameters
 
-### BrewInstallerPlugin
+The `install('brew', params)` function accepts the following parameters:
 
-Installer plugin for Homebrew package manager.
+- **formula** (optional): Homebrew formula name. Defaults to the tool name if not specified.
+- **cask** (optional): Set to `true` to install as a Homebrew Cask. Default: `false`
+- **tap** (optional): Tap or array of taps to add before installation (e.g., `'user/tap'` or `['tap1', 'tap2']`)
+- **env** (optional): Environment variables for the installation process
+- **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterInstall`)
 
-#### Parameters
+### Examples
 
-- `formula` (optional): Homebrew formula name (defaults to tool name)
-- `cask` (optional): Install as cask
-- `tap` (optional): Tap(s) to add before installation
+#### Basic Formula Installation
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'bat',
+  })
+    .bin('bat')
+);
+```
+
+#### Cask Installation
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'docker',
+    cask: true,
+  })
+    .bin('docker')
+);
+```
+
+#### With Custom Tap
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'my-tool',
+    tap: 'myorg/tap',
+  })
+    .bin('my-tool')
+);
+```
+
+#### With Multiple Taps
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'tool',
+    tap: ['user/tap1', 'user/tap2'],
+  })
+    .bin('tool')
+);
+```
 
 ## Features
 
-- Automatic tap management
-- Cask support
-- Version detection via `brew info`
-- Force reinstall support
+### Tap Management
+Automatically executes `brew tap` for specified taps before installation, enabling access to formulas from custom repositories.
+
+### Cask Support
+Installs GUI applications and large binaries via Homebrew Casks when `cask: true` is specified.
+
+### Version Detection
+Queries `brew info --json` to determine installed versions, supporting version tracking and update checks.
+
+### Force Reinstall
+Supports forced reinstallation via `--force` flag when installation options specify force mode.
+
+## Implementation Details
+
+### Installation Process
+
+1. Adds specified taps via `brew tap` (if provided)
+2. Executes `brew install [--cask] [--force] <formula>`
+3. Fetches version information via `brew info --json`
+4. Returns binary paths and metadata
+
+### Update Checking
+
+The plugin implements `checkUpdate()` to query for available updates. Full implementation pending.
+
+## Plugin Interface
+
+Implements `InstallerPlugin` with:
+
+- **Method**: `brew`
+- **Schemas**: `brewInstallParamsSchema`, `brewToolConfigSchema`
+- **Update Check**: Supported (placeholder)
+- **Update Tool**: Not yet implemented
+- **README URL**: Not supported
+
+## Type Augmentation
+
+This package extends the core type system via module augmentation:
+
+```typescript
+declare module '@dotfiles/core' {
+  interface InstallParamsRegistry {
+    brew: BrewInstallParams;
+  }
+  interface ToolConfigRegistry {
+    brew: BrewToolConfig;
+  }
+  interface PluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
+}
+```
+
+## Result Type
+
+Installation returns `BrewInstallResult`:
+
+```typescript
+{
+  success: true,
+  binaryPaths: string[],      // Paths to installed binaries
+  version?: string,            // Detected version
+  metadata: {
+    method: 'brew',
+    formula: string,
+    isCask: boolean,
+    tap?: string | string[]
+  }
+}
+```

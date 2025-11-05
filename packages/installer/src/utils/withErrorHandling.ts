@@ -3,8 +3,20 @@ import type { InstallResult } from '../types';
 import { messages } from './log-messages';
 
 /**
- * Wraps installation operations with consistent error handling
- * Extracted from duplicated error handling across all installation methods
+ * Wraps installation operations with consistent error handling and logging.
+ * Catches any errors thrown by the operation and converts them to failed InstallResult.
+ *
+ * Ensures all installation methods have uniform error handling:
+ * - Catches exceptions from async operations
+ * - Logs error with method and tool context
+ * - Returns failed InstallResult with error message
+ * - Preserves original error details when available
+ *
+ * @param methodName - Installation method name for logging (e.g., 'github-release', 'brew')
+ * @param toolName - Name of tool being installed
+ * @param logger - Logger for error messages
+ * @param operation - Async function that performs installation and returns InstallResult
+ * @returns InstallResult from operation, or failure result if operation throws
  */
 export async function withInstallErrorHandling<T extends InstallResult>(
   methodName: string,

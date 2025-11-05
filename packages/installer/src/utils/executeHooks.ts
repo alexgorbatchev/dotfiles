@@ -11,13 +11,26 @@ import type { HookExecutor } from './HookExecutor';
 import { messages } from './log-messages';
 
 /**
- * Result of hook execution
+ * Result type for hook execution indicating success or failure with error message.
  */
 export type ExecuteHooksResult = OperationSuccess | OperationFailure;
 
 /**
- * Execute afterDownload hook if defined in tool config
- * Extracted from duplicated code in installFromGitHubRelease, installFromCurlScript, installFromCurlTar
+ * Executes the afterDownload hook if defined in tool configuration.
+ * Returns immediately with success if no hook is configured.
+ *
+ * The afterDownload hook runs after a file has been downloaded but before
+ * any extraction or processing. Common uses include:
+ * - Validating downloaded file integrity
+ * - Modifying download before extraction
+ * - Preparing environment for extraction
+ *
+ * @param toolConfig - Tool configuration that may contain afterDownload hook
+ * @param context - Post-download context with downloadPath
+ * @param hookExecutor - Hook executor for proper context and error handling
+ * @param fs - File system interface for hook file operations
+ * @param logger - Logger for hook execution messages
+ * @returns Success result or failure with error message
  */
 export async function executeAfterDownloadHook(
   toolConfig: ToolConfig,
@@ -50,8 +63,22 @@ export async function executeAfterDownloadHook(
 }
 
 /**
- * Execute afterExtract hook if defined in tool config
- * Extracted from duplicated code in installFromGitHubRelease, installFromCurlTar
+ * Executes the afterExtract hook if defined in tool configuration.
+ * Returns immediately with success if no hook is configured.
+ *
+ * The afterExtract hook runs after an archive has been extracted but before
+ * binary setup. Common uses include:
+ * - Moving binaries to expected locations
+ * - Renaming extracted files
+ * - Building from source
+ * - Cleaning up unnecessary files
+ *
+ * @param toolConfig - Tool configuration that may contain afterExtract hook
+ * @param context - Post-extract context with extractDir and extractResult
+ * @param hookExecutor - Hook executor for proper context and error handling
+ * @param fs - File system interface for hook file operations
+ * @param logger - Logger for hook execution messages
+ * @returns Success result or failure with error message
  */
 export async function executeAfterExtractHook(
   toolConfig: ToolConfig,
