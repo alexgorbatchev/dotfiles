@@ -8,5 +8,4 @@ export * from './getBinaryPaths';
 export * from './HookExecutor';
 export * from './log-messages';
 export * from './normalizeBinaries';
-export * from './stepFactories';
 export * from './withErrorHandling';

@@ -1,10 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const messages = {
-  binarySetupStep: {
-    starting: (toolName: string, setupType: 'archive' | 'direct') =>
-      createSafeLogMessage(`Setting up binaries for ${toolName} (${setupType})`),
-  } satisfies SafeLogMessageMap,
   binarySetupService: {
     binaryNotFound: (binaryName: string, pattern: string) =>
       createSafeLogMessage(`Binary ${binaryName} not found at ${pattern}, skipping`),
@@ -80,28 +76,6 @@ export const messages = {
       createSafeLogMessage(`Moving binary from ${sourcePath} to ${targetPath}`),
   } satisfies SafeLogMessageMap,
 
-  pipeline: {
-    starting: (toolName: string, stepCount: number) =>
-      createSafeLogMessage(`Starting installation pipeline for ${toolName} with ${stepCount} steps`),
-    executingStep: (currentStep: number, totalSteps: number, stepName: string) =>
-      createSafeLogMessage(`Executing step ${currentStep}/${totalSteps}: ${stepName}`),
-    stepFailed: (stepName: string, reason: string | undefined) =>
-      createSafeLogMessage(`Step ${stepName} failed: ${reason ?? 'unknown reason'}`),
-    stepCompleted: (stepName: string) => createSafeLogMessage(`Step ${stepName} completed successfully`),
-    completed: (toolName: string) =>
-      createSafeLogMessage(`Installation pipeline completed successfully for ${toolName}`),
-  } satisfies SafeLogMessageMap,
-  downloadStep: {
-    downloadingAsset: (filename: string, url: string) =>
-      createSafeLogMessage(`Downloading asset ${filename} from ${url}`),
-  } satisfies SafeLogMessageMap,
-  extractStep: {
-    extractingArchive: (downloadPath: string) => createSafeLogMessage(`Extracting archive: ${downloadPath}`),
-    archiveExtracted: () => createSafeLogMessage('Archive extracted: %o'),
-  } satisfies SafeLogMessageMap,
-  hookStep: {
-    executingHook: (hookType: string) => createSafeLogMessage(`Executing ${hookType} hook`),
-  } satisfies SafeLogMessageMap,
   completion: {
     noCompletionsConfigured: () => createSafeLogMessage('install: no completions configured'),
     generatingCompletions: (count: number) => createSafeLogMessage(`install: generating ${count} completion files`),
