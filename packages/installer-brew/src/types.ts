@@ -1,6 +1,7 @@
 import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { ToolInstallationDetails } from '@dotfiles/registry';
 
-export interface BrewInstallMetadata {
+export interface BrewInstallMetadata extends Partial<ToolInstallationDetails> {
   method: 'brew';
   formula: string;
   isCask: boolean;

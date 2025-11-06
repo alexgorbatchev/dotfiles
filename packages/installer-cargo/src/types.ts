@@ -1,10 +1,10 @@
 import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { ToolInstallationDetails } from '@dotfiles/registry';
 
-export interface CargoInstallMetadata {
+export interface CargoInstallMetadata extends Partial<ToolInstallationDetails> {
   method: 'cargo';
   crateName: string;
   binarySource: string;
-  downloadUrl?: string;
 }
 
 export interface CargoInstallSuccess extends OperationSuccess {

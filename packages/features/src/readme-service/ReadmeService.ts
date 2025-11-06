@@ -5,7 +5,7 @@ import { FileCache } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
-import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
+import type { IToolInstallationRegistry, ToolInstallationRecord } from '@dotfiles/registry';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import { DEFAULT_README_CACHE_TTL, GITHUB_RAW_BASE_URL, README_FILENAME } from './constants';
 import type { IReadmeService } from './IReadmeService';
@@ -111,7 +111,7 @@ export class ReadmeService implements IReadmeService {
   }
 
   async generateCombinedReadme(options: CombinedReadmeOptions = {}): Promise<string> {
-    const tools: ToolInstallation[] = await this.getGitHubTools();
+    const tools: ToolInstallationRecord[] = await this.getGitHubTools();
 
     this.logger.debug(messages.generatingCombinedReadme(tools.length));
 
@@ -146,7 +146,7 @@ export class ReadmeService implements IReadmeService {
     return result;
   }
 
-  private addTableOfContents(sections: string[], tools: ToolInstallation[], includeVersions: boolean): void {
+  private addTableOfContents(sections: string[], tools: ToolInstallationRecord[], includeVersions: boolean): void {
     sections.push('## Table of Contents\n');
     for (const tool of tools) {
       const versionSuffix: string = includeVersions ? ` (${tool.version})` : '';
@@ -157,7 +157,7 @@ export class ReadmeService implements IReadmeService {
 
   private async addToolSections(
     sections: string[],
-    tools: ToolInstallation[],
+    tools: ToolInstallationRecord[],
     options: Required<CombinedReadmeOptions>
   ): Promise<void> {
     for (const tool of tools) {
@@ -191,7 +191,7 @@ export class ReadmeService implements IReadmeService {
     }
   }
 
-  private addToolWithReadme(sections: string[], tool: ToolInstallation, readme: ReadmeContent): void {
+  private addToolWithReadme(sections: string[], tool: ToolInstallationRecord, readme: ReadmeContent): void {
     sections.push(readme.content);
 
     // Extract owner/repo from download URL
@@ -207,13 +207,13 @@ export class ReadmeService implements IReadmeService {
     sections.push('*README not available*\n');
   }
 
-  async getGitHubTools(): Promise<ToolInstallation[]> {
+  async getGitHubTools(): Promise<ToolInstallationRecord[]> {
     this.logger.debug(messages.fetchingInstalledTools());
 
     try {
-      const installations: ToolInstallation[] = await this.registry.getAllToolInstallations();
+      const installations: ToolInstallationRecord[] = await this.registry.getAllToolInstallations();
 
-      const githubTools: ToolInstallation[] = installations.filter((installation) => {
+      const githubTools: ToolInstallationRecord[] = installations.filter((installation) => {
         // For now, we'll use a simple heuristic to identify GitHub tools
         // This could be enhanced with better metadata tracking
         return installation.downloadUrl?.includes('github.com') || installation.downloadUrl?.includes('api.github.com');
@@ -283,7 +283,7 @@ export class ReadmeService implements IReadmeService {
       this.logger.debug(messages.catalogGeneration.started(catalogPath));
 
       // Check if there are any installed GitHub tools
-      const installedTools: ToolInstallation[] = await this.getGitHubTools();
+      const installedTools: ToolInstallationRecord[] = await this.getGitHubTools();
 
       if (installedTools.length === 0) {
         this.logger.warn(messages.catalogGeneration.noGitHubTools());

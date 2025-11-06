@@ -11,16 +11,12 @@ import {
   curlTarInstallParamsSchema,
   curlTarToolConfigSchema,
 } from './schemas';
+import type { CurlTarInstallMetadata } from './types';
 
 const PLUGIN_VERSION = '1.0.0';
 
-type CurlTarPluginMetadata = {
-  method: 'curl-tar';
-  downloadUrl: string;
-};
-
 export class CurlTarInstallerPlugin
-  implements InstallerPlugin<'curl-tar', CurlTarInstallParams, CurlTarToolConfig, CurlTarPluginMetadata>
+  implements InstallerPlugin<'curl-tar', CurlTarInstallParams, CurlTarToolConfig, CurlTarInstallMetadata>
 {
   readonly method = 'curl-tar';
   readonly displayName = 'Curl Tar Installer';
@@ -41,7 +37,7 @@ export class CurlTarInstallerPlugin
     toolConfig: CurlTarToolConfig,
     context: BaseInstallContext,
     options?: InstallOptions
-  ): Promise<InstallResult<CurlTarPluginMetadata>> {
+  ): Promise<InstallResult<CurlTarInstallMetadata>> {
     const result = await installFromCurlTar(
       toolName,
       toolConfig,
@@ -61,7 +57,7 @@ export class CurlTarInstallerPlugin
       };
     }
 
-    const installResult: InstallResult<CurlTarPluginMetadata> = {
+    const installResult: InstallResult<CurlTarInstallMetadata> = {
       success: true,
       binaryPaths: result.binaryPaths,
       version: result.version,

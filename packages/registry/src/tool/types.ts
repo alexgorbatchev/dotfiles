@@ -1,10 +1,18 @@
-export interface ToolInstallation {
-  id: number;
+/**
+ * Base details type that all installer metadata should extend via Partial<>.
+ * Contains the common fields needed for tool installation registry.
+ * 
+ * Required fields (always provided by Installer):
+ * - toolName, version, installPath, timestamp, binaryPaths
+ * 
+ * Optional fields (provided by specific installer plugins via metadata):
+ * - downloadUrl, assetName, configuredVersion, originalTag
+ */
+export interface ToolInstallationDetails {
   toolName: string;
   version: string;
   installPath: string;
   timestamp: string;
-  installedAt: number;
   binaryPaths: string[];
   downloadUrl?: string;
   assetName?: string;
@@ -12,4 +20,11 @@ export interface ToolInstallation {
   originalTag?: string;
 }
 
-export type ToolInstallationInput = Omit<ToolInstallation, 'id' | 'installedAt'>;
+/**
+ * Complete tool installation record as stored in the registry database.
+ * Extends ToolInstallationDetails with auto-generated database fields.
+ */
+export interface ToolInstallationRecord extends ToolInstallationDetails {
+  id: number;
+  readonly installedAt: Date;
+}

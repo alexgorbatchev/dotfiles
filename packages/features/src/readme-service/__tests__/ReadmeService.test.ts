@@ -4,7 +4,7 @@ import { Downloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { IToolInstallationRegistry, ToolInstallation } from '@dotfiles/registry';
+import type { IToolInstallationRegistry, ToolInstallationRecord } from '@dotfiles/registry';
 import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { ReadmeService } from '../ReadmeService';
@@ -153,14 +153,14 @@ describe('ReadmeService', () => {
     });
 
     test('should filter and return GitHub tools', async () => {
-      const mockInstallations: ToolInstallation[] = [
+      const mockInstallations: ToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'github-tool',
           version: '1.0.0',
           installPath: '/usr/local/bin/github-tool',
           timestamp: '2023-01-01',
-          installedAt: Date.now(),
+          installedAt: new Date(),
           binaryPaths: ['/usr/local/bin/github-tool'],
           downloadUrl: 'https://github.com/owner/repo/releases/download/v1.0.0/tool.tar.gz',
         },
@@ -170,7 +170,7 @@ describe('ReadmeService', () => {
           version: '2.0.0',
           installPath: '/usr/local/bin/other-tool',
           timestamp: '2023-01-01',
-          installedAt: Date.now(),
+          installedAt: new Date(),
           binaryPaths: ['/usr/local/bin/other-tool'],
           downloadUrl: 'https://example.com/tool.tar.gz',
         },
@@ -195,14 +195,14 @@ describe('ReadmeService', () => {
     });
 
     test('should generate combined README for multiple tools', async () => {
-      const mockInstallations: ToolInstallation[] = [
+      const mockInstallations: ToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'tool1',
           version: '1.0.0',
           installPath: '/usr/local/bin/tool1',
           timestamp: '2023-01-01',
-          installedAt: Date.now(),
+          installedAt: new Date(),
           binaryPaths: ['/usr/local/bin/tool1'],
           downloadUrl: 'https://github.com/owner1/repo1/releases/download/v1.0.0/tool.tar.gz',
         },
@@ -212,7 +212,7 @@ describe('ReadmeService', () => {
           version: '2.0.0',
           installPath: '/usr/local/bin/tool2',
           timestamp: '2023-01-01',
-          installedAt: Date.now(),
+          installedAt: new Date(),
           binaryPaths: ['/usr/local/bin/tool2'],
           downloadUrl: 'https://github.com/owner2/repo2/releases/download/v2.0.0/tool.tar.gz',
         },
@@ -234,14 +234,14 @@ describe('ReadmeService', () => {
     });
 
     test('should handle missing READMEs gracefully', async () => {
-      const mockInstallations: ToolInstallation[] = [
+      const mockInstallations: ToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'tool1',
           version: '1.0.0',
           installPath: '/usr/local/bin/tool1',
           timestamp: '2023-01-01',
-          installedAt: Date.now(),
+          installedAt: new Date(),
           binaryPaths: ['/usr/local/bin/tool1'],
           downloadUrl: 'https://github.com/owner1/repo1/releases/download/v1.0.0/tool.tar.gz',
         },
@@ -258,14 +258,14 @@ describe('ReadmeService', () => {
     });
 
     test('should include full README content', async () => {
-      const mockInstallations: ToolInstallation[] = [
+      const mockInstallations: ToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'tool1',
           version: '1.0.0',
           installPath: '/usr/local/bin/tool1',
           timestamp: '2023-01-01',
-          installedAt: Date.now(),
+          installedAt: new Date(),
           binaryPaths: ['/usr/local/bin/tool1'],
           downloadUrl: 'https://github.com/owner1/repo1/releases/download/v1.0.0/tool.tar.gz',
         },
@@ -397,13 +397,13 @@ describe('ReadmeService', () => {
       };
 
       // Mock registry to return installed GitHub tools
-      const installedTool: ToolInstallation = {
+      const installedTool: ToolInstallationRecord = {
         id: 1,
         toolName: 'test-tool',
         version: 'v1.0.0',
         installPath: '/tools/test-tool',
         timestamp: new Date().toISOString(),
-        installedAt: Date.now(),
+        installedAt: new Date(),
         binaryPaths: ['/bin/test-tool'],
         downloadUrl: 'https://github.com/owner/repo/releases/download/v1.0.0/test-tool.tar.gz',
         assetName: 'test-tool.tar.gz',

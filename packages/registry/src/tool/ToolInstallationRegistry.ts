@@ -2,7 +2,7 @@ import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import { messages } from './log-messages';
-import type { ToolInstallation, ToolInstallationInput } from './types';
+import type { ToolInstallationRecord, ToolInstallationDetails } from './types';
 
 interface ToolInstallationRow {
   id: number;
@@ -49,7 +49,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     logger.debug(messages.databaseInitialized());
   }
 
-  async recordToolInstallation(installation: ToolInstallationInput): Promise<void> {
+  async recordToolInstallation(installation: ToolInstallationDetails): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'recordToolInstallation' });
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO tool_installations 
@@ -72,7 +72,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     logger.debug(messages.toolInstallationRecorded(), installation.toolName, installation.version);
   }
 
-  async getToolInstallation(toolName: string): Promise<ToolInstallation | null> {
+  async getToolInstallation(toolName: string): Promise<ToolInstallationRecord | null> {
     const logger = this.logger.getSubLogger({ name: 'getToolInstallation' });
     const stmt = this.db.prepare(`
       SELECT * FROM tool_installations WHERE tool_name = ?
@@ -90,7 +90,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       version: row.version,
       installPath: row.install_path,
       timestamp: row.timestamp,
-      installedAt: row.installed_at,
+      installedAt: new Date(row.installed_at),
       binaryPaths: JSON.parse(row.binary_paths),
       downloadUrl: row.download_url || undefined,
       assetName: row.asset_name || undefined,
@@ -99,7 +99,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     };
   }
 
-  async getAllToolInstallations(): Promise<ToolInstallation[]> {
+  async getAllToolInstallations(): Promise<ToolInstallationRecord[]> {
     const logger = this.logger.getSubLogger({ name: 'getAllToolInstallations' });
     const stmt = this.db.prepare(`
       SELECT * FROM tool_installations ORDER BY tool_name
@@ -113,7 +113,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
       version: row.version,
       installPath: row.install_path,
       timestamp: row.timestamp,
-      installedAt: row.installed_at,
+      installedAt: new Date(row.installed_at),
       binaryPaths: JSON.parse(row.binary_paths),
       downloadUrl: row.download_url || undefined,
       assetName: row.asset_name || undefined,
@@ -122,7 +122,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     }));
   }
 
-  async updateToolInstallation(toolName: string, updates: Partial<ToolInstallation>): Promise<void> {
+  async updateToolInstallation(toolName: string, updates: Partial<ToolInstallationRecord>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'updateToolInstallation' });
     const fields: string[] = [];
     const values: (string | number | null)[] = [];

@@ -1,6 +1,7 @@
 import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { ToolInstallationDetails } from '@dotfiles/registry';
 
-export interface ManualInstallMetadata {
+export interface ManualInstallMetadata extends Partial<ToolInstallationDetails> {
   method: 'manual';
   manualInstall: boolean;
 }

@@ -1,4 +1,4 @@
-import type { ToolInstallation, ToolInstallationInput } from './types';
+import type { ToolInstallationRecord, ToolInstallationDetails } from './types';
 
 /**
  * Registry interface for managing tool installation records in a persistent database.
@@ -37,7 +37,7 @@ export interface IToolInstallationRegistry {
    * @param installation - Tool installation details excluding auto-generated fields (id, installedAt)
    * @returns Promise that resolves when the installation is recorded
    */
-  recordToolInstallation(installation: ToolInstallationInput): Promise<void>;
+  recordToolInstallation(installation: ToolInstallationDetails): Promise<void>;
 
   /**
    * Retrieves the installation record for a specific tool by name.
@@ -55,7 +55,7 @@ export interface IToolInstallationRegistry {
    * @param toolName - Exact name of the tool to look up
    * @returns Promise resolving to the tool installation record with actual version, or null if not found
    */
-  getToolInstallation(toolName: string): Promise<ToolInstallation | null>;
+  getToolInstallation(toolName: string): Promise<ToolInstallationRecord | null>;
 
   /**
    * Retrieves all tool installation records from the registry, ordered by tool name.
@@ -75,7 +75,7 @@ export interface IToolInstallationRegistry {
    *
    * @returns Promise resolving to an array of all tool installation records with actual versions (alphabetically sorted)
    */
-  getAllToolInstallations(): Promise<ToolInstallation[]>;
+  getAllToolInstallations(): Promise<ToolInstallationRecord[]>;
 
   /**
    * Updates specific fields of an existing tool installation record.
@@ -88,7 +88,7 @@ export interface IToolInstallationRegistry {
    * @param updates - Partial installation record with fields to update (version, installPath, timestamp, binaryPaths, downloadUrl, assetName, configuredVersion)
    * @returns Promise that resolves when the update is complete
    */
-  updateToolInstallation(toolName: string, updates: Partial<ToolInstallation>): Promise<void>;
+  updateToolInstallation(toolName: string, updates: Partial<ToolInstallationRecord>): Promise<void>;
 
   /**
    * Removes a tool installation record from the registry.

@@ -298,30 +298,23 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Records successful installation in the tool installation registry with comprehensive metadata.
+   * Records successful installation in the tool installation registry.
    * Only records when installation succeeds and version information is available.
    *
-   * Extracts and stores metadata based on installation method:
-   * - github-release: downloadUrl, assetName
-   * - cargo: downloadUrl
-   * - Other methods: basic installation info
+   * Combines base installation details with plugin-specific metadata:
+   * - Base fields: toolName, version, installPath, timestamp, binaryPaths, configuredVersion, originalTag
+   * - Plugin metadata: Spread from result.metadata (plugins extending Partial<ToolInstallationDetails>)
    *
-   * Recorded information includes:
-   * - Tool name and installed version
-   * - Installation path and timestamp
-   * - Binary paths created
-   * - Download URL (if applicable)
-   * - Asset name (if applicable)
-   * - Configured version from tool config
-   * - Original tag from release (if applicable)
+   * The Installer is plugin-agnostic and simply spreads whatever metadata the plugin provides.
+   * Plugins can include optional fields like downloadUrl, assetName, or any method-specific data.
    *
    * @param toolName - Name of the installed tool
    * @param resolvedToolConfig - Platform-resolved tool configuration
    * @param context - Base install context with paths
    * @param result - Installation result with success status and metadata
    * @param parentLogger - Logger for registry operations
+   * @see {@link ToolInstallationDetails} for the complete field structure
    */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: metadata extraction logic requires checking multiple installation methods
   private async recordInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
@@ -335,40 +328,12 @@ export class Installer implements IInstaller {
     }
 
     try {
-      let downloadUrl: string | undefined;
-      let assetName: string | undefined;
-
-      if (result.success && result.metadata) {
-        const metadata: unknown = result.metadata;
-        if (
-          typeof metadata === 'object' &&
-          metadata !== null &&
-          'method' in metadata &&
-          metadata.method === 'github-release'
-        ) {
-          if ('downloadUrl' in metadata && typeof metadata.downloadUrl === 'string') {
-            downloadUrl = metadata.downloadUrl;
-          }
-          if ('assetName' in metadata && typeof metadata.assetName === 'string') {
-            assetName = metadata.assetName;
-          }
-        } else if (
-          typeof metadata === 'object' &&
-          metadata !== null &&
-          'method' in metadata &&
-          metadata.method === 'cargo'
-        ) {
-          if ('downloadUrl' in metadata && typeof metadata.downloadUrl === 'string') {
-            downloadUrl = metadata.downloadUrl;
-          }
-        }
-      }
-
       const version = result.version;
       if (!version) {
         return;
       }
 
+      // Extract configured version from tool config
       const installParams: unknown = resolvedToolConfig.installParams;
       const configuredVersion: string | undefined =
         installParams &&
@@ -378,19 +343,20 @@ export class Installer implements IInstaller {
           ? installParams.version
           : undefined;
 
+      // Extract original tag if provided by plugin
       const originalTag: string | undefined =
         'originalTag' in result && typeof result.originalTag === 'string' ? result.originalTag : undefined;
 
+      // Spread metadata - installers now extend ToolInstallationDetails so they provide the right fields
       await this.toolInstallationRegistry.recordToolInstallation({
         toolName,
         version,
         installPath: context.installDir,
         timestamp: context.timestamp,
         binaryPaths: result.binaryPaths,
-        downloadUrl,
-        assetName,
         configuredVersion,
         originalTag,
+        ...(result.metadata as unknown as Record<string, unknown>),
       });
       logger.debug(messages.outcome.installSuccess(toolName, version, 'registry-recorded'));
     } catch (error) {

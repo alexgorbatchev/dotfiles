@@ -5,7 +5,7 @@ import path from 'node:path';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { ToolInstallationRegistry } from '../ToolInstallationRegistry';
-import type { ToolInstallationInput } from '../types';
+import type { ToolInstallationDetails } from '../types';
 
 describe('ToolInstallationRegistry', () => {
   let registry: ToolInstallationRegistry;
@@ -32,7 +32,7 @@ describe('ToolInstallationRegistry', () => {
 
   describe('recordToolInstallation', () => {
     test('should record a new tool installation', async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'fzf',
         version: '0.54.0',
         installPath: 'binaries/fzf/2025-08-13-20-32-49',
@@ -57,11 +57,11 @@ describe('ToolInstallationRegistry', () => {
         configuredVersion: 'latest',
       });
       expect(retrieved?.id).toBeNumber();
-      expect(retrieved?.installedAt).toBeNumber();
+      expect(retrieved?.installedAt).toBeInstanceOf(Date);
     });
 
     test('should replace existing tool installation', async () => {
-      const installation1: ToolInstallationInput = {
+      const installation1: ToolInstallationDetails = {
         toolName: 'fzf',
         version: '0.53.0',
         installPath: 'binaries/fzf/2025-08-13-20-30-00',
@@ -69,7 +69,7 @@ describe('ToolInstallationRegistry', () => {
         binaryPaths: ['binaries/fzf/fzf'],
       };
 
-      const installation2: ToolInstallationInput = {
+      const installation2: ToolInstallationDetails = {
         toolName: 'fzf',
         version: '0.54.0',
         installPath: 'binaries/fzf/2025-08-13-20-32-49',
@@ -86,7 +86,7 @@ describe('ToolInstallationRegistry', () => {
     });
 
     test('should handle tool installation without metadata', async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'rg',
         version: '14.1.1',
         installPath: 'binaries/rg/2025-08-13-20-35-00',
@@ -110,7 +110,7 @@ describe('ToolInstallationRegistry', () => {
     });
 
     test('should return tool installation with all fields', async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'bat',
         version: '0.24.0',
         installPath: 'binaries/bat/2025-08-13-20-40-00',
@@ -125,7 +125,7 @@ describe('ToolInstallationRegistry', () => {
       const retrieved = await registry.getToolInstallation('bat');
       expect(retrieved).toMatchObject(installation);
       expect(retrieved?.id).toBeNumber();
-      expect(retrieved?.installedAt).toBeNumber();
+      expect(retrieved?.installedAt).toBeInstanceOf(Date);
     });
   });
 
@@ -136,7 +136,7 @@ describe('ToolInstallationRegistry', () => {
     });
 
     test('should return all installed tools sorted by name', async () => {
-      const installations: ToolInstallationInput[] = [
+      const installations: ToolInstallationDetails[] = [
         {
           toolName: 'zsh',
           version: '5.9',
@@ -172,7 +172,7 @@ describe('ToolInstallationRegistry', () => {
 
   describe('updateToolInstallation', () => {
     beforeEach(async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'fzf',
         version: '0.53.0',
         installPath: 'binaries/fzf/2025-08-13-20-30-00',
@@ -233,7 +233,7 @@ describe('ToolInstallationRegistry', () => {
 
   describe('removeToolInstallation', () => {
     test('should remove existing tool installation', async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'fzf',
         version: '0.54.0',
         installPath: 'binaries/fzf/2025-08-13-20-32-49',
@@ -256,7 +256,7 @@ describe('ToolInstallationRegistry', () => {
 
   describe('isToolInstalled', () => {
     beforeEach(async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'fzf',
         version: '0.54.0',
         installPath: 'binaries/fzf/2025-08-13-20-32-49',
@@ -294,7 +294,7 @@ describe('ToolInstallationRegistry', () => {
 
   describe('database persistence', () => {
     test('should persist data across registry instances', async () => {
-      const installation: ToolInstallationInput = {
+      const installation: ToolInstallationDetails = {
         toolName: 'persistent-tool',
         version: '1.0.0',
         installPath: 'binaries/persistent-tool/2025-08-13-20-32-49',

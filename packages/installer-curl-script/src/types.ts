@@ -1,6 +1,7 @@
 import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { ToolInstallationDetails } from '@dotfiles/registry';
 
-export interface CurlScriptInstallMetadata {
+export interface CurlScriptInstallMetadata extends Partial<ToolInstallationDetails> {
   method: 'curl-script';
   scriptUrl: string;
   shell: string;

@@ -1,8 +1,8 @@
 import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { ToolInstallationDetails } from '@dotfiles/registry';
 
-export interface CurlTarInstallMetadata {
+export interface CurlTarInstallMetadata extends Partial<ToolInstallationDetails> {
   method: 'curl-tar';
-  downloadUrl: string;
   tarballUrl: string;
 }
 

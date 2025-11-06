@@ -13,6 +13,7 @@
     "@dotfiles/installer": "workspace:*",
     "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
+    "@dotfiles/registry": "workspace:*",
     "@dotfiles/utils": "workspace:*",
     "smol-toml": "^1.3.1",
     "zod": "catalog:"

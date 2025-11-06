@@ -1,5 +1,5 @@
 import type { ToolConfig } from '@dotfiles/core';
-import type { ToolInstallation } from '@dotfiles/registry';
+import type { ToolInstallationRecord } from '@dotfiles/registry';
 import type { CombinedReadmeOptions, ReadmeContent } from './types';
 
 /**
@@ -36,7 +36,7 @@ export interface IReadmeService {
    * Gets list of installed tools that have GitHub repositories
    * @returns Promise resolving to array of installed tool information
    */
-  getGitHubTools(): Promise<ToolInstallation[]>;
+  getGitHubTools(): Promise<ToolInstallationRecord[]>;
 
   /**
    * Clears expired README cache entries

@@ -1,15 +1,14 @@
 import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { ToolInstallationDetails } from '@dotfiles/registry';
 
 /**
  * Metadata for GitHub Release installations
  */
-export interface GitHubReleaseInstallMetadata {
+export interface GitHubReleaseInstallMetadata extends Partial<ToolInstallationDetails> {
   method: 'github-release';
   releaseUrl: string;
   publishedAt: string;
   releaseName: string;
-  downloadUrl: string;
-  assetName: string;
 }
 
 /**
