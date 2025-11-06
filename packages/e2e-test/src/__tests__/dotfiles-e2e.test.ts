@@ -1,6 +1,6 @@
 import { describe } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/core';
-import { generateScenarios, installScenarios, updateScenarios } from '../scenarios';
+import { conflictScenarios, generateScenarios, installScenarios, updateScenarios } from '../scenarios';
 import { TestHarness } from '../TestHarness';
 import { withMockServer } from '../withMockServer';
 
@@ -26,6 +26,8 @@ describe('E2E: dotfiles CLI', () => {
       });
 
       installScenarios(harness);
+
+      conflictScenarios(harness);
     });
   }
 });

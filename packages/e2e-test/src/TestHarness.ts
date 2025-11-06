@@ -85,7 +85,10 @@ export class TestHarness {
     const archString = architectureToString(this.architecture);
     const argsWithPlatform = [...args, '--platform', platformString, '--arch', archString];
 
-    const result = await $`${this.dotfilesBin} ${argsWithPlatform}`.cwd(this.testDir).quiet().nothrow();
+    const result = await $`NODE_ENV=production ${this.dotfilesBin} ${argsWithPlatform}`
+      .cwd(this.testDir)
+      .quiet()
+      .nothrow();
 
     return {
       exitCode: result.exitCode,
@@ -113,6 +116,13 @@ export class TestHarness {
    */
   async update(toolName: string, additionalArgs: string[] = []): Promise<CommandResult> {
     return this.runCommand(['update', '--config', this.configPath, toolName, ...additionalArgs]);
+  }
+
+  /**
+   * Execute dotfiles detect-conflicts command
+   */
+  async detectConflicts(additionalArgs: string[] = []): Promise<CommandResult> {
+    return this.runCommand(['detect-conflicts', '--config', this.configPath, ...additionalArgs]);
   }
 
   /**
