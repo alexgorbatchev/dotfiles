@@ -1,9 +1,8 @@
 import path from 'node:path';
-import type { ToolConfig } from '@dotfiles/core';
+import type { InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { FileCache } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry, ToolInstallationRecord } from '@dotfiles/registry';
 import type { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -23,6 +22,7 @@ export class ReadmeService implements IReadmeService {
   private readonly fileSystem: IFileSystem;
   private readonly catalogFileSystem: TrackedFileSystem;
   private readonly readmeCache: ReadmeCache;
+  private readonly pluginRegistry: InstallerPluginRegistry;
 
   constructor(
     parentLogger: TsLogger,
@@ -30,13 +30,15 @@ export class ReadmeService implements IReadmeService {
     registry: IToolInstallationRegistry,
     fileSystem: IFileSystem,
     catalogFileSystem: TrackedFileSystem,
-    cacheDir: string
+    cacheDir: string,
+    pluginRegistry: InstallerPluginRegistry
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'ReadmeService' });
     this.downloader = downloader;
     this.registry = registry;
     this.fileSystem = fileSystem;
     this.catalogFileSystem = catalogFileSystem;
+    this.pluginRegistry = pluginRegistry;
 
     // Create dedicated cache for README content
     const cache = new FileCache(this.logger, fileSystem, {
@@ -335,9 +337,10 @@ export class ReadmeService implements IReadmeService {
   }
 
   private filterGitHubConfigs(toolConfigs: Record<string, ToolConfig>): [string, ToolConfig][] {
-    return Object.entries(toolConfigs).filter(
-      ([, config]) => isGitHubReleaseToolConfig(config) && config.installParams.repo
-    );
+    return Object.entries(toolConfigs).filter(([, config]) => {
+      const plugin = this.pluginRegistry.get(config.installationMethod);
+      return plugin?.supportsReadme?.() === true;
+    });
   }
 
   private addCatalogTableOfContents(

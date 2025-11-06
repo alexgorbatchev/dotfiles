@@ -1,6 +1,6 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
-import type { InstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
+import type { InstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
 import type { CargoToolConfig } from '@dotfiles/installer-cargo';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
@@ -44,25 +44,24 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
       ),
     };
 
-    const setup = await createCliTestSetup({
-      testName: 'check-updates-cargo',
-      memFileSystem: { exists: mock(async () => true) },
-      services: {
-        configService: mockConfigService,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
-        pluginRegistry: {
-          get: mock((method: string) => (method === 'cargo' ? (mockPlugin as InstallerPlugin) : undefined)),
-          register: mock(() => Promise.resolve()),
-          getAll: mock(() => []),
-        } as any,
-        versionChecker: {
-          checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
-          getLatestToolVersion: mock(async () => '0.10.1'),
-        },
-      },
-    });
+  const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
+    get: mock((method: string) => (method === 'cargo' ? (mockPlugin as InstallerPlugin) : undefined)),
+    register: mock(() => Promise.resolve()),
+    getAll: mock(() => []),
+  };
 
-    program = setup.program;
+  const setup = await createCliTestSetup({
+    testName: 'check-updates-cargo',
+    memFileSystem: { exists: mock(async () => true) },
+    services: {
+      configService: mockConfigService,
+      pluginRegistry: mockPluginRegistry as MockedInterface<InstallerPluginRegistry>,
+      versionChecker: {
+        checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
+        getLatestToolVersion: mock(async () => '0.10.1'),
+      },
+    },
+  });    program = setup.program;
     logger = setup.logger;
 
     registerCheckUpdatesCommand(logger, program, async () => setup.createServices());

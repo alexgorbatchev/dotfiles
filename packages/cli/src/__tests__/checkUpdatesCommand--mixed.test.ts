@@ -1,6 +1,6 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
-import type { InstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
+import type { InstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
@@ -52,17 +52,18 @@ describe('checkUpdatesCommand - Mixed Tool Types', () => {
       ),
     };
 
+    const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
+      get: mock((method: string) => (method === 'github-release' ? (mockPlugin as InstallerPlugin) : undefined)),
+      register: mock(() => Promise.resolve()),
+      getAll: mock(() => []),
+    };
+
     const setup = await createCliTestSetup({
       testName: 'check-updates-mixed',
       memFileSystem: { exists: mock(async () => true) },
       services: {
         configService: mockConfigService,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
-        pluginRegistry: {
-          get: mock((method: string) => (method === 'github-release' ? mockPlugin : undefined)),
-          register: mock(() => Promise.resolve()),
-          getAll: mock(() => []),
-        } as any,
+        pluginRegistry: mockPluginRegistry as MockedInterface<InstallerPluginRegistry>,
         versionChecker: {
           checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
           getLatestToolVersion: mock(async () => '0.40.0'),

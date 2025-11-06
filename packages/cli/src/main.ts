@@ -331,7 +331,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     toolInstallationRegistry,
     fs,
     catalogTrackedFs,
-    path.join(yamlConfig.paths.generatedDir, 'cache', 'readme')
+    path.join(yamlConfig.paths.generatedDir, 'cache', 'readme'),
+    pluginRegistry
   );
 
   logger.trace(messages.servicesSetup());

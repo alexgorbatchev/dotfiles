@@ -1,6 +1,6 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
-import type { InstallerPlugin, ToolConfig } from '@dotfiles/core';
+import type { InstallerPlugin, InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
@@ -35,17 +35,18 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
       supportsUpdateCheck: mock(() => false),
     };
 
+    const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
+      get: mock((method: string) => (method === 'manual' ? (mockPlugin as InstallerPlugin) : undefined)),
+      register: mock(() => Promise.resolve()),
+      getAll: mock(() => []),
+    };
+
     const setup = await createCliTestSetup({
       testName: 'check-updates-errors',
       memFileSystem: { exists: mock(async () => true) },
       services: {
         configService: mockConfigService,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing
-        pluginRegistry: {
-          get: mock((method: string) => (method === 'manual' ? (mockPlugin as InstallerPlugin) : undefined)),
-          register: mock(() => Promise.resolve()),
-          getAll: mock(() => []),
-        } as any,
+        pluginRegistry: mockPluginRegistry as MockedInterface<InstallerPluginRegistry>,
       },
     });
 

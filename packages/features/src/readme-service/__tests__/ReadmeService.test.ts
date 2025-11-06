@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { ToolConfig } from '@dotfiles/core';
+import type { InstallerPlugin, ToolConfig } from '@dotfiles/core';
+import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
@@ -17,6 +18,7 @@ describe('ReadmeService', () => {
   let mockRegistry: IToolInstallationRegistry;
   let mockFileRegistry: IFileRegistry;
   let catalogFileSystem: TrackedFileSystem;
+  let mockPluginRegistry: InstallerPluginRegistry;
   let readmeService: ReadmeService;
   let fetchMock: FetchMockHelper;
 
@@ -46,6 +48,15 @@ describe('ReadmeService', () => {
 
     mockFileRegistry = createMockFileRegistry();
 
+    // Create mock plugin registry with a GitHub release plugin
+    mockPluginRegistry = new InstallerPluginRegistry(logger);
+    const mockGitHubPlugin: Partial<InstallerPlugin> = {
+      method: 'github-release',
+      supportsReadme: () => true,
+      getReadmeUrl: () => 'https://raw.githubusercontent.com/owner/repo/main/README.md',
+    };
+    await mockPluginRegistry.register(mockGitHubPlugin as InstallerPlugin);
+
     // Create real TrackedFileSystem
     catalogFileSystem = new TrackedFileSystem(
       logger,
@@ -55,7 +66,7 @@ describe('ReadmeService', () => {
       '/home/test'
     );
 
-    readmeService = new ReadmeService(logger, downloader, mockRegistry, fileSystem, catalogFileSystem, CACHE_DIR);
+    readmeService = new ReadmeService(logger, downloader, mockRegistry, fileSystem, catalogFileSystem, CACHE_DIR, mockPluginRegistry);
   });
 
   afterEach(() => {
