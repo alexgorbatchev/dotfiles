@@ -97,14 +97,14 @@ async function buildCli(): Promise<Bun.BuildOutput> {
 
 async function createTempTsConfig(): Promise<void> {
   const tempTsConfig = {
-    extends: '../packages/schemas/tsconfig.json',
+    extends: '../packages/core/tsconfig.json',
     compilerOptions: {
       noEmit: false,
       declaration: true,
       emitDeclarationOnly: true,
       outDir: './temp-schemas-build',
     },
-    include: ['../packages/schemas/src/**/*'],
+    include: ['../packages/core/src/config/yamlConfigSchema.ts'],
   };
 
   await Bun.write(BUILD_TSCONFIG_PATH, JSON.stringify(tempTsConfig, null, 2));
@@ -140,7 +140,7 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
   await $`cd ${TEMP_SCHEMAS_BUILD_DIR} && bun install`.quiet();
 
   // Bundle only our @dotfiles packages, keeping zod and type-fest as external dependencies
-  await $`cd ${OUTPUT_DIR} && bun dts-bundle-generator --out-file schemas.d.ts ${path.basename(TEMP_SCHEMAS_BUILD_DIR)}/index.d.ts --no-check --external-imports zod --external-imports type-fest`.quiet();
+  await $`cd ${OUTPUT_DIR} && bun dts-bundle-generator --out-file schemas.d.ts ${path.basename(TEMP_SCHEMAS_BUILD_DIR)}/config/yamlConfigSchema.d.ts --no-check --external-imports zod --external-imports type-fest`.quiet();
 }
 
 async function createValidationTsConfig(): Promise<void> {
@@ -217,7 +217,7 @@ async function cleanupTempFiles(): Promise<void> {
 }
 
 async function generateSchemaTypes(): Promise<void> {
-  console.log('📝 Building @dotfiles/schemas types...');
+  console.log('📝 Building @dotfiles/core config types...');
 
   try {
     const dependencyVersions = await getDependencyVersions();
@@ -226,7 +226,7 @@ async function generateSchemaTypes(): Promise<void> {
     await cleanupValidationFiles();
     await cleanupTempFiles();
 
-    console.log('✅ @dotfiles/schemas types bundled with dts-bundle-generator');
+    console.log('✅ @dotfiles/core config types bundled with dts-bundle-generator');
   } catch (error) {
     console.error('❌ Schema type generation failed');
     throw error;
