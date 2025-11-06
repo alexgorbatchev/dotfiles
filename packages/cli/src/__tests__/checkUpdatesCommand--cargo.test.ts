@@ -44,24 +44,25 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
       ),
     };
 
-  const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
-    get: mock((method: string) => (method === 'cargo' ? (mockPlugin as InstallerPlugin) : undefined)),
-    register: mock(() => Promise.resolve()),
-    getAll: mock(() => []),
-  };
+    const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
+      get: mock((method: string) => (method === 'cargo' ? (mockPlugin as InstallerPlugin) : undefined)),
+      register: mock(() => Promise.resolve()),
+      getAll: mock(() => []),
+    };
 
-  const setup = await createCliTestSetup({
-    testName: 'check-updates-cargo',
-    memFileSystem: { exists: mock(async () => true) },
-    services: {
-      configService: mockConfigService,
-      pluginRegistry: mockPluginRegistry as MockedInterface<InstallerPluginRegistry>,
-      versionChecker: {
-        checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
-        getLatestToolVersion: mock(async () => '0.10.1'),
+    const setup = await createCliTestSetup({
+      testName: 'check-updates-cargo',
+      memFileSystem: { exists: mock(async () => true) },
+      services: {
+        configService: mockConfigService,
+        pluginRegistry: mockPluginRegistry as MockedInterface<InstallerPluginRegistry>,
+        versionChecker: {
+          checkVersionStatus: mock(async () => VersionComparisonStatus.UP_TO_DATE),
+          getLatestToolVersion: mock(async () => '0.10.1'),
+        },
       },
-    },
-  });    program = setup.program;
+    });
+    program = setup.program;
     logger = setup.logger;
 
     registerCheckUpdatesCommand(logger, program, async () => setup.createServices());

@@ -66,7 +66,15 @@ describe('ReadmeService', () => {
       '/home/test'
     );
 
-    readmeService = new ReadmeService(logger, downloader, mockRegistry, fileSystem, catalogFileSystem, CACHE_DIR, mockPluginRegistry);
+    readmeService = new ReadmeService(
+      logger,
+      downloader,
+      mockRegistry,
+      fileSystem,
+      catalogFileSystem,
+      CACHE_DIR,
+      mockPluginRegistry
+    );
   });
 
   afterEach(() => {

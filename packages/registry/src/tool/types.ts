@@ -1,10 +1,10 @@
 /**
  * Base details type that all installer metadata should extend via Partial<>.
  * Contains the common fields needed for tool installation registry.
- * 
+ *
  * Required fields (always provided by Installer):
  * - toolName, version, installPath, timestamp, binaryPaths
- * 
+ *
  * Optional fields (provided by specific installer plugins via metadata):
  * - downloadUrl, assetName, configuredVersion, originalTag
  */

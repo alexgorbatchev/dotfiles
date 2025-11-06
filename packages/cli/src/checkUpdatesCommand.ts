@@ -55,96 +55,123 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
+function createInstallContext(
+  config: ToolConfig,
+  yamlConfig: YamlConfig,
+  systemInfo: BaseInstallContext['systemInfo'],
+  logger: TsLogger
+): BaseInstallContext {
+  const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+  const getToolDir = (toolName: string): string => `${yamlConfig.paths.binariesDir}/${toolName}`;
+
+  const context: BaseInstallContext = {
+    toolName: config.name,
+    installDir: yamlConfig.paths.binariesDir,
+    timestamp: timestamp || '',
+    systemInfo,
+    toolConfig: config,
+    appConfig: yamlConfig,
+    toolDir: getToolDir(config.name),
+    getToolDir,
+    homeDir: yamlConfig.paths.homeDir,
+    binDir: yamlConfig.paths.targetDir,
+    shellScriptsDir: yamlConfig.paths.shellScriptsDir,
+    dotfilesDir: yamlConfig.paths.dotfilesDir,
+    generatedDir: yamlConfig.paths.generatedDir,
+    logger,
+  };
+
+  return context;
+}
+
+async function logVersionStatus(
+  logger: TsLogger,
+  versionChecker: Services['versionChecker'],
+  config: ToolConfig,
+  currentVersion: string,
+  latestVersion: string,
+  hasUpdate: boolean
+): Promise<void> {
+  if (currentVersion === 'latest') {
+    logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
+    return;
+  }
+
+  if (hasUpdate) {
+    logger.info(messages.toolUpdateAvailable(config.name, currentVersion, latestVersion));
+    return;
+  }
+
+  const status = await versionChecker.checkVersionStatus(currentVersion, latestVersion);
+
+  if (status === VersionComparisonStatus.UP_TO_DATE) {
+    logger.info(messages.toolUpToDate(config.name, currentVersion, latestVersion));
+  } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
+    logger.info(messages.toolAheadOfLatest(config.name, currentVersion, latestVersion));
+  } else {
+    logger.warn(messages.toolVersionComparisonFailed(config.name, currentVersion, latestVersion));
+  }
+}
+
+async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: Services): Promise<void> {
+  const { yamlConfig, versionChecker, pluginRegistry, systemInfo } = services;
+
+  const context = createInstallContext(config, yamlConfig, systemInfo, logger);
+  const plugin = pluginRegistry.get(config.installationMethod);
+
+  if (!plugin) {
+    logger.warn(
+      messages.commandUnsupportedOperation(
+        'check-updates',
+        `installation method: "${config.installationMethod}" for tool "${config.name}"`
+      )
+    );
+    return;
+  }
+
+  if (!plugin.supportsUpdateCheck || !plugin.supportsUpdateCheck()) {
+    logger.info(
+      messages.commandUnsupportedOperation(
+        'check-updates',
+        `installation method: "${config.installationMethod}" for tool "${config.name}"`
+      )
+    );
+    return;
+  }
+
+  const updateCheckResult = await plugin.checkUpdate?.(config.name, config, context, logger);
+
+  if (!updateCheckResult) {
+    logger.warn(messages.commandUnsupportedOperation('check-updates', config.name));
+    return;
+  }
+
+  if (!updateCheckResult.success) {
+    logger.error(messages.serviceGithubApiFailed('check update', 0), new Error(updateCheckResult.error));
+    return;
+  }
+
+  const currentVersion = updateCheckResult.currentVersion || config.version || 'unknown';
+  const latestVersion = updateCheckResult.latestVersion || 'unknown';
+
+  await logVersionStatus(logger, versionChecker, config, currentVersion, latestVersion, updateCheckResult.hasUpdate);
+}
+
 export async function checkUpdatesActionLogic(
   logger: TsLogger,
   toolName: string | undefined,
   services: Services
 ): Promise<void> {
-  const { yamlConfig, fs, versionChecker, pluginRegistry, systemInfo } = services;
-
   logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
-  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, yamlConfig, fs);
+  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, services.yamlConfig, services.fs);
+
   if (!toolConfigs) {
     return;
   }
 
   for (const config of Object.values(toolConfigs)) {
-    const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-    const getToolDir = (toolName: string): string => `${yamlConfig.paths.binariesDir}/${toolName}`;
-
-    const context: BaseInstallContext = {
-      toolName: config.name,
-      installDir: yamlConfig.paths.binariesDir,
-      timestamp: timestamp || '',
-      systemInfo,
-      toolConfig: config,
-      appConfig: yamlConfig,
-      toolDir: getToolDir(config.name),
-      getToolDir,
-      homeDir: yamlConfig.paths.homeDir,
-      binDir: yamlConfig.paths.targetDir,
-      shellScriptsDir: yamlConfig.paths.shellScriptsDir,
-      dotfilesDir: yamlConfig.paths.dotfilesDir,
-      generatedDir: yamlConfig.paths.generatedDir,
-      logger,
-    };
-
-    const plugin = pluginRegistry.get(config.installationMethod);
-
-    if (!plugin) {
-      logger.warn(
-        messages.commandUnsupportedOperation(
-          'check-updates',
-          `installation method: "${config.installationMethod}" for tool "${config.name}"`
-        )
-      );
-      continue;
-    }
-
-    if (!plugin.supportsUpdateCheck || !plugin.supportsUpdateCheck()) {
-      logger.info(
-        messages.commandUnsupportedOperation(
-          'check-updates',
-          `installation method: "${config.installationMethod}" for tool "${config.name}"`
-        )
-      );
-      continue;
-    }
-
-    const updateCheckResult = await plugin.checkUpdate?.(config.name, config, context, logger);
-
-    if (!updateCheckResult) {
-      logger.warn(messages.commandUnsupportedOperation('check-updates', config.name));
-      continue;
-    }
-
-    if (!updateCheckResult.success) {
-      logger.error(messages.serviceGithubApiFailed('check update', 0), new Error(updateCheckResult.error));
-      continue;
-    }
-
-    const currentVersion = updateCheckResult.currentVersion || config.version || 'unknown';
-    const latestVersion = updateCheckResult.latestVersion || 'unknown';
-
-    if (currentVersion === 'latest') {
-      logger.info(messages.toolConfiguredToLatest(config.name, latestVersion));
-      continue;
-    }
-
-    if (updateCheckResult.hasUpdate) {
-      logger.info(messages.toolUpdateAvailable(config.name, currentVersion, latestVersion));
-    } else {
-      const status = await versionChecker.checkVersionStatus(currentVersion, latestVersion);
-
-      if (status === VersionComparisonStatus.UP_TO_DATE) {
-        logger.info(messages.toolUpToDate(config.name, currentVersion, latestVersion));
-      } else if (status === VersionComparisonStatus.AHEAD_OF_LATEST) {
-        logger.info(messages.toolAheadOfLatest(config.name, currentVersion, latestVersion));
-      } else {
-        logger.warn(messages.toolVersionComparisonFailed(config.name, currentVersion, latestVersion));
-      }
-    }
+    await checkToolUpdate(logger, config, services);
   }
 }
 

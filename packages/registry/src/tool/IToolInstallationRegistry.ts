@@ -1,4 +1,4 @@
-import type { ToolInstallationRecord, ToolInstallationDetails } from './types';
+import type { ToolInstallationDetails, ToolInstallationRecord } from './types';
 
 /**
  * Registry interface for managing tool installation records in a persistent database.

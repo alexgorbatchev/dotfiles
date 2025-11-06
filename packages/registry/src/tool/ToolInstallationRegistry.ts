@@ -2,7 +2,7 @@ import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import { messages } from './log-messages';
-import type { ToolInstallationRecord, ToolInstallationDetails } from './types';
+import type { ToolInstallationDetails, ToolInstallationRecord } from './types';
 
 interface ToolInstallationRow {
   id: number;
