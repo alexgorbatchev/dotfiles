@@ -8,60 +8,96 @@ The system supports multiple installation methods to accommodate different tool 
 Install tools from GitHub releases with automatic asset selection and extraction.
 
 ```typescript
-c.install('github-release', {
-  repo: 'owner/repository',
-  assetPattern: '*linux_amd64.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/repository',
+  })
+    .bin('tool')
+);
 ```
 
 ### [Homebrew](./homebrew.md)
 Install tools using Homebrew package manager (macOS and Linux).
 
 ```typescript
-c.install('brew', {
-  formula: 'ripgrep',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'ripgrep',
+  })
+    .bin('rg')
+);
 ```
 
 ### [Cargo](./cargo.md)
 Install Rust tools from crates.io with cargo-quickinstall for faster downloads.
 
 ```typescript
-c.install('cargo', {
-  crateName: 'ripgrep',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'ripgrep',
+  })
+    .bin('rg')
+);
 ```
 
 ### [Curl Script](./curl-script.md)
 Download and execute installation scripts.
 
 ```typescript
-c.install('curl-script', {
-  url: 'https://bun.sh/install',
-  shell: 'bash',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://bun.sh/install',
+    shell: 'bash',
+  })
+    .bin('bun')
+);
 ```
 
 ### [Curl Tar](./curl-tar.md)
 Download and extract tarballs directly from URLs.
 
 ```typescript
-c.install('curl-tar', {
-  url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
+  })
+    .bin('tool')
+);
 ```
 
 ### [Manual](./manual.md)
 Install files from your dotfiles directory (custom scripts, pre-built binaries) or configuration-only tools.
 
 ```typescript
+import { defineTool } from '@gitea/dotfiles';
+
 // With binary installation
-c.install('manual', {
-  binaryPath: './bin/my-script.sh',
-})
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './bin/my-script.sh',
+  })
+    .bin('my-script')
+);
 
 // Configuration-only
-c.install('manual', {})
+export default defineTool((install, ctx) =>
+  install()
+    .zsh({
+      aliases: {
+        ll: 'ls -la',
+      },
+    })
+);
 ```
 
 ## Choosing the Right Method
@@ -87,9 +123,14 @@ The `manual` method is now the unified approach for both binary installation and
 
 **Example:** Including a custom deployment script with your dotfiles.
 ```typescript
-c.install('manual', {
-  binaryPath: './scripts/deploy.sh',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './scripts/deploy.sh',
+  })
+    .bin('deploy')
+);
 ```
 
 ### Use **Manual** for Configuration Only:
@@ -100,9 +141,19 @@ c.install('manual', {
 
 **Example:** Setting up shell aliases and environment variables.
 ```typescript
-c.install('manual', {
-  // No binaryPath - configuration only
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install()
+    .zsh({
+      aliases: {
+        ll: 'ls -la',
+      },
+      environment: {
+        EDITOR: 'vim',
+      },
+    })
+);
 ```
 
 ## Common Parameters

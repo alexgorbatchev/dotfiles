@@ -7,83 +7,72 @@ This guide covers the basic structure and anatomy of `.tool.ts` configuration fi
 ### Minimal Configuration
 
 ```typescript
-import { defineTool } from '@dotfiles/schemas';
+import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((c, ctx) =>
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/repository',
+  })
     .bin('tool-name')
-    .version('latest')
-    .install('github-release', {
-      repo: 'owner/repository',
-    })
 );
 ```
 
 ### Complete Configuration Template
 
 ```typescript
-import { defineTool } from '@dotfiles/schemas';
-import { always } from '@dotfiles/schemas';
+import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((c, ctx) =>
-  c
-    // Define the binary names this tool provides
-    .bin(['primary-binary', 'secondary-binary'])
-    // Specify version (latest, specific version, or SemVer constraint)
-    .version('latest')
-    // Configure installation method
-    .install('github-release', {
-      repo: 'owner/repository',
-      assetPattern: '*linux_amd64.tar.gz',
-      binaryPath: 'bin/tool',
-      stripComponents: 1,
-    })
-    // Configure symbolic links
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/repository',
+  })
+    .bin('tool-name')
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-    // Add shell configuration
     .zsh({
-      completions: { source: 'completions/_tool.zsh' },
+      completions: {
+        source: 'completions/_tool.zsh',
+      },
       environment: {
-        'TOOL_CONFIG_DIR': `${ctx.homeDir}/.tool`
+        TOOL_CONFIG_DIR: `${ctx.homeDir}/.tool`,
       },
       aliases: {
-        't': 'tool'
+        t: 'tool-name',
       },
-      shellInit: [
-        always/* zsh */`
-          # Functions
-          function tool-helper() {
-            tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-          }
-        `
-      ]
+      shellInit: `
+        # Functions
+        function tool-helper() {
+          tool-name --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+        }
+      `,
     })
-    // Add bash configuration
     .bash({
-      completions: { source: 'completions/tool.bash' }
+      completions: {
+        source: 'completions/tool.bash',
+      },
     })
 );
 ```
 
 ## TypeScript Requirements
 
-### Import Statements
+### Import Statement
 
-Always import required types at the top:
+Import the `defineTool` function from `@gitea/dotfiles`:
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { Platform, Architecture } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 ```
 
 ### Function Signature
 
-The default export must use the `defineTool` helper:
+The default export must use the `defineTool` helper with the install function:
 
 ```typescript
-export default defineTool((c: ToolConfigBuilder, ctx: ToolConfigContext) => {
-  // Configuration goes here
-});
+export default defineTool((install, ctx) =>
+  install('method', { /* params */ })
+    .bin('tool-name')
+    // ... additional configuration
+);
 ```
 
 ### Type Safety

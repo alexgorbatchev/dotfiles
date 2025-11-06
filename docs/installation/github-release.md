@@ -5,23 +5,36 @@ The `github-release` method downloads and installs tools from GitHub releases, a
 ## Basic Usage
 
 ```typescript
-c.install('github-release', {
-  repo: 'owner/repository',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/repository',
+  })
+    .bin('tool')
+);
 ```
 
 ## Parameters
 
+The `install('github-release', params)` function accepts:
+
 ```typescript
-c.install('github-release', {
+{
   repo: 'owner/repository',                    // Required
-  assetPattern?: 'pattern',                    // Optional
-  binaryPath?: 'path/within/archive',          // Optional  
   version?: 'v1.2.3',                         // Optional
+  assetPattern?: 'pattern',                    // Optional
+  assetSelector?: (context) => asset,         // Optional
   includePrerelease?: false,                   // Optional
-  stripComponents?: 1,                         // Optional
-  assetSelector?: (assets, sysInfo) => asset, // Optional
-})
+  githubHost?: 'github.com',                   // Optional
+  env?: { KEY: 'value' },                      // Optional
+  hooks?: {                                    // Optional
+    beforeInstall?: async (ctx) => void,
+    afterDownload?: async (ctx) => void,
+    afterExtract?: async (ctx) => void,
+    afterInstall?: async (ctx) => void,
+  }
+}
 ```
 
 ### Required Parameters
@@ -30,66 +43,93 @@ c.install('github-release', {
 
 ### Optional Parameters
 
-- **`assetPattern`**: Glob pattern or regex to match release assets
+- **`assetPattern`**: Glob pattern to match release assets
   ```typescript
   assetPattern: '*linux_amd64.tar.gz'
   assetPattern: 'tool-*-darwin-arm64.tar.gz'
   ```
 
-- **`binaryPath`**: Path to executable **relative to extracted archive root**
-  ```typescript
-  binaryPath: 'bin/tool'           // Binary located at bin/tool inside extracted archive
-  binaryPath: 'tool'               // Binary located at archive root
-  binaryPath: 'dist/linux/tool'   // Binary located at dist/linux/tool inside archive
-  ```
-  This path is used to generate shims that point to the binary at its original location within the extracted archive.
-
-- **`stripComponents`**: Number of directory levels to strip during extraction (like tar --strip-components)
-
 - **`assetSelector`**: Custom function to select the correct asset
+  ```typescript
+  assetSelector: (context) => {
+    const { assets, systemInfo } = context;
+    return assets.find(asset => 
+      asset.name.includes(systemInfo.platform)
+    );
+  }
+  ```
+
+- **`includePrerelease`**: Whether to include pre-releases when searching for versions
+
+- **`githubHost`**: Custom GitHub API host for GitHub Enterprise installations
+
+- **`env`**: Environment variables for the installation process
+
+- **`hooks`**: Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterExtract`, `afterInstall`)
 
 ## Examples
 
 ### Simple GitHub Release
 
 ```typescript
-c.install('github-release', {
-  repo: 'junegunn/fzf',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'junegunn/fzf',
+  })
+    .bin('fzf')
+);
 ```
 
-### Complex GitHub Release with Pattern Matching
+### With Asset Pattern
 
 ```typescript
-c.install('github-release', {
-  repo: 'sharkdp/bat',
-  assetPattern: '*linux_amd64.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'sharkdp/bat',
+    assetPattern: '*linux_amd64.tar.gz',
+  })
+    .bin('bat')
+);
 ```
 
 ### Using Custom Asset Selector
 
 ```typescript
-c.install('github-release', {
-  repo: 'example/tool',
-  assetSelector: (assets, sysInfo) => {
-    const platformKey = sysInfo.platform === 'darwin' ? 'macos' : sysInfo.platform;
-    const archKey = sysInfo.arch === 'arm64' ? 'aarch64' : sysInfo.arch;
-    return assets.find(asset => 
-      asset.name.includes(platformKey) && asset.name.includes(archKey)
-    );
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'example/tool',
+    assetSelector: (context) => {
+      const { assets, systemInfo } = context;
+      const platformKey = systemInfo.platform === 'darwin' ? 'macos' : systemInfo.platform;
+      const archKey = systemInfo.arch === 'arm64' ? 'aarch64' : systemInfo.arch;
+      return assets.find(asset => 
+        asset.name.includes(platformKey) && asset.name.includes(archKey)
+      );
+    },
+  })
+    .bin('tool')
+);
 ```
 
 ### Specific Version
 
 ```typescript
-c.install('github-release', {
-  repo: 'owner/tool',
-  version: 'v2.1.0',
-  assetPattern: '*linux*.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/tool',
+    version: 'v2.1.0',
+    assetPattern: '*linux*.tar.gz',
+  })
+    .bin('tool')
+);
 ```
 
 ## How It Works
@@ -97,9 +137,9 @@ c.install('github-release', {
 1. **Release Discovery**: Queries GitHub API for releases
 2. **Asset Selection**: Uses pattern matching or custom selector to find the right asset
 3. **Download**: Downloads the selected asset with caching
-4. **Extraction**: Extracts archive to versioned directory
-5. **Binary Location**: Identifies executable using `binaryPath`
-6. **Shim Generation**: Creates shims that point to the binary in its extracted location
+3. **Extraction**: Extracts archive to versioned directory
+4. **Binary Setup**: Sets up binaries with executable permissions
+5. **Shim Generation**: Creates shims that point to the installed binaries
 
 ## Platform Detection
 
@@ -130,7 +170,7 @@ Common patterns:
 
 **Asset not found**: Check the actual asset names in the GitHub release and adjust your pattern.
 
-**Wrong binary selected**: Verify the `binaryPath` points to the correct executable within the extracted archive.
+**Wrong binary selected**: Use `.bin('name', 'path/in/archive')` to specify the binary location.
 
 **Platform detection issues**: Use a custom `assetSelector` for complex platform naming schemes.
 

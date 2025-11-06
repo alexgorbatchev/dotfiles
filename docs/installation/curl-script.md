@@ -5,20 +5,31 @@ The `curl-script` method downloads and executes installation scripts.
 ## Basic Usage
 
 ```typescript
-c.install('curl-script', {
-  url: 'https://bun.sh/install',
-  shell: 'bash',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://bun.sh/install',
+    shell: 'bash',
+  })
+    .bin('bun')
+);
 ```
 
 ## Parameters
 
+The `install('curl-script', params)` function accepts:
+
 ```typescript
-c.install('curl-script', {
+{
   url: 'https://example.com/install.sh',  // Required
   shell: 'bash' | 'sh',                   // Required
-  env?: { [key: string]: string },        // Optional
-})
+  env?: { KEY: 'value' },                 // Optional
+  hooks?: {                               // Optional
+    beforeInstall?: async (ctx) => void,
+    afterDownload?: async (ctx) => void,
+  }
+}
 ```
 
 ### Parameters
@@ -32,35 +43,50 @@ c.install('curl-script', {
 ### Simple Script Installation
 
 ```typescript
-c.install('curl-script', {
-  url: 'https://bun.sh/install',
-  shell: 'bash',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://bun.sh/install',
+    shell: 'bash',
+  })
+    .bin('bun')
+);
 ```
 
 ### With Environment Variables
 
 ```typescript
-c.install('curl-script', {
-  url: 'https://fnm.vercel.app/install',
-  shell: 'bash',
-  env: {
-    INSTALL_ARGS: '--skip-shell --install-dir $LOCAL_BIN',
-  },
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://fnm.vercel.app/install',
+    shell: 'bash',
+    env: {
+      INSTALL_ARGS: '--skip-shell --install-dir $LOCAL_BIN',
+    },
+  })
+    .bin('fnm')
+);
 ```
 
 ### Custom Installation Directory
 
 ```typescript
-c.install('curl-script', {
-  url: 'https://get.docker.com',
-  shell: 'sh',
-  env: {
-    INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
-    SKIP_SYSTEMD: 'true',
-  },
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://get.docker.com',
+    shell: 'sh',
+    env: {
+      INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
+      SKIP_SYSTEMD: 'true',
+    },
+  })
+    .bin('docker')
+);
 ```
 
 ## Security Considerations

@@ -5,58 +5,61 @@ This section provides real-world examples and common patterns for tool configura
 ## Simple GitHub Tool
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin('ripgrep')
-    .version('latest')
-    .install('github-release', {
-      repo: 'BurntSushi/ripgrep',
-    })
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'BurntSushi/ripgrep',
+  })
+    .bin('rg')
     .zsh({
-      completions: { source: 'complete/_rg' },
-      aliases: { 'rg': 'ripgrep' }
+      completions: {
+        source: 'complete/_rg',
+      },
+      aliases: {
+        rg: 'ripgrep',
+      },
     })
     .bash({
-      completions: { source: 'complete/rg.bash' }
-    });
-};
+      completions: {
+        source: 'complete/rg.bash',
+      },
+    })
+);
 ```
 
 ## Tool with Complex Shell Integration
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { always } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'junegunn/fzf',
+  })
     .bin('fzf')
-    .version('latest')
-    .install('github-release', { repo: 'junegunn/fzf' })
     .zsh({
       environment: {
-        'FZF_DEFAULT_OPTS': '--color=fg+:cyan,bg+:black,hl+:yellow'
+        FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
       },
-      completions: { source: 'shell/completion.zsh' },
-      shellInit: [
-        always/* zsh */`
-          # Source key bindings and create custom functions
-          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.toolDir}/shell/key-bindings.zsh"
-          fi
-          
-          function fzf-jump-to-dir() {
-            local dir=$(find . -type d | fzf)
-            [[ -n "$dir" ]] && cd "$dir"
-          }
-          zle -N fzf-jump-to-dir
-          bindkey '^]' fzf-jump-to-dir
-        `
-      ]
-    });
-};
+      completions: {
+        source: 'shell/completion.zsh',
+      },
+      shellInit: `
+        # Source key bindings and create custom functions
+        if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+          source "${ctx.toolDir}/shell/key-bindings.zsh"
+        fi
+        
+        function fzf-jump-to-dir() {
+          local dir=$(find . -type d | fzf)
+          [[ -n "$dir" ]] && cd "$dir"
+        }
+        zle -N fzf-jump-to-dir
+        bindkey '^]' fzf-jump-to-dir
+      `,
+    })
+);
 ```
 
 ## Cross-Shell Tool with Declarative Configuration

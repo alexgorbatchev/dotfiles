@@ -5,21 +5,40 @@ The `manual` method is a unified approach for installing files from your tool co
 ## Basic Usage
 
 ```typescript
+import { defineTool } from '@gitea/dotfiles';
+
 // Install a custom script
-c.install('manual', {
-  binaryPath: './scripts/my-tool.sh',
-})
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './scripts/my-tool.sh',
+  })
+    .bin('my-tool')
+);
 
 // Configuration-only tool (no binary)
-c.install('manual', {})
+export default defineTool((install, ctx) =>
+  install()
+    .zsh({
+      aliases: {
+        ll: 'ls -la',
+      },
+    })
+);
 ```
 
 ## Parameters
 
+The `install('manual', params)` function accepts:
+
 ```typescript
-c.install('manual', {
+{
   binaryPath?: './relative/path/to/binary',  // Optional: path relative to .tool.ts file
-})
+  env?: { KEY: 'value' },                    // Optional
+  hooks?: {                                  // Optional
+    beforeInstall?: async (ctx) => void,
+    afterInstall?: async (ctx) => void,
+  }
+}
 ```
 
 ### Parameters
@@ -34,26 +53,43 @@ c.install('manual', {
 ### Custom Shell Script
 
 ```typescript
-c.install('manual', {
-  binaryPath: './bin/my-tool.sh',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './bin/my-tool.sh',
+  })
+    .bin('my-tool')
+);
 ```
 
 ### Pre-built Binary
 
 ```typescript
-c.install('manual', {
-  binaryPath: './binaries/linux/x64/custom-tool',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './binaries/linux/x64/custom-tool',
+  })
+    .bin('custom-tool')
+);
 ```
 
 ### Configuration-Only Tool
 
 ```typescript
-c.install('manual', {
-  // No binaryPath - only shell configuration and symlinks
-})
-```
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install()
+    .zsh({
+      aliases: {
+        ll: 'ls -la',
+        la: 'ls -A',
+      },
+    })
+);
 ```
 
 ## When to Use Manual Installation
@@ -81,28 +117,27 @@ c.install('manual', {
 ## Complete Example
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './bin/my-tool.sh',
+  })
     .bin('my-tool')
-    .install('manual', {
-      binaryPath: './bin/my-tool.sh',
-    })
     .zsh({
       aliases: {
-        'mt': 'my-tool',
+        mt: 'my-tool',
         'mt-status': 'my-tool status',
       },
       environment: {
-        'MY_TOOL_CONFIG': `${ctx.homeDir}/.config/my-tool`
-      }
+        MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`,
+      },
+      completions: {
+        source: './completions/_my-tool',
+      },
     })
     .symlink('./config/my-tool.conf', `${ctx.homeDir}/.config/my-tool/config`)
-    .zsh({
-      completions: { source: './completions/_my-tool' }
-    });
-};
+);
 ```
 
 ## Next Steps

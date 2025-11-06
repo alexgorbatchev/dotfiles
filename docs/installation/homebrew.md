@@ -5,19 +5,31 @@ The `brew` method installs tools using Homebrew package manager on macOS and Lin
 ## Basic Usage
 
 ```typescript
-c.install('brew', {
-  formula: 'package-name',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'package-name',
+  })
+    .bin('package-name')
+);
 ```
 
 ## Parameters
 
+The `install('brew', params)` function accepts:
+
 ```typescript
-c.install('brew', {
-  formula?: 'package-name',     // Optional
+{
+  formula?: 'package-name',     // Optional (defaults to tool name)
   cask?: boolean,              // Optional
   tap?: 'tap-name' | string[], // Optional
-})
+  env?: { KEY: 'value' },      // Optional
+  hooks?: {                    // Optional
+    beforeInstall?: async (ctx) => void,
+    afterInstall?: async (ctx) => void,
+  }
+}
 ```
 
 ### Parameters
@@ -31,37 +43,57 @@ c.install('brew', {
 ### Simple Brew Formula
 
 ```typescript
-c.install('brew', {
-  formula: 'ripgrep',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'ripgrep',
+  })
+    .bin('rg')
+);
 ```
 
 ### Homebrew Cask
 
 ```typescript
-c.install('brew', {
-  formula: 'visual-studio-code',
-  cask: true,
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'visual-studio-code',
+    cask: true,
+  })
+    .bin('code')
+);
 ```
 
 ### With Custom Tap
 
 ```typescript
-c.install('brew', {
-  formula: 'aerospace',
-  cask: true,
-  tap: 'nikitabobko/tap',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'aerospace',
+    cask: true,
+    tap: 'nikitabobko/tap',
+  })
+    .bin('aerospace')
+);
 ```
 
 ### Multiple Taps
 
 ```typescript
-c.install('brew', {
-  formula: 'custom-tool',
-  tap: ['custom/tap', 'another/tap'],
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'custom-tool',
+    tap: ['custom/tap', 'another/tap'],
+  })
+    .bin('custom-tool')
+);
 ```
 
 ## When to Use Homebrew

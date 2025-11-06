@@ -5,24 +5,37 @@ The `cargo` method installs Rust tools from crates.io or GitHub repositories usi
 ## Basic Usage
 
 ```typescript
-c.install('cargo', {
-  crateName: 'ripgrep',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'ripgrep',
+  })
+    .bin('rg')
+);
 ```
 
 ## Parameters
 
+The `install('cargo', params)` function accepts:
+
 ```typescript
-c.install('cargo', {
+{
   crateName: 'tool-name',                    // Required
   binarySource?: 'cargo-quickinstall' | 'github-releases', // Optional
-  githubRepo?: 'owner/repository',          // Optional
-  assetPattern?: 'pattern-with-placeholders', // Optional
   versionSource?: 'cargo-toml' | 'crates-io' | 'github-releases', // Optional
+  githubRepo?: 'owner/repository',          // Optional
   cargoTomlUrl?: 'https://raw.githubusercontent.com/...', // Optional
+  assetPattern?: 'pattern-with-placeholders', // Optional
   customBinaries?: ['binary1', 'binary2'],  // Optional
   allowSourceFallback?: boolean,            // Optional
-})
+  env?: { KEY: 'value' },                   // Optional
+  hooks?: {                                 // Optional
+    beforeInstall?: async (ctx) => void,
+    afterDownload?: async (ctx) => void,
+    afterInstall?: async (ctx) => void,
+  }
+}
 ```
 
 ### Parameters
@@ -50,57 +63,87 @@ c.install('cargo', {
 ### Simple Cargo Installation
 
 ```typescript
-c.install('cargo', {
-  crateName: 'ripgrep',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'ripgrep',
+  })
+    .bin('rg')
+);
 ```
 
 ### With Custom GitHub Repository
 
 ```typescript
-c.install('cargo', {
-  crateName: 'eza',
-  githubRepo: 'eza-community/eza',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'eza',
+    githubRepo: 'eza-community/eza',
+  })
+    .bin('eza')
+);
 ```
 
 ### Using GitHub Releases as Binary Source
 
 ```typescript
-c.install('cargo', {
-  crateName: 'bat',
-  binarySource: 'github-releases',
-  githubRepo: 'sharkdp/bat',
-  assetPattern: 'bat-v{version}-{arch}-{platform}.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'bat',
+    binarySource: 'github-releases',
+    githubRepo: 'sharkdp/bat',
+    assetPattern: 'bat-v{version}-{arch}-{platform}.tar.gz',
+  })
+    .bin('bat')
+);
 ```
 
 ### Custom Binary Names
 
 ```typescript
-c.install('cargo', {
-  crateName: 'fd-find',
-  customBinaries: ['fd'],  // Binary is named 'fd' but crate is 'fd-find'
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'fd-find',
+    customBinaries: ['fd'],
+  })
+    .bin('fd')
+);
 ```
 
 ### With Source Fallback
 
 ```typescript
-c.install('cargo', {
-  crateName: 'custom-tool',
-  allowSourceFallback: true,  // Compile from source if binary not available
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'custom-tool',
+    allowSourceFallback: true,
+  })
+    .bin('custom-tool')
+);
 ```
 
 ### Custom Cargo.toml URL
 
 ```typescript
-c.install('cargo', {
-  crateName: 'custom-tool',
-  githubRepo: 'user/custom-tool',
-  cargoTomlUrl: 'https://raw.githubusercontent.com/user/custom-tool/main/Cargo.toml',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'custom-tool',
+    githubRepo: 'user/custom-tool',
+    cargoTomlUrl: 'https://raw.githubusercontent.com/user/custom-tool/main/Cargo.toml',
+  })
+    .bin('custom-tool')
+);
 ```
 
 ## Version Resolution

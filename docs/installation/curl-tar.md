@@ -5,19 +5,31 @@ The `curl-tar` method downloads and extracts tarballs directly from URLs.
 ## Basic Usage
 
 ```typescript
-c.install('curl-tar', {
-  url: 'https://example.com/tool.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://example.com/tool.tar.gz',
+  })
+    .bin('tool')
+);
 ```
 
 ## Parameters
 
+The `install('curl-tar', params)` function accepts:
+
 ```typescript
-c.install('curl-tar', {
+{
   url: 'https://example.com/tool.tar.gz',  // Required
-  extractPath?: 'path/to/binary',          // Optional
-  stripComponents?: 1,                     // Optional
-})
+  env?: { KEY: 'value' },                  // Optional
+  hooks?: {                                // Optional
+    beforeInstall?: async (ctx) => void,
+    afterDownload?: async (ctx) => void,
+    afterExtract?: async (ctx) => void,
+    afterInstall?: async (ctx) => void,
+  }
+}
 ```
 
 ### Parameters
@@ -31,28 +43,45 @@ c.install('curl-tar', {
 ### Simple Tarball Download
 
 ```typescript
-c.install('curl-tar', {
-  url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
+  })
+    .bin('tool')
+);
 ```
 
-### With Binary Path
+### Binary in Subdirectory
 
 ```typescript
-c.install('curl-tar', {
-  url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
-  extractPath: 'bin/tool',
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
+  })
+    .bin('tool', 'bin/tool')  // Binary at bin/tool in archive
+);
 ```
 
-### With Strip Components
+### With Hooks
 
 ```typescript
-c.install('curl-tar', {
-  url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
-  extractPath: 'tool',
-  stripComponents: 1,  // Remove top-level directory
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://releases.example.com/tool-v1.0.0.tar.gz',
+  })
+    .bin('tool')
+    .hooks({
+      afterExtract: async (ctx) => {
+        // Post-extraction setup
+      },
+    })
+);
 ```
 
 ## When to Use Curl Tar
@@ -87,23 +116,19 @@ c.install('curl-tar', {
 ## Complete Example
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin('custom-tool')
-    .version('1.0.0')
-    .install('curl-tar', {
-      url: 'https://releases.example.com/custom-tool-v1.0.0.tar.gz',
-      extractPath: 'bin/custom-tool',
-      stripComponents: 1
-    })
+export default defineTool((install, ctx) =>
+  install('curl-tar', {
+    url: 'https://releases.example.com/custom-tool-v1.0.0.tar.gz',
+  })
+    .bin('custom-tool', 'bin/custom-tool')
     .zsh({
       aliases: {
-        'ct': 'custom-tool'
-      }
-    });
-};
+        ct: 'custom-tool',
+      },
+    })
+);
 ```
 
 ## Troubleshooting
@@ -132,13 +157,10 @@ curl -I https://releases.example.com/tool-v1.0.0.tar.gz
 
 ### Binary Not Found
 
-**Check stripComponents:**
-- Adjust the `stripComponents` value if directory structure is different
-- Use 0 to preserve the full directory structure
-
-**Verify extractPath:**
-- Ensure the path is relative to the archive root (after stripping components)
+**Verify binary path:**
+- Use `.bin('name', 'path/in/archive')` to specify the binary location
 - Check for typos in the binary name
+- List archive contents with `tar -tf archive.tar.gz` to find the correct path
 
 ## Security Considerations
 
