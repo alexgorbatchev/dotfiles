@@ -97,14 +97,16 @@ async function buildCli(): Promise<Bun.BuildOutput> {
 
 async function createTempTsConfig(): Promise<void> {
   const tempTsConfig = {
-    extends: '../packages/core/tsconfig.json',
+    extends: '../packages/cli/tsconfig.json',
     compilerOptions: {
       noEmit: false,
       declaration: true,
       emitDeclarationOnly: true,
       outDir: './temp-schemas-build',
+      skipLibCheck: true,
+      skipDefaultLibCheck: true,
     },
-    include: ['../packages/core/src/config/yamlConfigSchema.ts'],
+    include: ['../packages/cli/src/schema-exports.ts'],
   };
 
   await Bun.write(BUILD_TSCONFIG_PATH, JSON.stringify(tempTsConfig, null, 2));
@@ -139,8 +141,24 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
   // Install external dependencies in the temp build folder
   await $`cd ${TEMP_SCHEMAS_BUILD_DIR} && bun install`.quiet();
 
-  // Bundle only our @dotfiles packages, keeping zod and type-fest as external dependencies
-  await $`cd ${OUTPUT_DIR} && bun dts-bundle-generator --out-file schemas.d.ts ${path.basename(TEMP_SCHEMAS_BUILD_DIR)}/config/yamlConfigSchema.d.ts --no-check --external-imports zod --external-imports type-fest`.quiet();
+  // Try different entry points until one works
+  const entryPoints = ['schema-exports.d.ts', 'defineTool.d.ts', 'main.d.ts'];
+  let bundleSuccess = false;
+
+  for (const entryPoint of entryPoints) {
+    try {
+      await $`cd ${OUTPUT_DIR} && bun dts-bundle-generator --out-file schemas.d.ts ${path.basename(TEMP_SCHEMAS_BUILD_DIR)}/${entryPoint} --no-check --external-imports zod --external-imports type-fest`.quiet();
+      bundleSuccess = true;
+      console.log(`✅ Successfully bundled using ${entryPoint}`);
+      break;
+    } catch (_error) {
+      console.log(`⚠️  Failed to bundle with ${entryPoint}, trying next...`);
+    }
+  }
+
+  if (!bundleSuccess) {
+    throw new Error('Failed to bundle schemas with any entry point');
+  }
 }
 
 async function createValidationTsConfig(): Promise<void> {
@@ -153,10 +171,33 @@ async function createValidationTsConfig(): Promise<void> {
       noEmit: true,
       skipLibCheck: true,
     },
-    files: ['./schemas.d.ts'],
+    files: ['./schemas.d.ts', './validate-exports.ts'],
   };
 
   await Bun.write(VALIDATION_TSCONFIG_PATH, JSON.stringify(tempValidationTsConfig, null, 2));
+}
+
+async function createExportValidationFile(): Promise<void> {
+  const validationCode = `// TypeScript validation file to ensure required exports are present
+import type { Architecture, Platform } from './schemas';
+import { defineTool } from './schemas';
+
+// These should compile without errors if exports are correct
+const _arch: Architecture = 'x86_64';
+const _platform: Platform = 'macos';
+const _defineTool = defineTool;
+
+// Verify defineTool is a function
+const _isFunction: typeof defineTool extends Function ? true : false = true;
+
+// should work
+defineTool((install, _ctx) => install('github-release', { repo: 'BurntSushi/ripgrep' }));
+
+// @ts-expect-error: unknown install method
+defineTool((install, _ctx) => install('unknown', {}));
+`;
+
+  await Bun.write(path.join(OUTPUT_DIR, 'validate-exports.ts'), validationCode);
 }
 
 async function validateSchemas(dependencyVersions: DependencyVersions): Promise<void> {
@@ -176,6 +217,7 @@ async function validateSchemas(dependencyVersions: DependencyVersions): Promise<
 
   await Bun.write(OUTPUT_PACKAGE_JSON_PATH, JSON.stringify(tempValidationPackageJson, null, 2));
   await createValidationTsConfig();
+  await createExportValidationFile();
 
   // Copy .npmrc for validation install
   if (fs.existsSync(NPMRC_PATH)) {
@@ -197,6 +239,7 @@ async function cleanupValidationFiles(): Promise<void> {
     OUTPUT_NODE_MODULES_PATH,
     OUTPUT_LOCKFILE_PATH,
     path.join(OUTPUT_DIR, '.npmrc'),
+    path.join(OUTPUT_DIR, 'validate-exports.ts'),
   ];
 
   for (const filePath of filesToCleanup) {
