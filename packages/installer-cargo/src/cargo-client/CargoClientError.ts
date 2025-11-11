@@ -4,7 +4,7 @@
  */
 export class CargoClientError extends Error {
   public readonly statusCode?: number;
-  public readonly cause?: Error;
+  public override readonly cause?: Error;
 
   constructor(message: string, statusCode?: number, cause?: Error) {
     super(message);

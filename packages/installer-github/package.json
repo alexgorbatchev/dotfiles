@@ -21,6 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@dotfiles/testing-helpers": "workspace:*"
+    "@dotfiles/testing-helpers": "workspace:*",
+    "@types/semver": "catalog:system"
   }
 }

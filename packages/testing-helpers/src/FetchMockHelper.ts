@@ -4,14 +4,14 @@ import { spyOn } from 'bun:test';
  * Options for mocking a fetch response.
  */
 interface MockResponseOptions {
-  /** The body of the response. Can be BodyInit, null, or undefined. */
-  body?: BodyInit | null;
+  /** The body of the response. Can be string, Blob, ArrayBuffer, FormData, URLSearchParams, ReadableStream, or null. */
+  body?: string | Blob | ArrayBuffer | FormData | URLSearchParams | ReadableStream | null;
   /** The HTTP status code of the response. Defaults to 200. */
   status?: number;
   /** The status text of the response. Defaults to 'OK'. */
   statusText?: string;
-  /** The headers of the response. Can be HeadersInit or undefined. */
-  headers?: HeadersInit;
+  /** The headers of the response. Can be Headers, [string, string][], Record<string, string>, or undefined. */
+  headers?: Headers | [string, string][] | Record<string, string>;
   /** An error to simulate a network error, causing fetch to reject. */
   error?: Error;
 }

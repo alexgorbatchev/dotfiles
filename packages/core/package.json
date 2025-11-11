@@ -22,6 +22,7 @@
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@rageltd/bun-test-utils": "catalog:testing",
+    "@dotfiles/tool-config-builder": "workspace:*",
     "typescript": "catalog:typescript",
     "@typescript/native-preview": "catalog:typescript"
   }
