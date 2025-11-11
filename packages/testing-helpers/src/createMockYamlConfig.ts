@@ -1,9 +1,8 @@
 import type { YamlConfig } from '@dotfiles/config';
 import { createYamlConfigFromObject } from '@dotfiles/config';
-import type { SystemInfo } from '@dotfiles/core';
+import type { PartialDeep, SystemInfo } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { PartialDeep } from 'type-fest';
 
 /**
  * Represents a deep partial version of `YamlConfig`, where all properties and sub-properties are optional.

@@ -1,4 +1,4 @@
-import type { ToolConfig } from '@dotfiles/core';
+import type { BaseInstallParams, ToolConfig } from '@dotfiles/core';
 import { baseToolConfigWithPlatformsSchema, type InferToolConfigWithPlatforms } from '@dotfiles/core';
 import { z } from 'zod';
 import { cargoInstallParamsSchema } from './cargoInstallParamsSchema';
@@ -14,7 +14,18 @@ export const cargoToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
 /**
  * Installation parameters for Cargo-based tools using pre-compiled binaries
  */
-export type CargoInstallParams = z.infer<typeof cargoInstallParamsSchema>;
+type CargoInstallSchemaParams = z.infer<typeof cargoInstallParamsSchema>;
+
+export interface CargoInstallParams extends BaseInstallParams {
+  crateName: CargoInstallSchemaParams['crateName'];
+  binarySource?: CargoInstallSchemaParams['binarySource'];
+  githubRepo?: CargoInstallSchemaParams['githubRepo'];
+  assetPattern?: CargoInstallSchemaParams['assetPattern'];
+  versionSource?: CargoInstallSchemaParams['versionSource'];
+  cargoTomlUrl?: CargoInstallSchemaParams['cargoTomlUrl'];
+  customBinaries?: CargoInstallSchemaParams['customBinaries'];
+  allowSourceFallback?: CargoInstallSchemaParams['allowSourceFallback'];
+}
 
 /**
  * Tool configuration for Cargo-based installations

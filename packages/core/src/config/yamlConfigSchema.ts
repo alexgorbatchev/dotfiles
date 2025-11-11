@@ -1,4 +1,4 @@
-import type { PartialDeep } from 'type-fest';
+import type { PartialDeep } from '@dotfiles/core';
 import { z } from 'zod';
 
 /**

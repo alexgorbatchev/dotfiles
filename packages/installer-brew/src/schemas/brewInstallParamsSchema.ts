@@ -1,3 +1,4 @@
+import type { BaseInstallParams } from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
 
@@ -25,4 +26,10 @@ export const brewInstallParamsSchema = baseInstallParamsSchema.extend({
  * This method is typically used on macOS and Linux (via Linuxbrew).
  * It involves running `brew install` commands.
  */
-export type BrewInstallParams = z.infer<typeof brewInstallParamsSchema>;
+type BrewInstallSchemaParams = z.infer<typeof brewInstallParamsSchema>;
+
+export interface BrewInstallParams extends BaseInstallParams {
+  formula?: BrewInstallSchemaParams['formula'];
+  cask?: BrewInstallSchemaParams['cask'];
+  tap?: BrewInstallSchemaParams['tap'];
+}

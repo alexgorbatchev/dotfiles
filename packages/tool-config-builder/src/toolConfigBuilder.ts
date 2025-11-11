@@ -2,6 +2,8 @@ import type {
   Architecture,
   AsyncInstallHook,
   InstallerPluginRegistry,
+  InstallMethod,
+  InstallParamsMap,
   Platform,
   PlatformConfig,
   PlatformConfigBuilder as PlatformConfigBuilderInterface,
@@ -42,6 +44,8 @@ export interface BinaryConfig {
   pattern: string;
 }
 
+type InstallParams = InstallParamsMap[InstallMethod];
+
 /**
  * A fluent API for creating {@link @dotfiles/core#ToolConfig} objects.
  *
@@ -74,7 +78,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public binaries: BinaryConfig[] = [];
   public versionNum: string = 'latest';
   public currentInstallationMethod?: string;
-  public currentInstallParams?: Record<string, unknown>;
+  public currentInstallParams?: InstallParams | Record<string, unknown>;
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
@@ -131,6 +135,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param params - A configuration object specific to the chosen method.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
+  install<M extends InstallMethod>(method: M, params: InstallParamsMap[M]): this;
+  install(method: string, params: Record<string, unknown>): this;
   install(method: string, params: Record<string, unknown>): this {
     this.currentInstallationMethod = method;
     this.currentInstallParams = params;
@@ -357,10 +363,13 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     const platformBuilder = new ToolConfigBuilder(this.logger, this.toolName, true);
 
     // Create platform install function that works like the main install function
-    const platformInstall: PlatformInstallFunction = ((method?: string, params?: Record<string, unknown>) => {
-      if (method) {
-        platformBuilder.install(method, params || {});
+    const platformInstall: PlatformInstallFunction = ((...args: [InstallMethod, InstallParams] | []) => {
+      if (args.length === 0) {
+        return platformBuilder as unknown as PlatformConfigBuilderInterface;
       }
+
+      const [method, params] = args;
+      platformBuilder.install(method, params);
       return platformBuilder as unknown as PlatformConfigBuilderInterface;
     }) as PlatformInstallFunction;
 

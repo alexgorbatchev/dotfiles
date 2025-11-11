@@ -1,4 +1,3 @@
-import type { TsLogger } from '@dotfiles/logger';
 import type { YamlConfig } from '../config';
 
 /**
@@ -6,7 +5,7 @@ import type { YamlConfig } from '../config';
  * across various phases of tool configuration and installation.
  *
  * This interface includes essential information such as the tool's identity,
- * important directory paths, application configuration, and a logger instance.
+ * important directory paths, and application configuration.
  *
  * @see {@link ToolConfigContext}
  * @see {@link InstallerContext}
@@ -66,9 +65,4 @@ export interface BaseToolContext {
    * The user's parsed application configuration from the main `config.yaml` file.
    */
   appConfig: YamlConfig;
-
-  /**
-   * A logger instance for structured, type-safe logging.
-   */
-  logger: TsLogger;
 }

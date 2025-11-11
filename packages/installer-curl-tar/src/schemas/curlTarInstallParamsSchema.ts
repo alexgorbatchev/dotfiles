@@ -1,3 +1,4 @@
+import type { BaseInstallParams } from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
 
@@ -21,4 +22,8 @@ export const curlTarInstallParamsSchema = baseInstallParamsSchema.extend({
  * then extracting it and potentially moving a binary from within.
  * This is analogous to Zinit's `dl` ice for archives, combined with `extract` and `pick`.
  */
-export type CurlTarInstallParams = z.infer<typeof curlTarInstallParamsSchema>;
+type CurlTarSchemaParams = z.infer<typeof curlTarInstallParamsSchema>;
+
+export interface CurlTarInstallParams extends BaseInstallParams {
+  url: CurlTarSchemaParams['url'];
+}

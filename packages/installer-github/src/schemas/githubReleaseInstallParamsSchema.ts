@@ -1,4 +1,11 @@
-import type { BaseToolContext, GitHubRelease, GitHubReleaseAsset, SystemInfo, ToolConfig } from '@dotfiles/core';
+import type {
+  BaseInstallParams,
+  BaseToolContext,
+  GitHubRelease,
+  GitHubReleaseAsset,
+  SystemInfo,
+  ToolConfig,
+} from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
 
@@ -103,4 +110,13 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
  * extracting it (if it's an archive), and then locating/moving the binary.
  * This is analogous to Zinit's `from"gh-r"` ice.
  */
-export type GithubReleaseInstallParams = z.infer<typeof githubReleaseInstallParamsSchema>;
+type GithubReleaseSchemaParams = z.infer<typeof githubReleaseInstallParamsSchema>;
+
+export interface GithubReleaseInstallParams extends BaseInstallParams {
+  repo: GithubReleaseSchemaParams['repo'];
+  assetPattern?: GithubReleaseSchemaParams['assetPattern'];
+  version?: GithubReleaseSchemaParams['version'];
+  includePrerelease?: GithubReleaseSchemaParams['includePrerelease'];
+  assetSelector?: GithubReleaseSchemaParams['assetSelector'];
+  githubHost?: GithubReleaseSchemaParams['githubHost'];
+}

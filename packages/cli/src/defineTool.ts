@@ -7,11 +7,11 @@
 
 import type { Builder } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
-import { ToolConfigBuilder as ToolConfigBuilderImpl } from '../../tool-config-builder/src/toolConfigBuilder';
+import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 
 type AsyncConfigureTool = Builder.AsyncConfigureTool;
 type InstallFunction = Builder.InstallFunction;
-type ToolConfigBuilder = Builder.ToolConfigBuilder;
+type ToolConfigBuilderContract = Builder.ToolConfigBuilder;
 type ToolConfigContext = Builder.ToolConfigContext;
 
 /**
@@ -38,12 +38,12 @@ type ToolConfigContext = Builder.ToolConfigContext;
 export function defineTool<T extends (install: InstallFunction, ctx: ToolConfigContext) => unknown>(
   fn: T
 ): AsyncConfigureTool {
-  return async (install: InstallFunction, ctx: ToolConfigContext): Promise<ToolConfigBuilder | undefined> => {
+  return async (install: InstallFunction, ctx: ToolConfigContext): Promise<ToolConfigBuilderContract | undefined> => {
     const result: unknown = fn(install, ctx);
     if (result instanceof Promise) {
-      return (await result) as ToolConfigBuilder | undefined;
+      return (await result) as ToolConfigBuilderContract | undefined;
     }
-    return result as ToolConfigBuilder | undefined;
+    return result as ToolConfigBuilderContract | undefined;
   };
 }
 
@@ -56,12 +56,12 @@ export function defineTool<T extends (install: InstallFunction, ctx: ToolConfigC
  */
 export function createInstallFunction(logger: TsLogger, toolName: string): InstallFunction {
   // Track which builder instance to return - created on first call
-  let builderInstance: ToolConfigBuilderImpl | null = null;
+  let builderInstance: ToolConfigBuilder | null = null;
 
-  const installFn = ((method?: string, params?: unknown): ToolConfigBuilder => {
+  const installFn = ((method?: string, params?: unknown): ToolConfigBuilderContract => {
     // Create builder on first call
     if (!builderInstance) {
-      builderInstance = new ToolConfigBuilderImpl(logger, toolName);
+      builderInstance = new ToolConfigBuilder(logger, toolName);
     }
 
     // Set installation method and params directly on builder fields
@@ -70,7 +70,7 @@ export function createInstallFunction(logger: TsLogger, toolName: string): Insta
       builderInstance.currentInstallParams = (params as Record<string, unknown>) || {};
     }
 
-    return builderInstance as ToolConfigBuilder;
+    return builderInstance as ToolConfigBuilderContract;
   }) as InstallFunction;
 
   return installFn;

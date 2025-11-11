@@ -2,6 +2,44 @@ import type { BaseInstallContext } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import type { z } from 'zod';
 
+type Primitive = string | number | bigint | boolean | symbol | undefined | null;
+
+type DeepPartialArray<T extends readonly unknown[]> = number extends T['length']
+  ? readonly PartialDeep<T[number]>[]
+  : { [K in keyof T]?: PartialDeep<T[K]> };
+
+type DeepPartialSet<T> = T extends Set<infer TValue>
+  ? Set<PartialDeep<TValue>>
+  : T extends ReadonlySet<infer TValue>
+    ? ReadonlySet<PartialDeep<TValue>>
+    : never;
+
+type DeepPartialMap<T> = T extends Map<infer TKey, infer TValue>
+  ? Map<TKey, PartialDeep<TValue>>
+  : T extends ReadonlyMap<infer TKey, infer TValue>
+    ? ReadonlyMap<TKey, PartialDeep<TValue>>
+    : never;
+
+type DeepPartialObject<T extends object> = {
+  [K in keyof T]?: PartialDeep<T[K]>;
+};
+
+export type PartialDeep<T> = T extends Primitive
+  ? T
+  : T extends (...args: infer TArgs) => infer TResult
+    ? (...args: TArgs) => TResult
+    : T extends Promise<infer TValue>
+      ? Promise<PartialDeep<TValue>>
+      : T extends readonly unknown[]
+        ? DeepPartialArray<T>
+        : T extends Set<unknown> | ReadonlySet<unknown>
+          ? DeepPartialSet<T>
+          : T extends Map<unknown, unknown> | ReadonlyMap<unknown, unknown>
+            ? DeepPartialMap<T>
+            : T extends object
+              ? DeepPartialObject<T>
+              : Partial<T>;
+
 /**
  * Standard success result for operations.
  */

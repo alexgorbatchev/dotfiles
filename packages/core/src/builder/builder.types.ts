@@ -5,16 +5,11 @@
  * Plugin types are loaded via module augmentation from installer packages.
  */
 
-import type {
-  Architecture,
-  AsyncInstallHook,
-  BaseToolContext,
-  InstallParamsRegistry,
-  Platform,
-  ShellCompletionConfig,
-  ShellScript,
-  ToolConfig,
-} from '@dotfiles/core';
+import type { Architecture, BaseToolContext, Platform } from '../common';
+import type { AsyncInstallHook } from '../installer';
+import type { ShellScript } from '../shell';
+import type { ShellCompletionConfig } from '../tool-config/shell';
+import type { InstallParamsRegistry, ToolConfig } from '../types';
 
 /**
  * Install params come from plugins via InstallParamsRegistry module augmentation.

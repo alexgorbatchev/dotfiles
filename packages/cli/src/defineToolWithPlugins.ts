@@ -7,12 +7,12 @@
  */
 
 // CRITICAL: Import plugins FIRST to load module augmentations
-import '../../installer-brew/src/index';
-import '../../installer-cargo/src/index';
-import '../../installer-curl-script/src/index';
-import '../../installer-curl-tar/src/index';
-import '../../installer-github/src/index';
-import '../../installer-manual/src/index';
+import '@dotfiles/installer-brew';
+import '@dotfiles/installer-cargo';
+import '@dotfiles/installer-curl-script';
+import '@dotfiles/installer-curl-tar';
+import '@dotfiles/installer-github';
+import '@dotfiles/installer-manual';
 
 // Now export defineTool with fully populated types
 // biome-ignore lint/plugin: Named exports required for selective API exposure

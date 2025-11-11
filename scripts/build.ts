@@ -4,50 +4,53 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';
 import cliPackageJson from '../package.json';
-import { cdToRepoRoot } from './lib';
+import { cdToRepoRoot, extractTypeAliasSignature } from './lib';
 
-const OUTPUT_DIR = './.dist';
+const LINE_BREAK = '\n';
+
+const ROOT_DIR = process.cwd();
+const PACKAGES_DIR = path.join(ROOT_DIR, 'packages');
+const TMP_DIR = path.join(ROOT_DIR, '.tmp');
+const OUTPUT_DIR = path.join(ROOT_DIR, '.dist');
 const CLI_OUTPUT_FILE = path.join(OUTPUT_DIR, 'cli.js');
-const ENTRY_POINT = path.resolve(process.cwd(), 'packages/cli/src/main.ts');
-const NPMRC_PATH = '.npmrc';
-const BUILD_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'temp-tsconfig.json');
-const VALIDATION_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'temp-validation-tsconfig.json');
+const ENTRY_POINT = path.resolve(PACKAGES_DIR, 'cli/src/main.ts');
+const NPMRC_PATH = path.join(ROOT_DIR, '.npmrc');
+const BUILD_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'tsconfig--build.json');
 
-const TEMP_SCHEMAS_BUILD_DIR = path.join(OUTPUT_DIR, 'temp-schemas-build');
+const TEMP_SCHEMAS_BUILD_DIR_NAME = 'temp-schemas-build';
+const TEMP_SCHEMAS_BUILD_DIR = path.join(TMP_DIR, TEMP_SCHEMAS_BUILD_DIR_NAME);
 const TEMP_SCHEMAS_PACKAGE_PATH = path.join(TEMP_SCHEMAS_BUILD_DIR, 'package.json');
 const TEMP_SCHEMAS_NPMRC_PATH = path.join(TEMP_SCHEMAS_BUILD_DIR, '.npmrc');
 
 const OUTPUT_PACKAGE_JSON_PATH = path.join(OUTPUT_DIR, 'package.json');
-const OUTPUT_NODE_MODULES_PATH = path.join(OUTPUT_DIR, 'node_modules');
-const OUTPUT_LOCKFILE_PATH = path.join(OUTPUT_DIR, 'bun.lockb');
-const ROOT_NODE_MODULES_PATH = path.join(process.cwd(), 'node_modules');
+const OUTPUT_NPMRC_PATH = path.join(OUTPUT_DIR, '.npmrc');
+const OUTPUT_BUNFIG_PATH = path.join(OUTPUT_DIR, 'bunfig.toml');
+const OUTPUT_BUN_LOCK_PATH = path.join(OUTPUT_DIR, 'bun.lock');
+const ROOT_NODE_MODULES_PATH = path.join(ROOT_DIR, 'node_modules');
 const ROOT_BUN_CACHE_PATH = path.join(ROOT_NODE_MODULES_PATH, '.bun');
 const BUN_INSTALL_CACHE_ENV = `BUN_INSTALL_CACHE=${ROOT_BUN_CACHE_PATH}`;
-const LINE_BREAK = '\n';
+const BUILD_CHECK_DIR = path.join(TMP_DIR, 'build-check');
+const BUILD_CHECK_NODE_MODULES_PATH = path.join(BUILD_CHECK_DIR, 'node_modules');
+const BUILD_CHECK_PACKAGE_JSON_PATH = path.join(BUILD_CHECK_DIR, 'package.json');
+const BUILD_CHECK_TSCONFIG_PATH = path.join(BUILD_CHECK_DIR, 'tsconfig.json');
+const BUILD_CHECK_INDEX_PATH = path.join(BUILD_CHECK_DIR, 'index.ts');
+const INSTALLER_PACKAGE_PREFIX = 'installer-';
+const INSTALLER_BUILD_CHECK_RELATIVE_PATH = path.join('build-check', 'buildCheck.ts');
+const BUILD_CHECK_SCRIPT_SUFFIX = '--buildCheck.ts';
+
+interface InstallerBuildCheckScript {
+  packageName: string;
+  sourcePath: string;
+}
 
 interface DependencyVersions {
   zod: string;
-  typeFest: string;
   bunTypes: string;
+  typescript: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
-}
-
-function isStringRecord(value: unknown): value is Record<string, string> {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  const entries = Object.entries(value);
-  for (const [, entryValue] of entries) {
-    if (typeof entryValue !== 'string') {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 function parseCliPackageVersion(value: unknown): string {
@@ -76,46 +79,34 @@ function toRecord(value: unknown): Record<string, unknown> {
 function parseRootPackageMetadata(value: unknown): Record<string, unknown> {
   const source = toRecord(value);
   const result: Record<string, unknown> = {};
-
-  if (Object.hasOwn(source, 'catalog')) {
-    result['catalog'] = source['catalog'];
-  }
-
-  if (Object.hasOwn(source, 'catalogs')) {
-    result['catalogs'] = source['catalogs'];
-  }
-
+  result['catalog'] = source['catalog'];
+  result['catalogs'] = source['catalogs'];
   return result;
 }
 
 function ensureBunCacheDirectory(): void {
-  if (!fs.existsSync(ROOT_NODE_MODULES_PATH)) {
-    fs.mkdirSync(ROOT_NODE_MODULES_PATH, { recursive: true });
-  }
-
-  if (!fs.existsSync(ROOT_BUN_CACHE_PATH)) {
-    fs.mkdirSync(ROOT_BUN_CACHE_PATH, { recursive: true });
-  }
+  fs.mkdirSync(ROOT_NODE_MODULES_PATH, { recursive: true });
+  fs.mkdirSync(ROOT_BUN_CACHE_PATH, { recursive: true });
 }
 
 async function installWorkspaceDependencies(): Promise<void> {
   ensureBunCacheDirectory();
   writeStdout('📦 Ensuring workspace dependencies...');
-  const installResult = await $`bun install`.quiet();
-
-  if (installResult.exitCode !== 0) {
-    writeStderr('❌ Failed to install workspace dependencies');
-    throw new Error('Workspace dependency installation failed');
+  try {
+    await $`bun install`.quiet();
+  } catch (error) {
+    writeError('❌ Failed to install workspace dependencies:', error);
+    throw normalizeError(error, 'Workspace dependency installation failed');
   }
 }
 
 async function installDependenciesInOutputDir(): Promise<void> {
   ensureBunCacheDirectory();
-  const installResult = await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
-
-  if (installResult.exitCode !== 0) {
-    writeStderr('❌ Failed to install temporary workspace dependencies');
-    throw new Error('Temporary dependency installation failed');
+  try {
+    await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
+  } catch (error) {
+    writeError('❌ Failed to install temporary workspace dependencies:', error);
+    throw normalizeError(error, 'Temporary dependency installation failed');
   }
 }
 
@@ -137,6 +128,19 @@ function writeError(prefix: string, error: unknown): void {
   process.stderr.write(`${prefix} ${String(error)}${LINE_BREAK}`);
 }
 
+function normalizeError(error: unknown, fallbackMessage: string): Error {
+  if (isError(error)) {
+    return error;
+  }
+
+  const fallbackError = new Error(fallbackMessage);
+  return fallbackError;
+}
+
+function isError(value: unknown): value is Error {
+  return value instanceof Error;
+}
+
 const cliPackageVersion = parseCliPackageVersion(cliPackageJson);
 
 async function cleanPreviousBuild(): Promise<void> {
@@ -151,26 +155,28 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
   const pmLsOutput = pmLsResult.stdout.toString();
 
   const zodMatch = pmLsOutput.match(/zod@(\d+\.\d+\.\d+)/);
-  const typeFestMatch = pmLsOutput.match(/type-fest@(\d+\.\d+\.\d+)/);
   const bunTypesMatch = pmLsOutput.match(/@types\/bun@(\d+\.\d+\.\d+)/);
+  const typescriptMatch = pmLsOutput.match(/(?:^|\s)typescript@(\d+\.\d+\.\d+)/);
 
-  if (!zodMatch || !typeFestMatch || !bunTypesMatch) {
-    throw new Error('Could not find zod, type-fest, or @types/bun versions in bun pm ls output');
+  if (!zodMatch || !bunTypesMatch || !typescriptMatch) {
+    throw new Error('Could not find zod, type-fest, @types/bun, or typescript versions in bun pm ls output');
   }
 
   const zodVersion = zodMatch[1];
-  const typeFestVersion = typeFestMatch[1];
   const bunTypesVersion = bunTypesMatch[1];
+  const typescriptVersion = typescriptMatch[1];
 
-  if (!zodVersion || !typeFestVersion || !bunTypesVersion) {
+  if (!zodVersion || !bunTypesVersion || !typescriptVersion) {
     throw new Error('Could not extract version numbers from dependency output');
   }
 
-  return {
+  const versions: DependencyVersions = {
     zod: zodVersion,
-    typeFest: typeFestVersion,
     bunTypes: bunTypesVersion,
+    typescript: typescriptVersion,
   };
+
+  return versions;
 }
 
 async function buildCli(): Promise<Bun.BuildOutput> {
@@ -209,22 +215,22 @@ async function buildCli(): Promise<Bun.BuildOutput> {
 
 async function createTempTsConfig(): Promise<void> {
   const paths: Record<string, string[]> = {
-    '@dotfiles/*': ['./../packages/*/src/index.ts', './../packages/*/index.ts'],
+    '@dotfiles/*': [`${ROOT_DIR}/packages/*/src/index.ts`, `${ROOT_DIR}/packages/*/index.ts`],
   };
   const compilerOptions: Record<string, unknown> = {
     noEmit: false,
     declaration: true,
     emitDeclarationOnly: true,
-    outDir: './temp-schemas-build',
+    outDir: TEMP_SCHEMAS_BUILD_DIR,
     skipLibCheck: true,
     skipDefaultLibCheck: true,
     noImplicitAny: false,
     paths,
   };
   const tempTsConfig: Record<string, unknown> = {
-    extends: '../packages/cli/tsconfig.json',
+    extends: `${ROOT_DIR}/packages/cli/tsconfig.json`,
     compilerOptions,
-    include: ['../packages/cli/src/schema-exports.ts'],
+    include: [`${ROOT_DIR}/packages/cli/src/schema-exports.ts`],
   };
 
   await Bun.write(BUILD_TSCONFIG_PATH, JSON.stringify(tempTsConfig, null, 2));
@@ -233,7 +239,6 @@ async function createTempTsConfig(): Promise<void> {
 async function createTempSchemasPackage(dependencyVersions: DependencyVersions): Promise<void> {
   const dependencies: Record<string, string> = {
     zod: dependencyVersions.zod,
-    'type-fest': dependencyVersions.typeFest,
     '@types/bun': dependencyVersions.bunTypes,
     '@dotfiles/core': 'workspace:*',
     '@dotfiles/config': 'workspace:*',
@@ -252,11 +257,11 @@ async function createTempSchemasPackage(dependencyVersions: DependencyVersions):
   if (fs.existsSync(NPMRC_PATH)) {
     await $`cp ${NPMRC_PATH} ${TEMP_SCHEMAS_NPMRC_PATH}`.quiet();
   }
-  
+
   // Copy root package.json catalog configuration
   const rootPackageJsonRaw: unknown = await Bun.file('package.json').json();
   const rootPackageMetadata = parseRootPackageMetadata(rootPackageJsonRaw);
-  const workspaces: string[] = ['temp-schemas-build', '../packages/*'];
+  const workspaces: string[] = [TEMP_SCHEMAS_BUILD_DIR, `${ROOT_DIR}/packages/*`];
   const tempRootPackageJson: Record<string, unknown> = {
     name: 'temp-root',
     private: true,
@@ -270,20 +275,17 @@ async function createTempSchemasPackage(dependencyVersions: DependencyVersions):
   if (Object.hasOwn(rootPackageMetadata, 'catalogs')) {
     tempRootPackageJson['catalogs'] = rootPackageMetadata['catalogs'];
   }
-  
-  await Bun.write(
-    path.join(OUTPUT_DIR, 'package.json'),
-    JSON.stringify(tempRootPackageJson, null, 2),
-  );
-  
+
+  await Bun.write(path.join(OUTPUT_DIR, 'package.json'), JSON.stringify(tempRootPackageJson, null, 2));
+
   // Copy bunfig.toml for catalog configuration
   if (fs.existsSync('bunfig.toml')) {
-    await $`cp bunfig.toml ${OUTPUT_DIR}/bunfig.toml`.quiet();
+    await $`cp bunfig.toml ${OUTPUT_BUNFIG_PATH}`.quiet();
   }
-  
+
   // Copy .npmrc to .dist for package resolution
   if (fs.existsSync(NPMRC_PATH)) {
-    await $`cp ${NPMRC_PATH} ${OUTPUT_DIR}/.npmrc`.quiet();
+    await $`cp ${NPMRC_PATH} ${OUTPUT_NPMRC_PATH}`.quiet();
   }
 }
 
@@ -302,140 +304,179 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
   const schemaExportsPath = path.join(TEMP_SCHEMAS_BUILD_DIR, 'schema-exports.d.ts');
   const outputPath = path.join(OUTPUT_DIR, 'schemas.d.ts');
 
-  await $`bunx dts-bundle-generator --project ${BUILD_TSCONFIG_PATH} --out-file ${outputPath} --no-check --export-referenced-types --external-imports=@dotfiles/core --external-imports=zod --external-inlines=@dotfiles/config --external-inlines=@dotfiles/logger -- ${schemaExportsPath}`.quiet();
+  await $`bunx dts-bundle-generator --project ${BUILD_TSCONFIG_PATH} --out-file ${outputPath} --no-check --export-referenced-types --external-imports=@dotfiles/core --external-imports=zod --external-inlines=@dotfiles/config --external-inlines=@dotfiles/logger --external-inlines=@dotfiles/installer-brew --external-inlines=@dotfiles/installer-cargo --external-inlines=@dotfiles/installer-curl-script --external-inlines=@dotfiles/installer-curl-tar --external-inlines=@dotfiles/installer-github --external-inlines=@dotfiles/installer-manual -- ${schemaExportsPath}`.quiet();
 
   writeStdout('✅ Successfully created schemas.d.ts with dts-bundle-generator');
 }
 
-async function createValidationTsConfig(): Promise<void> {
-  await Bun.write(
-    VALIDATION_TSCONFIG_PATH,
-    JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'ESNext',
-          moduleResolution: 'bundler',
-          strict: true,
-          noEmit: true,
-          skipLibCheck: true,
-          noUnusedLocals: false, // Validation file intentionally keeps unused locals
-          noUnusedParameters: false, // Validation file intentionally keeps unused parameters
-        },
-        include: ['./schemas.d.ts', './validate-exports.ts'],
-        exclude: ['../packages/**/*'],
-      },
-      null,
-      2,
-    ),
-  );
+function logYamlConfigTypeSignature(): void {
+  try {
+    const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
+    const sourcePath = path.join(process.cwd(), 'packages/core/src/config/yamlConfigSchema.ts');
+    const signature = extractTypeAliasSignature(tsconfigPath, sourcePath, 'YamlConfig');
+    writeStdout('ℹ️ YamlConfig type signature:');
+    writeStdout(signature);
+  } catch (error) {
+    writeError('⚠️ Failed to print YamlConfig type signature:', error);
+    throw normalizeError(error, 'YamlConfig type extraction failed');
+  }
 }
 
-async function createExportValidationFile(): Promise<void> {
-  const validationCode = `
-    // TypeScript validation file to ensure required exports are present
-    import type { Architecture, Platform } from './schemas';
-    import { defineTool } from './schemas';
+function getBaseValidationSource(): string {
+  const source: string = `
+    import type { Architecture, Platform, YamlConfig } from '@gitea/dotfiles';
+    import { defineTool } from '@gitea/dotfiles';
 
-    // These should compile without errors if exports are correct
-    const _arch: Architecture = 'x86_64';
-    const _platform: Platform = 'macos';
-    const _defineTool = defineTool;
-
-    // Verify defineTool is a function
-    const _isFunction: typeof defineTool extends Function ? true : false = true;
-
-    // should work
-    defineTool((install, _ctx) => install('github-release', { repo: 'BurntSushi/ripgrep' }));
-
-    // @ts-expect-error: known install method with invalid params should fail type checking
-    defineTool((install, _ctx) => install('github-release', { invalid: 'value' }));
-
-    // @ts-expect-error: unknown install method should fail type checking
-    defineTool((install, _ctx) => install('unknown', {}));
+    export const baseBuildCheckArchitecture: Architecture = 'x86_64';
+    export const baseBuildCheckPlatform: Platform = 'macos';
+    export const baseBuildCheckDefineTool: typeof defineTool = defineTool;
   `;
 
-  await Bun.write(path.join(OUTPUT_DIR, 'validate-exports.ts'), validationCode);
+  const formattedSource: string = `${source.trim()}\n`;
+  return formattedSource;
+}
+
+function getInstallerBuildCheckScripts(): InstallerBuildCheckScript[] {
+  const directoryEntries: fs.Dirent[] = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
+  const scripts: InstallerBuildCheckScript[] = [];
+
+  for (const entry of directoryEntries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const packageName: string = entry.name;
+
+    if (!packageName.startsWith(INSTALLER_PACKAGE_PREFIX)) {
+      continue;
+    }
+
+    const packagePath: string = path.join(PACKAGES_DIR, packageName);
+    const buildCheckPath: string = path.join(packagePath, INSTALLER_BUILD_CHECK_RELATIVE_PATH);
+
+    if (!fs.existsSync(buildCheckPath)) {
+      writeStderr(`❌ Missing build check script: ${packageName}`);
+      process.exit(1);
+    }
+
+    const script: InstallerBuildCheckScript = {
+      packageName,
+      sourcePath: buildCheckPath,
+    };
+    scripts.push(script);
+  }
+
+  return scripts;
+}
+
+function copyInstallerBuildCheckScripts(destinationDir: string): void {
+  const scripts: InstallerBuildCheckScript[] = getInstallerBuildCheckScripts();
+
+  for (const script of scripts) {
+    const fileName: string = `${script.packageName}${BUILD_CHECK_SCRIPT_SUFFIX}`;
+    const destinationPath: string = path.join(destinationDir, fileName);
+    fs.copyFileSync(script.sourcePath, destinationPath);
+  }
+}
+
+async function setupBuildCheckProject(dependencyVersions: DependencyVersions): Promise<void> {
+  if (fs.existsSync(BUILD_CHECK_DIR)) {
+    fs.rmSync(BUILD_CHECK_DIR, { recursive: true, force: true });
+  }
+
+  fs.mkdirSync(BUILD_CHECK_DIR, { recursive: true });
+
+  const validationSource: string = getBaseValidationSource();
+  await Bun.write(BUILD_CHECK_INDEX_PATH, validationSource);
+
+  copyInstallerBuildCheckScripts(BUILD_CHECK_DIR);
+
+  const compilerOptions: Record<string, unknown> = {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'bundler',
+    strict: true,
+    noEmit: true,
+    skipLibCheck: true,
+  };
+  const tsConfig: Record<string, unknown> = {
+    compilerOptions,
+    include: ['./**/*.ts'],
+  };
+  await Bun.write(BUILD_CHECK_TSCONFIG_PATH, JSON.stringify(tsConfig, null, 2));
+
+  const packageJson: Record<string, unknown> = {
+    name: 'build-check',
+    private: true,
+    type: 'module',
+    dependencies: {
+      '@gitea/dotfiles': 'file:../../.dist',
+    },
+    devDependencies: {
+      typescript: dependencyVersions.typescript,
+    },
+  };
+  await Bun.write(BUILD_CHECK_PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2));
+
+  if (fs.existsSync(NPMRC_PATH)) {
+    await $`cp ${NPMRC_PATH} ${path.join(BUILD_CHECK_DIR, '.npmrc')}`.quiet();
+  }
+
+  await $`cd ${BUILD_CHECK_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
+
+  createBuildCheckSymlink();
+}
+
+function createBuildCheckSymlink(): void {
+  fs.mkdirSync(BUILD_CHECK_NODE_MODULES_PATH, { recursive: true });
+
+  const namespacePath = path.join(BUILD_CHECK_NODE_MODULES_PATH, '@gitea');
+  fs.mkdirSync(namespacePath, { recursive: true });
+
+  const symlinkPath = path.join(namespacePath, 'dotfiles');
+  if (fs.existsSync(symlinkPath)) {
+    fs.rmSync(symlinkPath, { recursive: true, force: true });
+  }
+
+  const absoluteOutputPath = path.resolve(OUTPUT_DIR);
+  fs.symlinkSync(absoluteOutputPath, symlinkPath, 'dir');
+}
+
+async function runBuildCheck(): Promise<void> {
+  try {
+    await $`cd ${BUILD_CHECK_DIR} && bunx tsc --noEmit`;
+  } catch (error) {
+    throw normalizeError(error, 'Schema validation failed');
+  }
 }
 
 async function validateSchemas(dependencyVersions: DependencyVersions): Promise<void> {
   writeStdout('🔍 Validating generated schemas...');
-
-  // Read the existing workspace package.json created by buildSchemaTypes
-  const existingPackageJsonRaw: unknown = JSON.parse(await Bun.file(OUTPUT_PACKAGE_JSON_PATH).text());
-  const existingPackageJson = toRecord(existingPackageJsonRaw);
-  const existingDependenciesValue = existingPackageJson['dependencies'];
-  const existingDependencies: Record<string, string> = isStringRecord(existingDependenciesValue)
-    ? existingDependenciesValue
-    : {};
-
-  const updatedDependencies: Record<string, string> = {
-    ...existingDependencies,
-    zod: dependencyVersions.zod,
-    'type-fest': dependencyVersions.typeFest,
-    '@types/bun': dependencyVersions.bunTypes,
-  };
-
-  const updatedPackageJson: Record<string, unknown> = {
-    ...existingPackageJson,
-    dependencies: updatedDependencies,
-  };
-
-  await Bun.write(OUTPUT_PACKAGE_JSON_PATH, JSON.stringify(updatedPackageJson, null, 2));
-  await createValidationTsConfig();
-  await createExportValidationFile();
-
-  // Copy .npmrc for validation install
-  if (fs.existsSync(NPMRC_PATH)) {
-    await $`cp ${NPMRC_PATH} ${OUTPUT_DIR}/.npmrc`.quiet();
-  }
-
-  // Install dependencies for validation
-  await installDependenciesInOutputDir();
-
-  // Validate with TypeScript
-  await $`cd ${OUTPUT_DIR} && bun tsgo --project ${path.basename(VALIDATION_TSCONFIG_PATH)}`.quiet();
-
+  await setupBuildCheckProject(dependencyVersions);
+  await runBuildCheck();
   writeStdout('✅ Schema validation passed');
 }
 
-async function cleanupValidationFiles(): Promise<void> {
+async function cleanupTempFiles(): Promise<void> {
   const filesToCleanup: string[] = [
-    VALIDATION_TSCONFIG_PATH,
-    OUTPUT_NODE_MODULES_PATH,
-    OUTPUT_LOCKFILE_PATH,
-    path.join(OUTPUT_DIR, '.npmrc'),
-    path.join(OUTPUT_DIR, 'validate-exports.ts'),
+    TEMP_SCHEMAS_BUILD_DIR,
+    BUILD_TSCONFIG_PATH,
+    OUTPUT_NPMRC_PATH,
+    OUTPUT_BUNFIG_PATH,
+    OUTPUT_BUN_LOCK_PATH,
   ];
 
   for (const filePath of filesToCleanup) {
-    if (fs.existsSync(filePath)) {
-      fs.rmSync(filePath, { recursive: true, force: true });
-    }
+    fs.rmSync(filePath, { recursive: true, force: true });
   }
 }
 
-async function cleanupTempFiles(): Promise<void> {
-  const filesToCleanup: string[] = [TEMP_SCHEMAS_BUILD_DIR, BUILD_TSCONFIG_PATH];
-
-  for (const filePath of filesToCleanup) {
-    if (fs.existsSync(filePath)) {
-      fs.rmSync(filePath, { recursive: true, force: true });
-    }
-  }
-}
-
-async function generateSchemaTypes(): Promise<void> {
+async function generateSchemaTypes(dependencyVersions: DependencyVersions): Promise<void> {
   writeStdout('📝 Building @dotfiles/core config types...');
 
   try {
-    const dependencyVersions = await getDependencyVersions();
     await buildSchemaTypes(dependencyVersions);
-    await validateSchemas(dependencyVersions);
-    await cleanupValidationFiles();
-    await cleanupTempFiles();
-
-    writeStdout('✅ @dotfiles/core config types bundled with dts-bundle-generator');
+    logYamlConfigTypeSignature();
   } catch (error) {
     writeStderr('❌ Schema type generation failed');
     throw error;
@@ -457,7 +498,6 @@ async function generatePackageJson(dependencyVersions: DependencyVersions): Prom
   };
   const dependencies: Record<string, string> = {
     zod: dependencyVersions.zod,
-    'type-fest': dependencyVersions.typeFest,
   };
   const packageJson: Record<string, unknown> = {
     name: '@gitea/dotfiles',
@@ -513,12 +553,19 @@ async function main(): Promise<void> {
 
     const dependencyVersions = await getDependencyVersions();
     await buildCli();
-    await generateSchemaTypes();
+    await generateSchemaTypes(dependencyVersions);
     await generatePackageJson(dependencyVersions);
+
+    try {
+      await validateSchemas(dependencyVersions);
+      writeStdout('✅ @dotfiles/core config types bundled with dts-bundle-generator');
+    } finally {
+      await cleanupTempFiles();
+    }
+
     await testBuiltCli();
     await printBuildSummary();
-  } catch (error) {
-    writeError('❌ Build error:', error);
+  } catch {
     process.exit(1);
   }
 }
