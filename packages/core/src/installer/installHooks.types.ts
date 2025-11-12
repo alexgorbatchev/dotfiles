@@ -1,6 +1,5 @@
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { TsLogger } from '@dotfiles/logger';
 import type { $ } from 'bun';
 import type { BaseToolContext } from '../common/baseToolContext.types';
 import type { SystemInfo } from '../common/common.types';
@@ -19,10 +18,6 @@ import type { ExtractResult } from './archive.types';
  * @public
  */
 export interface InstallHookContext extends BaseToolContext {
-  /**
-   * Logger scoped to the current tool and hook execution.
-   */
-  logger: TsLogger;
   /**
    * The target directory where the tool's primary binary or executable should
    * be (or has been) installed.
@@ -71,7 +66,7 @@ export interface InstallHookContext extends BaseToolContext {
  * An enhanced context for installation hooks that includes additional utilities.
  *
  * This extends the standard {@link InstallHookContext} with conveniences like a
- * file system instance. This is the actual context type that hooks receive
+ * file system instance for file operations. This is the actual context type that hooks receive
  * when executed.
  *
  * @public
@@ -85,6 +80,8 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   version?: string;
   /** The full tool configuration being processed. Available in all hooks. */
   toolConfig?: ToolConfig;
+  /** Bun's shell executor for running shell commands. */
+  $: typeof $;
 }
 
 /**
@@ -92,13 +89,11 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
  *
  * All fields are required, as they represent the minimum context available at
  * the start of the installation process. It extends {@link BaseToolContext}
- * to provide consistent path utilities while declaring its own logger.
+ * to provide consistent path utilities and includes installation-specific fields.
  *
  * @internal
  */
 export interface BaseInstallContext extends BaseToolContext {
-  /** Logger scoped to the current tool installation. */
-  logger: TsLogger;
   /** The target directory where the tool's primary binary should be installed. */
   installDir: string;
   /** A timestamp for the current installation (e.g., `YYYY-MM-DD-HH-MM-SS`). */

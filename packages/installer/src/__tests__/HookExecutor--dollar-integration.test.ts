@@ -47,7 +47,7 @@ describe('HookExecutor $ Integration', () => {
       installParams: {},
     };
 
-    const baseContext = createTestInstallHookContext();
+    const { context: baseContext } = createTestInstallHookContext();
 
     const contextWithToolConfig = {
       ...baseContext,
@@ -91,7 +91,7 @@ describe('HookExecutor $ Integration', () => {
       installParams: {},
     };
 
-    const baseContext = createTestInstallHookContext({
+    const { context: baseContext } = createTestInstallHookContext({
       toolName: 'file-creator-tool',
       installDir: '/test/install/dir',
     });
@@ -134,7 +134,7 @@ describe('HookExecutor $ Integration', () => {
       installParams: {},
     };
 
-    const baseContext = createTestInstallHookContext({
+    const { context: baseContext } = createTestInstallHookContext({
       toolName: 'fallback-tool',
       installDir: '/test/install/dir',
     });

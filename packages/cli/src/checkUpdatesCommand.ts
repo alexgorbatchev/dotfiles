@@ -1,15 +1,11 @@
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
-import type { BaseInstallContext, ToolConfig } from '@dotfiles/core';
+import type { IConfigService, SystemInfo, ToolConfig, YamlConfig } from '@dotfiles/config';
+import type { BaseInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
-import { VersionComparisonStatus } from '@dotfiles/version-checker';
+import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, GlobalProgram, Services } from './types';
-
-export interface CheckUpdatesCommandOptions extends BaseCommandOptions {
-  // No command-specific options for check-updates command
-}
+import type { GlobalProgram, Services } from './types';
 
 async function loadToolConfigs(
   logger: TsLogger,
@@ -55,12 +51,7 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
-function createInstallContext(
-  config: ToolConfig,
-  yamlConfig: YamlConfig,
-  systemInfo: BaseInstallContext['systemInfo'],
-  logger: TsLogger
-): BaseInstallContext {
+function createInstallContext(config: ToolConfig, yamlConfig: YamlConfig, systemInfo: SystemInfo): BaseInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const getToolDir = (toolName: string): string => `${yamlConfig.paths.binariesDir}/${toolName}`;
 
@@ -78,7 +69,6 @@ function createInstallContext(
     shellScriptsDir: yamlConfig.paths.shellScriptsDir,
     dotfilesDir: yamlConfig.paths.dotfilesDir,
     generatedDir: yamlConfig.paths.generatedDir,
-    logger,
   };
 
   return context;
@@ -86,7 +76,7 @@ function createInstallContext(
 
 async function logVersionStatus(
   logger: TsLogger,
-  versionChecker: Services['versionChecker'],
+  versionChecker: IVersionChecker,
   config: ToolConfig,
   currentVersion: string,
   latestVersion: string,
@@ -116,7 +106,7 @@ async function logVersionStatus(
 async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: Services): Promise<void> {
   const { yamlConfig, versionChecker, pluginRegistry, systemInfo } = services;
 
-  const context = createInstallContext(config, yamlConfig, systemInfo, logger);
+  const context = createInstallContext(config, yamlConfig, systemInfo);
   const plugin = pluginRegistry.get(config.installationMethod);
 
   if (!plugin) {

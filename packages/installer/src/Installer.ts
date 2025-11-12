@@ -443,10 +443,21 @@ export class Installer implements IInstaller {
       logger.debug(messages.lifecycle.directoryCreated(installDir));
 
       // Create context for installation hooks
-      const context = this.createBaseInstallContext(toolName, installDir, timestamp, resolvedToolConfig, logger);
+      const { context, logger: contextLogger } = this.createBaseInstallContext(
+        toolName,
+        installDir,
+        timestamp,
+        resolvedToolConfig,
+        logger
+      );
 
       // Run beforeInstall hook if defined
-      const beforeInstallResult = await this.executeBeforeInstallHook(resolvedToolConfig, context, toolFs, logger);
+      const beforeInstallResult = await this.executeBeforeInstallHook(
+        resolvedToolConfig,
+        context,
+        toolFs,
+        contextLogger
+      );
       if (beforeInstallResult) {
         return beforeInstallResult;
       }
@@ -454,7 +465,7 @@ export class Installer implements IInstaller {
       let result: InstallResult;
       try {
         // Install based on the installation method
-        result = await this.executeInstallationMethod(toolName, resolvedToolConfig, context, options, logger);
+        result = await this.executeInstallationMethod(toolName, resolvedToolConfig, context, options, contextLogger);
       } catch (error) {
         // If installation method throws (e.g., from hook failure), create failure result
         result = {
@@ -481,10 +492,10 @@ export class Installer implements IInstaller {
       }
 
       // Run afterInstall hook if defined (runs even on failure for cleanup)
-      await this.executeAfterInstallHook(resolvedToolConfig, context, result, toolFs, logger);
+      await this.executeAfterInstallHook(resolvedToolConfig, context, result, toolFs, contextLogger);
 
       // Record successful installation in the registry
-      await this.recordInstallation(toolName, resolvedToolConfig, context, result, logger);
+      await this.recordInstallation(toolName, resolvedToolConfig, context, result, contextLogger);
 
       return result;
     } catch (error) {
@@ -548,11 +559,16 @@ export class Installer implements IInstaller {
     timestamp: string,
     toolConfig: ToolConfig,
     parentLogger: TsLogger
-  ): BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } {
-    const logger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
+  ): {
+    context: BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> };
+    logger: TsLogger;
+  } {
+    const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
     const getToolDir = (name: string): string => {
       return path.join(this.appConfig.paths.binariesDir, name);
     };
+
+    const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
     const context: BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } =
       {
@@ -570,20 +586,20 @@ export class Installer implements IInstaller {
         shellScriptsDir: this.appConfig.paths.shellScriptsDir,
         dotfilesDir: this.appConfig.paths.dotfilesDir,
         generatedDir: this.appConfig.paths.generatedDir,
-        logger: logger.getSubLogger({ name: `install-${toolName}` }),
         // Event emitter for plugins to trigger hooks
         emitEvent: async (type: string, data: Record<string, unknown>) => {
           await this.registry.emitEvent({
             type: type as 'afterDownload' | 'afterExtract',
             toolName,
             context: {
-              ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger),
+              ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger).context,
               ...data,
+              logger: contextLogger,
             },
           });
         },
       };
-    return context;
+    return { context, logger: contextLogger };
   }
 
   /**

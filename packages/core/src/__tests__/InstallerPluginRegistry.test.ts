@@ -24,7 +24,6 @@ const createMockPlugin = (method: string, options: Partial<InstallerPlugin> = {}
 };
 
 const createMockContext = (): BaseInstallContext => {
-  const logger = new TestLogger();
   const context: BaseInstallContext = {
     toolName: 'test-tool',
     toolDir: '/tmp/test',
@@ -39,7 +38,6 @@ const createMockContext = (): BaseInstallContext => {
     appConfig: {} as never,
     systemInfo: {} as never,
     toolConfig: {} as never,
-    logger,
   };
   return context;
 };

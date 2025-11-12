@@ -503,7 +503,6 @@ export function createTestContext(
     shellScriptsDir: setup.mockAppConfig.paths.shellScriptsDir,
     dotfilesDir: setup.mockAppConfig.paths.dotfilesDir,
     generatedDir: setup.mockAppConfig.paths.generatedDir,
-    logger: setup.logger.getSubLogger({ name: `test-install-${MOCK_TOOL_NAME}` }),
     ...overrides,
   };
 }

@@ -26,7 +26,6 @@ export interface HookExecutionOptions {
  * Result of hook execution including success status, error details, and timing information.
  * Indicates whether hook completed successfully or failed, and whether it was skipped.
  */
-
 export type HookExecutionResult =
   | (OperationSuccess & {
       /** Duration of hook execution in milliseconds */
@@ -93,18 +92,17 @@ export class HookExecutor {
    * - fileSystem: Tool-specific TrackedFileSystem for file operations
    * - toolConfig: Tool configuration (if available in base context)
    * - $: Bun's shell operator for executing commands
-   * - logger: Hook-specific logger with tool name and hook name
    *
    * @param hookName - Name of the hook for logging (e.g., 'beforeInstall', 'afterDownload')
    * @param hook - Hook function to execute
-   * @param context - Enhanced context with file system and shell access
+   * @param enhancedContext - Enhanced context with file system and shell access
    * @param options - Execution options (timeout, continueOnError)
    * @returns Result with success status, duration, and error details if failed
    */
   async executeHook(
     hookName: string,
     hook: AsyncInstallHook,
-    context: EnhancedInstallHookContext,
+    enhancedContext: EnhancedInstallHookContext,
     options: HookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
@@ -113,13 +111,9 @@ export class HookExecutor {
 
     methodLogger.debug(messages.hookExecutor.executingHook(hookName, timeoutMs));
 
-    // Create hook-specific logger and update context
-    const hookSpecificLogger = context.logger.getSubLogger({ name: `${context.toolName}--${hookName}` });
-    const hookContext: EnhancedInstallHookContext = { ...context, logger: hookSpecificLogger };
-
     try {
       // Create a promise that resolves when the hook completes
-      const hookPromise = hook(hookContext);
+      const hookPromise = hook(enhancedContext);
 
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -143,7 +137,7 @@ export class HookExecutor {
     } catch (error) {
       const durationMs = Date.now() - startTime;
 
-      methodLogger.error(messages.outcome.installFailed(`${hookName} hook`, context.toolName), error);
+      methodLogger.error(messages.outcome.installFailed(`${hookName} hook`, enhancedContext.toolName), error);
 
       if (continueOnError) {
         methodLogger.debug(messages.hookExecutor.continuingDespiteFailure(hookName));
@@ -214,15 +208,18 @@ export class HookExecutor {
    * or when hooks have dependencies on each other's execution order.
    *
    * @param hooks - Array of hook definitions with names, functions, and options
-   * @param context - Enhanced context shared across all hooks
+   * @param enhancedContext - Enhanced context shared across all hooks
    * @returns Array of execution results for each hook
    */
-  async executeHooks(hooks: HookDefinition[], context: EnhancedInstallHookContext): Promise<HookExecutionResult[]> {
+  async executeHooks(
+    hooks: HookDefinition[],
+    enhancedContext: EnhancedInstallHookContext
+  ): Promise<HookExecutionResult[]> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 
     for (const { name, hook, options } of hooks) {
-      const result = await this.executeHook(name, hook, context, options);
+      const result = await this.executeHook(name, hook, enhancedContext, options);
       results.push(result);
 
       // If hook failed and we're not continuing on error, stop execution

@@ -83,7 +83,6 @@ async function handleToolUpdate(
     shellScriptsDir: yamlConfig.paths.shellScriptsDir,
     dotfilesDir: yamlConfig.paths.dotfilesDir,
     generatedDir: yamlConfig.paths.generatedDir,
-    logger,
   };
 
   const updateResult = await plugin.updateTool?.(toolName, toolConfig, context, { force: true }, logger);

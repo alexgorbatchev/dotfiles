@@ -5,11 +5,13 @@ import { createMock$ } from '@dotfiles/testing-helpers';
 /**
  * Helper function to create a proper InstallHookContext for tests.
  * This creates a context that extends BaseToolContext with all required properties.
+ *
+ * @returns An object containing the context and logger for test usage
  */
 export function createTestInstallHookContext(
   overrides: Partial<InstallHookContext> = {},
   testLogger?: TestLogger
-): InstallHookContext {
+): { context: InstallHookContext; logger: TestLogger } {
   const logger = testLogger || new TestLogger();
 
   const mockAppConfig = {
@@ -84,7 +86,6 @@ export function createTestInstallHookContext(
     dotfilesDir: mockAppConfig.paths.dotfilesDir,
     generatedDir: mockAppConfig.paths.generatedDir,
     appConfig: mockAppConfig,
-    logger: logger.getSubLogger({ name: 'test-tool' }),
 
     // InstallHookContext specific properties
     installDir: '/test/install/dir',
@@ -97,7 +98,10 @@ export function createTestInstallHookContext(
   };
 
   return {
-    ...baseContext,
-    ...overrides,
+    context: {
+      ...baseContext,
+      ...overrides,
+    },
+    logger,
   };
 }

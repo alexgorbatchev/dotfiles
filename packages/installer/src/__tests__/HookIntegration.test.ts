@@ -1,16 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
+import path from 'node:path';
 import type { AsyncInstallHook, EnhancedInstallHookContext } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
-import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
 import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
-
-// Helper function for tests to create SafeLogMessage
-function testLogMessage(message: string): SafeLogMessage {
-  return message as SafeLogMessage;
-}
-
-import path from 'node:path';
 
 /**
  * Integration tests demonstrating real-world hook usage scenarios
@@ -72,8 +65,6 @@ describe('Hook Integration Tests', () => {
               if (context.binaryPath) {
                 await context.fileSystem.chmod(context.binaryPath, 0o755);
               }
-
-              context.logger.info(testLogMessage('Configuration setup completed'));
             }) as AsyncInstallHook,
           },
         },
@@ -172,8 +163,6 @@ describe('Hook Integration Tests', () => {
                   await context.fileSystem.copyFile(srcPath, destPath);
                 }
               }
-
-              context.logger.info(testLogMessage('Binary organization completed'));
             }) as AsyncInstallHook,
           },
         },
@@ -268,8 +257,6 @@ describe('Hook Integration Tests', () => {
               const hasMakefile = await context.fileSystem.exists(makefilePath);
 
               if (hasMakefile) {
-                context.logger.info(testLogMessage('Source distribution detected, compiling...'));
-
                 // In a real scenario, this would run: make PREFIX=${context.installDir} install
                 // For this test, we'll simulate the process
 
@@ -284,10 +271,7 @@ describe('Hook Integration Tests', () => {
 
                 const libPath = path.join(libDir, 'libsource-tool.so');
                 await context.fileSystem.writeFile(libPath, 'compiled library content');
-
-                context.logger.info(testLogMessage('Compilation completed successfully'));
               } else {
-                context.logger.info(testLogMessage('Pre-compiled binary distribution detected'));
               }
             }) as AsyncInstallHook,
           },
@@ -349,8 +333,7 @@ describe('Hook Integration Tests', () => {
         installParams: {
           repo: 'example/failing-tool',
           hooks: {
-            afterDownload: (async (context) => {
-              context.logger.error(testLogMessage('Validation failed'));
+            afterDownload: (async (_context) => {
               throw new Error('Downloaded file validation failed: checksum mismatch');
             }) as AsyncInstallHook,
           },
@@ -370,70 +353,6 @@ describe('Hook Integration Tests', () => {
         ['HookExecutor', 'executeHook'],
         ['Installation failed [afterDownload hook] for tool "failing-tool"']
       );
-    });
-
-    it('should provide hooks with proper logging context', async () => {
-      // Override the GitHub client mock for this specific test
-      setup.mocks.getLatestRelease.mockResolvedValueOnce({
-        id: 123,
-        tag_name: '1.0.0',
-        name: 'Test Release',
-        draft: false,
-        prerelease: false,
-        created_at: '2023-01-01T00:00:00Z',
-        published_at: '2023-01-01T00:00:00Z',
-        assets: [
-          {
-            name: 'logging-test-tool-darwin-arm64.tar.gz',
-            browser_download_url:
-              'https://github.com/example/logging-test-tool/releases/download/v1.0.0/logging-test-tool-darwin-arm64.tar.gz',
-            size: 1000,
-            content_type: 'application/gzip',
-            state: 'uploaded',
-            download_count: 100,
-            created_at: '2023-01-01T00:00:00Z',
-            updated_at: '2023-01-01T00:00:00Z',
-          },
-        ],
-        html_url: 'https://github.com/example/logging-test-tool/releases/tag/1.0.0',
-      });
-
-      let capturedLogger: TsLogger | undefined;
-
-      const toolConfig: GithubReleaseToolConfig = {
-        name: 'logging-test-tool',
-        binaries: ['logging-test-tool'],
-        version: 'latest',
-        installationMethod: 'github-release',
-        installParams: {
-          repo: 'example/logging-test-tool',
-          hooks: {
-            afterInstall: (async (context: EnhancedInstallHookContext) => {
-              capturedLogger = context.logger;
-              context.logger.info(testLogMessage('Hook execution message'));
-              context.logger.debug(testLogMessage('Debug information'));
-              context.logger.error(testLogMessage('Error message from hook'));
-            }) as AsyncInstallHook,
-          },
-        },
-      };
-
-      const result = await setup.installer.install('logging-test-tool', toolConfig);
-
-      expect(result.success).toBe(true);
-      expect(capturedLogger).toBeDefined();
-
-      // Verify that hook was executed with proper logger context
-      expect(capturedLogger).toBeDefined();
-      // Check if logger has proper context (logger structure may vary)
-      // The new naming format is toolName--hookName
-      if (capturedLogger) {
-        const logger = capturedLogger as unknown as Record<string, unknown>;
-        const loggerName = logger['settings'] as Record<string, unknown> | undefined;
-        expect(loggerName?.['name'] || logger['_name'] || logger['name']).toMatch(/logging-test-tool--afterInstall/);
-      }
-
-      // Verify hook execution completed
     });
   });
 });

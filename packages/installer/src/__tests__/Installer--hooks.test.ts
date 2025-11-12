@@ -21,7 +21,6 @@ describe('Installer - Enhanced Hooks', () => {
       const beforeInstallHook = mock(async (context) => {
         expect(context.toolName).toBe(mockToolName);
         expect(context.fileSystem).toBeDefined();
-        expect(context.logger).toBeDefined();
         expect(context.installDir).toContain(mockToolName);
       });
 
