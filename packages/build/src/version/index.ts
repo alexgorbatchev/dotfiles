@@ -1,11 +1,32 @@
 #!/usr/bin/env bun
 
+/**
+ * Version Management Script
+ *
+ * Manages version bumping for the project following semantic versioning.
+ *
+ * This script:
+ * 1. Validates that the working directory is a clean git repository
+ * 2. Reads the current version from package.json
+ * 3. Bumps the version according to the specified type (major/minor/patch) or sets a specific version
+ * 4. Updates package.json with the new version
+ * 5. Stages package.json and creates a git commit with the version message
+ *
+ * Usage:
+ *   bun run version          # Patch bump (1.0.0 -> 1.0.1)
+ *   bun run version patch    # Patch bump (1.0.0 -> 1.0.1)
+ *   bun run version minor    # Minor bump (1.0.0 -> 1.1.0)
+ *   bun run version major    # Major bump (1.0.0 -> 2.0.0)
+ *   bun run version 2.5.3    # Set specific version
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
-import cliPackageJson from '../package.json';
-import { cdToRepoRoot, executeCommand, validateGitRepository } from './lib';
+import cliPackageJson from '../../../../package.json';
+import { executeCommand, validateGitRepository } from '../git-utils';
+import { cdToRepoRoot } from '../path-utils';
 
-cdToRepoRoot(import.meta.url);
+cdToRepoRoot();
 
 const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, 'package.json');

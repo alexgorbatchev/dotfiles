@@ -1,28 +1,27 @@
+#!/usr/bin/env bun
+
 /**
- * @file scripts/analyze-deps.ts
- * @description
- * This script analyzes the dependencies of all workspace packages located in the
- * `packages` directory. It generates a dependency tree that outlines the
- * relationships between these packages.
+ * Package Dependency Analyzer
  *
- * The script performs the following actions:
- * 1. Scans for all `package.json` files within the `packages/*` directories.
- * 2. For each package, it identifies its dependencies on other packages within the
- *    same workspace (internal dependencies). This includes `dependencies`,
- *    `devDependencies`, and `peerDependencies`.
- * 3. Calculates the total size of the `src` directory for each package, excluding
- *    any `__tests__` subdirectories.
- * 4. Prints a dependency tree to the console, sorted by the number of internal
- *    dependencies in ascending order.
+ * Analyzes and visualizes internal dependencies between workspace packages.
  *
- * The output for each package includes:
- * - The package name.
- * - The calculated size of its `src` directory in kilobytes (KB).
- * - A list of its internal dependencies, rendered in a tree-like format.
+ * This script:
+ * 1. Scans all packages in the workspace
+ * 2. Calculates the source code size for each package (excluding tests)
+ * 3. Identifies internal dependencies (dependencies on other workspace packages)
+ * 4. Displays a dependency tree showing relationships between packages
+ * 5. Sorts packages by number of internal dependencies (least to most)
  *
- * This script is useful for understanding the dependency structure of the monorepo
- * and identifying packages with high coupling.
+ * Useful for:
+ * - Understanding package interdependencies
+ * - Identifying potential circular dependencies
+ * - Planning refactoring or modularization
+ * - Visualizing package sizes and complexity
+ *
+ * Usage:
+ *   bun run analyze-deps
  */
+
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -131,7 +130,7 @@ function printDependencyTree(packageInfos: PackageInfo[]) {
 }
 
 async function main() {
-  const projectRoot = path.resolve(import.meta.dir, '..');
+  const projectRoot = path.resolve(import.meta.dir, '../../../..');
   const { packages, packagePaths } = await loadPackages(projectRoot);
   const packageInfos = await analyzeDependencies(packages, packagePaths);
 

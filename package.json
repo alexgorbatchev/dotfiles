@@ -4,12 +4,7 @@
   "module": "cli.ts",
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@types/bun": "catalog:system",
-    "@types/node": "catalog:system",
-    "@typescript/native-preview": "catalog:typescript",
-    "dts-bundle-generator": "^9.5.1",
-    "lefthook": "^2.0.1",
-    "typescript": "catalog:typescript"
+    "lefthook": "^2.0.1"
   },
   "catalog": {
     "type-fest": "^5.1.0",
@@ -39,12 +34,11 @@
     "fmt": "biome format --write .",
     "fix": "biome check --write --unsafe .",
     "test:task": "bun test",
-    "build": "scripts/build.ts",
-    "version": "scripts/version.ts",
-    "release": "scripts/release.ts",
+    "build": "bun packages/build/src/build/index.ts",
+    "version": "bun packages/build/src/version/index.ts",
+    "release": "bun packages/build/src/release/index.ts",
+    "publish": "bun packages/build/src/publish/index.ts",
     "release-next": "bun run version && bun run release",
-    "publish": "scripts/publish.ts",
-    "compile": "scripts/compile.ts",
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"
   },

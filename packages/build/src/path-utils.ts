@@ -7,9 +7,27 @@ export function getDirname(metaUrl: string): string {
   return path.dirname(__filename);
 }
 
-export function cdToRepoRoot(metaUrl: string): void {
-  const __dirname = getDirname(metaUrl);
-  process.chdir(path.join(__dirname, '..'));
+export function getRepoRoot(): string {
+  let currentDir = path.dirname(fileURLToPath(import.meta.url));
+
+  // Walk up the directory tree until we find package.json with workspaces
+  while (currentDir !== path.parse(currentDir).root) {
+    const packageJsonPath = path.join(currentDir, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      if (packageJson.workspaces) {
+        return currentDir;
+      }
+    }
+    currentDir = path.dirname(currentDir);
+  }
+
+  throw new Error('Could not find repository root (no package.json with workspaces found)');
+}
+
+export function cdToRepoRoot(): void {
+  const repoRoot = getRepoRoot();
+  process.chdir(repoRoot);
 }
 
 export function printDirectoryContents(directoryPath: string, title: string = 'Directory contents'): void {

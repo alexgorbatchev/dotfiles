@@ -1,14 +1,40 @@
 #!/usr/bin/env bun
 
+/**
+ * Build Script
+ *
+ * Bundles the CLI application into a standalone distributable package.
+ *
+ * This script performs the following operations:
+ * 1. Cleans previous build artifacts from .dist directory
+ * 2. Installs workspace dependencies
+ * 3. Bundles the CLI entry point (packages/cli/src/main.ts) into a minified executable
+ * 4. Generates TypeScript schema types for tool configuration (YamlConfig)
+ * 5. Creates package.json with proper exports and dependencies
+ * 6. Validates generated schemas with type checking
+ * 7. Tests the built CLI executable
+ * 8. Outputs build summary with list of generated files
+ *
+ * Output: Creates .dist directory containing:
+ * - cli.js (bundled executable)
+ * - cli.js.map (source map)
+ * - schemas.d.ts (TypeScript definitions for tool configurations)
+ * - package.json (npm package metadata)
+ *
+ * Usage:
+ *   bun run build
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';
-import cliPackageJson from '../package.json';
-import { cdToRepoRoot, extractTypeAliasSignature } from './lib';
+import cliPackageJson from '../../../../package.json';
+import { extractTypeAliasSignature } from '../extractTypeAliasSignature';
+import { getRepoRoot } from '../path-utils';
 
 const LINE_BREAK = '\n';
 
-const ROOT_DIR = process.cwd();
+const ROOT_DIR = getRepoRoot();
 const PACKAGES_DIR = path.join(ROOT_DIR, 'packages');
 const TMP_DIR = path.join(ROOT_DIR, '.tmp');
 const OUTPUT_DIR = path.join(ROOT_DIR, '.dist');
@@ -569,7 +595,7 @@ async function printBuildSummary(): Promise<void> {
 
   for (const file of files.sort()) {
     const filePath = path.join(OUTPUT_DIR, file);
-    const relativePath = path.relative(process.cwd(), filePath);
+    const relativePath = path.relative(ROOT_DIR, filePath);
     const stats = fs.statSync(filePath);
 
     if (stats.isFile()) {
@@ -579,8 +605,6 @@ async function printBuildSummary(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  cdToRepoRoot(import.meta.url);
-
   try {
     await cleanPreviousBuild();
     await installWorkspaceDependencies();
