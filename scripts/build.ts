@@ -26,6 +26,7 @@ const OUTPUT_PACKAGE_JSON_PATH = path.join(OUTPUT_DIR, 'package.json');
 const OUTPUT_NPMRC_PATH = path.join(OUTPUT_DIR, '.npmrc');
 const OUTPUT_BUNFIG_PATH = path.join(OUTPUT_DIR, 'bunfig.toml');
 const OUTPUT_BUN_LOCK_PATH = path.join(OUTPUT_DIR, 'bun.lock');
+const SCHEMA_CHECK_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'tsconfig--schemas-check.json');
 const ROOT_NODE_MODULES_PATH = path.join(ROOT_DIR, 'node_modules');
 const ROOT_BUN_CACHE_PATH = path.join(ROOT_NODE_MODULES_PATH, '.bun');
 const BUN_INSTALL_CACHE_ENV = `BUN_INSTALL_CACHE=${ROOT_BUN_CACHE_PATH}`;
@@ -47,6 +48,21 @@ interface DependencyVersions {
   zod: string;
   bunTypes: string;
   typescript: string;
+}
+
+interface SchemaCheckCompilerOptions {
+  target: string;
+  module: string;
+  moduleResolution: string;
+  strict: boolean;
+  noEmit: boolean;
+  skipLibCheck: boolean;
+  types: string[];
+}
+
+interface SchemaCheckTsconfig {
+  compilerOptions: SchemaCheckCompilerOptions;
+  files: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -310,15 +326,32 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
 }
 
 function logYamlConfigTypeSignature(): void {
+  const schemaTsconfigPath = SCHEMA_CHECK_TSCONFIG_PATH;
+  const schemaSourcePath = path.join(OUTPUT_DIR, 'schemas.d.ts');
+  const schemaCompilerOptions: SchemaCheckCompilerOptions = {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'bundler',
+    strict: true,
+    noEmit: true,
+    skipLibCheck: true,
+    types: [],
+  };
+  const schemaTsconfig: SchemaCheckTsconfig = {
+    compilerOptions: schemaCompilerOptions,
+    files: ['./schemas.d.ts'],
+  };
+
   try {
-    const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
-    const sourcePath = path.join(process.cwd(), 'packages/core/src/config/yamlConfigSchema.ts');
-    const signature = extractTypeAliasSignature(tsconfigPath, sourcePath, 'YamlConfig');
+    fs.writeFileSync(schemaTsconfigPath, JSON.stringify(schemaTsconfig, null, 2));
+    const signature = extractTypeAliasSignature(schemaTsconfigPath, schemaSourcePath, 'YamlConfig');
     writeStdout('ℹ️ YamlConfig type signature:');
     writeStdout(signature);
   } catch (error) {
     writeError('⚠️ Failed to print YamlConfig type signature:', error);
     throw normalizeError(error, 'YamlConfig type extraction failed');
+  } finally {
+    fs.rmSync(schemaTsconfigPath, { force: true });
   }
 }
 
@@ -464,6 +497,7 @@ async function cleanupTempFiles(): Promise<void> {
     OUTPUT_NPMRC_PATH,
     OUTPUT_BUNFIG_PATH,
     OUTPUT_BUN_LOCK_PATH,
+    SCHEMA_CHECK_TSCONFIG_PATH,
   ];
 
   for (const filePath of filesToCleanup) {
