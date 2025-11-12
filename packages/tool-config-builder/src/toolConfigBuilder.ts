@@ -3,7 +3,7 @@ import type {
   AsyncInstallHook,
   InstallerPluginRegistry,
   InstallMethod,
-  InstallParamsMap,
+  InstallParamsRegistry,
   Platform,
   PlatformConfig,
   PlatformConfigBuilder as PlatformConfigBuilderInterface,
@@ -44,7 +44,7 @@ export interface BinaryConfig {
   pattern: string;
 }
 
-type InstallParams = InstallParamsMap[InstallMethod];
+type InstallParams = InstallParamsRegistry[InstallMethod];
 
 /**
  * A fluent API for creating {@link @dotfiles/core#ToolConfig} objects.
@@ -135,7 +135,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param params - A configuration object specific to the chosen method.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  install<M extends InstallMethod>(method: M, params: InstallParamsMap[M]): this;
+  install<M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): this;
   install(method: string, params: Record<string, unknown>): this;
   install(method: string, params: Record<string, unknown>): this {
     this.currentInstallationMethod = method;

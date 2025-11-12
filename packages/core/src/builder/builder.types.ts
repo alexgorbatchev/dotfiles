@@ -74,9 +74,7 @@ export interface PlatformConfigBuilder {
  * Map of installer methods to their parameter types.
  * Built dynamically from plugins via InstallParamsRegistry module augmentation.
  */
-export type InstallParamsMap = InstallParamsRegistry;
-
-export type InstallMethod = keyof InstallParamsMap;
+export type InstallMethod = keyof InstallParamsRegistry;
 
 /**
  * Install function with generic type inference for perfect type safety.
@@ -95,7 +93,7 @@ export type InstallMethod = keyof InstallParamsMap;
  * install('brew', { repo: 'test' })
  */
 export interface InstallFunction {
-  <M extends InstallMethod>(method: M, params: InstallParamsMap[M]): ToolConfigBuilder;
+  <M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): ToolConfigBuilder;
   (): ToolConfigBuilder; // For manual tools with no install params
 }
 
@@ -103,7 +101,7 @@ export interface InstallFunction {
  * Platform-specific install function with the same generic type inference.
  */
 export interface PlatformInstallFunction {
-  <M extends InstallMethod>(method: M, params: InstallParamsMap[M]): PlatformConfigBuilder;
+  <M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): PlatformConfigBuilder;
   (): PlatformConfigBuilder;
 }
 

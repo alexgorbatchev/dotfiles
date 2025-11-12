@@ -1,10 +1,10 @@
-import type { CurlTarInstallParams, InstallMethod, InstallParamsMap } from '@gitea/dotfiles';
+import type { CurlTarInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
 import { defineTool } from '@gitea/dotfiles';
 
 type ExpectTrue<T extends true> = T;
 
 export type InstallIncludesCurlTar = ExpectTrue<'curl-tar' extends InstallMethod ? true : false>;
-type CurlTarParams = InstallParamsMap['curl-tar'];
+type CurlTarParams = InstallParamsRegistry['curl-tar'];
 export type CurlTarParamsMatchSchema = ExpectTrue<CurlTarParams extends CurlTarInstallParams ? true : false>;
 export type CurlTarSchemaMatchesParams = ExpectTrue<CurlTarInstallParams extends CurlTarParams ? true : false>;
 

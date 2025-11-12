@@ -1,10 +1,10 @@
-import type { GithubReleaseInstallParams, InstallMethod, InstallParamsMap } from '@gitea/dotfiles';
+import type { GithubReleaseInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
 import { defineTool } from '@gitea/dotfiles';
 
 type ExpectTrue<T extends true> = T;
 
 export type InstallIncludesGithubRelease = ExpectTrue<'github-release' extends InstallMethod ? true : false>;
-type GithubReleaseParams = InstallParamsMap['github-release'];
+type GithubReleaseParams = InstallParamsRegistry['github-release'];
 export type GithubReleaseParamsMatchSchema = ExpectTrue<
   GithubReleaseParams extends GithubReleaseInstallParams ? true : false
 >;

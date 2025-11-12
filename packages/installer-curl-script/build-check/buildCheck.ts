@@ -1,10 +1,10 @@
-import type { CurlScriptInstallParams, InstallMethod, InstallParamsMap } from '@gitea/dotfiles';
+import type { CurlScriptInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
 import { defineTool } from '@gitea/dotfiles';
 
 type ExpectTrue<T extends true> = T;
 
 export type InstallIncludesCurlScript = ExpectTrue<'curl-script' extends InstallMethod ? true : false>;
-type CurlScriptParams = InstallParamsMap['curl-script'];
+type CurlScriptParams = InstallParamsRegistry['curl-script'];
 export type CurlScriptParamsMatchSchema = ExpectTrue<CurlScriptParams extends CurlScriptInstallParams ? true : false>;
 export type CurlScriptSchemaMatchesParams = ExpectTrue<CurlScriptInstallParams extends CurlScriptParams ? true : false>;
 export type CurlScriptRequiresUrl = ExpectTrue<'url' extends keyof CurlScriptParams ? true : false>;
