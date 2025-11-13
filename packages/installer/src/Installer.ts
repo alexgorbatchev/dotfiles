@@ -484,6 +484,11 @@ export class Installer implements IInstaller {
       // Add the resolved installation method to the result
       result.installationMethod = resolvedToolConfig.installationMethod;
 
+      // For externally managed tools, create symlinks to the actual binaries
+      if (isExternallyManaged && result.success && result.binaryPaths) {
+        await this.createExternalBinarySymlinks(toolName, result.binaryPaths, toolFs, logger);
+      }
+
       // If installation failed, clean up the empty installation directory (skip for externally managed)
       if (!isExternallyManaged && !result.success && (await toolFs.exists(installDir))) {
         logger.debug(messages.lifecycle.cleaningFailedInstallDir(installDir));
@@ -542,6 +547,60 @@ export class Installer implements IInstaller {
     // For 'latest' or unspecified versions, we can't determine the target version
     // without executing the plugin logic, so return null to skip the version check
     return null;
+  }
+
+  /**
+   * Creates symlinks for externally-managed binaries (e.g., Homebrew).
+   * Since externally-managed tools don't create timestamped directories,
+   * we create direct symlinks in binaries/<toolName>/ pointing to the actual binaries.
+   *
+   * @param toolName - Name of the tool
+   * @param binaryPaths - Array of absolute paths to the actual binaries
+   * @param fs - File system instance for creating symlinks
+   * @param parentLogger - Logger for diagnostic messages
+   */
+  private async createExternalBinarySymlinks(
+    toolName: string,
+    binaryPaths: string[],
+    fs: IFileSystem,
+    parentLogger: TsLogger
+  ): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'createExternalBinarySymlinks' });
+    const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
+    const toolDir = path.join(binariesDir, toolName);
+
+    // Ensure tool directory exists
+    await fs.ensureDir(toolDir);
+
+    // Create symlink for each binary
+    for (const binaryPath of binaryPaths) {
+      const binaryName = path.basename(binaryPath);
+      const symlinkPath = path.join(toolDir, binaryName);
+
+      // Verify the target binary exists
+      if (!(await fs.exists(binaryPath))) {
+        logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
+        throw new Error(`Cannot create symlink: external binary does not exist at ${binaryPath}`);
+      }
+
+      // Remove existing symlink if it exists
+      if (await fs.exists(symlinkPath)) {
+        logger.debug(messages.lifecycle.removingExistingSymlink(symlinkPath));
+        await fs.rm(symlinkPath, { force: true });
+      }
+
+      // Create symlink pointing to the external binary
+      logger.debug(messages.lifecycle.creatingExternalSymlink(symlinkPath, binaryPath));
+      await fs.symlink(binaryPath, symlinkPath);
+
+      // Verify symlink was created
+      if (!(await fs.exists(symlinkPath))) {
+        logger.error(messages.lifecycle.symlinkVerificationFailed(symlinkPath));
+        throw new Error(`Symlink creation failed: ${symlinkPath}`);
+      }
+
+      logger.debug(messages.lifecycle.externalSymlinkCreated(symlinkPath, binaryPath));
+    }
   }
 
   /**
