@@ -40,6 +40,7 @@
     "version": "bun packages/build/src/version/index.ts",
     "release": "bun packages/build/src/release/index.ts",
     "publish": "bun packages/build/src/publish/index.ts",
+    "find-unused": "bun packages/build/src/unused-analyzer/analyze.ts",
     "release-next": "bun run version && bun run release && bun run publish",
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"
