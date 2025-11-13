@@ -66,9 +66,6 @@ async function processFunctionExport(
   if (result && typeof result === 'object' && 'build' in result && typeof result.build === 'function') {
     const builtConfig: unknown = result.build();
     const validatedConfig = validateToolConfig(builtConfig);
-    if (validatedConfig) {
-      logger.trace(messages.configurationLoaded(filePath, 1));
-    }
     return validatedConfig;
   }
 

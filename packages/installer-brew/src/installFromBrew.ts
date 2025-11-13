@@ -24,7 +24,7 @@ type BrewInfo = z.infer<typeof BrewInfoSchema>;
 export async function installFromBrew(
   toolName: string,
   toolConfig: BrewToolConfig,
-  context: BaseInstallContext,
+  _context: BaseInstallContext,
   options: InstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: ShellExecutor = $
@@ -48,7 +48,8 @@ export async function installFromBrew(
     await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
 
     const version: string | null = await getBrewVersion(formula, logger, shellExecutor);
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+    const formulaPrefix: string = await getBrewPrefix(formula, logger, shellExecutor);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, `${formulaPrefix}/bin`);
 
     const metadata: BrewInstallMetadata = {
       method: 'brew',
@@ -90,6 +91,23 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
   } catch (error) {
     logger.debug(messages.versionFetchFailed(formula), error);
     return null;
+  }
+}
+
+async function getBrewPrefix(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string> {
+  try {
+    const result = await $`brew --prefix ${formula}`.quiet();
+    const prefix: string = result.stdout.toString().trim();
+    logger.debug(messages.prefixFetched(formula, prefix));
+    return prefix;
+  } catch (error) {
+    logger.debug(messages.prefixFetchFailed(formula), error);
+    // Fall back to /opt/homebrew/opt/{formula} on Apple Silicon
+    // or /usr/local/opt/{formula} on Intel
+    const brewPrefix = await $`brew --prefix`.quiet();
+    const fallbackPrefix: string = `${brewPrefix.stdout.toString().trim()}/opt/${formula}`;
+    logger.debug(messages.prefixFallback(formula, fallbackPrefix));
+    return fallbackPrefix;
   }
 }
 

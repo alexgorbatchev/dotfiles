@@ -249,6 +249,14 @@ export interface InstallerPlugin<
   /** Whether validation results can be cached (validation based on static conditions like OS) */
   readonly staticValidation?: boolean;
 
+  /**
+   * Whether the plugin manages binaries externally (e.g., Homebrew, apt, system package managers).
+   * When true, the installer will not create timestamped installation directories.
+   * The plugin is responsible for tracking where binaries are installed.
+   * @default false
+   */
+  readonly externallyManaged?: boolean;
+
   /** Zod schema for installation parameters */
   readonly paramsSchema: z.ZodType<TParams>;
 

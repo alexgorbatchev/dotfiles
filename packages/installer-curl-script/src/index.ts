@@ -16,6 +16,5 @@ declare module '@dotfiles/core' {
   interface ToolConfigRegistry {
     'curl-script': CurlScriptToolConfig;
   }
-  interface PluginResultRegistry
-    extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
+  interface PluginResultRegistry extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
 }

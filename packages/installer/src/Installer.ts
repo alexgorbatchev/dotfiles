@@ -435,13 +435,19 @@ export class Installer implements IInstaller {
         return skipResult;
       }
 
-      // Create timestamped installation directory
+      // Check if plugin is externally managed (e.g., Homebrew, apt)
+      const plugin = this.registry.get(resolvedToolConfig.installationMethod);
+      const isExternallyManaged: boolean = plugin?.externallyManaged === true;
+
+      // Create timestamped installation directory (skip for externally managed plugins)
       const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
       const timestamp = generateTimestamp();
-      const installDir = path.join(binariesDir, toolName, timestamp);
+      const installDir: string = isExternallyManaged ? '' : path.join(binariesDir, toolName, timestamp);
 
-      await toolFs.ensureDir(installDir);
-      logger.debug(messages.lifecycle.directoryCreated(installDir));
+      if (!isExternallyManaged) {
+        await toolFs.ensureDir(installDir);
+        logger.debug(messages.lifecycle.directoryCreated(installDir));
+      }
 
       // Create context for installation hooks
       const { context, logger: contextLogger } = this.createBaseInstallContext(
@@ -478,8 +484,8 @@ export class Installer implements IInstaller {
       // Add the resolved installation method to the result
       result.installationMethod = resolvedToolConfig.installationMethod;
 
-      // If installation failed, clean up the empty installation directory
-      if (!result.success && (await toolFs.exists(installDir))) {
+      // If installation failed, clean up the empty installation directory (skip for externally managed)
+      if (!isExternallyManaged && !result.success && (await toolFs.exists(installDir))) {
         logger.debug(messages.lifecycle.cleaningFailedInstallDir(installDir));
         await toolFs.rm(installDir, { recursive: true, force: true });
 

@@ -116,12 +116,7 @@ export function registerInstallCommand(
             shimMode: combinedOptions.shimMode,
           });
 
-          shouldExitWithCode = handleInstallationResult(
-            logger,
-            result,
-            toolName,
-            combinedOptions.shimMode
-          );
+          shouldExitWithCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
         }
       } catch (error) {
         shouldExitWithCode = handleInstallationError(logger, error as Error, toolName, combinedOptions.shimMode);

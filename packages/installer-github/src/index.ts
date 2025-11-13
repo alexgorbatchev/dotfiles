@@ -17,6 +17,5 @@ declare module '@dotfiles/core' {
   interface ToolConfigRegistry {
     'github-release': GithubReleaseToolConfig;
   }
-  interface PluginResultRegistry
-    extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
+  interface PluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
 }

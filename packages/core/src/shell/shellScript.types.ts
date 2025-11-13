@@ -33,7 +33,7 @@ export type ShellScript = OnceScript | AlwaysScript;
 /**
  * A tagged template function that marks a shell script to be run only once
  * after a tool installation or update.
- * 
+ *
  * Needs `bierner.comment-tagged-templates` VSCode extension to highlight
  * shell scripts correctly.
  *
@@ -64,7 +64,7 @@ export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceS
  *
  * Needs `bierner.comment-tagged-templates` VSCode extension to highlight
  * shell scripts correctly.
- * 
+ *
  * @param strings - The template string array.
  * @param values - The values to interpolate into the string.
  * @returns An {@link AlwaysScript} branded string.

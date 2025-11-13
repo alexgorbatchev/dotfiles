@@ -20,7 +20,7 @@ export const platformConfigSchema = commonToolConfigPropertiesSchema
 /**
  * Platform configuration type - contains common tool properties plus optional installation overrides.
  * Used for platform-specific overrides in tool configurations.
- * 
+ *
  * The runtime schema validates with loose types (string, unknown), but the TypeScript type
  * is properly constrained to match the ToolConfig discriminated union.
  */

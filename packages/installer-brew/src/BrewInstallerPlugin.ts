@@ -27,6 +27,7 @@ export class BrewInstallerPlugin
   readonly version = PLUGIN_VERSION;
   readonly paramsSchema = brewInstallParamsSchema;
   readonly toolConfigSchema = brewToolConfigSchema;
+  readonly externallyManaged = true;
 
   constructor(private readonly logger: TsLogger) {}
 
