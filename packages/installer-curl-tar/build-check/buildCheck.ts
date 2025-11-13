@@ -1,5 +1,5 @@
 import type { CurlTarInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
-import { defineTool } from '@gitea/dotfiles';
+import { always, defineTool, once } from '@gitea/dotfiles';
 
 type ExpectTrue<T extends true> = T;
 
@@ -12,6 +12,9 @@ defineTool((install) =>
   install('curl-tar', {
     url: 'https://example.com/tool.tar.gz',
   })
+    .zsh({
+      scripts: [once`echo "once"`, always`echo "always"`],
+    })
 );
 
 defineTool((install) =>

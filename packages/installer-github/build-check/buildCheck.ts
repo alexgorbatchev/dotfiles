@@ -1,5 +1,5 @@
 import type { GithubReleaseInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
-import { defineTool } from '@gitea/dotfiles';
+import { always, defineTool, once } from '@gitea/dotfiles';
 
 type ExpectTrue<T extends true> = T;
 
@@ -20,6 +20,9 @@ defineTool((install) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
   })
+    .zsh({
+      scripts: [once`echo "once"`, always`echo "always"`],
+    })
 );
 
 defineTool((install) =>

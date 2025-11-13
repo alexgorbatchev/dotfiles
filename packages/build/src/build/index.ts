@@ -519,10 +519,11 @@ async function main(): Promise<void> {
 
     await testBuiltCli();
     await printBuildSummary();
-    await restoreWorkspaceDependencies();
   } catch (error: unknown) {
     writeStderr(`❌ Build failed: ${(error as Error).message}`);
     process.exit(1);
+  } finally {
+    await restoreWorkspaceDependencies();
   }
 }
 

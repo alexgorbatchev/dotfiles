@@ -1,5 +1,5 @@
 import type { CurlScriptInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
-import { defineTool } from '@gitea/dotfiles';
+import { always, defineTool, once } from '@gitea/dotfiles';
 
 type ExpectTrue<T extends true> = T;
 
@@ -14,6 +14,9 @@ defineTool((install) =>
     url: 'https://example.com/install.sh',
     shell: 'bash',
   })
+    .zsh({
+      scripts: [once`echo "once"`, always`echo "always"`],
+    })
 );
 
 defineTool((install) =>
