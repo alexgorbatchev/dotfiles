@@ -66,6 +66,13 @@ const INSTALLER_PACKAGE_PREFIX = 'installer-';
 const INSTALLER_BUILD_CHECK_RELATIVE_PATH = path.join('build-check', 'buildCheck.ts');
 const BUILD_CHECK_SCRIPT_SUFFIX = '--buildCheck.ts';
 
+class BuildError extends Error {
+  constructor(message: string, cause?: unknown) {
+    super(message, { cause });
+    this.name = 'BuildError';
+  }
+}
+
 interface InstallerBuildCheckScript {
   packageName: string;
   sourcePath: string;
@@ -90,12 +97,11 @@ function copyFileIfExists(sourcePath: string, destinationPath: string): void {
 
 async function restoreWorkspaceDependencies(): Promise<void> {
   ensureBunCacheDirectory();
-  writeStdout('🔄 Restoring workspace dependencies...');
+  console.log('🔄 Restoring workspace dependencies...');
   try {
     await $`bun install`.quiet();
   } catch (error) {
-    writeError('❌ Failed to restore workspace dependencies:', error);
-    throw normalizeError(error, 'Workspace dependency restoration failed');
+    throw new BuildError('Workspace dependency restoration failed', error);
   }
 }
 
@@ -104,40 +110,8 @@ async function installDependenciesInOutputDir(): Promise<void> {
   try {
     await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
   } catch (error) {
-    writeError('❌ Failed to install temporary workspace dependencies:', error);
-    throw normalizeError(error, 'Temporary dependency installation failed');
+    throw new BuildError('Temporary dependency installation failed', error);
   }
-}
-
-function writeStdout(message: string): void {
-  process.stdout.write(`${message}${LINE_BREAK}`);
-}
-
-function writeStderr(message: string): void {
-  process.stderr.write(`${message}${LINE_BREAK}`);
-}
-
-function writeError(prefix: string, error: unknown): void {
-  if (error instanceof Error) {
-    const detail: string = error.stack ?? error.message;
-    process.stderr.write(`${prefix} ${detail}${LINE_BREAK}`);
-    return;
-  }
-
-  process.stderr.write(`${prefix} ${String(error)}${LINE_BREAK}`);
-}
-
-function normalizeError(error: unknown, fallbackMessage: string): Error {
-  if (isError(error)) {
-    return error;
-  }
-
-  const fallbackError = new Error(fallbackMessage);
-  return fallbackError;
-}
-
-function isError(value: unknown): value is Error {
-  return value instanceof Error;
 }
 
 async function cleanPreviousBuild(): Promise<void> {
@@ -145,7 +119,7 @@ async function cleanPreviousBuild(): Promise<void> {
   fs.rmSync(BUILD_CHECK_DIR, { recursive: true, force: true });
 
   if (fs.existsSync(OUTPUT_DIR)) {
-    writeStdout('🧹 Cleaning previous build...');
+    console.log('🧹 Cleaning previous build...');
     fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
   }
 }
@@ -159,7 +133,7 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
   const typescriptMatch = pmLsOutput.match(/(?:^|\s)typescript@(\d+\.\d+\.\d+)/);
 
   if (!zodMatch || !bunTypesMatch || !typescriptMatch) {
-    throw new Error('Could not find zod, type-fest, @types/bun, or typescript versions in bun pm ls output');
+    throw new BuildError('Could not find zod, type-fest, @types/bun, or typescript versions in bun pm ls output');
   }
 
   const zodVersion = zodMatch[1];
@@ -167,7 +141,7 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
   const typescriptVersion = typescriptMatch[1];
 
   if (!zodVersion || !bunTypesVersion || !typescriptVersion) {
-    throw new Error('Could not extract version numbers from dependency output');
+    throw new BuildError('Could not extract version numbers from dependency output');
   }
 
   const versions: DependencyVersions = {
@@ -180,9 +154,9 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
 }
 
 async function buildCli(): Promise<Bun.BuildOutput> {
-  writeStdout('🏗️  Building CLI...');
-  writeStdout(`📍 Entry: ${ENTRY_POINT}`);
-  writeStdout(`📦 Output: ${CLI_OUTPUT_FILE}`);
+  console.log('🏗️  Building CLI...');
+  console.log(`📍 Entry: ${ENTRY_POINT}`);
+  console.log(`📦 Output: ${CLI_OUTPUT_FILE}`);
 
   const result = await Bun.build({
     entrypoints: [ENTRY_POINT],
@@ -200,11 +174,11 @@ async function buildCli(): Promise<Bun.BuildOutput> {
   });
 
   if (!result.success) {
-    writeStderr('❌ Build failed:');
+    console.error('❌ Build failed:');
     for (const message of result.logs) {
-      writeStderr(`   ${String(message)}`);
+      console.error(`   ${message.toString()}`);
     }
-    throw new Error('CLI build failed');
+    throw new BuildError('CLI build failed');
   }
 
   // Make cli.js executable
@@ -279,7 +253,7 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
 
   await $`bunx dts-bundle-generator --project ${BUILD_TSCONFIG_PATH} --out-file ${OUTPUT_SCHEMAS_D_TS_PATH} --no-check --export-referenced-types --external-imports=@dotfiles/core --external-imports=zod --external-inlines=@dotfiles/config --external-inlines=@dotfiles/logger --external-inlines=@dotfiles/installer-brew --external-inlines=@dotfiles/installer-cargo --external-inlines=@dotfiles/installer-curl-script --external-inlines=@dotfiles/installer-curl-tar --external-inlines=@dotfiles/installer-github --external-inlines=@dotfiles/installer-manual -- ${schemaExportsPath}`.quiet();
 
-  writeStdout('✅ Successfully created schemas.d.ts with dts-bundle-generator');
+  console.log('✅ Successfully created schemas.d.ts with dts-bundle-generator');
 }
 
 function checkYamlConfigTypeSignature(): void {
@@ -301,13 +275,10 @@ function checkYamlConfigTypeSignature(): void {
     const signature = extractTypeAliasSignature(SCHEMA_CHECK_TSCONFIG_PATH, OUTPUT_SCHEMAS_D_TS_PATH, 'YamlConfig');
 
     if (!signature.includes('generatedDir: string')) {
-      writeStderr('ℹ️ YamlConfig appears to be invalid:');
-      writeStderr(signature);
-      process.exit(1);
+      console.error('ℹ️ YamlConfig appears to be invalid:');
+      console.error(signature);
+      throw new BuildError('YamlConfig type extraction failed');
     }
-  } catch (error) {
-    writeError('⚠️ Failed to print YamlConfig type signature:', error);
-    throw normalizeError(error, 'YamlConfig type extraction failed');
   } finally {
     fs.rmSync(SCHEMA_CHECK_TSCONFIG_PATH, { force: true });
   }
@@ -332,8 +303,7 @@ function getInstallerBuildCheckScripts(): InstallerBuildCheckScript[] {
     const buildCheckPath: string = path.join(packagePath, INSTALLER_BUILD_CHECK_RELATIVE_PATH);
 
     if (!fs.existsSync(buildCheckPath)) {
-      writeStderr(`❌ Missing build check script: ${packageName}`);
-      process.exit(1);
+      throw new BuildError(`❌ Missing build check script: ${packageName}`);
     }
 
     const script: InstallerBuildCheckScript = {
@@ -352,7 +322,12 @@ function copyInstallerBuildCheckScripts(destinationDir: string): void {
   for (const script of scripts) {
     const fileName: string = `${script.packageName}${BUILD_CHECK_SCRIPT_SUFFIX}`;
     const destinationPath: string = path.join(destinationDir, fileName);
-    fs.copyFileSync(script.sourcePath, destinationPath);
+    const content = fs.readFileSync(script.sourcePath, 'utf-8');
+    const lines = content.split(LINE_BREAK);
+    if (lines[0]?.trim() === '// @ts-nocheck') {
+      lines.shift();
+    }
+    fs.writeFileSync(destinationPath, lines.join(LINE_BREAK));
   }
 }
 
@@ -406,15 +381,15 @@ async function runBuildCheck(): Promise<void> {
   try {
     await $`cd ${BUILD_CHECK_DIR} && bunx tsgo --noEmit`;
   } catch (error) {
-    throw normalizeError(error, 'Schema validation failed');
+    throw new BuildError('Schema validation failed', error);
   }
 }
 
 async function validateSchemas(dependencyVersions: DependencyVersions): Promise<void> {
-  writeStdout('🔍 Validating generated schemas...');
+  console.log('🔍 Validating generated schemas...');
   await setupBuildCheckProject(dependencyVersions);
   await runBuildCheck();
-  writeStdout('✅ Schema validation passed');
+  console.log('✅ Schema validation passed');
 }
 
 async function cleanupTempFiles(): Promise<void> {
@@ -433,14 +408,13 @@ async function cleanupTempFiles(): Promise<void> {
 }
 
 async function generateSchemaTypes(dependencyVersions: DependencyVersions): Promise<void> {
-  writeStdout('📝 Building @dotfiles/core config types...');
+  console.log('📝 Building @dotfiles/core config types...');
 
   try {
     await buildSchemaTypes(dependencyVersions);
     checkYamlConfigTypeSignature();
   } catch (error) {
-    writeStderr('❌ Schema type generation failed');
-    throw error;
+    throw new BuildError('❌ Schema type generation failed', error);
   }
 }
 
@@ -469,23 +443,23 @@ async function generatePackageJson(dependencyVersions: DependencyVersions): Prom
 }
 
 async function testBuiltCli(): Promise<void> {
-  writeStdout('🧪 Testing built CLI...');
+  console.log('🧪 Testing built CLI...');
 
   const testResult = await $`bun ${CLI_OUTPUT_FILE} --version`.quiet();
 
   if (testResult.exitCode === 0) {
-    writeStdout(`✅ CLI test passed - version: ${testResult.stdout.toString().trim()}`);
+    console.log(`✅ CLI test passed - version: ${testResult.stdout.toString().trim()}`);
   } else {
-    writeStderr(`❌ CLI test failed with exit code: ${testResult.exitCode}`);
-    writeStderr(`Error output: ${testResult.stderr.toString()}`);
-    throw new Error('CLI test failed');
+    console.error(`❌ CLI test failed with exit code: ${testResult.exitCode}`);
+    console.error(`Error output: ${testResult.stderr.toString()}`);
+    throw new BuildError('CLI test failed');
   }
 }
 
 async function printBuildSummary(): Promise<void> {
-  writeStdout('✅ Build completed successfully!');
-  writeStdout(`📁 Output directory: ${OUTPUT_DIR}`);
-  writeStdout('🗂️  Generated files:');
+  console.log('✅ Build completed successfully!');
+  console.log(`📁 Output directory: ${OUTPUT_DIR}`);
+  console.log('🗂️  Generated files:');
 
   // Read all files from the output directory
   const files = fs.readdirSync(OUTPUT_DIR);
@@ -496,7 +470,7 @@ async function printBuildSummary(): Promise<void> {
     const stats = fs.statSync(filePath);
 
     if (stats.isFile()) {
-      writeStdout(`   - ${relativePath}`);
+      console.log(`   - ${relativePath}`);
     }
   }
 }
@@ -512,7 +486,7 @@ async function main(): Promise<void> {
 
     try {
       await validateSchemas(dependencyVersions);
-      writeStdout('✅ @dotfiles/core config types bundled with dts-bundle-generator');
+      console.log('✅ @dotfiles/core config types bundled with dts-bundle-generator');
     } finally {
       await cleanupTempFiles();
     }
@@ -520,8 +494,15 @@ async function main(): Promise<void> {
     await testBuiltCli();
     await printBuildSummary();
   } catch (error: unknown) {
-    writeStderr(`❌ Build failed: ${(error as Error).message}`);
-    process.exit(1);
+    if (error instanceof BuildError) {
+      console.error(`❌ Build failed: ${error.message}`);
+      if (error.cause) {
+        console.error('Caused by:', error.cause);
+      }
+    } else {
+      console.error(`❌ An unexpected error occurred:`, error);
+    }
+    throw error;
   } finally {
     await restoreWorkspaceDependencies();
   }

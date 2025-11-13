@@ -4,7 +4,6 @@
   "type": "module",
   "devDependencies": {
     "typescript": "catalog:typescript",
-    "dts-bundle-generator": "^9.5.1",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript"

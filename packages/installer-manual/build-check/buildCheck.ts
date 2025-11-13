@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { InstallMethod, InstallParamsRegistry, ManualInstallParams } from '@gitea/dotfiles';
 import { always, defineTool, once } from '@gitea/dotfiles';
 

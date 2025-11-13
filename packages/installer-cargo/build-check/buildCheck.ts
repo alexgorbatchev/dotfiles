@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { CargoInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
 import { always, defineTool, once } from '@gitea/dotfiles';
 
