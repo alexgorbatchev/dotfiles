@@ -1,6 +1,6 @@
 {
   "name": "dotfiles",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "module": "cli.ts",
   "devDependencies": {
     "@biomejs/biome": "catalog:",
@@ -38,7 +38,7 @@
     "version": "bun packages/build/src/version/index.ts",
     "release": "bun packages/build/src/release/index.ts",
     "publish": "bun packages/build/src/publish/index.ts",
-    "release-next": "bun run version && bun run release",
+    "release-next": "bun run version && bun run release && bun run publish",
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts"
   },
