@@ -1,6 +1,6 @@
 {
   "name": "dotfiles",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "module": "cli.ts",
   "devDependencies": {
     "lefthook": "^2.0.1",
