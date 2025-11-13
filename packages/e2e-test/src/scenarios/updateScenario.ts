@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'bun:test';
 import type { TestHarness } from '../TestHarness';
 
+/**
+ * Defines test scenarios for the update command.
+ *
+ * These tests verify that the update command correctly:
+ * - Detects and downloads newer versions of tools
+ * - Updates installed binaries to the new version
+ * - Handles non-existent tools gracefully
+ * - Properly integrates with the mock server for version management
+ *
+ * @param harness - The TestHarness instance to use for running tests.
+ * @param additionalTests - Optional function containing additional test cases.
+ */
 export function updateScenarios(harness: TestHarness, additionalTests?: () => void): void {
   describe('update command', () => {
     it('should update github-release-tool from current version to newer version', async () => {

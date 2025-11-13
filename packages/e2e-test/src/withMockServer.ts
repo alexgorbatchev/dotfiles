@@ -45,7 +45,10 @@ const DEFAULT_VERSIONS: Record<string, string> = {
 const currentVersions: Record<string, string> = {};
 
 /**
- * Creates a response for binary file downloads from fixtures
+ * Creates a Response object for binary file downloads from test fixtures.
+ *
+ * @param filename - The name of the binary file to serve from the fixtures directory.
+ * @returns A Response object with the binary file content and appropriate headers.
  */
 function createBinaryDownloadResponse(filename: string): Response {
   const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', filename);
@@ -58,10 +61,16 @@ function createBinaryDownloadResponse(filename: string): Response {
 }
 
 /**
- * Sets up a mock server on port 8765 with GitHub and Cargo API responses
- * Automatically handles beforeEach/afterEach setup and teardown for fresh state
+ * Sets up a mock server on port 8765 that simulates GitHub and Cargo API responses.
  *
- * @returns The base URL of the mock server (http://localhost:8765)
+ * This function configures beforeEach and afterEach hooks to manage the mock server lifecycle.
+ * The server provides mock endpoints for:
+ * - GitHub releases API (latest and specific versions)
+ * - Dynamic version control for testing updates
+ * - Cargo crates.io API
+ * - Binary downloads from test fixtures
+ *
+ * The server automatically resets to default versions between tests and cleans up on teardown.
  */
 export function withMockServer(): void {
   let server: ReturnType<typeof Bun.serve> | null = null;

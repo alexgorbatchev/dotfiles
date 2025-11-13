@@ -3,6 +3,27 @@ import { LOG_LEVEL_NAMES } from '@dotfiles/logger';
 import { Command } from 'commander';
 import type { GlobalProgram } from './types';
 
+/**
+ * Creates and configures the main Commander.js program with global options.
+ *
+ * Sets up the CLI program with global options available to all commands:
+ * - Configuration file path
+ * - Dry-run mode
+ * - Log level control
+ * - Platform/architecture overrides
+ *
+ * @returns The configured Commander.js program instance
+ * @example
+ * ```typescript
+ * const program = createProgram();
+ * program
+ *   .command('install')
+ *   .action(async (options) => {
+ *     const globalOpts = program.opts();
+ *     console.log(globalOpts.verbose); // Access global options
+ *   });
+ * ```
+ */
 export function createProgram(): GlobalProgram {
   const program: GlobalProgram = new Command()
     .name('generator')

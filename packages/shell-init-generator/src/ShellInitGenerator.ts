@@ -14,6 +14,31 @@ import {
   type ShellInitContent,
 } from './shell-generators';
 
+/**
+ * Service that generates shell initialization scripts for installed tools.
+ *
+ * This class orchestrates the creation of shell-specific initialization files (e.g., .zshrc, .bashrc)
+ * that configure the environment for installed tools. It consolidates all tool-specific shell
+ * configurations into optimized, generated scripts that can be sourced by the user's shell.
+ *
+ * **Key Responsibilities:**
+ * - Generate shell-specific initialization files for multiple shells (zsh, bash, PowerShell)
+ * - Aggregate shell configurations from all installed tools
+ * - Handle shell completions and custom scripts
+ * - Update user profile files to source generated scripts
+ * - Support platform-specific configurations
+ *
+ * **Generated Content:**
+ * - Environment variables from tool configurations
+ * - Aliases and shell functions
+ * - PATH modifications for tool binaries
+ * - Shell completion scripts
+ * - Custom initialization scripts (run once or always)
+ *
+ * **Profile Integration:**
+ * Optionally updates the user's shell profile files (e.g., ~/.zshrc, ~/.bashrc) to automatically
+ * source the generated initialization scripts. This ensures tools are available in new shell sessions.
+ */
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
   private readonly appConfig: YamlConfig;

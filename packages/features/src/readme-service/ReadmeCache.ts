@@ -6,19 +6,33 @@ import { messages } from './log-messages';
 import type { ReadmeContent } from './types';
 
 /**
- * Cache wrapper specifically for README content
+ * Cache implementation specifically for README content.
+ *
+ * This class wraps a generic cache interface to provide README-specific caching
+ * with TTL (time-to-live) support. It handles cache key generation, expiration,
+ * and error handling for README fetch operations.
  */
 export class ReadmeCache implements IReadmeCache {
   private readonly logger: TsLogger;
   private readonly cache: ICache;
   private readonly defaultTtl: number;
 
+  /**
+   * Creates a new ReadmeCache instance.
+   *
+   * @param parentLogger - The parent logger for creating sub-loggers.
+   * @param cache - The underlying cache implementation.
+   * @param defaultTtl - Default time-to-live in milliseconds for cached READMEs.
+   */
   constructor(parentLogger: TsLogger, cache: ICache, defaultTtl: number = DEFAULT_README_CACHE_TTL) {
     this.logger = parentLogger.getSubLogger({ name: 'ReadmeCache' });
     this.cache = cache;
     this.defaultTtl = defaultTtl;
   }
 
+  /**
+   * @inheritdoc IReadmeCache.get
+   */
   async get(cacheKey: string): Promise<ReadmeContent | null> {
     try {
       const content: ReadmeContent | null = await this.cache.get<ReadmeContent>(cacheKey);
@@ -32,6 +46,9 @@ export class ReadmeCache implements IReadmeCache {
     }
   }
 
+  /**
+   * @inheritdoc IReadmeCache.set
+   */
   async set(cacheKey: string, content: ReadmeContent, ttlMs: number = this.defaultTtl): Promise<void> {
     try {
       await this.cache.set(cacheKey, content, ttlMs);
@@ -41,6 +58,9 @@ export class ReadmeCache implements IReadmeCache {
     }
   }
 
+  /**
+   * @inheritdoc IReadmeCache.has
+   */
   async has(cacheKey: string): Promise<boolean> {
     try {
       return await this.cache.has(cacheKey);
@@ -50,6 +70,9 @@ export class ReadmeCache implements IReadmeCache {
     }
   }
 
+  /**
+   * @inheritdoc IReadmeCache.delete
+   */
   async delete(cacheKey: string): Promise<void> {
     try {
       await this.cache.delete(cacheKey);
@@ -60,6 +83,9 @@ export class ReadmeCache implements IReadmeCache {
     }
   }
 
+  /**
+   * @inheritdoc IReadmeCache.clearExpired
+   */
   async clearExpired(): Promise<void> {
     try {
       this.logger.debug(messages.clearingExpiredCache());
@@ -72,6 +98,9 @@ export class ReadmeCache implements IReadmeCache {
     }
   }
 
+  /**
+   * @inheritdoc IReadmeCache.generateCacheKey
+   */
   generateCacheKey(owner: string, repo: string, version: string): string {
     return `readme:${owner}/${repo}:${version}`;
   }

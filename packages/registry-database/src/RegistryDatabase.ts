@@ -5,7 +5,6 @@ import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 
 /**
- * @public
  * Manages the shared SQLite database connection for the dotfiles project.
  *
  * This class is responsible for initializing and providing access to a centralized
@@ -28,7 +27,6 @@ export class RegistryDatabase {
   }
 
   /**
-   * @public
    * Retrieves the active SQLite database connection.
    *
    * @returns The `Database` instance from `bun:sqlite`.
@@ -38,7 +36,6 @@ export class RegistryDatabase {
   }
 
   /**
-   * @public
    * Closes the database connection.
    *
    * This method should be called during application shutdown to ensure a graceful

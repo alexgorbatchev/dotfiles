@@ -7,12 +7,18 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import { messages } from './log-messages';
 
+/**
+ * Error interface from child_process.exec with optional code, stdout, and stderr properties.
+ */
 interface ExecError extends Error {
   code?: number;
   stdout?: string;
   stderr?: string;
 }
 
+/**
+ * Augmented error interface that includes captured stdout/stderr and the original error.
+ */
 interface AugmentedExecError extends Error {
   stdout: string;
   stderr: string;
@@ -21,16 +27,26 @@ interface AugmentedExecError extends Error {
 }
 
 /**
- * Implements the IArchiveExtractor interface using system commands.
+ * Implements archive extraction using system commands.
  *
- * @remarks
- * This module has a hard dependency on system commands like `tar`, `unzip`,
- * and `file` being available on the system's PATH.
+ * This class provides functionality to extract various archive formats (tar.gz, tar.bz2,
+ * tar.xz, tar, zip) using system commands like `tar` and `unzip`. It can auto-detect
+ * archive formats by file extension or MIME type, detect and set executable permissions
+ * on extracted files, and handle various extraction options.
+ *
+ * This implementation has a hard dependency on system commands (tar, unzip, file) being
+ * available on the system's PATH.
  */
 export class ArchiveExtractor implements IArchiveExtractor {
   private readonly fs: IFileSystem;
   private readonly logger: TsLogger;
 
+  /**
+   * Creates a new ArchiveExtractor instance.
+   *
+   * @param parentLogger - The parent logger for creating sub-loggers.
+   * @param fileSystem - The file system interface for file operations.
+   */
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
     this.fs = fileSystem;
     this.logger = parentLogger.getSubLogger({ name: 'ArchiveExtractor' });
@@ -41,9 +57,10 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
   /**
    * Executes a shell command using child_process.exec.
-   * @param command The command string to execute.
-   * @returns A promise that resolves with an object containing stdout, stderr, and exitCode.
-   * @throws An error object augmented with stdout, stderr, and exitCode if the command fails.
+   *
+   * @param command - The command string to execute.
+   * @returns A promise that resolves with stdout, stderr, and exit code.
+   * @throws {AugmentedExecError} An error augmented with stdout, stderr, and exitCode if the command fails.
    */
   private async executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
@@ -66,6 +83,12 @@ export class ArchiveExtractor implements IArchiveExtractor {
     }
   }
 
+  /**
+   * Detects archive format by examining the file extension.
+   *
+   * @param fileName - The name of the file to check.
+   * @returns The detected ArchiveFormat, or null if the format cannot be determined from the extension.
+   */
   private detectFormatByExtension(fileName: string): ArchiveFormat | null {
     const lowerFileName = fileName.toLowerCase();
 
@@ -85,6 +108,12 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return null;
   }
 
+  /**
+   * Detects archive format by parsing MIME type output from the `file` command.
+   *
+   * @param mimeOutput - The output from the `file --mime-type` command.
+   * @returns The detected ArchiveFormat, or null if the format cannot be determined from MIME type.
+   */
   private detectFormatByMimeType(mimeOutput: string): ArchiveFormat | null {
     if (mimeOutput.includes('gzip')) return 'tar.gz';
     if (mimeOutput.includes('zip')) return 'zip';
@@ -114,6 +143,9 @@ export class ArchiveExtractor implements IArchiveExtractor {
     }
   }
 
+  /**
+   * @inheritdoc IArchiveExtractor.detectFormat
+   */
   public async detectFormat(filePath: string): Promise<ArchiveFormat> {
     const logger = this.logger.getSubLogger({ name: 'detectFormat' });
     const fileName = basename(filePath);
@@ -133,6 +165,9 @@ export class ArchiveExtractor implements IArchiveExtractor {
     throw new Error(`Unsupported or undetectable archive format for: ${filePath}`);
   }
 
+  /**
+   * @inheritdoc IArchiveExtractor.isSupported
+   */
   public isSupported(format: ArchiveFormat): boolean {
     const supportedFormats: ArchiveFormat[] = [
       'tar.gz',
@@ -145,6 +180,15 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return supportedFormats.includes(format);
   }
 
+  /**
+   * Builds the appropriate tar command for the given archive format.
+   *
+   * @param archivePath - Path to the tar archive file.
+   * @param tempExtractDir - Directory where files will be extracted.
+   * @param format - The tar format (tar, tar.gz, tar.bz2, or tar.xz).
+   * @returns The complete tar command string.
+   * @throws {Error} If the format is not a supported tar variant.
+   */
   private buildTarCommand(archivePath: string, tempExtractDir: string, format: string): string {
     let flag: string;
     switch (format) {
@@ -167,6 +211,15 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return `tar ${flag} '${archivePath}' -C '${tempExtractDir}'`;
   }
 
+  /**
+   * Extracts an archive using the appropriate system command for the format.
+   *
+   * @param format - The archive format to extract.
+   * @param archivePath - Path to the archive file.
+   * @param tempExtractDir - Directory where files will be extracted.
+   * @returns A promise that resolves when extraction is complete.
+   * @throws {Error} If the format is not implemented or the command fails.
+   */
   private async extractArchiveByFormat(
     format: ArchiveFormat,
     archivePath: string,
@@ -191,6 +244,9 @@ export class ArchiveExtractor implements IArchiveExtractor {
     }
   }
 
+  /**
+   * @inheritdoc IArchiveExtractor.extract
+   */
   public async extract(archivePath: string, options: ExtractOptions = {}): Promise<ExtractResult> {
     const logger = this.logger.getSubLogger({ name: 'extract' });
     const {
@@ -234,6 +290,17 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return result;
   }
 
+  /**
+   * Detects files that should be executable and sets the executable permission bit.
+   *
+   * This method uses heuristics to identify executables: files without extensions or with
+   * common script extensions (.sh, .py, .pl, .rb). It checks if the file already has the
+   * owner execute bit set, and if not, adds it.
+   *
+   * @param baseDir - The base directory containing the extracted files.
+   * @param files - Array of file names to check.
+   * @returns Array of file names that were identified as executables.
+   */
   private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'detectAndSetExecutables' });
     const executables: string[] = [];

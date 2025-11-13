@@ -1,7 +1,11 @@
 import { Architecture, Platform } from '@dotfiles/core';
 
 /**
- * Convert Platform enum to CLI string value
+ * Converts a Platform enum value to its CLI string representation.
+ *
+ * @param platform - The Platform enum value to convert.
+ * @returns The CLI string for the platform (e.g., 'macos', 'linux', 'windows').
+ * @throws {Error} If the platform value is not recognized.
  */
 export function platformToString(platform: Platform): string {
   const mapping: Record<Platform, string> = {
@@ -20,7 +24,11 @@ export function platformToString(platform: Platform): string {
 }
 
 /**
- * Convert Architecture enum to CLI string value
+ * Converts an Architecture enum value to its CLI string representation.
+ *
+ * @param architecture - The Architecture enum value to convert.
+ * @returns The CLI string for the architecture (e.g., 'x86_64', 'arm64').
+ * @throws {Error} If the architecture value is not recognized.
  */
 export function architectureToString(architecture: Architecture): string {
   const mapping: Record<Architecture, string> = {

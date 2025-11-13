@@ -18,7 +18,22 @@ import type { CurlScriptToolConfig } from './schemas';
 import type { CurlScriptInstallMetadata, CurlScriptInstallResult } from './types';
 
 /**
- * Install a tool using a curl script
+ * Installs a tool using a curl script.
+ *
+ * This function downloads an installation script from the specified URL, makes it
+ * executable, and runs it using the configured shell. The script is responsible for
+ * installing the tool to the system. After execution, the function attempts to locate
+ * the installed binaries and create the necessary symlinks.
+ *
+ * @param toolName - The name of the tool to install.
+ * @param toolConfig - The configuration for the curl-script tool.
+ * @param context - The base installation context.
+ * @param options - Optional installation options.
+ * @param fs - The file system interface for file operations.
+ * @param downloader - The downloader for fetching the installation script.
+ * @param hookExecutor - The hook executor for running post-download hooks.
+ * @param parentLogger - The parent logger for creating sub-loggers.
+ * @returns A promise that resolves to the installation result.
  */
 export async function installFromCurlScript(
   toolName: string,

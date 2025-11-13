@@ -52,25 +52,23 @@ Define everything about a tool—installation, binary path, config file symlinks
 
 ```typescript
 // configs/tools/ripgrep.tool.ts
-import { defineTool } from '@dotfiles/schemas';
+import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((c, ctx) =>
-  c
-    // 1. Define the binary name (default pattern {,*/}rg handles most archives)
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'BurntSushi/ripgrep',
+  })
+    // 1. Define the binary name
     .bin('rg')
-    // 2. Specify the installation method
-    .install('github-release', {
-      repo: 'BurntSushi/ripgrep',
-    })
-    // 3. Create symlinks for configuration files
-    .symlink('./ripgreprc', '~/.ripgreprc')
-    // 4. Configure shell-specific integration (aliases, functions, env vars)
+    // 2. Create symlinks for configuration files
+    .symlink('./ripgreprc', `${ctx.homeDir}/.ripgreprc`)
+    // 3. Configure shell-specific integration (aliases, functions, env vars)
     .zsh({
       aliases: {
         rgi: 'rg -i', // Case-insensitive search alias
       },
       environment: {
-        RIPGREP_CONFIG_PATH: '~/.ripgreprc',
+        RIPGREP_CONFIG_PATH: `${ctx.homeDir}/.ripgreprc`,
       },
     })
 );

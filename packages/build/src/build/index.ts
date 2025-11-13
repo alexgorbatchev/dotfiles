@@ -73,28 +73,62 @@ class BuildError extends Error {
   }
 }
 
+/**
+ * Metadata about an installer package's build check script.
+ */
 interface InstallerBuildCheckScript {
+  /** The npm package name of the installer (e.g., 'installer-brew'). */
   packageName: string;
+  /** The absolute path to the build check script file. */
   sourcePath: string;
 }
 
+/**
+ * Version information for key dependencies required by the build.
+ */
 interface DependencyVersions {
+  /** Version of the zod validation library. */
   zod: string;
+  /** Version of the @types/bun TypeScript definitions. */
   bunTypes: string;
+  /** Version of the TypeScript compiler. */
   typescript: string;
 }
 
+/**
+ * Ensures that the Bun package cache directory exists.
+ *
+ * Creates `node_modules/` and `node_modules/.bun/` directories recursively
+ * if they don't exist. This prevents installation failures when installing
+ * packages in isolated build directories.
+ */
 function ensureBunCacheDirectory(): void {
   fs.mkdirSync(ROOT_NODE_MODULES_PATH, { recursive: true });
   fs.mkdirSync(ROOT_BUN_CACHE_PATH, { recursive: true });
 }
 
+/**
+ * Copies a file from source to destination if the source file exists.
+ *
+ * @param sourcePath - The path to the source file.
+ * @param destinationPath - The path where the file should be copied.
+ */
 function copyFileIfExists(sourcePath: string, destinationPath: string): void {
   if (fs.existsSync(sourcePath)) {
     fs.copyFileSync(sourcePath, destinationPath);
   }
 }
 
+/**
+ * Creates symlinks from Bun's global store to a local node_modules directory.
+ *
+ * When Bun installs dependencies, it stores them in a global cache at
+ * `node_modules/.bun/node_modules` and creates symlinks in `node_modules/`.
+ * This function manually creates those symlinks for build environments where
+ * Bun may not have created them automatically.
+ *
+ * @param nodeModulesPath - The path to the node_modules directory.
+ */
 function linkBunStoreDependencies(nodeModulesPath: string): void {
   if (!fs.existsSync(nodeModulesPath)) {
     return;
@@ -124,6 +158,14 @@ function linkBunStoreDependencies(nodeModulesPath: string): void {
   }
 }
 
+/**
+ * Restores workspace dependencies using `bun install`.
+ *
+ * Ensures the Bun cache directory exists and runs a fresh `bun install`
+ * at the repository root to restore all workspace dependencies.
+ *
+ * @throws {BuildError} If dependency installation fails.
+ */
 async function restoreWorkspaceDependencies(): Promise<void> {
   ensureBunCacheDirectory();
   console.log('🔄 Restoring workspace dependencies...');
@@ -134,6 +176,15 @@ async function restoreWorkspaceDependencies(): Promise<void> {
   }
 }
 
+/**
+ * Installs dependencies in the output directory with Bun caching.
+ *
+ * Runs `bun install` in the `.dist` directory using the workspace's shared
+ * Bun cache to speed up installation. After installation, links dependencies
+ * from Bun's global store.
+ *
+ * @throws {BuildError} If dependency installation fails.
+ */
 async function installDependenciesInOutputDir(): Promise<void> {
   ensureBunCacheDirectory();
   try {
@@ -144,6 +195,12 @@ async function installDependenciesInOutputDir(): Promise<void> {
   }
 }
 
+/**
+ * Removes previous build artifacts from the `.dist` directory.
+ *
+ * Cleans the build-check directory first (to remove symlinks pointing to `.dist`),
+ * then removes the `.dist` directory if it exists.
+ */
 async function cleanPreviousBuild(): Promise<void> {
   // Clean build-check first to remove any symlinks pointing to .dist
   fs.rmSync(BUILD_CHECK_DIR, { recursive: true, force: true });
@@ -154,6 +211,16 @@ async function cleanPreviousBuild(): Promise<void> {
   }
 }
 
+/**
+ * Retrieves version numbers for key dependencies from the workspace.
+ *
+ * Runs `bun pm ls` to get installed package versions and extracts version
+ * numbers for `zod`, `@types/bun`, and `typescript`. These versions are used
+ * to ensure the built package includes compatible dependencies.
+ *
+ * @returns Version information for required dependencies.
+ * @throws {BuildError} If any required dependency version cannot be determined.
+ */
 async function getDependencyVersions(): Promise<DependencyVersions> {
   const pmLsResult = await $`bun pm ls --all`.quiet();
   const pmLsOutput = pmLsResult.stdout.toString();
@@ -183,6 +250,23 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
   return versions;
 }
 
+/**
+ * Builds the CLI application into a single bundled executable.
+ *
+ * Uses Bun's build API to bundle the CLI entry point (`packages/cli/src/main.ts`)
+ * into a minified, standalone JavaScript file with an external source map.
+ * The output file is made executable with `chmod 0o755`.
+ *
+ * Build configuration:
+ * - Target: Bun runtime
+ * - Format: ES modules
+ * - Minification: Enabled
+ * - Source maps: External
+ * - Code splitting: Disabled
+ *
+ * @returns The Bun build output containing success status and logs.
+ * @throws {BuildError} If the build fails.
+ */
 async function buildCli(): Promise<Bun.BuildOutput> {
   console.log('🏗️  Building CLI...');
   console.log(`📍 Entry: ${ENTRY_POINT}`);
@@ -217,6 +301,18 @@ async function buildCli(): Promise<Bun.BuildOutput> {
   return result;
 }
 
+/**
+ * Creates a temporary TypeScript configuration for schema type generation.
+ *
+ * Generates a `tsconfig--build.json` file that extends the CLI package's tsconfig
+ * and configures TypeScript to:
+ * - Emit only declaration files (`.d.ts`)
+ * - Output to a temporary directory
+ * - Include only the schema-exports file
+ *
+ * This configuration is used by the TypeScript compiler to generate type definitions
+ * for the tool configuration schemas.
+ */
 async function createTempTsConfig(): Promise<void> {
   const tempTsConfig = {
     extends: `${ROOT_DIR}/packages/cli/tsconfig.json`,
@@ -238,6 +334,19 @@ async function createTempTsConfig(): Promise<void> {
   await Bun.write(BUILD_TSCONFIG_PATH, JSON.stringify(tempTsConfig, null, 2));
 }
 
+/**
+ * Creates temporary package.json files for schema type bundling.
+ *
+ * Generates two package.json files:
+ * 1. A temporary schemas package with dependencies needed for type generation
+ * 2. A temporary root package.json that sets up a workspace containing both
+ *    the temporary schemas package and the main workspace packages
+ *
+ * Also copies `.npmrc` and `bunfig.toml` configuration files to ensure
+ * consistent dependency resolution during the bundling process.
+ *
+ * @param dependencyVersions - Version information for required dependencies.
+ */
 async function createTempSchemasPackage(dependencyVersions: DependencyVersions): Promise<void> {
   const tempPackageJson = {
     name: 'temp-schemas',
@@ -267,6 +376,21 @@ async function createTempSchemasPackage(dependencyVersions: DependencyVersions):
   copyFileIfExists(BUNFIG_PATH, OUTPUT_BUNFIG_PATH);
 }
 
+/**
+ * Generates TypeScript declaration files for tool configuration schemas.
+ *
+ * This function orchestrates the schema type generation process:
+ * 1. Creates a temporary TypeScript configuration
+ * 2. Compiles schema-exports.ts to generate `.d.ts` files
+ * 3. Sets up a temporary workspace for type bundling
+ * 4. Installs dependencies in the output directory
+ * 5. Uses dts-bundle-generator to bundle all type definitions into a single `schemas.d.ts`
+ *
+ * The bundler ensures all module augmentations from installer plugins are included
+ * by using schema-exports as the entry point, which imports all installer modules.
+ *
+ * @param dependencyVersions - Version information for dependencies to include in package.json.
+ */
 async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise<void> {
   await createTempTsConfig();
   await $`bun tsgo --project ${BUILD_TSCONFIG_PATH}`.quiet();
@@ -286,6 +410,15 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
   console.log('✅ Successfully created schemas.d.ts with dts-bundle-generator');
 }
 
+/**
+ * Validates the generated `YamlConfig` type signature.
+ *
+ * Uses the TypeScript compiler API to extract the type signature of `YamlConfig`
+ * from the generated `schemas.d.ts` file and verifies that it contains expected
+ * properties like `generatedDir`. This ensures the schema bundling succeeded.
+ *
+ * @throws {BuildError} If the YamlConfig type is invalid or missing required properties.
+ */
 function checkYamlConfigTypeSignature(): void {
   const schemaTsconfig = {
     compilerOptions: {
@@ -314,6 +447,17 @@ function checkYamlConfigTypeSignature(): void {
   }
 }
 
+/**
+ * Collects build check scripts from all installer packages.
+ *
+ * Scans the `packages/` directory for packages starting with `installer-`
+ * and verifies that each has a `build-check/buildCheck.ts` file. These scripts
+ * are used to validate that the generated schemas are compatible with each
+ * installer's type expectations.
+ *
+ * @returns An array of installer build check script metadata.
+ * @throws {BuildError} If any installer package is missing its build check script.
+ */
 function getInstallerBuildCheckScripts(): InstallerBuildCheckScript[] {
   const directoryEntries: fs.Dirent[] = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
   const scripts: InstallerBuildCheckScript[] = [];
@@ -346,6 +490,15 @@ function getInstallerBuildCheckScripts(): InstallerBuildCheckScript[] {
   return scripts;
 }
 
+/**
+ * Copies installer build check scripts to the build check directory.
+ *
+ * Retrieves all installer build check scripts and copies them to the specified
+ * destination directory, renaming them with a `--buildCheck.ts` suffix.
+ * Removes `// @ts-nocheck` directive from the first line if present.
+ *
+ * @param destinationDir - The directory where build check scripts should be copied.
+ */
 function copyInstallerBuildCheckScripts(destinationDir: string): void {
   const scripts: InstallerBuildCheckScript[] = getInstallerBuildCheckScripts();
 
@@ -361,6 +514,21 @@ function copyInstallerBuildCheckScripts(destinationDir: string): void {
   }
 }
 
+/**
+ * Sets up a build check project for validating generated schemas.
+ *
+ * Creates a temporary TypeScript project in `.tmp/build-check/` that:
+ * 1. Copies all installer build check scripts
+ * 2. Creates a package.json that depends on the built package
+ * 3. Creates a tsconfig.json for type checking
+ * 4. Installs dependencies (including the built package from `.dist`)
+ * 5. Creates a symlink from node_modules to the `.dist` directory
+ *
+ * This allows the build check scripts to import from the built package
+ * and verify that all types are correctly exposed.
+ *
+ * @param dependencyVersions - Version information for dev dependencies.
+ */
 async function setupBuildCheckProject(dependencyVersions: DependencyVersions): Promise<void> {
   fs.mkdirSync(BUILD_CHECK_DIR, { recursive: true });
   copyInstallerBuildCheckScripts(BUILD_CHECK_DIR);
@@ -399,6 +567,14 @@ async function setupBuildCheckProject(dependencyVersions: DependencyVersions): P
   createBuildCheckSymlink();
 }
 
+/**
+ * Creates a symlink from the build check node_modules to the `.dist` directory.
+ *
+ * Creates the `@gitea` namespace directory in the build check's node_modules
+ * and symlinks `@gitea/dotfiles` to the `.dist` directory. This allows the
+ * build check scripts to import from `@gitea/dotfiles` as if it were an
+ * installed npm package.
+ */
 function createBuildCheckSymlink(): void {
   const namespacePath = path.join(BUILD_CHECK_NODE_MODULES_PATH, '@gitea');
   const symlinkPath = path.join(namespacePath, 'dotfiles');
@@ -408,6 +584,15 @@ function createBuildCheckSymlink(): void {
   fs.symlinkSync(OUTPUT_DIR, symlinkPath, 'dir');
 }
 
+/**
+ * Runs TypeScript type checking on the build check project.
+ *
+ * Executes `bunx tsgo --noEmit` in the build check directory to verify
+ * that all installer build check scripts can successfully import and use
+ * the types from the generated `schemas.d.ts` file.
+ *
+ * @throws {BuildError} If type checking fails.
+ */
 async function runBuildCheck(): Promise<void> {
   try {
     await $`cd ${BUILD_CHECK_DIR} && bunx tsgo --noEmit`;
@@ -416,6 +601,15 @@ async function runBuildCheck(): Promise<void> {
   }
 }
 
+/**
+ * Validates generated schemas by running build check scripts.
+ *
+ * Sets up a temporary build check project and runs TypeScript type checking
+ * to ensure that the generated `schemas.d.ts` file correctly exposes all
+ * installer plugin types and can be used by consumer code.
+ *
+ * @param dependencyVersions - Version information for setting up the build check project.
+ */
 async function validateSchemas(dependencyVersions: DependencyVersions): Promise<void> {
   console.log('🔍 Validating generated schemas...');
   await setupBuildCheckProject(dependencyVersions);
@@ -423,6 +617,16 @@ async function validateSchemas(dependencyVersions: DependencyVersions): Promise<
   console.log('✅ Schema validation passed');
 }
 
+/**
+ * Removes temporary files created during the build process.
+ *
+ * Deletes:
+ * - Temporary schemas build directory
+ * - Build tsconfig file
+ * - Copied configuration files (.npmrc, bunfig.toml)
+ * - Lock files (bun.lock)
+ * - Schema check tsconfig
+ */
 async function cleanupTempFiles(): Promise<void> {
   const filesToCleanup: string[] = [
     TEMP_SCHEMAS_BUILD_DIR,
@@ -438,6 +642,16 @@ async function cleanupTempFiles(): Promise<void> {
   }
 }
 
+/**
+ * Generates TypeScript declaration files for tool configuration schemas.
+ *
+ * Orchestrates the complete schema generation and validation process:
+ * 1. Builds schema type definitions using TypeScript compiler
+ * 2. Validates the generated YamlConfig type signature
+ *
+ * @param dependencyVersions - Version information for dependencies.
+ * @throws {BuildError} If schema generation or validation fails.
+ */
 async function generateSchemaTypes(dependencyVersions: DependencyVersions): Promise<void> {
   console.log('📝 Building @dotfiles/core config types...');
 
@@ -449,6 +663,18 @@ async function generateSchemaTypes(dependencyVersions: DependencyVersions): Prom
   }
 }
 
+/**
+ * Generates the package.json file for the distributable package.
+ *
+ * Creates a package.json in the `.dist` directory with:
+ * - Package name: @gitea/dotfiles
+ * - Version from the workspace root package.json
+ * - Binary entry point for the `dotfiles` command
+ * - ES module exports with type definitions
+ * - Runtime dependency on zod
+ *
+ * @param dependencyVersions - Version information for runtime dependencies.
+ */
 async function generatePackageJson(dependencyVersions: DependencyVersions): Promise<void> {
   const packageJson = {
     name: '@gitea/dotfiles',
@@ -473,6 +699,16 @@ async function generatePackageJson(dependencyVersions: DependencyVersions): Prom
   fs.writeFileSync(OUTPUT_PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2));
 }
 
+/**
+ * Tests the built CLI executable by running it with the `--version` flag.
+ *
+ * Executes `bun cli.js --version` to verify that:
+ * 1. The CLI executable is valid and can be run
+ * 2. The version flag works correctly
+ * 3. The build produced a functional application
+ *
+ * @throws {BuildError} If the CLI test fails.
+ */
 async function testBuiltCli(): Promise<void> {
   console.log('🧪 Testing built CLI...');
 
@@ -487,6 +723,14 @@ async function testBuiltCli(): Promise<void> {
   }
 }
 
+/**
+ * Prints a summary of the build output to the console.
+ *
+ * Displays:
+ * - Success message
+ * - Output directory path
+ * - List of all generated files in the `.dist` directory
+ */
 async function printBuildSummary(): Promise<void> {
   console.log('✅ Build completed successfully!');
   console.log(`📁 Output directory: ${OUTPUT_DIR}`);
@@ -506,6 +750,22 @@ async function printBuildSummary(): Promise<void> {
   }
 }
 
+/**
+ * Main build entry point.
+ *
+ * Orchestrates the complete build process:
+ * 1. Cleans previous build artifacts
+ * 2. Retrieves dependency versions
+ * 3. Builds the CLI executable
+ * 4. Generates schema type definitions
+ * 5. Creates package.json
+ * 6. Validates schemas with build check scripts
+ * 7. Tests the built CLI
+ * 8. Prints build summary
+ * 9. Restores workspace dependencies
+ *
+ * @throws {BuildError} If any step of the build process fails.
+ */
 async function main(): Promise<void> {
   try {
     await cleanPreviousBuild();

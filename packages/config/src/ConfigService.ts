@@ -15,14 +15,7 @@ import {
  */
 export class ConfigService implements IConfigService {
   /**
-   * Loads configuration for a single tool by delegating to the core loading function.
-   *
-   * @param logger - Logger instance for logging operations.
-   * @param toolName - The name of the tool to load configuration for.
-   * @param toolConfigsDir - Directory containing tool configuration files.
-   * @param fs - File system interface for reading configuration files.
-   * @param yamlConfig - Parsed YAML configuration object.
-   * @returns The tool configuration if found, undefined otherwise.
+   * @inheritdoc IConfigService.loadSingleToolConfig
    */
   async loadSingleToolConfig(
     logger: TsLogger,
@@ -35,13 +28,7 @@ export class ConfigService implements IConfigService {
   }
 
   /**
-   * Loads all tool configurations from a directory by delegating to the core loading function.
-   *
-   * @param logger - Logger instance for logging operations.
-   * @param toolConfigsDir - Directory containing tool configuration files.
-   * @param fs - File system interface for reading configuration files.
-   * @param yamlConfig - Parsed YAML configuration object.
-   * @returns A record mapping tool names to their configurations.
+   * @inheritdoc IConfigService.loadToolConfigs
    */
   async loadToolConfigs(
     logger: TsLogger,

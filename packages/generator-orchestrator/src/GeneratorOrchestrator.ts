@@ -7,6 +7,14 @@ import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult
 import type { IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 
+/**
+ * Orchestrates the generation of all dotfiles artifacts.
+ *
+ * This class coordinates the generation of shims, shell initialization scripts,
+ * and symlinks by delegating to the respective generator services. It ensures
+ * that all artifacts are created in the correct order and that file operations
+ * are properly tracked for cleanup and auditing purposes.
+ */
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly logger: TsLogger;
   private readonly shimGenerator: IShimGenerator;
@@ -15,6 +23,16 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly fs: IFileSystem;
   private readonly systemInfo: SystemInfo;
 
+  /**
+   * Creates a new GeneratorOrchestrator instance.
+   *
+   * @param parentLogger - The parent logger for creating sub-loggers.
+   * @param shimGenerator - The shim generator service.
+   * @param shellInitGenerator - The shell initialization generator service.
+   * @param symlinkGenerator - The symlink generator service.
+   * @param fs - The file system interface for file operations.
+   * @param systemInfo - System information for platform-specific operations.
+   */
   constructor(
     parentLogger: TsLogger,
     shimGenerator: IShimGenerator,
@@ -33,6 +51,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.systemInfo = systemInfo;
   }
 
+  /**
+   * @inheritdoc IGeneratorOrchestrator.generateAll
+   */
   async generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
     const fileSystemName = this.fs.constructor.name;

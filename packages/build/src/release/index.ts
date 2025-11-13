@@ -31,6 +31,11 @@ cdToRepoRoot();
 const rootDir = process.cwd();
 const distDir = path.join(rootDir, '.dist');
 
+/**
+ * Runs the main build script to create the distributable package.
+ *
+ * Executes `bun run build` with the current version set in environment variables.
+ */
 async function runBuildScript(): Promise<void> {
   console.log('🏗️  Running build script...');
   await executeCommand(['bun', 'run', 'build'], {
@@ -38,6 +43,12 @@ async function runBuildScript(): Promise<void> {
   });
 }
 
+/**
+ * Displays the contents of the `.dist` directory.
+ *
+ * Lists all files in the build output directory to allow verification
+ * of the build artifacts before publishing.
+ */
 async function showDistContents(): Promise<void> {
   console.log('📋 Build output files:');
   if (!fs.existsSync(distDir)) {
@@ -55,6 +66,19 @@ async function showDistContents(): Promise<void> {
   }
 }
 
+/**
+ * Main release preparation entry point.
+ *
+ * Orchestrates the release build process:
+ * 1. Runs the main build script
+ * 2. Displays the contents of the `.dist` directory
+ *
+ * The output in `.dist` is ready for npm publishing via `bun run publish`.
+ *
+ * Typical workflow: `bun run version [type]` → `bun run release` → `bun run publish`
+ *
+ * @throws {Error} If the build process fails.
+ */
 export async function release(): Promise<void> {
   console.log('🚀 Starting release process...');
 

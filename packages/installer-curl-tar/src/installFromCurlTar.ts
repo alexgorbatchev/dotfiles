@@ -24,7 +24,28 @@ import type { CurlTarToolConfig } from './schemas';
 import type { CurlTarInstallMetadata, CurlTarInstallResult } from './types';
 
 /**
- * Install a tool from a tarball using curl
+ * Installs a tool from a tarball accessible via URL.
+ *
+ * This function orchestrates the complete installation process:
+ * 1. Downloads the tarball from the specified URL
+ * 2. Executes afterDownload hook if configured
+ * 3. Extracts the archive to the installation directory
+ * 4. Executes afterExtract hook if configured
+ * 5. Sets up binary paths and creates necessary symlinks
+ *
+ * The function supports lifecycle hooks that allow custom processing at different
+ * stages, such as modifying extracted files or setting permissions.
+ *
+ * @param toolName - The name of the tool to install.
+ * @param toolConfig - The configuration for the curl-tar tool.
+ * @param context - The base installation context.
+ * @param options - Optional installation options.
+ * @param fs - The file system interface for file operations.
+ * @param downloader - The downloader for fetching the tarball.
+ * @param archiveExtractor - The archive extractor for unpacking.
+ * @param hookExecutor - The hook executor for running lifecycle hooks.
+ * @param parentLogger - The parent logger for creating sub-loggers.
+ * @returns A promise that resolves to the installation result.
  */
 export async function installFromCurlTar(
   toolName: string,

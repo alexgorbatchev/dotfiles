@@ -4,6 +4,9 @@ import type { Architecture, Platform } from '@dotfiles/core';
 import { $ } from 'bun';
 import { architectureToString, platformToString } from './platformUtils';
 
+/**
+ * Options for configuring the TestHarness instance.
+ */
 export interface TestHarnessOptions {
   /**
    * The directory where the test files are located (typically import.meta.dir)
@@ -31,6 +34,9 @@ export interface TestHarnessOptions {
   architecture: Architecture;
 }
 
+/**
+ * Result of executing a CLI command through the test harness.
+ */
 export interface CommandResult {
   exitCode: number;
   stdout: string;
@@ -38,7 +44,13 @@ export interface CommandResult {
 }
 
 /**
- * Testing harness for e2e tests that execute dotfiles commands
+ * Testing harness for end-to-end tests that execute dotfiles CLI commands.
+ *
+ * This class provides utilities for executing the dotfiles CLI binary in a controlled
+ * test environment, verifying generated files and directories, and asserting expected
+ * behaviors. It manages test directories, handles cleanup, and provides methods for
+ * running different CLI commands (generate, install, update, detect-conflicts) with
+ * platform and architecture parameters.
  */
 export class TestHarness {
   readonly testDir: string;
@@ -52,6 +64,11 @@ export class TestHarness {
   private readonly dotfilesBin: string;
   private readonly cleanBeforeRun: boolean;
 
+  /**
+   * Creates a new TestHarness instance.
+   *
+   * @param options - Configuration options for the test harness.
+   */
   constructor(options: TestHarnessOptions) {
     this.testDir = options.testDir;
     this.configPath = options.configPath ?? 'config.yaml';
@@ -66,14 +83,23 @@ export class TestHarness {
   }
 
   /**
-   * Clean the .generated directory
+   * Cleans the .generated directory by removing all generated files and subdirectories.
+   *
+   * @returns A Promise that resolves when the cleanup is complete.
    */
   async clean(): Promise<void> {
     await $`rm -rf ${this.generatedDir}`.cwd(this.testDir).quiet().nothrow();
   }
 
   /**
-   * Execute a dotfiles command
+   * Executes a dotfiles CLI command with the configured platform and architecture flags.
+   *
+   * If cleanBeforeRun is enabled, this method will clean the .generated directory before
+   * executing the command. All commands are executed with NODE_ENV=production and include
+   * --platform and --arch flags automatically.
+   *
+   * @param args - Array of command-line arguments to pass to the dotfiles CLI.
+   * @returns A Promise that resolves to the command result including exit code, stdout, and stderr.
    */
   async runCommand(args: string[]): Promise<CommandResult> {
     if (this.cleanBeforeRun) {
@@ -98,35 +124,52 @@ export class TestHarness {
   }
 
   /**
-   * Execute dotfiles generate command
+   * Executes the dotfiles generate command.
+   *
+   * @param additionalArgs - Optional additional command-line arguments.
+   * @returns A Promise that resolves to the command result.
    */
   async generate(additionalArgs: string[] = []): Promise<CommandResult> {
     return this.runCommand(['generate', '--config', this.configPath, ...additionalArgs]);
   }
 
   /**
-   * Execute dotfiles install command
+   * Executes the dotfiles install command for one or more tools.
+   *
+   * @param tools - Array of tool names to install. If empty, installs all configured tools.
+   * @param additionalArgs - Optional additional command-line arguments.
+   * @returns A Promise that resolves to the command result.
    */
   async install(tools: string[] = [], additionalArgs: string[] = []): Promise<CommandResult> {
     return this.runCommand(['install', '--config', this.configPath, ...tools, ...additionalArgs]);
   }
 
   /**
-   * Execute dotfiles update command
+   * Executes the dotfiles update command for a specific tool.
+   *
+   * @param toolName - The name of the tool to update.
+   * @param additionalArgs - Optional additional command-line arguments.
+   * @returns A Promise that resolves to the command result.
    */
   async update(toolName: string, additionalArgs: string[] = []): Promise<CommandResult> {
     return this.runCommand(['update', '--config', this.configPath, toolName, ...additionalArgs]);
   }
 
   /**
-   * Execute dotfiles detect-conflicts command
+   * Executes the dotfiles detect-conflicts command to identify conflicts with existing files.
+   *
+   * @param additionalArgs - Optional additional command-line arguments.
+   * @returns A Promise that resolves to the command result.
    */
   async detectConflicts(additionalArgs: string[] = []): Promise<CommandResult> {
     return this.runCommand(['detect-conflicts', '--config', this.configPath, ...additionalArgs]);
   }
 
   /**
-   * Check if a file exists
+   * Checks if a file exists at the specified path.
+   *
+   * @param filePath - The path to the file to check.
+   * @returns A Promise that resolves to true if the file exists, false otherwise.
    */
   async fileExists(filePath: string): Promise<boolean> {
     const result = await $`test -f ${filePath}`.quiet().nothrow();
@@ -134,7 +177,10 @@ export class TestHarness {
   }
 
   /**
-   * Check if a directory exists
+   * Checks if a directory exists at the specified path.
+   *
+   * @param dirPath - The path to the directory to check.
+   * @returns A Promise that resolves to true if the directory exists, false otherwise.
    */
   async dirExists(dirPath: string): Promise<boolean> {
     const result = await $`test -d ${dirPath}`.quiet().nothrow();
@@ -142,7 +188,10 @@ export class TestHarness {
   }
 
   /**
-   * Check if a file is executable
+   * Checks if a file has executable permissions.
+   *
+   * @param filePath - The path to the file to check.
+   * @returns A Promise that resolves to true if the file is executable, false otherwise.
    */
   async isExecutable(filePath: string): Promise<boolean> {
     const result = await $`test -x ${filePath}`.quiet().nothrow();
@@ -150,7 +199,10 @@ export class TestHarness {
   }
 
   /**
-   * Read file contents
+   * Reads and returns the contents of a file.
+   *
+   * @param filePath - The path to the file to read.
+   * @returns A Promise that resolves to the file contents as a string.
    */
   async readFile(filePath: string): Promise<string> {
     const result = await $`cat ${filePath}`.quiet();
@@ -158,14 +210,20 @@ export class TestHarness {
   }
 
   /**
-   * Get path to a shim in user-bin
+   * Gets the full path to a shim executable in the user-bin directory.
+   *
+   * @param shimName - The name of the shim.
+   * @returns The full path to the shim file.
    */
   getShimPath(shimName: string): string {
     return path.join(this.userBinDir, shimName);
   }
 
   /**
-   * Get path to a shell script
+   * Gets the full path to a shell initialization script.
+   *
+   * @param shellType - The type of shell (zsh, bash, or powershell).
+   * @returns The full path to the shell script file.
    */
   getShellScriptPath(shellType: 'zsh' | 'bash' | 'powershell'): string {
     const extension = shellType === 'powershell' ? 'ps1' : shellType;
@@ -173,7 +231,14 @@ export class TestHarness {
   }
 
   /**
-   * Verify that a shim exists and is executable, optionally execute it
+   * Verifies that a shim exists, is executable, and optionally executes it to verify behavior.
+   *
+   * @param shimName - The name of the shim to verify.
+   * @param options - Optional configuration for executing and verifying the shim.
+   * @param options.args - Command-line arguments to pass when executing the shim.
+   * @param options.expectedExitCode - Expected exit code from the shim execution.
+   * @param options.stdoutMatcher - Function to validate the stdout output.
+   * @returns A Promise that resolves to the trimmed stdout from executing the shim.
    */
   async verifyShim(
     shimName: string,
@@ -213,7 +278,10 @@ export class TestHarness {
   }
 
   /**
-   * Verify that a shell script exists
+   * Verifies that a shell initialization script exists.
+   *
+   * @param shellType - The type of shell (zsh, bash, or powershell).
+   * @returns A Promise that resolves when verification is complete.
    */
   async verifyShellScript(shellType: 'zsh' | 'bash' | 'powershell'): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
@@ -221,14 +289,23 @@ export class TestHarness {
   }
 
   /**
-   * Verify that a directory exists
+   * Verifies that a directory exists.
+   *
+   * @param dirPath - The path to the directory to verify.
+   * @returns A Promise that resolves when verification is complete.
    */
   async verifyDir(dirPath: string): Promise<void> {
     expect(await this.dirExists(dirPath)).toBe(true);
   }
 
   /**
-   * Verify that an environment variable is set in a shell script for a tool
+   * Verifies that an environment variable is set correctly in a shell script for a tool.
+   *
+   * @param toolName - The name of the tool that sets the environment variable.
+   * @param varName - The name of the environment variable to verify.
+   * @param expectedValue - The expected value, or a function to validate the actual value.
+   * @param shellType - The type of shell script to check (default: 'zsh').
+   * @returns A Promise that resolves when verification is complete.
    */
   async verifyEnvironmentVariable(
     toolName: string,
@@ -259,7 +336,13 @@ export class TestHarness {
   }
 
   /**
-   * Verify that an alias is set in a shell script for a tool
+   * Verifies that an alias is set correctly in a shell script for a tool.
+   *
+   * @param toolName - The name of the tool that defines the alias.
+   * @param aliasName - The name of the alias to verify.
+   * @param expectedCommand - The expected alias command, or a function to validate the actual command.
+   * @param shellType - The type of shell script to check (default: 'zsh').
+   * @returns A Promise that resolves when verification is complete.
    */
   async verifyAlias(
     toolName: string,
@@ -291,7 +374,15 @@ export class TestHarness {
   }
 
   /**
-   * Verify that an always script block exists for a tool
+   * Verifies that an always script block exists for a tool in the shell initialization file.
+   *
+   * Always scripts are executed every time the shell is initialized. This method checks that
+   * the script function is defined with the expected content.
+   *
+   * @param toolName - The name of the tool that defines the always script.
+   * @param contentMatcher - Expected content string or a function to validate the script content.
+   * @param shellType - The type of shell script to check (default: 'zsh').
+   * @returns A Promise that resolves when verification is complete.
    */
   async verifyAlwaysScript(
     toolName: string,
@@ -321,7 +412,16 @@ export class TestHarness {
   }
 
   /**
-   * Verify that a once script file exists for a tool
+   * Verifies that a once script file exists for a tool.
+   *
+   * Once scripts are executed only once (tracked via a marker file). This method verifies
+   * that the once script file exists in the .once directory with the expected content.
+   *
+   * @param toolName - The name of the tool that defines the once script.
+   * @param contentMatcher - Expected content string or a function to validate the script content.
+   * @param shellType - The type of shell script to check (default: 'zsh').
+   * @param scriptIndex - Index of the script if a tool has multiple once scripts (default: 0).
+   * @returns A Promise that resolves when verification is complete.
    */
   async verifyOnceScript(
     toolName: string,

@@ -18,6 +18,23 @@ interface ToolInstallationRow {
   original_tag: string | null;
 }
 
+/**
+ * SQLite-based implementation of the tool installation registry.
+ *
+ * This class manages a persistent database of installed tools, tracking metadata such as
+ * versions, installation paths, binary locations, and download sources. Each tool can have
+ * only one installation record at a time, enforced by a unique constraint on the tool name.
+ *
+ * The registry serves several critical purposes:
+ * - **Version tracking**: Records the actual installed version for update detection
+ * - **Path management**: Stores installation paths and binary locations for cleanup
+ * - **Source tracking**: Maintains download URLs and asset names for reproducibility
+ * - **Installation history**: Records timestamps for tracking when tools were installed
+ *
+ * When a tool is reinstalled or upgraded, the previous record is automatically replaced
+ * using SQLite's INSERT OR REPLACE functionality, ensuring the registry always reflects
+ * the current state of installed tools.
+ */
 export class ToolInstallationRegistry implements IToolInstallationRegistry {
   private db: Database;
   private logger: TsLogger;

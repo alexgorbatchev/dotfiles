@@ -31,6 +31,13 @@ cdToRepoRoot();
 const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, 'package.json');
 
+/**
+ * Parses a semantic version string into its components.
+ *
+ * @param version - The version string to parse (e.g., '1.2.3').
+ * @returns An object containing major, minor, and patch version numbers.
+ * @throws {Error} If the version format is invalid.
+ */
 function parseVersion(version: string): { major: number; minor: number; patch: number } {
   const parts = version.split('.');
   if (parts.length !== 3) {
@@ -48,6 +55,13 @@ function parseVersion(version: string): { major: number; minor: number; patch: n
   return { major, minor, patch };
 }
 
+/**
+ * Bumps a semantic version according to the specified type.
+ *
+ * @param currentVersion - The current version string (e.g., '1.2.3').
+ * @param bumpType - The type of version bump to perform.
+ * @returns The new version string after bumping.
+ */
 function bumpVersion(currentVersion: string, bumpType: 'major' | 'minor' | 'patch'): string {
   const { major, minor, patch } = parseVersion(currentVersion);
 
@@ -61,6 +75,14 @@ function bumpVersion(currentVersion: string, bumpType: 'major' | 'minor' | 'patc
   }
 }
 
+/**
+ * Updates the version field in package.json.
+ *
+ * Reads the package.json file, updates the version field, and writes it back
+ * with proper formatting (2-space indentation and trailing newline).
+ *
+ * @param newVersion - The new version string to set.
+ */
 async function updatePackageJsonVersion(newVersion: string): Promise<void> {
   const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf-8');
   const packageJson = JSON.parse(packageJsonContent);
@@ -69,6 +91,11 @@ async function updatePackageJsonVersion(newVersion: string): Promise<void> {
   console.log(`✓ Updated package.json to version ${newVersion}`);
 }
 
+/**
+ * Stages package.json and creates a git commit with the version message.
+ *
+ * @param version - The version string to use in the commit message.
+ */
 async function stageAndCommit(version: string): Promise<void> {
   console.log('📝 Staging package.json...');
   await executeCommand(['git', 'add', 'package.json'], { cwd: rootDir });
@@ -79,6 +106,21 @@ async function stageAndCommit(version: string): Promise<void> {
   console.log(`✅ Committed version ${version}`);
 }
 
+/**
+ * Main version management entry point.
+ *
+ * Processes command-line arguments, validates the git repository,
+ * bumps or sets the version, updates package.json, and creates a git commit.
+ *
+ * Supported arguments:
+ * - No arguments or 'patch': Bumps patch version
+ * - 'minor': Bumps minor version
+ * - 'major': Bumps major version
+ * - Specific version (e.g., '2.5.3'): Sets exact version
+ * - '--help' or '-h': Shows usage information
+ *
+ * @throws {Error} If git validation fails or version update process encounters an error.
+ */
 async function version(): Promise<void> {
   const args = process.argv.slice(2);
 

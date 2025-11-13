@@ -21,6 +21,23 @@ const BrewInfoSchema = z.object({
 
 type BrewInfo = z.infer<typeof BrewInfoSchema>;
 
+/**
+ * Installs a tool using Homebrew.
+ *
+ * This function handles the complete installation process for Homebrew tools:
+ * 1. Taps custom repositories if specified
+ * 2. Installs the formula or cask using `brew install`
+ * 3. Retrieves version information via `brew info`
+ * 4. Determines binary paths using the Homebrew prefix
+ *
+ * @param toolName - The name of the tool to install.
+ * @param toolConfig - The configuration for the Homebrew tool.
+ * @param _context - The base installation context (unused for Homebrew).
+ * @param options - Optional installation options (supports --force flag).
+ * @param parentLogger - The parent logger for creating sub-loggers.
+ * @param shellExecutor - The shell executor function (defaults to Bun's $ operator).
+ * @returns A promise that resolves to the installation result.
+ */
 export async function installFromBrew(
   toolName: string,
   toolConfig: BrewToolConfig,
@@ -71,6 +88,14 @@ export async function installFromBrew(
   return withInstallErrorHandling('brew', toolName, logger, operation);
 }
 
+/**
+ * Retrieves the installed version of a Homebrew formula.
+ *
+ * @param formula - The name of the Homebrew formula.
+ * @param logger - The logger instance for logging operations.
+ * @param $ - The shell executor function.
+ * @returns A promise that resolves to the version string, or null if not found.
+ */
 async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string | null> {
   try {
     logger.debug(messages.fetchingVersion(formula));
@@ -94,6 +119,15 @@ async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecuto
   }
 }
 
+/**
+ * Gets the Homebrew prefix (installation directory) for a formula.
+ *
+ * @param formula - The name of the Homebrew formula.
+ * @param logger - The logger instance for logging operations.
+ * @param $ - The shell executor function.
+ * @returns A promise that resolves to the prefix path.
+ * @throws {Error} If the prefix cannot be determined.
+ */
 async function getBrewPrefix(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string> {
   try {
     const result = await $`brew --prefix ${formula}`.quiet();
@@ -111,6 +145,21 @@ async function getBrewPrefix(formula: string, logger: TsLogger, $: ShellExecutor
   }
 }
 
+/**
+ * Executes the Homebrew install command for a formula or cask.
+ *
+ * This function handles tapping custom repositories if needed, then runs the
+ * appropriate `brew install` command with optional --force flag.
+ *
+ * @param formula - The name of the formula or cask to install.
+ * @param isCask - Whether this is a cask installation.
+ * @param tap - Optional tap repository or array of repositories to add.
+ * @param force - Whether to force reinstallation.
+ * @param logger - The logger instance for logging operations.
+ * @param $ - The shell executor function.
+ * @returns A promise that resolves when installation is complete.
+ * @throws {Error} If the installation fails.
+ */
 async function executeBrewInstall(
   formula: string,
   isCask: boolean,

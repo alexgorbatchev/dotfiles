@@ -32,6 +32,11 @@ cdToRepoRoot();
 const rootDir = process.cwd();
 const distDir = path.join(rootDir, '.dist');
 
+/**
+ * Verifies that the `.dist` directory exists with a valid package.json.
+ *
+ * @throws {Error} If the .dist directory or package.json is missing.
+ */
 async function checkDistExists(): Promise<void> {
   if (!fs.existsSync(distDir)) {
     throw new Error('Build output not found. Please run "bun run release" first to create the build.');
@@ -45,12 +50,32 @@ async function checkDistExists(): Promise<void> {
   console.log('✓ Build output found in .dist directory');
 }
 
+/**
+ * Publishes the package to the npm registry.
+ *
+ * Runs `npm publish` from the `.dist` directory to publish the built package.
+ * Requires prior authentication with npm (via `npm login`).
+ */
 async function publishToNpm(): Promise<void> {
   console.log('📤 Publishing to npm registry...');
   await executeCommand(['npm', 'publish'], { cwd: distDir });
   console.log('✅ Package published successfully!');
 }
 
+/**
+ * Main publishing entry point.
+ *
+ * Orchestrates the npm publishing process:
+ * 1. Verifies that the build output exists in `.dist`
+ * 2. Publishes the package to npm
+ *
+ * Prerequisites:
+ * - Must run `bun run release` first to create the build
+ * - Must be authenticated with npm (`npm login`)
+ * - Must have publish permissions for @gitea/dotfiles
+ *
+ * @throws {Error} If build output is missing or npm publish fails.
+ */
 export async function publish(): Promise<void> {
   console.log('🚀 Starting publish process...');
 

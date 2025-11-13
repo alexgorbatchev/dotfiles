@@ -19,6 +19,17 @@ type BrewPluginMetadata = {
   tap?: string | string[];
 };
 
+/**
+ * Installer plugin for tools installed via Homebrew.
+ *
+ * This plugin handles installation of tools through the Homebrew package manager
+ * on macOS and Linux. It supports both formulae (command-line tools) and casks
+ * (macOS applications). The plugin can handle custom taps, version checking via
+ * `brew info`, and respects the --force flag for reinstallations.
+ *
+ * Note: Tools installed via Homebrew are externally managed, meaning Homebrew
+ * handles the actual file placement and versioning.
+ */
 export class BrewInstallerPlugin
   implements InstallerPlugin<'brew', BrewInstallParams, BrewToolConfig, BrewPluginMetadata>
 {
@@ -29,8 +40,22 @@ export class BrewInstallerPlugin
   readonly toolConfigSchema = brewToolConfigSchema;
   readonly externallyManaged = true;
 
+  /**
+   * Creates a new BrewInstallerPlugin instance.
+   *
+   * @param logger - The logger instance for logging operations.
+   */
   constructor(private readonly logger: TsLogger) {}
 
+  /**
+   * Installs a tool using Homebrew.
+   *
+   * @param toolName - The name of the tool to install.
+   * @param toolConfig - The configuration for the Homebrew tool.
+   * @param context - The base installation context.
+   * @param options - Optional installation options.
+   * @returns A promise that resolves to the installation result.
+   */
   async install(
     toolName: string,
     toolConfig: BrewToolConfig,
@@ -56,10 +81,24 @@ export class BrewInstallerPlugin
     return installResult;
   }
 
+  /**
+   * Indicates whether this plugin supports version update checking.
+   *
+   * @returns True, as Homebrew provides version information via `brew info`.
+   */
   supportsUpdateCheck(): boolean {
     return true;
   }
 
+  /**
+   * Checks for available updates for a Homebrew tool.
+   *
+   * @param toolName - The name of the tool to check.
+   * @param toolConfig - The configuration for the Homebrew tool.
+   * @param _context - The base installation context (unused).
+   * @param logger - The logger instance.
+   * @returns A promise that resolves to the update check result.
+   */
   async checkUpdate(
     toolName: string,
     toolConfig: BrewToolConfig,
@@ -77,10 +116,20 @@ export class BrewInstallerPlugin
     return result;
   }
 
+  /**
+   * Indicates whether this plugin supports automatic updates.
+   *
+   * @returns False, as automatic updates are not yet implemented.
+   */
   supportsUpdate(): boolean {
     return false; // Not implemented yet
   }
 
+  /**
+   * Indicates whether this plugin supports README fetching.
+   *
+   * @returns False, as Homebrew formulas don't have direct README URLs.
+   */
   supportsReadme(): boolean {
     return false; // Brew formulas don't have direct README URLs
   }

@@ -13,20 +13,24 @@ type InstallFunction = Builder.InstallFunction;
 type ToolConfigBuilderInterface = Builder.ToolConfigBuilder;
 
 /**
- * Create an InstallFunction bound to a specific logger and tool name.
+ * Creates an InstallFunction bound to a specific logger and tool name.
  *
  * This function creates the runtime implementation of the InstallFunction interface,
  * which uses function overloads to provide type-safe installer method selection.
+ * The returned function creates ToolConfigBuilder instances pre-configured with
+ * the installation method and parameters.
  *
- * @param logger - Logger instance for the builder
- * @param toolName - Name of the tool being configured
- * @returns InstallFunction that creates configured ToolConfigBuilder instances
+ * @param logger - Logger instance for the builder.
+ * @param toolName - Name of the tool being configured.
+ * @returns InstallFunction that creates configured ToolConfigBuilder instances.
  *
  * @example
+ * ```typescript
  * const install = createInstallFunction(logger, 'ripgrep');
  * const config = install('github-release', { repo: 'BurntSushi/ripgrep' })
  *   .bin('rg')
  *   .build();
+ * ```
  */
 export function createInstallFunction(logger: TsLogger, toolName: string): InstallFunction {
   // Track builder instance - created on first call

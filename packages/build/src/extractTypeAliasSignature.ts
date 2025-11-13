@@ -3,6 +3,32 @@ import ts from 'typescript';
 
 const LINE_BREAK = '\n';
 
+/**
+ * Extracts and formats the complete type signature of a TypeScript type alias.
+ *
+ * This function uses the TypeScript Compiler API to:
+ * 1. Load and parse a TypeScript configuration file
+ * 2. Create a TypeScript program with the specified source files
+ * 3. Locate the specified type alias declaration
+ * 4. Resolve the type to its fully expanded form
+ * 5. Print the type signature as formatted TypeScript code
+ *
+ * The function performs comprehensive validation including:
+ * - TypeScript diagnostics checks
+ * - Source file existence verification
+ * - Type alias presence validation
+ * - Type resolution to ensure it's not 'any'
+ *
+ * @param tsconfigPath - Path to the TypeScript configuration file (tsconfig.json).
+ * @param sourceFilePath - Path to the TypeScript source file containing the type alias.
+ * @param aliasName - Name of the type alias to extract.
+ * @returns The fully formatted type alias signature as a string.
+ * @throws {Error} If tsconfig cannot be read or parsed.
+ * @throws {Error} If there are TypeScript compilation diagnostics.
+ * @throws {Error} If the source file is not found in the program.
+ * @throws {Error} If the type alias is not found in the source file.
+ * @throws {Error} If the type alias cannot be resolved or resolves to 'any'.
+ */
 export function extractTypeAliasSignature(tsconfigPath: string, sourceFilePath: string, aliasName: string): string {
   const absoluteTsconfigPath = path.resolve(tsconfigPath);
   const absoluteSourceFilePath = path.resolve(sourceFilePath);

@@ -2,6 +2,17 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { TestHarness } from '../TestHarness';
 
+/**
+ * Defines test scenarios for the install command.
+ *
+ * These tests verify that the install command correctly:
+ * - Downloads and installs tool binaries
+ * - Creates symlinks to installed binaries
+ * - Makes binaries executable and accessible through shims
+ * - Completes before shims are used
+ *
+ * @param harness - The TestHarness instance to use for running tests.
+ */
 export function installScenarios(harness: TestHarness): void {
   const binariesDir = path.join(harness.generatedDir, 'binaries', 'github-release-tool');
   const symlinkPath = path.join(binariesDir, 'github-release-tool');

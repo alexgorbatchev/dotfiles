@@ -3,6 +3,17 @@ import path from 'node:path';
 import { $ } from 'bun';
 import type { TestHarness } from '../TestHarness';
 
+/**
+ * Defines test scenarios for conflict detection and handling.
+ *
+ * These tests verify that the system correctly:
+ * - Detects conflicts with existing non-generator files
+ * - Prevents overwriting conflicting files during generate
+ * - Reports detailed conflict information to the user
+ * - Handles the --overwrite flag (when implemented)
+ *
+ * @param harness - The TestHarness instance to use for running tests.
+ */
 export function conflictScenarios(harness: TestHarness): void {
   describe('conflict detection and handling', () => {
     const conflictingShimPath = path.join(harness.userBinDir, 'github-release-tool');

@@ -8,12 +8,28 @@ import { expandToolConfigPath } from '@dotfiles/utils';
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
 import { messages } from './log-messages';
 
+/**
+ * Service that generates symbolic links for dotfiles.
+ *
+ * This class handles creating symlinks from source files (in the dotfiles repository)
+ * to target locations (typically in the user's home directory). It supports overwriting
+ * existing files, creating backups, and tracking which symlinks belong to which tools.
+ * The generator expands paths using configuration variables and system information.
+ */
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
   private readonly yamlConfig: YamlConfig;
   private readonly systemInfo: SystemInfo;
   private readonly logger: TsLogger;
 
+  /**
+   * Creates a new SymlinkGenerator instance.
+   *
+   * @param parentLogger - The parent logger for creating sub-loggers.
+   * @param fileSystem - The file system interface for file operations.
+   * @param yamlConfig - The YAML configuration containing paths and settings.
+   * @param systemInfo - System information for path expansion.
+   */
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem, yamlConfig: YamlConfig, systemInfo: SystemInfo) {
     this.fs = fileSystem;
     this.yamlConfig = yamlConfig;
@@ -21,6 +37,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
   }
 
+  /**
+   * @inheritdoc ISymlinkGenerator.generate
+   */
   async generate(
     toolConfigs: Record<string, ToolConfig>,
     options: GenerateSymlinksOptions = {}
@@ -48,6 +67,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     return results;
   }
 
+  /**
+   * Determines whether a tool should be processed for symlink generation.
+   *
+   * @param toolConfig - The tool configuration to check.
+   * @param toolName - The name of the tool.
+   * @param logger - The logger instance.
+   * @returns True if the tool has symlink configurations, false otherwise.
+   */
   private shouldProcessTool(
     toolConfig: ToolConfig | undefined,
     toolName: string,
@@ -65,6 +92,16 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     return true;
   }
 
+  /**
+   * Processes a single symlink configuration.
+   *
+   * @param toolConfig - The tool configuration.
+   * @param symlinkConfig - The symlink source and target configuration.
+   * @param toolFs - The file system interface (may be tool-specific tracked FS).
+   * @param options - Options for symlink generation.
+   * @param logger - The logger instance.
+   * @returns The result of the symlink operation.
+   */
   private async processSymlink(
     toolConfig: ToolConfig,
     symlinkConfig: { source: string; target: string },
@@ -169,6 +206,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     return await this.handleOverwrite(targetAbsPath, toolFs, options.backup, methodLogger);
   }
 
+  /**
+   * Checks if a symlink already points to the correct source.
+   *
+   * @param sourceAbsPath - The absolute path to the source file.
+   * @param targetAbsPath - The absolute path to the symlink.
+   * @param toolFs - The file system interface.
+   * @returns An object indicating whether the symlink is correct.
+   */
   private async checkCorrectSymlink(
     sourceAbsPath: string,
     targetAbsPath: string,
@@ -188,6 +233,15 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     return { isCorrect: false };
   }
 
+  /**
+   * Handles overwriting an existing file or symlink at the target path.
+   *
+   * @param targetAbsPath - The absolute path to the target.
+   * @param toolFs - The file system interface.
+   * @param backup - Whether to backup the existing file.
+   * @param logger - The logger instance.
+   * @returns An object indicating whether to skip symlink creation and the status.
+   */
   private async handleOverwrite(
     targetAbsPath: string,
     toolFs: IFileSystem,
@@ -216,6 +270,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     return { shouldSkip: false, status };
   }
 
+  /**
+   * Creates a backup of the target file before overwriting.
+   *
+   * @param targetAbsPath - The absolute path to the target file.
+   * @param toolFs - The file system interface.
+   * @param logger - The logger instance.
+   * @returns An object indicating success or failure with error message.
+   */
   private async createBackup(
     targetAbsPath: string,
     toolFs: IFileSystem,
@@ -236,6 +298,14 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     }
   }
 
+  /**
+   * Deletes the target file or directory before creating symlink.
+   *
+   * @param targetAbsPath - The absolute path to the target.
+   * @param toolFs - The file system interface.
+   * @param logger - The logger instance.
+   * @returns An object indicating success or failure with error message.
+   */
   private async deleteTarget(
     targetAbsPath: string,
     toolFs: IFileSystem,
@@ -259,6 +329,16 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     }
   }
 
+  /**
+   * Creates a symbolic link from source to target.
+   *
+   * @param sourceAbsPath - The absolute path to the source file.
+   * @param targetAbsPath - The absolute path where the symlink will be created.
+   * @param toolFs - The file system interface.
+   * @param status - The status to report in the result.
+   * @param logger - The logger instance.
+   * @returns The result of the symlink operation.
+   */
   private async createSymlink(
     sourceAbsPath: string,
     targetAbsPath: string,

@@ -15,6 +15,15 @@ type ManualPluginMetadata = {
   method: 'manual';
 };
 
+/**
+ * Installer plugin for manually installed tools.
+ *
+ * This plugin handles tools that are installed manually by the user rather than
+ * automatically downloaded and installed. It verifies that specified binaries exist
+ * at the configured paths and creates the necessary symlinks in the installation
+ * directory. Since manual tools are managed by the user, this plugin does not
+ * support version checking or automatic updates.
+ */
 export class ManualInstallerPlugin
   implements InstallerPlugin<'manual', ManualInstallParams, ManualToolConfig, ManualPluginMetadata>
 {
@@ -24,11 +33,26 @@ export class ManualInstallerPlugin
   readonly paramsSchema = manualInstallParamsSchema;
   readonly toolConfigSchema = manualToolConfigSchema;
 
+  /**
+   * Creates a new ManualInstallerPlugin instance.
+   *
+   * @param logger - The logger instance for logging operations.
+   * @param fs - The file system interface for file operations.
+   */
   constructor(
     private readonly logger: TsLogger,
     private readonly fs: IFileSystem
   ) {}
 
+  /**
+   * Installs a manually managed tool by verifying binaries and creating symlinks.
+   *
+   * @param toolName - The name of the tool to install.
+   * @param toolConfig - The configuration for the manual tool.
+   * @param context - The base installation context.
+   * @param options - Optional installation options.
+   * @returns A promise that resolves to the installation result.
+   */
   async install(
     toolName: string,
     toolConfig: ManualToolConfig,
@@ -53,14 +77,29 @@ export class ManualInstallerPlugin
     return installResult;
   }
 
+  /**
+   * Indicates whether this plugin supports version update checking.
+   *
+   * @returns False, as manual installations don't support automatic version checking.
+   */
   supportsUpdateCheck(): boolean {
     return false; // manual installation doesn't support version checking
   }
 
+  /**
+   * Indicates whether this plugin supports automatic updates.
+   *
+   * @returns False, as manual installations must be updated by the user.
+   */
   supportsUpdate(): boolean {
     return false;
   }
 
+  /**
+   * Indicates whether this plugin supports README fetching.
+   *
+   * @returns False, as manual installations don't have associated READMEs to fetch.
+   */
   supportsReadme(): boolean {
     return false;
   }

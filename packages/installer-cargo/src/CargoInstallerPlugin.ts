@@ -29,6 +29,31 @@ type CargoPluginMetadata = {
   downloadUrl?: string;
 };
 
+/**
+ * Installer plugin for Rust tools distributed via Cargo/crates.io.
+ *
+ * This plugin handles tools that are published as Rust crates and can be installed
+ * using Cargo, Rust's package manager. It supports multiple installation methods:
+ *
+ * **Installation Sources:**
+ * - **crates.io**: Official Rust package registry (default)
+ * - **GitHub repository**: Install from a Git repository URL
+ * - **Local path**: Install from a local directory with a Cargo.toml
+ *
+ * **Binary Acquisition:**
+ * - Compiles from source using `cargo install`
+ * - Downloads pre-built binaries from GitHub releases (when available)
+ * - Extracts binaries from Cargo artifacts
+ *
+ * The plugin uses a Cargo client to check versions, download crates, and compile
+ * binaries. It supports lifecycle hooks and can detect whether a tool needs updating
+ * by comparing installed versions with the latest available on crates.io or GitHub.
+ *
+ * **Version Handling:**
+ * - Supports semantic versioning (e.g., "^1.0.0", "~2.1.0")
+ * - Can install specific versions or "latest"
+ * - Tracks installed versions for update detection
+ */
 export class CargoInstallerPlugin
   implements InstallerPlugin<'cargo', CargoInstallParams, CargoToolConfig, CargoPluginMetadata>
 {
@@ -38,6 +63,17 @@ export class CargoInstallerPlugin
   readonly paramsSchema = cargoInstallParamsSchema;
   readonly toolConfigSchema = cargoToolConfigSchema;
 
+  /**
+   * Creates a new CargoInstallerPlugin instance.
+   *
+   * @param logger - The logger instance for logging operations.
+   * @param fs - The file system interface for file operations.
+   * @param downloader - The downloader for fetching crates and binaries.
+   * @param cargoClient - The Cargo client for interacting with crates.io and cargo commands.
+   * @param archiveExtractor - The archive extractor for unpacking downloaded files.
+   * @param hookExecutor - The hook executor for running lifecycle hooks.
+   * @param githubHost - The GitHub hostname for API requests (e.g., 'api.github.com').
+   */
   constructor(
     private readonly logger: TsLogger,
     private readonly fs: IFileSystem,

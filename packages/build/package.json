@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "devDependencies": {
+    "ts-morph": "^24.0.0",
     "typescript": "catalog:typescript",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",

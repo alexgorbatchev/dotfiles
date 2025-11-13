@@ -24,20 +24,43 @@
 
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { getRepoRoot } from '../path-utils';
 
+/**
+ * Metadata from a package.json file.
+ */
 interface PackageJson {
+  /** The package name (e.g., '@dotfiles/core'). */
   name: string;
+  /** Production dependencies. */
   dependencies?: Record<string, string>;
+  /** Development dependencies. */
   devDependencies?: Record<string, string>;
+  /** Peer dependencies. */
   peerDependencies?: Record<string, string>;
 }
 
+/**
+ * Analyzed information about a workspace package.
+ */
 interface PackageInfo {
+  /** The package name. */
   name: string;
+  /** Formatted source code size (e.g., '21.93 KB'). */
   formattedSize: string;
+  /** List of other workspace packages this package depends on. */
   internalDependencies: string[];
 }
 
+/**
+ * Calculates the total size of a directory in bytes.
+ *
+ * Recursively traverses the directory, summing file sizes.
+ * Excludes `__tests__` directories from the calculation.
+ *
+ * @param dirPath - The path to the directory.
+ * @returns The total size in bytes.
+ */
 async function getDirectorySize(dirPath: string): Promise<number> {
   let totalSize = 0;
   try {
@@ -59,6 +82,15 @@ async function getDirectorySize(dirPath: string): Promise<number> {
   return totalSize;
 }
 
+/**
+ * Loads all package.json files from workspace packages.
+ *
+ * Scans the `packages/` directory for `package.json` files and creates
+ * maps of package names to their parsed contents and directory paths.
+ *
+ * @param projectRoot - The absolute path to the repository root.
+ * @returns Maps of package names to their metadata and paths.
+ */
 async function loadPackages(projectRoot: string) {
   const glob = new Bun.Glob('packages/*/package.json');
   const packageJsonPaths = await Array.fromAsync(glob.scan({ cwd: projectRoot, absolute: true }));
@@ -76,6 +108,16 @@ async function loadPackages(projectRoot: string) {
   return { packages, packagePaths };
 }
 
+/**
+ * Analyzes dependencies between workspace packages.
+ *
+ * For each package, identifies which other workspace packages it depends on
+ * (internal dependencies) and calculates the source code size.
+ *
+ * @param packages - Map of package names to their package.json data.
+ * @param packagePaths - Map of package names to their directory paths.
+ * @returns Array of package information including dependencies and sizes.
+ */
 async function analyzeDependencies(
   packages: Map<string, PackageJson>,
   packagePaths: Map<string, string>
@@ -111,6 +153,14 @@ async function analyzeDependencies(
   return packageInfos;
 }
 
+/**
+ * Prints a formatted dependency tree to the console.
+ *
+ * Displays each package with its size and internal dependencies using
+ * tree-like formatting with box-drawing characters.
+ *
+ * @param packageInfos - Array of package information to display.
+ */
 function printDependencyTree(packageInfos: PackageInfo[]) {
   console.log('Workspace Package Dependency Tree:');
 
@@ -129,8 +179,14 @@ function printDependencyTree(packageInfos: PackageInfo[]) {
   }
 }
 
+/**
+ * Main entry point for the dependency analyzer.
+ *
+ * Loads all workspace packages, analyzes their internal dependencies,
+ * sorts them by dependency count (least to most), and prints a dependency tree.
+ */
 async function main() {
-  const projectRoot = path.resolve(import.meta.dir, '../../../..');
+  const projectRoot = getRepoRoot();
   const { packages, packagePaths } = await loadPackages(projectRoot);
   const packageInfos = await analyzeDependencies(packages, packagePaths);
 

@@ -1,6 +1,19 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import type { TestHarness } from '../TestHarness';
 
+/**
+ * Defines test scenarios for the generate command.
+ *
+ * These tests verify that the generate command correctly creates:
+ * - Shim executables for tools
+ * - Shell initialization scripts for zsh, bash, and powershell
+ * - Environment variables in shell scripts
+ * - Aliases in shell scripts
+ * - Always and once script blocks
+ *
+ * @param harness - The TestHarness instance to use for running tests.
+ * @param additionalTests - Optional function containing additional test cases.
+ */
 export function generateScenarios(harness: TestHarness, additionalTests?: () => void): void {
   describe('generate command', () => {
     beforeAll(async () => {

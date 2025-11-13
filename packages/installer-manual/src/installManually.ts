@@ -10,7 +10,19 @@ import type { ManualToolConfig } from './schemas';
 import type { ManualInstallMetadata, ManualInstallResult } from './types';
 
 /**
- * Install a tool manually
+ * Installs a manually managed tool.
+ *
+ * This function verifies that the specified binary exists at the configured path,
+ * copies it to the installation directory, and sets the appropriate permissions.
+ * If no binary path is specified, it creates a placeholder installation record.
+ *
+ * @param toolName - The name of the tool to install.
+ * @param toolConfig - The configuration for the manual tool.
+ * @param context - The base installation context.
+ * @param _options - Optional installation options (currently unused).
+ * @param fs - The file system interface for file operations.
+ * @param parentLogger - The parent logger for creating sub-loggers.
+ * @returns A promise that resolves to the installation result.
  */
 export async function installManually(
   toolName: string,
@@ -64,6 +76,21 @@ export async function installManually(
   return withInstallErrorHandling('manual', toolName, logger, operation);
 }
 
+/**
+ * Copies manually installed binaries to the installation directory.
+ *
+ * This function handles copying the binary file from its source location to the
+ * installation directory and setting executable permissions. For tools with multiple
+ * binaries, only the primary binary (matching the tool name) is currently supported.
+ *
+ * @param toolConfig - The configuration for the manual tool.
+ * @param toolName - The name of the tool being installed.
+ * @param context - The base installation context.
+ * @param toolFs - The file system interface scoped to this tool.
+ * @param binaryPath - The source path of the binary to install.
+ * @param parentLogger - The parent logger for creating sub-loggers.
+ * @returns A promise that resolves when binary installation is complete.
+ */
 async function installBinariesManually(
   toolConfig: ManualToolConfig,
   toolName: string,

@@ -5,16 +5,33 @@ import type { IVersionChecker } from './IVersionChecker.ts';
 import { VersionComparisonStatus } from './IVersionChecker.ts';
 import { messages } from './log-messages';
 
+/**
+ * Service for checking and comparing tool versions from GitHub releases.
+ *
+ * This class implements version checking functionality that fetches the latest release
+ * information from GitHub repositories and compares semantic versions to determine if
+ * updates are available. It handles version string normalization (removing 'v' prefix)
+ * and validates versions using semver.
+ */
 export class VersionChecker implements IVersionChecker {
   private readonly githubClient: IGitHubApiClient;
   private readonly logger: TsLogger;
 
+  /**
+   * Creates a new VersionChecker instance.
+   *
+   * @param parentLogger - The parent logger for creating sub-loggers.
+   * @param githubClient - The GitHub API client for fetching release information.
+   */
   constructor(parentLogger: TsLogger, githubClient: IGitHubApiClient) {
     this.logger = parentLogger.getSubLogger({ name: 'VersionChecker' });
     this.logger.debug(messages.initializing());
     this.githubClient = githubClient;
   }
 
+  /**
+   * @inheritdoc IVersionChecker.getLatestToolVersion
+   */
   async getLatestToolVersion(owner: string, repo: string): Promise<string | null> {
     const logger = this.logger.getSubLogger({ name: 'getLatestToolVersion' });
     logger.debug(messages.fetchingLatestRelease(owner, repo));
@@ -34,6 +51,9 @@ export class VersionChecker implements IVersionChecker {
     }
   }
 
+  /**
+   * @inheritdoc IVersionChecker.checkVersionStatus
+   */
   async checkVersionStatus(currentVersion: string, latestVersion: string): Promise<VersionComparisonStatus> {
     const logger = this.logger.getSubLogger({ name: 'checkVersionStatus' });
     logger.debug(messages.comparingVersions(currentVersion, latestVersion));

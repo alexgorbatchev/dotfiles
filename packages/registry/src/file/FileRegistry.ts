@@ -19,7 +19,22 @@ interface DatabaseRow {
 
 /**
  * SQLite-based implementation of the file registry.
- * Uses append-only design for crash safety.
+ *
+ * This class provides a persistent, append-only registry for tracking all filesystem
+ * operations performed by the dotfiles system. It records operations like file creation,
+ * deletion, symlinking, and permission changes, allowing for accurate tracking of which
+ * files belong to which tools.
+ *
+ * The append-only design ensures crash safety - operations are never modified once written,
+ * only new operations are added. This allows the system to rebuild the current state of
+ * any file by replaying all operations in chronological order.
+ *
+ * Key features:
+ * - Operation tracking: Records all file operations with metadata
+ * - State computation: Reconstructs current file state from operation history
+ * - Tool isolation: Tracks which files belong to which tools
+ * - Compaction: Removes obsolete operations to keep database size manageable
+ * - Validation: Checks registry integrity and repairs issues
  */
 export class FileRegistry implements IFileRegistry {
   private readonly db: Database;
