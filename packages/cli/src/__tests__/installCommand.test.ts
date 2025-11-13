@@ -38,6 +38,7 @@ describe('installCommand', () => {
           success: true,
           binaryPaths: ['/fake/bin/toolA'],
           version: '1.0.0',
+          installationMethod: 'brew',
           metadata: {
             method: 'brew',
             formula: 'test',
@@ -91,7 +92,7 @@ describe('installCommand', () => {
       verbose: false,
       shimMode: false,
     });
-    testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'manual')]);
+    testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'brew')]);
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
@@ -181,7 +182,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [messages.toolInstallFailed('manual', 'toolA', 'Installation failed')]
+      [messages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
     );
   });
 

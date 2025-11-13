@@ -1,4 +1,4 @@
-import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
 import type { ToolInstallationDetails } from '@dotfiles/registry';
 
 export interface CurlTarInstallMetadata extends Partial<ToolInstallationDetails> {
@@ -6,10 +6,10 @@ export interface CurlTarInstallMetadata extends Partial<ToolInstallationDetails>
   tarballUrl: string;
 }
 
-export interface CurlTarInstallSuccess extends OperationSuccess {
+export interface CurlTarInstallSuccess extends InstallResultSuccess<CurlTarInstallMetadata> {
   binaryPaths: string[];
   version?: string;
   metadata: CurlTarInstallMetadata;
 }
 
-export type CurlTarInstallResult = CurlTarInstallSuccess | OperationFailure;
+export type CurlTarInstallResult = CurlTarInstallSuccess | InstallResultFailure;

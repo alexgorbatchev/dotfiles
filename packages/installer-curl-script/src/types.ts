@@ -1,4 +1,4 @@
-import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
 import type { ToolInstallationDetails } from '@dotfiles/registry';
 
 export interface CurlScriptInstallMetadata extends Partial<ToolInstallationDetails> {
@@ -7,9 +7,10 @@ export interface CurlScriptInstallMetadata extends Partial<ToolInstallationDetai
   shell: string;
 }
 
-export interface CurlScriptInstallSuccess extends OperationSuccess {
+export interface CurlScriptInstallSuccess extends InstallResultSuccess<CurlScriptInstallMetadata> {
   binaryPaths: string[];
+  version?: string;
   metadata: CurlScriptInstallMetadata;
 }
 
-export type CurlScriptInstallResult = CurlScriptInstallSuccess | OperationFailure;
+export type CurlScriptInstallResult = CurlScriptInstallSuccess | InstallResultFailure;

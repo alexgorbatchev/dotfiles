@@ -308,7 +308,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       cargoClient,
       archiveExtractor,
       hookExecutor,
-      yamlConfig.cargo.githubRaw.host
+      yamlConfig.cargo.githubRelease.host
     )
   );
   pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, fs, downloader, hookExecutor));

@@ -151,6 +151,12 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
   if (platformConfig.updateCheck !== undefined) {
     finalConfig.updateCheck = platformConfig.updateCheck;
   }
+  if (platformConfig.installationMethod !== undefined) {
+    finalConfig.installationMethod = platformConfig.installationMethod;
+  }
+  if (platformConfig.installParams !== undefined) {
+    finalConfig.installParams = platformConfig.installParams;
+  }
 }
 
 function createBaseResolvedConfig(toolConfig: ToolConfig): ToolConfig {

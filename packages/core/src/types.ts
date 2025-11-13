@@ -71,12 +71,15 @@ export type InstallResultSuccess<TMetadata = unknown> = OperationSuccess & {
   version?: string;
   binaryPaths?: string[];
   metadata?: TMetadata;
+  installationMethod?: string;
 };
 
 /**
  * Result from plugin installation - failure case
  */
-export type InstallResultFailure = OperationFailure;
+export type InstallResultFailure = OperationFailure & {
+  installationMethod?: string;
+};
 
 /**
  * Result from plugin installation

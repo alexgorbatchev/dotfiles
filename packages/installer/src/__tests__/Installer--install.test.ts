@@ -71,6 +71,7 @@ describe('Installer - install (orchestrator)', () => {
     expect(result).toEqual({
       success: false,
       error: 'Test error',
+      installationMethod: 'github-release',
     });
 
     installSpy.mockRestore();

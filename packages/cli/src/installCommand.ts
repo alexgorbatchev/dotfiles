@@ -1,6 +1,7 @@
 import type { IConfigService, YamlConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
+import type { InstallResult } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
@@ -31,9 +32,8 @@ async function loadToolConfigSafely(
 
 function handleInstallationResult(
   logger: TsLogger,
-  result: { success: true; version?: string } | { success: false; error: string },
+  result: InstallResult,
   toolName: string,
-  installationMethod: string,
   shimMode: boolean
 ): number | null {
   if (result.success) {
@@ -42,7 +42,8 @@ function handleInstallationResult(
       return 0;
     } else {
       // Normal mode: log success message and continue (don't exit)
-      logger.info(messages.toolInstalled(toolName, result.version ?? 'unknown', installationMethod));
+      const actualMethod = result.installationMethod ?? 'unknown';
+      logger.info(messages.toolInstalled(toolName, result.version ?? 'unknown', actualMethod));
       return null; // Don't exit on success in normal mode
     }
   } else {
@@ -51,7 +52,8 @@ function handleInstallationResult(
       process.stderr.write(`Failed to install '${toolName}': ${result.error ?? 'Unknown error'}\n`);
     } else {
       // Normal mode: use logger only
-      logger.error(messages.toolInstallFailed(installationMethod, toolName, result.error ?? 'Unknown error'));
+      const failedMethod = result.installationMethod ?? 'unknown';
+      logger.error(messages.toolInstallFailed(failedMethod, toolName, result.error ?? 'Unknown error'));
     }
     return 1;
   }
@@ -118,7 +120,6 @@ export function registerInstallCommand(
             logger,
             result,
             toolName,
-            toolConfig.installationMethod,
             combinedOptions.shimMode
           );
         }

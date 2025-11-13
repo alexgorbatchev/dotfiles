@@ -1,4 +1,4 @@
-import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
 import type { ToolInstallationDetails } from '@dotfiles/registry';
 
 export interface BrewInstallMetadata extends Partial<ToolInstallationDetails> {
@@ -8,10 +8,10 @@ export interface BrewInstallMetadata extends Partial<ToolInstallationDetails> {
   tap?: string | string[];
 }
 
-export interface BrewInstallSuccess extends OperationSuccess {
+export interface BrewInstallSuccess extends InstallResultSuccess<BrewInstallMetadata> {
   binaryPaths: string[];
   version?: string;
   metadata: BrewInstallMetadata;
 }
 
-export type BrewInstallResult = BrewInstallSuccess | OperationFailure;
+export type BrewInstallResult = BrewInstallSuccess | InstallResultFailure;

@@ -376,4 +376,54 @@ describe('resolvePlatformConfig', () => {
       ]);
     });
   });
+
+  describe('when platform specifies different installation method', () => {
+    it('should override base installation method with platform-specific one', () => {
+      const configWithPlatformInstallMethod: ToolConfig = {
+        name: 'eza',
+        version: 'latest',
+        installationMethod: 'manual',
+        installParams: {},
+        binaries: ['eza'],
+        platformConfigs: [
+          {
+            platforms: Platform.MacOS,
+            config: {
+              installationMethod: 'cargo',
+              installParams: {
+                crateName: 'eza',
+                binarySource: 'cargo-quickinstall',
+                githubRepo: 'eza-community/eza',
+              },
+              binaries: ['eza'],
+            },
+          },
+          {
+            platforms: Platform.Linux,
+            config: {
+              installationMethod: 'github-release',
+              installParams: {
+                repo: 'eza-community/eza',
+              },
+              binaries: ['eza'],
+            },
+          },
+        ],
+      };
+
+      const macosResult = resolvePlatformConfig(configWithPlatformInstallMethod, macosSystemInfo);
+      expect(macosResult.installationMethod).toBe('cargo');
+      expect(macosResult.installParams).toEqual({
+        crateName: 'eza',
+        binarySource: 'cargo-quickinstall',
+        githubRepo: 'eza-community/eza',
+      });
+
+      const linuxResult = resolvePlatformConfig(configWithPlatformInstallMethod, linuxSystemInfo);
+      expect(linuxResult.installationMethod).toBe('github-release');
+      expect(linuxResult.installParams).toEqual({
+        repo: 'eza-community/eza',
+      });
+    });
+  });
 });

@@ -430,6 +430,7 @@ export class Installer implements IInstaller {
         const skipResult: InstallResult = {
           success: false,
           error: `Tool ${toolName} is already installed at the target version. Use --force to reinstall.`,
+          installationMethod: resolvedToolConfig.installationMethod,
         };
         return skipResult;
       }
@@ -474,6 +475,9 @@ export class Installer implements IInstaller {
         };
       }
 
+      // Add the resolved installation method to the result
+      result.installationMethod = resolvedToolConfig.installationMethod;
+
       // If installation failed, clean up the empty installation directory
       if (!result.success && (await toolFs.exists(installDir))) {
         logger.debug(messages.lifecycle.cleaningFailedInstallDir(installDir));
@@ -503,6 +507,7 @@ export class Installer implements IInstaller {
       const errorResult: InstallResult = {
         success: false,
         error: error instanceof Error ? error.message : String(error),
+        installationMethod: resolvedToolConfig.installationMethod,
       };
       return errorResult;
     }

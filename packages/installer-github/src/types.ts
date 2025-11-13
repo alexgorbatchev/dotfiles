@@ -1,4 +1,4 @@
-import type { OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
 import type { ToolInstallationDetails } from '@dotfiles/registry';
 
 /**
@@ -14,7 +14,7 @@ export interface GitHubReleaseInstallMetadata extends Partial<ToolInstallationDe
 /**
  * Success result for GitHub Release installations
  */
-export interface GitHubReleaseInstallSuccess extends OperationSuccess {
+export interface GitHubReleaseInstallSuccess extends InstallResultSuccess<GitHubReleaseInstallMetadata> {
   binaryPaths: string[];
   version: string;
   originalTag: string;
@@ -24,4 +24,4 @@ export interface GitHubReleaseInstallSuccess extends OperationSuccess {
 /**
  * Result type for GitHub Release installations
  */
-export type GitHubReleaseInstallResult = GitHubReleaseInstallSuccess | OperationFailure;
+export type GitHubReleaseInstallResult = GitHubReleaseInstallSuccess | InstallResultFailure;
