@@ -11,7 +11,7 @@ export type ManualSchemaMatchesParams = ExpectTrue<ManualInstallParams extends M
 
 defineTool((install) =>
   install('manual', {}).zsh({
-    scripts: [once`echo "once"`, always`echo "always"`],
+    shellInit: [once`echo "once"`, always`echo "always"`],
   })
 );
 

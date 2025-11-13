@@ -13,10 +13,9 @@ export type BrewDisallowsUnknown = ExpectTrue<'unknown' extends keyof BrewParams
 defineTool((install) =>
   install('brew', {
     formula: 'ripgrep',
+  }).zsh({
+    shellInit: [once`echo "once"`, always`echo "always"`],
   })
-    .zsh({
-      scripts: [once`echo "once"`, always`echo "always"`],
-    })
 );
 
 defineTool((install) =>

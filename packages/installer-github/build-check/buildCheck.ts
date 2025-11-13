@@ -20,10 +20,9 @@ export type GithubReleaseRepoIsRequired = ExpectTrue<
 defineTool((install) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
+  }).zsh({
+    shellInit: [once`echo "once"`, always`echo "always"`],
   })
-    .zsh({
-      scripts: [once`echo "once"`, always`echo "always"`],
-    })
 );
 
 defineTool((install) =>

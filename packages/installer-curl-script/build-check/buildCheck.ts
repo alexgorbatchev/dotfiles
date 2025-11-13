@@ -14,10 +14,9 @@ defineTool((install) =>
   install('curl-script', {
     url: 'https://example.com/install.sh',
     shell: 'bash',
+  }).zsh({
+    shellInit: [once`echo "once"`, always`echo "always"`],
   })
-    .zsh({
-      scripts: [once`echo "once"`, always`echo "always"`],
-    })
 );
 
 defineTool((install) =>

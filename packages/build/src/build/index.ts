@@ -95,6 +95,35 @@ function copyFileIfExists(sourcePath: string, destinationPath: string): void {
   }
 }
 
+function linkBunStoreDependencies(nodeModulesPath: string): void {
+  if (!fs.existsSync(nodeModulesPath)) {
+    return;
+  }
+
+  const bunNodeModulesPath: string = path.join(nodeModulesPath, '.bun', 'node_modules');
+
+  if (!fs.existsSync(bunNodeModulesPath)) {
+    return;
+  }
+
+  const directoryEntries: fs.Dirent[] = fs.readdirSync(bunNodeModulesPath, { withFileTypes: true });
+
+  for (const entry of directoryEntries) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) {
+      continue;
+    }
+
+    const sourcePath: string = path.join(bunNodeModulesPath, entry.name);
+    const destinationPath: string = path.join(nodeModulesPath, entry.name);
+
+    if (fs.existsSync(destinationPath)) {
+      continue;
+    }
+
+    fs.symlinkSync(sourcePath, destinationPath, 'dir');
+  }
+}
+
 async function restoreWorkspaceDependencies(): Promise<void> {
   ensureBunCacheDirectory();
   console.log('🔄 Restoring workspace dependencies...');
@@ -109,6 +138,7 @@ async function installDependenciesInOutputDir(): Promise<void> {
   ensureBunCacheDirectory();
   try {
     await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
+    linkBunStoreDependencies(path.join(OUTPUT_DIR, 'node_modules'));
   } catch (error) {
     throw new BuildError('Temporary dependency installation failed', error);
   }
@@ -364,6 +394,7 @@ async function setupBuildCheckProject(dependencyVersions: DependencyVersions): P
   copyFileIfExists(NPMRC_PATH, path.join(BUILD_CHECK_DIR, '.npmrc'));
 
   await $`cd ${BUILD_CHECK_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
+  linkBunStoreDependencies(BUILD_CHECK_NODE_MODULES_PATH);
 
   createBuildCheckSymlink();
 }

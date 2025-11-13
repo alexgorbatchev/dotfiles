@@ -11,10 +11,9 @@ export type CargoSchemaMatchesParams = ExpectTrue<CargoInstallParams extends Car
 defineTool((install) =>
   install('cargo', {
     crateName: 'ripgrep',
+  }).zsh({
+    shellInit: [once`echo "once"`, always`echo "always"`],
   })
-    .zsh({
-      scripts: [once`echo "once"`, always`echo "always"`],
-    })
 );
 
 defineTool((install) =>
