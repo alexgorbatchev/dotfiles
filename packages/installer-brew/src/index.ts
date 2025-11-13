@@ -6,13 +6,15 @@ export * from './types';
 
 // Module augmentation for brew plugin
 import type { RegisterPluginResult } from '@dotfiles/core';
+import type { BrewInstallParams, BrewToolConfig } from './schemas';
+import type { BrewInstallResult } from './types';
 
 declare module '@dotfiles/core' {
   interface InstallParamsRegistry {
-    brew: import('./schemas').BrewInstallParams;
+    brew: BrewInstallParams;
   }
   interface ToolConfigRegistry {
-    brew: import('./schemas').BrewToolConfig;
+    brew: BrewToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'brew', import('./types').BrewInstallResult> {}
+  interface PluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
 }

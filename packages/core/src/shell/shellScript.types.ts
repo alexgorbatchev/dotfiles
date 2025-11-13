@@ -33,6 +33,9 @@ export type ShellScript = OnceScript | AlwaysScript;
 /**
  * A tagged template function that marks a shell script to be run only once
  * after a tool installation or update.
+ * 
+ * Needs `bierner.comment-tagged-templates` VSCode extension to highlight
+ * shell scripts correctly.
  *
  * @param strings - The template string array.
  * @param values - The values to interpolate into the string.
@@ -40,10 +43,10 @@ export type ShellScript = OnceScript | AlwaysScript;
  *
  * @example
  * ```typescript
- * c.zsh(once`
+ * once /* zsh *\/`
  *   # This command generates completions and runs only once.
  *   tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
- * `);
+ * `
  * ```
  * @public
  */
@@ -59,17 +62,20 @@ export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceS
  * A tagged template function that marks a shell script to be run on every
  * shell startup.
  *
+ * Needs `bierner.comment-tagged-templates` VSCode extension to highlight
+ * shell scripts correctly.
+ * 
  * @param strings - The template string array.
  * @param values - The values to interpolate into the string.
  * @returns An {@link AlwaysScript} branded string.
  *
  * @example
  * ```typescript
- * c.zsh(always`
+ * always /* zsh *\/`
  *   # This command initializes the tool on every shell startup.
  *   export TOOL_CONFIG_DIR="$HOME/.config/tool"
  *   eval "$(tool init zsh)"
- * `);
+ * `
  * ```
  * @public
  */

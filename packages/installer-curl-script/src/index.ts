@@ -6,14 +6,16 @@ export * from './types';
 
 // Module augmentation for curl-script plugin
 import type { RegisterPluginResult } from '@dotfiles/core';
+import type { CurlScriptInstallParams, CurlScriptToolConfig } from './schemas';
+import type { CurlScriptInstallResult } from './types';
 
 declare module '@dotfiles/core' {
   interface InstallParamsRegistry {
-    'curl-script': import('./schemas').CurlScriptInstallParams;
+    'curl-script': CurlScriptInstallParams;
   }
   interface ToolConfigRegistry {
-    'curl-script': import('./schemas').CurlScriptToolConfig;
+    'curl-script': CurlScriptToolConfig;
   }
   interface PluginResultRegistry
-    extends RegisterPluginResult<'curl-script', import('./types').CurlScriptInstallResult> {}
+    extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
 }

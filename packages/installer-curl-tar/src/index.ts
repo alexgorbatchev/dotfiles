@@ -6,13 +6,15 @@ export * from './types';
 
 // Module augmentation for curl-tar plugin
 import type { RegisterPluginResult } from '@dotfiles/core';
+import type { CurlTarInstallParams, CurlTarToolConfig } from './schemas';
+import type { CurlTarInstallResult } from './types';
 
 declare module '@dotfiles/core' {
   interface InstallParamsRegistry {
-    'curl-tar': import('./schemas').CurlTarInstallParams;
+    'curl-tar': CurlTarInstallParams;
   }
   interface ToolConfigRegistry {
-    'curl-tar': import('./schemas').CurlTarToolConfig;
+    'curl-tar': CurlTarToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'curl-tar', import('./types').CurlTarInstallResult> {}
+  interface PluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
 }

@@ -7,14 +7,16 @@ export * from './types';
 
 // Module augmentation for github-release plugin
 import type { RegisterPluginResult } from '@dotfiles/core';
+import type { GithubReleaseInstallParams, GithubReleaseToolConfig } from './schemas';
+import type { GitHubReleaseInstallResult } from './types';
 
 declare module '@dotfiles/core' {
   interface InstallParamsRegistry {
-    'github-release': import('./schemas').GithubReleaseInstallParams;
+    'github-release': GithubReleaseInstallParams;
   }
   interface ToolConfigRegistry {
-    'github-release': import('./schemas').GithubReleaseToolConfig;
+    'github-release': GithubReleaseToolConfig;
   }
   interface PluginResultRegistry
-    extends RegisterPluginResult<'github-release', import('./types').GitHubReleaseInstallResult> {}
+    extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
 }

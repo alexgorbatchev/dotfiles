@@ -5,13 +5,15 @@ export * from './types';
 
 // Module augmentation for manual plugin
 import type { RegisterPluginResult } from '@dotfiles/core';
+import type { ManualInstallParams, ManualToolConfig } from './schemas';
+import type { ManualInstallResult } from './types';
 
 declare module '@dotfiles/core' {
   interface InstallParamsRegistry {
-    manual: import('./schemas').ManualInstallParams;
+    manual: ManualInstallParams;
   }
   interface ToolConfigRegistry {
-    manual: import('./schemas').ManualToolConfig;
+    manual: ManualToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'manual', import('./types').ManualInstallResult> {}
+  interface PluginResultRegistry extends RegisterPluginResult<'manual', ManualInstallResult> {}
 }

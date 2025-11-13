@@ -7,13 +7,15 @@ export * from './types';
 
 // Module augmentation for cargo plugin
 import type { RegisterPluginResult } from '@dotfiles/core';
+import type { CargoInstallParams, CargoToolConfig } from './schemas';
+import type { CargoInstallResult } from './types';
 
 declare module '@dotfiles/core' {
   interface InstallParamsRegistry {
-    cargo: import('./schemas').CargoInstallParams;
+    cargo: CargoInstallParams;
   }
   interface ToolConfigRegistry {
-    cargo: import('./schemas').CargoToolConfig;
+    cargo: CargoToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'cargo', import('./types').CargoInstallResult> {}
+  interface PluginResultRegistry extends RegisterPluginResult<'cargo', CargoInstallResult> {}
 }
