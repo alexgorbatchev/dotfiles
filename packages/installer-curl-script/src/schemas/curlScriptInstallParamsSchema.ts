@@ -26,9 +26,4 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
  * Example: `curl -fsSL <url> | sh`.
  * This is analogous to Zinit's `dl` ice combined with `atclone` for script execution.
  */
-type CurlScriptSchemaParams = z.infer<typeof curlScriptInstallParamsSchema>;
-
-export interface CurlScriptInstallParams extends BaseInstallParams {
-  url: CurlScriptSchemaParams['url'];
-  shell: CurlScriptSchemaParams['shell'];
-}
+export type CurlScriptInstallParams = BaseInstallParams & z.infer<typeof curlScriptInstallParamsSchema>;

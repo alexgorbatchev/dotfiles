@@ -26,10 +26,4 @@ export const brewInstallParamsSchema = baseInstallParamsSchema.extend({
  * This method is typically used on macOS and Linux (via Linuxbrew).
  * It involves running `brew install` commands.
  */
-type BrewInstallSchemaParams = z.infer<typeof brewInstallParamsSchema>;
-
-export interface BrewInstallParams extends BaseInstallParams {
-  formula?: BrewInstallSchemaParams['formula'];
-  cask?: BrewInstallSchemaParams['cask'];
-  tap?: BrewInstallSchemaParams['tap'];
-}
+export type BrewInstallParams = BaseInstallParams & z.infer<typeof brewInstallParamsSchema>;

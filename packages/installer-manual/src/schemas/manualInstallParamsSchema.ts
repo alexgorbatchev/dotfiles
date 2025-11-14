@@ -22,8 +22,4 @@ export const manualInstallParamsSchema = baseInstallParamsSchema.extend({
  * (e.g., custom scripts, pre-built binaries, or other resources included with the dotfiles).
  * Hooks can be used to provide custom validation or setup steps.
  */
-type ManualInstallSchemaParams = z.infer<typeof manualInstallParamsSchema>;
-
-export interface ManualInstallParams extends BaseInstallParams {
-  binaryPath?: ManualInstallSchemaParams['binaryPath'];
-}
+export type ManualInstallParams = BaseInstallParams & z.infer<typeof manualInstallParamsSchema>;

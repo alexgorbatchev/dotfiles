@@ -14,18 +14,7 @@ export const cargoToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
 /**
  * Installation parameters for Cargo-based tools using pre-compiled binaries
  */
-type CargoInstallSchemaParams = z.infer<typeof cargoInstallParamsSchema>;
-
-export interface CargoInstallParams extends BaseInstallParams {
-  crateName: CargoInstallSchemaParams['crateName'];
-  binarySource?: CargoInstallSchemaParams['binarySource'];
-  githubRepo?: CargoInstallSchemaParams['githubRepo'];
-  assetPattern?: CargoInstallSchemaParams['assetPattern'];
-  versionSource?: CargoInstallSchemaParams['versionSource'];
-  cargoTomlUrl?: CargoInstallSchemaParams['cargoTomlUrl'];
-  customBinaries?: CargoInstallSchemaParams['customBinaries'];
-  allowSourceFallback?: CargoInstallSchemaParams['allowSourceFallback'];
-}
+export type CargoInstallParams = BaseInstallParams & z.infer<typeof cargoInstallParamsSchema>;
 
 /**
  * Tool configuration for Cargo-based installations

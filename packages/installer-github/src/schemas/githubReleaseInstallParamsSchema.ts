@@ -110,13 +110,4 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
  * extracting it (if it's an archive), and then locating/moving the binary.
  * This is analogous to Zinit's `from"gh-r"` ice.
  */
-type GithubReleaseSchemaParams = z.infer<typeof githubReleaseInstallParamsSchema>;
-
-export interface GithubReleaseInstallParams extends BaseInstallParams {
-  repo: GithubReleaseSchemaParams['repo'];
-  assetPattern?: GithubReleaseSchemaParams['assetPattern'];
-  version?: GithubReleaseSchemaParams['version'];
-  includePrerelease?: GithubReleaseSchemaParams['includePrerelease'];
-  assetSelector?: GithubReleaseSchemaParams['assetSelector'];
-  githubHost?: GithubReleaseSchemaParams['githubHost'];
-}
+export type GithubReleaseInstallParams = BaseInstallParams & z.infer<typeof githubReleaseInstallParamsSchema>;

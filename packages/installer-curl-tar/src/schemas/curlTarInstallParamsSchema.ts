@@ -22,8 +22,4 @@ export const curlTarInstallParamsSchema = baseInstallParamsSchema.extend({
  * then extracting it and potentially moving a binary from within.
  * This is analogous to Zinit's `dl` ice for archives, combined with `extract` and `pick`.
  */
-type CurlTarSchemaParams = z.infer<typeof curlTarInstallParamsSchema>;
-
-export interface CurlTarInstallParams extends BaseInstallParams {
-  url: CurlTarSchemaParams['url'];
-}
+export type CurlTarInstallParams = BaseInstallParams & z.infer<typeof curlTarInstallParamsSchema>;
