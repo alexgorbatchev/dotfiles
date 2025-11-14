@@ -1,12 +1,27 @@
-import type { AnalysisResults, UnusedExportResult, UnusedPropertyResult } from './types';
+import type { AnalysisResults, Severity, UnusedExportResult, UnusedPropertyResult } from './types';
+
+function getSeverityMarker(severity: Severity): string {
+  const markers: Record<Severity, string> = {
+    error: '[ERROR]',
+    warning: '[WARNING]',
+    info: '[INFO]',
+  };
+  return markers[severity];
+}
 
 function formatExportLine(item: UnusedExportResult): string {
-  return `  ${item.exportName}:${item.line} (Unused ${item.kind})`;
+  const marker: string = getSeverityMarker(item.severity);
+  if (item.onlyUsedInTests) {
+    return `  ${item.exportName}:${item.line}:${item.character}-${item.endCharacter} ${marker} (Used only in tests)`;
+  }
+  return `  ${item.exportName}:${item.line}:${item.character}-${item.endCharacter} ${marker} (Unused ${item.kind})`;
 }
 
 function formatPropertyLine(item: UnusedPropertyResult): string {
+  const status: string = item.onlyUsedInTests ? 'Used only in tests' : 'Unused property';
   const todoSuffix: string = item.todoComment ? `: [TODO] ${item.todoComment}` : '';
-  return `  ${item.typeName}.${item.propertyName}:${item.line} (Unused property${todoSuffix})`;
+  const marker: string = getSeverityMarker(item.severity);
+  return `  ${item.typeName}.${item.propertyName}:${item.line}:${item.character}-${item.endCharacter} ${marker} (${status}${todoSuffix})`;
 }
 
 function formatGroupedItems<T extends { filePath: string }>(items: T[], formatter: (item: T) => string): string[] {
@@ -27,24 +42,35 @@ function formatGroupedItems<T extends { filePath: string }>(items: T[], formatte
 export function formatResults(results: AnalysisResults): string {
   const lines: string[] = [];
 
+  // Create a set of unused export names (interfaces/types) for quick lookup
+  const unusedExportNames = new Set<string>();
+  for (const exportItem of results.unusedExports) {
+    unusedExportNames.add(exportItem.exportName);
+  }
+
+  // Filter out properties whose parent type/interface is already reported as unused
+  const propertiesToReport: UnusedPropertyResult[] = results.unusedProperties.filter(
+    (prop) => !unusedExportNames.has(prop.typeName)
+  );
+
   if (results.unusedExports.length > 0) {
     lines.push('🔍 Unused Exports:');
     lines.push('');
     lines.push(...formatGroupedItems(results.unusedExports, formatExportLine));
   }
 
-  if (results.unusedProperties.length > 0) {
+  if (propertiesToReport.length > 0) {
     lines.push('🔍 Unused Type/Interface Properties:');
     lines.push('');
-    lines.push(...formatGroupedItems(results.unusedProperties, formatPropertyLine));
+    lines.push(...formatGroupedItems(propertiesToReport, formatPropertyLine));
   }
 
-  if (results.unusedExports.length === 0 && results.unusedProperties.length === 0) {
+  if (results.unusedExports.length === 0 && propertiesToReport.length === 0) {
     lines.push('✅ No unused exports or properties found!');
   } else {
     lines.push('📊 Summary:');
     lines.push(`  Unused exports: ${results.unusedExports.length}`);
-    lines.push(`  Unused properties: ${results.unusedProperties.length}`);
+    lines.push(`  Unused properties: ${propertiesToReport.length}`);
   }
 
   return lines.join('\n');

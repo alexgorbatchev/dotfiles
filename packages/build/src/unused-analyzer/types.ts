@@ -1,5 +1,7 @@
 import type { SourceFile } from 'ts-morph';
 
+export type Severity = 'error' | 'warning' | 'info';
+
 export type ExportKind =
   | 'function'
   | 'class'
@@ -15,7 +17,11 @@ export interface UnusedExportResult {
   filePath: string;
   exportName: string;
   line: number;
+  character: number;
+  endCharacter: number;
   kind: ExportKind;
+  severity: Severity;
+  onlyUsedInTests: boolean;
 }
 
 export interface UnusedPropertyResult {
@@ -23,7 +29,11 @@ export interface UnusedPropertyResult {
   typeName: string;
   propertyName: string;
   line: number;
+  character: number;
+  endCharacter: number;
   todoComment?: string;
+  severity: Severity;
+  onlyUsedInTests: boolean;
 }
 
 export interface AnalysisResults {

@@ -2,31 +2,62 @@ import type { Project, PropertyDeclaration, PropertySignature, ReferencedSymbol,
 import type { IsTestFileFn } from '../types';
 import { findStructurallyEquivalentProperties } from './findStructurallyEquivalentProperties';
 
-function countPropertyReferences(prop: PropertySignature | PropertyDeclaration, isTestFile: IsTestFileFn): number {
+interface PropertyReferenceCount {
+  totalReferences: number;
+  testReferences: number;
+  nonTestReferences: number;
+}
+
+function countPropertyReferences(
+  prop: PropertySignature | PropertyDeclaration,
+  isTestFile: IsTestFileFn
+): PropertyReferenceCount {
   const references: ReferencedSymbol[] = prop.findReferences();
   let totalReferences = 0;
+  let testReferences = 0;
+  let nonTestReferences = 0;
+
   for (const refGroup of references) {
     const refs = refGroup.getReferences();
     for (const ref of refs) {
       const refSourceFile: SourceFile = ref.getSourceFile();
-      if (!isTestFile(refSourceFile)) {
-        totalReferences++;
+      totalReferences++;
+
+      if (isTestFile(refSourceFile)) {
+        testReferences++;
+      } else {
+        nonTestReferences++;
       }
     }
   }
-  return totalReferences;
+
+  const result: PropertyReferenceCount = {
+    totalReferences,
+    testReferences,
+    nonTestReferences,
+  };
+  return result;
+}
+
+export interface PropertyUsageResult {
+  isUnusedOrTestOnly: boolean;
+  onlyUsedInTests: boolean;
 }
 
 export function isPropertyUnused(
   prop: PropertySignature | PropertyDeclaration,
   isTestFile: IsTestFileFn,
   project: Project
-): boolean {
-  const totalReferences: number = countPropertyReferences(prop, isTestFile);
+): PropertyUsageResult {
+  const counts: PropertyReferenceCount = countPropertyReferences(prop, isTestFile);
 
   // A property is unused if it only has 1 reference (the definition itself)
-  if (totalReferences > 1) {
-    return false;
+  // A property is test-only if it has references only from tests
+  const onlyUsedInTests: boolean = counts.nonTestReferences === 1 && counts.testReferences > 0;
+
+  if (counts.totalReferences > 1 && !onlyUsedInTests) {
+    const result: PropertyUsageResult = { isUnusedOrTestOnly: false, onlyUsedInTests: false };
+    return result; // Used in production code
   }
 
   // Check structurally equivalent properties
@@ -36,11 +67,16 @@ export function isPropertyUnused(
   );
 
   for (const equivalentProp of equivalentProps) {
-    const equivalentRefs: number = countPropertyReferences(equivalentProp, isTestFile);
-    if (equivalentRefs > 1) {
-      return false;
+    const equivalentCounts: PropertyReferenceCount = countPropertyReferences(equivalentProp, isTestFile);
+    const equivalentOnlyUsedInTests: boolean =
+      equivalentCounts.nonTestReferences === 1 && equivalentCounts.testReferences > 0;
+
+    if (equivalentCounts.totalReferences > 1 && !equivalentOnlyUsedInTests) {
+      const result: PropertyUsageResult = { isUnusedOrTestOnly: false, onlyUsedInTests: false };
+      return result;
     }
   }
 
-  return true;
+  const result: PropertyUsageResult = { isUnusedOrTestOnly: true, onlyUsedInTests };
+  return result;
 }

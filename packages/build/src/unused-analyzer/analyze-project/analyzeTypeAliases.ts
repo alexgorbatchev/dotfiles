@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { Node, type Project, type SourceFile, type TypeAliasDeclaration, type TypeElementTypes } from 'ts-morph';
-import type { IsTestFileFn, UnusedPropertyResult } from '../types';
+import type { IsTestFileFn, Severity, UnusedPropertyResult } from '../types';
 import { extractTodoComment } from './extractTodoComment';
-import { isPropertyUnused } from './isPropertyUnused';
+import { isPropertyUnused, type PropertyUsageResult } from './isPropertyUnused';
 
 export function analyzeTypeLiteralMember(
   member: TypeElementTypes,
@@ -17,18 +17,38 @@ export function analyzeTypeLiteralMember(
     return;
   }
 
-  if (!isPropertyUnused(member, isTestFile, project)) {
+  const usage: PropertyUsageResult = isPropertyUnused(member, isTestFile, project);
+
+  if (!usage.isUnusedOrTestOnly) {
     return;
   }
 
   const relativePath: string = path.relative(tsConfigDir, sourceFile.getFilePath());
   const todoComment: string | undefined = extractTodoComment(member);
+
+  // Determine severity: warning for TODO, info for test-only, error for completely unused
+  let severity: Severity = 'error';
+  if (todoComment) {
+    severity = 'warning';
+  } else if (usage.onlyUsedInTests) {
+    severity = 'info';
+  }
+
+  const propertyName: string = member.getName();
+  const startPos: number = member.getStart();
+  const lineStartPos: number = member.getStartLinePos();
+  const character: number = startPos - lineStartPos + 1;
+  const endCharacter: number = character + propertyName.length;
   const result: UnusedPropertyResult = {
     filePath: relativePath,
     typeName,
-    propertyName: member.getName(),
+    propertyName,
     line: member.getStartLineNumber(),
+    character,
+    endCharacter,
     todoComment,
+    severity,
+    onlyUsedInTests: usage.onlyUsedInTests,
   };
   results.push(result);
 }

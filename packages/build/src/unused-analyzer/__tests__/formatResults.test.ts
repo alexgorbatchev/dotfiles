@@ -10,13 +10,21 @@ describe('formatResults', () => {
           filePath: '/path/to/file.ts',
           exportName: 'unusedFunction',
           line: 10,
+          character: 1,
+          endCharacter: 15,
           kind: 'function',
+          severity: 'error',
+          onlyUsedInTests: false,
         },
         {
           filePath: '/path/to/file.ts',
           exportName: 'UNUSED_CONSTANT',
           line: 20,
+          character: 7,
+          endCharacter: 22,
           kind: 'const',
+          severity: 'error',
+          onlyUsedInTests: false,
         },
       ],
       unusedProperties: [
@@ -25,6 +33,10 @@ describe('formatResults', () => {
           typeName: 'UserConfig',
           propertyName: 'unusedProp',
           line: 5,
+          character: 3,
+          endCharacter: 13,
+          severity: 'error',
+          onlyUsedInTests: false,
         },
       ],
     };
@@ -32,12 +44,12 @@ describe('formatResults', () => {
     const output = formatResults(results);
 
     expect(output).toContain('Unused Exports:');
-    expect(output).toContain('unusedFunction:10 (Unused function)');
-    expect(output).toContain('UNUSED_CONSTANT:20 (Unused const)');
+    expect(output).toContain('unusedFunction:10:1-15 [ERROR] (Unused function)');
+    expect(output).toContain('UNUSED_CONSTANT:20:7-22 [ERROR] (Unused const)');
     expect(output).toContain('/path/to/file.ts');
 
     expect(output).toContain('Unused Type/Interface Properties:');
-    expect(output).toContain('UserConfig.unusedProp:5 (Unused property)');
+    expect(output).toContain('UserConfig.unusedProp:5:3-13 [ERROR] (Unused property)');
     expect(output).toContain('/path/to/types.ts');
 
     expect(output).toContain('Summary:');
@@ -65,7 +77,11 @@ describe('formatResults', () => {
           filePath: '/path/to/file.ts',
           exportName: 'unusedFunction',
           line: 10,
+          character: 1,
+          endCharacter: 15,
           kind: 'function',
+          severity: 'error',
+          onlyUsedInTests: false,
         },
       ],
       unusedProperties: [],
@@ -89,6 +105,10 @@ describe('formatResults', () => {
           typeName: 'UserConfig',
           propertyName: 'unusedProp',
           line: 5,
+          character: 3,
+          endCharacter: 13,
+          severity: 'error',
+          onlyUsedInTests: false,
         },
       ],
     };
