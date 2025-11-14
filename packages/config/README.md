@@ -15,6 +15,7 @@ This package provides functionality to load, validate, and process configuration
 - **Path Expansion**: Expand home directory (`~`) in path values
 - **Schema Validation**: Runtime validation using Zod schemas
 - **Dependency Injection**: `IConfigService` interface for testable code
+- **TypeScript Helpers**: `defineConfig` wrapper for strongly typed `.config.ts` files
 
 ## Core API
 
@@ -96,6 +97,32 @@ const toolConfig = await configService.loadSingleToolConfig(
   fileSystem,
   yamlConfig
 );
+```
+
+### `defineConfig(configFn)`
+
+Wraps a synchronous or asynchronous factory so `.config.ts` files stay fully typed and consistently return a promise.
+
+```typescript
+// dotfiles.config.ts
+import { defineConfig } from '@dotfiles/config';
+
+export default defineConfig(async () => ({
+  paths: {
+    dotfilesDir: '~/.dotfiles',
+    targetDir: '~/.local/bin',
+  },
+  github: {
+    token: process.env.GITHUB_TOKEN,
+  },
+}));
+
+// ... synchronous factories are also supported
+export default defineConfig(() => ({
+  paths: {
+    generatedDir: '${configFileDir}/.generated',
+  },
+}));
 ```
 
 ## Configuration File Structure

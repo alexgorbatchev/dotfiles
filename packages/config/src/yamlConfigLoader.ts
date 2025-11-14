@@ -338,6 +338,8 @@ export async function loadDefaultYamlConfigAsRecord(_fileSystem: IFileSystem): P
  * @param userConfigPath - Path to the user's `config.yaml` file.
  * @param systemInfo - System information for platform detection and path expansion.
  * @param env - Environment variables for token substitution.
+ * @param options - Additional options for configuration processing.
+ * @param options.userConfigPath - File path to associate with the in-memory configuration for token substitution. Required.
  * @returns A promise that resolves to the fully validated and processed YAML configuration.
  *
  * @testing
@@ -372,12 +374,19 @@ export async function loadYamlConfig(
   return processConfig(parentLogger, userConfigPath, defaultConfig, userConfig, systemInfo, env);
 }
 
+export interface CreateYamlConfigFromObjectOptions {
+  userConfigPath: string;
+}
+
 /**
  * Creates a validated YAML configuration from in-memory objects.
  *
  * Useful for testing or programmatic configuration creation. Merges the user configuration
  * with default configuration, applies platform overrides, and performs token substitution,
  * but does not read from the filesystem.
+ *
+ * The associated file path must be provided via {@link CreateYamlConfigFromObjectOptions.userConfigPath}
+ * so token substitution and relative path resolution behave the same as when loading from disk.
  *
  * @param parentLogger - Parent logger instance (a sublogger will be created).
  * @param fileSystem - File system interface (used to load default config).
@@ -395,9 +404,11 @@ export async function createYamlConfigFromObject(
   fileSystem: IFileSystem,
   userConfig: YamlConfigPartial = {},
   systemInfo: SystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
-  env: Record<string, string | undefined> = {}
+  env: Record<string, string | undefined> = {},
+  options: CreateYamlConfigFromObjectOptions
 ): Promise<YamlConfig> {
+  const resolvedUserConfigPath: string = options.userConfigPath;
   const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
   const userConfigClone = deepMerge({} as YamlConfigPartial, userConfig);
-  return processConfig(parentLogger, '/path/to/config.yaml', defaultConfig, userConfigClone, systemInfo, env);
+  return processConfig(parentLogger, resolvedUserConfigPath, defaultConfig, userConfigClone, systemInfo, env);
 }

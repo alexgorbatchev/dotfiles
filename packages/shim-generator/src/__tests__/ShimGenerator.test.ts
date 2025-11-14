@@ -78,7 +78,8 @@ describe('ShimGenerator', () => {
       expect(fsMocks.writeFile.mock.calls[0]).toBeDefined();
       expect(fsMocks.chmod).toHaveBeenCalledWith(expectedShimPath, 0o755);
 
-      const writtenContent = fsMocks.writeFile.mock.calls[0]![1];
+      const writtenContent = String(fsMocks.writeFile.mock.calls[0]![1]);
+
       expect(writtenContent).toMatchLooseInlineSnapshot`
         #!/usr/bin/env bash
         # Shim for my-tool-binary
@@ -89,7 +90,7 @@ describe('ShimGenerator', () => {
         TOOL_NAME="my-tool"
         TOOL_EXECUTABLE="${expectedBinaryPath}"
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
-        CONFIG_PATH="/path/to/config.yaml"
+        CONFIG_PATH="${/.+\/config\.yaml/}"
 
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then

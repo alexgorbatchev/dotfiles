@@ -144,7 +144,11 @@ async function removeFile(
   }
 }
 
-async function cleanupActionLogic(logger: TsLogger, options: CleanupCommandSpecificOptions & GlobalProgramOptions, services: Services): Promise<void> {
+async function cleanupActionLogic(
+  logger: TsLogger,
+  options: CleanupCommandSpecificOptions & GlobalProgramOptions,
+  services: Services
+): Promise<void> {
   const { dryRun, tool, type, all } = options;
 
   try {

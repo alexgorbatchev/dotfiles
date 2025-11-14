@@ -22,4 +22,6 @@ export const messages = {
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
   fsItemNotFound: (itemType: string, path: string) => createSafeLogMessage(`${itemType} not found: ${path}`),
   fsReadFailed: (path: string) => createSafeLogMessage(`Failed to read ${path}`),
+  loadingTypeScriptConfiguration: () => createSafeLogMessage('Loading TypeScript configuration'),
+  loadingYamlConfiguration: () => createSafeLogMessage('Loading YAML configuration'),
 } satisfies SafeLogMessageMap;

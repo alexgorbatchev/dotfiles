@@ -268,7 +268,10 @@ export function registerFilesCommand(
     .action(async (commandOptions: FilesCommandSpecificOptions) => {
       logger.debug(messages.commandActionCalled('files'));
 
-      const combinedOptions: FilesCommandSpecificOptions & GlobalProgramOptions = { ...commandOptions, ...program.opts() };
+      const combinedOptions: FilesCommandSpecificOptions & GlobalProgramOptions = {
+        ...commandOptions,
+        ...program.opts(),
+      };
       const services = await servicesFactory();
       await filesActionLogic(logger, combinedOptions, services);
     });

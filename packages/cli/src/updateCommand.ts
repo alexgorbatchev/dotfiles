@@ -123,7 +123,10 @@ export function registerUpdateCommand(
     .action(async (toolName: string, commandOptions: UpdateCommandSpecificOptions) => {
       logger.debug(messages.commandActionCalled('update'));
 
-      const combinedOptions: UpdateCommandSpecificOptions & GlobalProgramOptions = { ...commandOptions, ...program.opts() };
+      const combinedOptions: UpdateCommandSpecificOptions & GlobalProgramOptions = {
+        ...commandOptions,
+        ...program.opts(),
+      };
 
       const services = await servicesFactory();
       const { yamlConfig, fs, configService } = services;

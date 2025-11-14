@@ -3,7 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import { ConfigService, loadYamlConfig, type YamlConfig } from '@dotfiles/config';
+import { ConfigService, loadConfig, type YamlConfig } from '@dotfiles/config';
 import type { SystemInfo } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
@@ -39,12 +39,7 @@ import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
-// biome-ignore lint/plugin: Named exports required for selective API exposure
-export { Architecture, always, once, Platform } from '@dotfiles/core';
-
-// Export typed defineTool that uses the global plugin registry
-// biome-ignore lint/plugin: Named exports required for selective API exposure
-export { defineTool } from './defineTool';
+export * from './schema-exports';
 
 type SetupServicesOptions = GlobalProgramOptions & {
   cwd: string;
@@ -215,7 +210,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
-  const yamlConfig = await loadYamlConfig(logger, configFs, userConfigPath, systemInfo, env);
+  const yamlConfig = await loadConfig(logger, configFs, userConfigPath, systemInfo, env);
 
   // Create final systemInfo with correct homeDir from yamlConfig
   const finalSystemInfo: SystemInfo = {

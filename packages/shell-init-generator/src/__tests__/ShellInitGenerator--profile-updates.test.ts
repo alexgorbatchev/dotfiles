@@ -15,6 +15,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
   let generator: ShellInitGenerator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
+  let configFilePath: string;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -23,11 +24,13 @@ describe('ShellInitGenerator - Profile Updates', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-profile-updates' });
 
+    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
       systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
@@ -269,7 +272,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       const generatedScriptPath = path.join(testDirs.paths.shellScriptsDir, 'main.ps1');
       expect(profileContent).toContain(`. "${generatedScriptPath}"`);
       expect(profileContent).toContain('# Generated via dotfiles generator - do not modify');
-      expect(profileContent).toContain('# /path/to/config.yaml');
+      expect(profileContent).toContain(`# ${configFilePath}`);
       expect(profileContent).toContain(
         '# ------------------------------------------------------------------------------'
       );

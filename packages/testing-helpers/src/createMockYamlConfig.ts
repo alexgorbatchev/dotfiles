@@ -61,7 +61,9 @@ export async function createMockYamlConfig({
   systemInfo,
   env,
 }: CreateMockYamlConfigOptions): Promise<YamlConfig> {
-  const fullConfig = await createYamlConfigFromObject(logger, fileSystem, config, systemInfo, env);
+  const fullConfig = await createYamlConfigFromObject(logger, fileSystem, config, systemInfo, env, {
+    userConfigPath: filePath,
+  });
   const yamlString = Bun.YAML.stringify(fullConfig);
   await fileSystem.writeFile(filePath, yamlString, 'utf8');
   return fullConfig;

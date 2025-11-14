@@ -16,6 +16,7 @@ describe('Profile Updates E2E Tests', () => {
   let generator: ShellInitGenerator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
+  let configFilePath: string;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -24,11 +25,13 @@ describe('Profile Updates E2E Tests', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'profile-updates-e2e' });
 
+    configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
+
     mockAppConfig = await createMockYamlConfig({
       config: {
         paths: testDirs.paths,
       },
-      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
       systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
@@ -220,7 +223,7 @@ describe('Profile Updates E2E Tests', () => {
 
         // Verify the header comments were added
         expect(profileContent).toContain('# Generated via dotfiles generator - do not modify');
-        expect(profileContent).toContain('# /path/to/config.yaml');
+        expect(profileContent).toContain(`# ${configFilePath}`);
         expect(profileContent).toContain(
           '# ------------------------------------------------------------------------------'
         );

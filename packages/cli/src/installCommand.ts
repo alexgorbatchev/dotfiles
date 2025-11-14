@@ -77,7 +77,10 @@ export function registerInstallCommand(
     .option('--force', 'Force installation even if the tool is already installed', false)
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName: string, commandOptions: InstallCommandSpecificOptions) => {
-      const combinedOptions: InstallCommandSpecificOptions & GlobalProgramOptions = { ...commandOptions, ...program.opts() };
+      const combinedOptions: InstallCommandSpecificOptions & GlobalProgramOptions = {
+        ...commandOptions,
+        ...program.opts(),
+      };
       logger.debug(messages.commandActionCalled('install'));
 
       const services = await servicesFactory();
