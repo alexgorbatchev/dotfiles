@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { Node, type Project, type SourceFile, type TypeAliasDeclaration, type TypeElementTypes } from 'ts-morph';
 import type { IsTestFileFn, UnusedPropertyResult } from '../types';
+import { extractTodoComment } from './extractTodoComment';
 import { isPropertyUnused } from './isPropertyUnused';
 
 export function analyzeTypeLiteralMember(
@@ -21,11 +22,13 @@ export function analyzeTypeLiteralMember(
   }
 
   const relativePath: string = path.relative(tsConfigDir, sourceFile.getFilePath());
+  const todoComment: string | undefined = extractTodoComment(member);
   const result: UnusedPropertyResult = {
     filePath: relativePath,
     typeName,
     propertyName: member.getName(),
     line: member.getStartLineNumber(),
+    todoComment,
   };
   results.push(result);
 }

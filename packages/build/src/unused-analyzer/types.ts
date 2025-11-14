@@ -23,6 +23,7 @@ export interface UnusedPropertyResult {
   typeName: string;
   propertyName: string;
   line: number;
+  todoComment?: string;
 }
 
 export interface AnalysisResults {
