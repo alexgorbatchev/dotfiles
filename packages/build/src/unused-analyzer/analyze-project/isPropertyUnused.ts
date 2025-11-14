@@ -1,10 +1,9 @@
-import type { PropertyDeclaration, PropertySignature, ReferencedSymbol, SourceFile } from 'ts-morph';
+import type { Project, PropertyDeclaration, PropertySignature, ReferencedSymbol, SourceFile } from 'ts-morph';
 import type { IsTestFileFn } from '../types';
+import { findStructurallyEquivalentProperties } from './findStructurallyEquivalentProperties';
 
-export function isPropertyUnused(prop: PropertySignature | PropertyDeclaration, isTestFile: IsTestFileFn): boolean {
+function countPropertyReferences(prop: PropertySignature | PropertyDeclaration, isTestFile: IsTestFileFn): number {
   const references: ReferencedSymbol[] = prop.findReferences();
-
-  // Count total references across all files
   let totalReferences = 0;
   for (const refGroup of references) {
     const refs = refGroup.getReferences();
@@ -15,8 +14,33 @@ export function isPropertyUnused(prop: PropertySignature | PropertyDeclaration, 
       }
     }
   }
+  return totalReferences;
+}
+
+export function isPropertyUnused(
+  prop: PropertySignature | PropertyDeclaration,
+  isTestFile: IsTestFileFn,
+  project: Project
+): boolean {
+  const totalReferences: number = countPropertyReferences(prop, isTestFile);
 
   // A property is unused if it only has 1 reference (the definition itself)
-  // If it has more than 1 reference, at least one is an actual usage
-  return totalReferences <= 1;
+  if (totalReferences > 1) {
+    return false;
+  }
+
+  // Check structurally equivalent properties
+  const equivalentProps: Array<PropertySignature | PropertyDeclaration> = findStructurallyEquivalentProperties(
+    prop,
+    project
+  );
+
+  for (const equivalentProp of equivalentProps) {
+    const equivalentRefs: number = countPropertyReferences(equivalentProp, isTestFile);
+    if (equivalentRefs > 1) {
+      return false;
+    }
+  }
+
+  return true;
 }

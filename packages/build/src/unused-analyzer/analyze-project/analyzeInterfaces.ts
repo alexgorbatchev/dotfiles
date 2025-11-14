@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { InterfaceDeclaration, SourceFile } from 'ts-morph';
+import type { InterfaceDeclaration, Project, SourceFile } from 'ts-morph';
 import type { IsTestFileFn, UnusedPropertyResult } from '../types';
 import { isPropertyUnused } from './isPropertyUnused';
 
@@ -7,7 +7,8 @@ export function analyzeInterfaces(
   sourceFile: SourceFile,
   tsConfigDir: string,
   isTestFile: IsTestFileFn,
-  results: UnusedPropertyResult[]
+  results: UnusedPropertyResult[],
+  project: Project
 ): void {
   const interfaces: InterfaceDeclaration[] = sourceFile.getInterfaces();
 
@@ -15,7 +16,7 @@ export function analyzeInterfaces(
     const interfaceName: string = iface.getName();
 
     for (const prop of iface.getProperties()) {
-      if (isPropertyUnused(prop, isTestFile)) {
+      if (isPropertyUnused(prop, isTestFile, project)) {
         const relativePath: string = path.relative(tsConfigDir, sourceFile.getFilePath());
         const result: UnusedPropertyResult = {
           filePath: relativePath,

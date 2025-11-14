@@ -32,8 +32,8 @@ export function findUnusedProperties(
       onProgress(relativePath);
     }
 
-    analyzeInterfaces(sourceFile, tsConfigDir, isTestFile, results);
-    analyzeTypeAliases(sourceFile, tsConfigDir, isTestFile, results);
+    analyzeInterfaces(sourceFile, tsConfigDir, isTestFile, results, project);
+    analyzeTypeAliases(sourceFile, tsConfigDir, isTestFile, results, project);
   }
 
   return results;

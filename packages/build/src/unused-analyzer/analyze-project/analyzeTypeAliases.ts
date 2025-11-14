@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { Node, type SourceFile, type TypeAliasDeclaration, type TypeElementTypes } from 'ts-morph';
+import { Node, type Project, type SourceFile, type TypeAliasDeclaration, type TypeElementTypes } from 'ts-morph';
 import type { IsTestFileFn, UnusedPropertyResult } from '../types';
 import { isPropertyUnused } from './isPropertyUnused';
 
@@ -9,13 +9,14 @@ export function analyzeTypeLiteralMember(
   sourceFile: SourceFile,
   tsConfigDir: string,
   isTestFile: IsTestFileFn,
-  results: UnusedPropertyResult[]
+  results: UnusedPropertyResult[],
+  project: Project
 ): void {
   if (!Node.isPropertySignature(member)) {
     return;
   }
 
-  if (!isPropertyUnused(member, isTestFile)) {
+  if (!isPropertyUnused(member, isTestFile, project)) {
     return;
   }
 
@@ -34,7 +35,8 @@ export function analyzeTypeAlias(
   sourceFile: SourceFile,
   tsConfigDir: string,
   isTestFile: IsTestFileFn,
-  results: UnusedPropertyResult[]
+  results: UnusedPropertyResult[],
+  project: Project
 ): void {
   const typeName: string = typeAlias.getName();
   const typeNode = typeAlias.getTypeNode();
@@ -48,7 +50,7 @@ export function analyzeTypeAlias(
   }
 
   for (const member of typeNode.getMembers()) {
-    analyzeTypeLiteralMember(member, typeName, sourceFile, tsConfigDir, isTestFile, results);
+    analyzeTypeLiteralMember(member, typeName, sourceFile, tsConfigDir, isTestFile, results, project);
   }
 }
 
@@ -56,11 +58,12 @@ export function analyzeTypeAliases(
   sourceFile: SourceFile,
   tsConfigDir: string,
   isTestFile: IsTestFileFn,
-  results: UnusedPropertyResult[]
+  results: UnusedPropertyResult[],
+  project: Project
 ): void {
   const typeAliases: TypeAliasDeclaration[] = sourceFile.getTypeAliases();
 
   for (const typeAlias of typeAliases) {
-    analyzeTypeAlias(typeAlias, sourceFile, tsConfigDir, isTestFile, results);
+    analyzeTypeAlias(typeAlias, sourceFile, tsConfigDir, isTestFile, results, project);
   }
 }
