@@ -1,6 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
 import type { ShellType, SystemInfo, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
 import type { ProfileUpdateResult } from './profile-updater/IProfileUpdater';
 
 /**
@@ -60,12 +58,4 @@ export interface IShellInitGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: GenerateShellInitOptions
   ): Promise<ShellInitGenerationResult | null>;
-}
-
-/**
- * Constructor signature for classes implementing IShellInitGenerator.
- * This allows for dependency injection of IFileSystem and AppConfig.
- */
-export interface IShellInitGeneratorConstructor {
-  new (fileSystem: IFileSystem, appConfig: YamlConfig): IShellInitGenerator;
 }

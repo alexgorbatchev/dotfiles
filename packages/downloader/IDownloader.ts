@@ -3,20 +3,6 @@ import type { DownloadStrategy } from './DownloadStrategy';
 export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | null) => void;
 
 /**
- * Progress information for downloads.
- */
-export interface DownloadProgress {
-  /** Total bytes downloaded so far. */
-  bytesDownloaded: number;
-  /** Total bytes of the file to be downloaded. Might be undefined if server doesn't provide Content-Length. */
-  totalBytes?: number;
-  /** Percentage of download completion (0-100). Might be undefined if totalBytes is unknown. */
-  percentage?: number;
-  /** Current download speed in bytes per second. Optional. */
-  speed?: number;
-}
-
-/**
  * Options for downloading files.
  */
 export interface DownloadOptions {

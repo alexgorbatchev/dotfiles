@@ -1,5 +1,3 @@
-import type { ToolConfig } from '@dotfiles/core';
-
 /**
  * Contains information about an available update for a tool.
  * This includes the current and latest versions, whether an update is indeed available,
@@ -47,45 +45,4 @@ export interface VersionConstraint {
   operator: VersionConstraintOperator;
   /** The version string to compare against (e.g., "1.2.3"). */
   version: string;
-}
-
-/**
- * Defines the contract for a version checking service.
- * Implementations of this interface are responsible for checking for tool updates,
- * parsing version constraint strings, and determining if a version satisfies a given constraint.
- */
-export interface IVersionChecker {
-  /**
-   * Checks for an update for a single specified tool based on its configuration.
-   * @param tool The {@link ToolConfig} of the tool to check.
-   * @returns A promise that resolves with {@link UpdateInfo} if an update check is performed
-   *          (regardless of whether an update is available), or `null` if the check is skipped
-   *          (e.g., tool not installed, update checking disabled for the tool).
-   */
-  checkForUpdate(tool: ToolConfig): Promise<UpdateInfo | null>;
-
-  /**
-   * Checks for updates for all tools currently managed by the system (e.g., listed in the manifest).
-   * @returns A promise that resolves with an array of {@link UpdateInfo} objects for all tools
-   *          for which an update check was performed.
-   */
-  checkAllForUpdates(): Promise<UpdateInfo[]>;
-
-  /**
-   * Parses a version constraint string (e.g., ">=1.0.0 <2.0.0 || ^3.0.0") into an array
-   * of {@link VersionConstraint} objects.
-   * This is useful for breaking down complex SemVer ranges into individual comparable parts.
-   * @param constraint The version constraint string to parse.
-   * @returns An array of {@link VersionConstraint} objects.
-   */
-  parseVersionConstraint(constraint: string): VersionConstraint[];
-
-  /**
-   * Checks if a given version string satisfies a version constraint string.
-   * This typically uses SemVer comparison logic.
-   * @param version The version string to check (e.g., "1.2.3").
-   * @param constraint The version constraint string to check against (e.g., "^1.2.0", ">=2.0.0").
-   * @returns `true` if the version satisfies the constraint, `false` otherwise.
-   */
-  satisfiesConstraint(version: string, constraint: string): boolean;
 }
