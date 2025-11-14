@@ -220,12 +220,6 @@ interface ExtractOptions {
    * @default true
    */
   overwrite?: boolean;
-  
-  /**
-   * Whether to preserve file permissions
-   * @default true
-   */
-  preservePermissions?: boolean;
 }
 ```
 

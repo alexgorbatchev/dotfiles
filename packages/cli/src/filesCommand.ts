@@ -4,17 +4,10 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, FilesCommandSpecificOptions, GlobalProgram, Services } from './types';
-
-export interface FilesCommandOptions extends BaseCommandOptions {
-  tool?: string;
-  type?: string;
-  status?: boolean;
-  since?: string;
-}
+import type { FilesCommandSpecificOptions, GlobalProgram, GlobalProgramOptions, Services } from './types';
 
 function buildOperationsFilter(
-  options: FilesCommandOptions,
+  options: FilesCommandSpecificOptions & GlobalProgramOptions,
   parentLogger: TsLogger
 ): { filter: Record<string, unknown>; exitCode: ExitCode } {
   const logger = parentLogger.getSubLogger({ name: 'buildOperationsFilter' });
@@ -231,7 +224,7 @@ async function showOperations(
 
 async function filesActionLogic(
   parentLogger: TsLogger,
-  options: FilesCommandOptions,
+  options: FilesCommandSpecificOptions & GlobalProgramOptions,
   services: Services
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'filesActionLogic' });
@@ -275,7 +268,7 @@ export function registerFilesCommand(
     .action(async (commandOptions: FilesCommandSpecificOptions) => {
       logger.debug(messages.commandActionCalled('files'));
 
-      const combinedOptions: FilesCommandOptions = { ...commandOptions, ...program.opts() };
+      const combinedOptions: FilesCommandSpecificOptions & GlobalProgramOptions = { ...commandOptions, ...program.opts() };
       const services = await servicesFactory();
       await filesActionLogic(logger, combinedOptions, services);
     });

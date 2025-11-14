@@ -89,19 +89,12 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    */
   version: z.string().optional(),
   /**
-   * If `true`, pre-releases will be considered when searching for the specified `version` or the latest release.
-   * @default false
-   */
-  includePrerelease: z.boolean().optional(),
-  /**
    * An optional custom function to select the desired asset from a list of available assets for a release.
    * This provides more fine-grained control than `assetPattern` for complex selection logic.
    *
    * Uses context-based signature: `(context: AssetSelectionContext) => GitHubReleaseAsset | undefined`
    */
   assetSelector: z.custom<AssetSelector>((val) => typeof val === 'function', 'Must be a function').optional(),
-  /** Custom GitHub host URL for GitHub Enterprise installations */
-  githubHost: z.string().url().optional(),
 });
 
 /**

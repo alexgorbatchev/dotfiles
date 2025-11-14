@@ -36,14 +36,4 @@ export const cargoInstallParamsSchema = baseInstallParamsSchema.extend({
    * Custom Cargo.toml URL if different from standard GitHub location
    */
   cargoTomlUrl: z.string().optional(),
-
-  /**
-   * Custom binary names if different from crate name
-   */
-  customBinaries: z.array(z.string()).optional(),
-
-  /**
-   * Whether to fallback to source compilation if binary not available
-   */
-  allowSourceFallback: z.boolean().optional(),
 });

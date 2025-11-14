@@ -36,8 +36,6 @@ The `install('cargo', params)` function accepts the following parameters:
 - **githubRepo** (optional): GitHub repository in `owner/repo` format (required for `github-releases` binary source)
 - **cargoTomlUrl** (optional): Custom URL to Cargo.toml file (overrides default GitHub location)
 - **assetPattern** (optional): Pattern for GitHub release assets. Supports placeholders: `{crateName}`, `{version}`, `{platform}`, `{arch}`
-- **customBinaries** (optional): Array of custom binary names if different from crate name
-- **allowSourceFallback** (optional): Whether to fallback to source compilation if binary not available (not yet implemented)
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterInstall`)
 

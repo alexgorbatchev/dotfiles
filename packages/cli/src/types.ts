@@ -80,7 +80,6 @@ export interface CleanupCommandSpecificOptions {
   tool?: string;
   type?: string;
   all?: boolean;
-  registry?: boolean;
 }
 
 /**

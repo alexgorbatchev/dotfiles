@@ -3,14 +3,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, CleanupCommandSpecificOptions, GlobalProgram, Services } from './types';
-
-export interface CleanupCommandOptions extends BaseCommandOptions {
-  tool?: string;
-  type?: string;
-  all?: boolean;
-  registry?: boolean;
-}
+import type { CleanupCommandSpecificOptions, GlobalProgram, GlobalProgramOptions, Services } from './types';
 
 async function cleanupAllTrackedFiles(
   logger: TsLogger,
@@ -78,7 +71,7 @@ async function cleanupSpecificType(
 async function registryBasedCleanup(
   logger: TsLogger,
   services: Services,
-  options: CleanupCommandOptions
+  options: CleanupCommandSpecificOptions & GlobalProgramOptions
 ): Promise<void> {
   const { fs, fileRegistry } = services;
   const { dryRun, tool, type, all } = options;
@@ -151,7 +144,7 @@ async function removeFile(
   }
 }
 
-async function cleanupActionLogic(logger: TsLogger, options: CleanupCommandOptions, services: Services): Promise<void> {
+async function cleanupActionLogic(logger: TsLogger, options: CleanupCommandSpecificOptions & GlobalProgramOptions, services: Services): Promise<void> {
   const { dryRun, tool, type, all } = options;
 
   try {
@@ -186,9 +179,8 @@ export function registerCleanupCommand(
     .option('--tool <name>', 'Remove files for specific tool only (registry-based)')
     .option('--type <type>', 'Remove files of specific type only (registry-based)')
     .option('--all', 'Remove all tracked files (registry-based)')
-    .option('--registry', 'Use registry-based cleanup instead of manifest-based')
     .action(async (options: CleanupCommandSpecificOptions) => {
-      const combinedOptions: CleanupCommandOptions = { ...options, ...program.opts() };
+      const combinedOptions: CleanupCommandSpecificOptions & GlobalProgramOptions = { ...options, ...program.opts() };
       logger.debug(messages.commandActionCalled('cleanup'));
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);

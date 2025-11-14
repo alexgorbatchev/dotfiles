@@ -243,9 +243,6 @@ export interface InstallerPlugin<
   /** Plugin version (semver) */
   readonly version: string;
 
-  /** Plugin description */
-  readonly description?: string;
-
   /** Whether validation results can be cached (validation based on static conditions like OS) */
   readonly staticValidation?: boolean;
 

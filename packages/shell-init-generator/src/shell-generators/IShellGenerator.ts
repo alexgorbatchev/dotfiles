@@ -28,8 +28,6 @@ export interface AdditionalShellFile {
   content: string;
   /** Path where the file should be written */
   outputPath: string;
-  /** Whether the file should be made executable */
-  executable?: boolean;
 }
 
 /**

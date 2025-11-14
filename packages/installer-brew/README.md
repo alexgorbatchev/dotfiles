@@ -104,6 +104,32 @@ Supports forced reinstallation via `--force` flag when installation options spec
 3. Fetches version information via `brew info --json`
 4. Returns binary paths and metadata
 
+### Externally Managed Binaries
+
+This plugin operates with `externallyManaged = true`, meaning Homebrew maintains full control over binary installation locations. The dotfiles system integrates with Homebrew-installed binaries through symlinks:
+
+**Directory Structure:**
+```
+User runs: rg
+    ↓
+Shim at: /usr/local/bin/rg (generated shim in PATH)
+    ↓ 
+Points to: .../generated/binaries/ripgrep/rg (symlink)
+    ↓
+Points to: /opt/homebrew/bin/rg (Homebrew symlink)
+    ↓
+Points to: /opt/homebrew/Cellar/ripgrep/14.1.0/bin/rg (actual binary)
+```
+
+**No Conflicts:**
+- Homebrew installs binaries to `/opt/homebrew/bin` (Apple Silicon) or `/usr/local/opt/` (Intel)
+- Generated shims are placed in `targetDir` (typically `/usr/local/bin` or custom PATH location)
+- These directories are completely separate, preventing any overwrites
+- The shim generator detects and refuses to overwrite non-shim files in `targetDir`
+- Symlinks in `.../generated/binaries/<toolname>/` connect shims to Homebrew binaries
+
+This architecture ensures Homebrew can upgrade/reinstall tools without affecting your shims, while shims provide consistent access and on-demand installation capabilities.
+
 ### Update Checking
 
 The plugin implements `checkUpdate()` to query for available updates. Full implementation pending.

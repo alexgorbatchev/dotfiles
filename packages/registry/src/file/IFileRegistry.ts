@@ -68,10 +68,6 @@ export interface FileState {
   sizeBytes?: number;
   /** File permissions */
   permissions?: number;
-  /** Whether the file actually exists on disk */
-  existsOnDisk?: boolean;
-  /** Whether symlink target exists (for symlinks) */
-  targetExists?: boolean;
 }
 
 /**

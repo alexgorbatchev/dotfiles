@@ -29,8 +29,6 @@ The `install('github-release', params)` function accepts the following parameter
 - **version** (optional): Specific version tag or SemVer constraint (defaults to `latest`)
 - **assetPattern** (optional): Glob pattern to match asset filenames (e.g., `*linux_amd64.tar.gz`)
 - **assetSelector** (optional): Custom function for advanced asset selection logic
-- **includePrerelease** (optional): Whether to include pre-releases when searching for versions (defaults to `false`)
-- **githubHost** (optional): Custom GitHub API host for GitHub Enterprise installations
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterExtract`, `afterInstall`)
 

@@ -4,12 +4,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, GlobalProgram, Services, UpdateCommandSpecificOptions } from './types';
-
-export interface UpdateCommandOptions extends BaseCommandOptions {
-  yes: boolean;
-  shimMode: boolean;
-}
+import type { GlobalProgram, GlobalProgramOptions, Services, UpdateCommandSpecificOptions } from './types';
 
 async function loadToolConfigSafely(
   logger: TsLogger,
@@ -128,7 +123,7 @@ export function registerUpdateCommand(
     .action(async (toolName: string, commandOptions: UpdateCommandSpecificOptions) => {
       logger.debug(messages.commandActionCalled('update'));
 
-      const combinedOptions: UpdateCommandOptions = { ...commandOptions, ...program.opts() };
+      const combinedOptions: UpdateCommandSpecificOptions & GlobalProgramOptions = { ...commandOptions, ...program.opts() };
 
       const services = await servicesFactory();
       const { yamlConfig, fs, configService } = services;

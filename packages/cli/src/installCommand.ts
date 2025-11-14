@@ -5,12 +5,7 @@ import type { InstallResult } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, GlobalProgram, InstallCommandSpecificOptions, Services } from './types';
-
-export interface InstallCommandOptions extends BaseCommandOptions {
-  force: boolean;
-  shimMode: boolean;
-}
+import type { GlobalProgram, GlobalProgramOptions, InstallCommandSpecificOptions, Services } from './types';
 
 async function loadToolConfigSafely(
   logger: TsLogger,
@@ -82,7 +77,7 @@ export function registerInstallCommand(
     .option('--force', 'Force installation even if the tool is already installed', false)
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName: string, commandOptions: InstallCommandSpecificOptions) => {
-      const combinedOptions: InstallCommandOptions = { ...commandOptions, ...program.opts() };
+      const combinedOptions: InstallCommandSpecificOptions & GlobalProgramOptions = { ...commandOptions, ...program.opts() };
       logger.debug(messages.commandActionCalled('install'));
 
       const services = await servicesFactory();

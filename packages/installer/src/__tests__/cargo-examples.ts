@@ -42,7 +42,6 @@ export const fdConfig: CargoToolConfig = {
     crateName: 'fd-find', // Different crate name than binary name
     binarySource: 'cargo-quickinstall',
     versionSource: 'crates-io',
-    customBinaries: ['fd'], // Override binary name
   },
 };
 
@@ -84,6 +83,5 @@ export const cargoEditConfig: CargoToolConfig = {
     crateName: 'cargo-edit',
     binarySource: 'cargo-quickinstall',
     versionSource: 'crates-io',
-    customBinaries: ['cargo-add', 'cargo-rm', 'cargo-upgrade'],
   },
 };

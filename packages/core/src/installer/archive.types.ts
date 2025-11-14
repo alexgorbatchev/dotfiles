@@ -61,12 +61,6 @@ export interface ExtractOptions {
   targetDir?: string;
 
   /**
-   * If `true`, preserves the original file permissions from the archive.
-   * @default false
-   */
-  preservePermissions?: boolean;
-
-  /**
    * If `true`, attempts to detect and set executable permissions on files
    * after extraction. This is particularly useful for binaries within archives.
    * @default false
@@ -92,12 +86,4 @@ export interface ExtractResult {
    * and had their permissions set accordingly.
    */
   executables: string[];
-
-  /**
-   * The path to the top-level directory if the archive contained a single root
-   * directory (e.g., `mytool-1.0/bin/mytool`).
-   *
-   * If the archive does not have a single root directory, this will be `undefined`.
-   */
-  rootDir?: string;
 }

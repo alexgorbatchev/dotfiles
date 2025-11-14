@@ -1,9 +1,6 @@
 import type { $ } from 'bun';
 
 export interface MockShellExtensions {
-  commands: string[];
-  lastCommand: string | null;
-  responses: Map<string, MockShellResponse>;
   reset(): void;
   mockResponse(command: string, response: MockShellResponse): void;
 }
