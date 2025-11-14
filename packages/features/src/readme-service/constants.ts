@@ -12,13 +12,3 @@ export const GITHUB_RAW_BASE_URL: string = 'https://raw.githubusercontent.com';
  * README filename to fetch
  */
 export const README_FILENAME: string = 'README.md';
-
-/**
- * Default combined README title
- */
-export const DEFAULT_COMBINED_README_TITLE: string = 'Installed Tools';
-
-/**
- * Default maximum description length for combined README
- */
-export const DEFAULT_MAX_DESCRIPTION_LENGTH: number = 200;

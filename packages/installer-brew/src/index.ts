@@ -1,5 +1,4 @@
 export * from './BrewInstallerPlugin';
-export * from './BrewPluginDefinition';
 export * from './installFromBrew';
 export * from './schemas';
 export * from './types';

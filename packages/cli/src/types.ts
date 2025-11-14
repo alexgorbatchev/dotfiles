@@ -68,6 +68,7 @@ export interface InstallCommandSpecificOptions {
  * Command-specific options for update command (excludes global options)
  */
 export interface UpdateCommandSpecificOptions {
+  // TODO --yes is not yet implemented
   yes: boolean;
   shimMode: boolean;
 }

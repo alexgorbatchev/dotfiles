@@ -1,5 +1,4 @@
 export * from './CurlTarInstallerPlugin';
-export * from './CurlTarPluginDefinition';
 export * from './installFromCurlTar';
 export * from './schemas';
 export * from './types';

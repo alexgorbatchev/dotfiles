@@ -3,17 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Converts a module URL to a directory path.
- *
- * @param metaUrl - The `import.meta.url` value from an ES module.
- * @returns The directory path containing the module.
- */
-export function getDirname(metaUrl: string): string {
-  const __filename = fileURLToPath(metaUrl);
-  return path.dirname(__filename);
-}
-
-/**
  * Locates the repository root by searching for a `package.json` file with workspaces.
  *
  * Walks up the directory tree from the current module's location until it finds
@@ -51,36 +40,4 @@ export function getRepoRoot(): string {
 export function cdToRepoRoot(): void {
   const repoRoot = getRepoRoot();
   process.chdir(repoRoot);
-}
-
-/**
- * Prints the contents of a directory to the console with formatting.
- *
- * Displays files and directories with appropriate icons (📁 for directories, 📄 for files).
- * If the directory doesn't exist or is empty, appropriate messages are shown.
- *
- * @param directoryPath - The path to the directory to list.
- * @param title - Optional title to display before the listing. Defaults to 'Directory contents'.
- */
-export function printDirectoryContents(directoryPath: string, title: string = 'Directory contents'): void {
-  console.log(`📋 ${title}:`);
-
-  if (!fs.existsSync(directoryPath)) {
-    console.log('   (Directory does not exist)');
-    return;
-  }
-
-  const files = fs.readdirSync(directoryPath, { withFileTypes: true });
-
-  if (files.length === 0) {
-    console.log('   (Empty directory)');
-    return;
-  }
-
-  files.sort((a, b) => a.name.localeCompare(b.name));
-
-  for (const file of files) {
-    const icon = file.isDirectory() ? '📁' : '📄';
-    console.log(`   ${icon} ${file.name}`);
-  }
 }

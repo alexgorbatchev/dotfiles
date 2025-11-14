@@ -19,9 +19,3 @@ export const baseToolConfigPropertiesSchema = commonToolConfigPropertiesSchema
     configFilePath: z.string().optional(),
   })
   .strict();
-
-/**
- * Base properties common to all variants of a fully resolved ToolConfig.
- * This represents the internal data structure after the `ToolConfigBuilder` has been processed.
- */
-export type BaseToolConfigProperties = z.infer<typeof baseToolConfigPropertiesSchema>;

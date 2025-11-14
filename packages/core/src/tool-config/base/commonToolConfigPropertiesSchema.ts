@@ -33,8 +33,3 @@ export const commonToolConfigPropertiesSchema = z
     updateCheck: toolConfigUpdateCheckSchema.optional(),
   })
   .strict();
-
-/**
- * Common properties that can be configured for both base tool configs and platform-specific overrides.
- */
-export type CommonToolConfigProperties = z.infer<typeof commonToolConfigPropertiesSchema>;

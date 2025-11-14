@@ -1,4 +1,3 @@
-import type { ToolConfig } from '@dotfiles/core';
 import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
@@ -18,10 +17,3 @@ export const curlTarToolConfigSchema = baseToolConfigWithPlatformsSchema.extend(
 
 /** Resolved tool configuration for the 'curl-tar' installation method. */
 export type CurlTarToolConfig = InferToolConfigWithPlatforms<typeof curlTarToolConfigSchema>;
-
-/**
- * Type guard to check if a config is a Curl Tar tool config
- */
-export function isCurlTarToolConfig(config: ToolConfig): config is CurlTarToolConfig {
-  return config.installationMethod === 'curl-tar';
-}

@@ -22,15 +22,6 @@ export const baseToolConfigWithPlatformsSchema = baseToolConfigPropertiesSchema.
 });
 
 /**
- * Base type with properly-typed platformConfigs using PlatformConfigEntry.
- * We can't use direct inference because zod schema has config: unknown for runtime validation,
- * but the actual type should use PlatformConfigEntry which has properly-typed config.
- */
-export type BaseToolConfigWithPlatforms = Omit<z.infer<typeof baseToolConfigWithPlatformsSchema>, 'platformConfigs'> & {
-  platformConfigs?: PlatformConfigEntry[];
-};
-
-/**
  * Helper type for plugins to properly type their tool configs.
  * Plugins should use this instead of direct z.infer to get properly-typed platformConfigs.
  *

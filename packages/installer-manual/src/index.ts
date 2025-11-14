@@ -1,5 +1,4 @@
 export * from './ManualInstallerPlugin';
-export * from './ManualPluginDefinition';
 export * from './schemas';
 export * from './types';
 

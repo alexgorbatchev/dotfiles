@@ -137,12 +137,6 @@ export interface PostExtractInstallContext extends PostDownloadInstallContext {
  *
  * @internal
  */
-export interface FinalInstallContext extends BaseInstallContext {
-  /** The path to the installed binary. */
-  binaryPath: string;
-  /** The version of the installed tool. */
-  version: string;
-}
 
 /**
  * Defines the signature for an asynchronous TypeScript installation hook function.

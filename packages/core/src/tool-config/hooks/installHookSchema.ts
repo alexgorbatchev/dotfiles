@@ -6,8 +6,3 @@ export const installHookSchema = z.custom<(context: EnhancedInstallHookContext) 
   (val) => typeof val === 'function',
   'Must be a function'
 );
-
-/**
- * Install hook function schema type
- */
-export type InstallHookSchema = z.infer<typeof installHookSchema>;

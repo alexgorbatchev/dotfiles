@@ -14,8 +14,3 @@ export const shellTypeConfigSchema = z
     completions: shellCompletionConfigSchema.optional(),
   })
   .strict();
-
-/**
- * Shell configuration for a specific shell type
- */
-export type ShellTypeConfig = z.infer<typeof shellTypeConfigSchema>;

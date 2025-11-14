@@ -1,4 +1,4 @@
-import type { BaseInstallParams, ToolConfig } from '@dotfiles/core';
+import type { BaseInstallParams } from '@dotfiles/core';
 import { baseToolConfigWithPlatformsSchema, type InferToolConfigWithPlatforms } from '@dotfiles/core';
 import { z } from 'zod';
 import { cargoInstallParamsSchema } from './cargoInstallParamsSchema';
@@ -31,10 +31,3 @@ export interface CargoInstallParams extends BaseInstallParams {
  * Tool configuration for Cargo-based installations
  */
 export type CargoToolConfig = InferToolConfigWithPlatforms<typeof cargoToolConfigSchema>;
-
-/**
- * Type guard to check if a config is a Cargo tool config
- */
-export function isCargoToolConfig(config: ToolConfig): config is CargoToolConfig {
-  return config.installationMethod === 'cargo';
-}

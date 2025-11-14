@@ -1,4 +1,3 @@
-import type { ToolConfig } from '@dotfiles/core';
 import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
@@ -18,10 +17,3 @@ export const curlScriptToolConfigSchema = baseToolConfigWithPlatformsSchema.exte
 
 /** Resolved tool configuration for the 'curl-script' installation method. */
 export type CurlScriptToolConfig = InferToolConfigWithPlatforms<typeof curlScriptToolConfigSchema>;
-
-/**
- * Type guard to check if a config is a Curl Script tool config
- */
-export function isCurlScriptToolConfig(config: ToolConfig): config is CurlScriptToolConfig {
-  return config.installationMethod === 'curl-script';
-}

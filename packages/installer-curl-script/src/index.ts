@@ -1,5 +1,4 @@
 export * from './CurlScriptInstallerPlugin';
-export * from './CurlScriptPluginDefinition';
 export * from './installFromCurlScript';
 export * from './schemas';
 export * from './types';

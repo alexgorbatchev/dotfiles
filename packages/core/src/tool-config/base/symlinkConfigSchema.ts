@@ -8,10 +8,3 @@ export const symlinkConfigSchema = z
     target: z.string().min(1),
   })
   .strict();
-
-/**
- * Symlink configuration with source and target paths where
- * `source` is real file and `target` is the symlink.
- * Analogous to `ln -s source target`.
- */
-export type SymlinkConfig = z.infer<typeof symlinkConfigSchema>;

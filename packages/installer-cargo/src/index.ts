@@ -1,5 +1,4 @@
 export * from './CargoInstallerPlugin';
-export * from './CargoPluginDefinition';
 export * from './cargo-client';
 export * from './installFromCargo';
 export * from './schemas';

@@ -1,4 +1,3 @@
-import type { ToolConfig } from '@dotfiles/core';
 import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
@@ -18,10 +17,3 @@ export const manualToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
 
 /** Resolved tool configuration for the 'manual' installation method. */
 export type ManualToolConfig = InferToolConfigWithPlatforms<typeof manualToolConfigSchema>;
-
-/**
- * Type guard to check if a config is a Manual tool config
- */
-export function isManualToolConfig(config: ToolConfig): config is ManualToolConfig {
-  return config.installationMethod === 'manual';
-}

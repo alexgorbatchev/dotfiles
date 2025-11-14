@@ -1,5 +1,4 @@
 import type { ShellType } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
 
 /**
  * Configuration for updating a specific profile file.
@@ -59,11 +58,4 @@ export interface IProfileUpdater {
    * @returns Promise resolving to true if the sourcing line exists
    */
   hasSourceLine(profilePath: string, scriptPath: string): Promise<boolean>;
-}
-
-/**
- * Constructor signature for profile updater implementations.
- */
-export interface IProfileUpdaterConstructor {
-  new (fileSystem: IFileSystem, homeDir: string): IProfileUpdater;
 }

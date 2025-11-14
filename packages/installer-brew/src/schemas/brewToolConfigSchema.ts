@@ -1,4 +1,3 @@
-import type { ToolConfig } from '@dotfiles/core';
 import {
   baseToolConfigWithPlatformsSchema,
   binaryConfigSchema,
@@ -18,10 +17,3 @@ export const brewToolConfigSchema = baseToolConfigWithPlatformsSchema.extend({
 
 /** Resolved tool configuration for the 'brew' installation method. */
 export type BrewToolConfig = InferToolConfigWithPlatforms<typeof brewToolConfigSchema>;
-
-/**
- * Type guard to check if a config is a Brew tool config
- */
-export function isBrewToolConfig(config: ToolConfig): config is BrewToolConfig {
-  return config.installationMethod === 'brew';
-}

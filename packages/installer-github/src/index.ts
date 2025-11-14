@@ -1,5 +1,4 @@
 export * from './GitHubReleaseInstallerPlugin';
-export * from './GithubReleasePluginDefinition';
 export * from './github-client';
 export * from './installFromGitHubRelease';
 export * from './schemas';

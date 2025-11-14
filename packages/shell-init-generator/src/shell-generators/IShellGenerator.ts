@@ -33,14 +33,6 @@ export interface AdditionalShellFile {
 }
 
 /**
- * Options for generating shell initialization files.
- */
-export interface ShellGenerateOptions {
-  /** Custom output path for the shell initialization file */
-  outputPath?: string;
-}
-
-/**
  * Interface for shell-specific initialization file generators.
  * Each shell (zsh, bash, powershell) implements this interface to generate
  * shell-specific initialization files from tool configurations.
