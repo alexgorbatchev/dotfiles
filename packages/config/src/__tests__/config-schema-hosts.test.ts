@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import { yamlConfigSchema } from '@dotfiles/core';
+import { projectConfigSchema } from '@dotfiles/core';
 
 /**
  * Tests focused on the new per-host configuration + cache behavior for network services.
  */
 describe('config schema - host configuration', () => {
   it('should apply defaults for all hosts when omitted', () => {
-    const parsed = yamlConfigSchema.parse({});
+    const parsed = projectConfigSchema.parse({});
 
     expect(parsed.github.host).toBe('https://api.github.com');
     expect(parsed.github.cache.enabled).toBe(true);
@@ -16,7 +16,7 @@ describe('config schema - host configuration', () => {
   });
 
   it('should allow overriding a single host cache ttl without affecting others', () => {
-    const parsed = yamlConfigSchema.parse({
+    const parsed = projectConfigSchema.parse({
       cargo: {
         cratesIo: { cache: { ttl: 123 } },
       },
@@ -29,7 +29,7 @@ describe('config schema - host configuration', () => {
   });
 
   it('should reject deprecated cargo fields', () => {
-    const result = yamlConfigSchema.safeParse({
+    const result = projectConfigSchema.safeParse({
       cargo: { cratesIoHost: 'https://example.com' },
     });
     expect(result.success).toBe(false);

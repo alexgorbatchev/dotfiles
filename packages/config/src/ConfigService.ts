@@ -1,4 +1,4 @@
-import type { ToolConfig, YamlConfig } from '@dotfiles/core';
+import type { ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IConfigService } from './IConfigService';
@@ -22,9 +22,9 @@ export class ConfigService implements IConfigService {
     toolName: string,
     toolConfigsDir: string,
     fs: IFileSystem,
-    yamlConfig: YamlConfig
+    projectConfig: ProjectConfig
   ): Promise<ToolConfig | undefined> {
-    return actualLoadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+    return actualLoadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig);
   }
 
   /**
@@ -34,8 +34,8 @@ export class ConfigService implements IConfigService {
     logger: TsLogger,
     toolConfigsDir: string,
     fs: IFileSystem,
-    yamlConfig: YamlConfig
+    projectConfig: ProjectConfig
   ): Promise<Record<string, ToolConfig>> {
-    return actualLoadToolConfigs(logger, toolConfigsDir, fs, yamlConfig);
+    return actualLoadToolConfigs(logger, toolConfigsDir, fs, projectConfig);
   }
 }

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -41,15 +41,15 @@ import {
  */
 export class ShellInitGenerator implements IShellInitGenerator {
   private readonly fs: IFileSystem;
-  private readonly appConfig: YamlConfig;
+  private readonly projectConfig: ProjectConfig;
   private readonly logger: TsLogger;
 
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, appConfig: YamlConfig) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, projectConfig: ProjectConfig) {
     this.logger = parentLogger.getSubLogger({ name: 'ShellInitGenerator' });
     const logger = this.logger.getSubLogger({ name: 'constructor' });
     logger.debug(messages.constructor.initialized());
     this.fs = fileSystem;
-    this.appConfig = appConfig;
+    this.projectConfig = projectConfig;
   }
 
   async generate(
@@ -101,7 +101,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   ): Promise<{ outputPath: string } | null> {
     const logger = this.logger.getSubLogger({ name: 'generateForShellType' });
     try {
-      const generator = createGenerator(shellType, this.appConfig);
+      const generator = createGenerator(shellType, this.projectConfig);
       const outputPath = options?.outputPath ?? generator.getDefaultOutputPath();
       logger.debug(messages.generate.resolvedOutputPath(outputPath));
 
@@ -185,7 +185,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
    */
   private async updateProfileFiles(generatedFiles: Map<ShellType, string>) {
     const logger = this.logger.getSubLogger({ name: 'updateProfileFiles' });
-    const profileUpdater = new ProfileUpdater(this.fs, this.appConfig.paths.homeDir);
+    const profileUpdater = new ProfileUpdater(this.fs, this.projectConfig.paths.homeDir);
 
     const configs: ProfileUpdateConfig[] = [];
     for (const [shellType, scriptPath] of generatedFiles) {
@@ -193,7 +193,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
         shellType,
         generatedScriptPath: scriptPath,
         onlyIfExists: true, // Only update profile files if they already exist
-        yamlConfigPath: this.appConfig.configFilePath,
+        projectConfigPath: this.projectConfig.configFilePath,
       });
     }
 
@@ -208,7 +208,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
    */
   private async cleanupOnceScriptsDirectory(shellType: ShellType): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'cleanupOnceScriptsDirectory' });
-    const onceDir = path.join(this.appConfig.paths.shellScriptsDir, '.once');
+    const onceDir = path.join(this.projectConfig.paths.shellScriptsDir, '.once');
 
     try {
       const onceDirExists = await this.fs.exists(onceDir);

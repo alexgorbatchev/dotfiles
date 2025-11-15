@@ -1,4 +1,4 @@
-import type { ToolConfig, YamlConfig } from '@dotfiles/core';
+import type { ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
@@ -16,7 +16,7 @@ export interface IConfigService {
    * @param toolName - The name of the tool to load configuration for.
    * @param toolConfigsDir - Directory containing tool configuration files.
    * @param fs - File system interface for reading configuration files.
-   * @param yamlConfig - Parsed YAML configuration object.
+   * @param projectConfig - Parsed project configuration object.
    * @returns The tool configuration if found, undefined otherwise.
    */
   loadSingleToolConfig(
@@ -24,7 +24,7 @@ export interface IConfigService {
     toolName: string,
     toolConfigsDir: string,
     fs: IFileSystem,
-    yamlConfig: YamlConfig
+    projectConfig: ProjectConfig
   ): Promise<ToolConfig | undefined>;
 
   /**
@@ -33,13 +33,13 @@ export interface IConfigService {
    * @param logger - Logger instance for logging operations.
    * @param toolConfigsDir - Directory containing tool configuration files.
    * @param fs - File system interface for reading configuration files.
-   * @param yamlConfig - Parsed YAML configuration object.
+   * @param projectConfig - Parsed project configuration object.
    * @returns A record mapping tool names to their configurations.
    */
   loadToolConfigs(
     logger: TsLogger,
     toolConfigsDir: string,
     fs: IFileSystem,
-    yamlConfig: YamlConfig
+    projectConfig: ProjectConfig
   ): Promise<Record<string, ToolConfig>>;
 }

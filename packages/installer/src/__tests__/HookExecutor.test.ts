@@ -4,7 +4,7 @@ import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@dotfiles
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import type { $ } from 'bun';
 import { type HookExecutionOptions, HookExecutor } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
@@ -184,7 +184,7 @@ describe('HookExecutor', () => {
       expect(typeof enhancedContext.$).toBe('function');
     });
 
-    it('should preserve toolConfig and appConfig in enhanced context', async () => {
+    it('should preserve toolConfig and projectConfig in enhanced context', async () => {
       const { context: baseContext } = createTestInstallHookContext({});
       const mockToolConfig: ToolConfig = {
         configFilePath: '/path/to/configs/tool.tool.ts',
@@ -197,7 +197,7 @@ describe('HookExecutor', () => {
 
       await memFs.fs.ensureDir('/test');
 
-      const mockAppConfig = await createMockYamlConfig({
+      const mockProjectConfig = await createMockProjectConfig({
         config: { paths: { generatedDir: '/generated' } },
         filePath: '/test/config.yaml',
         fileSystem: memFs.fs,
@@ -209,13 +209,13 @@ describe('HookExecutor', () => {
       const contextWithConfigs = {
         ...baseContext,
         toolConfig: mockToolConfig,
-        appConfig: mockAppConfig,
+        projectConfig: mockProjectConfig,
       };
 
       const enhancedContext = hookExecutor.createEnhancedContext(contextWithConfigs, memFs.fs);
 
       expect(enhancedContext.toolConfig).toBe(mockToolConfig);
-      expect(enhancedContext.appConfig).toBe(mockAppConfig);
+      expect(enhancedContext.projectConfig).toBe(mockProjectConfig);
     });
   });
 

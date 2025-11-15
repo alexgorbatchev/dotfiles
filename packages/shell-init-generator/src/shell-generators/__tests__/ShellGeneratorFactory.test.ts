@@ -1,39 +1,39 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellType } from '@dotfiles/core';
 import { BashGenerator } from '../BashGenerator';
 import { PowerShellGenerator } from '../PowerShellGenerator';
 import * as ShellGeneratorFactory from '../ShellGeneratorFactory';
 import { ZshGenerator } from '../ZshGenerator';
-import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';
+import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
 
 describe('ShellGeneratorFactory', () => {
-  let mockAppConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
 
   beforeEach(() => {
-    mockAppConfig = createMockYamlConfigWithPathsOnly();
+    mockProjectConfig = createMockProjectConfigWithPathsOnly();
   });
 
   it('should create zsh generator', () => {
-    const generator = ShellGeneratorFactory.createGenerator('zsh', mockAppConfig);
+    const generator = ShellGeneratorFactory.createGenerator('zsh', mockProjectConfig);
     expect(generator).toBeInstanceOf(ZshGenerator);
     expect(generator.shellType).toBe('zsh');
   });
 
   it('should create bash generator', () => {
-    const generator = ShellGeneratorFactory.createGenerator('bash', mockAppConfig);
+    const generator = ShellGeneratorFactory.createGenerator('bash', mockProjectConfig);
     expect(generator).toBeInstanceOf(BashGenerator);
     expect(generator.shellType).toBe('bash');
   });
 
   it('should create powershell generator', () => {
-    const generator = ShellGeneratorFactory.createGenerator('powershell', mockAppConfig);
+    const generator = ShellGeneratorFactory.createGenerator('powershell', mockProjectConfig);
     expect(generator).toBeInstanceOf(PowerShellGenerator);
     expect(generator.shellType).toBe('powershell');
   });
 
   it('should throw error for unsupported shell type', () => {
-    expect(() => ShellGeneratorFactory.createGenerator('fish' as ShellType, mockAppConfig)).toThrow(
+    expect(() => ShellGeneratorFactory.createGenerator('fish' as ShellType, mockProjectConfig)).toThrow(
       'Unsupported shell type: fish'
     );
   });
@@ -44,7 +44,7 @@ describe('ShellGeneratorFactory', () => {
   });
 
   it('should create all generators', () => {
-    const generators = ShellGeneratorFactory.createAllGenerators(mockAppConfig);
+    const generators = ShellGeneratorFactory.createAllGenerators(mockProjectConfig);
 
     expect(generators.size).toBe(3);
     expect(generators.get('zsh')).toBeInstanceOf(ZshGenerator);

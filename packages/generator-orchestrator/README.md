@@ -41,7 +41,7 @@ Interface for generation orchestration.
 ```typescript
 interface IGeneratorOrchestrator {
   generate(
-    config: YamlConfig,
+    config: ProjectConfig,
     toolRegistry: IToolRegistry
   ): Promise<GeneratedArtifactsManifest>;
 }

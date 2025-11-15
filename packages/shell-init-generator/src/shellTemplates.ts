@@ -197,13 +197,13 @@ export function generateSourceLine(shellType: ShellType, scriptPath: string): st
  * Generates a header comment block for profile file modifications.
  * Creates a double-line header with generator attribution and config path.
  * @param shellType - Type of shell for comment syntax
- * @param yamlConfigPath - Full path to the YAML config file
+ * @param projectConfigPath - Full path to the project config file
  * @returns Multi-line header comment block
  */
-export function generateProfileHeader(shellType: ShellType, yamlConfigPath: string): string {
+export function generateProfileHeader(shellType: ShellType, projectConfigPath: string): string {
   return [
     commentLine(shellType, 'Generated via dotfiles generator - do not modify'),
-    commentLine(shellType, yamlConfigPath),
+    commentLine(shellType, projectConfigPath),
     headerLine(shellType, '-'),
   ].join('\n');
 }

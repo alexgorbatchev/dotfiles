@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { dedentString } from '@dotfiles/utils';
 import { CargoClient } from '../';
 
@@ -10,7 +10,7 @@ describe('CargoClient', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     await fs.ensureDir('/test');
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/test/config.yaml',
       fileSystem: fs,
@@ -32,7 +32,7 @@ describe('CargoClient', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     await fs.ensureDir('/test');
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/test/config.yaml',
       fileSystem: fs,
@@ -81,7 +81,7 @@ describe('CargoClient', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     await fs.ensureDir('/test');
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/test/config.yaml',
       fileSystem: fs,
@@ -114,7 +114,7 @@ describe('CargoClient', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     await fs.ensureDir('/test');
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/test/config.yaml',
       fileSystem: fs,
@@ -189,7 +189,7 @@ describe('CargoClient', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     await fs.ensureDir('/test');
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/test/config.yaml',
       fileSystem: fs,

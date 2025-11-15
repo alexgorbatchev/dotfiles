@@ -4,11 +4,11 @@ import {
   hasArchitecture,
   hasPlatform,
   Platform,
-  privateYamlConfigFields,
+  privateProjectConfigFields,
   type SystemInfo,
-  type YamlConfig,
-  type YamlConfigPartial,
-  yamlConfigSchema,
+  type ProjectConfig,
+  type ProjectConfigPartial,
+  projectConfigSchema,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -234,7 +234,7 @@ function performTokenSubstitution(
 function hasConfigFilePath(
   config: Record<string, unknown>
 ): config is Record<string, unknown> & { configFilePath: string } {
-  return typeof (config as YamlConfig).configFilePath === 'string';
+  return typeof (config as ProjectConfig).configFilePath === 'string';
 }
 
 /**
@@ -279,24 +279,24 @@ function processConfig(
   userConfig: Record<string, unknown>,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
-): YamlConfig {
+): ProjectConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
   logger.debug(messages.configurationProcessing(), userConfigPath);
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
-  const withInjectedValues: YamlConfig = configWithPlatformOverrides as YamlConfig;
+  const withInjectedValues: ProjectConfig = configWithPlatformOverrides as ProjectConfig;
 
   withInjectedValues.configFilePath = userConfigPath;
   withInjectedValues.configFileDir = path.dirname(userConfigPath);
 
   const configWithTokens = substituteTokens(withInjectedValues, env, withInjectedValues, systemInfo);
-  const result = yamlConfigSchema.extend(privateYamlConfigFields.shape).safeParse(configWithTokens);
+  const result = projectConfigSchema.extend(privateProjectConfigFields.shape).safeParse(configWithTokens);
 
   if (!result.success) {
     const pretty = z.prettifyError(result.error);
     logger.error(messages.configurationValidationFailed([pretty]));
-    throw new Error(`YAML configuration is invalid.\n${pretty}`);
+    throw new Error(`Project configuration is invalid.\n${pretty}`);
   }
 
   return result.data;
@@ -308,26 +308,26 @@ export async function getDefaultConfig(
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>,
   userConfigPath: string
-): Promise<YamlConfig> {
-  const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
+): Promise<ProjectConfig> {
+  const defaultConfig = await loadDefaultProjectConfigAsRecord(fileSystem);
   return processConfig(parentLogger, userConfigPath, defaultConfig, {}, systemInfo, env);
 }
 
 /**
- * Loads the default YAML configuration as a plain object.
+ * Loads the default project configuration as a plain object.
  *
- * Returns the default configuration defined by the yamlConfigSchema. This serves as the
+ * Returns the default configuration defined by the projectConfigSchema. This serves as the
  * base configuration that user configurations merge into.
  *
  * @param _fileSystem - File system interface (currently unused, kept for API consistency).
  * @returns A promise that resolves to the default configuration object.
  */
-export async function loadDefaultYamlConfigAsRecord(_fileSystem: IFileSystem): Promise<Record<string, unknown>> {
-  return yamlConfigSchema.parse({});
+export async function loadDefaultProjectConfigAsRecord(_fileSystem: IFileSystem): Promise<Record<string, unknown>> {
+  return projectConfigSchema.parse({});
 }
 
 /**
- * Loads and validates the YAML configuration from the filesystem.
+ * Loads and validates the project configuration from the filesystem.
  *
  * Reads the user's configuration file, merges it with default configuration, applies
  * platform-specific overrides based on the current system, and performs token substitution
@@ -340,21 +340,21 @@ export async function loadDefaultYamlConfigAsRecord(_fileSystem: IFileSystem): P
  * @param env - Environment variables for token substitution.
  * @param options - Additional options for configuration processing.
  * @param options.userConfigPath - File path to associate with the in-memory configuration for token substitution. Required.
- * @returns A promise that resolves to the fully validated and processed YAML configuration.
+ * @returns A promise that resolves to the fully validated and processed project configuration.
  *
  * @testing
  * For unit and integration tests, use `createMemFileSystem` (from `@dotfiles/testing-helpers`)
  * to create an in-memory file system with mock configuration files.
  */
-export async function loadYamlConfig(
+export async function loadProjectConfig(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfigPath: string,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
-): Promise<YamlConfig> {
-  const logger = parentLogger.getSubLogger({ name: 'loadYamlConfig' });
-  const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
+): Promise<ProjectConfig> {
+  const logger = parentLogger.getSubLogger({ name: 'loadProjectConfig' });
+  const defaultConfig = await loadDefaultProjectConfigAsRecord(fileSystem);
   let userConfig = {};
 
   if (!(await fileSystem.exists(userConfigPath))) {
@@ -374,18 +374,18 @@ export async function loadYamlConfig(
   return processConfig(parentLogger, userConfigPath, defaultConfig, userConfig, systemInfo, env);
 }
 
-export interface CreateYamlConfigFromObjectOptions {
+export interface CreateProjectConfigFromObjectOptions {
   userConfigPath: string;
 }
 
 /**
- * Creates a validated YAML configuration from in-memory objects.
+ * Creates a validated project configuration from in-memory objects.
  *
  * Useful for testing or programmatic configuration creation. Merges the user configuration
  * with default configuration, applies platform overrides, and performs token substitution,
  * but does not read from the filesystem.
  *
- * The associated file path must be provided via {@link CreateYamlConfigFromObjectOptions.userConfigPath}
+ * The associated file path must be provided via {@link CreateProjectConfigFromObjectOptions.userConfigPath}
  * so token substitution and relative path resolution behave the same as when loading from disk.
  *
  * @param parentLogger - Parent logger instance (a sublogger will be created).
@@ -393,22 +393,22 @@ export interface CreateYamlConfigFromObjectOptions {
  * @param userConfig - User configuration object that overrides default values.
  * @param systemInfo - System information for platform detection and path expansion.
  * @param env - Environment variables for token substitution.
- * @returns A promise that resolves to the fully validated and processed YAML configuration.
+ * @returns A promise that resolves to the fully validated and processed project configuration.
  *
  * @testing
- * When writing tests, use `createMockYamlConfig` (from `@dotfiles/testing-helpers`) to create
+ * When writing tests, use `createMockProjectConfig` (from `@dotfiles/testing-helpers`) to create
  * a mock configuration object with sensible defaults.
  */
-export async function createYamlConfigFromObject(
+export async function createProjectConfigFromObject(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
-  userConfig: YamlConfigPartial = {},
+  userConfig: ProjectConfigPartial = {},
   systemInfo: SystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
   env: Record<string, string | undefined> = {},
-  options: CreateYamlConfigFromObjectOptions
-): Promise<YamlConfig> {
+  options: CreateProjectConfigFromObjectOptions
+): Promise<ProjectConfig> {
   const resolvedUserConfigPath: string = options.userConfigPath;
-  const defaultConfig = await loadDefaultYamlConfigAsRecord(fileSystem);
-  const userConfigClone = deepMerge({} as YamlConfigPartial, userConfig);
+  const defaultConfig = await loadDefaultProjectConfigAsRecord(fileSystem);
+  const userConfigClone = deepMerge({} as ProjectConfigPartial, userConfig);
   return processConfig(parentLogger, resolvedUserConfigPath, defaultConfig, userConfigClone, systemInfo, env);
 }

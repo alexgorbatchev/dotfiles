@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { MemFileSystemReturn } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
@@ -16,7 +16,7 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 
 describe('featuresCommand', () => {
   let program: GlobalProgram;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
   let mockFs: MemFileSystemReturn;
   let mockConfigService: MockedInterface<IConfigService>;
@@ -40,7 +40,7 @@ describe('featuresCommand', () => {
     program = setup.program;
     logger = setup.logger;
     mockFs = setup.mockFs;
-    mockYamlConfig = setup.mockYamlConfig;
+    mockProjectConfig = setup.mockProjectConfig;
 
     mockConfigService = createMockConfigService();
     mockConfigService.loadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
@@ -62,9 +62,9 @@ describe('featuresCommand', () => {
 
     expect(mockConfigService.loadToolConfigs).toHaveBeenCalledWith(
       expect.any(Object),
-      mockYamlConfig.paths.toolConfigsDir,
+      mockProjectConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,
-      mockYamlConfig
+      mockProjectConfig
     );
 
     // Should log DONE message at the end
@@ -76,9 +76,9 @@ describe('featuresCommand', () => {
 
     expect(mockConfigService.loadToolConfigs).toHaveBeenCalledWith(
       expect.any(Object),
-      mockYamlConfig.paths.toolConfigsDir,
+      mockProjectConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,
-      mockYamlConfig
+      mockProjectConfig
     );
 
     // Should log DONE (dry run) message at the end

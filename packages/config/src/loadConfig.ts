@@ -1,9 +1,9 @@
-import type { SystemInfo, YamlConfig } from '@dotfiles/core';
+import type { SystemInfo, ProjectConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
+import { loadProjectConfig } from './projectConfigLoader';
 import { loadTsConfig } from './tsConfigLoader';
-import { loadYamlConfig } from './yamlConfigLoader';
 
 /**
  * Loads configuration from either a YAML or TypeScript file.
@@ -34,7 +34,7 @@ export async function loadConfig(
   userConfigPath: string,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
-): Promise<YamlConfig> {
+): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadConfig' });
 
   if (userConfigPath.endsWith('.ts')) {
@@ -43,8 +43,8 @@ export async function loadConfig(
   }
 
   if (userConfigPath.endsWith('.yaml') || userConfigPath.endsWith('.yml')) {
-    logger.debug(messages.loadingYamlConfiguration());
-    return loadYamlConfig(logger, fileSystem, userConfigPath, systemInfo, env);
+    logger.debug(messages.loadingProjectConfiguration());
+    return loadProjectConfig(logger, fileSystem, userConfigPath, systemInfo, env);
   }
 
   throw new Error(`Unsupported configuration file type: ${userConfigPath}. Use .yaml, .yml, or .ts`);

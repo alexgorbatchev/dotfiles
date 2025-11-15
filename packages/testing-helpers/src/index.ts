@@ -1,5 +1,5 @@
 export * from './createMock$';
-export * from './createMockYamlConfig';
+export * from './createMockProjectConfig';
 export * from './createTestDirectories';
 export * from './FetchMockHelper';
 export * from './MockedInterface';

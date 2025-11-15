@@ -5,7 +5,7 @@ import {
   createGitHubConfigOverride,
   createMockDownloader,
   createMockGitHubApiCache,
-  createMockYamlConfigForGitHubApi,
+  createMockProjectConfigForGitHubApi,
   setupMockGitHubApiClient,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
@@ -18,33 +18,33 @@ describe('GitHubApiClient', () => {
   // Constructor tests
   describe('constructor', async () => {
     it('should initialize correctly without a token', async () => {
-      const mockYamlConfig = await createMockYamlConfigForGitHubApi();
+      const mockProjectConfig = await createMockProjectConfigForGitHubApi();
       const mockDownloader = createMockDownloader();
-      const client = new GitHubApiClient(new TestLogger(), mockYamlConfig, mockDownloader);
+      const client = new GitHubApiClient(new TestLogger(), mockProjectConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
     it('should initialize correctly with a token', async () => {
-      const mockYamlConfig = await createMockYamlConfigForGitHubApi(
+      const mockProjectConfig = await createMockProjectConfigForGitHubApi(
         createGitHubConfigOverride({ githubToken: 'test-token' })
       );
       const mockDownloader = createMockDownloader();
-      const client = new GitHubApiClient(new TestLogger(), mockYamlConfig, mockDownloader);
+      const client = new GitHubApiClient(new TestLogger(), mockProjectConfig, mockDownloader);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
     it('should initialize correctly with a cache', async () => {
-      const mockYamlConfig = await createMockYamlConfigForGitHubApi();
+      const mockProjectConfig = await createMockProjectConfigForGitHubApi();
       const mockDownloader = createMockDownloader();
       const mockCache = createMockGitHubApiCache();
-      const client = new GitHubApiClient(new TestLogger(), mockYamlConfig, mockDownloader, mockCache);
+      const client = new GitHubApiClient(new TestLogger(), mockProjectConfig, mockDownloader, mockCache);
       expect(client).toBeInstanceOf(GitHubApiClient);
     });
 
     it('should respect cache configuration options', async () => {
       const mockDownloader = createMockDownloader();
       const mockCache = createMockGitHubApiCache();
-      const configWithCacheDisabled = await createMockYamlConfigForGitHubApi(
+      const configWithCacheDisabled = await createMockProjectConfigForGitHubApi(
         createGitHubConfigOverride({ githubApiCacheEnabled: false })
       );
       const clientNoCache = new GitHubApiClient(new TestLogger(), configWithCacheDisabled, mockDownloader, mockCache);
@@ -52,7 +52,7 @@ describe('GitHubApiClient', () => {
       // Add specific assertions here if the client stores these values internally
       // and they are accessible for testing, e.g. client.isCacheEnabled()
 
-      const configWithCustomTtl = await createMockYamlConfigForGitHubApi(
+      const configWithCustomTtl = await createMockProjectConfigForGitHubApi(
         createGitHubConfigOverride({ githubApiCacheTtl: 7200000 }) // 2 hours
       );
       const clientWithCustomTtl = new GitHubApiClient(new TestLogger(), configWithCustomTtl, mockDownloader, mockCache);

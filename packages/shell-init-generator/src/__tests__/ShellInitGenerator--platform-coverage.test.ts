@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { SystemInfo, ToolConfig } from '@dotfiles/core';
 import { always, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Platform Coverage Tests', () => {
   let mockFileSystem: IFileSystem;
-  let mockAppConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
@@ -23,7 +23,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-platform-coverage' });
 
-    mockAppConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -34,7 +34,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       env: {},
     });
 
-    generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
+    generator = new ShellInitGenerator(logger, mockFileSystem, mockProjectConfig);
   });
 
   describe('multiple shell types with platform-specific code', () => {

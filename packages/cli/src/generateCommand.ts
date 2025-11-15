@@ -21,17 +21,17 @@ export function registerGenerateCommand(
 
       const combinedOptions: GenerateCommandOptions = program.opts();
       const services = await servicesFactory();
-      const { yamlConfig, fs, generatorOrchestrator, configService } = services;
+      const { projectConfig, fs, generatorOrchestrator, configService } = services;
 
       try {
-        logger.debug(messages.toolConfigsLoading(yamlConfig.paths.toolConfigsDir), fs.constructor.name);
+        logger.debug(messages.toolConfigsLoading(projectConfig.paths.toolConfigsDir), fs.constructor.name);
         const toolConfigs = await configService.loadToolConfigs(
           logger,
-          yamlConfig.paths.toolConfigsDir,
+          projectConfig.paths.toolConfigsDir,
           fs,
-          yamlConfig
+          projectConfig
         );
-        logger.debug(messages.toolConfigsLoaded(yamlConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
+        logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
         await generatorOrchestrator.generateAll(toolConfigs);
 

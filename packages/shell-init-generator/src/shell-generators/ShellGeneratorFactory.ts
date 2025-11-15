@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellType } from '@dotfiles/core';
 import { BashGenerator } from './BashGenerator';
 import type { IShellGenerator } from './IShellGenerator';
@@ -8,25 +8,25 @@ import { ZshGenerator } from './ZshGenerator';
 /**
  * Map of shell types to their generator factory functions.
  */
-const generators = new Map<ShellType, (appConfig: YamlConfig) => IShellGenerator>([
-  ['zsh', (appConfig: YamlConfig) => new ZshGenerator(appConfig)],
-  ['bash', (appConfig: YamlConfig) => new BashGenerator(appConfig)],
-  ['powershell', (appConfig: YamlConfig) => new PowerShellGenerator(appConfig)],
+const generators = new Map<ShellType, (projectConfig: ProjectConfig) => IShellGenerator>([
+  ['zsh', (projectConfig: ProjectConfig) => new ZshGenerator(projectConfig)],
+  ['bash', (projectConfig: ProjectConfig) => new BashGenerator(projectConfig)],
+  ['powershell', (projectConfig: ProjectConfig) => new PowerShellGenerator(projectConfig)],
 ]);
 
 /**
  * Creates a shell generator for the specified shell type.
  * @param shellType - The shell type to create a generator for
- * @param appConfig - Application configuration
+ * @param projectConfig - Application configuration
  * @returns Shell generator instance
  * @throws Error if the shell type is not supported
  */
-export function createGenerator(shellType: ShellType, appConfig: YamlConfig): IShellGenerator {
+export function createGenerator(shellType: ShellType, projectConfig: ProjectConfig): IShellGenerator {
   const generatorFactory = generators.get(shellType);
   if (!generatorFactory) {
     throw new Error(`Unsupported shell type: ${shellType}`);
   }
-  return generatorFactory(appConfig);
+  return generatorFactory(projectConfig);
 }
 
 /**
@@ -39,13 +39,13 @@ export function getSupportedShellTypes(): ShellType[] {
 
 /**
  * Creates generators for all supported shell types.
- * @param appConfig - Application configuration
+ * @param projectConfig - Application configuration
  * @returns Map of shell type to generator instance
  */
-export function createAllGenerators(appConfig: YamlConfig): Map<ShellType, IShellGenerator> {
+export function createAllGenerators(projectConfig: ProjectConfig): Map<ShellType, IShellGenerator> {
   const result = new Map<ShellType, IShellGenerator>();
   for (const [shellType, factory] of generators) {
-    result.set(shellType, factory(appConfig));
+    result.set(shellType, factory(projectConfig));
   }
   return result;
 }

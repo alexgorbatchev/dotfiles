@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import type { YamlConfig } from '../yamlConfigSchema';
+import type { ProjectConfig } from '../projectConfigSchema';
 
-describe('yamlConfigSchemaTest', () => {
+describe('projectConfigSchemaTest', () => {
   test('type validation', () => {
-    const config: YamlConfig = {
+    const config: ProjectConfig = {
       configFilePath: '',
       configFileDir: '',
 

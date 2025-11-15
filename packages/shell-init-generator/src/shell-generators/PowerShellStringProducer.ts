@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@dotfiles/core';
 import type { IShellStringProducer } from './BaseShellGenerator';
 
@@ -8,10 +8,10 @@ import type { IShellStringProducer } from './BaseShellGenerator';
  * Handles PowerShell syntax and conventions for completions and script extraction.
  */
 export class PowerShellStringProducer implements IShellStringProducer {
-  private readonly appConfig: YamlConfig;
+  private readonly projectConfig: ProjectConfig;
 
-  constructor(appConfig: YamlConfig) {
-    this.appConfig = appConfig;
+  constructor(projectConfig: ProjectConfig) {
+    this.projectConfig = projectConfig;
   }
 
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
@@ -24,7 +24,7 @@ export class PowerShellStringProducer implements IShellStringProducer {
     if (completions.cmd || completions.source) {
       const defaultSubdir = completions.cmd ? 'completions' : '';
       const completionDir =
-        completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'powershell', defaultSubdir);
+        completions.targetDir ?? path.join(this.projectConfig.paths.shellScriptsDir, 'powershell', defaultSubdir);
       const completionFile = path.join(completionDir, completions.name ?? `${toolName}.ps1`);
       completionSetup.push(`if (Test-Path "${completionFile}") { . "${completionFile}" }`);
     }

@@ -1,4 +1,4 @@
-import type { IConfigService, SystemInfo, ToolConfig, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, SystemInfo, ToolConfig, ProjectConfig } from '@dotfiles/config';
 import type { BaseInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -11,7 +11,7 @@ async function loadToolConfigs(
   logger: TsLogger,
   configService: IConfigService,
   toolName: string | undefined,
-  yamlConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   fs: IFileSystem
 ): Promise<Record<string, ToolConfig> | null> {
   let toolConfigs: Record<string, ToolConfig> = {};
@@ -21,14 +21,14 @@ async function loadToolConfigs(
       const config = await configService.loadSingleToolConfig(
         logger,
         toolName,
-        yamlConfig.paths.toolConfigsDir,
+        projectConfig.paths.toolConfigsDir,
         fs,
-        yamlConfig
+        projectConfig
       );
       if (config) {
         toolConfigs[toolName] = config;
       } else {
-        logger.error(messages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
+        logger.error(messages.toolNotFound(toolName, projectConfig.paths.toolConfigsDir));
         return null;
       }
     } catch (error) {
@@ -38,9 +38,9 @@ async function loadToolConfigs(
   } else {
     try {
       logger.debug(messages.commandCheckingUpdatesForAll());
-      toolConfigs = await configService.loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+      toolConfigs = await configService.loadToolConfigs(logger, projectConfig.paths.toolConfigsDir, fs, projectConfig);
       if (Object.keys(toolConfigs).length === 0) {
-        logger.error(messages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
+        logger.error(messages.toolNoConfigurationsFound(projectConfig.paths.toolConfigsDir));
         return null;
       }
     } catch (error) {
@@ -51,24 +51,24 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
-function createInstallContext(config: ToolConfig, yamlConfig: YamlConfig, systemInfo: SystemInfo): BaseInstallContext {
+function createInstallContext(config: ToolConfig, projectConfig: ProjectConfig, systemInfo: SystemInfo): BaseInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-  const getToolDir = (toolName: string): string => `${yamlConfig.paths.binariesDir}/${toolName}`;
+  const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
   const context: BaseInstallContext = {
     toolName: config.name,
-    installDir: yamlConfig.paths.binariesDir,
+    installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',
     systemInfo,
     toolConfig: config,
-    appConfig: yamlConfig,
+    projectConfig: projectConfig,
     toolDir: getToolDir(config.name),
     getToolDir,
-    homeDir: yamlConfig.paths.homeDir,
-    binDir: yamlConfig.paths.targetDir,
-    shellScriptsDir: yamlConfig.paths.shellScriptsDir,
-    dotfilesDir: yamlConfig.paths.dotfilesDir,
-    generatedDir: yamlConfig.paths.generatedDir,
+    homeDir: projectConfig.paths.homeDir,
+    binDir: projectConfig.paths.targetDir,
+    shellScriptsDir: projectConfig.paths.shellScriptsDir,
+    dotfilesDir: projectConfig.paths.dotfilesDir,
+    generatedDir: projectConfig.paths.generatedDir,
   };
 
   return context;
@@ -104,9 +104,9 @@ async function logVersionStatus(
 }
 
 async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: Services): Promise<void> {
-  const { yamlConfig, versionChecker, pluginRegistry, systemInfo } = services;
+  const { projectConfig, versionChecker, pluginRegistry, systemInfo } = services;
 
-  const context = createInstallContext(config, yamlConfig, systemInfo);
+  const context = createInstallContext(config, projectConfig, systemInfo);
   const plugin = pluginRegistry.get(config.installationMethod);
 
   if (!plugin) {
@@ -154,7 +154,7 @@ export async function checkUpdatesActionLogic(
 ): Promise<void> {
   logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
-  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, services.yamlConfig, services.fs);
+  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, services.projectConfig, services.fs);
 
   if (!toolConfigs) {
     return;

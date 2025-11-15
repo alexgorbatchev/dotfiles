@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -9,16 +9,16 @@ import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
 
 async function loadToolConfigs(
   logger: TsLogger,
-  yamlConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   fs: IFileSystem,
   configService: IConfigService
 ): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
   try {
     const toolConfigsRecord = await configService.loadToolConfigs(
       logger,
-      yamlConfig.paths.toolConfigsDir,
+      projectConfig.paths.toolConfigsDir,
       fs,
-      yamlConfig
+      projectConfig
     );
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
@@ -107,10 +107,10 @@ export async function detectConflictsActionLogic(
   _options: GlobalProgramOptions,
   services: Services
 ): Promise<ExitCode> {
-  const { yamlConfig, fs, configService } = services;
+  const { projectConfig, fs, configService } = services;
   const conflictMessages: string[] = [];
 
-  const toolConfigsResult = await loadToolConfigs(logger, yamlConfig, fs, configService);
+  const toolConfigsResult = await loadToolConfigs(logger, projectConfig, fs, configService);
 
   if (toolConfigsResult.exitCode !== ExitCode.SUCCESS) {
     return toolConfigsResult.exitCode;
@@ -119,21 +119,21 @@ export async function detectConflictsActionLogic(
   const toolConfigsArray = toolConfigsResult.toolConfigs;
 
   if (toolConfigsArray.length === 0) {
-    logger.info(messages.toolNoConfigurationsFound(yamlConfig.paths.toolConfigsDir));
+    logger.info(messages.toolNoConfigurationsFound(projectConfig.paths.toolConfigsDir));
     return ExitCode.SUCCESS;
   }
 
   for (const toolConfig of toolConfigsArray) {
     // Check for shim conflicts
-    await checkShimConflicts(logger, fs, toolConfig, yamlConfig.paths.targetDir, conflictMessages);
+    await checkShimConflicts(logger, fs, toolConfig, projectConfig.paths.targetDir, conflictMessages);
 
     // Check for symlink conflicts
     await checkSymlinkConflicts(
       logger,
       fs,
       toolConfig,
-      yamlConfig.paths.homeDir,
-      yamlConfig.paths.dotfilesDir,
+      projectConfig.paths.homeDir,
+      projectConfig.paths.dotfilesDir,
       conflictMessages
     );
   }

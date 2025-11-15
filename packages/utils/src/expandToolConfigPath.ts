@@ -19,27 +19,27 @@ interface ConfigWithPaths {
  *
  * Handles:
  * 1. Variable expansion: ${paths.homeDir}, ${paths.dotfilesDir}, etc.
- * 2. Home directory expansion: ~/some/path -> /home/user/some/path (using yamlConfig.paths.homeDir)
+ * 2. Home directory expansion: ~/some/path -> /home/user/some/path (using projectConfig.paths.homeDir)
  * 3. Relative path resolution: ./some/path -> resolved relative to tool config file
  * 4. Absolute paths: /some/path -> used as-is
  *
  * @param toolConfigFilePath - Absolute path to the tool config file (can be undefined for legacy configs)
  * @param inputPath - The path from the tool config (may contain variables, ~, or be relative)
- * @param yamlConfig - The loaded YAML configuration for variable substitution and home directory
- * @param systemInfo - System information (kept for compatibility but homeDir comes from yamlConfig)
+ * @param projectConfig - The loaded project configuration for variable substitution and home directory
+ * @param systemInfo - System information (kept for compatibility but homeDir comes from projectConfig)
  * @returns The fully resolved absolute path
  */
 export function expandToolConfigPath(
   toolConfigFilePath: string | undefined,
   inputPath: string,
-  yamlConfig: ConfigWithPaths,
+  projectConfig: ConfigWithPaths,
   _systemInfo: SystemInfo
 ): string {
   // Step 1: Expand variables like ${paths.homeDir}
-  let expandedPath = expandVariables(inputPath, yamlConfig);
+  let expandedPath = expandVariables(inputPath, projectConfig);
 
   // Step 2: Expand home directory (~)
-  expandedPath = expandHomePath(yamlConfig.paths.homeDir, expandedPath);
+  expandedPath = expandHomePath(projectConfig.paths.homeDir, expandedPath);
 
   // Step 3: If still relative, resolve relative to tool config file directory or fallback to dotfiles dir
   if (!path.isAbsolute(expandedPath)) {
@@ -48,7 +48,7 @@ export function expandToolConfigPath(
       expandedPath = path.resolve(toolConfigDir, expandedPath);
     } else {
       // Fallback to dotfiles directory for legacy configs without configFilePath
-      expandedPath = path.resolve(yamlConfig.paths.dotfilesDir, expandedPath);
+      expandedPath = path.resolve(projectConfig.paths.dotfilesDir, expandedPath);
     }
   }
 
@@ -56,14 +56,14 @@ export function expandToolConfigPath(
 }
 
 /**
- * Expands variables in a path string using the YAML configuration.
+ * Expands variables in a path string using the project configuration.
  * Supports syntax like ${paths.homeDir}, ${paths.dotfilesDir}, etc.
  */
-function expandVariables(inputPath: string, yamlConfig: ConfigWithPaths): string {
+function expandVariables(inputPath: string, projectConfig: ConfigWithPaths): string {
   return inputPath.replace(/\${([^}]+)}/g, (match, varName) => {
     if (varName.includes('.')) {
       const parts = varName.split('.');
-      let value: unknown = yamlConfig;
+      let value: unknown = projectConfig;
 
       for (const part of parts) {
         if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {

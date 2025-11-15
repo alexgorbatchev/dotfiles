@@ -88,7 +88,7 @@ interface ProfileUpdateConfig {
   shellType: ShellType;              // 'zsh', 'bash', 'powershell'
   generatedScriptPath: string;       // Path to generated script
   onlyIfExists: boolean;             // Skip if profile doesn't exist
-  yamlConfigPath: string;            // Reference for comments
+  projectConfigPath: string;            // Reference for comments
 }
 
 interface ProfileUpdateResult {
@@ -217,13 +217,13 @@ const configs: ProfileUpdateConfig[] = [
     shellType: 'zsh',
     generatedScriptPath: '/path/to/.generated/shell-scripts/main.zsh',
     onlyIfExists: true,  // Only update if .zshrc already exists
-    yamlConfigPath: '/path/to/dotfiles.yml',
+    projectConfigPath: '/path/to/dotfiles.yml',
   },
   {
     shellType: 'bash',
     generatedScriptPath: '/path/to/.generated/shell-scripts/main.bash',
     onlyIfExists: false, // Create .bashrc if it doesn't exist
-    yamlConfigPath: '/path/to/dotfiles.yml',
+    projectConfigPath: '/path/to/dotfiles.yml',
   },
 ];
 ```

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { selectBestMatch } from '@dotfiles/arch';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type {
   BaseInstallContext,
   ExtractResult,
@@ -47,7 +47,7 @@ export async function installFromGitHubRelease(
   downloader: IDownloader,
   githubApiClient: IGitHubApiClient,
   archiveExtractor: IArchiveExtractor,
-  appConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   hookExecutor: HookExecutor,
   parentLogger: TsLogger
 ): Promise<GitHubReleaseInstallResult> {
@@ -76,7 +76,7 @@ export async function installFromGitHubRelease(
       return asset;
     }
 
-    const downloadUrl = constructDownloadUrl(asset.data.browser_download_url, appConfig, logger);
+    const downloadUrl = constructDownloadUrl(asset.data.browser_download_url, projectConfig, logger);
     if (!downloadUrl.success) {
       return downloadUrl;
     }
@@ -252,10 +252,10 @@ function createAssetNotFoundError(
 
 function constructDownloadUrl(
   rawBrowserDownloadUrl: string,
-  appConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   logger: TsLogger
 ): OperationResult<string> {
-  const customHost = appConfig.github.host;
+  const customHost = projectConfig.github.host;
   const host = customHost ?? '(public GitHub)';
   logger.debug(messages.determiningDownloadUrl(rawBrowserDownloadUrl, customHost));
 

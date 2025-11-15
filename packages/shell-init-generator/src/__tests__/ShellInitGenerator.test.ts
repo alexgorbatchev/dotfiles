@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import { createSectionHeader, generateEndOfFile, generateFileHeader } from '../shellTemplates';
 
 describe('ShellInitGenerator', () => {
   let mockFileSystem: IFileSystem;
-  let mockAppConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let generator: IShellInitGenerator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
@@ -24,7 +24,7 @@ describe('ShellInitGenerator', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'shell-init-generator' });
 
-    mockAppConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -34,7 +34,7 @@ describe('ShellInitGenerator', () => {
       systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
       env: {},
     });
-    generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
+    generator = new ShellInitGenerator(logger, mockFileSystem, mockProjectConfig);
   });
 
   const getExpectedHeader = () => generateFileHeader('zsh', testDirs.paths.dotfilesDir);
@@ -453,7 +453,7 @@ describe('ShellInitGenerator', () => {
     const { fs, spies } = await createMemFileSystem();
     spies.writeFile.mockRejectedValueOnce(new Error('Disk full'));
     const logger = new TestLogger();
-    const generatorWithFailingWrite = new ShellInitGenerator(logger, fs, mockAppConfig);
+    const generatorWithFailingWrite = new ShellInitGenerator(logger, fs, mockProjectConfig);
     const result = await generatorWithFailingWrite.generate({});
     expect(result).toBeNull();
   });

@@ -95,7 +95,7 @@ export class ProfileUpdater implements IProfileUpdater {
    */
   private async addSourceLine(profilePath: string, config: ProfileUpdateConfig): Promise<void> {
     const sourceLine = generateSourceLine(config.shellType, config.generatedScriptPath);
-    const headerBlock = generateProfileHeader(config.shellType, config.yamlConfigPath);
+    const headerBlock = generateProfileHeader(config.shellType, config.projectConfigPath);
 
     let content = '';
 

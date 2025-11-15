@@ -13,11 +13,11 @@ async function catalogActionLogic(
   services: Services
 ): Promise<void> {
   try {
-    const { yamlConfig, fs, configService, readmeService } = services;
+    const { projectConfig, fs, configService, readmeService } = services;
 
-    const toolConfigs = await configService.loadToolConfigs(logger, yamlConfig.paths.toolConfigsDir, fs, yamlConfig);
+    const toolConfigs = await configService.loadToolConfigs(logger, projectConfig.paths.toolConfigsDir, fs, projectConfig);
 
-    await readmeService.generateCatalogFromConfigs(yamlConfig.features.catalog.filePath, toolConfigs);
+    await readmeService.generateCatalogFromConfigs(projectConfig.features.catalog.filePath, toolConfigs);
   } catch (error) {
     logger.error(messages.commandExecutionFailed('features catalog', 1), error);
     exitCli(1);

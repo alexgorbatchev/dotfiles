@@ -2,7 +2,7 @@ import type { PlatformConfig, PlatformConfigEntry, SystemInfo, ToolConfig } from
 import { Architecture, hasArchitecture, hasPlatform, Platform } from '@dotfiles/core';
 
 /**
- * Detects the current operating system using the same logic as yamlConfigLoader
+ * Detects the current operating system using the same logic as projectConfigLoader
  * @param platform - The platform from SystemInfo (from NodeJS.Process)
  * @returns The detected OS as a Platform enum
  */
@@ -14,7 +14,7 @@ function detectPlatformEnum(platform: string): Platform {
 }
 
 /**
- * Detects the current architecture using the same logic as yamlConfigLoader
+ * Detects the current architecture using the same logic as projectConfigLoader
  * @param arch - The architecture from SystemInfo (from NodeJS.Process)
  * @returns The detected architecture as an Architecture enum
  */

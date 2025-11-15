@@ -407,7 +407,7 @@ interface InstallHookContext extends BaseToolContext {
   logger: TsLogger;
   $: typeof $; // Bun's shell execution
   toolConfig: ToolConfig;
-  appConfig: YamlConfig;
+  projectConfig: ProjectConfig;
   systemInfo: SystemInfo;
 }
 ```
@@ -629,7 +629,7 @@ const installer = new Installer(
   githubApiClient,
   cargoClient,
   archiveExtractor,
-  appConfig,
+  projectConfig,
   toolRegistry,
   systemInfo
 );

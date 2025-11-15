@@ -150,8 +150,8 @@ export class ZshGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = 'zsh';
   readonly fileExtension: string = '.zsh';
 
-  constructor(appConfig: YamlConfig) {
-    super(appConfig, new ZshStringProducer(appConfig));
+  constructor(projectConfig: ProjectConfig) {
+    super(projectConfig, new ZshStringProducer(projectConfig));
   }
 }
 ```
@@ -206,8 +206,8 @@ export class FishGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = 'fish';
   readonly fileExtension: string = '.fish';
 
-  constructor(appConfig: YamlConfig) {
-    super(appConfig, new FishStringProducer(appConfig));
+  constructor(projectConfig: ProjectConfig) {
+    super(projectConfig, new FishStringProducer(projectConfig));
   }
 }
 ```

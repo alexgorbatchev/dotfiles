@@ -4,6 +4,7 @@ import type { $ } from 'bun';
 import type { BaseToolContext } from '../common/baseToolContext.types';
 import type { SystemInfo } from '../common/common.types';
 import type { ExtractResult } from './archive.types';
+import type { ProjectConfig } from '../config';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.
@@ -102,6 +103,8 @@ export interface BaseInstallContext extends BaseToolContext {
   systemInfo: SystemInfo;
   /** The full tool configuration being processed. */
   toolConfig: ToolConfig;
+  /** The user's parsed application configuration from the main `config.yaml` file. */
+  projectConfig: ProjectConfig;
 }
 
 /**
@@ -156,8 +159,8 @@ export interface PostExtractInstallContext extends PostDownloadInstallContext {
  * import path from 'path';
  *
  * const myHook: AsyncInstallHook = async (context) => {
- *   const { appConfig, extractDir, extractResult, toolName, logger } = context;
- *   const customPath = appConfig.paths.targetDir;
+ *   const { projectConfig, extractDir, extractResult, toolName, logger } = context;
+ *   const customPath = projectConfig.paths.targetDir;
  *
  *   if (extractDir && extractResult?.executables.includes('my-binary')) {
  *     const sourcePath = path.join(extractDir, 'my-binary');

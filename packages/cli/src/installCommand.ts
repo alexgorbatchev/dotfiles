@@ -1,4 +1,4 @@
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { InstallResult } from '@dotfiles/installer';
@@ -12,10 +12,10 @@ async function loadToolConfigSafely(
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
-  yamlConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   configService: IConfigService
 ): Promise<ToolConfig | null> {
-  const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+  const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig);
 
   if (!toolConfig) {
     logger.error(messages.toolNotFound(toolName, toolConfigsDir));
@@ -84,23 +84,23 @@ export function registerInstallCommand(
       logger.debug(messages.commandActionCalled('install'));
 
       const services = await servicesFactory();
-      const { yamlConfig, fs, installer, configService } = services;
+      const { projectConfig, fs, installer, configService } = services;
 
       let shouldExitWithCode: number | null = null;
 
       try {
         logger.debug(
           messages.commandActionStarted('install', toolName),
-          yamlConfig.paths.toolConfigsDir,
+          projectConfig.paths.toolConfigsDir,
           fs.constructor.name
         );
 
         const toolConfig = await loadToolConfigSafely(
           logger,
           toolName,
-          yamlConfig.paths.toolConfigsDir,
+          projectConfig.paths.toolConfigsDir,
           fs,
-          yamlConfig,
+          projectConfig,
           configService
         );
 

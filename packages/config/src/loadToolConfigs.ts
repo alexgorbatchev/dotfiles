@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { Builder, ToolConfig, ToolConfigContext, YamlConfig } from '@dotfiles/core';
+import type { Builder, ProjectConfig, ToolConfig, ToolConfigContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
@@ -38,7 +38,7 @@ function validateToolConfig(config: unknown): ToolConfig | null {
  * @param logger - Logger instance for operations.
  * @param toolName - Name of the tool being configured.
  * @param filePath - Path to the configuration file (for error reporting).
- * @param yamlConfig - Parsed YAML configuration for creating context.
+ * @param projectConfig - Parsed project configuration for creating context.
  * @returns The validated tool configuration, or null if processing failed.
  */
 async function processFunctionExport(
@@ -46,10 +46,10 @@ async function processFunctionExport(
   logger: TsLogger,
   toolName: string,
   filePath: string,
-  yamlConfig: YamlConfig
+  projectConfig: ProjectConfig
 ): Promise<ToolConfig | null> {
   const install = createInstallFunction(logger, toolName);
-  const context = createToolConfigContext(yamlConfig, toolName);
+  const context = createToolConfigContext(projectConfig, toolName);
   const result = await configureToolFn(install, context);
 
   // Check if the function returned a ToolConfig object
@@ -111,25 +111,25 @@ function processDirectExport(
  * The context provides access to all relevant paths and configuration data that a tool
  * might need during configuration.
  *
- * @param yamlConfig - The application configuration containing all path information.
+ * @param projectConfig - The application configuration containing all path information.
  * @param currentToolName - The name of the tool currently being configured.
  * @returns A fully populated ToolConfigContext for the tool.
  */
-function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string): ToolConfigContext {
+function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): ToolConfigContext {
   const getToolDir = (toolName: string): string => {
-    return path.join(yamlConfig.paths.binariesDir, toolName);
+    return path.join(projectConfig.paths.binariesDir, toolName);
   };
 
   return {
     toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
-    homeDir: yamlConfig.paths.homeDir,
-    binDir: yamlConfig.paths.targetDir,
-    shellScriptsDir: yamlConfig.paths.shellScriptsDir,
-    dotfilesDir: yamlConfig.paths.dotfilesDir,
-    generatedDir: yamlConfig.paths.generatedDir,
-    appConfig: yamlConfig,
+    homeDir: projectConfig.paths.homeDir,
+    binDir: projectConfig.paths.targetDir,
+    shellScriptsDir: projectConfig.paths.shellScriptsDir,
+    dotfilesDir: projectConfig.paths.dotfilesDir,
+    generatedDir: projectConfig.paths.generatedDir,
+    projectConfig: projectConfig,
   };
 }
 
@@ -137,7 +137,7 @@ async function loadToolConfigFromModule(
   logger: TsLogger,
   filePath: string,
   toolName: string,
-  yamlConfig: YamlConfig
+  projectConfig: ProjectConfig
 ): Promise<ToolConfig | null> {
   try {
     const module = await import(filePath);
@@ -151,7 +151,7 @@ async function loadToolConfigFromModule(
     if (typeof module.default === 'function') {
       logger.trace(messages.configurationValidated(filePath));
       const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
-      toolConfig = await processFunctionExport(configureToolFn, logger, toolName, filePath, yamlConfig);
+      toolConfig = await processFunctionExport(configureToolFn, logger, toolName, filePath, projectConfig);
     } else {
       toolConfig = processDirectExport(module.default, logger, filePath, toolName);
     }
@@ -163,7 +163,7 @@ async function loadToolConfigFromModule(
 
     return toolConfig;
   } catch (error) {
-    logger.error(messages.configurationLoadFailed(path.relative(yamlConfig.configFileDir, filePath)), error);
+    logger.error(messages.configurationLoadFailed(path.relative(projectConfig.configFileDir, filePath)), error);
     return null;
   }
 }
@@ -244,7 +244,7 @@ async function scanDirectoryForToolFiles(
  * @param parentLogger - Parent logger instance (a sublogger will be created).
  * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
  * @param fs - File system interface for reading files and directories.
- * @param yamlConfig - Parsed YAML configuration for context creation.
+ * @param projectConfig - Parsed project configuration for context creation.
  * @param toolName - Optional tool name to filter by. If provided, only loads that tool's configuration.
  * @returns A record mapping tool names to their configurations.
  */
@@ -252,7 +252,7 @@ export async function loadToolConfigs(
   parentLogger: TsLogger,
   toolConfigsDir: string,
   fs: IFileSystem,
-  yamlConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   toolName?: string
 ): Promise<Record<string, ToolConfig>> {
   const logger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
@@ -281,9 +281,9 @@ export async function loadToolConfigs(
       : allToolFiles;
 
     for (const { filePath, toolName: discoveredToolName } of filesToProcess) {
-      logger.trace(messages.toolConfigEntryLoad(path.relative(yamlConfig.configFileDir, filePath)));
+      logger.trace(messages.toolConfigEntryLoad(path.relative(projectConfig.configFileDir, filePath)));
 
-      const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, yamlConfig);
+      const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, projectConfig);
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
   } catch (error) {
@@ -304,7 +304,7 @@ export async function loadToolConfigs(
  * @param toolName - The name of the tool to load configuration for.
  * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
  * @param fs - File system interface for reading files and directories.
- * @param yamlConfig - Parsed YAML configuration for context creation.
+ * @param projectConfig - Parsed project configuration for context creation.
  * @returns The tool's configuration if found, undefined otherwise.
  */
 export async function loadSingleToolConfig(
@@ -312,8 +312,8 @@ export async function loadSingleToolConfig(
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
-  yamlConfig: YamlConfig
+  projectConfig: ProjectConfig
 ): Promise<ToolConfig | undefined> {
-  const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, yamlConfig, toolName);
+  const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, projectConfig, toolName);
   return configs[toolName];
 }

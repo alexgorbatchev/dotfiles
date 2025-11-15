@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { SystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -18,7 +18,7 @@ import { messages } from './log-messages';
  */
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
-  private readonly yamlConfig: YamlConfig;
+  private readonly projectConfig: ProjectConfig;
   private readonly systemInfo: SystemInfo;
   private readonly logger: TsLogger;
 
@@ -27,12 +27,12 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    *
    * @param parentLogger - The parent logger for creating sub-loggers.
    * @param fileSystem - The file system interface for file operations.
-   * @param yamlConfig - The YAML configuration containing paths and settings.
+   * @param projectConfig - The project configuration containing paths and settings.
    * @param systemInfo - System information for path expansion.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, yamlConfig: YamlConfig, systemInfo: SystemInfo) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, projectConfig: ProjectConfig, systemInfo: SystemInfo) {
     this.fs = fileSystem;
-    this.yamlConfig = yamlConfig;
+    this.projectConfig = projectConfig;
     this.systemInfo = systemInfo;
     this.logger = parentLogger.getSubLogger({ name: 'SymlinkGenerator' });
   }
@@ -114,13 +114,13 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     const sourceAbsPath = expandToolConfigPath(
       toolConfig.configFilePath,
       symlinkConfig.source,
-      this.yamlConfig,
+      this.projectConfig,
       this.systemInfo
     );
     const targetAbsPath = expandToolConfigPath(
       toolConfig.configFilePath,
       symlinkConfig.target,
-      this.yamlConfig,
+      this.projectConfig,
       this.systemInfo
     );
 

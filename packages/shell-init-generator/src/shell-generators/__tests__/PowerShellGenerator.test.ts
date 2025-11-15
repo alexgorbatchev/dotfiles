@@ -3,13 +3,13 @@ import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createSectionHeader } from '../../shellTemplates';
 import { PowerShellGenerator } from '../PowerShellGenerator';
-import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';
+import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
 
 describe('PowerShellGenerator', () => {
   let generator: PowerShellGenerator;
 
   beforeEach(() => {
-    generator = new PowerShellGenerator(createMockYamlConfigWithPathsOnly());
+    generator = new PowerShellGenerator(createMockProjectConfigWithPathsOnly());
   });
 
   it('should have correct shell type and file extension', () => {

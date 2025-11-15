@@ -10,8 +10,8 @@ export interface ProfileUpdateConfig {
   generatedScriptPath: string;
   /** Whether to check if the profile file exists before attempting to update */
   onlyIfExists: boolean;
-  /** Path to the YAML config file for reference in comments */
-  yamlConfigPath: string;
+  /** Path to the project config file for reference in comments */
+  projectConfigPath: string;
 }
 
 /**

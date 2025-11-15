@@ -3,7 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
-import { ConfigService, loadConfig, type YamlConfig } from '@dotfiles/config';
+import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config';
 import type { SystemInfo } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
@@ -95,11 +95,11 @@ async function copyToolConfigFile(
 async function loadToolConfigsForDryRun(
   logger: TsLogger,
   fs: IFileSystem,
-  yamlConfig: YamlConfig,
+  projectConfig: ProjectConfig,
   systemInfo: SystemInfo
 ): Promise<void> {
   logger.trace(messages.toolConfigsForDryRun());
-  const realToolConfigsDir = yamlConfig.paths.toolConfigsDir;
+  const realToolConfigsDir = projectConfig.paths.toolConfigsDir;
   const nodeFs = new NodeFileSystem();
 
   try {
@@ -122,16 +122,16 @@ async function loadToolConfigsForDryRun(
   }
 }
 
-function initializeDownloadCache(parentLogger: TsLogger, fs: IFileSystem, yamlConfig: YamlConfig): ICache | undefined {
-  if (!yamlConfig.downloader.cache.enabled) {
+function initializeDownloadCache(parentLogger: TsLogger, fs: IFileSystem, projectConfig: ProjectConfig): ICache | undefined {
+  if (!projectConfig.downloader.cache.enabled) {
     parentLogger.info(messages.cachingDisabled());
     return undefined;
   }
 
-  const cacheDir = path.join(yamlConfig.paths.generatedDir, 'cache', 'downloads');
+  const cacheDir = path.join(projectConfig.paths.generatedDir, 'cache', 'downloads');
   const downloadCache = new FileCache(parentLogger, fs, {
     enabled: true,
-    defaultTtl: yamlConfig.downloader.cache.ttl,
+    defaultTtl: projectConfig.downloader.cache.ttl,
     cacheDir,
     storageStrategy: 'binary',
   });
@@ -210,25 +210,25 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
   const configFs = dryRun && isRunningDirectly ? new NodeFileSystem() : fs;
-  const yamlConfig = await loadConfig(logger, configFs, userConfigPath, systemInfo, env);
+  const projectConfig = await loadConfig(logger, configFs, userConfigPath, systemInfo, env);
 
-  // Create final systemInfo with correct homeDir from yamlConfig
+  // Create final systemInfo with correct homeDir from projectConfig
   const finalSystemInfo: SystemInfo = {
     platform: systemInfo.platform,
     arch: systemInfo.arch,
-    homeDir: yamlConfig.paths.homeDir,
+    homeDir: projectConfig.paths.homeDir,
   };
 
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    await loadToolConfigsForDryRun(logger, fs, yamlConfig, finalSystemInfo);
+    await loadToolConfigsForDryRun(logger, fs, projectConfig, finalSystemInfo);
   }
 
   // Initialize download cache if enabled
-  const downloadCache = initializeDownloadCache(parentLogger, fs, yamlConfig);
+  const downloadCache = initializeDownloadCache(parentLogger, fs, projectConfig);
 
   // Initialize shared registry database
-  const registryPath = path.join(yamlConfig.paths.generatedDir, 'registry.db');
+  const registryPath = path.join(projectConfig.paths.generatedDir, 'registry.db');
   const registryDatabase = new RegistryDatabase(parentLogger, registryPath);
   const db = registryDatabase.getConnection();
 
@@ -239,39 +239,39 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   // Initialize tool installation registry with shared database connection
   const toolInstallationRegistry = new ToolInstallationRegistry(parentLogger, db);
 
-  // Initialize services with yamlConfig
+  // Initialize services with projectConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
 
   // Initialize GitHub API cache using generic FileCache with JSON strategy
   const githubApiCache = new FileCache(parentLogger, fs, {
-    enabled: yamlConfig.github.cache.enabled,
-    defaultTtl: yamlConfig.github.cache.ttl,
-    cacheDir: path.join(yamlConfig.paths.generatedDir, 'cache', 'github-api'),
+    enabled: projectConfig.github.cache.enabled,
+    defaultTtl: projectConfig.github.cache.ttl,
+    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'github-api'),
     storageStrategy: 'json',
   });
-  const githubApiClient = new GitHubApiClient(parentLogger, yamlConfig, downloader, githubApiCache);
+  const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
 
   const cargoCratesIoCache = new FileCache(parentLogger, fs, {
-    enabled: yamlConfig.cargo.cratesIo.cache.enabled,
-    defaultTtl: yamlConfig.cargo.cratesIo.cache.ttl,
-    cacheDir: path.join(yamlConfig.paths.generatedDir, 'cache', 'cargo', 'crates-io'),
+    enabled: projectConfig.cargo.cratesIo.cache.enabled,
+    defaultTtl: projectConfig.cargo.cratesIo.cache.ttl,
+    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'cargo', 'crates-io'),
     storageStrategy: 'json',
   });
   const cargoGithubRawCache = new FileCache(parentLogger, fs, {
-    enabled: yamlConfig.cargo.githubRaw.cache.enabled,
-    defaultTtl: yamlConfig.cargo.githubRaw.cache.ttl,
-    cacheDir: path.join(yamlConfig.paths.generatedDir, 'cache', 'cargo', 'github-raw'),
+    enabled: projectConfig.cargo.githubRaw.cache.enabled,
+    defaultTtl: projectConfig.cargo.githubRaw.cache.ttl,
+    cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'cargo', 'github-raw'),
     storageStrategy: 'json',
   });
-  const cargoClient = new CargoClient(parentLogger, yamlConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
+  const cargoClient = new CargoClient(parentLogger, projectConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
 
   // Create tracked filesystem instances for each generator
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
     createTrackedFileSystems(parentLogger, fs, fileRegistry, systemInfo);
 
-  const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, yamlConfig);
-  const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, yamlConfig);
-  const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, yamlConfig, systemInfo);
+  const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, projectConfig);
+  const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, projectConfig);
+  const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, projectConfig, systemInfo);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     parentLogger,
@@ -292,7 +292,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Register all installer plugins
   pluginRegistry.register(
-    new GitHubReleaseInstallerPlugin(fs, downloader, githubApiClient, archiveExtractor, yamlConfig, hookExecutor)
+    new GitHubReleaseInstallerPlugin(fs, downloader, githubApiClient, archiveExtractor, projectConfig, hookExecutor)
   );
   pluginRegistry.register(new BrewInstallerPlugin(parentLogger));
   pluginRegistry.register(
@@ -303,7 +303,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       cargoClient,
       archiveExtractor,
       hookExecutor,
-      yamlConfig.cargo.githubRelease.host
+      projectConfig.cargo.githubRelease.host
     )
   );
   pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, fs, downloader, hookExecutor));
@@ -313,7 +313,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const installer = new Installer(
     logger,
     installerTrackedFs,
-    yamlConfig,
+    projectConfig,
     toolInstallationRegistry,
     finalSystemInfo,
     pluginRegistry
@@ -326,13 +326,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     toolInstallationRegistry,
     fs,
     catalogTrackedFs,
-    path.join(yamlConfig.paths.generatedDir, 'cache', 'readme'),
+    path.join(projectConfig.paths.generatedDir, 'cache', 'readme'),
     pluginRegistry
   );
 
   logger.trace(messages.servicesSetup());
   return {
-    yamlConfig,
+    projectConfig,
     fs,
     configService,
     readmeService,

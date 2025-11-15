@@ -41,7 +41,7 @@ describe('GitHubApiClient', () => {
         {
           headers: {
             Accept: 'application/vnd.github.v3+json',
-            'User-Agent': mocks.mockYamlConfig.github.userAgent,
+            'User-Agent': mocks.mockProjectConfig.github.userAgent,
           },
         }
       );

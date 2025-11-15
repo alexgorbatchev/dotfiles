@@ -1,7 +1,7 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { BaseInstallContext, ExtractResult, GitHubRelease, InstallerPluginRegistry } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
@@ -13,7 +13,7 @@ import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
 import {
   createMock$,
-  createMockYamlConfig,
+  createMockProjectConfig,
   createTestDirectories,
   type TestDirectories,
 } from '@dotfiles/testing-helpers';
@@ -152,7 +152,7 @@ export interface InstallerTestSetup {
   mockGitHubApiClient: IGitHubApiClient;
   mockCargoClient: ReturnType<typeof createMockCargoClient>;
   mockArchiveExtractor: IArchiveExtractor;
-  mockAppConfig: YamlConfig;
+  mockProjectConfig: ProjectConfig;
   mockToolInstallationRegistry: ReturnType<typeof createMockToolInstallationRegistry>;
   pluginRegistry: InstallerPluginRegistry;
   installer: Installer;
@@ -238,7 +238,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   };
 
   // Setup mock app config
-  const mockAppConfig = await createMockYamlConfig({
+  const mockProjectConfig = await createMockProjectConfig({
     config: {
       paths: testDirs.paths,
     },
@@ -348,7 +348,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   const installer = new Installer(
     logger,
     fs,
-    mockAppConfig,
+    mockProjectConfig,
     mockToolInstallationRegistry,
     mockSystemInfo,
     pluginRegistry
@@ -361,7 +361,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     mockGitHubApiClient,
     mockCargoClient,
     mockArchiveExtractor,
-    mockAppConfig,
+    mockProjectConfig,
     mockToolInstallationRegistry,
     pluginRegistry,
     installer,
@@ -494,15 +494,15 @@ export function createTestContext(
     timestamp: '2024-08-13-16-45-23',
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
-    appConfig: setup.mockAppConfig,
+    projectConfig: setup.mockProjectConfig,
     // BaseToolContext properties
     toolDir: getToolDir(MOCK_TOOL_NAME),
     getToolDir,
-    homeDir: setup.mockAppConfig.paths.homeDir,
-    binDir: setup.mockAppConfig.paths.targetDir,
-    shellScriptsDir: setup.mockAppConfig.paths.shellScriptsDir,
-    dotfilesDir: setup.mockAppConfig.paths.dotfilesDir,
-    generatedDir: setup.mockAppConfig.paths.generatedDir,
+    homeDir: setup.mockProjectConfig.paths.homeDir,
+    binDir: setup.mockProjectConfig.paths.targetDir,
+    shellScriptsDir: setup.mockProjectConfig.paths.shellScriptsDir,
+    dotfilesDir: setup.mockProjectConfig.paths.dotfilesDir,
+    generatedDir: setup.mockProjectConfig.paths.generatedDir,
     ...overrides,
   };
 }

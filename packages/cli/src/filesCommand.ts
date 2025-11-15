@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
@@ -129,7 +129,7 @@ function logOperationByType(
   timestamp: string,
   contractedPath: string,
   metadataString: string,
-  yamlConfig: YamlConfig
+  projectConfig: ProjectConfig
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'logOperationByType' });
   switch (operation.operationType) {
@@ -156,7 +156,7 @@ function logOperationByType(
     }
     case 'rename': {
       const targetPath = operation.targetPath
-        ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
+        ? contractHomePath(projectConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
       const renameMessage = `[${operation.toolName}] mv ${targetPath} ${contractedPath}`;
       logger.info(messages.filesOperationHistory(timestamp, renameMessage, metadataString));
@@ -164,7 +164,7 @@ function logOperationByType(
     }
     case 'cp': {
       const sourcePath = operation.targetPath
-        ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
+        ? contractHomePath(projectConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
       const copyMessage = `[${operation.toolName}] cp ${sourcePath} ${contractedPath}`;
       logger.info(messages.filesOperationHistory(timestamp, copyMessage, metadataString));
@@ -172,7 +172,7 @@ function logOperationByType(
     }
     case 'symlink': {
       const symlinkTargetPath = operation.targetPath
-        ? contractHomePath(yamlConfig.paths.homeDir, operation.targetPath)
+        ? contractHomePath(projectConfig.paths.homeDir, operation.targetPath)
         : contractedPath;
       const symlinkMessage = `[${operation.toolName}] ln -s ${symlinkTargetPath} ${contractedPath}`;
       logger.info(messages.filesOperationHistory(timestamp, symlinkMessage, metadataString));
@@ -201,7 +201,7 @@ function groupOperationsByTool(operations: FileOperation[]): Record<string, File
 async function showOperations(
   parentLogger: TsLogger,
   operations: FileOperation[],
-  yamlConfig: YamlConfig
+  projectConfig: ProjectConfig
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'showOperations' });
   if (operations.length === 0) {
@@ -215,9 +215,9 @@ async function showOperations(
     for (const operation of toolOperations) {
       const timestamp = formatTimestamp(operation.createdAt);
       const metadataString = buildMetadataString(operation);
-      const contractedPath = contractHomePath(yamlConfig.paths.homeDir, operation.filePath);
+      const contractedPath = contractHomePath(projectConfig.paths.homeDir, operation.filePath);
 
-      logOperationByType(logger, operation, timestamp, contractedPath, metadataString, yamlConfig);
+      logOperationByType(logger, operation, timestamp, contractedPath, metadataString, projectConfig);
     }
   }
 }
@@ -228,7 +228,7 @@ async function filesActionLogic(
   services: Services
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'filesActionLogic' });
-  const { fileRegistry, fs, yamlConfig } = services;
+  const { fileRegistry, fs, projectConfig } = services;
 
   try {
     logger.debug(messages.commandActionCalled('files', options.tool));
@@ -244,7 +244,7 @@ async function filesActionLogic(
       return;
     }
     const operations = await fileRegistry.getOperations(filterResult.filter);
-    await showOperations(logger, operations, yamlConfig);
+    await showOperations(logger, operations, projectConfig);
   } catch (error) {
     logger.error(messages.commandExecutionFailed('files', ExitCode.ERROR), error);
     exitCli(ExitCode.ERROR);

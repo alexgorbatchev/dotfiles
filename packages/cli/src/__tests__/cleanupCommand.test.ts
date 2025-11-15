@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { MockedFileSystem } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
@@ -14,7 +14,7 @@ const mockModules = createModuleMocker();
 
 describe('cleanupCommand', () => {
   let program: GlobalProgram;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let mockFs: MockedFileSystem;
   let mockFileRegistry: ReturnType<typeof createMockFileRegistry>;
   let logger: TestLogger;
@@ -82,14 +82,14 @@ describe('cleanupCommand', () => {
     program = setup.program;
     logger = setup.logger;
     mockFs = setup.mockFs.fs;
-    mockYamlConfig = setup.mockYamlConfig;
+    mockProjectConfig = setup.mockProjectConfig;
 
     const { addFiles, addSymlinks } = setup.mockFs;
     mockShim1 = '/usr/bin/shim1';
-    mockShim2 = `${mockYamlConfig.paths.generatedDir}/bin/shim2`;
-    mockShellInit = `${mockYamlConfig.paths.shellScriptsDir}/main.zsh`;
-    mockSymlinkSource = `${mockYamlConfig.paths.dotfilesDir}/tool/config.yml`;
-    mockSymlinkTarget = `${mockYamlConfig.paths.targetDir}/.config/tool/config.yml`;
+    mockShim2 = `${mockProjectConfig.paths.generatedDir}/bin/shim2`;
+    mockShellInit = `${mockProjectConfig.paths.shellScriptsDir}/main.zsh`;
+    mockSymlinkSource = `${mockProjectConfig.paths.dotfilesDir}/tool/config.yml`;
+    mockSymlinkTarget = `${mockProjectConfig.paths.targetDir}/.config/tool/config.yml`;
 
     // Files are set up in the mock filesystem
 

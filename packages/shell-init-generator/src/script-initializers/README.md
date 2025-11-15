@@ -184,7 +184,7 @@ for (const [, content] of toolContents) {
 
 // Only add initialization if needed
 if (hasOnceScripts) {
-  const initialization = onceInitializer.initialize(this.shellType, this.appConfig.paths.shellScriptsDir);
+  const initialization = onceInitializer.initialize(this.shellType, this.projectConfig.paths.shellScriptsDir);
   fileContent += initialization.content + '\n\n';
 }
 ```

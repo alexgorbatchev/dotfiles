@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellScript, ToolConfig } from '@dotfiles/core';
 import { generateCompletionSetup } from '../shellTemplates';
 import type { IShellStringProducer } from './BaseShellGenerator';
@@ -9,10 +9,10 @@ import type { IShellStringProducer } from './BaseShellGenerator';
  * Handles Zsh syntax and conventions for completions and script extraction.
  */
 export class ZshStringProducer implements IShellStringProducer {
-  private readonly appConfig: YamlConfig;
+  private readonly projectConfig: ProjectConfig;
 
-  constructor(appConfig: YamlConfig) {
-    this.appConfig = appConfig;
+  constructor(projectConfig: ProjectConfig) {
+    this.projectConfig = projectConfig;
   }
 
   extractInitScripts(toolConfig: ToolConfig): ShellScript[] {
@@ -25,7 +25,7 @@ export class ZshStringProducer implements IShellStringProducer {
     if (completions.cmd || completions.source) {
       const defaultSubdir = completions.cmd ? 'completions' : '';
       const completionDir =
-        completions.targetDir ?? path.join(this.appConfig.paths.shellScriptsDir, 'zsh', defaultSubdir);
+        completions.targetDir ?? path.join(this.projectConfig.paths.shellScriptsDir, 'zsh', defaultSubdir);
       const fpathAdd = `fpath=(${JSON.stringify(completionDir)} $fpath)`;
       completionSetup.push(fpathAdd);
     }
@@ -64,7 +64,7 @@ export class ZshStringProducer implements IShellStringProducer {
     const hasTypesetInToolInit = allToolInits.some((line) => line.includes('typeset -U fpath'));
 
     // Add shell-specific completion setup
-    const shellCompletionSetup = generateCompletionSetup('zsh', path.join(this.appConfig.paths.shellScriptsDir, 'zsh'));
+    const shellCompletionSetup = generateCompletionSetup('zsh', path.join(this.projectConfig.paths.shellScriptsDir, 'zsh'));
 
     // If typeset is already in tool init, filter it out from shell completion setup
     const filteredShellSetup = hasTypesetInToolInit

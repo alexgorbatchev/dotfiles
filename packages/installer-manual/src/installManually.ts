@@ -46,7 +46,7 @@ export async function installManually(
       const binaryPath = expandToolConfigPath(
         toolConfig.configFilePath,
         params.binaryPath,
-        context.appConfig,
+        context.projectConfig,
         context.systemInfo
       );
 

@@ -1,5 +1,5 @@
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
-import type { BaseInstallContext, ToolConfig } from '@dotfiles/core';
+import type { IConfigService } from '@dotfiles/config';
+import type { BaseInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
@@ -12,10 +12,16 @@ async function loadToolConfigSafely(
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
-  yamlConfig: YamlConfig
+  projectConfig: ProjectConfig
 ): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
   try {
-    const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig);
+    const toolConfig = await configService.loadSingleToolConfig(
+      logger,
+      toolName,
+      toolConfigsDir,
+      fs,
+      projectConfig
+    );
 
     if (!toolConfig) {
       logger.error(messages.toolNotFound(toolName, toolConfigsDir));
@@ -36,7 +42,7 @@ async function handleToolUpdate(
   toolConfig: ToolConfig,
   shimMode: boolean
 ): Promise<void> {
-  const { pluginRegistry, systemInfo, yamlConfig } = services;
+  const { pluginRegistry, systemInfo, projectConfig } = services;
 
   const plugin = pluginRegistry.get(toolConfig.installationMethod);
 
@@ -62,22 +68,22 @@ async function handleToolUpdate(
 
   // Create context for plugin
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-  const getToolDir = (toolName: string): string => `${yamlConfig.paths.binariesDir}/${toolName}`;
+  const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
   const context: BaseInstallContext = {
     toolName,
-    installDir: yamlConfig.paths.binariesDir,
+    installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',
     systemInfo,
     toolConfig,
-    appConfig: yamlConfig,
+    projectConfig: projectConfig,
     toolDir: getToolDir(toolName),
     getToolDir,
-    homeDir: yamlConfig.paths.homeDir,
-    binDir: yamlConfig.paths.targetDir,
-    shellScriptsDir: yamlConfig.paths.shellScriptsDir,
-    dotfilesDir: yamlConfig.paths.dotfilesDir,
-    generatedDir: yamlConfig.paths.generatedDir,
+    homeDir: projectConfig.paths.homeDir,
+    binDir: projectConfig.paths.targetDir,
+    shellScriptsDir: projectConfig.paths.shellScriptsDir,
+    dotfilesDir: projectConfig.paths.dotfilesDir,
+    generatedDir: projectConfig.paths.generatedDir,
   };
 
   const updateResult = await plugin.updateTool?.(toolName, toolConfig, context, { force: true }, logger);
@@ -129,16 +135,16 @@ export function registerUpdateCommand(
       };
 
       const services = await servicesFactory();
-      const { yamlConfig, fs, configService } = services;
+      const { projectConfig, fs, configService } = services;
 
       try {
         const toolConfigResult = await loadToolConfigSafely(
           logger,
           configService,
           toolName,
-          yamlConfig.paths.toolConfigsDir,
+          projectConfig.paths.toolConfigsDir,
           fs,
-          yamlConfig
+          projectConfig
         );
 
         if (toolConfigResult.exitCode !== ExitCode.SUCCESS) {
@@ -147,7 +153,7 @@ export function registerUpdateCommand(
         }
 
         if (!toolConfigResult.toolConfig) {
-          logger.error(messages.toolNotFound(toolName, yamlConfig.paths.toolConfigsDir));
+          logger.error(messages.toolNotFound(toolName, projectConfig.paths.toolConfigsDir));
           exitCli(ExitCode.ERROR);
           return;
         }

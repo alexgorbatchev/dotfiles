@@ -1,6 +1,6 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 
-export function createMockYamlConfigWithPathsOnly(): YamlConfig {
+export function createMockProjectConfigWithPathsOnly(): ProjectConfig {
   return {
     paths: {
       homeDir: '/home/test',
@@ -11,5 +11,5 @@ export function createMockYamlConfigWithPathsOnly(): YamlConfig {
       targetDir: '/usr/local/bin',
       toolConfigsDir: '/home/test/.dotfiles/configs/tools',
     },
-  } as YamlConfig;
+  } as ProjectConfig;
 }

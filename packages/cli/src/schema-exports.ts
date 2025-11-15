@@ -6,7 +6,7 @@
  * This file is used by the build process to generate the schemas.d.ts bundle.
  */
 
-export { Architecture, Platform, type YamlConfig, defineConfig } from '@dotfiles/config';
+export { Architecture, Platform, type ProjectConfig, defineConfig } from '@dotfiles/config';
 export { always, once } from '@dotfiles/core';
 
 // Re-export the defineTool function with all plugin augmentations loaded

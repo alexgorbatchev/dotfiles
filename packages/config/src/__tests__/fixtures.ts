@@ -1,6 +1,6 @@
-import type { YamlConfig } from '@dotfiles/core';
+import type { ProjectConfig } from '@dotfiles/core';
 
-export const MOCK_DEFAULT_CONFIG_OBJ: YamlConfig = {
+export const MOCK_PROJECT_CONFIG_OBJ: ProjectConfig = {
   configFilePath: '',
   configFileDir: '',
 

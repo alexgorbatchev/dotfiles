@@ -228,9 +228,9 @@ Installation returns `GitHubReleaseInstallResult`:
 ## GitHub Enterprise Support
 
 Supports GitHub Enterprise installations through configuration:
-- Custom API endpoints via `appConfig.github.host`
-- Custom authentication tokens via `appConfig.github.token`
-- Custom User-Agent strings via `appConfig.github.userAgent`
+- Custom API endpoints via `projectConfig.github.host`
+- Custom authentication tokens via `projectConfig.github.token`
+- Custom User-Agent strings via `projectConfig.github.userAgent`
 
 ## Caching
 

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -20,7 +20,7 @@ import { messages } from './log-messages';
  */
 export class ShimGenerator implements IShimGenerator {
   private readonly fs: IFileSystem;
-  private readonly config: YamlConfig;
+  private readonly config: ProjectConfig;
   private readonly logger: TsLogger;
 
   /**
@@ -30,7 +30,7 @@ export class ShimGenerator implements IShimGenerator {
    * @param fileSystem - The file system interface for file operations.
    * @param config - The YAML configuration containing paths and settings.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: YamlConfig) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: ProjectConfig) {
     const logger = parentLogger.getSubLogger({ name: 'ShimGenerator' });
     this.logger = logger;
     const constructorLogger = logger.getSubLogger({ name: 'constructor' });

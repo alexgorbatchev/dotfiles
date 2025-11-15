@@ -19,15 +19,15 @@ This package provides functionality to load, validate, and process configuration
 
 ## Core API
 
-### `loadYamlConfig(logger, fileSystem, userConfigPath, systemInfo, env): Promise<YamlConfig>`
+### `loadProjectConfig(logger, fileSystem, userConfigPath, systemInfo, env): Promise<ProjectConfig>`
 
-Loads and validates the main YAML configuration file from the filesystem.
+Loads and validates the main project configuration file from the filesystem.
 
 ```typescript
-import { loadYamlConfig } from '@dotfiles/config';
+import { loadProjectConfig } from '@dotfiles/config';
 import { createRealFileSystem } from '@dotfiles/file-system';
 
-const yamlConfig = await loadYamlConfig(
+const projectConfig = await loadProjectConfig(
   logger,
   createRealFileSystem(),
   './config.yaml',
@@ -35,11 +35,11 @@ const yamlConfig = await loadYamlConfig(
   process.env
 );
 
-console.log(yamlConfig.paths.binariesDir);
-console.log(yamlConfig.paths.targetDir);
+console.log(projectConfig.paths.binariesDir);
+console.log(projectConfig.paths.targetDir);
 ```
 
-### `loadToolConfigs(logger, toolConfigsDir, fs, yamlConfig): Promise<Record<string, ToolConfig>>`
+### `loadToolConfigs(logger, toolConfigsDir, fs, projectConfig): Promise<Record<string, ToolConfig>>`
 
 Recursively loads all `.tool.ts` configuration files from a directory.
 
@@ -48,9 +48,9 @@ import { loadToolConfigs } from '@dotfiles/config';
 
 const toolConfigs = await loadToolConfigs(
   logger,
-  yamlConfig.paths.toolConfigsDir,
+  projectConfig.paths.toolConfigsDir,
   fileSystem,
-  yamlConfig
+  projectConfig
 );
 
 // Access specific tool config
@@ -61,7 +61,7 @@ if (fzfConfig) {
 }
 ```
 
-### `loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, yamlConfig): Promise<ToolConfig | undefined>`
+### `loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig): Promise<ToolConfig | undefined>`
 
 Loads configuration for a single tool by name.
 
@@ -71,9 +71,9 @@ import { loadSingleToolConfig } from '@dotfiles/config';
 const fzfConfig = await loadSingleToolConfig(
   logger,
   'fzf',
-  yamlConfig.paths.toolConfigsDir,
+  projectConfig.paths.toolConfigsDir,
   fileSystem,
-  yamlConfig
+  projectConfig
 );
 
 if (fzfConfig) {
@@ -95,7 +95,7 @@ const toolConfig = await configService.loadSingleToolConfig(
   'fzf',
   toolConfigsDir,
   fileSystem,
-  yamlConfig
+  projectConfig
 );
 ```
 
@@ -195,7 +195,7 @@ tools/
 ### Loading Configuration
 
 ```typescript
-import { loadYamlConfig, loadToolConfigs } from '@dotfiles/config';
+import { loadProjectConfig, loadToolConfigs } from '@dotfiles/config';
 import { createRealFileSystem } from '@dotfiles/file-system';
 import { createTsLogger } from '@dotfiles/logger';
 
@@ -203,7 +203,7 @@ const logger = createTsLogger();
 const fs = createRealFileSystem();
 
 // Load main configuration
-const yamlConfig = await loadYamlConfig(
+const projectConfig = await loadProjectConfig(
   logger,
   fs,
   './config.yaml',
@@ -218,9 +218,9 @@ const yamlConfig = await loadYamlConfig(
 // Load all tool configurations
 const toolConfigs = await loadToolConfigs(
   logger,
-  yamlConfig.paths.toolConfigsDir,
+  projectConfig.paths.toolConfigsDir,
   fs,
-  yamlConfig
+  projectConfig
 );
 
 console.log(`Loaded ${Object.keys(toolConfigs).length} tool configurations`);
@@ -234,9 +234,9 @@ import { loadSingleToolConfig } from '@dotfiles/config';
 const ripgrepConfig = await loadSingleToolConfig(
   logger,
   'ripgrep',
-  yamlConfig.paths.toolConfigsDir,
+  projectConfig.paths.toolConfigsDir,
   fs,
-  yamlConfig
+  projectConfig
 );
 
 if (ripgrepConfig) {
@@ -261,7 +261,7 @@ class MyApp {
       toolName,
       this.toolConfigsDir,
       this.fs,
-      this.yamlConfig
+      this.projectConfig
     );
   }
 }
@@ -427,7 +427,7 @@ bun test packages/config
 ### Testing Helpers
 
 ```typescript
-import { createMemFileSystem, createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { createMemFileSystem, createMockProjectConfig } from '@dotfiles/testing-helpers';
 
 // Create in-memory file system with config files
 const fs = createMemFileSystem({
@@ -435,15 +435,15 @@ const fs = createMemFileSystem({
   '/tools/fzf.tool.ts': 'export default (c) => c.bin("fzf")',
 });
 
-// Create mock YAML config
-const yamlConfig = createMockYamlConfig({
+// Create mock project config
+const projectConfig = createMockProjectConfig({
   paths: {
     toolConfigsDir: '/custom/tools',
   },
 });
 
 // Load configuration in tests
-const config = await loadYamlConfig(logger, fs, '/config.yaml', systemInfo, {});
+const config = await loadProjectConfig(logger, fs, '/config.yaml', systemInfo, {});
 ```
 
 ## Type Safety
@@ -451,14 +451,14 @@ const config = await loadYamlConfig(logger, fs, '/config.yaml', systemInfo, {});
 All configurations are fully typed:
 
 ```typescript
-import type { YamlConfig, ToolConfig } from '@dotfiles/schemas';
+import type { ProjectConfig, ToolConfig } from '@dotfiles/schemas';
 
-const yamlConfig: YamlConfig = await loadYamlConfig(/*...*/);
+const projectConfig: ProjectConfig = await loadProjectConfig(/*...*/);
 const toolConfigs: Record<string, ToolConfig> = await loadToolConfigs(/*...*/);
 
 // TypeScript provides full autocomplete and type checking
-console.log(yamlConfig.paths.binariesDir);  // string
-console.log(yamlConfig.configFilePath);      // string (injected by loader)
+console.log(projectConfig.paths.binariesDir);  // string
+console.log(projectConfig.configFilePath);      // string (injected by loader)
 console.log(toolConfigs['fzf'].version);     // string
 ```
 

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import { createYamlConfigFromObject } from '@dotfiles/config';
+import { createProjectConfigFromObject } from '@dotfiles/config';
 import type { SystemInfo } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, type PartialYamlConfig } from '../src/createMockYamlConfig';
+import { createMockProjectConfig, type PartialProjectConfig } from '../src/createMockProjectConfig';
 
-describe('createMockYamlConfig', () => {
-  const mockConfig: PartialYamlConfig = {
+describe('createMockProjectConfig', () => {
+  const mockConfig: PartialProjectConfig = {
     paths: {
       dotfilesDir: '/dotfiles',
       targetDir: '/target',
@@ -22,7 +22,7 @@ describe('createMockYamlConfig', () => {
     const filePath = '/test.yaml';
     const systemInfo: SystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' };
     const env: Record<string, string | undefined> = {};
-    await createMockYamlConfig({
+    await createMockProjectConfig({
       config: mockConfig,
       filePath,
       fileSystem: fs,
@@ -31,7 +31,7 @@ describe('createMockYamlConfig', () => {
       env,
     });
     const fileContent = await fs.readFile(filePath, 'utf8');
-    const expectedConfig = await createYamlConfigFromObject(logger, fs, mockConfig, systemInfo, env, {
+    const expectedConfig = await createProjectConfigFromObject(logger, fs, mockConfig, systemInfo, env, {
       userConfigPath: filePath,
     });
     expect(fileContent).toBe(Bun.YAML.stringify(expectedConfig));

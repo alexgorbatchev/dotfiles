@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { InstallerPluginRegistry, SystemInfo } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { IReadmeService } from '@dotfiles/features';
@@ -17,7 +17,7 @@ import type { IVersionChecker } from '@dotfiles/version-checker';
 import type { Command } from 'commander';
 
 export interface Services {
-  yamlConfig: YamlConfig;
+  projectConfig: ProjectConfig;
   fs: IFileSystem;
   configService: IConfigService;
   fileRegistry: IFileRegistry;

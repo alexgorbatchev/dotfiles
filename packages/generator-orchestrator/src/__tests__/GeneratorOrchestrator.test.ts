@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { SystemInfo, ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -9,7 +9,7 @@ import { TestLogger } from '@dotfiles/logger';
 import type { IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator', () => {
@@ -17,7 +17,7 @@ describe('GeneratorOrchestrator', () => {
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
   let mockFileSystem: IFileSystem;
-  let mockAppConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
@@ -53,7 +53,7 @@ describe('GeneratorOrchestrator', () => {
 
     systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
 
-    mockAppConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -179,14 +179,14 @@ describe('GeneratorOrchestrator', () => {
 
     it('should call generators with mocked results', async () => {
       const mockShimPaths = [
-        path.join(mockAppConfig.paths.targetDir, 'toolA'),
-        path.join(mockAppConfig.paths.targetDir, 'toolB'),
+        path.join(mockProjectConfig.paths.targetDir, 'toolA'),
+        path.join(mockProjectConfig.paths.targetDir, 'toolB'),
       ];
-      const mockShellInitPath = path.join(mockAppConfig.paths.shellScriptsDir, 'main.zsh');
+      const mockShellInitPath = path.join(mockProjectConfig.paths.shellScriptsDir, 'main.zsh');
       const mockSymlinkResults: SymlinkOperationResult[] = [
         {
           success: true,
-          sourcePath: path.join(mockAppConfig.paths.dotfilesDir, 'a.conf'),
+          sourcePath: path.join(mockProjectConfig.paths.dotfilesDir, 'a.conf'),
 
           targetPath: path.join('/test/home', '.a.conf'),
           status: 'created',
@@ -216,12 +216,12 @@ describe('GeneratorOrchestrator', () => {
     });
 
     it('should complete generation without errors', async () => {
-      const mockShimPaths = [path.join(mockAppConfig.paths.targetDir, 'toolA-write')];
-      const mockShellInitPathWrite = path.join(mockAppConfig.paths.shellScriptsDir, 'init-write.zsh');
+      const mockShimPaths = [path.join(mockProjectConfig.paths.targetDir, 'toolA-write')];
+      const mockShellInitPathWrite = path.join(mockProjectConfig.paths.shellScriptsDir, 'init-write.zsh');
       const mockSymlinkResultsWrite: SymlinkOperationResult[] = [
         {
           success: true,
-          sourcePath: path.join(mockAppConfig.paths.dotfilesDir, 'b.conf'),
+          sourcePath: path.join(mockProjectConfig.paths.dotfilesDir, 'b.conf'),
 
           targetPath: path.join('/test/home', '.b.conf'),
           status: 'updated_target',

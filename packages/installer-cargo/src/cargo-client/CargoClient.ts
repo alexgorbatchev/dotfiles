@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ICache } from '@dotfiles/downloader';
 import { type IDownloader, NetworkError, NotFoundError } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
@@ -74,7 +74,7 @@ export type CargoTomlPackage = z.infer<typeof cargoPackageSchema>['package'];
 export class CargoClient implements ICargoClient {
   private readonly downloader: IDownloader;
   private readonly logger: TsLogger;
-  private readonly cargoConfig: YamlConfig['cargo'];
+  private readonly cargoConfig: ProjectConfig['cargo'];
   private readonly cratesIoCache?: ICache;
   private readonly githubRawCache?: ICache;
   private readonly cratesIoCacheEnabled: boolean;
@@ -84,7 +84,7 @@ export class CargoClient implements ICargoClient {
 
   constructor(
     parentLogger: TsLogger,
-    config: YamlConfig,
+    config: ProjectConfig,
     downloader: IDownloader,
     cratesIoCache?: ICache,
     githubRawCache?: ICache

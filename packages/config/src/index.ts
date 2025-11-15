@@ -5,4 +5,4 @@ export * from './IConfigService';
 export * from './loadConfig';
 export * from './loadToolConfigs';
 export * from './tsConfigLoader';
-export * from './yamlConfigLoader';
+export * from './projectConfigLoader';

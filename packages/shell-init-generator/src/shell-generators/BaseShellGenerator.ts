@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript, isOnceScript } from '@dotfiles/core';
 import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
@@ -54,11 +54,11 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   abstract readonly shellType: ShellType;
   abstract readonly fileExtension: string;
 
-  protected readonly appConfig: YamlConfig;
+  protected readonly projectConfig: ProjectConfig;
   protected readonly stringProducer: IShellStringProducer;
 
-  constructor(appConfig: YamlConfig, stringProducer: IShellStringProducer) {
-    this.appConfig = appConfig;
+  constructor(projectConfig: ProjectConfig, stringProducer: IShellStringProducer) {
+    this.projectConfig = projectConfig;
     this.stringProducer = stringProducer;
   }
 
@@ -120,7 +120,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const onceInitializer = new OnceScriptInitializer();
 
     // Add default PATH modification first
-    allPathModifications.push(generateDefaultPathModification(this.shellType, this.appConfig.paths.binariesDir));
+    allPathModifications.push(generateDefaultPathModification(this.shellType, this.projectConfig.paths.binariesDir));
 
     // Collect content from all tools with proper attribution
     this.collectContentWithAttribution(
@@ -145,11 +145,11 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       }
     }
 
-    let fileContent = `${generateFileHeader(this.shellType, this.appConfig.paths.dotfilesDir)}\n`;
+    let fileContent = `${generateFileHeader(this.shellType, this.projectConfig.paths.dotfilesDir)}\n`;
 
     // Add once script initialization if any tools use once scripts
     if (hasOnceScripts) {
-      const initialization = onceInitializer.initialize(this.shellType, this.appConfig.paths.shellScriptsDir);
+      const initialization = onceInitializer.initialize(this.shellType, this.projectConfig.paths.shellScriptsDir);
       fileContent += `${initialization.content}\n\n`;
     }
 
@@ -196,12 +196,12 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   }
 
   getDefaultOutputPath(): string {
-    return path.join(this.appConfig.paths.shellScriptsDir, `main${this.fileExtension}`);
+    return path.join(this.projectConfig.paths.shellScriptsDir, `main${this.fileExtension}`);
   }
 
   getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[] {
     const additionalFiles: AdditionalShellFile[] = [];
-    const onceFormatter = new OnceScriptFormatter(this.appConfig.paths.shellScriptsDir);
+    const onceFormatter = new OnceScriptFormatter(this.projectConfig.paths.shellScriptsDir);
 
     for (const [toolName, content] of toolContents) {
       for (let i = 0; i < content.onceScripts.length; i++) {
@@ -259,7 +259,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     // For PATH modifications, ensure generated bin directory is first
     if (sectionTitle === 'PATH Modifications') {
       const uniquePaths = [...new Set(items)];
-      const generatedBinPathLine = uniquePaths.find((p) => p.includes(this.appConfig.paths.binariesDir));
+      const generatedBinPathLine = uniquePaths.find((p) => p.includes(this.projectConfig.paths.binariesDir));
       if (generatedBinPathLine) {
         section += `${generatedBinPathLine}\n`;
         uniquePaths.splice(uniquePaths.indexOf(generatedBinPathLine), 1);

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { InstallerPlugin, ToolConfig, UpdateResult } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
@@ -11,7 +11,7 @@ import { createCliTestSetup } from './createCliTestSetup';
 
 describe('updateCommand', () => {
   let program: GlobalProgram;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let mockPlugin: InstallerPlugin;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
@@ -63,7 +63,7 @@ describe('updateCommand', () => {
 
     program = setup.program;
     logger = setup.logger;
-    mockYamlConfig = setup.mockYamlConfig;
+    mockProjectConfig = setup.mockProjectConfig;
 
     registerUpdateCommand(logger, program, async () => setup.createServices());
   });
@@ -138,7 +138,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerUpdateCommand'],
-      [messages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
 

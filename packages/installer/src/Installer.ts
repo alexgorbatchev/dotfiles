@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type {
   AsyncInstallHook,
   BaseInstallContext,
@@ -70,7 +70,7 @@ import { HookExecutor, messages } from './utils';
 export class Installer implements IInstaller {
   private readonly logger: TsLogger;
   private readonly fs: IFileSystem;
-  private readonly appConfig: YamlConfig;
+  private readonly projectConfig: ProjectConfig;
   private readonly hookExecutor: HookExecutor;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: SystemInfo;
@@ -80,14 +80,14 @@ export class Installer implements IInstaller {
   constructor(
     parentLogger: TsLogger,
     fileSystem: IFileSystem,
-    appConfig: YamlConfig,
+    projectConfig: ProjectConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
     systemInfo: SystemInfo,
     registry: InstallerPluginRegistry
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
-    this.appConfig = appConfig;
+    this.projectConfig = projectConfig;
     this.hookExecutor = new HookExecutor(parentLogger);
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
@@ -440,7 +440,7 @@ export class Installer implements IInstaller {
       const isExternallyManaged: boolean = plugin?.externallyManaged === true;
 
       // Create timestamped installation directory (skip for externally managed plugins)
-      const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
+      const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
       const timestamp = generateTimestamp();
       const installDir: string = isExternallyManaged ? '' : path.join(binariesDir, toolName, timestamp);
 
@@ -566,7 +566,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'createExternalBinarySymlinks' });
-    const binariesDir = path.join(this.appConfig.paths.generatedDir, 'binaries');
+    const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
     const toolDir = path.join(binariesDir, toolName);
 
     // Ensure tool directory exists
@@ -635,7 +635,7 @@ export class Installer implements IInstaller {
   } {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
     const getToolDir = (name: string): string => {
-      return path.join(this.appConfig.paths.binariesDir, name);
+      return path.join(this.projectConfig.paths.binariesDir, name);
     };
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
@@ -647,15 +647,15 @@ export class Installer implements IInstaller {
         timestamp,
         systemInfo: this.getSystemInfo(),
         toolConfig,
-        appConfig: this.appConfig,
+        projectConfig: this.projectConfig,
         // BaseToolContext properties
         toolDir: getToolDir(toolName),
         getToolDir,
-        homeDir: this.appConfig.paths.homeDir,
-        binDir: this.appConfig.paths.targetDir,
-        shellScriptsDir: this.appConfig.paths.shellScriptsDir,
-        dotfilesDir: this.appConfig.paths.dotfilesDir,
-        generatedDir: this.appConfig.paths.generatedDir,
+        homeDir: this.projectConfig.paths.homeDir,
+        binDir: this.projectConfig.paths.targetDir,
+        shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
+        dotfilesDir: this.projectConfig.paths.dotfilesDir,
+        generatedDir: this.projectConfig.paths.generatedDir,
         // Event emitter for plugins to trigger hooks
         emitEvent: async (type: string, data: Record<string, unknown>) => {
           await this.registry.emitEvent({

@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { GitHubRateLimit, GitHubRelease } from '@dotfiles/core';
 import type { ICache } from '@dotfiles/downloader';
 import {
@@ -28,7 +28,7 @@ import { messages } from './log-messages';
  * ### API Caching
  * The client features a built-in, configurable caching mechanism that utilizes
  * an `IGitHubApiCache` implementation (e.g., `FileGitHubApiCache`). Caching behavior
- * is controlled by `appConfig.githubApiCacheEnabled` and `appConfig.githubApiCacheTtl`.
+ * is controlled by `projectConfig.github.cache.enabled` and `projectConfig.github.cache.ttl`.
  * Cache keys are uniquely generated based on the API endpoint and the authentication
  * token to ensure data integrity.
  *
@@ -38,7 +38,7 @@ import { messages } from './log-messages';
  * to handle API errors in a predictable manner.
  *
  * ### Host Configuration
- * The GitHub API base URL is configurable via `appConfig.githubHost`, which is
+ * The GitHub API base URL is configurable via `projectConfig.github.host`, which is
  * essential for testing against a mock server.
  *
  * @testing
@@ -60,15 +60,15 @@ export class GitHubApiClient implements IGitHubApiClient {
   private readonly cacheTtlMs: number;
   private readonly logger: TsLogger;
 
-  constructor(parentLogger: TsLogger, config: YamlConfig, downloader: IDownloader, cache?: ICache) {
+  constructor(parentLogger: TsLogger, projectConfig: ProjectConfig, downloader: IDownloader, cache?: ICache) {
     this.logger = parentLogger.getSubLogger({ name: 'GitHubApiClient' });
-    this.baseUrl = config.github.host;
-    this.githubToken = config.github.token;
+    this.baseUrl = projectConfig.github.host;
+    this.githubToken = projectConfig.github.token;
     this.downloader = downloader;
-    this.userAgent = config.github.userAgent;
+    this.userAgent = projectConfig.github.userAgent;
     this.cache = cache;
-    this.cacheEnabled = config.github.cache.enabled;
-    this.cacheTtlMs = config.github.cache.ttl;
+    this.cacheEnabled = projectConfig.github.cache.enabled;
+    this.cacheTtlMs = projectConfig.github.cache.ttl;
     const logger = this.logger.getSubLogger({ name: 'constructor' });
     logger.debug(messages.constructor.initialized(this.baseUrl, this.userAgent));
     if (this.githubToken) {

@@ -24,7 +24,7 @@ const githubPlugin = new GitHubReleaseInstallerPlugin(
   downloader,
   githubApiClient,
   archiveExtractor,
-  appConfig,
+  projectConfig,
   hookExecutor
 );
 

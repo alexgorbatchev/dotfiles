@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type {
   BaseInstallContext,
   InstallerPlugin,
@@ -72,7 +72,7 @@ export class GitHubReleaseInstallerPlugin
    * @param downloader - The downloader for fetching release assets.
    * @param githubApiClient - The GitHub API client for fetching release metadata.
    * @param archiveExtractor - The archive extractor for unpacking compressed releases.
-   * @param appConfig - The application configuration containing paths and settings.
+   * @param projectConfig - The application configuration containing paths and settings.
    * @param hookExecutor - The hook executor for running lifecycle hooks.
    */
   constructor(
@@ -80,7 +80,7 @@ export class GitHubReleaseInstallerPlugin
     private readonly downloader: IDownloader,
     private readonly githubApiClient: IGitHubApiClient,
     private readonly archiveExtractor: IArchiveExtractor,
-    private readonly appConfig: YamlConfig,
+    private readonly projectConfig: ProjectConfig,
     private readonly hookExecutor: HookExecutor
   ) {}
 
@@ -104,7 +104,7 @@ export class GitHubReleaseInstallerPlugin
       this.downloader,
       this.githubApiClient,
       this.archiveExtractor,
-      this.appConfig,
+      this.projectConfig,
       this.hookExecutor,
       logger
     );

@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type FileSystemSpies, type Stats } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import { ShimGenerator } from '../ShimGenerator';
 
 import '@dotfiles/testing-helpers';
 
 describe('ShimGenerator', () => {
-  let mockConfig: YamlConfig;
+  let mockConfig: ProjectConfig;
   let shimGenerator: ShimGenerator;
   let fsMocks: FileSystemSpies;
   let logger: TestLogger;
@@ -23,7 +23,7 @@ describe('ShimGenerator', () => {
 
     testDirs = await createTestDirectories(logger, fs, { testName: 'shim-generator' });
 
-    mockConfig = await createMockYamlConfig({
+    mockConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -36,7 +36,7 @@ describe('ShimGenerator', () => {
 
     shimGenerator = new ShimGenerator(logger, fs, mockConfig);
 
-    // Clear all mock calls from the setup phase (createMockYamlConfig writes config file)
+    // Clear all mock calls from the setup phase (createMockProjectConfig writes config file)
     Object.values(fsMocks).forEach((mock) => {
       if (typeof mock.mockClear === 'function') {
         mock.mockClear();

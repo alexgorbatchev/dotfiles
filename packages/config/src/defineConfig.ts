@@ -1,9 +1,9 @@
-import type { YamlConfigPartial } from '@dotfiles/core';
+import type { ProjectConfigPartial } from '@dotfiles/core';
 
 /**
  * Wraps a configuration factory so `.ts` config files stay fully typed.
  *
- * The factory can be synchronous or asynchronous and should return a {@link YamlConfigPartial}.
+ * The factory can be synchronous or asynchronous and should return a {@link ProjectConfigPartial}.
  * The wrapper executes the factory immediately and normalises the result to a promise so the
  * loader has a consistent async contract.
  *
@@ -30,8 +30,8 @@ import type { YamlConfigPartial } from '@dotfiles/core';
  * ```
  */
 export function defineConfig(
-  configFn: () => Promise<YamlConfigPartial> | YamlConfigPartial
-): Promise<YamlConfigPartial> {
+  configFn: () => Promise<ProjectConfigPartial> | ProjectConfigPartial
+): Promise<ProjectConfigPartial> {
   const results = configFn();
   if (results instanceof Promise) {
     return results;

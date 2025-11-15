@@ -9,7 +9,7 @@
  * 1. Cleans previous build artifacts from .dist directory
  * 2. Installs workspace dependencies
  * 3. Bundles the CLI entry point (packages/cli/src/main.ts) into a minified executable
- * 4. Generates TypeScript schema types for tool configuration (YamlConfig)
+ * 4. Generates TypeScript schema types for tool configuration (ProjectConfig)
  * 5. Creates package.json with proper exports and dependencies
  * 6. Validates generated schemas with type checking
  * 7. Tests the built CLI executable
@@ -411,15 +411,15 @@ async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise
 }
 
 /**
- * Validates the generated `YamlConfig` type signature.
+ * Validates the generated `ProjectConfig` type signature.
  *
- * Uses the TypeScript compiler API to extract the type signature of `YamlConfig`
+ * Uses the TypeScript compiler API to extract the type signature of `ProjectConfig`
  * from the generated `schemas.d.ts` file and verifies that it contains expected
  * properties like `generatedDir`. This ensures the schema bundling succeeded.
  *
- * @throws {BuildError} If the YamlConfig type is invalid or missing required properties.
+ * @throws {BuildError} If the ProjectConfig type is invalid or missing required properties.
  */
-function checkYamlConfigTypeSignature(): void {
+function checkProjectConfigTypeSignature(): void {
   const schemaTsconfig = {
     compilerOptions: {
       target: 'ES2022',
@@ -435,12 +435,12 @@ function checkYamlConfigTypeSignature(): void {
 
   try {
     fs.writeFileSync(SCHEMA_CHECK_TSCONFIG_PATH, JSON.stringify(schemaTsconfig, null, 2));
-    const signature = extractTypeAliasSignature(SCHEMA_CHECK_TSCONFIG_PATH, OUTPUT_SCHEMAS_D_TS_PATH, 'YamlConfig');
+    const signature = extractTypeAliasSignature(SCHEMA_CHECK_TSCONFIG_PATH, OUTPUT_SCHEMAS_D_TS_PATH, 'ProjectConfig');
 
     if (!signature.includes('generatedDir: string')) {
-      console.error('ℹ️ YamlConfig appears to be invalid:');
+      console.error('ℹ️ ProjectConfig appears to be invalid:');
       console.error(signature);
-      throw new BuildError('YamlConfig type extraction failed');
+      throw new BuildError('ProjectConfig type extraction failed');
     }
   } finally {
     fs.rmSync(SCHEMA_CHECK_TSCONFIG_PATH, { force: true });
@@ -647,7 +647,7 @@ async function cleanupTempFiles(): Promise<void> {
  *
  * Orchestrates the complete schema generation and validation process:
  * 1. Builds schema type definitions using TypeScript compiler
- * 2. Validates the generated YamlConfig type signature
+ * 2. Validates the generated ProjectConfig type signature
  *
  * @param dependencyVersions - Version information for dependencies.
  * @throws {BuildError} If schema generation or validation fails.
@@ -657,7 +657,7 @@ async function generateSchemaTypes(dependencyVersions: DependencyVersions): Prom
 
   try {
     await buildSchemaTypes(dependencyVersions);
-    checkYamlConfigTypeSignature();
+    checkProjectConfigTypeSignature();
   } catch (error) {
     throw new BuildError('❌ Schema type generation failed', error);
   }

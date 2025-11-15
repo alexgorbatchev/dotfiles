@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellType, ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import { dedentString } from '@dotfiles/utils';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('Profile Updates E2E Tests', () => {
   let mockFileSystem: IFileSystem;
-  let mockAppConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
@@ -27,7 +27,7 @@ describe('Profile Updates E2E Tests', () => {
 
     configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
 
-    mockAppConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -38,7 +38,7 @@ describe('Profile Updates E2E Tests', () => {
       env: {},
     });
 
-    generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
+    generator = new ShellInitGenerator(logger, mockFileSystem, mockProjectConfig);
   });
 
   describe('Complete Profile Update Workflow', () => {

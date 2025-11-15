@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { PowerShellStringProducer } from './PowerShellStringProducer';
@@ -12,8 +12,8 @@ export class PowerShellGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = 'powershell';
   readonly fileExtension: string = '.ps1';
 
-  constructor(appConfig: YamlConfig) {
-    super(appConfig, new PowerShellStringProducer(appConfig));
+  constructor(projectConfig: ProjectConfig) {
+    super(projectConfig, new PowerShellStringProducer(projectConfig));
   }
 
   protected getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined {

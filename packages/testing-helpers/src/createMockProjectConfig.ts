@@ -1,23 +1,23 @@
-import type { YamlConfig } from '@dotfiles/config';
-import { createYamlConfigFromObject } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
+import { createProjectConfigFromObject } from '@dotfiles/config';
 import type { PartialDeep, SystemInfo } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
 /**
- * Represents a deep partial version of `YamlConfig`, where all properties and sub-properties are optional.
+ * Represents a deep partial version of `ProjectConfig`, where all properties and sub-properties are optional.
  * This is useful for representing user-provided configuration fragments that will be merged with a default configuration.
  */
-export type PartialYamlConfig = PartialDeep<YamlConfig>;
+export type PartialProjectConfig = PartialDeep<ProjectConfig>;
 
 /**
- * Options for {@link createMockYamlConfig}.
+ * Options for {@link createMockProjectConfig}.
  */
-export type CreateMockYamlConfigOptions = {
+export type CreateMockProjectConfigOptions = {
   /**
-   * The partial YAML configuration.
+   * The partial project configuration.
    */
-  config: PartialYamlConfig;
+  config: PartialProjectConfig;
   /**
    * The path to write the YAML file to.
    */
@@ -41,27 +41,27 @@ export type CreateMockYamlConfigOptions = {
 };
 
 /**
- * Creates a mock `YamlConfig` string and optionally writes it to a file.
+ * Creates a mock `ProjectConfig` string and optionally writes it to a file.
  *
- * @param options - Options for creating the mock YAML config.
- * @returns A promise that resolves with the `YamlConfig` object.
+ * @param options - Options for creating the mock project config.
+ * @returns A promise that resolves with the `ProjectConfig` object.
  *
  * @testing
- * This function is a utility for creating mock YAML configuration files in tests.  It simplifies the process of
+ * This function is a utility for creating mock project configuration files in tests.  It simplifies the process of
  * generating valid YAML content from a partial config object and writing it to a mock file system, making it easier to
  * set up test preconditions for modules that consume these configuration files.
  *
  * Most commonly used together with `createTestingDirectories` and `createMemFileSystems`.
  */
-export async function createMockYamlConfig({
+export async function createMockProjectConfig({
   config,
   filePath,
   fileSystem,
   logger,
   systemInfo,
   env,
-}: CreateMockYamlConfigOptions): Promise<YamlConfig> {
-  const fullConfig = await createYamlConfigFromObject(logger, fileSystem, config, systemInfo, env, {
+}: CreateMockProjectConfigOptions): Promise<ProjectConfig> {
+  const fullConfig = await createProjectConfigFromObject(logger, fileSystem, config, systemInfo, env, {
     userConfigPath: filePath,
   });
   const yamlString = Bun.YAML.stringify(fullConfig);

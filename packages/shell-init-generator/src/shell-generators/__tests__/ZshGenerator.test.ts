@@ -3,13 +3,13 @@ import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createSectionHeader } from '../../shellTemplates';
 import { ZshGenerator } from '../ZshGenerator';
-import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';
+import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
 
 describe('ZshGenerator', () => {
   let generator: ZshGenerator;
 
   beforeEach(() => {
-    generator = new ZshGenerator(createMockYamlConfigWithPathsOnly());
+    generator = new ZshGenerator(createMockProjectConfigWithPathsOnly());
   });
 
   it('should have correct shell type and file extension', () => {

@@ -1,18 +1,18 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type PartialYamlConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type PartialProjectConfig } from '@dotfiles/testing-helpers';
 import { GitHubApiClient } from '../../GitHubApiClient';
 
-export const createMockYamlConfigForGitHubApi = async (overrides: PartialYamlConfig = {}): Promise<YamlConfig> => {
+export const createMockProjectConfigForGitHubApi = async (overrides: PartialProjectConfig = {}): Promise<ProjectConfig> => {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
   const testDirs = await createTestDirectories(logger, memFs.fs, { testName: 'github-api-client' });
 
-  return createMockYamlConfig({
+  return createMockProjectConfig({
     config: {
       paths: testDirs.paths,
       ...overrides,
@@ -59,7 +59,7 @@ export const createMockGitHubApiCache = (): ICache & {
 };
 
 export interface MockSetup {
-  mockYamlConfig: YamlConfig;
+  mockProjectConfig: ProjectConfig;
   mockDownloader: IDownloader & {
     download: ReturnType<typeof mock<IDownloader['download']>>;
   };
@@ -76,16 +76,16 @@ export interface MockSetup {
   logger: TestLogger;
 }
 
-export const setupMockGitHubApiClient = async (configOverrides: PartialYamlConfig = {}): Promise<MockSetup> => {
-  const mockYamlConfig = await createMockYamlConfigForGitHubApi(configOverrides);
+export const setupMockGitHubApiClient = async (configOverrides: PartialProjectConfig = {}): Promise<MockSetup> => {
+  const mockProjectConfig = await createMockProjectConfigForGitHubApi(configOverrides);
   const mockDownloader = createMockDownloader();
   const mockCache = createMockGitHubApiCache();
   const logger = new TestLogger();
 
-  const apiClient = new GitHubApiClient(logger, mockYamlConfig, mockDownloader, mockCache);
+  const apiClient = new GitHubApiClient(logger, mockProjectConfig, mockDownloader, mockCache);
 
   return {
-    mockYamlConfig,
+    mockProjectConfig,
     mockDownloader,
     mockCache,
     apiClient,
@@ -118,7 +118,7 @@ function hasGitHubConfig({
 
 // Helper function to set basic GitHub config properties
 function setBasicGitHubConfig(
-  config: NonNullable<PartialYamlConfig['github']>,
+  config: NonNullable<PartialProjectConfig['github']>,
   {
     githubToken,
     githubHost,
@@ -142,7 +142,7 @@ function setBasicGitHubConfig(
 
 // Helper function to set GitHub cache config
 function setGitHubCacheConfig(
-  config: NonNullable<PartialYamlConfig['github']>,
+  config: NonNullable<PartialProjectConfig['github']>,
   {
     githubApiCacheEnabled,
     githubApiCacheTtl,
@@ -168,7 +168,6 @@ function setGitHubCacheConfig(
 
 /**
  * Helper function to create GitHub-specific config overrides
- * for backward compatibility with test files still using the old AppConfig structure
  */
 export const createGitHubConfigOverride = ({
   githubToken,
@@ -182,8 +181,8 @@ export const createGitHubConfigOverride = ({
   githubClientUserAgent?: string;
   githubApiCacheEnabled?: boolean;
   githubApiCacheTtl?: number;
-} = {}): PartialYamlConfig => {
-  const overrides: PartialYamlConfig = {};
+} = {}): PartialProjectConfig => {
+  const overrides: PartialProjectConfig = {};
 
   const params = {
     githubToken,

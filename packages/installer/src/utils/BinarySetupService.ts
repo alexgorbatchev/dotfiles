@@ -36,7 +36,7 @@ export async function setupBinariesFromArchive(
   parentLogger: TsLogger
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'setupBinariesFromArchive' });
-  const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
+  const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
   // Extract subdirectory name from context.installDir
@@ -263,7 +263,7 @@ export async function setupBinariesFromDirectDownload(
 
   await fs.chmod(downloadPath, 0o755);
 
-  const binariesDir = path.join(context.appConfig.paths.generatedDir, 'binaries');
+  const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
   const downloadFileName = path.basename(downloadPath);
 
   // Extract subdirectory name from context.installDir

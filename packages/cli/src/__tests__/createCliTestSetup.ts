@@ -1,11 +1,11 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
 import {
-  createMockYamlConfig,
+  createMockProjectConfig,
   createTestDirectories,
   type MockedInterface,
   type TestDirectories,
@@ -43,7 +43,7 @@ interface CliTestSetup {
   logger: TestLogger;
   mockFs: MemFileSystemReturn;
   testDirs: TestDirectories;
-  mockYamlConfig: YamlConfig;
+  mockProjectConfig: ProjectConfig;
   mockServices: MockedServices;
   createServices: () => MockedInterface<Services>;
 }
@@ -89,7 +89,7 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
   const mockFs = await createMemFileSystem(options.memFileSystem || {});
   const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: options.testName });
 
-  const mockYamlConfig = await createMockYamlConfig({
+  const mockProjectConfig = await createMockProjectConfig({
     config: {
       paths: testDirs.paths,
     },
@@ -204,7 +204,7 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
 
   const createServices = (): MockedInterface<Services> =>
     ({
-      yamlConfig: mockYamlConfig,
+      projectConfig: mockProjectConfig,
       fs: mockFs.fs.asIFileSystem,
       // Default mocks for all required services
       configService: {
@@ -235,7 +235,7 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
     logger,
     mockFs,
     testDirs,
-    mockYamlConfig,
+    mockProjectConfig,
     mockServices,
     createServices,
   };

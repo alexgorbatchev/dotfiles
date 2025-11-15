@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { FileCache } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { CargoClient } from '../';
 
 function createMockDownloader(responses: string[]) {
@@ -25,7 +25,7 @@ describe('CargoClient caching', () => {
   test('should cache crates.io metadata when enabled', async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/config.yaml',
       fileSystem: fs,
@@ -59,7 +59,7 @@ describe('CargoClient caching', () => {
   test('should cache Cargo.toml parsing when githubRaw cache enabled', async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
-    const config = await createMockYamlConfig({
+    const config = await createMockProjectConfig({
       config: {},
       filePath: '/config.yaml',
       fileSystem: fs,

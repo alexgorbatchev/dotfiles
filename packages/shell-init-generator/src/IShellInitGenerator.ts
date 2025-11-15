@@ -7,7 +7,7 @@ import type { ProfileUpdateResult } from './profile-updater/IProfileUpdater';
 export interface GenerateShellInitOptions {
   /**
    * Optional path to write the generated init file.
-   * If not provided, a default path will be derived from AppConfig.
+   * If not provided, a default path will be derived from ProjectConfig.
    */
   outputPath?: string;
 

@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
-import type { SystemInfo, YamlConfig, YamlConfigPartial } from '@dotfiles/core';
+import type { ProjectConfig, ProjectConfigPartial, SystemInfo } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import { createYamlConfigFromObject } from './yamlConfigLoader';
+import { createProjectConfigFromObject } from './projectConfigLoader';
 
 /**
  * Loads and validates configuration from a TypeScript file.
@@ -29,7 +29,7 @@ export async function loadTsConfig(
   userConfigPath: string,
   systemInfo: SystemInfo,
   env: Record<string, string | undefined>
-): Promise<YamlConfig> {
+): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadTsConfig' });
 
   try {
@@ -39,7 +39,7 @@ export async function loadTsConfig(
     exitCli(1);
   }
 
-  let userConfig: YamlConfigPartial = {};
+  let userConfig: ProjectConfigPartial = {};
 
   try {
     const module = await import(userConfigPath);
@@ -51,7 +51,7 @@ export async function loadTsConfig(
 
     // Handle direct object export (from defineConfig which already executed the function)
     if (typeof module.default === 'object') {
-      userConfig = module.default as YamlConfigPartial;
+      userConfig = module.default as ProjectConfigPartial;
     } else {
       logger.error(messages.configurationParseError(userConfigPath, 'TypeScript', 'default export must be an object'));
       exitCli(1);
@@ -69,5 +69,5 @@ export async function loadTsConfig(
 
   // Use the same processing pipeline as YAML config to ensure consistency
   // This handles merging, platform overrides, token substitution, and validation
-  return createYamlConfigFromObject(logger, fileSystem, userConfig, systemInfo, env, { userConfigPath });
+  return createProjectConfigFromObject(logger, fileSystem, userConfig, systemInfo, env, { userConfigPath });
 }

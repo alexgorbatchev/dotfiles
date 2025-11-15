@@ -1,10 +1,10 @@
 import * as path from 'node:path';
-import type { YamlConfigPaths } from '@dotfiles/config';
+import type { ProjectConfigPaths } from '@dotfiles/config';
 import { getDefaultConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
-type InternalYamlConfigPaths = Omit<YamlConfigPaths, 'manifestPath'>;
+type InternalProjectConfigPaths = Omit<ProjectConfigPaths, 'manifestPath'>;
 
 /**
  * Options for creating test directories
@@ -13,19 +13,19 @@ export interface TestDirectoryOptions {
   /** Name for the temporary directory */
   testName?: string;
   /** Optional map of additional directories to create (key: directory identifier, value: path relative to base directory) */
-  additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalYamlConfigPaths }>;
+  additionalDirs?: Record<string, { path: string; relativeTo?: keyof InternalProjectConfigPaths }>;
   /** Optional array of tool-specific directories to create in binaries directory */
   toolDirs?: string[];
 
-  /** Paths to create from `YamlConfig.paths` */
-  paths?: InternalYamlConfigPaths;
+  /** Paths to create from `ProjectConfig.paths` */
+  paths?: InternalProjectConfigPaths;
 }
 
 /**
  * Structure containing paths to test directories
  */
 export interface TestDirectories {
-  paths: YamlConfigPaths;
+  paths: ProjectConfigPaths;
 
   /** Map of additional directories created */
   additionalDirs: Record<string, string>;
@@ -56,7 +56,7 @@ async function createTempDir(fs: IFileSystem, name: string) {
 }
 
 /**
- * Creates a standard directory structure for the test environment based on `YamlConfig.paths`.
+ * Creates a standard directory structure for the test environment based on `ProjectConfig.paths`.
  *
  * @param options - Options for creating test directories
  * @returns Object containing paths to created directories

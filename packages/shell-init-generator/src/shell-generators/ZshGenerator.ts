@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { ZshStringProducer } from './ZshStringProducer';
@@ -12,8 +12,8 @@ export class ZshGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = 'zsh';
   readonly fileExtension: string = '.zsh';
 
-  constructor(appConfig: YamlConfig) {
-    super(appConfig, new ZshStringProducer(appConfig));
+  constructor(projectConfig: ProjectConfig) {
+    super(projectConfig, new ZshStringProducer(projectConfig));
   }
 
   protected getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined {

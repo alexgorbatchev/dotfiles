@@ -113,14 +113,14 @@ test('fetch works', async () => {
 });
 ```
 
-### `createMockYamlConfig(overrides?: Partial<YamlConfig>): YamlConfig`
+### `createMockProjectConfig(overrides?: Partial<ProjectConfig>): ProjectConfig`
 
-Creates a mock YAML configuration with default values.
+Creates a mock project configuration with default values.
 
 ```typescript
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 
-const config = createMockYamlConfig({
+const config = createMockProjectConfig({
   paths: {
     targetDir: '/custom/bin',
     binariesDir: '/custom/binaries',
@@ -228,14 +228,14 @@ test('loose snapshot matching', () => {
 ```typescript
 import { 
   createTestDirectories, 
-  createMockYamlConfig,
+  createMockProjectConfig,
   FetchMockHelper,
   createMockApiServer 
 } from '@dotfiles/testing-helpers';
 
 describe('MyFeature', () => {
   let testDirs: TestDirectories;
-  let config: YamlConfig;
+  let config: ProjectConfig;
   let fetchMock: FetchMockHelper;
   let apiServer: MockApiServer;
   
@@ -244,7 +244,7 @@ describe('MyFeature', () => {
     testDirs = await createTestDirectories('my-feature-test');
     
     // Create config
-    config = createMockYamlConfig({
+    config = createMockProjectConfig({
       paths: {
         targetDir: testDirs.workingDir,
       },
@@ -279,7 +279,7 @@ describe('MyFeature', () => {
 ```typescript
 import { 
   createMockApiServer,
-  createMockYamlConfig,
+  createMockProjectConfig,
   createTestDirectories 
 } from '@dotfiles/testing-helpers';
 
@@ -356,7 +356,7 @@ test('loads tool configuration', async () => {
 test('generates shims', async () => {
   // Arrange
   const testDirs = await createTestDirectories('shim-test');
-  const config = createMockYamlConfig({
+  const config = createMockProjectConfig({
     paths: { targetDir: testDirs.workingDir },
   });
   const generator = new ShimGenerator(logger, fileSystem, config);

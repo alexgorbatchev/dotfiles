@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { MemFileSystemReturn } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
@@ -18,7 +18,7 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 
 describe('detectConflictsCommand', () => {
   let program: GlobalProgram;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
   let mockFs: MemFileSystemReturn;
   let mockConfigService: MockedInterface<IConfigService>;
@@ -49,7 +49,7 @@ describe('detectConflictsCommand', () => {
     program = setup.program;
     logger = setup.logger;
     mockFs = setup.mockFs;
-    mockYamlConfig = setup.mockYamlConfig;
+    mockProjectConfig = setup.mockProjectConfig;
 
     mockConfigService = createMockConfigService();
 
@@ -81,14 +81,14 @@ describe('detectConflictsCommand', () => {
 
       expect(mockConfigService.loadToolConfigs).toHaveBeenCalledWith(
         expect.any(Object),
-        mockYamlConfig.paths.toolConfigsDir,
+        mockProjectConfig.paths.toolConfigsDir,
         mockFs.fs.asIFileSystem,
-        mockYamlConfig
+        mockProjectConfig
       );
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand'],
-        [messages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
+        [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)]
       );
     });
 
@@ -112,7 +112,7 @@ describe('detectConflictsCommand', () => {
 
     test('Shim path conflict (not a generator shim) - should log warning and exit 1', async () => {
       mockConfigService.loadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
-      const shimPath = `${mockYamlConfig.paths.targetDir}/toolA-bin`;
+      const shimPath = `${mockProjectConfig.paths.targetDir}/toolA-bin`;
 
       // Add a non-generator shim file
       await mockFs.addFiles({
@@ -131,7 +131,7 @@ describe('detectConflictsCommand', () => {
 
     test('Shim path exists and IS a generator shim - should NOT log warning for this shim', async () => {
       mockConfigService.loadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
-      const shimPath = `${mockYamlConfig.paths.targetDir}/toolA-bin`;
+      const shimPath = `${mockProjectConfig.paths.targetDir}/toolA-bin`;
 
       // Add a generator shim file
       await mockFs.addFiles({
@@ -144,8 +144,8 @@ describe('detectConflictsCommand', () => {
 
     test('Symlink target exists as a file - should log warning and exit 1', async () => {
       const toolASymlinks = toolAConfig.symlinks![0]!;
-      const configPath = path.join(mockYamlConfig.paths.homeDir, toolASymlinks.target);
-      const symlinkedConfigPath = path.join(mockYamlConfig.paths.dotfilesDir, toolASymlinks.source);
+      const configPath = path.join(mockProjectConfig.paths.homeDir, toolASymlinks.target);
+      const symlinkedConfigPath = path.join(mockProjectConfig.paths.dotfilesDir, toolASymlinks.source);
 
       mockConfigService.loadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
       mockFs.addFiles({ [configPath]: 'some content' });
@@ -163,8 +163,8 @@ describe('detectConflictsCommand', () => {
     test('Symlink target exists as a symlink to a different source - should log warning and exit 1', async () => {
       mockConfigService.loadToolConfigs.mockResolvedValue({ toolA: toolAConfig });
       const toolASymlinks = toolAConfig.symlinks![0]!;
-      const symlinkTargetPath = path.join(mockYamlConfig.paths.homeDir, toolASymlinks.target);
-      const expectedSourcePath = path.join(mockYamlConfig.paths.dotfilesDir, toolASymlinks.source);
+      const symlinkTargetPath = path.join(mockProjectConfig.paths.homeDir, toolASymlinks.target);
+      const expectedSourcePath = path.join(mockProjectConfig.paths.dotfilesDir, toolASymlinks.source);
       const pointsToWrongAbsolutePath = '/some/other/absolute/path';
 
       // Create a symlink that points to the wrong location
@@ -188,9 +188,9 @@ describe('detectConflictsCommand', () => {
         toolB: toolBConfig,
       });
 
-      const shimPathA = `${mockYamlConfig.paths.targetDir}/toolA-bin`;
+      const shimPathA = `${mockProjectConfig.paths.targetDir}/toolA-bin`;
       const toolBSymlinks = toolBConfig.symlinks![0]!;
-      const symlinkPathB = path.join(mockYamlConfig.paths.homeDir, toolBSymlinks.target);
+      const symlinkPathB = path.join(mockProjectConfig.paths.homeDir, toolBSymlinks.target);
 
       // Add a non-generator shim file
       await mockFs.addFiles({

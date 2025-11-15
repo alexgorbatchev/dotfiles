@@ -1,5 +1,5 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { InstallerPlugin, InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
@@ -10,7 +10,7 @@ import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
   let program: GlobalProgram;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
   let mockPlugin: Partial<InstallerPlugin> | undefined;
@@ -52,7 +52,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
 
     program = setup.program;
     logger = setup.logger;
-    mockYamlConfig = setup.mockYamlConfig;
+    mockProjectConfig = setup.mockProjectConfig;
 
     registerCheckUpdatesCommand(logger, program, async () => setup.createServices());
   });
@@ -77,7 +77,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand'],
-      [messages.toolNotFound('nonexistenttool', mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistenttool', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
 
@@ -89,7 +89,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand'],
-      [messages.toolNoConfigurationsFound(mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)]
     );
   });
 

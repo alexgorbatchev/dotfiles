@@ -368,7 +368,7 @@ const platformMatchSchema = z.union([
  *
  * @internal
  */
-const baseYamlConfigSchemaRequired = z
+const baseProjectConfigSchemaRequired = z
   .object({
     paths: pathsConfigSchema.required().default(pathsConfigSchema.parse({})),
     system: systemConfigSchema.required().default(systemConfigSchema.parse({})),
@@ -387,7 +387,7 @@ const baseYamlConfigSchemaRequired = z
  *
  * @internal
  */
-const baseYamlConfigSchemaPartial = z
+const baseProjectConfigSchemaPartial = z
   .object({
     paths: pathsConfigSchema.partial().optional(),
     system: systemConfigSchema.partial().optional(),
@@ -414,7 +414,7 @@ const platformOverrideSchema = z
     match: z.array(platformMatchSchema).nonempty(),
     /** The partial configuration to apply if the criteria match. */
     get config() {
-      return baseYamlConfigSchemaPartial.partial();
+      return baseProjectConfigSchemaPartial.partial();
     },
   })
   .strict();
@@ -428,7 +428,7 @@ const platformOverrideSchema = z
  *
  * @public
  */
-export const yamlConfigSchema = baseYamlConfigSchemaRequired
+export const projectConfigSchema = baseProjectConfigSchemaRequired
   .extend({
     /**
      * An optional array of platform-specific overrides. Each override applies
@@ -444,17 +444,17 @@ export const yamlConfigSchema = baseYamlConfigSchemaRequired
  *
  * @public
  */
-export type YamlConfigPaths = z.infer<typeof pathsConfigSchema>;
+export type ProjectConfigPaths = z.infer<typeof pathsConfigSchema>;
 
 /**
- * A deep partial TypeScript type for the YAML configuration.
+ * A deep partial TypeScript type for the project configuration.
  *
  * This is useful for functions that merge or override configuration values,
  * allowing any part of the configuration to be optionally provided.
  *
  * @public
  */
-export type YamlConfigPartial = PartialDeep<YamlConfig>;
+export type ProjectConfigPartial = PartialDeep<ProjectConfig>;
 
 /**
  * A Zod schema for private fields that are added to the configuration object
@@ -462,7 +462,7 @@ export type YamlConfigPartial = PartialDeep<YamlConfig>;
  *
  * @internal
  */
-export const privateYamlConfigFields = z.object({
+export const privateProjectConfigFields = z.object({
   /** The absolute path to the loaded configuration file. */
   configFilePath: z.string(),
   /** The absolute path to the directory containing the configuration file. */
@@ -478,4 +478,4 @@ export const privateYamlConfigFields = z.object({
  *
  * @public
  */
-export type YamlConfig = z.infer<typeof yamlConfigSchema> & z.infer<typeof privateYamlConfigFields>;
+export type ProjectConfig = z.infer<typeof projectConfigSchema> & z.infer<typeof privateProjectConfigFields>;

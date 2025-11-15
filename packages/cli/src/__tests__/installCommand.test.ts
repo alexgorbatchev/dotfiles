@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { IConfigService, YamlConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
@@ -17,7 +17,7 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 describe('installCommand', () => {
   let program: GlobalProgram;
   let mockInstaller: MockedInterface<IInstaller>;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let testLogger: TestLogger;
   let mockServices: Services;
   let mockConfigService: MockedInterface<IConfigService>;
@@ -57,7 +57,7 @@ describe('installCommand', () => {
 
     program = setup.program;
     testLogger = setup.logger;
-    mockYamlConfig = setup.mockYamlConfig;
+    mockProjectConfig = setup.mockProjectConfig;
     mockServices = setup.createServices();
 
     // Set up mocks
@@ -83,9 +83,9 @@ describe('installCommand', () => {
     expect(mockConfigService.loadSingleToolConfig).toHaveBeenCalledWith(
       expect.any(Object),
       'toolA',
-      mockYamlConfig.paths.toolConfigsDir,
+      mockProjectConfig.paths.toolConfigsDir,
       mockServices.fs,
-      mockYamlConfig
+      mockProjectConfig
     );
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,
@@ -165,7 +165,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
-      [messages.toolNotFound('nonexistent', mockYamlConfig.paths.toolConfigsDir)]
+      [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
 

@@ -3,13 +3,13 @@ import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createSectionHeader } from '../../shellTemplates';
 import { BashGenerator } from '../BashGenerator';
-import { createMockYamlConfigWithPathsOnly } from './createMockYamlConfigWithPathsOnly';
+import { createMockProjectConfigWithPathsOnly } from './createMockProjectConfigWithPathsOnly';
 
 describe('BashGenerator', () => {
   let generator: BashGenerator;
 
   beforeEach(() => {
-    generator = new BashGenerator(createMockYamlConfigWithPathsOnly());
+    generator = new BashGenerator(createMockProjectConfigWithPathsOnly());
   });
 
   it('should have correct shell type and file extension', () => {

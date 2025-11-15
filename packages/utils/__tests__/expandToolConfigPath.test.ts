@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { SystemInfo } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { expandToolConfigPath } from '../src/expandToolConfigPath';
 
 describe('expandToolConfigPath', () => {
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
 
   const mockSystemInfo: SystemInfo = {
     platform: 'darwin',
@@ -24,7 +24,7 @@ describe('expandToolConfigPath', () => {
     // Ensure /test directory exists in the memory filesystem
     await memFs.fs.ensureDir('/test');
 
-    mockYamlConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: {
           homeDir: '/Users/testuser',
@@ -44,25 +44,25 @@ describe('expandToolConfigPath', () => {
   });
 
   it('should handle absolute paths by returning them unchanged', () => {
-    const result = expandToolConfigPath(toolConfigPath, '/usr/local/bin/lazygit', mockYamlConfig, mockSystemInfo);
+    const result = expandToolConfigPath(toolConfigPath, '/usr/local/bin/lazygit', mockProjectConfig, mockSystemInfo);
 
     expect(result).toBe('/usr/local/bin/lazygit');
   });
 
   it('should expand home directory paths', () => {
-    const result = expandToolConfigPath(toolConfigPath, '~/.config/lazygit/config.yml', mockYamlConfig, mockSystemInfo);
+    const result = expandToolConfigPath(toolConfigPath, '~/.config/lazygit/config.yml', mockProjectConfig, mockSystemInfo);
 
     expect(result).toBe('/Users/testuser/.config/lazygit/config.yml');
   });
 
   it('should resolve relative paths relative to tool config file directory', () => {
-    const result = expandToolConfigPath(toolConfigPath, './config.yml', mockYamlConfig, mockSystemInfo);
+    const result = expandToolConfigPath(toolConfigPath, './config.yml', mockProjectConfig, mockSystemInfo);
 
     expect(result).toBe('/Users/testuser/.dotfiles/configs/tools/config.yml');
   });
 
   it('should resolve relative paths without ./ prefix', () => {
-    const result = expandToolConfigPath(toolConfigPath, 'config.yml', mockYamlConfig, mockSystemInfo);
+    const result = expandToolConfigPath(toolConfigPath, 'config.yml', mockProjectConfig, mockSystemInfo);
 
     expect(result).toBe('/Users/testuser/.dotfiles/configs/tools/config.yml');
   });
@@ -72,7 +72,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
       '${paths.homeDir}/.config/lazygit/config.yml',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 
@@ -84,7 +84,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
       '${paths.dotfilesDir}/configs/lazygit/config.yml',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 
@@ -96,7 +96,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
       '${paths.binariesDir}/lazygit/lazygit',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 
@@ -109,7 +109,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
       '${paths.dotfilesDir}/some/relative/path.yml',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 
@@ -122,7 +122,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
       '${paths.homeDir}/.config/lazygit/config.yml',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 
@@ -134,7 +134,7 @@ describe('expandToolConfigPath', () => {
       toolConfigPath,
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
       '${unknownVariable}/config.yml',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 
@@ -147,7 +147,7 @@ describe('expandToolConfigPath', () => {
     const result = expandToolConfigPath(
       toolConfigPath,
       '../../../some/deep/path/config.yml',
-      mockYamlConfig,
+      mockProjectConfig,
       mockSystemInfo
     );
 

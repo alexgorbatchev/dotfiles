@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { SystemInfo, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
   let mockFs: MemFileSystemReturn;
-  let yamlConfig: YamlConfig;
+  let projectConfig: ProjectConfig;
   let symlinkGenerator: SymlinkGenerator;
   let logger: TestLogger;
   let systemInfo: SystemInfo;
@@ -25,7 +25,7 @@ describe('SymlinkGenerator', () => {
 
     systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
 
-    yamlConfig = await createMockYamlConfig({
+    projectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -36,7 +36,7 @@ describe('SymlinkGenerator', () => {
       env: {},
     });
 
-    symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, yamlConfig, systemInfo);
+    symlinkGenerator = new SymlinkGenerator(logger, mockFs.fs, projectConfig, systemInfo);
   });
 
   const createToolConfig = (symlinks: Array<{ source: string; target: string }>): ToolConfig => ({
@@ -90,7 +90,7 @@ describe('SymlinkGenerator', () => {
     await mockFs.addFiles({ [sourceFullPath]: 'content' });
 
     const results = await symlinkGenerator.generate(toolConfigs);
-    const targetPath = path.join(yamlConfig.paths.homeDir, '.another.txt');
+    const targetPath = path.join(projectConfig.paths.homeDir, '.another.txt');
 
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
     expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);

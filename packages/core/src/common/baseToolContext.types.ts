@@ -1,4 +1,4 @@
-import type { YamlConfig } from '../config';
+
 
 /**
  * Provides a base context with common properties and utilities that are shared
@@ -33,36 +33,35 @@ export interface BaseToolContext {
 
   /**
    * The absolute path to the user's home directory, as defined in the
-   * application configuration (`yamlConfig.paths.homeDir`).
+   * application configuration (`projectConfig.paths.homeDir`).
    */
   homeDir: string;
 
   /**
    * The absolute path to the directory where generated binaries (shims) are
-   * stored, as defined in `yamlConfig.paths.binariesDir`.
+   * stored, as defined in `projectConfig.paths.binariesDir`.
    */
   binDir: string;
 
   /**
    * The absolute path to the directory where generated shell scripts are
-   * stored, as defined in `yamlConfig.paths.shellScriptsDir`.
+   * stored, as defined in `projectConfig.paths.shellScriptsDir`.
    */
   shellScriptsDir: string;
 
   /**
    * The absolute path to the root directory containing the user's dotfiles,
-   * as defined in `yamlConfig.paths.dotfilesDir`.
+   * as defined in `projectConfig.paths.dotfilesDir`.
    */
   dotfilesDir: string;
 
   /**
    * The absolute path to the directory where all generated files are stored,
-   * as defined in `yamlConfig.paths.generatedDir`.
+   * as defined in `projectConfig.paths.generatedDir`.
    */
   generatedDir: string;
 
   /**
    * The user's parsed application configuration from the main `config.yaml` file.
    */
-  appConfig: YamlConfig;
 }

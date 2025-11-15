@@ -73,8 +73,14 @@ describe('loadConfig', () => {
       });
       tempDir = testDirs.paths.homeDir;
       cleanupFn = async () => {
-        await realFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
+        if (tempDir) {
+          await realFs.rm(tempDir, { recursive: true, force: true });
+        }
       };
+
+      if (!tempDir) {
+        throw new Error('tempDir is not defined');
+      }
 
       const configPath = path.join(tempDir, 'config.ts');
       const tsContent = `
@@ -116,8 +122,14 @@ describe('loadConfig', () => {
       });
       tempDir = testDirs.paths.homeDir;
       cleanupFn = async () => {
-        await realFs.rm(testDirs.paths.homeDir, { recursive: true, force: true });
+        if (tempDir) {
+          await realFs.rm(tempDir, { recursive: true, force: true });
+        }
       };
+
+      if (!tempDir) {
+        throw new Error('tempDir is not defined');
+      }
 
       const configPath = path.join(tempDir, 'config.ts');
       await realFs.writeFile(configPath, `export default {};`);

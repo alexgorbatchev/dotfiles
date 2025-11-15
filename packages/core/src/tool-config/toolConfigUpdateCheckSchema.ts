@@ -4,7 +4,7 @@ export const toolConfigUpdateCheckSchema = z
   .object({
     /**
      * Whether update checking is enabled for this tool.
-     * Can be overridden globally by `AppConfig.checkUpdatesOnRun`.
+     * Can be overridden globally by `ProjectConfig.checkUpdatesOnRun`.
      * @default true
      */
     enabled: z.boolean().optional(),

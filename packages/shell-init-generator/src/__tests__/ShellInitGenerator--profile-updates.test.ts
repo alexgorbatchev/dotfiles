@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
 import type { GenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Profile Updates', () => {
   let mockFileSystem: IFileSystem;
-  let mockAppConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
   let testDirs: TestDirectories;
@@ -26,7 +26,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
 
     configFilePath = path.join(testDirs.paths.dotfilesDir, 'config.yaml');
 
-    mockAppConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -37,7 +37,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       env: {},
     });
 
-    generator = new ShellInitGenerator(logger, mockFileSystem, mockAppConfig);
+    generator = new ShellInitGenerator(logger, mockFileSystem, mockProjectConfig);
   });
 
   describe('updateProfileFiles option', () => {
@@ -283,7 +283,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
     it('should continue with generation even if profile updates fail', async () => {
       // Create a read-only file system that will fail profile updates
       const { fs: readOnlyFs } = await createMemFileSystem({});
-      const readOnlyGenerator = new ShellInitGenerator(logger, readOnlyFs, mockAppConfig);
+      const readOnlyGenerator = new ShellInitGenerator(logger, readOnlyFs, mockProjectConfig);
 
       const toolConfigs: Record<string, ToolConfig> = {
         testTool: {

@@ -14,7 +14,7 @@ export function createTestInstallHookContext(
 ): { context: InstallHookContext; logger: TestLogger } {
   const logger = testLogger || new TestLogger();
 
-  const mockAppConfig = {
+  const mockProjectConfig = {
     configFilePath: '/home/user/.dotfiles/config.yaml',
     configFileDir: '/home/user/.dotfiles',
     paths: {
@@ -80,12 +80,12 @@ export function createTestInstallHookContext(
     toolName: 'test-tool',
     toolDir: '/test/binaries/test-tool',
     getToolDir: (toolName: string) => `/test/binaries/${toolName}`,
-    homeDir: mockAppConfig.paths.homeDir,
-    binDir: mockAppConfig.paths.binariesDir,
-    shellScriptsDir: mockAppConfig.paths.shellScriptsDir,
-    dotfilesDir: mockAppConfig.paths.dotfilesDir,
-    generatedDir: mockAppConfig.paths.generatedDir,
-    appConfig: mockAppConfig,
+    homeDir: mockProjectConfig.paths.homeDir,
+    binDir: mockProjectConfig.paths.binariesDir,
+    shellScriptsDir: mockProjectConfig.paths.shellScriptsDir,
+    dotfilesDir: mockProjectConfig.paths.dotfilesDir,
+    generatedDir: mockProjectConfig.paths.generatedDir,
+    projectConfig: mockProjectConfig,
 
     // InstallHookContext specific properties
     installDir: '/test/install/dir',

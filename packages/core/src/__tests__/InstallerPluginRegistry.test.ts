@@ -35,7 +35,7 @@ const createMockContext = (): BaseInstallContext => {
     installDir: '/tmp/test',
     timestamp: '2025-01-01-00-00-00',
     getToolDir: (toolName: string) => `/tmp/${toolName}`,
-    appConfig: {} as never,
+    projectConfig: {} as never,
     systemInfo: {} as never,
     toolConfig: {} as never,
   };

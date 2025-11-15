@@ -1,4 +1,4 @@
-import type { YamlConfig } from '@dotfiles/config';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { BashStringProducer } from './BashStringProducer';
@@ -12,8 +12,8 @@ export class BashGenerator extends BaseShellGenerator {
   readonly shellType: ShellType = 'bash';
   readonly fileExtension: string = '.bash';
 
-  constructor(appConfig: YamlConfig) {
-    super(appConfig, new BashStringProducer(appConfig));
+  constructor(projectConfig: ProjectConfig) {
+    super(projectConfig, new BashStringProducer(projectConfig));
   }
 
   protected getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined {

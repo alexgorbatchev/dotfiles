@@ -1,34 +1,34 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { AsyncConfigureTool, InstallFunction, ToolConfigContext, YamlConfig } from '@dotfiles/core';
+import type { AsyncConfigureTool, InstallFunction, ProjectConfig, ToolConfigContext } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockYamlConfig, createTestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { createInstallFunction, ToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
 
 // Helper function to create ToolConfigContext (extracted from loadToolConfigs.ts)
-function createToolConfigContext(yamlConfig: YamlConfig, currentToolName: string): ToolConfigContext {
+function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): ToolConfigContext {
   const getToolDir = (toolName: string): string => {
-    return path.join(yamlConfig.paths.binariesDir, toolName);
+    return path.join(projectConfig.paths.binariesDir, toolName);
   };
 
   return {
     toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
-    homeDir: yamlConfig.paths.homeDir,
-    binDir: yamlConfig.paths.targetDir,
-    shellScriptsDir: yamlConfig.paths.shellScriptsDir,
-    dotfilesDir: yamlConfig.paths.dotfilesDir,
-    generatedDir: yamlConfig.paths.generatedDir,
-    appConfig: yamlConfig,
+    homeDir: projectConfig.paths.homeDir,
+    binDir: projectConfig.paths.targetDir,
+    shellScriptsDir: projectConfig.paths.shellScriptsDir,
+    dotfilesDir: projectConfig.paths.dotfilesDir,
+    generatedDir: projectConfig.paths.generatedDir,
+    projectConfig: projectConfig,
   };
 }
 
 describe('ToolConfigContext', () => {
   let logger: TestLogger;
-  let mockYamlConfig: YamlConfig;
+  let mockProjectConfig: ProjectConfig;
 
   beforeEach(async () => {
     logger = new TestLogger();
@@ -36,7 +36,7 @@ describe('ToolConfigContext', () => {
     const mockFs = await createMemFileSystem({});
     const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'toolconfig-context-test' });
 
-    mockYamlConfig = await createMockYamlConfig({
+    mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
       },
@@ -49,30 +49,30 @@ describe('ToolConfigContext', () => {
   });
 
   describe('Context creation and path resolution', () => {
-    it('should create context with correct paths from yamlConfig', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'test-tool');
+    it('should create context with correct paths from projectConfig', async () => {
+      const context = createToolConfigContext(mockProjectConfig, 'test-tool');
 
-      expect(context.toolDir).toBe(path.join(mockYamlConfig.paths.binariesDir, 'test-tool'));
-      expect(context.homeDir).toBe(mockYamlConfig.paths.homeDir);
-      expect(context.binDir).toBe(mockYamlConfig.paths.targetDir);
-      expect(context.shellScriptsDir).toBe(mockYamlConfig.paths.shellScriptsDir);
-      expect(context.dotfilesDir).toBe(mockYamlConfig.paths.dotfilesDir);
-      expect(context.generatedDir).toBe(mockYamlConfig.paths.generatedDir);
+      expect(context.toolDir).toBe(path.join(mockProjectConfig.paths.binariesDir, 'test-tool'));
+      expect(context.homeDir).toBe(mockProjectConfig.paths.homeDir);
+      expect(context.binDir).toBe(mockProjectConfig.paths.targetDir);
+      expect(context.shellScriptsDir).toBe(mockProjectConfig.paths.shellScriptsDir);
+      expect(context.dotfilesDir).toBe(mockProjectConfig.paths.dotfilesDir);
+      expect(context.generatedDir).toBe(mockProjectConfig.paths.generatedDir);
       expect(typeof context.getToolDir).toBe('function');
     });
 
     it('should provide getToolDir method that works for any tool name', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'my-tool');
+      const context = createToolConfigContext(mockProjectConfig, 'my-tool');
 
-      expect(context.getToolDir('my-tool')).toBe(path.join(mockYamlConfig.paths.binariesDir, 'my-tool'));
+      expect(context.getToolDir('my-tool')).toBe(path.join(mockProjectConfig.paths.binariesDir, 'my-tool'));
       expect(context.getToolDir('some-other-tool')).toBe(
-        path.join(mockYamlConfig.paths.binariesDir, 'some-other-tool')
+        path.join(mockProjectConfig.paths.binariesDir, 'some-other-tool')
       );
-      expect(context.getToolDir('fzf')).toBe(path.join(mockYamlConfig.paths.binariesDir, 'fzf'));
+      expect(context.getToolDir('fzf')).toBe(path.join(mockProjectConfig.paths.binariesDir, 'fzf'));
     });
 
     it('should work correctly with ToolConfigBuilder and context', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'shell-tool');
+      const context = createToolConfigContext(mockProjectConfig, 'shell-tool');
 
       // Test that context can be used in a tool configuration function
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
@@ -108,13 +108,13 @@ describe('ToolConfigContext', () => {
       expect(toolConfig).toBeDefined();
       expect(toolConfig.name).toBe('shell-tool');
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockYamlConfig.paths.binariesDir);
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockYamlConfig.paths.homeDir);
-      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockYamlConfig.paths.generatedDir);
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.binariesDir);
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.homeDir);
+      expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.generatedDir);
     });
 
     it('should handle tool dependencies using getToolDir', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'dependent-tool');
+      const context = createToolConfigContext(mockProjectConfig, 'dependent-tool');
 
       // Test a tool that references other tools
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
@@ -145,15 +145,15 @@ describe('ToolConfigContext', () => {
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockYamlConfig.paths.binariesDir, 'fzf')
+        path.join(mockProjectConfig.paths.binariesDir, 'fzf')
       );
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockYamlConfig.paths.binariesDir, 'dependent-tool', 'config.yaml')
+        path.join(mockProjectConfig.paths.binariesDir, 'dependent-tool', 'config.yaml')
       );
     });
 
     it('should handle tools that generate completions to the correct directory', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'completion-tool');
+      const context = createToolConfigContext(mockProjectConfig, 'completion-tool');
 
       // Test a tool that generates completions
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
@@ -180,20 +180,20 @@ describe('ToolConfigContext', () => {
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockYamlConfig.paths.generatedDir, 'completions/_completion-tool')
+        path.join(mockProjectConfig.paths.generatedDir, 'completions/_completion-tool')
       );
     });
   });
 
   describe('Custom path resolution', () => {
-    it('should create correct paths based on yamlConfig values', async () => {
-      // Test with custom paths in yamlConfig
+    it('should create correct paths based on projectConfig values', async () => {
+      // Test with custom paths in projectConfig
       const customMockFs = await createMemFileSystem({});
       const customTestDirs = await createTestDirectories(logger, customMockFs.fs, {
         testName: 'custom-path-test',
       });
 
-      const customYamlConfig = await createMockYamlConfig({
+      const customProjectConfig = await createMockProjectConfig({
         config: {
           paths: {
             ...customTestDirs.paths,
@@ -207,19 +207,19 @@ describe('ToolConfigContext', () => {
         env: {},
       });
 
-      const context = createToolConfigContext(customYamlConfig, 'custom-path-tool');
+      const context = createToolConfigContext(customProjectConfig, 'custom-path-tool');
 
-      expect(context.homeDir).toBe(customYamlConfig.paths.homeDir);
-      expect(context.dotfilesDir).toBe(customYamlConfig.paths.dotfilesDir);
-      expect(context.generatedDir).toBe(customYamlConfig.paths.generatedDir);
-      expect(context.toolDir).toBe(path.join(customYamlConfig.paths.binariesDir, 'custom-path-tool'));
-      expect(context.getToolDir('another-tool')).toBe(path.join(customYamlConfig.paths.binariesDir, 'another-tool'));
+      expect(context.homeDir).toBe(customProjectConfig.paths.homeDir);
+      expect(context.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
+      expect(context.generatedDir).toBe(customProjectConfig.paths.generatedDir);
+      expect(context.toolDir).toBe(path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool'));
+      expect(context.getToolDir('another-tool')).toBe(path.join(customProjectConfig.paths.binariesDir, 'another-tool'));
     });
   });
 
   describe('Real-world tool patterns', () => {
     it('should work with fzf-like tool pattern', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'fzf-like');
+      const context = createToolConfigContext(mockProjectConfig, 'fzf-like');
 
       // Test fzf-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
@@ -252,12 +252,12 @@ describe('ToolConfigContext', () => {
       expect(toolConfig.shellConfigs?.zsh?.completions).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockYamlConfig.paths.binariesDir, 'fzf-like')
+        path.join(mockProjectConfig.paths.binariesDir, 'fzf-like')
       );
     });
 
     it('should work with atuin-like tool pattern', async () => {
-      const context = createToolConfigContext(mockYamlConfig, 'atuin-like');
+      const context = createToolConfigContext(mockProjectConfig, 'atuin-like');
 
       // Test atuin-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
@@ -288,10 +288,10 @@ describe('ToolConfigContext', () => {
       expect(toolConfig.symlinks).toBeDefined();
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockYamlConfig.paths.binariesDir, 'atuin-like')
+        path.join(mockProjectConfig.paths.binariesDir, 'atuin-like')
       );
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(
-        path.join(mockYamlConfig.paths.generatedDir, 'completions/_atuin-like')
+        path.join(mockProjectConfig.paths.generatedDir, 'completions/_atuin-like')
       );
     });
   });

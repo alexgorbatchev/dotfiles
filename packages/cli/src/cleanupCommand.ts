@@ -75,7 +75,7 @@ async function registryBasedCleanup(
 ): Promise<void> {
   const { fs, fileRegistry } = services;
   const { dryRun, tool, type, all } = options;
-  const homeDir = services.yamlConfig.paths.homeDir;
+  const homeDir = services.projectConfig.paths.homeDir;
 
   if (all) {
     await cleanupAllTrackedFiles(logger, fs, fileRegistry, homeDir, dryRun);

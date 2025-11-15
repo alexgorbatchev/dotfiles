@@ -10,7 +10,7 @@ describe('ProfileUpdater', () => {
   let mockFileSystem: IFileSystem;
   let profileUpdater: ProfileUpdater;
   const homeDir = '/home/test';
-  const testYamlConfigPath = '/path/to/config.yaml';
+  const testProjectConfigPath = '/path/to/config.yaml';
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -114,7 +114,7 @@ describe('ProfileUpdater', () => {
           shellType: 'zsh',
           generatedScriptPath: '/path/to/script.zsh',
           onlyIfExists: true,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
       ];
 
@@ -137,7 +137,7 @@ describe('ProfileUpdater', () => {
           shellType: 'zsh',
           generatedScriptPath: scriptPath,
           onlyIfExists: false,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
       ];
 
@@ -157,7 +157,7 @@ describe('ProfileUpdater', () => {
       const content = await mockFileSystem.readFile(profilePath);
 
       expect(content).toContain('# Generated via dotfiles generator - do not modify');
-      expect(content).toContain('# /path/to/config.yaml');
+      expect(content).toContain(`# ${testProjectConfigPath}`);
       expect(content).toContain('# ------------------------------------------------------------------------------');
       expect(content).toContain(`source "${scriptPath}"`);
     });
@@ -178,7 +178,7 @@ describe('ProfileUpdater', () => {
           shellType: 'zsh',
           generatedScriptPath: scriptPath,
           onlyIfExists: true,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
       ];
 
@@ -197,7 +197,7 @@ describe('ProfileUpdater', () => {
       const updatedContent = await mockFileSystem.readFile(profilePath);
       expect(updatedContent).toContain(existingContent);
       expect(updatedContent).toContain('# Generated via dotfiles generator - do not modify');
-      expect(updatedContent).toContain('# /path/to/config.yaml');
+      expect(updatedContent).toContain(`# ${testProjectConfigPath}`);
       expect(updatedContent).toContain(
         '# ------------------------------------------------------------------------------'
       );
@@ -221,7 +221,7 @@ describe('ProfileUpdater', () => {
           shellType: 'zsh',
           generatedScriptPath: scriptPath,
           onlyIfExists: true,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
       ];
 
@@ -255,13 +255,13 @@ describe('ProfileUpdater', () => {
           shellType: 'zsh',
           generatedScriptPath: zshScriptPath,
           onlyIfExists: true,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
         {
           shellType: 'bash',
           generatedScriptPath: bashScriptPath,
           onlyIfExists: true,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
       ];
 
@@ -301,7 +301,7 @@ describe('ProfileUpdater', () => {
           shellType: 'powershell',
           generatedScriptPath: scriptPath,
           onlyIfExists: false,
-          yamlConfigPath: testYamlConfigPath,
+          projectConfigPath: testProjectConfigPath,
         },
       ];
 
@@ -314,7 +314,7 @@ describe('ProfileUpdater', () => {
       const content = await mockFileSystem.readFile(profilePath);
       expect(content).toContain(`. "${scriptPath}"`);
       expect(content).toContain('# Generated via dotfiles generator - do not modify');
-      expect(content).toContain('# /path/to/config.yaml');
+      expect(content).toContain(`# ${testProjectConfigPath}`);
       expect(content).toContain('# ------------------------------------------------------------------------------');
     });
   });
