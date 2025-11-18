@@ -15,7 +15,12 @@ async function catalogActionLogic(
   try {
     const { projectConfig, fs, configService, readmeService } = services;
 
-    const toolConfigs = await configService.loadToolConfigs(logger, projectConfig.paths.toolConfigsDir, fs, projectConfig);
+    const toolConfigs = await configService.loadToolConfigs(
+      logger,
+      projectConfig.paths.toolConfigsDir,
+      fs,
+      projectConfig
+    );
 
     await readmeService.generateCatalogFromConfigs(projectConfig.features.catalog.filePath, toolConfigs);
   } catch (error) {

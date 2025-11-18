@@ -64,7 +64,10 @@ export class ZshStringProducer implements IShellStringProducer {
     const hasTypesetInToolInit = allToolInits.some((line) => line.includes('typeset -U fpath'));
 
     // Add shell-specific completion setup
-    const shellCompletionSetup = generateCompletionSetup('zsh', path.join(this.projectConfig.paths.shellScriptsDir, 'zsh'));
+    const shellCompletionSetup = generateCompletionSetup(
+      'zsh',
+      path.join(this.projectConfig.paths.shellScriptsDir, 'zsh')
+    );
 
     // If typeset is already in tool init, filter it out from shell completion setup
     const filteredShellSetup = hasTypesetInToolInit

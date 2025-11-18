@@ -122,7 +122,11 @@ async function loadToolConfigsForDryRun(
   }
 }
 
-function initializeDownloadCache(parentLogger: TsLogger, fs: IFileSystem, projectConfig: ProjectConfig): ICache | undefined {
+function initializeDownloadCache(
+  parentLogger: TsLogger,
+  fs: IFileSystem,
+  projectConfig: ProjectConfig
+): ICache | undefined {
   if (!projectConfig.downloader.cache.enabled) {
     parentLogger.info(messages.cachingDisabled());
     return undefined;

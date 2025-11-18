@@ -4,11 +4,11 @@ import {
   hasArchitecture,
   hasPlatform,
   Platform,
-  privateProjectConfigFields,
-  type SystemInfo,
   type ProjectConfig,
   type ProjectConfigPartial,
+  privateProjectConfigFields,
   projectConfigSchema,
+  type SystemInfo,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';

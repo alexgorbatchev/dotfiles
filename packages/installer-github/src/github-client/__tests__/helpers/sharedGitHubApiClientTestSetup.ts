@@ -7,7 +7,9 @@ import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type PartialProjectConfig } from '@dotfiles/testing-helpers';
 import { GitHubApiClient } from '../../GitHubApiClient';
 
-export const createMockProjectConfigForGitHubApi = async (overrides: PartialProjectConfig = {}): Promise<ProjectConfig> => {
+export const createMockProjectConfigForGitHubApi = async (
+  overrides: PartialProjectConfig = {}
+): Promise<ProjectConfig> => {
   const memFs = await createMemFileSystem();
   const logger = new TestLogger();
   const testDirs = await createTestDirectories(logger, memFs.fs, { testName: 'github-api-client' });

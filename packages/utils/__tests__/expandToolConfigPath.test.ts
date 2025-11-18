@@ -50,7 +50,12 @@ describe('expandToolConfigPath', () => {
   });
 
   it('should expand home directory paths', () => {
-    const result = expandToolConfigPath(toolConfigPath, '~/.config/lazygit/config.yml', mockProjectConfig, mockSystemInfo);
+    const result = expandToolConfigPath(
+      toolConfigPath,
+      '~/.config/lazygit/config.yml',
+      mockProjectConfig,
+      mockSystemInfo
+    );
 
     expect(result).toBe('/Users/testuser/.config/lazygit/config.yml');
   });

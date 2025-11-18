@@ -1,4 +1,4 @@
-import type { IConfigService, SystemInfo, ToolConfig, ProjectConfig } from '@dotfiles/config';
+import type { IConfigService, ProjectConfig, SystemInfo, ToolConfig } from '@dotfiles/config';
 import type { BaseInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -51,7 +51,11 @@ async function loadToolConfigs(
   return toolConfigs;
 }
 
-function createInstallContext(config: ToolConfig, projectConfig: ProjectConfig, systemInfo: SystemInfo): BaseInstallContext {
+function createInstallContext(
+  config: ToolConfig,
+  projectConfig: ProjectConfig,
+  systemInfo: SystemInfo
+): BaseInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
@@ -154,7 +158,13 @@ export async function checkUpdatesActionLogic(
 ): Promise<void> {
   logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
-  const toolConfigs = await loadToolConfigs(logger, services.configService, toolName, services.projectConfig, services.fs);
+  const toolConfigs = await loadToolConfigs(
+    logger,
+    services.configService,
+    toolName,
+    services.projectConfig,
+    services.fs
+  );
 
   if (!toolConfigs) {
     return;

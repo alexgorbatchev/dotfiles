@@ -1,4 +1,4 @@
-import type { SystemInfo, ProjectConfig } from '@dotfiles/core';
+import type { ProjectConfig, SystemInfo } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';

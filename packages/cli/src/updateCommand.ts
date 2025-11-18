@@ -15,13 +15,7 @@ async function loadToolConfigSafely(
   projectConfig: ProjectConfig
 ): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
   try {
-    const toolConfig = await configService.loadSingleToolConfig(
-      logger,
-      toolName,
-      toolConfigsDir,
-      fs,
-      projectConfig
-    );
+    const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig);
 
     if (!toolConfig) {
       logger.error(messages.toolNotFound(toolName, toolConfigsDir));
