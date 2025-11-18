@@ -89,6 +89,10 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
   const mockFs = await createMemFileSystem(options.memFileSystem || {});
   const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: options.testName });
 
+  // Create the CLI source directory structure for __dirname resolution
+  const cliSrcDir: string = path.join(__dirname, '..');
+  await mockFs.fs.mkdir(cliSrcDir, { recursive: true });
+
   const mockProjectConfig = await createMockProjectConfig({
     config: {
       paths: testDirs.paths,

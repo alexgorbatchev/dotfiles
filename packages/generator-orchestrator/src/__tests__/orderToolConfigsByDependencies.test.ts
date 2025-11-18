@@ -96,7 +96,12 @@ describe('orderToolConfigsByDependencies', () => {
 
     const logger = new TestLogger();
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
-      'Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x64.'
+      'Dependency validation failed'
+    );
+    logger.expect(
+      ['ERROR'],
+      ['orderToolConfigsByDependencies'],
+      ['Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x64.']
     );
   });
 
@@ -122,7 +127,12 @@ describe('orderToolConfigsByDependencies', () => {
 
     const logger = new TestLogger();
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
-      /Ambiguous dependency: binary "shared-bin" is provided by multiple tools/
+      'Dependency validation failed'
+    );
+    logger.expect(
+      ['ERROR'],
+      ['orderToolConfigsByDependencies'],
+      [/Ambiguous dependency: binary "shared-bin" is provided by multiple tools/]
     );
   });
 
@@ -145,8 +155,9 @@ describe('orderToolConfigsByDependencies', () => {
 
     const logger = new TestLogger();
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
-      /Circular dependency detected between tools/
+      'Dependency validation failed'
     );
+    logger.expect(['ERROR'], ['orderToolConfigsByDependencies'], [/Circular dependency detected between tools/]);
   });
 
   test('allows platform-specific providers for matching architecture', () => {

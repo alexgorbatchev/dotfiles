@@ -1,5 +1,6 @@
+import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
-import { exitCli } from '@dotfiles/utils';
+import { exitCli, generateToolTypes } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { BaseCommandOptions, GlobalProgram, Services } from './types';
 
@@ -33,11 +34,15 @@ export function registerGenerateCommand(
         );
         logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
+        const packageDir: string = path.join(__dirname, '..');
+        const toolTypesPath: string = path.join(packageDir, 'tool-types.d.ts');
+        await generateToolTypes(toolConfigs, toolTypesPath, fs);
+
         await generatorOrchestrator.generateAll(toolConfigs);
 
         logger.info(messages.commandCompleted(Boolean(combinedOptions.dryRun)));
-      } catch (error) {
-        logger.error(messages.commandExecutionFailed('generate', 1), error);
+      } catch (_error) {
+        logger.error(messages.commandExecutionFailed('generate', 1));
         exitCli(1);
       }
     });

@@ -117,6 +117,7 @@ function collectToolMetadata(toolConfigs: Record<string, ToolConfig>, systemInfo
 }
 
 function resolveDependencyProvider(
+  logger: TsLogger,
   toolName: string,
   dependencyName: string,
   binaryProviders: Map<string, Set<string>>,
@@ -124,31 +125,31 @@ function resolveDependencyProvider(
 ): string {
   const providers = binaryProviders.get(dependencyName);
   if (!providers || providers.size === 0) {
-    throw new Error(
-      `Missing dependency: tool "${toolName}" requires binary "${dependencyName}" but no tool provides it for platform ${systemInfo.platform}/${systemInfo.arch}.`
+    logger.error(
+      messages.generateAll.missingDependency(toolName, dependencyName, systemInfo.platform, systemInfo.arch)
     );
+    throw new Error('Dependency validation failed');
   }
 
   if (providers.size > 1) {
     const providerList: string[] = [...providers];
-    throw new Error(
-      `Ambiguous dependency: binary "${dependencyName}" is provided by multiple tools (${providerList.join(
-        ', '
-      )}). Tool "${toolName}" cannot determine which to use.`
-    );
+    logger.error(messages.generateAll.ambiguousDependency(dependencyName, providerList.join(', '), toolName));
+    throw new Error('Dependency validation failed');
   }
 
   const [providerToolName] = providers;
   if (!providerToolName) {
-    throw new Error(
-      `Missing dependency: tool "${toolName}" requires binary "${dependencyName}" but provider resolution failed unexpectedly.`
+    logger.error(
+      messages.generateAll.missingDependency(toolName, dependencyName, systemInfo.platform, systemInfo.arch)
     );
+    throw new Error('Dependency validation failed');
   }
 
   return providerToolName;
 }
 
 function buildDependencyGraph(
+  logger: TsLogger,
   toolNames: string[],
   metadataByTool: Map<string, ToolDependencyMetadata>,
   binaryProviders: Map<string, Set<string>>,
@@ -169,7 +170,7 @@ function buildDependencyGraph(
     }
 
     for (const dependencyName of metadata.dependencies) {
-      const providerToolName = resolveDependencyProvider(toolName, dependencyName, binaryProviders, systemInfo);
+      const providerToolName = resolveDependencyProvider(logger, toolName, dependencyName, binaryProviders, systemInfo);
 
       if (providerToolName === toolName) {
         continue;
@@ -256,12 +257,13 @@ export function orderToolConfigsByDependencies(
   if (!hasDependencies) {
     return toolConfigs;
   }
-  const dependencyGraph = buildDependencyGraph(toolNames, metadataByTool, binaryProviders, systemInfo);
+  const dependencyGraph = buildDependencyGraph(logger, toolNames, metadataByTool, binaryProviders, systemInfo);
 
   const orderedToolNames = performTopologicalSort(toolNames, dependencyGraph, toolOrderIndex);
   if (orderedToolNames.length !== toolNames.length) {
     const remainingTools = toolNames.filter((toolName) => (dependencyGraph.inDegree.get(toolName) ?? 0) > 0);
-    throw new Error(`Circular dependency detected between tools: ${remainingTools.join(', ')}`);
+    logger.error(messages.generateAll.circularDependency(remainingTools.join(', ')));
+    throw new Error('Dependency validation failed');
   }
 
   logger.debug(messages.generateAll.dependenciesOrderResolved(orderedToolNames.join(' -> ')));

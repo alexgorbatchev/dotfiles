@@ -1,6 +1,6 @@
-import type { ToolConfig } from '@dotfiles/core';
 import { z } from 'zod';
 import { commonToolConfigPropertiesSchema } from './tool-config';
+import type { ToolConfig } from './types';
 
 /**
  * Platform configuration schema for runtime validation.

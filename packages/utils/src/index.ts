@@ -6,6 +6,7 @@ export * from './expandHomePath';
 export * from './expandToolConfigPath';
 export * from './formatPermissions';
 export * from './generateTimestamp';
+export * from './generateToolTypes';
 export * from './getCliBinPath';
 export * from './normalizeVersion';
 export * from './resolvePlatformConfig';
