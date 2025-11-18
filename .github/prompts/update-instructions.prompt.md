@@ -4,8 +4,7 @@ mode: agent
 
  The `.instructions.md` files are prompt files used by LLM and should be structured and composed for LLM consumptions using very direct, unambiguous language with zero room for misintepritation.
 
-Before updating the file you must read it from start to finish and integrate new instructions in a seamless
-way.
+Before updating the file you must read it from start to finish and integrate new instructions in a seamless way.
 
 **VERY IMPORTANT**:
 

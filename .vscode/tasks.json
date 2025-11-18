@@ -2,6 +2,38 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Find Unused Exports",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "find-unused", "./tsconfig.json"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": {
+        "owner": "unused-analyzer",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": [
+          {
+            "regexp": "^([^\\s].*?)$",
+            "file": 1
+          },
+          {
+            "regexp": "^\\s+(.+?):(\\d+):(\\d+)-(\\d+)\\s+\\[(ERROR|WARNING|INFO)\\]\\s+\\((.+)\\)$",
+            "code": 1,
+            "line": 2,
+            "column": 3,
+            "endColumn": 4,
+            "severity": 5,
+            "message": 6,
+            "loop": true
+          }
+        ]
+      }
+    },
+    {
       "label": "Bun: run file",
       "type": "shell",
       "command": "bun",

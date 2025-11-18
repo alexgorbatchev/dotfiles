@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 ---
 # LLM Agent Instructions: Create .tool.ts Configuration
 
@@ -43,62 +43,139 @@ Research the tool to understand:
 Based on your analysis, select the most appropriate installation method. Prioritize official and pre-compiled options.
 
 - **`github-release`**: Best for tools with binary releases on GitHub. It's the most common method.
+  - Downloads from GitHub releases with automatic platform detection
+  - Supports custom asset patterns and selectors
   - See: [GitHub Release Installation Guide](../../docs/installation/github-release.md)
+  
 - **`brew`**: Use if the tool is officially available via Homebrew and the target platform is macOS or Linux.
+  - Automatic dependency management
+  - Native integration with macOS and Linux
+  - Automatic version tracking via `brew info --json`
   - See: [Homebrew Installation Guide](../../docs/installation/homebrew.md)
-- **`cargo`**: The preferred method for Rust-based tools available on crates.io, as it's generally faster.
+  
+- **`cargo`**: The preferred method for Rust-based tools available on crates.io.
+  - Uses cargo-quickinstall or GitHub releases for pre-compiled binaries
+  - Multiple version sources (Cargo.toml, crates.io, GitHub)
+  - Automatic platform-to-Rust target mapping
   - See: [Cargo Installation Guide](../../docs/installation/cargo.md)
-- **`curl-script`**: For tools that provide an official installation script (e.g., `install.sh`).
+  
+- **`curl-script`**: For tools that provide an official installation script.
+  - Executes installation scripts (bash, sh)
+  - Supports custom environment variables
   - See: [Curl Script Installation Guide](../../docs/installation/curl-script.md)
+  
 - **`curl-tar`**: For downloading and extracting archives from a direct URL.
+  - Direct tarball downloads from known URLs
+  - Simple archive extraction
   - See: [Curl Tar Installation Guide](../../docs/installation/curl-tar.md)
-- **`manual`**: For tools that are already installed on the system, custom scripts, or configuration-only tools.
-  - With binary: Copies binaries from your dotfiles directory  
-  - Configuration-only: Just manages shell integration and symlinks
+  
+- **`manual`**: For custom scripts, pre-built binaries, or configuration-only tools.
+  - **With binaryPath**: Copies binaries from your dotfiles directory to managed installation
+  - **Without binaryPath**: Configuration-only (shell integration, symlinks, no binary management)
   - See: [Manual Installation Guide](../../docs/installation/manual.md)
 
-### Step 2: Configure Binary Patterns
-If using an archive-based installer (`github-release`, `curl-tar`), specify binary patterns based on the archive's structure.
+### Step 2: Configure Binary Specification
+**IMPORTANT**: The `.bin()` method only declares which executables your tool provides. It does NOT specify paths inside archives.
 
 ```typescript
-// Examples of common patterns:
-c.bin('tool')                    // Default: '{,*/}tool' (matches both 'tool' and '*/tool')
-c.bin('tool', 'tool-*/tool')     // Versioned directory name (e.g., tool-1.2.3/tool)
-c.bin('tool', '*/bin/tool')      // Binary in a 'bin' subdirectory
-c.bin('tool', 'tool')            // Binary exactly at the archive root (no subdirectory)
+// Declare the binaries this tool provides
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')                    // Single binary
+  
+install('github-release', { repo: 'owner/tool' })
+  .bin(['tool', 'tool-helper'])   // Multiple binaries
+
+// For github-release and curl-tar, the system automatically:
+// 1. Extracts archives to ${ctx.toolDir}/version/
+// 2. Preserves complete archive structure
+// 3. Uses pattern {,*/}binary-name to locate executables
+// 4. Creates shims in ${ctx.binDir}/ that execute from original location
 ```
 
-**Note**: The default pattern `{,*/}tool` handles both flat archives (binary at root) and nested archives (binary in a subdirectory), covering most common cases automatically.
+**Archive Structure Handling**: The default pattern `{,*/}binary-name` automatically handles:
+- Flat archives: `binary` at root
+- Nested archives: `directory/binary` in subdirectory
+- Complex structures: Any single-level nesting
+
+**Custom Binary Patterns**: Only needed for non-standard archive structures:
+```typescript
+// Binary in versioned directory (e.g., tool-1.2.3/tool)
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool', 'tool-*/tool')
+
+// Binary in specific subdirectory path
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool', 'bin/tool')
+```
 
 **Reference**: [Path Resolution Guide](../../docs/path-resolution.md)
 
 ### Step 3: Add Shell Integration
-Configure shell features if the tool provides them.
+Configure shell features using both declarative and script-based approaches.
 
+**Declarative Configuration** (preferred for simple cases):
 ```typescript
-// Shell completions (shell-specific)
-c.zsh({
-  completions: {
-    source: 'completions/_tool' // Path inside the archive
-  }
-})
-.bash({
-  completions: {
-    cmd: 'tool completion bash' // Command to generate completions
-  }
-})
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .zsh({
+    // Shell completions
+    completions: {
+      source: 'completions/_tool'  // Path inside extracted archive
+    },
+    
+    // Environment variables (structured object)
+    environment: {
+      'TOOL_CONFIG': `${ctx.homeDir}/.config/tool`,
+      'TOOL_LOG_LEVEL': 'info'
+    },
+    
+    // Aliases (structured object)
+    aliases: {
+      't': 'tool',
+      'ts': 'tool status'
+    }
+  })
+```
 
-// Aliases and Environment variables
-.zsh({
-  aliases: { t: 'tool' },
-  environment: { TOOL_CONFIG: '~/.config/tool' },
-  shellInit: [
-    once/* zsh */`
-      # Expensive setup only runs once after install
-      tool setup --user
-    `,
-  ],
-});
+**Script-Based Configuration** (for complex logic):
+```typescript
+import { always, once } from '@gitea/dotfiles';
+
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .zsh({
+    shellInit: [
+      // Expensive operations (run once after install/update)
+      once/* zsh */`
+        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+      `,
+      
+      // Fast runtime setup (runs every shell startup)
+      always/* zsh */`
+        function tool-helper() {
+          tool --config "$TOOL_CONFIG" "$@"
+        }
+        
+        # Key bindings
+        bindkey '^T' tool-fuzzy-search
+      `
+    ]
+  })
+```
+
+**Cross-Shell Support**:
+```typescript
+// Apply same config to multiple shells
+const commonConfig = {
+  environment: { 'TOOL_HOME': `${ctx.toolDir}` },
+  aliases: { 't': 'tool' }
+};
+
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .zsh(commonConfig)
+  .bash(commonConfig)
+  .powershell(commonConfig);
 ```
 
 **Reference**: [Shell Integration Guide](../../docs/shell-integration.md)
@@ -106,8 +183,22 @@ c.zsh({
 ### Step 4: Configure File Management
 Set up symbolic links for configuration files if the tool uses them.
 
+**Path Resolution Rules**:
+- **Source paths** starting with `./`: Relative to tool configuration directory (where `.tool.ts` is located)
+- **Target paths**: Must be absolute (use `${ctx.homeDir}`, etc.)
+
 ```typescript
-c.symlink('./config.toml', '~/.config/tool/config.toml')
+// Link configuration files
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+  .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
+
+// Directory structure example:
+// configs/my-tool/
+// ├── my-tool.tool.ts
+// ├── config.toml       <- Source: './config.toml'
+// └── themes/           <- Source: './themes/'
 ```
 
 **Reference**: [Symlinks Guide](../../docs/symlinks.md)
@@ -115,28 +206,104 @@ c.symlink('./config.toml', '~/.config/tool/config.toml')
 ### Step 5: Add Platform Support
 Handle platform-specific requirements using `.platform()`.
 
+**Platform Enumeration** (bitwise flags):
 ```typescript
-c.platform(Platform.MacOS, (c) => {
-  c.install('brew', { formula: 'tool' }); // macOS-specific installation
-});
-c.platform(Platform.Linux, (c) => {
-  c.install('github-release', { repo: 'owner/repo' }); // Linux-specific
-});
+import { Platform, Architecture } from '@gitea/dotfiles';
+
+Platform.Linux    // 1
+Platform.MacOS    // 2  
+Platform.Windows  // 4
+Platform.Unix     // Platform.Linux | Platform.MacOS (3)
+Platform.All      // Platform.Linux | Platform.MacOS | Platform.Windows (7)
+
+Architecture.X86_64  // 1
+Architecture.Arm64   // 2
+Architecture.All     // Architecture.X86_64 | Architecture.Arm64 (3)
+```
+
+**Platform-Specific Configuration**:
+```typescript
+// Platform-only configuration
+install()
+  .platform(Platform.MacOS, (install) => {
+    install('brew', { formula: 'tool' })
+      .bin('tool');
+  })
+  .platform(Platform.Linux, (install) => {
+    install('github-release', { repo: 'owner/tool' })
+      .bin('tool');
+  });
+
+// Platform + Architecture
+install()
+  .platform(Platform.Linux, Architecture.Arm64, (install) => {
+    install('github-release', {
+      repo: 'owner/tool',
+      assetPattern: '*linux-arm64*.tar.gz'
+    })
+      .bin('tool');
+  });
+
+// Multiple platforms
+install()
+  .platform(Platform.Unix, (install) => {
+    // Applies to both Linux and macOS
+    install('github-release', { repo: 'owner/tool' })
+      .bin('tool')
+      .zsh({ aliases: { 't': 'tool' } });
+  });
 ```
 
 **Reference**: [Platform Support Guide](../../docs/platform-support.md)
 
 ### Step 6: Add Installation Hooks (if needed)
-Include post-installation setup for tasks like creating directories or running initialization commands.
+Include post-installation setup for custom operations.
 
+**Available Hooks**:
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, logger }) => {
-    logger.info('Running post-install setup...');
-    await $`tool init`;
-  }
-})
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .hooks({
+    beforeInstall: async (ctx) => { /* Pre-installation setup */ },
+    afterDownload: async (ctx) => { /* Post-download processing */ },
+    afterExtract: async (ctx) => { /* Post-extraction setup */ },
+    afterInstall: async (ctx) => { /* Final setup and verification */ }
+  })
 ```
+
+**Hook Context Provides**:
+- `$`: Bun's shell executor (cwd is tool config directory)
+- `fileSystem`: Cross-platform file operations
+- `logger`: Structured logging (use `logger.info()`, `logger.warn()`, `logger.error()`)
+- `toolName`, `installDir`, `systemInfo`: Installation metadata
+- `downloadPath`, `extractDir`, `extractResult`: Stage-specific paths
+
+**Common Hook Patterns**:
+```typescript
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .hooks({
+    afterInstall: async ({ $, logger, fileSystem, systemInfo }) => {
+      // Create data directory
+      const dataDir = path.join(systemInfo.homeDir, '.local/share', 'tool');
+      await fileSystem.mkdir(dataDir, { recursive: true });
+      
+      // Initialize tool
+      await $`tool init --data-dir ${dataDir}`;
+      
+      // Generate completions
+      await $`tool completion zsh > ${ctx.generatedDir}/completions/_tool`;
+      
+      logger.info('Post-install setup completed');
+    }
+  })
+```
+
+**Shell Executor (`$`) Notes**:
+- Automatically uses tool config directory as `cwd`
+- Returns promises with stdout (Buffer), stderr, exitCode
+- Use `.text()` for string output: `await $`command`.text()`
+- Always handle errors with try/catch
 
 **Reference**: [Hooks Guide](../../docs/hooks.md)
 
@@ -146,9 +313,9 @@ c.hooks({
 Create a file named `{tool-name}.tool.ts` with this structure:
 
 ```typescript
-import { defineTool } from '@dotfiles/schemas';
+import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((c, ctx) =>
+export default defineTool((install, ctx) =>
   // Your configuration here
 );
 ```
@@ -156,8 +323,7 @@ export default defineTool((c, ctx) =>
 ### Required Elements
 Your configuration MUST include:
 1. **Binary configuration** (`.bin()`) with correct patterns if applicable.
-2. **Installation method** (`.install()`) with proper parameters.
-3. **Version specification** (`.version()`).
+2. **Installation method** (`install()`) with proper parameters.
 
 ### Optional Elements (include if applicable):
 1. **Shell completions**, aliases, and environment variables.
@@ -173,21 +339,22 @@ Include a brief JSDoc comment explaining:
 
 ## Example Output
 
+### Example 1: Simple GitHub Release Tool
 ```typescript
-import { defineTool } from '@dotfiles/schemas';
+import { defineTool } from '@gitea/dotfiles';
 
 /**
  * ripgrep - A line-oriented search tool that recursively searches your current
  * directory for a regex pattern.
- * GitHub releases contain platform-specific archives with the binary in a subdirectory.
+ * 
+ * Installation: Downloads from GitHub releases with automatic platform detection.
+ * Archive Structure: Binary in subdirectory (handled by default pattern).
  */
-export default defineTool((c, ctx) =>
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'BurntSushi/ripgrep',
+  })
     .bin('rg')  // Default pattern {,*/}rg handles ripgrep's archive structure
-    .version('latest')
-    .install('github-release', {
-      repo: 'BurntSushi/ripgrep',
-    })
     .bash({
       completions: {
         source: 'complete/rg.bash',
@@ -201,17 +368,234 @@ export default defineTool((c, ctx) =>
 );
 ```
 
+### Example 2: Tool with Shell Integration
+```typescript
+import { defineTool, always, once } from '@gitea/dotfiles';
+
+/**
+ * fzf - Command-line fuzzy finder.
+ * 
+ * Installation: GitHub release with shell integration.
+ * Features: Key bindings, completions, and custom functions.
+ */
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'junegunn/fzf',
+  })
+    .bin('fzf')
+    .zsh({
+      completions: {
+        source: 'shell/completion.zsh',
+      },
+      environment: {
+        'FZF_DEFAULT_OPTS': '--color=fg+:cyan,bg+:black,hl+:yellow',
+      },
+      shellInit: [
+        always/* zsh */`
+          # Source key bindings
+          if [[ -f "${ctx.toolDir}/latest/shell/key-bindings.zsh" ]]; then
+            source "${ctx.toolDir}/latest/shell/key-bindings.zsh"
+          fi
+          
+          # Custom function
+          function fzf-jump-to-dir() {
+            local dir=$(find . -type d | fzf)
+            [[ -n "$dir" ]] && cd "$dir"
+          }
+        `
+      ]
+    })
+);
+```
+
+### Example 3: Cross-Platform Tool
+```typescript
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+
+/**
+ * bat - A cat clone with syntax highlighting and Git integration.
+ * 
+ * Installation: Platform-specific (Homebrew on macOS, GitHub on Linux).
+ * Platforms: macOS, Linux (x86_64 and ARM64).
+ */
+export default defineTool((install, ctx) =>
+  install()
+    .platform(Platform.MacOS, (install) => {
+      install('brew', { formula: 'bat' })
+        .bin('bat');
+    })
+    .platform(Platform.Linux, Architecture.X86_64, (install) => {
+      install('github-release', {
+        repo: 'sharkdp/bat',
+        assetPattern: '*linux-gnu*.tar.gz',
+      })
+        .bin('bat');
+    })
+    .platform(Platform.Linux, Architecture.Arm64, (install) => {
+      install('github-release', {
+        repo: 'sharkdp/bat',
+        assetPattern: '*aarch64*linux-gnu*.tar.gz',
+      })
+        .bin('bat');
+    })
+    .zsh({
+      aliases: {
+        'cat': 'bat',
+      },
+      completions: {
+        source: 'autocomplete/bat.zsh',
+      },
+    })
+    .bash({
+      completions: {
+        source: 'autocomplete/bat.bash',
+      },
+    })
+);
+```
+
+### Example 4: Rust Tool with Cargo
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * eza - Modern replacement for ls with Git integration.
+ * 
+ * Installation: Via cargo-quickinstall for fast pre-compiled installation.
+ * Features: Multiple binary names (eza and legacy exa).
+ */
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'eza',
+    githubRepo: 'eza-community/eza',
+  })
+    .bin(['eza', 'exa'])  // Provides both new and legacy names
+    .zsh({
+      completions: {
+        source: 'completions/zsh/_eza',
+      },
+      aliases: {
+        'ls': 'eza',
+        'll': 'eza -l',
+        'la': 'eza -la',
+        'tree': 'eza --tree',
+      },
+      environment: {
+        'EZA_COLORS': 'da=1;34:gm=1;34',
+      },
+    })
+);
+```
+
+### Example 5: Manual Installation (Custom Script)
+```typescript
+import { defineTool, always } from '@gitea/dotfiles';
+
+/**
+ * deploy - Custom deployment script included with dotfiles.
+ * 
+ * Installation: Manual (copies script from dotfiles directory).
+ * Features: Custom deployment commands with configuration.
+ */
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './scripts/deploy.sh',  // Relative to .tool.ts
+  })
+    .bin('deploy')
+    .symlink('./deploy.config.yaml', `${ctx.homeDir}/.config/deploy/config.yaml`)
+    .zsh({
+      aliases: {
+        'dp': 'deploy',
+        'deploy-prod': 'deploy --env production',
+        'deploy-staging': 'deploy --env staging',
+      },
+      environment: {
+        'DEPLOY_CONFIG': `${ctx.homeDir}/.config/deploy/config.yaml`,
+      },
+      shellInit: [
+        always/* zsh */`
+          function deploy-status() {
+            deploy status "$@"
+          }
+        `
+      ],
+    })
+);
+```
+
+### Example 6: Configuration-Only Tool
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * git-config - Git configuration and aliases (no binary management).
+ * 
+ * Installation: Manual (configuration only, no binaries).
+ * Features: Symlinked configs and shell aliases.
+ */
+export default defineTool((install, ctx) =>
+  install('manual', {})  // No binaryPath = configuration only
+    .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
+    .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
+    .zsh({
+      aliases: {
+        'g': 'git',
+        'gs': 'git status',
+        'ga': 'git add',
+        'gc': 'git commit',
+        'gp': 'git push',
+        'gl': 'git pull',
+        'gd': 'git diff',
+        'gb': 'git branch',
+        'gco': 'git checkout',
+      },
+      environment: {
+        'GIT_EDITOR': 'nvim',
+      },
+    })
+);
+```
+
 ## Quality Checklist
 
 Before finalizing your configuration, verify:
-- [ ] **Installation method** is the most appropriate for the tool.
-- [ ] **Binary patterns** match the actual archive structure.
-- [ ] **Repository URL** or package name is correct.
-- [ ] **Version specification** is appropriate (`latest` vs. a specific version).
-- [ ] **Shell integration** includes available completions and useful aliases.
-- [ ] **Platform support** covers all intended platforms.
-- [ ] **Configuration follows** [TypeScript requirements](../../docs/typescript.md).
-- [ ] **Code style** matches [examples](../../docs/examples.md).
+
+**Installation & Binary Management:**
+- [ ] **Installation method** is the most appropriate (GitHub release, Homebrew, Cargo, etc.)
+- [ ] **Binary names** are correctly specified with `.bin()`
+- [ ] **Binary patterns** are only used when default `{,*/}name` doesn't work
+- [ ] **Repository URL** or package name is correct
+- [ ] **Version specification** is appropriate (`latest` vs. specific version)
+
+**Shell Integration:**
+- [ ] **Declarative config** is used for simple environment variables and aliases
+- [ ] **Script-based config** is used only for complex functions and logic
+- [ ] **`once` scripts** contain expensive operations (completions generation, cache building)
+- [ ] **`always` scripts** contain only fast runtime setup
+- [ ] **Context variables** (`${ctx.homeDir}`, etc.) are used for all paths
+
+**File Management:**
+- [ ] **Symlink source paths** use `./` for relative paths to tool config directory
+- [ ] **Symlink target paths** use absolute paths with context variables
+- [ ] **Completions** use shell-specific configuration (not standalone `.completions()`)
+
+**Cross-Platform Support:**
+- [ ] **Platform enumeration** uses `Platform.MacOS`, `Platform.Linux`, etc.
+- [ ] **Architecture handling** is specified when needed
+- [ ] **Platform-specific overrides** are properly configured
+
+**Code Quality:**
+- [ ] **TypeScript requirements** are followed (proper imports, function signature)
+- [ ] **Code style** matches [examples](../../docs/examples.md)
+- [ ] **Documentation comments** explain the tool and any special decisions
+- [ ] **Context API** is used correctly for path resolution
+
+**Testing:**
+- [ ] Configuration compiles without TypeScript errors
+- [ ] Installation works on target platforms
+- [ ] Binaries are accessible after installation
+- [ ] Shell integration works as expected
+- [ ] All paths resolve correctly
 
 ## Common Patterns Reference
 

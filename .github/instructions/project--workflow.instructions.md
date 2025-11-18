@@ -19,6 +19,7 @@ When user reports an issue
 - Then write a test that reproduces the issue.
 - Fix the issue and ensure the test passes.
 - Ensure all tests pass.
+- When user requests specific implementation, never switch to alternative solutions.
 
 ## Task Completion Definition
 
