@@ -1,6 +1,6 @@
-import type { Stats as NodeStats } from 'node:fs';
-
-export type { NodeStats as Stats };
+// re-export these to make build work
+export type NodeStats = import('node:fs').Stats;
+export type Stats = NodeStats;
 
 export interface IFileSystem {
   /**

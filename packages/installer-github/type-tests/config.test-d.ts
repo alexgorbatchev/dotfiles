@@ -1,11 +1,11 @@
-// @ts-nocheck
 import type { GithubReleaseInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
 import { always, defineTool, once } from '@gitea/dotfiles';
+import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
 
-export type InstallIncludesGithubRelease = ExpectTrue<'github-release' extends InstallMethod ? true : false>;
 type GithubReleaseParams = InstallParamsRegistry['github-release'];
+export type InstallIncludesGithubRelease = ExpectTrue<'github-release' extends InstallMethod ? true : false>;
 export type GithubReleaseParamsMatchSchema = ExpectTrue<
   GithubReleaseParams extends GithubReleaseInstallParams ? true : false
 >;
@@ -25,12 +25,11 @@ defineTool((install) =>
   })
 );
 
-defineTool((install) =>
-  install('github-release', {
-    repo: 'BurntSushi/ripgrep',
-    // @ts-expect-error github-release params must not accept unknown fields
-    unknown: 'value',
-  })
+expectError(() =>
+  defineTool((install) =>
+    install('github-release', {
+      repo: 'BurntSushi/ripgrep',
+      unknown: 'value',
+    })
+  )
 );
-
-export const buildCheck = true;

@@ -1,6 +1,5 @@
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { $ } from 'bun';
 import type { BaseToolContext } from '../common/baseToolContext.types';
 import type { SystemInfo } from '../common/common.types';
 import type { ProjectConfig } from '../config';
@@ -64,7 +63,9 @@ export interface InstallHookContext extends BaseToolContext {
    * Use the `$` tagged template literal to execute shell commands within hooks.
    * The working directory can be changed using `cd` commands or `process.chdir()`.
    */
-  $: typeof $;
+  $: typeof import('bun').$;
+
+  // IMPORTANT: `typeof import('bun').$` is here intentionally to make the build work
 }
 
 /**
@@ -86,7 +87,9 @@ export interface EnhancedInstallHookContext extends InstallHookContext {
   /** The full tool configuration being processed. Available in all hooks. */
   toolConfig?: ToolConfig;
   /** Bun's shell executor for running shell commands. */
-  $: typeof $;
+  $: typeof import('bun').$;
+
+  // IMPORTANT: `typeof import('bun').$` is here intentionally to make the build work
 }
 
 /**
@@ -136,14 +139,6 @@ export interface PostExtractInstallContext extends PostDownloadInstallContext {
   /** The result of the archive extraction process. */
   extractResult: ExtractResult;
 }
-
-/**
- * The final installation context available after a successful installation.
- *
- * It extends {@link BaseInstallContext} with the final installation results.
- *
- * @internal
- */
 
 /**
  * Defines the signature for an asynchronous TypeScript installation hook function.

@@ -11,7 +11,7 @@
  * 3. Bundles the CLI entry point (packages/cli/src/main.ts) into a minified executable
  * 4. Generates TypeScript schema types for tool configuration (ProjectConfig)
  * 5. Creates package.json with proper exports and dependencies
- * 6. Validates generated schemas with type checking
+ * 6. Validates generated schemas with tsd type tests
  * 7. Tests the built CLI executable
  * 8. Outputs build summary with list of generated files
  *
@@ -31,8 +31,6 @@ import { $ } from 'bun';
 import cliPackageJson from '../../../../package.json';
 import { extractTypeAliasSignature } from '../extractTypeAliasSignature';
 import { getRepoRoot } from '../path-utils';
-
-const LINE_BREAK = '\n';
 
 const ROOT_DIR = getRepoRoot();
 const PACKAGES_DIR = path.join(ROOT_DIR, 'packages');
@@ -58,29 +56,21 @@ const SCHEMA_CHECK_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'tsconfig--schemas-chec
 const ROOT_NODE_MODULES_PATH = path.join(ROOT_DIR, 'node_modules');
 const ROOT_BUN_CACHE_PATH = path.join(ROOT_NODE_MODULES_PATH, '.bun');
 const BUN_INSTALL_CACHE_ENV = `BUN_INSTALL_CACHE=${ROOT_BUN_CACHE_PATH}`;
-const BUILD_CHECK_DIR = path.join(TMP_DIR, 'build-check');
-const BUILD_CHECK_NODE_MODULES_PATH = path.join(BUILD_CHECK_DIR, 'node_modules');
-const BUILD_CHECK_PACKAGE_JSON_PATH = path.join(BUILD_CHECK_DIR, 'package.json');
-const BUILD_CHECK_TSCONFIG_PATH = path.join(BUILD_CHECK_DIR, 'tsconfig.json');
-const INSTALLER_PACKAGE_PREFIX = 'installer-';
-const INSTALLER_BUILD_CHECK_RELATIVE_PATH = path.join('build-check', 'buildCheck.ts');
-const BUILD_CHECK_SCRIPT_SUFFIX = '--buildCheck.ts';
+const TYPE_TESTS_DIR_NAME = 'type-tests';
+const TSD_TEST_FILE_EXTENSION = '.test-d.ts';
+const TSD_TESTS_DIR = path.join(TMP_DIR, 'tsd-tests');
+const TSD_TESTS_CONFIG_PATH = path.join(TSD_TESTS_DIR, 'tsconfig.json');
+const TSD_TESTS_PACKAGE_JSON_PATH = path.join(TSD_TESTS_DIR, 'package.json');
+const TSD_TESTS_NPMRC_PATH = path.join(TSD_TESTS_DIR, '.npmrc');
+const TSD_TESTS_NODE_MODULES_PATH = path.join(TSD_TESTS_DIR, 'node_modules');
+const TSD_TESTS_GITEA_NAMESPACE_PATH = path.join(TSD_TESTS_NODE_MODULES_PATH, '@gitea');
+const TSD_TESTS_GITEA_SYMLINK_PATH = path.join(TSD_TESTS_GITEA_NAMESPACE_PATH, 'dotfiles');
 
 class BuildError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message, { cause });
     this.name = 'BuildError';
   }
-}
-
-/**
- * Metadata about an installer package's build check script.
- */
-interface InstallerBuildCheckScript {
-  /** The npm package name of the installer (e.g., 'installer-brew'). */
-  packageName: string;
-  /** The absolute path to the build check script file. */
-  sourcePath: string;
 }
 
 /**
@@ -91,8 +81,14 @@ interface DependencyVersions {
   zod: string;
   /** Version of the @types/bun TypeScript definitions. */
   bunTypes: string;
-  /** Version of the TypeScript compiler. */
-  typescript: string;
+  /** Version of the @types/node TypeScript definitions. */
+  nodeTypes: string;
+}
+
+interface TypeTestFile {
+  packageName: string;
+  fileName: string;
+  sourcePath: string;
 }
 
 /**
@@ -158,6 +154,130 @@ function linkBunStoreDependencies(nodeModulesPath: string): void {
   }
 }
 
+function getTypeTestFiles(): TypeTestFile[] {
+  const packages: fs.Dirent[] = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
+  const files: TypeTestFile[] = [];
+
+  for (const entry of packages) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const packageName: string = entry.name;
+    const typeTestsDir: string = path.join(PACKAGES_DIR, packageName, TYPE_TESTS_DIR_NAME);
+
+    if (!fs.existsSync(typeTestsDir)) {
+      continue;
+    }
+
+    const typeTestEntries: fs.Dirent[] = fs.readdirSync(typeTestsDir, { withFileTypes: true });
+
+    for (const typeTestEntry of typeTestEntries) {
+      if (!typeTestEntry.isFile()) {
+        continue;
+      }
+
+      if (!typeTestEntry.name.endsWith(TSD_TEST_FILE_EXTENSION)) {
+        continue;
+      }
+
+      const sourcePath: string = path.join(typeTestsDir, typeTestEntry.name);
+      const file: TypeTestFile = {
+        packageName,
+        fileName: typeTestEntry.name,
+        sourcePath,
+      };
+
+      files.push(file);
+    }
+  }
+
+  return files;
+}
+
+function copyTypeTestFiles(destinationDir: string): void {
+  const files: TypeTestFile[] = getTypeTestFiles();
+
+  for (const file of files) {
+    const packageDestinationDir: string = path.join(destinationDir, file.packageName);
+    fs.mkdirSync(packageDestinationDir, { recursive: true });
+    const destinationPath: string = path.join(packageDestinationDir, file.fileName);
+    fs.copyFileSync(file.sourcePath, destinationPath);
+  }
+}
+
+async function createTsdTestsPackageJson(): Promise<void> {
+  const packageJsonDependencies: Record<string, string> = {
+    '@gitea/dotfiles': `file://${OUTPUT_DIR}`,
+  };
+
+  const packageJson: Record<string, unknown> = {
+    name: 'tsd-tests',
+    private: true,
+    type: 'module',
+    types: './index.d.ts',
+    dependencies: packageJsonDependencies,
+  };
+
+  await Bun.write(TSD_TESTS_PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2));
+}
+
+async function createTsdTestsTsConfig(): Promise<void> {
+  const compilerOptions: Record<string, unknown> = {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'bundler',
+    strict: true,
+    noEmit: true,
+    skipLibCheck: true,
+    lib: ['ES2022'],
+  };
+
+  const tsConfig: Record<string, unknown> = {
+    compilerOptions,
+    include: ['./**/*.d.ts'],
+  };
+
+  await Bun.write(TSD_TESTS_CONFIG_PATH, JSON.stringify(tsConfig, null, 2));
+}
+
+async function createTsdTestsEntryPoint(): Promise<void> {
+  const entryPoint = "export * from '@gitea/dotfiles';\n";
+  await Bun.write(path.join(TSD_TESTS_DIR, 'index.d.ts'), entryPoint);
+}
+
+function symlinkDirectory(sourcePath: string, destinationPath: string, description: string): void {
+  if (!fs.existsSync(sourcePath)) {
+    throw new BuildError(`Required path for ${description} not found: ${sourcePath}`);
+  }
+
+  fs.rmSync(destinationPath, { recursive: true, force: true });
+  fs.symlinkSync(sourcePath, destinationPath, 'dir');
+}
+
+function ensureTsdTestsNodeModules(): void {
+  fs.mkdirSync(TSD_TESTS_NODE_MODULES_PATH, { recursive: true });
+
+  const tsdModuleSourcePath: string = path.join(ROOT_NODE_MODULES_PATH, 'tsd');
+  const tsdModuleDestinationPath: string = path.join(TSD_TESTS_NODE_MODULES_PATH, 'tsd');
+  symlinkDirectory(tsdModuleSourcePath, tsdModuleDestinationPath, 'tsd module');
+
+  fs.mkdirSync(TSD_TESTS_GITEA_NAMESPACE_PATH, { recursive: true });
+  symlinkDirectory(OUTPUT_DIR, TSD_TESTS_GITEA_SYMLINK_PATH, '@gitea/dotfiles package');
+}
+
+async function setupTsdTestsProject(): Promise<void> {
+  fs.rmSync(TSD_TESTS_DIR, { recursive: true, force: true });
+  fs.mkdirSync(TSD_TESTS_DIR, { recursive: true });
+
+  copyTypeTestFiles(TSD_TESTS_DIR);
+  await createTsdTestsPackageJson();
+  await createTsdTestsEntryPoint();
+  await createTsdTestsTsConfig();
+  copyFileIfExists(NPMRC_PATH, TSD_TESTS_NPMRC_PATH);
+  ensureTsdTestsNodeModules();
+}
+
 /**
  * Restores workspace dependencies using `bun install`.
  *
@@ -198,13 +318,10 @@ async function installDependenciesInOutputDir(): Promise<void> {
 /**
  * Removes previous build artifacts from the `.dist` directory.
  *
- * Cleans the build-check directory first (to remove symlinks pointing to `.dist`),
+ * Removes the temporary module symlink first to prevent dangling references,
  * then removes the `.dist` directory if it exists.
  */
 async function cleanPreviousBuild(): Promise<void> {
-  // Clean build-check first to remove any symlinks pointing to .dist
-  fs.rmSync(BUILD_CHECK_DIR, { recursive: true, force: true });
-
   if (fs.existsSync(OUTPUT_DIR)) {
     console.log('🧹 Cleaning previous build...');
     fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
@@ -227,24 +344,23 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
 
   const zodMatch = pmLsOutput.match(/zod@(\d+\.\d+\.\d+)/);
   const bunTypesMatch = pmLsOutput.match(/@types\/bun@(\d+\.\d+\.\d+)/);
-  const typescriptMatch = pmLsOutput.match(/(?:^|\s)typescript@(\d+\.\d+\.\d+)/);
-
-  if (!zodMatch || !bunTypesMatch || !typescriptMatch) {
-    throw new BuildError('Could not find zod, type-fest, @types/bun, or typescript versions in bun pm ls output');
+  const nodeTypesMatch = pmLsOutput.match(/@types\/node@(\d+\.\d+\.\d+)/);
+  if (!zodMatch || !bunTypesMatch || !nodeTypesMatch) {
+    throw new BuildError('Could not find zod, @types/bun, or @types/node versions in bun pm ls output');
   }
 
   const zodVersion = zodMatch[1];
   const bunTypesVersion = bunTypesMatch[1];
-  const typescriptVersion = typescriptMatch[1];
+  const nodeTypesVersion = nodeTypesMatch[1];
 
-  if (!zodVersion || !bunTypesVersion || !typescriptVersion) {
+  if (!zodVersion || !bunTypesVersion || !nodeTypesVersion) {
     throw new BuildError('Could not extract version numbers from dependency output');
   }
 
   const versions: DependencyVersions = {
     zod: zodVersion,
     bunTypes: bunTypesVersion,
-    typescript: typescriptVersion,
+    nodeTypes: nodeTypesVersion,
   };
 
   return versions;
@@ -355,6 +471,7 @@ async function createTempSchemasPackage(dependencyVersions: DependencyVersions):
     dependencies: {
       zod: dependencyVersions.zod,
       '@types/bun': dependencyVersions.bunTypes,
+      '@types/node': dependencyVersions.nodeTypes,
       '@dotfiles/core': 'workspace:*',
       '@dotfiles/config': 'workspace:*',
     },
@@ -448,176 +565,6 @@ function checkProjectConfigTypeSignature(): void {
 }
 
 /**
- * Collects build check scripts from all installer packages.
- *
- * Scans the `packages/` directory for packages starting with `installer-`
- * and verifies that each has a `build-check/buildCheck.ts` file. These scripts
- * are used to validate that the generated schemas are compatible with each
- * installer's type expectations.
- *
- * @returns An array of installer build check script metadata.
- * @throws {BuildError} If any installer package is missing its build check script.
- */
-function getInstallerBuildCheckScripts(): InstallerBuildCheckScript[] {
-  const directoryEntries: fs.Dirent[] = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
-  const scripts: InstallerBuildCheckScript[] = [];
-
-  for (const entry of directoryEntries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    const packageName: string = entry.name;
-
-    if (!packageName.startsWith(INSTALLER_PACKAGE_PREFIX)) {
-      continue;
-    }
-
-    const packagePath: string = path.join(PACKAGES_DIR, packageName);
-    const buildCheckPath: string = path.join(packagePath, INSTALLER_BUILD_CHECK_RELATIVE_PATH);
-
-    if (!fs.existsSync(buildCheckPath)) {
-      throw new BuildError(`❌ Missing build check script: ${packageName}`);
-    }
-
-    const script: InstallerBuildCheckScript = {
-      packageName,
-      sourcePath: buildCheckPath,
-    };
-    scripts.push(script);
-  }
-
-  return scripts;
-}
-
-/**
- * Copies installer build check scripts to the build check directory.
- *
- * Retrieves all installer build check scripts and copies them to the specified
- * destination directory, renaming them with a `--buildCheck.ts` suffix.
- * Removes `// @ts-nocheck` directive from the first line if present.
- *
- * @param destinationDir - The directory where build check scripts should be copied.
- */
-function copyInstallerBuildCheckScripts(destinationDir: string): void {
-  const scripts: InstallerBuildCheckScript[] = getInstallerBuildCheckScripts();
-
-  for (const script of scripts) {
-    const fileName: string = `${script.packageName}${BUILD_CHECK_SCRIPT_SUFFIX}`;
-    const destinationPath: string = path.join(destinationDir, fileName);
-    const content = fs.readFileSync(script.sourcePath, 'utf-8');
-    const lines = content.split(LINE_BREAK);
-    if (lines[0]?.trim() === '// @ts-nocheck') {
-      lines.shift();
-    }
-    fs.writeFileSync(destinationPath, lines.join(LINE_BREAK));
-  }
-}
-
-/**
- * Sets up a build check project for validating generated schemas.
- *
- * Creates a temporary TypeScript project in `.tmp/build-check/` that:
- * 1. Copies all installer build check scripts
- * 2. Creates a package.json that depends on the built package
- * 3. Creates a tsconfig.json for type checking
- * 4. Installs dependencies (including the built package from `.dist`)
- * 5. Creates a symlink from node_modules to the `.dist` directory
- *
- * This allows the build check scripts to import from the built package
- * and verify that all types are correctly exposed.
- *
- * @param dependencyVersions - Version information for dev dependencies.
- */
-async function setupBuildCheckProject(dependencyVersions: DependencyVersions): Promise<void> {
-  fs.mkdirSync(BUILD_CHECK_DIR, { recursive: true });
-  copyInstallerBuildCheckScripts(BUILD_CHECK_DIR);
-
-  const tsConfig: Record<string, unknown> = {
-    compilerOptions: {
-      target: 'ES2022',
-      module: 'ESNext',
-      moduleResolution: 'bundler',
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-    },
-    include: ['./**/*.ts'],
-  };
-
-  const packageJson = {
-    name: 'build-check',
-    private: true,
-    type: 'module',
-    dependencies: {
-      '@gitea/dotfiles': `file://${OUTPUT_DIR}`,
-    },
-    devDependencies: {
-      typescript: dependencyVersions.typescript,
-    },
-  };
-
-  await Bun.write(BUILD_CHECK_TSCONFIG_PATH, JSON.stringify(tsConfig, null, 2));
-  await Bun.write(BUILD_CHECK_PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2));
-  copyFileIfExists(NPMRC_PATH, path.join(BUILD_CHECK_DIR, '.npmrc'));
-
-  await $`cd ${BUILD_CHECK_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
-  linkBunStoreDependencies(BUILD_CHECK_NODE_MODULES_PATH);
-
-  createBuildCheckSymlink();
-}
-
-/**
- * Creates a symlink from the build check node_modules to the `.dist` directory.
- *
- * Creates the `@gitea` namespace directory in the build check's node_modules
- * and symlinks `@gitea/dotfiles` to the `.dist` directory. This allows the
- * build check scripts to import from `@gitea/dotfiles` as if it were an
- * installed npm package.
- */
-function createBuildCheckSymlink(): void {
-  const namespacePath = path.join(BUILD_CHECK_NODE_MODULES_PATH, '@gitea');
-  const symlinkPath = path.join(namespacePath, 'dotfiles');
-
-  fs.mkdirSync(namespacePath, { recursive: true });
-  fs.rmSync(symlinkPath, { recursive: true, force: true });
-  fs.symlinkSync(OUTPUT_DIR, symlinkPath, 'dir');
-}
-
-/**
- * Runs TypeScript type checking on the build check project.
- *
- * Executes `bunx tsgo --noEmit` in the build check directory to verify
- * that all installer build check scripts can successfully import and use
- * the types from the generated `schemas.d.ts` file.
- *
- * @throws {BuildError} If type checking fails.
- */
-async function runBuildCheck(): Promise<void> {
-  try {
-    await $`cd ${BUILD_CHECK_DIR} && bunx tsgo --noEmit`;
-  } catch (error) {
-    throw new BuildError('Schema validation failed', error);
-  }
-}
-
-/**
- * Validates generated schemas by running build check scripts.
- *
- * Sets up a temporary build check project and runs TypeScript type checking
- * to ensure that the generated `schemas.d.ts` file correctly exposes all
- * installer plugin types and can be used by consumer code.
- *
- * @param dependencyVersions - Version information for setting up the build check project.
- */
-async function validateSchemas(dependencyVersions: DependencyVersions): Promise<void> {
-  console.log('🔍 Validating generated schemas...');
-  await setupBuildCheckProject(dependencyVersions);
-  await runBuildCheck();
-  console.log('✅ Schema validation passed');
-}
-
-/**
  * Removes temporary files created during the build process.
  *
  * Deletes:
@@ -627,6 +574,17 @@ async function validateSchemas(dependencyVersions: DependencyVersions): Promise<
  * - Lock files (bun.lock)
  * - Schema check tsconfig
  */
+async function runTypeTests(): Promise<void> {
+  console.log('🔍 Running tsd type tests...');
+  try {
+    await setupTsdTestsProject();
+    await $`cd ${TSD_TESTS_DIR} && bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`.quiet();
+    console.log('✅ tsd type tests passed');
+  } catch (error) {
+    throw new BuildError('Schema type validation failed', error);
+  }
+}
+
 async function cleanupTempFiles(): Promise<void> {
   const filesToCleanup: string[] = [
     TEMP_SCHEMAS_BUILD_DIR,
@@ -683,6 +641,7 @@ async function generatePackageJson(dependencyVersions: DependencyVersions): Prom
     bin: {
       dotfiles: './cli.js',
     },
+    types: './schemas.d.ts',
     exports: {
       '.': {
         import: {
@@ -693,6 +652,8 @@ async function generatePackageJson(dependencyVersions: DependencyVersions): Prom
     },
     dependencies: {
       zod: dependencyVersions.zod,
+      '@types/bun': dependencyVersions.bunTypes,
+      '@types/node': dependencyVersions.nodeTypes,
     },
   };
 
@@ -759,7 +720,7 @@ async function printBuildSummary(): Promise<void> {
  * 3. Builds the CLI executable
  * 4. Generates schema type definitions
  * 5. Creates package.json
- * 6. Validates schemas with build check scripts
+ * 6. Validates schemas with tsd type tests
  * 7. Tests the built CLI
  * 8. Prints build summary
  * 9. Restores workspace dependencies
@@ -776,8 +737,8 @@ async function main(): Promise<void> {
     await generatePackageJson(dependencyVersions);
 
     try {
-      await validateSchemas(dependencyVersions);
-      console.log('✅ @dotfiles/core config types bundled with dts-bundle-generator');
+      await runTypeTests();
+      console.log('✅ @dotfiles/core config types validated with tsd');
     } finally {
       await cleanupTempFiles();
     }
@@ -788,7 +749,12 @@ async function main(): Promise<void> {
     if (error instanceof BuildError) {
       console.error(`❌ Build failed: ${error.message}`);
       if (error.cause) {
-        console.error('Caused by:', error.cause);
+        console.error('Caused by:');
+        if (typeof error.cause === 'object') {
+          console.error('stderr' in error.cause ? error.cause.stderr : error.cause);
+        } else {
+          console.error(error.cause);
+        }
       }
     } else {
       console.error(`❌ An unexpected error occurred:`, error);

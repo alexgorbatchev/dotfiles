@@ -27,5 +27,5 @@
     "noImplicitAny": true
   },
   "include": ["packages", "cli.ts", "test/tools"],
-  "exclude": ["**/.tmp/**"]
+  "exclude": ["**/.tmp/**", "packages/**/type-tests/**"]
 }
