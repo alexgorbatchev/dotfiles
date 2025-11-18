@@ -12,19 +12,19 @@ interface ToolConfigContext {
   /** Get the installation directory for any tool */
   getToolDir(toolName: string): string;
   
-  /** User's home directory (from yamlConfig.paths.homeDir) */
+  /** User's home directory (from projectConfig.paths.homeDir) */
   homeDir: string;
   
-  /** Generated binaries directory (from yamlConfig.paths.binariesDir) */
+  /** Generated binaries directory (from projectConfig.paths.binariesDir) */
   binDir: string;
   
-  /** Generated shell scripts directory (from yamlConfig.paths.shellScriptsDir) */
+  /** Generated shell scripts directory (from projectConfig.paths.shellScriptsDir) */
   shellScriptsDir: string;
   
-  /** Root dotfiles directory (from yamlConfig.paths.dotfilesDir) */
+  /** Root dotfiles directory (from projectConfig.paths.dotfilesDir) */
   dotfilesDir: string;
   
-  /** Generated files directory (from yamlConfig.paths.generatedDir) */
+  /** Generated files directory (from projectConfig.paths.generatedDir) */
   generatedDir: string;
 }
 ```

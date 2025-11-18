@@ -51,6 +51,33 @@ c.bin('tool', 'tool')
 - Only executables matching the pattern basename are selected
 - Binary names should match the actual executable names
 
+## `.dependsOn(...binaryNames: string[])`
+
+Declares executable dependencies that must be available before this tool can be generated. Each dependency should match the shim name provided by another tool configuration (or an existing system binary already on the machine).
+
+**Parameters:**
+- `binaryNames`: One or more binary names that this tool requires
+
+**Examples:**
+```typescript
+// Single dependency
+c.dependsOn('openssl');
+
+// Multiple dependencies declared together
+c.dependsOn('node', 'pnpm', 'corepack');
+
+// You can chain additional calls to append more requirements
+c.dependsOn('node').dependsOn('eslint');
+```
+
+**Validation Rules:**
+- Every dependency must be provided by exactly one tool
+- Dependencies cannot form cycles (A → B → A)
+- Providers must support the target platform/architecture
+- Empty or whitespace-only names are ignored with a warning
+
+The CLI stops with descriptive errors if any rule is violated, helping you identify missing, ambiguous, or invalid dependency declarations.
+
 ## `.version(version: string)`
 
 Specifies the desired tool version.

@@ -1,5 +1,3 @@
-
-
 /**
  * Provides a base context with common properties and utilities that are shared
  * across various phases of tool configuration and installation.
@@ -60,8 +58,4 @@ export interface BaseToolContext {
    * as defined in `projectConfig.paths.generatedDir`.
    */
   generatedDir: string;
-
-  /**
-   * The user's parsed application configuration from the main `config.yaml` file.
-   */
 }

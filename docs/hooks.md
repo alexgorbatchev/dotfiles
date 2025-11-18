@@ -32,7 +32,7 @@ interface HookContext {
   // Enhanced capabilities
   fileSystem: IFileSystem;    // File system operations (mkdir, writeFile, etc.)
   logger: TsLogger;          // Structured logging
-  appConfig: YamlConfig;     // User's application configuration
+  projectConfig: ProjectConfig;     // User's application configuration
   toolConfig: ToolConfig;    // Full tool configuration
   $: typeof $;               // Bun's shell executor for running shell commands
   

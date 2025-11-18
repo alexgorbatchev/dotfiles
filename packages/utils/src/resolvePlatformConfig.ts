@@ -145,6 +145,9 @@ function applyPlatformOverrides(finalConfig: ToolConfig, platformConfig: Platfor
   if (platformConfig.binaries !== undefined) {
     finalConfig.binaries = platformConfig.binaries;
   }
+  if (platformConfig.dependencies !== undefined) {
+    finalConfig.dependencies = platformConfig.dependencies;
+  }
   if (platformConfig.version !== undefined) {
     finalConfig.version = platformConfig.version;
   }
@@ -163,6 +166,7 @@ function createBaseResolvedConfig(toolConfig: ToolConfig): ToolConfig {
   const resolvedConfig = {
     ...toolConfig,
     shellConfigs: deepCopyShellConfigs(toolConfig.shellConfigs),
+    dependencies: toolConfig.dependencies ? [...toolConfig.dependencies] : undefined,
   };
 
   const { platformConfigs, ...configWithoutPlatforms } = resolvedConfig;

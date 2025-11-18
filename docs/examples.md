@@ -13,6 +13,7 @@ This directory contains real-world examples of `.tool.ts` configurations for var
 - **git** - Manual installation with extensive aliases
 - **nvim** - Tool with plugins and complex configuration
 - **docker** - Multi-platform installation with different methods
+- **Dependency graphs** - Sample configs that showcase `.dependsOn()` relationships
 
 ### Cross-Platform Tools
 - **node** - Different installation methods per platform
@@ -36,6 +37,7 @@ This directory contains real-world examples of `.tool.ts` configurations for var
 - **System Utilities**: ripgrep, fzf, bat
 - **Text Editors**: nvim, emacs
 - **Shell Enhancements**: zsh plugins, prompt themes
+- **Shared Binaries**: configurations demonstrating providers/consumers with `.dependsOn()`
 
 ## Usage
 

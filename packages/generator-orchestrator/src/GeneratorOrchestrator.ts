@@ -6,6 +6,7 @@ import type { GenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-genera
 import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import type { IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
+import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
 
 /**
  * Orchestrates the generation of all dotfiles artifacts.
@@ -58,13 +59,19 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
     const fileSystemName = this.fs.constructor.name;
 
-    const toolConfigsCount = toolConfigs ? Object.keys(toolConfigs).length : 0;
+    const orderedToolConfigs: Record<string, ToolConfig> = orderToolConfigsByDependencies(
+      this.logger,
+      toolConfigs,
+      this.systemInfo
+    );
+
+    const toolConfigsCount = Object.keys(orderedToolConfigs).length;
     logger.debug(messages.generateAll.parsedOptions(toolConfigsCount));
 
     // 1. Generate Shims
     const shimOptions: GenerateShimsOptions = { overwrite: true };
     logger.debug(messages.generateAll.shimGenerate());
-    const generatedShimsPaths = await this.shimGenerator.generate(toolConfigs, shimOptions);
+    const generatedShimsPaths = await this.shimGenerator.generate(orderedToolConfigs, shimOptions);
     const shimCount = generatedShimsPaths?.length ?? 0;
     logger.debug(messages.generateAll.shimGenerationComplete(shimCount));
 
@@ -74,13 +81,16 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       systemInfo: this.systemInfo,
     };
     logger.debug(messages.generateAll.shellGenerate());
-    const shellInitResult = await this.shellInitGenerator.generate(toolConfigs, shellInitOptions);
+    const shellInitResult = await this.shellInitGenerator.generate(orderedToolConfigs, shellInitOptions);
     const primaryPath = shellInitResult?.primaryPath ?? 'null';
     logger.debug(messages.generateAll.shellInitComplete(primaryPath));
 
     // 3. Generate Symlinks
     const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
-    const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(toolConfigs, symlinkOptions);
+    const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
+      orderedToolConfigs,
+      symlinkOptions
+    );
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
 

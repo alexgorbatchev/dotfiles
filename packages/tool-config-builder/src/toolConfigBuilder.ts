@@ -79,6 +79,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   public versionNum: string = 'latest';
   public currentInstallationMethod?: string;
   public currentInstallParams?: InstallParams | Record<string, unknown>;
+  private dependencies: string[] = [];
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
@@ -321,6 +322,29 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
+   * Declares binary dependencies required before generating this tool.
+   *
+   * @param binaryNames - One or more binary names that must be available
+   * @returns The `ToolConfigBuilder` instance for chaining.
+   */
+  dependsOn(...binaryNames: string[]): this {
+    for (const rawName of binaryNames) {
+      const trimmedName = rawName.trim();
+      if (trimmedName.length === 0) {
+        const invalidDependencyWarning = messages.configurationFieldInvalid('dependency', rawName, 'non-empty string');
+        this.logger.warn(invalidDependencyWarning);
+        continue;
+      }
+
+      if (!this.dependencies.includes(trimmedName)) {
+        this.dependencies.push(trimmedName);
+      }
+    }
+
+    return this;
+  }
+
+  /**
    * Defines platform-specific configuration overrides.
    *
    * This powerful feature allows for different installation methods, binaries,
@@ -460,6 +484,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       updateCheck: this.updateCheckConfig,
+      dependencies: this.dependencies.length > 0 ? [...this.dependencies] : undefined,
       platformConfigs: this.isPlatformScope
         ? undefined
         : this.platformConfigEntries.length > 0
@@ -485,6 +510,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       updateCheck: this.updateCheckConfig,
+      dependencies: this.dependencies.length > 0 ? [...this.dependencies] : undefined,
     };
 
     // Add installation method and params if they exist

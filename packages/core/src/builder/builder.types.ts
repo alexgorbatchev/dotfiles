@@ -6,6 +6,7 @@
  */
 
 import type { Architecture, BaseToolContext, Platform } from '../common';
+import type { ProjectConfig } from '../config';
 import type { AsyncInstallHook } from '../installer';
 import type { ShellScript } from '../shell';
 import type { ShellCompletionConfig } from '../tool-config/shell';
@@ -33,6 +34,7 @@ export interface ShellConfig {
 export interface ToolConfigBuilder {
   bin(name: string, pattern?: string): this;
   version(version: string): this;
+  dependsOn(...binaryNames: string[]): this;
   hooks(hooks: {
     beforeInstall?: AsyncInstallHook;
     afterDownload?: AsyncInstallHook;
@@ -58,6 +60,7 @@ export interface ToolConfigBuilder {
 export interface PlatformConfigBuilder {
   bin(name: string, pattern?: string): this;
   version(version: string): this;
+  dependsOn(...binaryNames: string[]): this;
   hooks(hooks: {
     beforeInstall?: AsyncInstallHook;
     afterDownload?: AsyncInstallHook;
@@ -108,7 +111,12 @@ export interface PlatformInstallFunction {
 /**
  * Context object for tool configuration.
  */
-export interface ToolConfigContext extends BaseToolContext {}
+export interface ToolConfigContext extends BaseToolContext {
+  /**
+   * The user's parsed application configuration from the main config file.
+   */
+  projectConfig: ProjectConfig;
+}
 
 /**
  * Tool configuration function using the new install-first API.

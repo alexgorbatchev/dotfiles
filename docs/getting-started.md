@@ -14,6 +14,7 @@ export default defineTool((install, ctx) =>
     repo: 'owner/repository',
   })
     .bin('tool-name')
+    .dependsOn('pcre2')
 );
 ```
 
@@ -27,6 +28,7 @@ export default defineTool((install, ctx) =>
     repo: 'owner/repository',
   })
     .bin('tool-name')
+    .dependsOn('shared-runtime')
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
     .zsh({
       completions: {
@@ -53,6 +55,16 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### Declaring Dependencies
+
+Use `.dependsOn('binary-name')` to ensure prerequisite binaries are available before your tool runs. Each dependency should reference the shim name exposed by another tool configuration (or an existing system binary). The generator enforces that:
+
+- Every dependency is provided by exactly one tool
+- Dependencies do not form cycles
+- Providers are available for the current platform/architecture
+
+If any of these checks fail, the CLI stops with actionable error messages.
+
 ## TypeScript Requirements
 
 ### Import Statement
@@ -71,6 +83,7 @@ The default export must use the `defineTool` helper with the install function:
 export default defineTool((install, ctx) =>
   install('method', { /* params */ })
     .bin('tool-name')
+    .dependsOn('shared-helper')
     // ... additional configuration
 );
 ```

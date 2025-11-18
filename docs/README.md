@@ -8,6 +8,7 @@ The `.tool.ts` configuration files replace traditional shell-based tool manageme
 
 - How to install the tool (from GitHub releases, Homebrew, scripts, etc.)
 - Which binaries to make available system-wide
+- Which other binaries this tool depends on
 - Shell integration (aliases, functions, environment variables)
 - Configuration files to symlink
 - Command completions to install
@@ -21,6 +22,7 @@ The `.tool.ts` configuration files replace traditional shell-based tool manageme
 - **Performance**: Faster tool access without shell startup overhead
 - **Maintainability**: Clear structure and validation
 - **Robust Error Handling**: Structured error reporting with Zod schema validation for configuration files
+- **Dependency Guarantees**: Automatic validation of provider/consumer relationships with clear diagnostics
 - **Reliable Parsing**: Uses proper parsers (e.g., smol-toml for Cargo.toml) instead of fragile regex patterns
 
 ### File Structure and Location

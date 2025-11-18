@@ -55,6 +55,7 @@ export interface CommandResult {
 export class TestHarness {
   readonly testDir: string;
   readonly configPath: string;
+  readonly configDir: string;
   readonly generatedDir: string;
   readonly userBinDir: string;
   readonly shellScriptsDir: string;
@@ -75,7 +76,9 @@ export class TestHarness {
     this.cleanBeforeRun = options.cleanBeforeRun ?? false;
     this.platform = options.platform;
     this.architecture = options.architecture;
-    this.generatedDir = path.join(this.testDir, '.generated');
+    const resolvedConfigPath = path.join(this.testDir, this.configPath);
+    this.configDir = path.dirname(resolvedConfigPath);
+    this.generatedDir = path.join(this.configDir, '.generated');
     this.userBinDir = path.join(this.generatedDir, 'user-bin');
     this.shellScriptsDir = path.join(this.generatedDir, 'shell-scripts');
     this.binPath = path.resolve(this.testDir, '../../node_modules/.bin');
@@ -109,18 +112,19 @@ export class TestHarness {
     // Add platform and architecture flags to all commands
     const platformString = platformToString(this.platform);
     const archString = architectureToString(this.architecture);
-    const argsWithPlatform = [...args, '--platform', platformString, '--arch', archString];
+    const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
 
     const result = await $`NODE_ENV=production ${this.dotfilesBin} ${argsWithPlatform}`
       .cwd(this.testDir)
       .quiet()
       .nothrow();
 
-    return {
+    const commandResult: CommandResult = {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
       stderr: result.stderr.toString(),
     };
+    return commandResult;
   }
 
   /**
@@ -254,7 +258,7 @@ export class TestHarness {
 
     let stdout = '';
     if (options) {
-      const args = options.args ?? [];
+      const args: string[] = options.args ?? [];
       const result = await $`NODE_ENV=production ${shimPath} ${args}`.cwd(this.testDir).quiet().nothrow();
 
       const commandResult: CommandResult = {

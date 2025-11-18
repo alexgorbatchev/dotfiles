@@ -16,6 +16,8 @@ export const commonToolConfigPropertiesSchema = z
      * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
      */
     binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).optional(),
+    /** Binary dependencies that must be available before generating this tool. */
+    dependencies: z.array(z.string().min(1)).optional(),
     /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
     version: z.string().optional(),
     /** Shell configurations organized by shell type, added via `c.zsh()`, `c.bash()`, `c.powershell()`. */

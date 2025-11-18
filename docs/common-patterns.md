@@ -28,6 +28,33 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+Add `.dependsOn('binary-name')` calls when the tool needs other binaries to exist before it runs. The generator automatically orders installations based on these relationships.
+
+## Tool with Dependency Providers
+
+Use dedicated provider tools for shared binaries and declare dependencies in consumers so installation order and validation are handled automatically.
+
+```typescript
+// shared-dependency.tool.ts
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install) =>
+  install('manual', { binaryPath: './bin/shared-dependency' })
+    .bin('shared-dependency')
+);
+
+// consumer.tool.ts
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install) =>
+  install('github-release', { repo: 'owner/consumer' })
+    .bin('consumer')
+    .dependsOn('shared-dependency')
+);
+```
+
+If a dependency is missing, ambiguous, or unsupported on the current platform, the CLI fails fast with an actionable error message.
+
 ## Tool with Complex Shell Integration
 
 ```typescript

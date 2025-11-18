@@ -221,35 +221,37 @@ c.hooks({
 
 ### Dependency Management
 
+Use `.dependsOn(...binaryNames)` to declare precise relationships between tools. The generator orders installations, detects cycles, and verifies that every dependency has exactly one provider on the active platform.
+
 ```typescript
-c.hooks({
-  beforeInstall: async ({ systemInfo, logger, $ }) => {
-    logger.info('Checking dependencies...');
-    
-    // Check for required dependencies
-    const deps = ['git', 'curl', 'tar'];
-    for (const dep of deps) {
-      try {
-        await $`command -v ${dep}`;
-        logger.info(`✓ ${dep} found`);
-      } catch {
-        throw new Error(`Required dependency not found: ${dep}`);
-      }
-    }
-  },
-  
-  afterInstall: async ({ toolName, installDir, logger, $ }) => {
-    // Verify installation
-    const binaryPath = path.join(installDir, toolName);
-    try {
-      const result = await $`${binaryPath} --version`;
-      logger.info(`✓ ${toolName} installed successfully: ${result.stdout.trim()}`);
-    } catch (error) {
-      throw new Error(`Installation verification failed: ${error.message}`);
-    }
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install) =>
+  install('github-release', { repo: 'owner/consumer' })
+    .bin('consumer')
+    .dependsOn('shared-runtime', 'openssl')
+);
 ```
+
+For more complex setups you can combine dependency declarations with hooks—for example, to ensure a dependency meets minimum version requirements:
+
+```typescript
+c.dependsOn('node');
+
+c.hooks({
+  beforeInstall: async ({ logger, $ }) => {
+    const versionCheck = await $`node --version`.nothrow();
+    if (versionCheck.exitCode !== 0) {
+      throw new Error('Node is required but not available');
+    }
+
+    const version = versionCheck.stdout.toString().trim();
+    logger.info(`Using system Node ${version}`);
+  }
+});
+```
+
+This pattern lets the generator guarantee ordering while still allowing custom verification logic when a dependency must satisfy additional constraints.
 
 ## Advanced Shell Integration
 

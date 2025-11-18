@@ -217,6 +217,7 @@ interface ToolConfigBuilder<TMethod> {
   version(version: string): this;
   binary(config: BinaryConfig): this;
   binaries(configs: BinaryConfig[]): this;
+  dependsOn(...binaryNames: string[]): this;
   symlink(config: SymlinkConfig): this;
   shell(config: ShellConfigs): this;
   platform(system: SystemType, config: PlatformSpecificConfig): this;

@@ -7,6 +7,10 @@ export const messages = {
   generateAll: {
     parsedOptions: (toolConfigsCount: number) =>
       createSafeLogMessage(`Parsed ${toolConfigsCount} tool configuration entries`),
+    dependenciesValidationStarted: (toolCount: number) =>
+      createSafeLogMessage(`Validating tool dependencies (${toolCount} tools)`),
+    dependenciesOrderResolved: (orderedTools: string) =>
+      createSafeLogMessage(`Dependency order resolved: ${orderedTools}`),
     shimGenerate: () => createSafeLogMessage('Generating shims with resolved options'),
     shimGenerationComplete: (generatedCount: number) =>
       createSafeLogMessage(`Shim generation completed with ${generatedCount} paths recorded`),

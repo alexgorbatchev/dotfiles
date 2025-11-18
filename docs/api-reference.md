@@ -20,6 +20,22 @@ c.bin('tool')
 c.bin(['tool', 'tool-helper'])
 ```
 
+#### `.dependsOn(...binaryNames: string[])`
+Declares binaries that must be available before this tool runs.
+
+**Parameters:**
+- `binaryNames`: One or more binary names provided by other tools (or the system)
+
+**Returns:** `ToolConfigBuilder` (for chaining)
+
+**Example:**
+```typescript
+c.dependsOn('node');
+c.dependsOn('node', 'pnpm');
+```
+
+If a dependency is missing, ambiguous, cyclical, or unavailable on the selected platform, the CLI fails with explicit diagnostics.
+
 #### `.version(version: string)`
 Specifies the desired tool version.
 
@@ -293,7 +309,7 @@ interface HookContext {
   systemInfo: SystemInfo;
   fileSystem: IFileSystem;
   logger: TsLogger;
-  appConfig: YamlConfig;
+  projectConfig: ProjectConfig;
   toolConfig: ToolConfig;
   $: ReturnType<typeof $>;
   binaryPath?: string;

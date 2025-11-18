@@ -3,8 +3,8 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { $ } from 'bun';
 import type { BaseToolContext } from '../common/baseToolContext.types';
 import type { SystemInfo } from '../common/common.types';
-import type { ExtractResult } from './archive.types';
 import type { ProjectConfig } from '../config';
+import type { ExtractResult } from './archive.types';
 
 /**
  * Defines the context object passed to asynchronous TypeScript installation hooks.
@@ -19,6 +19,10 @@ import type { ProjectConfig } from '../config';
  * @public
  */
 export interface InstallHookContext extends BaseToolContext {
+  /**
+   * The user's parsed application configuration from the main `config.yaml` file.
+   */
+  projectConfig: ProjectConfig;
   /**
    * The target directory where the tool's primary binary or executable should
    * be (or has been) installed.

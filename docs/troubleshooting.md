@@ -53,6 +53,26 @@ c.install('github-release', {
 })
 ```
 
+### Dependency errors
+
+**Symptoms:**
+- CLI exits with messages like "Missing dependency", "Ambiguous dependency", or "Circular dependency detected"
+- Tool installations succeed individually but `dotfiles generate` fails when processing dependents
+
+**Solutions:**
+- Ensure every `.dependsOn()` call references a binary that is exposed via `.bin()` in exactly one tool
+- Rename binaries or adjust dependencies when more than one tool provides the same name
+- Break dependency loops by removing or refactoring circular references
+- Verify that providers include the active platform/architecture when using platform-specific configuration
+- Run `bun test packages/e2e-test/src/__tests__/dependency-ordering.e2e.test.ts` to reproduce ordering scenarios locally
+
+```bash
+# Example error output and next steps
+dotfiles generate --config path/to/config.yaml
+# Missing dependency: tool "consumer" requires binary "shared-runtime" (platform linux/x86_64)
+# -> Add .dependsOn('shared-runtime') to the provider or install a system package that supplies it
+```
+
 ## Shell Integration Issues
 
 ### Shell integration not working
