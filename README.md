@@ -16,6 +16,7 @@ This project replaces that fragile, manual system with a declarative, programmat
 ## Core Features
 
 - **Declarative Tool Management**: Define every tool, from installation to shell integration, in a typed TypeScript file (`.tool.ts`).
+- **Typed Global Configuration**: Author your `dotfiles.config.ts` using a synchronous or asynchronous factory wrapped with `defineConfig` for end-to-end type safety.
 - **Automated On-Demand Installation**: Tools are installed automatically the first time you try to run them. No need to pre-install everything.
 - **Zero-Overhead Shell Startup**: Your shell's startup time is unaffected. All tool loading is deferred until the moment you actually run a command, adding no latency to your shell's initialization.
 - **Global Tool Access**: Automatically generates executable shims, making every tool available system-wide to all applications, not just your interactive shell.
@@ -46,6 +47,31 @@ bun run cli.ts generate
 bun run cli.ts update
 ```
 
+### Configure with TypeScript
+
+Create `dotfiles.config.ts` alongside your YAML config to take advantage of TypeScript tooling:
+
+```typescript
+// dotfiles.config.ts
+import { defineConfig } from '@dotfiles/config';
+
+export default defineConfig(async () => ({
+  paths: {
+    dotfilesDir: '~/.dotfiles',
+    targetDir: '~/.local/bin',
+  },
+  github: {
+    token: process.env.GITHUB_TOKEN,
+  },
+}));
+
+export const syncExample = defineConfig(() => ({
+  paths: {
+    generatedDir: '${configFileDir}/.generated',
+  },
+}));
+```
+
 ## Example: A Complete Tool Configuration
 
 Define everything about a tool—installation, binary path, config file symlinks, and shell environment—in one place.
@@ -60,9 +86,11 @@ export default defineTool((install, ctx) =>
   })
     // 1. Define the binary name
     .bin('rg')
-    // 2. Create symlinks for configuration files
+    // 2. Declare required binaries that must exist before this tool runs
+    .dependsOn('pcre2')
+    // 3. Create symlinks for configuration files
     .symlink('./ripgreprc', `${ctx.homeDir}/.ripgreprc`)
-    // 3. Configure shell-specific integration (aliases, functions, env vars)
+    // 4. Configure shell-specific integration (aliases, functions, env vars)
     .zsh({
       aliases: {
         rgi: 'rg -i', // Case-insensitive search alias
@@ -73,6 +101,29 @@ export default defineTool((install, ctx) =>
     })
 );
 ```
+
+### Dependency Ordering
+
+Tools can depend on binaries provided by other tools (or existing system binaries). Use `.dependsOn('binary-name')` to declare these relationships. The generator validates dependencies before running installs, ensuring:
+
+- Providers are present for every required binary
+- No cycles exist between dependent tools
+- Dependencies are available for the active platform/architecture
+
+If any dependency checks fail, the CLI exits with detailed diagnostics so you can fix missing or ambiguous providers before continuing.
+
+**Type-safe autocomplete:** When you run `generate`, a `tool-types.d.ts` file is automatically created in your `generatedDir` (defaults to `.generated/`) containing all available binary names from your tool configurations. Add this file to your `tsconfig.json` to get autocomplete for dependency names in your `.tool.ts` files:
+
+```json
+{
+  "include": [
+    "tools/**/*.tool.ts",
+    ".generated/tool-types.d.ts"
+  ]
+}
+```
+
+This enables IDE autocomplete for the `dependsOn()` method with all known binary names. The file is regenerated each time you run `generate` to stay in sync with your current tool configurations.
 
 ## Complete Configuration Reference
 
@@ -101,6 +152,12 @@ binaries:
   # Advanced configuration to specify a pattern for locating the binary within an archive.
   - name: my-other-tool
     pattern: "bin/my-other-tool-v*"
+
+# Binary dependencies that must exist before this tool runs.
+# (array of strings, optional)
+dependencies:
+  - openssl
+  - shared-runtime
 
 # Parameters specific to the chosen installation method.
 # The structure of this object depends on the `installationMethod`.

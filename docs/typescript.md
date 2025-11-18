@@ -2,6 +2,54 @@
 
 The `.tool.ts` configuration files use TypeScript for type safety and validation. This section covers the TypeScript requirements and best practices.
 
+## Auto-Generated Type Definitions
+
+### tool-types.d.ts
+
+When you run the `generate` command, the system automatically creates a `tool-types.d.ts` file in your `generatedDir` (defaults to `.generated/`). This file provides type-safe autocomplete for the `dependsOn()` method by extracting all binary names from your loaded tool configurations.
+
+**Location:** `${generatedDir}/tool-types.d.ts`
+
+**What it contains:**
+- `KnownBinName` type: A union of all binary names from your tool configurations
+- Module augmentation for `@gitea/dotfiles` to provide autocomplete in `.tool.ts` files
+
+**Example generated content:**
+```typescript
+export type KnownBinName = 'rg' | 'eza' | 'borders' | 'fd';
+
+declare module '@gitea/dotfiles' {
+  interface ToolConfigBuilder {
+    dependsOn(...binaryNames: KnownBinName[]): this;
+  }
+  
+  interface PlatformConfigBuilder {
+    dependsOn(...binaryNames: KnownBinName[]): this;
+  }
+}
+```
+
+### TypeScript Configuration
+
+To enable autocomplete for `dependsOn()` in your tool configuration files, add the generated types to your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["@gitea/dotfiles"]
+  },
+  "include": [
+    "tools/**/*.tool.ts",
+    ".generated/tool-types.d.ts"
+  ]
+}
+```
+
+**Important:** The `tool-types.d.ts` file is regenerated every time you run `generate`, so you should:
+- Add `.generated/` to your `.gitignore`
+- Run `generate` after cloning or adding new tools
+- Include the path in your `tsconfig.json` so TypeScript can discover it
+
 ## Import Statements
 
 Always import required types at the top of your configuration file:

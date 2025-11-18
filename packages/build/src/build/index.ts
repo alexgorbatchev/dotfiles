@@ -27,7 +27,6 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateToolTypesContent } from '@dotfiles/utils';
 import { $ } from 'bun';
 import cliPackageJson from '../../../../package.json';
 import { extractTypeAliasSignature } from '../extractTypeAliasSignature';
@@ -53,7 +52,6 @@ const OUTPUT_NPMRC_PATH = path.join(OUTPUT_DIR, '.npmrc');
 const OUTPUT_BUNFIG_PATH = path.join(OUTPUT_DIR, 'bunfig.toml');
 const OUTPUT_BUN_LOCK_PATH = path.join(OUTPUT_DIR, 'bun.lock');
 const OUTPUT_SCHEMAS_D_TS_PATH = path.join(OUTPUT_DIR, 'schemas.d.ts');
-const OUTPUT_TOOL_TYPES_D_TS_PATH = path.join(OUTPUT_DIR, 'tool-types.d.ts');
 const SCHEMA_CHECK_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'tsconfig--schemas-check.json');
 const ROOT_NODE_MODULES_PATH = path.join(ROOT_DIR, 'node_modules');
 const ROOT_BUN_CACHE_PATH = path.join(ROOT_NODE_MODULES_PATH, '.bun');
@@ -608,7 +606,6 @@ async function cleanupTempFiles(): Promise<void> {
  * Orchestrates the complete schema generation and validation process:
  * 1. Builds schema type definitions using TypeScript compiler
  * 2. Validates the generated ProjectConfig type signature
- * 3. Generates default tool-types.d.ts for binary name autocomplete
  *
  * @param dependencyVersions - Version information for dependencies.
  * @throws {BuildError} If schema generation or validation fails.
@@ -619,15 +616,6 @@ async function generateSchemaTypes(dependencyVersions: DependencyVersions): Prom
   try {
     await buildSchemaTypes(dependencyVersions);
     checkProjectConfigTypeSignature();
-
-    // Add triple-slash reference to tool-types.d.ts at the top of schemas.d.ts
-    const schemasContent: string = fs.readFileSync(OUTPUT_SCHEMAS_D_TS_PATH, 'utf8');
-    const schemasWithReference: string = `/// <reference path="./tool-types.d.ts" />\n\n${schemasContent}`;
-    fs.writeFileSync(OUTPUT_SCHEMAS_D_TS_PATH, schemasWithReference, 'utf8');
-
-    const toolTypesContent: string = generateToolTypesContent({});
-    fs.writeFileSync(OUTPUT_TOOL_TYPES_D_TS_PATH, toolTypesContent, 'utf8');
-    console.log('✅ Generated tool-types.d.ts for binary name autocomplete');
   } catch (error) {
     throw new BuildError('❌ Schema type generation failed', error);
   }

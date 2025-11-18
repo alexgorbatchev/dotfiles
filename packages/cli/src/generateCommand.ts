@@ -34,9 +34,9 @@ export function registerGenerateCommand(
         );
         logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 
-        const packageDir: string = path.join(__dirname, '..');
-        const toolTypesPath: string = path.join(packageDir, 'tool-types.d.ts');
+        const toolTypesPath: string = path.join(projectConfig.paths.generatedDir, 'tool-types.d.ts');
         await generateToolTypes(toolConfigs, toolTypesPath, fs);
+        logger.debug(messages.toolTypesGenerated(toolTypesPath));
 
         await generatorOrchestrator.generateAll(toolConfigs);
 

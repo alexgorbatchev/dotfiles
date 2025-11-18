@@ -99,13 +99,10 @@ describe('generateCommand', () => {
     logger.expect(['ERROR'], ['registerGenerateCommand'], [messages.commandExecutionFailed('generate', 1)]);
   });
 
-  test('should generate tool-types.d.ts next to CLI source', async () => {
+  test('should generate tool-types.d.ts in generatedDir', async () => {
     await program.parseAsync(['generate'], { from: 'user' });
 
-    // When generateCommand.ts runs, its __dirname is packages/cli/src
-    // So it writes to packages/cli/tool-types.d.ts (one level up from src)
-    // This location is a little weird in the test, however when built, the file will be placed in the package next to schema.d.ts
-    const expectedPath: string = path.join(__dirname, '..', '..', 'tool-types.d.ts');
+    const expectedPath: string = path.join(mockProjectConfig.paths.generatedDir, 'tool-types.d.ts');
     const toolTypesExists: boolean = await mockFs.fs.exists(expectedPath);
 
     expect(toolTypesExists).toBe(true);

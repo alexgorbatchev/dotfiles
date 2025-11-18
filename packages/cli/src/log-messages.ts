@@ -109,4 +109,5 @@ export const messages = {
   configParameterInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
   updatesCommandCompleted: () => createSafeLogMessage('Check-updates command completed'),
+  toolTypesGenerated: (path: string) => createSafeLogMessage(`Generated tool types: ${path}`),
 } satisfies SafeLogMessageMap;

@@ -65,6 +65,8 @@ Use `.dependsOn('binary-name')` to ensure prerequisite binaries are available be
 
 If any of these checks fail, the CLI stops with actionable error messages.
 
+**Type-safe autocomplete:** After running `generate`, a `tool-types.d.ts` file is created in your `generatedDir` with all available binary names. Add this file to your `tsconfig.json` to get autocomplete for dependency names. See [TypeScript Requirements](./typescript.md#auto-generated-type-definitions) for setup instructions.
+
 ## TypeScript Requirements
 
 ### Import Statement

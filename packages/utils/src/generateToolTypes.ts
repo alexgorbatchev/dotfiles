@@ -19,7 +19,7 @@ const TOOL_TYPES_TEMPLATE = `/**
  */
 export type KnownBinName = {BINARY_NAMES};
 
-declare module '@dotfiles/core' {
+declare module '@gitea/dotfiles' {
   interface ToolConfigBuilder {
     /**
      * Declares that this tool depends on other tools' binaries being available.
