@@ -18,7 +18,8 @@ export interface BuiltPackageEnvironment {
  * Using bracket notation prevents this optimization and breaks the build output.
  */
 export function getBuiltPackageName(env?: BuiltPackageEnvironment): string {
-  const configuredName: string | undefined = env?.DOTFILES_BUILT_PACKAGE_NAME ?? process.env.DOTFILES_BUILT_PACKAGE_NAME;
+  const configuredName: string | undefined =
+    env?.DOTFILES_BUILT_PACKAGE_NAME ?? process.env.DOTFILES_BUILT_PACKAGE_NAME;
 
   if (configuredName !== undefined) {
     const trimmedName: string = configuredName.trim();

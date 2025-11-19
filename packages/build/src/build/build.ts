@@ -27,8 +27,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';
 import { extractTypeAliasSignature } from '../extractTypeAliasSignature';
-import { getRepoRoot } from '../path-utils';
 import { getPackageJson } from '../getPackageJson';
+import { getRepoRoot } from '../path-utils';
 import { generateToolTypes } from './generateToolTypes';
 import { BuildError, handleBuildError } from './handleBuildError';
 

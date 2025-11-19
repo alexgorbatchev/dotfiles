@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { getBuiltPackageName, type BuiltPackageEnvironment } from '../getBuiltPackageName';
+import { type BuiltPackageEnvironment, getBuiltPackageName } from '../getBuiltPackageName';
 
 describe('getBuiltPackageName', () => {
   test('returns default package name when environment variable is not set', () => {

@@ -57,14 +57,11 @@ export function generateUnionType(binaryNames: Set<string>): string {
   return quotedNames.join(' | ');
 }
 
-
 export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>): string {
   const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
   const unionType: string = generateUnionType(binaryNames);
   const sortedNames: string[] = unionType === 'string' ? [] : Array.from(binaryNames).sort();
-  const registryEntries: string = sortedNames
-    .map((name: string): string => `    '${name}': never;`)
-    .join('\n');
+  const registryEntries: string = sortedNames.map((name: string): string => `    '${name}': never;`).join('\n');
   const hasEntries: boolean = registryEntries.length > 0;
   const registryBody: string = hasEntries
     ? `  interface KnownBinNameRegistry {\n${registryEntries}\n  }`

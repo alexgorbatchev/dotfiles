@@ -133,7 +133,7 @@ describe('generateToolTypes', () => {
       const content: string = generateToolTypesContent(toolConfigs);
 
       expect(content).toContain("declare module '@gitea/dotfiles'");
-      expect(content).toContain("interface KnownBinNameRegistry");
+      expect(content).toContain('interface KnownBinNameRegistry');
       expect(content).toContain("    'rg': never;");
       expect(content).toContain('export {};');
     });

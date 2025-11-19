@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noTemplateCurlyInString: config */
 
-import { defineConfig } from "../packages/cli";
+import { defineConfig } from '../packages/cli';
 
 export default defineConfig(() => ({
   paths: {
