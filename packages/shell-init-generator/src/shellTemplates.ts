@@ -136,17 +136,20 @@ export function generateHoistingAttribution(shellType: ShellType, sourceTools: s
 }
 
 /**
- * Generates shell-specific default PATH modification based on shell type.
+ * Generates shell-specific default PATH modification with deduplication check.
  * @param shellType - Type of shell (zsh, bash, powershell)
- * @param binariesDir - Path to the generated binaries directory
- * @returns Shell-appropriate PATH modification command
+ * @param targetDir - Path to the target directory (where shims are placed)
+ * @returns Shell-appropriate PATH modification command with conditional check
  */
-export function generateDefaultPathModification(shellType: ShellType, binariesDir: string): string {
+export function generateDefaultPathModification(shellType: ShellType, targetDir: string): string {
   switch (shellType) {
     case 'powershell':
-      return `$env:PATH = "${binariesDir};$env:PATH"`;
+      return `if ($env:PATH -notlike "*${targetDir}*") { $env:PATH = "${targetDir};$env:PATH" }`;
+    case 'zsh':
+    case 'bash':
+      return `if [[ ":$PATH:" != *":${targetDir}:"* ]]; then\n  export PATH="${targetDir}:$PATH"\nfi`;
     default:
-      return `export PATH="${binariesDir}:$PATH"`;
+      return `if [[ ":$PATH:" != *":${targetDir}:"* ]]; then\n  export PATH="${targetDir}:$PATH"\nfi`;
   }
 }
 

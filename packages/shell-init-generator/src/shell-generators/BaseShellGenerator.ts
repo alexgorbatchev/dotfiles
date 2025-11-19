@@ -120,7 +120,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const onceInitializer = new OnceScriptInitializer();
 
     // Add default PATH modification first
-    allPathModifications.push(generateDefaultPathModification(this.shellType, this.projectConfig.paths.binariesDir));
+    allPathModifications.push(generateDefaultPathModification(this.shellType, this.projectConfig.paths.targetDir));
 
     // Collect content from all tools with proper attribution
     this.collectContentWithAttribution(

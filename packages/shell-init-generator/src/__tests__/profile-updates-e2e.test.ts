@@ -188,11 +188,11 @@ describe('Profile Updates E2E Tests', () => {
 
         // Check shell-specific PATH syntax
         if (shell === 'powershell') {
-          expect(scriptContent).toContain(`$env:PATH = "${testDirs.paths.binariesDir};$env:PATH"`);
+          expect(scriptContent).toContain(`$env:PATH = "${testDirs.paths.targetDir};$env:PATH"`);
           expect(scriptContent).toContain('Set-Alias g lazygit');
           expect(scriptContent).toContain('$env:LAZYGIT_CONFIG_FILE');
         } else {
-          expect(scriptContent).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
+          expect(scriptContent).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
           expect(scriptContent).toContain('alias g="lazygit"');
           expect(scriptContent).toContain('export LAZYGIT_CONFIG_FILE');
           expect(scriptContent).toContain('export FZF_DEFAULT_OPTS');
@@ -514,7 +514,7 @@ describe('Profile Updates E2E Tests', () => {
       expect(zshScriptContent).toContain(
         '# ============================= PATH Modifications =============================='
       );
-      expect(zshScriptContent).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
+      expect(zshScriptContent).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
       expect(zshScriptContent).toContain('export PATH="$HOME/.cargo/bin:$PATH"');
 
       // Check always scripts section

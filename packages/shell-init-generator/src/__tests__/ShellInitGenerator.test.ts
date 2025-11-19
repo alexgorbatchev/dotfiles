@@ -54,7 +54,9 @@ describe('ShellInitGenerator', () => {
       '# The following path modifications have been hoisted from tool-specific configurations',
       '# for better organization and to avoid conflicts',
       '',
-      `export PATH="${testDirs.paths.binariesDir}:$PATH"`,
+      `if [[ ":$PATH:" != *":${testDirs.paths.targetDir}:"* ]]; then`,
+      `  export PATH="${testDirs.paths.targetDir}:$PATH"`,
+      'fi',
       '', // one empty line after path section
       '', // extra newline before end of file
       getExpectedFooter(),
@@ -139,7 +141,7 @@ describe('ShellInitGenerator', () => {
     const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
 
     expect(content).toContain(createSectionHeader('zsh', 'PATH Modifications'));
-    expect(content).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
+    expect(content).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
     expect(content).toContain('export PATH="/opt/toolA/bin:$PATH"');
     expect(content).toContain('path+=("/opt/toolB/bin")');
   });
@@ -327,7 +329,7 @@ describe('ShellInitGenerator', () => {
 
     // PATH
     expect(content).toContain('export PATH="/opt/alpha/bin:$PATH"');
-    expect(content).toContain(`export PATH="${testDirs.paths.binariesDir}:$PATH"`);
+    expect(content).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
 
     // Env Vars
     expect(content).toContain('export ALPHA_MODE=on');

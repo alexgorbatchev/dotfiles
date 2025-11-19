@@ -8,7 +8,7 @@ export function createMockProjectConfigWithPathsOnly(): ProjectConfig {
       generatedDir: '/home/test/.dotfiles/.generated',
       shellScriptsDir: '/home/test/.dotfiles/.generated/shell-scripts',
       binariesDir: '/home/test/.dotfiles/.generated/bin',
-      targetDir: '/usr/local/bin',
+      targetDir: '/home/test/.local/bin',
       toolConfigsDir: '/home/test/.dotfiles/configs/tools',
     },
   } as ProjectConfig;
