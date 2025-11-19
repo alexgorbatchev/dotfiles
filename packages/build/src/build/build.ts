@@ -424,7 +424,7 @@ async function buildCli(): Promise<Bun.BuildOutput> {
  */
 async function createTempTsConfig(): Promise<void> {
   const tempTsConfig = {
-    extends: `${ROOT_DIR}/packages/cli/tsconfig.json`,
+    extends: `${ROOT_DIR}/tsconfig.json`,
     compilerOptions: {
       noEmit: false,
       declaration: true,

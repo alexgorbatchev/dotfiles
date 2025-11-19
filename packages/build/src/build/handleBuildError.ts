@@ -27,7 +27,7 @@ function logErrorDetails(error: unknown): void {
       console.error(error);
     }
 
-    // if ('stack' in rootCause) console.error(rootCause.stack);
+    if ('stack' in error) console.error(error.stack);
   }
 }
 
