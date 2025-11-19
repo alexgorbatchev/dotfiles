@@ -37,6 +37,7 @@
     "fmt": "biome format --write .",
     "fix": "biome check --write --unsafe .",
     "test:task": "bun test",
+    "test-project": "bun run --silent cli --config test-project/config.ts",
     "build": "bun packages/build/src/build/index.ts",
     "version": "bun packages/build/src/version/index.ts",
     "release": "bun packages/build/src/release/index.ts",

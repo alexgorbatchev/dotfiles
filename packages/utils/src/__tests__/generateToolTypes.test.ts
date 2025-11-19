@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
 import { extractBinaryNames, generateToolTypesContent, generateUnionType } from '../generateToolTypes';
 
@@ -13,6 +13,10 @@ function createMockToolConfig(name: string, binaries?: (string | { name: string 
 }
 
 describe('generateToolTypes', () => {
+  beforeEach(() => {
+    delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
+  });
+
   describe('extractBinaryNames', () => {
     test('should extract binary names from tool configs', () => {
       const toolConfigs: Record<string, ToolConfig> = {
@@ -128,11 +132,10 @@ describe('generateToolTypes', () => {
 
       const content: string = generateToolTypesContent(toolConfigs);
 
-      expect(content).toContain("export type KnownBinName = 'rg'");
-      expect(content).toContain('declare module');
-      expect(content).toContain('interface ToolConfigBuilder');
-      expect(content).toContain('interface PlatformConfigBuilder');
-      expect(content).toContain('dependsOn(...binaryNames: KnownBinName[]): this');
+      expect(content).toContain("declare module '@gitea/dotfiles'");
+      expect(content).toContain("interface KnownBinNameRegistry");
+      expect(content).toContain("    'rg': never;");
+      expect(content).toContain('export {};');
     });
 
     test('should generate fallback string type for empty tool configs', () => {
@@ -140,7 +143,21 @@ describe('generateToolTypes', () => {
 
       const content: string = generateToolTypesContent(toolConfigs);
 
-      expect(content).toContain('export type KnownBinName = string');
+      expect(content).toContain("declare module '@gitea/dotfiles'");
+      expect(content).toContain('interface KnownBinNameRegistry {}');
+      expect(content).toContain('export {};');
+    });
+
+    test('respects configured package name from environment variable', () => {
+      process.env.DOTFILES_BUILT_PACKAGE_NAME = '@dotfiles/core';
+      const toolConfigs: Record<string, ToolConfig> = {
+        ripgrep: createMockToolConfig('ripgrep', ['rg']),
+      };
+
+      const content: string = generateToolTypesContent(toolConfigs);
+
+      expect(content).toContain("declare module '@dotfiles/core'");
+      expect(content).not.toContain("declare module '@dotfiles/core/builder'");
     });
   });
 });

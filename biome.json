@@ -9,9 +9,8 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "src/**",
       "packages/**",
-      "scripts/**",
+      "test-project/**",
       "!**/dist",
       "!**/.generated",
       "!**/node_modules",

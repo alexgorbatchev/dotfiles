@@ -108,7 +108,9 @@ describe('generateCommand', () => {
     expect(toolTypesExists).toBe(true);
 
     const toolTypesContent: string = await mockFs.fs.readFile(expectedPath, 'utf8');
-    expect(toolTypesContent).toContain("export type KnownBinName = 'toolA-bin'");
-    expect(toolTypesContent).toContain('declare module');
+    expect(toolTypesContent).toContain("declare module '@dotfiles/core'");
+    expect(toolTypesContent).toContain("interface KnownBinNameRegistry");
+    expect(toolTypesContent).toContain("    'toolA-bin': never;");
+    expect(toolTypesContent).toContain('export {};');
   });
 });
