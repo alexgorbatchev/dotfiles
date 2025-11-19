@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "main": "./src/index.ts",
-  "bin": {
-    "dotfiles": "./bin/dotfiles.ts"
-  },
   "exports": {
     ".": "./src/index.ts",
     "./log-messages": "./src/log-messages.ts"
