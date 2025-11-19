@@ -44,8 +44,6 @@ export class ShimGenerator implements IShimGenerator {
    */
   async generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
-    const fileSystemName = this.fs.constructor.name;
-    logger.debug(messages.generate.started(fileSystemName));
     const generatedShimPaths: string[] = [];
 
     for (const toolName in toolConfigs) {
@@ -71,7 +69,7 @@ export class ShimGenerator implements IShimGenerator {
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 
     const toolFileSystemName = toolFs.constructor.name;
-    logger.debug(messages.generateForTool.started(toolName, toolFileSystemName), toolConfig, options);
+    logger.debug(messages.generateForTool.started(toolName, toolFileSystemName));
 
     const generatedShimPaths: string[] = [];
     const overwrite = options?.overwrite ?? false;

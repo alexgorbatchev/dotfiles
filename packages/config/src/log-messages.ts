@@ -4,7 +4,6 @@ export const messages = {
   configurationProcessing: () => createSafeLogMessage('config processing'),
   platformOverrides: (platform: string, arch: string) =>
     createSafeLogMessage(`platform overrides: ${platform} ${arch}`),
-  configurationValidated: (context: string) => createSafeLogMessage(`Configuration validated successfully: ${context}`),
   configurationValidationFailed: (errors: string[]) =>
     createSafeLogMessage(`Configuration validation failed:\n${errors.join('\n')}`),
   configurationParseError: (configPath: string, format: string, reason: string) =>
@@ -16,7 +15,6 @@ export const messages = {
   singleToolConfigLoadingStarted: (toolName: string, toolConfigsDir: string) =>
     createSafeLogMessage(`single tool config load: ${toolName} in ${toolConfigsDir}`),
   toolConfigDirectoryScan: (toolConfigsDir: string) => createSafeLogMessage(`Directory scan: ${toolConfigsDir}`),
-  toolConfigEntryLoad: (filePath: string) => createSafeLogMessage(`Tool config load: ${filePath}`),
   toolConfigLoadingCompleted: () => createSafeLogMessage('tool config loading completed'),
   configurationFieldInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),

@@ -151,8 +151,6 @@ export function registerDetectConflictsCommand(
     .command('detect-conflicts')
     .description('Detects conflicts between potential generated artifacts and existing system files.')
     .action(async () => {
-      logger.debug(messages.commandActionCalled('detect-conflicts'));
-
       const combinedOptions = program.opts();
 
       let exitCode: ExitCode;

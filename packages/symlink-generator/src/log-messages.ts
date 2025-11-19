@@ -2,12 +2,9 @@ import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const messages = {
   generate: {
-    started: () => createSafeLogMessage('Starting symlink generation.'),
     processingTool: (toolName: string) => createSafeLogMessage(`Processing symlinks for tool "${toolName}"`),
     missingToolConfig: (toolName: string) =>
       createSafeLogMessage(`Tool config for "${toolName}" is undefined. Skipping.`),
-    noSymlinks: (toolName: string) => createSafeLogMessage(`Tool "${toolName}" has no symlinks defined, skipping.`),
-    completed: () => createSafeLogMessage('Symlink generation process completed.'),
   } satisfies SafeLogMessageMap,
   process: {
     symlinkDetails: (source: string, sourceAbs: string, target: string, targetAbs: string) =>

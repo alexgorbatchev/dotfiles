@@ -55,9 +55,6 @@ async function processFunctionExport(
   // Check if the function returned a ToolConfig object
   if (result && typeof result === 'object' && 'name' in result) {
     const validatedConfig = validateToolConfig(result);
-    if (validatedConfig) {
-      logger.trace(messages.configurationLoaded(filePath, 1));
-    }
     return validatedConfig;
   }
 
@@ -93,7 +90,6 @@ function processDirectExport(
 ): ToolConfig | null {
   const validatedConfig = validateToolConfig(exportedObject);
   if (validatedConfig) {
-    logger.trace(messages.configurationValidated(filePath));
     // Ensure the toolConfig.name matches the filename if it's a direct object export
     if (validatedConfig.name !== toolName) {
       logger.warn(
@@ -149,7 +145,6 @@ async function loadToolConfigFromModule(
     let toolConfig: ToolConfig | null;
 
     if (typeof module.default === 'function') {
-      logger.trace(messages.configurationValidated(filePath));
       const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
       toolConfig = await processFunctionExport(configureToolFn, logger, toolName, filePath, projectConfig);
     } else {
@@ -281,8 +276,6 @@ export async function loadToolConfigs(
       : allToolFiles;
 
     for (const { filePath, toolName: discoveredToolName } of filesToProcess) {
-      logger.trace(messages.toolConfigEntryLoad(path.relative(projectConfig.configFileDir, filePath)));
-
       const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, projectConfig);
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }

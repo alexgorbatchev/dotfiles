@@ -185,8 +185,6 @@ export function registerCheckUpdatesCommand(
     .command('check-updates [toolName]')
     .description('Checks for available updates for configured tools. If [toolName] is provided, checks only that tool.')
     .action(async (toolName: string | undefined) => {
-      logger.debug(messages.commandActionCalled('check-updates'));
-
       try {
         const services = await servicesFactory();
         await checkUpdatesActionLogic(logger, toolName, services);

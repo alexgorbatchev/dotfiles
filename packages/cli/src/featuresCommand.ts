@@ -43,10 +43,9 @@ export function registerFeaturesCommand(
   // Catalog subcommand
   featuresCmd
     .command('catalog')
-    .description('Generate a catalog of configured GitHub tools with their descriptions.')
-    .action(async (options) => {
-      const combinedOptions: FeaturesCommandOptions = { ...options, ...program.opts() };
-      logger.debug(messages.commandActionCalled('catalog'));
+    .description('Catalog of available features documentation')
+    .action(async () => {
+      const combinedOptions: FeaturesCommandOptions = program.opts();
       const services = await servicesFactory();
       await catalogActionLogic(logger, combinedOptions, services);
 

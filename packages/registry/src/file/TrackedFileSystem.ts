@@ -45,8 +45,6 @@ export class TrackedFileSystem implements IFileSystem {
     this.registry = registry;
     this.context = context;
     this.homeDir = homeDir;
-
-    this.logger.debug(messages.trackedFsCreated(), context.toolName, context.fileType);
   }
 
   /**

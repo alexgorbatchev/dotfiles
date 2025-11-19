@@ -128,14 +128,12 @@ describe('cleanupCommand', () => {
       ['INFO'],
       ['registerCleanupCommand'],
       [
-        'cleanup started',
         'Registry-based cleanup: Removing all tracked files',
         '[cleanup] rm /usr/bin/shim1',
         '[cleanup] rm ~/.generated/bin/shim2',
         '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
         '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
         'registry database cleanup',
-        'Cleanup completed',
       ]
     );
   });
@@ -152,14 +150,12 @@ describe('cleanupCommand', () => {
       ['INFO'],
       ['registerCleanupCommand'],
       [
-        'cleanup started',
         "Registry-based cleanup: files for tool 'tool1'",
         '[cleanup] rm /usr/bin/shim1',
         '[cleanup] rm ~/.generated/bin/shim2',
         '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
         '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
         'Removed registry entries for tool: tool1',
-        'Cleanup completed',
       ]
     );
   });
@@ -173,14 +169,12 @@ describe('cleanupCommand', () => {
       ['INFO'],
       ['registerCleanupCommand'],
       [
-        'dry run cleanup (no files will be removed) started',
         'Registry-based cleanup: Removing all tracked files',
-        'Would delete: /usr/bin/shim1',
+        `Would delete: /usr/bin/shim1`,
         `Would delete: ${mockShim2}`,
         `Would delete: ${mockShellInit}`,
         `Would delete: ${mockSymlinkTarget}`,
         'Would clean up registry database (dry run)',
-        'Dry run cleanup completed',
       ]
     );
   });

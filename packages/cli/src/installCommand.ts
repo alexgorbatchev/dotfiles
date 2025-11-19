@@ -81,8 +81,6 @@ export function registerInstallCommand(
         ...commandOptions,
         ...program.opts(),
       };
-      logger.debug(messages.commandActionCalled('install'));
-
       const services = await servicesFactory();
       const { projectConfig, fs, installer, configService } = services;
 

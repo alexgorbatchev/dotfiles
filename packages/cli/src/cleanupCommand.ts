@@ -153,17 +153,11 @@ async function cleanupActionLogic(
 
   try {
     logger.trace(messages.cleanupProcessStarted(dryRun), options);
-    logger.info(
-      dryRun
-        ? messages.operationStarted('dry run cleanup (no files will be removed)')
-        : messages.operationStarted('cleanup')
-    );
 
     // Use registry-based cleanup (default behavior is now --all)
     const cleanupOptions = { ...options, all: all || (!tool && !type) };
     await registryBasedCleanup(logger, services, cleanupOptions);
 
-    logger.info(dryRun ? messages.operationCompleted('Dry run cleanup') : messages.operationCompleted('Cleanup'));
     logger.trace(messages.cleanupProcessFinished(dryRun));
   } catch (error) {
     logger.error(messages.commandExecutionFailed('cleanup', 1), error);
@@ -185,7 +179,6 @@ export function registerCleanupCommand(
     .option('--all', 'Remove all tracked files (registry-based)')
     .action(async (options: CleanupCommandSpecificOptions) => {
       const combinedOptions: CleanupCommandSpecificOptions & GlobalProgramOptions = { ...options, ...program.opts() };
-      logger.debug(messages.commandActionCalled('cleanup'));
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);
     });

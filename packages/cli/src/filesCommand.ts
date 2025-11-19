@@ -231,8 +231,6 @@ async function filesActionLogic(
   const { fileRegistry, fs, projectConfig } = services;
 
   try {
-    logger.debug(messages.commandActionCalled('files', options.tool));
-
     if (options.status) {
       await showFileStates(logger, fileRegistry, fs, options.tool);
       return;
@@ -266,8 +264,6 @@ export function registerFilesCommand(
     .option('--status', 'Check file status (missing, broken links, etc.)')
     .option('--since <date>', 'Show files created since date (ISO format: 2025-08-01)')
     .action(async (commandOptions: FilesCommandSpecificOptions) => {
-      logger.debug(messages.commandActionCalled('files'));
-
       const combinedOptions: FilesCommandSpecificOptions & GlobalProgramOptions = {
         ...commandOptions,
         ...program.opts(),

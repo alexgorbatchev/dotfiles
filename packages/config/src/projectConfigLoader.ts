@@ -143,7 +143,6 @@ function applyPlatformOverrides(
     });
 
     if (matches) {
-      logger.trace(messages.configurationValidated('platform override'), platformOverride.config);
       result = deepMerge(result, platformOverride.config);
     }
   }

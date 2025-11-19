@@ -1,8 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const messages = {
-  commandActionCalled: (commandName: string, targetTool?: string) =>
-    createSafeLogMessage(`Action called for ${commandName}${targetTool ? ` "${targetTool}"` : ''}`),
   commandActionStarted: (commandName: string, targetTool?: string) =>
     createSafeLogMessage(`${commandName} command action logic started${targetTool ? `. Tool: ${targetTool}` : ''}`),
   commandConfigErrorDetails: () => createSafeLogMessage('Configuration loading error details: %O'),
@@ -81,9 +79,6 @@ export const messages = {
   cleanupFileNotFound: (filePath: string) => createSafeLogMessage(`file not found ${filePath}`),
   cleanupDeleteFailed: (filePath: string) => createSafeLogMessage(`Failed to delete ${filePath}`),
   cleanupProcessStarted: (dryRun: boolean) => createSafeLogMessage(`starting cleanup process, dryRun=${dryRun}: %O`),
-  operationStarted: (operation: string) => createSafeLogMessage(`${operation} started`),
-  operationCompleted: (operation: string) => createSafeLogMessage(`${operation} completed`),
-  operationFailed: (operation: string) => createSafeLogMessage(`${operation} failed`),
   configParameterOverridden: (field: string, value: string) =>
     createSafeLogMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} overridden to: ${value}`),
   cleanupProcessFinished: (dryRun: boolean) => createSafeLogMessage(`cleanup process finished, dryRun=${dryRun}`),
@@ -97,7 +92,6 @@ export const messages = {
     createSafeLogMessage(`${timestamp} ${operationMessage}${metadata ? ` ${metadata}` : ''}`),
   cachingDisabled: () => createSafeLogMessage('Caching disabled'),
   registryInitialized: (path: string) => createSafeLogMessage(`File tracking initialized: ${path}`),
-  servicesSetup: () => createSafeLogMessage('Services setup complete'),
   cliStarted: () => createSafeLogMessage('CLI starting with arguments'),
   serviceGithubResourceNotFound: (resource: string, identifier: string) =>
     createSafeLogMessage(`GitHub ${resource} not found: ${identifier}`),

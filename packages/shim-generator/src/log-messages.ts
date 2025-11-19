@@ -5,7 +5,6 @@ export const messages = {
     initialized: () => createSafeLogMessage('ShimGenerator initialized'),
   } satisfies SafeLogMessageMap,
   generate: {
-    started: (fileSystemName: string) => createSafeLogMessage(`Starting shim generation using ${fileSystemName}`),
     missingToolConfig: (toolName: string) =>
       createSafeLogMessage(`Skipping shim generation for ${toolName} because configuration is missing`),
   } satisfies SafeLogMessageMap,

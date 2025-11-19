@@ -6,13 +6,10 @@ export const messages = {
     initialized: () => createSafeLogMessage('ShellInitGenerator initialized'),
   } satisfies SafeLogMessageMap,
   generate: {
-    started: (fileSystemName: string) => createSafeLogMessage(`Starting shell init generation using ${fileSystemName}`),
     parsedToolCount: (toolConfigCount: number) =>
       createSafeLogMessage(`Resolved ${toolConfigCount} tool configurations for shell init generation`),
     resolvedOutputPath: (outputPath: string) =>
       createSafeLogMessage(`Shell init output path resolved to ${outputPath}`),
-    processingTool: (toolName: string) => createSafeLogMessage(`Processing shell init configuration for ${toolName}`),
-    skippingTool: (toolName: string) => createSafeLogMessage(`Skipping shell init configuration for ${toolName}`),
     shellTypeFailure: (shellType: ShellType) => createSafeLogMessage(`Shell init generation failed for ${shellType}`),
     writeFailure: (targetPath: string) => createSafeLogMessage(`Failed to write shell init artifact ${targetPath}`),
   } satisfies SafeLogMessageMap,

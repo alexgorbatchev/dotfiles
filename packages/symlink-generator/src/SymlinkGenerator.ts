@@ -45,7 +45,6 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     options: GenerateSymlinksOptions = {}
   ): Promise<SymlinkOperationResult[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
-    logger.debug(messages.generate.started());
     const results: SymlinkOperationResult[] = [];
 
     for (const toolName in toolConfigs) {
@@ -63,7 +62,6 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
     }
 
-    logger.debug(messages.generate.completed());
     return results;
   }
 
@@ -86,7 +84,6 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       return false;
     }
     if (!toolConfig.symlinks || toolConfig.symlinks.length === 0) {
-      methodLogger.debug(messages.generate.noSymlinks(toolName));
       return false;
     }
     return true;

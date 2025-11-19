@@ -57,9 +57,6 @@ export class ShellInitGenerator implements IShellInitGenerator {
     options?: GenerateShellInitOptions
   ): Promise<ShellInitGenerationResult | null> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
-    const fileSystemName = this.fs.constructor.name;
-    logger.debug(messages.generate.started(fileSystemName));
-
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
     const generatedFiles = new Map<ShellType, string>();
     let primaryPath: string | null = null;
@@ -124,15 +121,11 @@ export class ShellInitGenerator implements IShellInitGenerator {
     generator: IShellGenerator,
     options?: GenerateShellInitOptions
   ): Promise<Map<string, ShellInitContent>> {
-    const logger = this.logger.getSubLogger({ name: 'extractToolContents' });
     const toolContents = new Map<string, ShellInitContent>();
 
     for (const toolName in toolConfigs) {
       const config = toolConfigs[toolName];
-      if (config) {
-        logger.debug(messages.generate.processingTool(toolName));
-      } else {
-        logger.debug(messages.generate.skippingTool(toolName));
+      if (!config) {
         continue;
       }
 

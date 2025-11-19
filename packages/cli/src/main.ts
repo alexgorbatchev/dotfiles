@@ -202,8 +202,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
   const { dryRun, env, config } = options;
 
-  logger.trace(messages.operationStarted('setupServices'));
-
   // Initialize filesystem first
   const fs = initializeFileSystem(logger, dryRun);
   const systemInfo = createSystemInfo(options, logger);
@@ -334,7 +332,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     pluginRegistry
   );
 
-  logger.trace(messages.servicesSetup());
   return {
     projectConfig,
     fs,

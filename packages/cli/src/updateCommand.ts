@@ -121,8 +121,6 @@ export function registerUpdateCommand(
     .option('-y, --yes', 'Automatically confirm updates', false)
     .option('--shim-mode', 'Run in shim mode with minimal output', false)
     .action(async (toolName: string, commandOptions: UpdateCommandSpecificOptions) => {
-      logger.debug(messages.commandActionCalled('update'));
-
       const combinedOptions: UpdateCommandSpecificOptions & GlobalProgramOptions = {
         ...commandOptions,
         ...program.opts(),
