@@ -334,10 +334,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       
       logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
-    .zsh({
-      environment: { 'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool` },
-      aliases: { 'ct': 'custom-tool' }
-    });
+    .zsh((shell) =>
+      shell
+        .environment({ CUSTOM_TOOL_DATA: `${ctx.homeDir}/.local/share/custom-tool` })
+        .aliases({ ct: 'custom-tool' })
+    );
 };
 ```
 

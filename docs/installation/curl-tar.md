@@ -123,11 +123,7 @@ export default defineTool((install, ctx) =>
     url: 'https://releases.example.com/custom-tool-v1.0.0.tar.gz',
   })
     .bin('custom-tool', 'bin/custom-tool')
-    .zsh({
-      aliases: {
-        ct: 'custom-tool',
-      },
-    })
+    .zsh((shell) => shell.aliases({ ct: 'custom-tool' }))
 );
 ```
 

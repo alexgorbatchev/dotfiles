@@ -126,11 +126,12 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .version('latest')
     .install('github-release', { repo: 'owner/tool' })
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-    .zsh({
-      completions: { source: 'completions/_tool' },
-      aliases: { 't': 'tool' },
-      environment: { 'TOOL_HOME': `${ctx.toolDir}` }
-    });
+    .zsh((shell) =>
+      shell
+        .completions('completions/_tool')
+        .aliases({ t: 'tool' })
+        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+    );
 };
 ```
 

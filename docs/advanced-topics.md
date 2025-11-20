@@ -114,12 +114,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('github-release', { repo: 'owner/tool' });
     
   if (enableFeature) {
-    c.zsh({
-      // Use declarative configuration for environment variables
-      environment: {
-        'TOOL_FEATURE_ENABLED': '1'
-      }
-    });
+    c.zsh((shell) =>
+      shell.environment({
+        TOOL_FEATURE_ENABLED: '1'
+      })
+    );
   }
 };
 ```
@@ -135,11 +134,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .bin('tool')
     .version(isDev ? 'latest' : 'v1.2.3')  // Use stable version in production
     .install('github-release', { repo: 'owner/tool' })
-    .zsh({
-      environment: {
-        'TOOL_LOG_LEVEL': isDev ? 'debug' : 'info'
-      }
-    });
+    .zsh((shell) =>
+      shell.environment({
+        TOOL_LOG_LEVEL: isDev ? 'debug' : 'info'
+      })
+    );
 };
 ```
 
@@ -154,12 +153,12 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
   c
     .bin('tool')
     .install('github-release', { repo: 'owner/tool' })
-    .zsh({
-      environment: {
-        'TOOL_THEME': userPrefs.theme,
-        'TOOL_EDITOR': userPrefs.editor
-      }
-    });
+    .zsh((shell) =>
+      shell.environment({
+        TOOL_THEME: userPrefs.theme,
+        TOOL_EDITOR: userPrefs.editor
+      })
+    );
 };
 ```
 
@@ -254,74 +253,63 @@ This pattern lets the generator guarantee ordering while still allowing custom v
 ### Lazy Loading Functions
 
 ```typescript
-import { always } from '@types';
-
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      # Lazy load expensive functions
-      function expensive-tool-function() {
-        # Undefine this function
-        unfunction expensive-tool-function
-        
-        # Load the real implementation
-        source "${ctx.toolDir}/expensive-functions.zsh"
-        
-        # Call the real function
-        expensive-tool-function "$@"
-      }
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    # Lazy load expensive functions
+    function expensive-tool-function() {
+      # Undefine this function
+      unfunction expensive-tool-function
+      
+      # Load the real implementation
+      source "${ctx.toolDir}/expensive-functions.zsh"
+      
+      # Call the real function
+      expensive-tool-function "$@"
+    }
+  `)
+)
 ```
 
 ### Dynamic Completion Loading
 
 ```typescript
-import { once, always } from '@types';
-
-c.zsh({
-  shellInit: [
-    once/* zsh */`
+c.zsh((shell) =>
+  shell
+    .once(/* zsh */`
       # Generate completions once
       if [[ ! -f "${ctx.generatedDir}/completions/_tool" ]]; then
         tool completion zsh > "${ctx.generatedDir}/completions/_tool"
       fi
-    `,
-    always/* zsh */`
+    `)
+    .always(/* zsh */`
       # Load completions dynamically
       if [[ -f "${ctx.generatedDir}/completions/_tool" ]]; then
         source "${ctx.generatedDir}/completions/_tool"
       fi
-    `
-  ]
-})
+    `)
+)
 ```
 
 ### Context-Aware Configuration
 
 ```typescript
-import { always } from '@types';
-
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      # Different behavior based on context
-      function smart-tool() {
-        if [[ -f ./.tool-config ]]; then
-          # Project-specific configuration
-          tool --config ./.tool-config "$@"
-        elif [[ -f "${ctx.homeDir}/.config/tool/config.toml" ]]; then
-          # User configuration
-          tool --config "${ctx.homeDir}/.config/tool/config.toml" "$@"
-        else
-          # Default behavior
-          tool "$@"
-        fi
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    # Different behavior based on context
+    function smart-tool() {
+      if [[ -f ./.tool-config ]]; then
+        # Project-specific configuration
+        tool --config ./.tool-config "$@"
+      elif [[ -f "${ctx.homeDir}/.config/tool/config.toml" ]]; then
+        # User configuration
+        tool --config "${ctx.homeDir}/.config/tool/config.toml" "$@"
+      else
+        # Default behavior
+        tool "$@"
       }
-    `
-  ]
-})
+    }
+  `)
+)
 ```
 
 ## Version Management
@@ -340,25 +328,23 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('github-release', { repo: 'owner/tool' });
   
   // Add version switching function
-  c.zsh({
-    shellInit: [
-      always/* zsh */`
-        function tool-switch-version() {
-          local version=\${1:-${defaultVersion}}
-          local tool_path="${ctx.toolDir}/\$version/bin/tool"
-          
-          if [[ -f "\$tool_path" ]]; then
-            export TOOL_VERSION="\$version"
-            export PATH="${ctx.toolDir}/\$version/bin:\$PATH"
-            echo "Switched to tool version \$version"
-          else
-            echo "Version \$version not found"
-            return 1
-          fi
-        }
-      `
-    ]
-  });
+  c.zsh((shell) =>
+    shell.always(/* zsh */`
+      function tool-switch-version() {
+        local version=\${1:-${defaultVersion}}
+        local tool_path="${ctx.toolDir}/\$version/bin/tool"
+        
+        if [[ -f "\$tool_path" ]]; then
+          export TOOL_VERSION="\$version"
+          export PATH="${ctx.toolDir}/\$version/bin:\$PATH"
+          echo "Switched to tool version \$version"
+        else
+          echo "Version \$version not found"
+          return 1
+        fi
+      }
+    `)
+  );
 };
 ```
 
@@ -419,22 +405,19 @@ c.hook('before-install', async ({ toolConfig, logger }) => {
 ### Caching Strategies
 
 ```typescript
-import { once, always } from '@types';
-
-c.zsh({
-  shellInit: [
-    once/* zsh */`
+c.zsh((shell) =>
+  shell
+    .once(/* zsh */`
       # Build cache once
       tool build-cache --output "${ctx.generatedDir}/cache/tool-cache"
-    `,
-    always/* zsh */`
+    `)
+    .always(/* zsh */`
       # Use cached data
       if [[ -f "${ctx.generatedDir}/cache/tool-cache" ]]; then
         export TOOL_CACHE_FILE="${ctx.generatedDir}/cache/tool-cache"
       fi
-    `
-  ]
-})
+    `)
+)
 ```
 
 ### Parallel Operations

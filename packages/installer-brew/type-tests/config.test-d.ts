@@ -1,5 +1,5 @@
 import type { BrewInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
-import { always, defineTool, once } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
@@ -17,9 +17,15 @@ export type BrewFormulaOptional = ExpectTrue<undefined extends FormulaType ? tru
 defineTool((install) =>
   install('brew', {
     formula: 'ripgrep',
-  }).zsh({
-    shellInit: [once`echo "once"`, always`echo "always"`],
-  })
+  }).zsh((shell) =>
+    shell
+      .once(/* zsh */ `
+        echo "once"
+      `)
+      .always(/* zsh */ `
+        echo "always"
+      `)
+  )
 );
 
 expectError(() =>

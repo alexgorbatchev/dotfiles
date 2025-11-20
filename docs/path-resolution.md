@@ -54,7 +54,7 @@ For referencing files within the current tool version, you'll typically need to 
 c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
 
 // ✅ Correct completion usage  
-c.zsh({ completions: { source: 'shell/completion.zsh' } })
+c.zsh((shell) => shell.completions('shell/completion.zsh'))
 
 // ✅ Correct install usage  
 c.install('github-release', {
@@ -63,15 +63,13 @@ c.install('github-release', {
 })
 
 // ✅ Correct shell script paths
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-        source "${ctx.toolDir}/shell/key-bindings.zsh"
-      fi
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+      source "${ctx.toolDir}/shell/key-bindings.zsh"
+    fi
+  `)
+)
 ```
 
 ### Incorrect Usage
@@ -82,14 +80,12 @@ c.symlink('./config.toml', '~/.config/tool/config.toml')
 c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
 
 // ❌ Incorrect - hardcoded environment variables
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      export TOOL_HOME="$HOME/.local/share/tool"  # Use declarative environment instead
-      source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.toolDir} instead
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    export TOOL_HOME="$HOME/.local/share/tool"  # Use declarative environment instead
+    source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.toolDir} instead
+  `)
+)
 ```
 
 ## Recommended Directory Structure
@@ -155,12 +151,8 @@ c
 //     ├── _tool.zsh
 //     └── tool.bash
 
-c.zsh({
-  completions: { source: 'completions/_tool.zsh' }
-})
-.bash({
-  completions: { source: 'completions/tool.bash' }
-})
+c.zsh((shell) => shell.completions('completions/_tool.zsh'))
+.bash((shell) => shell.completions('completions/tool.bash'))
 
 // Completions are copied from:
 // extracted-archive/completions/_tool.zsh -> ${ctx.generatedDir}/completions/_tool

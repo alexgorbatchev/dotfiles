@@ -7,21 +7,9 @@ Command completions make your tools more user-friendly by providing tab completi
 Completions are configured within each shell's configuration using the `completions` property:
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/_tool.zsh'
-  }
-})
-.bash({
-  completions: {
-    source: 'completions/tool.bash'
-  }
-})
-.powershell({
-  completions: {
-    source: 'completions/tool.ps1'
-  }
-});
+c.zsh((shell) => shell.completions('completions/_tool.zsh'))
+ .bash((shell) => shell.completions('completions/tool.bash'))
+ .powershell((shell) => shell.completions('completions/tool.ps1'));
 ```
 
 ## Completion Configuration
@@ -58,11 +46,7 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 Use `source` when completion files are included in the tool's archive:
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/_tool.zsh'
-  }
-});
+c.zsh((shell) => shell.completions('completions/_tool.zsh'));
 ```
 
 ### Dynamic Completions (cmd)
@@ -70,11 +54,7 @@ c.zsh({
 Use `cmd` when the tool can generate completions dynamically:
 
 ```typescript
-c.zsh({
-  completions: {
-    cmd: 'my-tool completion zsh'
-  }
-});
+c.zsh((shell) => shell.completions({ cmd: 'my-tool completion zsh' }));
 ```
 
 ## Basic Examples
@@ -82,73 +62,41 @@ c.zsh({
 ### Command-Generated Completions
 
 ```typescript
-c.zsh({
-  completions: {
-    cmd: 'kubectl completion zsh'
-  }
-})
-.bash({
-  completions: {
-    cmd: 'kubectl completion bash'
-  }
-})
-.powershell({
-  completions: {
-    cmd: 'kubectl completion powershell'
-  }
-});
+c.zsh((shell) => shell.completions({ cmd: 'kubectl completion zsh' }))
+ .bash((shell) => shell.completions({ cmd: 'kubectl completion bash' }))
+ .powershell((shell) => shell.completions({ cmd: 'kubectl completion powershell' }));
 ```
 
 ### Static File Completions
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/_tool.zsh'
-  }
-});
+c.zsh((shell) => shell.completions('completions/_tool.zsh'));
 ```
 
 ### Multiple Shell Support
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/_tool.zsh'
-  }
-})
-.bash({
-  completions: {
-    source: 'completions/tool.bash'
-  }
-})
-.powershell({
-  completions: {
-    source: 'completions/tool.ps1'
-  }
-});
+c.zsh((shell) => shell.completions('completions/_tool.zsh'))
+ .bash((shell) => shell.completions('completions/tool.bash'))
+ .powershell((shell) => shell.completions('completions/tool.ps1'));
 ```
 
 ### Custom Completion Names
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'autocomplete/complete.zsh',
-    name: '_my-tool'
-  }
-});
+c.zsh((shell) => shell.completions({
+  source: 'autocomplete/complete.zsh',
+  name: '_my-tool'
+}));
 ```
 
 ### Custom Installation Directory
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/tool.zsh',
-    targetDir: `${ctx.homeDir}/.zsh/completions`
-  }
-});
+c.zsh((shell) => shell.completions({
+  source: 'completions/tool.zsh',
+  targetDir: `${ctx.homeDir}/.zsh/completions`
+}));
 ```
 
 ## Generated Completions
@@ -156,18 +104,14 @@ c.zsh({
 Some tools can generate their own completions. Use shell initialization scripts for this:
 
 ```typescript
-import { once } from '@types';
-
-c.zsh({
-  shellInit: [
-    once/* zsh */`
-      # Generate completions once after installation
-      if command -v tool >/dev/null 2>&1; then
-        tool completion zsh > "${ctx.generatedDir}/completions/_tool"
-      fi
-    `
-  ]
-});
+c.zsh((shell) =>
+  shell.once(/* zsh */`
+    # Generate completions once after installation
+    if command -v tool >/dev/null 2>&1; then
+      tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+    fi
+  `)
+);
 ```
 
 ## Shell-Specific Integration
@@ -177,11 +121,7 @@ c.zsh({
 Zsh completions are automatically loaded from the generated completions directory. The completion files should follow zsh completion conventions:
 
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/_tool'
-  }
-});
+c.zsh((shell) => shell.completions('completions/_tool'));
 ```
 
 ### Bash Completions
@@ -189,11 +129,7 @@ c.zsh({
 Bash completions are sourced during shell initialization:
 
 ```typescript
-c.bash({
-  completions: {
-    source: 'completions/tool.bash'
-  }
-});
+c.bash((shell) => shell.completions('completions/tool.bash'));
 ```
 
 ### PowerShell Completions
@@ -201,11 +137,7 @@ c.bash({
 PowerShell completions are loaded during shell initialization:
 
 ```typescript
-c.powershell({
-  completions: {
-    source: 'completions/tool.ps1'
-  }
-});
+c.powershell((shell) => shell.completions('completions/tool.ps1'));
 ```
 
 ## Path Resolution
@@ -238,20 +170,18 @@ autoload -U compinit && compinit
 3. **Check permissions**: Ensure the generated file is readable
 
 ```typescript
-c.zsh({
-  shellInit: [
-    once/* zsh */`
-      # Add error checking for completion generation
-      if command -v tool >/dev/null 2>&1; then
-        if tool completion zsh > "${ctx.generatedDir}/completions/_tool" 2>/dev/null; then
-          echo "Generated completions for tool"
-        else
-          echo "Failed to generate completions for tool"
-        fi
+c.zsh((shell) =>
+  shell.once(/* zsh */`
+    # Add error checking for completion generation
+    if command -v tool >/dev/null 2>&1; then
+      if tool completion zsh > "${ctx.generatedDir}/completions/_tool" 2>/dev/null; then
+        echo "Generated completions for tool"
+      else
+        echo "Failed to generate completions for tool"
       fi
-    `
-  ]
-});
+    fi
+  `)
+);
 ```
 
 ## Best Practices
@@ -270,25 +200,23 @@ Completions work seamlessly with other shell integration features:
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c.bin('my-tool')
    .install('github-release', { repo: 'owner/my-tool' })
-   .zsh({
-     completions: {
-       source: 'completions/_my-tool'
-     },
-     aliases: {
-       'mt': 'my-tool'
-     },
-     environment: {
-       'MY_TOOL_CONFIG': `${ctx.homeDir}/.config/my-tool`
-     }
-   })
-   .bash({
-     completions: {
-       source: 'completions/my-tool.bash'
-     },
-     aliases: {
-       'mt': 'my-tool'
-     }
-   });
+   .zsh((shell) =>
+     shell
+       .completions('completions/_my-tool')
+       .aliases({
+         mt: 'my-tool'
+       })
+       .environment({
+         MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`
+       })
+   )
+   .bash((shell) =>
+     shell
+       .completions('completions/my-tool.bash')
+       .aliases({
+         mt: 'my-tool'
+       })
+   );
 };
 ```
 

@@ -10,35 +10,18 @@ import type {
   PlatformConfigBuilder as PlatformConfigBuilderInterface,
   PlatformConfigEntry,
   PlatformInstallFunction,
-  ShellCompletionConfig,
-  ShellConfig,
   ShellConfigs,
-  ShellScript,
+  ShellConfiguratorAsyncCallback,
+  ShellConfiguratorCallback,
   ToolConfig,
   ToolConfigBuilder as ToolConfigBuilderInterface,
+  ToolConfigContext,
   ToolConfigUpdateCheck,
 } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
-
-/**
- * Internal shell configuration storage organized by shell type
- */
-interface ShellStorage {
-  scripts: ShellScript[];
-  aliases: Record<string, string>;
-  environment: Record<string, string>;
-  completions?: ShellCompletionConfig;
-}
-
-/**
- * Internal shell configurations organized by shell type
- */
-interface InternalShellConfigs {
-  zsh: ShellStorage;
-  bash: ShellStorage;
-  powershell: ShellStorage;
-}
+import { ShellConfigurator } from './ShellConfigurator';
+import type { InternalShellConfigs, ShellStorage, ShellTypeKey } from './types';
 
 export interface BinaryConfig {
   name: string;
@@ -61,9 +44,7 @@ type InstallParams = InstallParamsRegistry[InstallMethod];
  *   .bin('node')
  *   .bin('npm')
  *   .install('github-release', { repo: 'nodejs/node' })
- *   .zsh({
- *     environment: { NODE_ENV: 'development' },
- *   })
+ *   .zsh((shell) => shell.environment({ NODE_ENV: 'development' }))
  *   .platform(Platform.Windows, (p) => {
  *     p.install('manual', {
  *       // ... windows specific install
@@ -88,6 +69,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     bash: { scripts: [], aliases: {}, environment: {} },
     powershell: { scripts: [], aliases: {}, environment: {} },
   };
+  private context?: ToolConfigContext;
 
   public symlinkPairs: { source: string; target: string }[] = [];
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -185,26 +167,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param config - A {@link @dotfiles/core#ShellConfig} object for Zsh.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  zsh(config: ShellConfig): this {
-    if (config.shellInit) {
-      this.internalShellConfigs.zsh.scripts.push(...config.shellInit);
-    }
-    if (config.environment) {
-      this.internalShellConfigs.zsh.environment = {
-        ...this.internalShellConfigs.zsh.environment,
-        ...config.environment,
-      };
-    }
-    if (config.aliases) {
-      this.internalShellConfigs.zsh.aliases = {
-        ...this.internalShellConfigs.zsh.aliases,
-        ...config.aliases,
-      };
-    }
-    if (config.completions) {
-      this.internalShellConfigs.zsh.completions = config.completions;
-    }
-    return this;
+  zsh(callback: ShellConfiguratorCallback): this;
+  zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  zsh(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
+    return this.configureShell('zsh', callback);
   }
 
   /**
@@ -217,26 +183,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param config - A {@link @dotfiles/core#ShellConfig} object for Bash.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  bash(config: ShellConfig): this {
-    if (config.shellInit) {
-      this.internalShellConfigs.bash.scripts.push(...config.shellInit);
-    }
-    if (config.environment) {
-      this.internalShellConfigs.bash.environment = {
-        ...this.internalShellConfigs.bash.environment,
-        ...config.environment,
-      };
-    }
-    if (config.aliases) {
-      this.internalShellConfigs.bash.aliases = {
-        ...this.internalShellConfigs.bash.aliases,
-        ...config.aliases,
-      };
-    }
-    if (config.completions) {
-      this.internalShellConfigs.bash.completions = config.completions;
-    }
-    return this;
+  bash(callback: ShellConfiguratorCallback): this;
+  bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  bash(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
+    return this.configureShell('bash', callback);
   }
 
   /**
@@ -249,26 +199,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param config - A {@link @dotfiles/core#ShellConfig} object for PowerShell.
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  powershell(config: ShellConfig): this {
-    if (config.shellInit) {
-      this.internalShellConfigs.powershell.scripts.push(...config.shellInit);
-    }
-    if (config.environment) {
-      this.internalShellConfigs.powershell.environment = {
-        ...this.internalShellConfigs.powershell.environment,
-        ...config.environment,
-      };
-    }
-    if (config.aliases) {
-      this.internalShellConfigs.powershell.aliases = {
-        ...this.internalShellConfigs.powershell.aliases,
-        ...config.aliases,
-      };
-    }
-    if (config.completions) {
-      this.internalShellConfigs.powershell.completions = config.completions;
-    }
-    return this;
+  powershell(callback: ShellConfiguratorCallback): this;
+  powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  powershell(callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback): this | Promise<this> {
+    return this.configureShell('powershell', callback);
   }
 
   /**
@@ -385,6 +319,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     }
 
     const platformBuilder = new ToolConfigBuilder(this.logger, this.toolName, true);
+    platformBuilder.setContext(this.context);
 
     // Create platform install function that works like the main install function
     const platformInstall: PlatformInstallFunction = ((...args: [InstallMethod, InstallParams] | []) => {
@@ -676,6 +611,10 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     }
   }
 
+  public setContext(context: ToolConfigContext | undefined): void {
+    this.context = context;
+  }
+
   /**
    * Provides read-only access to the internal shell configurations.
    *
@@ -686,5 +625,34 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    */
   get shellConfigs(): Readonly<InternalShellConfigs> {
     return this.internalShellConfigs;
+  }
+
+  private configureShell(
+    shellType: ShellTypeKey,
+    callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback
+  ): this | Promise<this> {
+    const storage: ShellStorage = this.internalShellConfigs[shellType];
+    const configurator = new ShellConfigurator(storage, shellType, this.context, this.logger, this.toolName);
+    const callbackResult = callback(configurator);
+
+    if (this.isPromise(callbackResult)) {
+      const next: Promise<this> = callbackResult.then(() => this);
+      return next;
+    }
+
+    return this;
+  }
+
+  private isPromise(value: unknown): value is Promise<unknown> {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    if (typeof value !== 'object' && typeof value !== 'function') {
+      return false;
+    }
+
+    const maybePromise = value as PromiseLike<unknown>;
+    return typeof maybePromise.then === 'function';
   }
 }

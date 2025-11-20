@@ -8,9 +8,16 @@
 import type { Architecture, BaseToolContext, Platform } from '../common';
 import type { ProjectConfig } from '../config';
 import type { AsyncInstallHook } from '../installer';
-import type { ShellScript } from '../shell';
-import type { ShellCompletionConfig } from '../tool-config/shell';
+import type { AlwaysScript, OnceScript } from '../shell';
 import type { InstallParamsRegistry, ToolConfig } from '../types';
+
+export interface ShellCompletionConfigOptions {
+  source: string;
+  name?: string;
+  targetDir?: string;
+}
+
+export type ShellCompletionConfigInput = string | ShellCompletionConfigOptions;
 
 /**
  * Install params come from plugins via InstallParamsRegistry module augmentation.
@@ -18,14 +25,52 @@ import type { InstallParamsRegistry, ToolConfig } from '../types';
  */
 
 /**
- * Configuration for shell-specific properties.
+ * Fluent configurator used inside shell callbacks for the new shell API.
  */
-export interface ShellConfig {
-  completions?: ShellCompletionConfig;
-  shellInit?: ShellScript[];
-  aliases?: Record<string, string>;
-  environment?: Record<string, string>;
+export interface IShellConfigurator {
+  /**
+   * Sets environment variables for the shell.
+   * @param values - A record of environment variable names and values.
+   */
+  environment(values: Record<string, string>): IShellConfigurator;
+
+  /**
+   * Sets shell aliases.
+   * @param values - A record of alias names and their commands.
+   */
+  aliases(values: Record<string, string>): IShellConfigurator;
+
+  /**
+   * Sources a script file.
+   * @param relativePath - Path to the script file relative to the tool directory.
+   */
+  source(relativePath: string): IShellConfigurator;
+
+  /**
+   * Configures shell completions.
+   * @param completion - Completion configuration or path to completion script.
+   */
+  completions(completion: ShellCompletionConfigInput): IShellConfigurator;
+
+  /**
+   * Adds a script to be executed once during shell initialization.
+   * @param script - The script content or OnceScript object.
+   */
+  once(script: OnceScript): IShellConfigurator;
+  once(script: string): IShellConfigurator;
+
+  /**
+   * Adds a script to be executed always during shell initialization.
+   * @param script - The script content or AlwaysScript object.
+   */
+  always(script: AlwaysScript): IShellConfigurator;
+  always(script: string): IShellConfigurator;
 }
+
+export type ShellConfiguratorSyncResult = IShellConfigurator | undefined;
+export type ShellConfiguratorAsyncResult = Promise<ShellConfiguratorSyncResult>;
+export type ShellConfiguratorCallback = (shell: IShellConfigurator) => ShellConfiguratorSyncResult;
+export type ShellConfiguratorAsyncCallback = (shell: IShellConfigurator) => ShellConfiguratorAsyncResult;
 
 /**
  * Known binary names for type-safe dependsOn() calls.
@@ -66,9 +111,12 @@ export interface ToolConfigBuilder {
    * @param handler - The async hook function to execute
    */
   hook(event: HookEventName, handler: AsyncInstallHook): this;
-  zsh(config: ShellConfig): this;
-  bash(config: ShellConfig): this;
-  powershell(config: ShellConfig): this;
+  zsh(callback: ShellConfiguratorCallback): this;
+  zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  bash(callback: ShellConfiguratorCallback): this;
+  bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  powershell(callback: ShellConfiguratorCallback): this;
+  powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   symlink(source: string, target: string): this;
   platform(platforms: Platform, configure: (install: PlatformInstallFunction) => PlatformConfigBuilder): this;
   platform(
@@ -94,9 +142,12 @@ export interface PlatformConfigBuilder {
    * @param handler - The async hook function to execute
    */
   hook(event: HookEventName, handler: AsyncInstallHook): this;
-  zsh(config: ShellConfig): this;
-  bash(config: ShellConfig): this;
-  powershell(config: ShellConfig): this;
+  zsh(callback: ShellConfiguratorCallback): this;
+  zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  bash(callback: ShellConfiguratorCallback): this;
+  bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+  powershell(callback: ShellConfiguratorCallback): this;
+  powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   symlink(source: string, target: string): this;
 }
 

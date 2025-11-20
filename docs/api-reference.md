@@ -156,7 +156,7 @@ Creates symbolic links for configuration files.
 
 **Returns:** `ToolConfigBuilder` (for chaining)
 
-> **Note:** For shell completions, use shell-specific configuration methods like `.zsh({ completions: {...} })`. See [Completions Guide](./completions.md) for details.
+> **Note:** For shell completions, use shell-specific configuration methods like `.zsh((shell) => shell.completions('path/to/_tool'))`. See [Completions Guide](./completions.md) for details.
 
 ### Advanced Features
 
@@ -343,7 +343,7 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .bin('tool')
     .version('latest')
     .install('github-release', { repo: 'owner/tool' })
-    .zsh({ aliases: { 't': 'tool' } });
+    .zsh((shell) => shell.aliases({ t: 'tool' }));
 };
 ```
 
@@ -382,18 +382,17 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       logger.info('Tool initialized');
     })
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-    .zsh({
-      completions: { source: 'completions/_tool' },
-      environment: { 'TOOL_HOME': `${ctx.toolDir}` },
-      aliases: { 't': 'tool' },
-      shellInit: [
-        always/* zsh */`
+    .zsh((shell) =>
+      shell
+        .completions('completions/_tool')
+        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .aliases({ t: 'tool' })
+        .always(always/* zsh */`
           function tool-helper() {
             tool --config "$TOOL_HOME/config.toml" "$@"
           }
-        `
-      ]
-    });
+        `)
+    );
 };
 ```
 

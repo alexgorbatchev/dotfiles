@@ -1,5 +1,5 @@
 import type { InstallMethod, InstallParamsRegistry, ManualInstallParams } from '@gitea/dotfiles';
-import { always, defineTool, once } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
@@ -10,9 +10,15 @@ export type ManualParamsMatchSchema = ExpectTrue<ManualParams extends ManualInst
 export type ManualSchemaMatchesParams = ExpectTrue<ManualInstallParams extends ManualParams ? true : false>;
 
 defineTool((install) =>
-  install('manual', {}).zsh({
-    shellInit: [once`echo "once"`, always`echo "always"`],
-  })
+  install('manual', {}).zsh((shell) =>
+    shell
+      .once(/* zsh */ `
+        echo "once"
+      `)
+      .always(/* zsh */ `
+        echo "always"
+      `)
+  )
 );
 
 defineTool((install) =>

@@ -11,6 +11,7 @@ import { ToolConfigBuilder } from './toolConfigBuilder';
 
 type InstallFunction = Builder.InstallFunction;
 type ToolConfigBuilderInterface = Builder.ToolConfigBuilder;
+type ToolConfigContext = Builder.ToolConfigContext;
 
 /**
  * Creates an InstallFunction bound to a specific logger and tool name.
@@ -22,6 +23,7 @@ type ToolConfigBuilderInterface = Builder.ToolConfigBuilder;
  *
  * @param logger - Logger instance for the builder.
  * @param toolName - Name of the tool being configured.
+ * @param context - Tool configuration context providing path resolution helpers.
  * @returns InstallFunction that creates configured ToolConfigBuilder instances.
  *
  * @example
@@ -32,7 +34,11 @@ type ToolConfigBuilderInterface = Builder.ToolConfigBuilder;
  *   .build();
  * ```
  */
-export function createInstallFunction(logger: TsLogger, toolName: string): InstallFunction {
+export function createInstallFunction(
+  logger: TsLogger,
+  toolName: string,
+  context?: ToolConfigContext
+): InstallFunction {
   // Track builder instance - created on first call
   let builderInstance: ToolConfigBuilder | null = null;
 
@@ -41,6 +47,8 @@ export function createInstallFunction(logger: TsLogger, toolName: string): Insta
     if (!builderInstance) {
       builderInstance = new ToolConfigBuilder(logger, toolName);
     }
+
+    builderInstance.setContext(context);
 
     // Set installation method and params directly on builder's public fields
     if (method) {

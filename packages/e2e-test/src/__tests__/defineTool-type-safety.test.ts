@@ -96,18 +96,19 @@ describe('defineTool Type Safety Tests', () => {
         })
           .bin('bat')
           .version('0.24.0')
-          .zsh({
-            environment: {
-              BAT_THEME: 'ansi',
-            },
-            aliases: {
-              cat: 'bat',
-            },
-            completions: {
-              source: 'bat.zsh',
-              name: '_bat',
-            },
-          })
+          .zsh((shell) =>
+            shell
+              .environment({
+                BAT_THEME: 'ansi',
+              })
+              .aliases({
+                cat: 'bat',
+              })
+              .completions({
+                source: 'bat.zsh',
+                name: '_bat',
+              })
+          )
       );
 
       expect(true).toBe(true);

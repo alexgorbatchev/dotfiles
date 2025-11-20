@@ -92,11 +92,7 @@ export default defineTool((install, ctx) =>
 // Configuration-only
 export default defineTool((install, ctx) =>
   install()
-    .zsh({
-      aliases: {
-        ll: 'ls -la',
-      },
-    })
+    .zsh((shell) => shell.aliases({ ll: 'ls -la' }))
 );
 ```
 
@@ -145,14 +141,15 @@ import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
-    .zsh({
-      aliases: {
-        ll: 'ls -la',
-      },
-      environment: {
-        EDITOR: 'vim',
-      },
-    })
+    .zsh((shell) =>
+      shell
+        .aliases({
+          ll: 'ls -la',
+        })
+        .environment({
+          EDITOR: 'vim',
+        })
+    )
 );
 ```
 

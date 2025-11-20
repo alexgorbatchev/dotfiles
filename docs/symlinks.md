@@ -87,14 +87,15 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .symlink('./scripts/', `${ctx.homeDir}/.local/share/my-tool/scripts`)
     
     // Shell integration
-    .zsh({
-      environment: {
-        'MY_TOOL_CONFIG': `${ctx.homeDir}/.config/my-tool/config.yml`
-      },
-      aliases: {
-        'mt': 'my-tool'
-      }
-    });
+    .zsh((shell) =>
+      shell
+        .environment({
+          MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool/config.yml`
+        })
+        .aliases({
+          mt: 'my-tool'
+        })
+    );
 };
 ```
 
@@ -218,19 +219,18 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
     
     // Reference symlinked config in shell integration
-    .zsh({
-      environment: {
-        'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
-      },
-      shellInit: [
-        always/* zsh */`
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
+        })
+        .always(/* zsh */`
           # Tool will automatically find config at symlinked location
           function tool-reload() {
             tool --config "$TOOL_CONFIG" reload
           }
-        `
-      ]
-    });
+        `)
+    );
 };
 ```
 

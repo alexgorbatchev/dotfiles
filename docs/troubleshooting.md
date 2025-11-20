@@ -112,21 +112,19 @@ source ${ctx.shellScriptsDir}/main.zsh
 
 ```typescript
 // ✅ Correct declarative approach
-c.zsh({
-  environment: {
-    'TOOL_HOME': `${ctx.toolDir}`,
-    'TOOL_CONFIG': `${ctx.homeDir}/.config/tool`
-  }
-})
+c.zsh((shell) =>
+  shell.environment({
+    TOOL_HOME: `${ctx.toolDir}`,
+    TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
+  })
+)
 
 // ❌ Avoid inline exports for simple variables
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      export TOOL_HOME="${ctx.toolDir}"  # Use declarative instead
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    export TOOL_HOME="${ctx.toolDir}"  # Use declarative instead
+  `)
+)
 ```
 
 ## Platform-Specific Issues
@@ -209,16 +207,14 @@ source ${ctx.generatedDir}/completions/_tool
 - Test completion generation manually
 
 ```typescript
-c.zsh({
-  shellInit: [
-    once/* zsh */`
-      # Add error checking
-      if command -v tool >/dev/null 2>&1; then
-        tool completion zsh > "${ctx.generatedDir}/completions/_tool" || echo "Completion generation failed"
-      fi
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.once(/* zsh */`
+    # Add error checking
+    if command -v tool >/dev/null 2>&1; then
+      tool completion zsh > "${ctx.generatedDir}/completions/_tool" || echo "Completion generation failed"
+    fi
+  `)
+)
 ```
 
 ## Path Resolution Issues
@@ -360,21 +356,20 @@ dotfiles check-updates tool-name
 
 ```typescript
 // ✅ Optimize with once scripts
-c.zsh({
-  shellInit: [
-    once/* zsh */`
+c.zsh((shell) =>
+  shell
+    .once(/* zsh */`
       # Expensive operations run only once
       tool build-cache
       tool gen-completions zsh > "${ctx.generatedDir}/completions/_tool"
-    `,
-    always/* zsh */`
+    `)
+    .always(/* zsh */`
       # Fast operations only
       function quick-helper() {
         tool "$@"
       }
-    `
-  ]
-})
+    `)
+)
 ```
 
 ## Security Issues

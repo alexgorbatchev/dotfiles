@@ -18,11 +18,7 @@ export default defineTool((install, ctx) =>
 // Configuration-only tool (no binary)
 export default defineTool((install, ctx) =>
   install()
-    .zsh({
-      aliases: {
-        ll: 'ls -la',
-      },
-    })
+    .zsh((shell) => shell.aliases({ ll: 'ls -la' }))
 );
 ```
 
@@ -83,12 +79,7 @@ import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
-    .zsh({
-      aliases: {
-        ll: 'ls -la',
-        la: 'ls -A',
-      },
-    })
+    .zsh((shell) => shell.aliases({ ll: 'ls -la', la: 'ls -A' }))
 );
 ```
 
@@ -124,18 +115,17 @@ export default defineTool((install, ctx) =>
     binaryPath: './bin/my-tool.sh',
   })
     .bin('my-tool')
-    .zsh({
-      aliases: {
-        mt: 'my-tool',
-        'mt-status': 'my-tool status',
-      },
-      environment: {
-        MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`,
-      },
-      completions: {
-        source: './completions/_my-tool',
-      },
-    })
+    .zsh((shell) =>
+      shell
+        .aliases({
+          mt: 'my-tool',
+          'mt-status': 'my-tool status',
+        })
+        .environment({
+          MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`,
+        })
+        .completions('./completions/_my-tool')
+    )
     .symlink('./config/my-tool.conf', `${ctx.homeDir}/.config/my-tool/config`)
 );
 ```

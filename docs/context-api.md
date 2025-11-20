@@ -35,19 +35,18 @@ interface ToolConfigContext {
 
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh({
-    environment: {
-      'TOOL_CONFIG_DIR': `${ctx.toolDir}`
-    },
-    shellInit: [
-      always/* zsh */`
+  c.zsh((shell) =>
+    shell
+      .environment({
+        TOOL_CONFIG_DIR: `${ctx.toolDir}`
+      })
+      .always(/* zsh */`
         # Source tool-specific files
         if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
           source "${ctx.toolDir}/shell/key-bindings.zsh"
         fi
-      `
-    ]
-  });
+      `)
+  );
 };
 ```
 
@@ -55,17 +54,15 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh({
-    shellInit: [
-      always/* zsh */`
-        # Reference another tool's directory
-        FZF_DIR="${ctx.getToolDir('fzf')}"
-        if [[ -d "$FZF_DIR" ]]; then
-          export FZF_BASE="$FZF_DIR"
-        fi
-      `
-    ]
-  });
+  c.zsh((shell) =>
+    shell.always(/* zsh */`
+      # Reference another tool's directory
+      FZF_DIR="${ctx.getToolDir('fzf')}"
+      if [[ -d "$FZF_DIR" ]]; then
+        export FZF_BASE="$FZF_DIR"
+      fi
+    `)
+  );
 };
 ```
 
@@ -73,14 +70,12 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh({
-    shellInit: [
-      once/* zsh */`
-        # Generate completions to the proper directory
-        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-      `
-    ]
-  });
+  c.zsh((shell) =>
+    shell.once(/* zsh */`
+      # Generate completions to the proper directory
+      tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+    `)
+  );
 };
 ```
 
@@ -95,11 +90,11 @@ User's home directory from the YAML configuration.
 c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
 
 // Set environment variables
-c.zsh({
-  environment: {
-    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`
-  }
-})
+c.zsh((shell) =>
+  shell.environment({
+    TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
+  })
+)
 ```
 
 ### `ctx.toolDir`
@@ -119,19 +114,18 @@ ${ctx.toolDir}/
 
 **Usage:**
 ```typescript
-c.zsh({
-  environment: {
-    'TOOL_HOME': `${ctx.toolDir}`
-  },
-  shellInit: [
-    always/* zsh */`
+c.zsh((shell) =>
+  shell
+    .environment({
+      TOOL_HOME: `${ctx.toolDir}`
+    })
+    .always(/* zsh */`
       # Access tool assets
       if [[ -f "${ctx.toolDir}/latest/share/themes/default.toml" ]]; then
         export TOOL_THEME="${ctx.toolDir}/latest/share/themes/default.toml"
       fi
-    `
-  ]
-})
+    `)
+)
 ```
 
 ### `ctx.getToolDir(toolName)`
@@ -139,19 +133,17 @@ Get the installation directory for any other tool.
 
 **Usage:**
 ```typescript
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      # Integration with other tools
-      NVIM_DIR="${ctx.getToolDir('nvim')}"
-      FZF_DIR="${ctx.getToolDir('fzf')}"
-      
-      if [[ -d "$FZF_DIR" && -d "$NVIM_DIR" ]]; then
-        export FZF_NVIM_INTEGRATION=true
-      fi
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    # Integration with other tools
+    NVIM_DIR="${ctx.getToolDir('nvim')}"
+    FZF_DIR="${ctx.getToolDir('fzf')}"
+    
+    if [[ -d "$FZF_DIR" && -d "$NVIM_DIR" ]]; then
+      export FZF_NVIM_INTEGRATION=true
+    fi
+  `)
+)
 ```
 
 ### `ctx.generatedDir`
@@ -159,15 +151,13 @@ Directory for generated files (completions, caches, etc.).
 
 **Usage:**
 ```typescript
-c.zsh({
-  shellInit: [
-    once/* zsh */`
-      # Generate completions once
-      mkdir -p "${ctx.generatedDir}/completions"
-      tool completion zsh > "${ctx.generatedDir}/completions/_tool"
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.once(/* zsh */`
+    # Generate completions once
+    mkdir -p "${ctx.generatedDir}/completions"
+    tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+  `)
+)
 ```
 
 ### `ctx.binDir`
@@ -226,35 +216,33 @@ c.symlink('./config.toml', '~/.config/tool/config.toml')
 
 ```typescript
 // ✅ Correct - using context variables
-c.zsh({
-  environment: {
-    'TOOL_HOME': `${ctx.toolDir}`,
-    'TOOL_CONFIG': `${ctx.homeDir}/.config/tool`
-  }
-})
+c.zsh((shell) =>
+  shell.environment({
+    TOOL_HOME: `${ctx.toolDir}`,
+    TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
+  })
+)
 
 // ❌ Incorrect - hardcoded paths
-c.zsh({
-  environment: {
-    'TOOL_HOME': '$DOTFILES/.generated/binaries/tool',
-    'TOOL_CONFIG': '$HOME/.config/tool'
-  }
-})
+c.zsh((shell) =>
+  shell.environment({
+    TOOL_HOME: '$DOTFILES/.generated/binaries/tool',
+    TOOL_CONFIG: '$HOME/.config/tool'
+  })
+)
 ```
 
 ### Shell Script Paths
 
 ```typescript
 // ✅ Correct - using context in shell scripts
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      if [[ -f "${ctx.toolDir}/shell/init.zsh" ]]; then
-        source "${ctx.toolDir}/shell/init.zsh"
-      fi
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    if [[ -f "${ctx.toolDir}/shell/init.zsh" ]]; then
+      source "${ctx.toolDir}/shell/init.zsh"
+    fi
+  `)
+)
 ```
 
 ## Next Steps

@@ -12,61 +12,64 @@ The shell integration system supports:
 
 ## Shell Methods
 
-### `.zsh(config: ShellConfig)`
+### `.zsh(callback: ShellConfiguratorCallback)`
 
-Configures Zsh-specific properties.
+Configures Zsh-specific behaviour through a fluent configurator.
 
 ```typescript
-c.zsh({
-  environment: { 'TOOL_HOME': `${ctx.toolDir}` },
-  aliases: { 't': 'tool', 'ts': 'tool status' },
-  completions: { source: 'completions/_tool' },
-  shellInit: [
-    always/* zsh */`
+import { always } from '@dotfiles/core';
+
+c.zsh((shell) =>
+  shell
+    .environment({ TOOL_HOME: `${ctx.toolDir}` })
+    .aliases({ t: 'tool', ts: 'tool status' })
+    .completions('completions/_tool')
+    .always(always/* zsh */`
       function tool-helper() {
         tool --config "$TOOL_HOME/config.toml" "$@"
       }
-    `
-  ]
-})
+    `)
+);
 ```
 
-### `.bash(config: ShellConfig)`
+### `.bash(callback: ShellConfiguratorCallback)`
 
-Configures Bash-specific properties using the same structure.
+Configures Bash using the same chainable API.
 
 ```typescript
-c.bash({
-  environment: { 'TOOL_HOME': `${ctx.toolDir}` },
-  aliases: { 't': 'tool', 'ts': 'tool status' },
-  completions: { source: 'completions/tool.bash' },
-  shellInit: [
-    always/* bash */`
+import { always } from '@dotfiles/core';
+
+c.bash((shell) =>
+  shell
+    .environment({ TOOL_HOME: `${ctx.toolDir}` })
+    .aliases({ t: 'tool', ts: 'tool status' })
+    .completions('completions/tool.bash')
+    .always(always/* bash */`
       function tool-helper() {
         tool --config "$TOOL_HOME/config.toml" "$@"
       }
-    `
-  ]
-})
+    `)
+);
 ```
 
-### `.powershell(config: ShellConfig)`
+### `.powershell(callback: ShellConfiguratorCallback)`
 
-Configures PowerShell-specific properties for Windows support.
+Configures PowerShell-specific behaviour while keeping the fluent style.
 
 ```typescript
-c.powershell({
-  environment: { 'TOOL_HOME': `${ctx.homeDir}\.tool` },
-  aliases: { 't': 'tool', 'ts': 'tool status' },
-  completions: { source: 'completions/tool.ps1' },
-  shellInit: [
-    always/* powershell */`
+import { always } from '@dotfiles/core';
+
+c.powershell((shell) =>
+  shell
+    .environment({ TOOL_HOME: `${ctx.homeDir}\\.tool` })
+    .aliases({ t: 'tool', ts: 'tool status' })
+    .completions('completions/tool.ps1')
+    .always(always/* powershell */`
       function tool-helper {
         tool --config "$env:TOOL_HOME\config.toml" @args
       }
-    `
-  ]
-})
+    `)
+);
 ```
 
 ## Configuration Object
@@ -84,29 +87,29 @@ interface ShellConfig {
 
 ### Declarative Configuration
 
-Use structured objects for simple, cross-shell compatible configurations:
+Use the configurator for concise, cross-shell friendly declarations:
 
 **Environment Variables:**
 ```typescript
-c.zsh({
-  environment: {
-    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-    'TOOL_DEBUG': 'true',
-    'TOOL_MODE': 'production'
-  }
-})
+c.zsh((shell) =>
+  shell.environment({
+    TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+    TOOL_DEBUG: 'true',
+    TOOL_MODE: 'production'
+  })
+);
 ```
 
 **Aliases:**
 ```typescript
-c.zsh({
-  aliases: {
-    't': 'tool',
-    'tl': 'tool list',
-    'ts': 'tool status --verbose',
-    'tc': 'tool config edit'
-  }
-})
+c.zsh((shell) =>
+  shell.aliases({
+    t: 'tool',
+    tl: 'tool list',
+    ts: 'tool status --verbose',
+    tc: 'tool config edit'
+  })
+);
 ```
 
 ### Script-Based Configuration
@@ -114,15 +117,15 @@ c.zsh({
 Use shell scripts for complex functions and logic:
 
 ```typescript
-import { always, once } from '@dotfiles/schemas';
+import { always, once } from '@dotfiles/core';
 
-c.zsh({
-  shellInit: [
-    once/* zsh */`
+c.zsh((shell) =>
+  shell
+    .once(once/* zsh */`
       # Expensive operations (run only once after installation)
       tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-    `,
-    always/* zsh */`
+    `)
+    .always(always/* zsh */`
       # Fast runtime setup (runs every shell startup)
       function tool-helper() {
         tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
@@ -130,9 +133,8 @@ c.zsh({
       
       # Key bindings
       bindkey '^T' tool-fuzzy-search
-    `
-  ]
-})
+    `)
+);
 ```
 
 ## Script Execution Timing
@@ -167,13 +169,13 @@ once/* zsh */`
 Always use ToolConfigContext variables for paths:
 
 ```typescript
-c.zsh({
-  environment: {
-    'TOOL_CONFIG_DIR': `${ctx.toolDir}`,
-    'TOOL_DATA_DIR': `${ctx.homeDir}/.local/share/tool`
-  },
-  shellInit: [
-    always/* zsh */`
+c.zsh((shell) =>
+  shell
+    .environment({
+      TOOL_CONFIG_DIR: `${ctx.toolDir}`,
+      TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
+    })
+    .always(always/* zsh */`
       # Reference tool directory
       if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
         source "${ctx.toolDir}/shell/key-bindings.zsh"
@@ -182,9 +184,8 @@ c.zsh({
       # Reference other tools
       FZF_DIR="${ctx.getToolDir('fzf')}"
       [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
-    `
-  ]
-})
+    `)
+);
 ```
 
 ## Cross-Shell Compatibility
@@ -192,26 +193,24 @@ c.zsh({
 Define the same configuration for multiple shells:
 
 ```typescript
-const commonConfig = {
-  environment: {
-    'TOOL_HOME': `${ctx.toolDir}`,
-    'TOOL_DEBUG': 'false'
-  },
-  aliases: {
-    't': 'tool',
-    'ts': 'tool status'
-  }
-};
+import type { IShellConfigurator } from '@dotfiles/core';
 
-c.zsh(commonConfig)
- .bash(commonConfig)
- .powershell({
-   ...commonConfig,
-   environment: {
-     'TOOL_HOME': `${ctx.toolDir}`,
-     'TOOL_DEBUG': 'false'
-   }
- });
+const configureCommonShell = (shell: IShellConfigurator): IShellConfigurator =>
+  shell
+    .environment({
+      TOOL_HOME: `${ctx.toolDir}`,
+      TOOL_DEBUG: 'false'
+    })
+    .aliases({
+      t: 'tool',
+      ts: 'tool status'
+    });
+
+c.zsh(configureCommonShell)
+ .bash(configureCommonShell)
+ .powershell((shell) =>
+   configureCommonShell(shell).environment({ TOOL_HOME: `${ctx.toolDir}` })
+ );
 ```
 
 ## Benefits

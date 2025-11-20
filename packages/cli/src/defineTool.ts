@@ -26,8 +26,7 @@ type ToolConfigContext = Builder.ToolConfigContext;
  * @example
  * export default defineTool((install, ctx) =>
  *   install('github-release', { repo: 'BurntSushi/ripgrep' })
- *     .bin('rg')
- *     .version('14.0.0')
+ *     .bin('rg').version('14.0.0')
  * );
  *
  * @example Manual tool (no installation)
@@ -52,9 +51,14 @@ export function defineTool<T extends (install: InstallFunction, ctx: ToolConfigC
  *
  * @param logger - Logger instance for the builder
  * @param toolName - Name of the tool being configured
+ * @param context - Tool configuration context providing path helpers
  * @returns InstallFunction that creates configured ToolConfigBuilder instances
  */
-export function createInstallFunction(logger: TsLogger, toolName: string): InstallFunction {
+export function createInstallFunction(
+  logger: TsLogger,
+  toolName: string,
+  context?: ToolConfigContext
+): InstallFunction {
   // Track which builder instance to return - created on first call
   let builderInstance: ToolConfigBuilder | null = null;
 
@@ -63,6 +67,8 @@ export function createInstallFunction(logger: TsLogger, toolName: string): Insta
     if (!builderInstance) {
       builderInstance = new ToolConfigBuilder(logger, toolName);
     }
+
+    builderInstance.setContext(context);
 
     // Set installation method and params directly on builder fields
     if (method) {

@@ -16,7 +16,7 @@ The migration process involves converting shell-based configurations (like those
 | `zinit load owner/repo` | `repo: 'owner/repo'` in install params |
 | `mv="*/binary -> binary"` | Not needed - binary stays in extracted location |
 | `pick"path/to/binary"` | `binaryPath: 'path/to/binary'` |
-| `completions="path.zsh"` | `.zsh({ completions: { source: 'path.zsh' }})` |
+| `completions="path.zsh"` | `.zsh((shell) => shell.completions('path.zsh'))` |
 | `atclone"make install"` | Use `hooks.afterExtract` or `hooks.afterInstall` |
 
 ### Example Zinit to ToolConfig Migration
@@ -136,25 +136,22 @@ function tool-helper() {
 
 **After (in .tool.ts):**
 ```typescript
-c.zsh({
-  environment: {
-    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-    'TOOL_DEBUG': 'true'
-  },
-  
-  aliases: {
-    't': 'tool',
-    'tl': 'tool list'
-  },
-  
-  shellInit: [
-    always/* zsh */`
+c.zsh((shell) =>
+  shell
+    .environment({
+      TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+      TOOL_DEBUG: 'true'
+    })
+    .aliases({
+      t: 'tool',
+      tl: 'tool list'
+    })
+    .always(/* zsh */`
       function tool-helper() {
         tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
       }
-    `
-  ]
-})
+    `)
+)
 ```
 
 ### Step 6: Replace Hardcoded Paths
@@ -176,18 +173,17 @@ source "$DOTFILES/.config/tool/init.zsh"
 
 **After:**
 ```typescript
-c.zsh({
-  environment: {
-    'TOOL_HOME': `${ctx.homeDir}/.local/share/tool`
-  },
-  shellInit: [
-    always/* zsh */`
+c.zsh((shell) =>
+  shell
+    .environment({
+      TOOL_HOME: `${ctx.homeDir}/.local/share/tool`
+    })
+    .always(/* zsh */`
       if [[ -f "${ctx.toolDir}/init.zsh" ]]; then
         source "${ctx.toolDir}/init.zsh"
       fi
-    `
-  ]
-})
+    `)
+)
 ```
 
 ### Step 7: Add Symbolic Links
@@ -217,11 +213,7 @@ autoload -U compinit && compinit
 
 **After:**
 ```typescript
-c.zsh({
-  completions: {
-    source: 'completions/_tool'
-  }
-})
+c.zsh((shell) => shell.completions('completions/_tool'))
 ```
 
 ### Step 9: Test Migration
@@ -281,24 +273,24 @@ fi
 
 **After (Declarative + Script hybrid):**
 ```typescript
-c.zsh({
-  // Extract simple environment variables to declarative config
-  environment: {
-    'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-    'TOOL_DEBUG': 'true',
-    'TOOL_MODE': 'production'
-  },
-  
-  // Extract simple aliases to declarative config  
-  aliases: {
-    't': 'tool',
-    'tl': 'tool list', 
-    'ts': 'tool status --verbose',
-    'tc': 'tool config edit'
-  },
-  
-  shellInit: [
-    always/* zsh */`
+c.zsh((shell) =>
+  shell
+    // Extract simple environment variables to declarative config
+    .environment({
+      TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+      TOOL_DEBUG: 'true',
+      TOOL_MODE: 'production'
+    })
+    
+    // Extract simple aliases to declarative config  
+    .aliases({
+      t: 'tool',
+      tl: 'tool list', 
+      ts: 'tool status --verbose',
+      tc: 'tool config edit'
+    })
+    
+    .always(/* zsh */`
       # Keep complex functions in scripts
       function tool-helper() {
         tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
@@ -308,9 +300,8 @@ c.zsh({
       if [[ -f "${ctx.homeDir}/.tool-extra" ]]; then
         source "${ctx.homeDir}/.tool-extra"
       fi
-    `
-  ]
-})
+    `)
+)
 ```
 
 ## Benefits of Migration
@@ -373,12 +364,12 @@ export PAGER="less -R"
 
 **After:**
 ```typescript
-c.zsh({
-  environment: {
-    'EDITOR': 'nvim',
-    'PAGER': 'less -R'
-  }
-})
+c.zsh((shell) =>
+  shell.environment({
+    EDITOR: 'nvim',
+    PAGER: 'less -R'
+  })
+)
 ```
 
 ### Aliases
@@ -392,13 +383,13 @@ alias l="ls -CF"
 
 **After:**
 ```typescript
-c.zsh({
-  aliases: {
-    'll': 'ls -la',
-    'la': 'ls -A',
-    'l': 'ls -CF'
-  }
-})
+c.zsh((shell) =>
+  shell.aliases({
+    ll: 'ls -la',
+    la: 'ls -A',
+    l: 'ls -CF'
+  })
+)
 ```
 
 ### Complex Functions
@@ -412,15 +403,13 @@ function git-branch-clean() {
 
 **After:**
 ```typescript
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      function git-branch-clean() {
-        git branch --merged | grep -v "\\*\\|main\\|master" | xargs -n 1 git branch -d
-      }
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    function git-branch-clean() {
+      git branch --merged | grep -v "\\*\\|main\\|master" | xargs -n 1 git branch -d
+    }
+  `)
+)
 ```
 
 ### Conditional Logic
@@ -434,15 +423,13 @@ fi
 
 **After:**
 ```typescript
-c.zsh({
-  shellInit: [
-    always/* zsh */`
-      if command -v fzf >/dev/null 2>&1; then
-        export FZF_DEFAULT_COMMAND='rg --files'
-      fi
-    `
-  ]
-})
+c.zsh((shell) =>
+  shell.always(/* zsh */`
+    if command -v fzf >/dev/null 2>&1; then
+      export FZF_DEFAULT_COMMAND='rg --files'
+    fi
+  `)
+)
 ```
 
 ## Troubleshooting Migration Issues

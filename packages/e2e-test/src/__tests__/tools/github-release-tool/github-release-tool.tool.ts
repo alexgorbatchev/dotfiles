@@ -1,5 +1,4 @@
 import { defineTool } from '@dotfiles/cli';
-import { always, once } from '@dotfiles/core';
 
 export default defineTool((install) =>
   install('github-release', {
@@ -7,24 +6,21 @@ export default defineTool((install) =>
   })
     .bin('github-release-tool')
     .version('latest')
-    .zsh({
-      environment: {
-        GITHUB_RELEASE_TOOL_DEFAULT_OPTS: '--color=fg',
-        GITHUB_RELEASE_TOOL_OTHER_OPTS: '--arg=1',
-      },
-      aliases: {
-        grt: 'github-release-tool --preview "ps -f -p {+}"',
-      },
-      completions: {
-        source: 'shell/completion.zsh',
-      },
-      shellInit: [
-        once /* zsh */`
+    .zsh((shell) =>
+      shell
+        .environment({
+          GITHUB_RELEASE_TOOL_DEFAULT_OPTS: '--color=fg',
+          GITHUB_RELEASE_TOOL_OTHER_OPTS: '--arg=1',
+        })
+        .aliases({
+          grt: 'github-release-tool --preview "ps -f -p {+}"',
+        })
+        .completions('shell/completion.zsh')
+        .once(/* zsh */ `
           echo "echo from github-release-tool"
-        `,
-        always /* zsh */`
+        `)
+        .always(/* zsh */ `
           echo "always from github-release-tool"
-        `,
-      ],
-    })
+        `)
+    )
 );

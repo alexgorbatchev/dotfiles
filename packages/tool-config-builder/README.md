@@ -27,6 +27,9 @@ interface ToolConfigBuilder {
   version(version: string): this;
   install(method: InstallationMethod, params: InstallParams): this;
   platform(platform: Platform, callback: (builder: PlatformConfigBuilder) => void): this;
+  zsh(callback: (shell: IShellConfigurator) => void): this;
+  bash(callback: (shell: IShellConfigurator) => void): this;
+  powershell(callback: (shell: IShellConfigurator) => void): this;
   build(): ToolConfig;
 }
 ```

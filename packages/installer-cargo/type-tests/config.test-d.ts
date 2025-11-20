@@ -1,5 +1,5 @@
 import type { CargoInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
-import { always, defineTool, once } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
@@ -12,9 +12,15 @@ export type CargoSchemaMatchesParams = ExpectTrue<CargoInstallParams extends Car
 defineTool((install) =>
   install('cargo', {
     crateName: 'ripgrep',
-  }).zsh({
-    shellInit: [once`echo "once"`, always`echo "always"`],
-  })
+  }).zsh((shell) =>
+    shell
+      .once(/* zsh */ `
+        echo "once"
+      `)
+      .always(/* zsh */ `
+        echo "always"
+      `)
+  )
 );
 
 expectError(() =>

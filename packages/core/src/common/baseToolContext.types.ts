@@ -1,3 +1,6 @@
+// TODO remove properties from BaseToolContext that are already available in projectConfig
+// TODO shell.completions(...) needs to somehow to know where tool binary/archive are extracted to be able to point to bundled completion files
+
 /**
  * Provides a base context with common properties and utilities that are shared
  * across various phases of tool configuration and installation.
@@ -7,8 +10,6 @@
  *
  * @see {@link ToolConfigContext}
  * @see {@link InstallerContext}
- *
- * @public
  */
 export interface BaseToolContext {
   /**

@@ -117,34 +117,36 @@ export default defineTool((install, ctx) =>
     .version('latest')
     .platform(Platform.MacOS, (install) =>
       install('brew', { formula: 'tool' })
-        .zsh({ aliases: { 't': 'tool --macos-mode' } })
+        .zsh((shell) => shell.aliases({ t: 'tool --macos-mode' }))
     )
     .platform(Platform.Linux, (install) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
       })
-        .zsh({ aliases: { 't': 'tool --linux-mode' } })
+        .zsh((shell) => shell.aliases({ t: 'tool --linux-mode' }))
     )
     .platform(Platform.Windows, Architecture.Arm64, (install) =>
       install('github-release', {
         repo: 'owner/tool', 
         assetPattern: '*windows-arm64.zip',
       })
-        .powershell({ 
-          environment: { 'TOOL_ARCH': 'arm64' },
-          aliases: { 't': 'tool --windows-mode' }
-        })
+        .powershell((shell) =>
+          shell
+            .environment({ TOOL_ARCH: 'arm64' })
+            .aliases({ t: 'tool --windows-mode' })
+        )
     )
     .platform(Platform.Windows, Architecture.X86_64, (install) =>
       install('github-release', {
         repo: 'owner/tool', 
         assetPattern: '*windows-amd64.zip',
       })
-        .powershell({ 
-          environment: { 'TOOL_ARCH': 'amd64' },
-          aliases: { 't': 'tool --windows-mode' }
-        })
+        .powershell((shell) =>
+          shell
+            .environment({ TOOL_ARCH: 'amd64' })
+            .aliases({ t: 'tool --windows-mode' })
+        )
     )
 );
 ```
@@ -190,36 +192,39 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .platform(Platform.Unix, (install) =>
       install()
-        .zsh({
-          environment: {
-            'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
-          },
-          aliases: {
-            't': 'tool',
-            'tl': 'tool list'
-          }
-        })
-        .bash({
-          environment: {
-            'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
-          },
-          aliases: {
-            't': 'tool',
-            'tl': 'tool list'
-          }
-        })
+        .zsh((shell) =>
+          shell
+            .environment({
+              TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
+            })
+            .aliases({
+              t: 'tool',
+              tl: 'tool list'
+            })
+        )
+        .bash((shell) =>
+          shell
+            .environment({
+              TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
+            })
+            .aliases({
+              t: 'tool',
+              tl: 'tool list'
+            })
+        )
     )
     .platform(Platform.Windows, (install) =>
       install()
-        .powershell({
-          environment: {
-            'TOOL_CONFIG': `${ctx.homeDir}\.config\tool\config.toml`
-          },
-          aliases: {
-            't': 'tool',
-            'tl': 'tool list'
-          }
-        })
+        .powershell((shell) =>
+          shell
+            .environment({
+              TOOL_CONFIG: `${ctx.homeDir}\\.config\\tool\\config.toml`
+            })
+            .aliases({
+              t: 'tool',
+              tl: 'tool list'
+            })
+        )
     )
 );
 ```

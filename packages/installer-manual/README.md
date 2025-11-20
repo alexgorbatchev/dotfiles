@@ -45,11 +45,7 @@ If `binaryPath` is not specified, the plugin only processes shell configurations
 ```typescript
 export default defineTool((install, ctx) =>
   install()
-    .zsh({
-      aliases: {
-        ll: 'ls -la',
-      },
-    })
+    .zsh((shell) => shell.aliases({ ll: 'ls -la' }))
 );
 ```
 
@@ -70,11 +66,7 @@ export default defineTool((install, ctx) =>
 export default defineTool((install, ctx) =>
   install()
     .bin('docker')
-    .zsh({
-      completions: {
-        source: '_docker',
-      },
-    })
+    .zsh((shell) => shell.completions('_docker'))
 );
 ```
 

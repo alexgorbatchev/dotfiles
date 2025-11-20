@@ -48,8 +48,8 @@ async function processFunctionExport(
   filePath: string,
   projectConfig: ProjectConfig
 ): Promise<ToolConfig | null> {
-  const install = createInstallFunction(logger, toolName);
   const context = createToolConfigContext(projectConfig, toolName);
+  const install = createInstallFunction(logger, toolName, context);
   const result = await configureToolFn(install, context);
 
   // Check if the function returned a ToolConfig object

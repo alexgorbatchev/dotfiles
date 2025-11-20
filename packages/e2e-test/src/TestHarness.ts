@@ -1,4 +1,5 @@
 import { expect } from 'bun:test';
+import fs from 'node:fs';
 import path from 'node:path';
 import type { Architecture, Platform } from '@dotfiles/core';
 import { $ } from 'bun';
@@ -43,6 +44,25 @@ export interface CommandResult {
   stderr: string;
 }
 
+function findProjectRoot(startDir: string): string {
+  let currentDir = startDir;
+
+  // Walk up the directory tree until cli.ts is found
+  for (;;) {
+    const candidatePath = path.join(currentDir, 'cli.ts');
+    if (fs.existsSync(candidatePath)) {
+      return currentDir;
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      throw new Error('Unable to locate project root. Expected to find cli.ts while traversing upwards.');
+    }
+
+    currentDir = parentDir;
+  }
+}
+
 /**
  * Testing harness for end-to-end tests that execute dotfiles CLI commands.
  *
@@ -61,7 +81,6 @@ export class TestHarness {
   readonly shellScriptsDir: string;
   readonly platform: Platform;
   readonly architecture: Architecture;
-  private readonly binPath: string;
   private readonly dotfilesBin: string;
   private readonly cleanBeforeRun: boolean;
 
@@ -81,8 +100,8 @@ export class TestHarness {
     this.generatedDir = path.join(this.configDir, '.generated');
     this.userBinDir = path.join(this.generatedDir, 'user-bin');
     this.shellScriptsDir = path.join(this.generatedDir, 'shell-scripts');
-    this.binPath = path.resolve(this.testDir, '../../node_modules/.bin');
-    this.dotfilesBin = path.join(this.binPath, 'dotfiles');
+    const projectRoot = findProjectRoot(this.testDir);
+    this.dotfilesBin = path.join(projectRoot, 'cli.ts');
   }
 
   /**
@@ -114,7 +133,7 @@ export class TestHarness {
     const archString = architectureToString(this.architecture);
     const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
 
-    const result = await $`NODE_ENV=production ${this.dotfilesBin} ${argsWithPlatform}`
+    const result = await $`NODE_ENV=production bun ${this.dotfilesBin} ${argsWithPlatform}`
       .cwd(this.testDir)
       .quiet()
       .nothrow();

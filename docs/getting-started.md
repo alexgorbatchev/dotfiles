@@ -30,28 +30,23 @@ export default defineTool((install, ctx) =>
     .bin('tool-name')
     .dependsOn('shared-runtime')
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-    .zsh({
-      completions: {
-        source: 'completions/_tool.zsh',
-      },
-      environment: {
-        TOOL_CONFIG_DIR: `${ctx.homeDir}/.tool`,
-      },
-      aliases: {
-        t: 'tool-name',
-      },
-      shellInit: `
-        # Functions
-        function tool-helper() {
-          tool-name --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-        }
-      `,
-    })
-    .bash({
-      completions: {
-        source: 'completions/tool.bash',
-      },
-    })
+    .zsh((shell) =>
+      shell
+        .completions('completions/_tool.zsh')
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.homeDir}/.tool`,
+        })
+        .aliases({
+          t: 'tool-name',
+        })
+        .always(/* zsh */`
+          # Functions
+          function tool-helper() {
+            tool-name --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+          }
+        `)
+    )
+    .bash((shell) => shell.completions('completions/tool.bash'))
 );
 ```
 

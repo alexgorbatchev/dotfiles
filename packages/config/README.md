@@ -169,11 +169,11 @@ export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
       repo: 'junegunn/fzf',
       assetPattern: 'fzf-*-linux_amd64.tar.gz',
     })
-    .zsh({
-      shellInit: [
-        'source <(fzf --zsh)',
-      ],
-    });
+    .zsh((shell) =>
+      shell.always(/* zsh */`
+        source <(fzf --zsh)
+      `)
+    );
 };
 ```
 

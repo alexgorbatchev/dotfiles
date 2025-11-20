@@ -12,19 +12,14 @@ export default defineTool((install, ctx) =>
     repo: 'BurntSushi/ripgrep',
   })
     .bin('rg')
-    .zsh({
-      completions: {
-        source: 'complete/_rg',
-      },
-      aliases: {
-        rg: 'ripgrep',
-      },
-    })
-    .bash({
-      completions: {
-        source: 'complete/rg.bash',
-      },
-    })
+    .zsh((shell) =>
+      shell
+        .completions('complete/_rg')
+        .aliases({
+          rg: 'ripgrep',
+        })
+    )
+    .bash((shell) => shell.completions('complete/rg.bash'))
 );
 ```
 
@@ -65,27 +60,26 @@ export default defineTool((install, ctx) =>
     repo: 'junegunn/fzf',
   })
     .bin('fzf')
-    .zsh({
-      environment: {
-        FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
-      },
-      completions: {
-        source: 'shell/completion.zsh',
-      },
-      shellInit: `
-        # Source key bindings and create custom functions
-        if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-          source "${ctx.toolDir}/shell/key-bindings.zsh"
-        fi
-        
-        function fzf-jump-to-dir() {
-          local dir=$(find . -type d | fzf)
-          [[ -n "$dir" ]] && cd "$dir"
-        }
-        zle -N fzf-jump-to-dir
-        bindkey '^]' fzf-jump-to-dir
-      `,
-    })
+    .zsh((shell) =>
+      shell
+        .environment({
+          FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
+        })
+        .completions('shell/completion.zsh')
+        .always(/* zsh */`
+          # Source key bindings and create custom functions
+          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.toolDir}/shell/key-bindings.zsh"
+          fi
+          
+          function fzf-jump-to-dir() {
+            local dir=$(find . -type d | fzf)
+            [[ -n "$dir" ]] && cd "$dir"
+          }
+          zle -N fzf-jump-to-dir
+          bindkey '^]' fzf-jump-to-dir
+        `)
+    )
 );
 ```
 
@@ -93,7 +87,6 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { always, once } from '@types';
 
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
   c
@@ -102,37 +95,38 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('github-release', { repo: 'owner/tool' })
     
     // Zsh configuration
-    .zsh({
-      completions: { source: 'completions/_tool' },
-      environment: {
-        'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-        'TOOL_LOG_LEVEL': 'info'
-      },
-      aliases: { 't': 'tool', 'ts': 'tool status' },
-      shellInit: [
-        once/* zsh */`
+    .zsh((shell) =>
+      shell
+        .completions('completions/_tool')
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_LOG_LEVEL: 'info'
+        })
+        .aliases({ t: 'tool', ts: 'tool status' })
+        .once(/* zsh */`
           tool completions zsh > "${ctx.generatedDir}/completions/_tool"
-        `
-      ]
-    })
+        `)
+    )
     
     // Bash and PowerShell configurations
-    .bash({
-      completions: { source: 'completions/tool.bash' },
-      environment: {
-        'TOOL_CONFIG_DIR': `${ctx.homeDir}/.config/tool`,
-        'TOOL_LOG_LEVEL': 'info'
-      },
-      aliases: { 't': 'tool', 'ts': 'tool status' }
-    })
-    .powershell({
-      completions: { source: 'completions/tool.ps1' },
-      environment: {
-        'TOOL_CONFIG_DIR': `${ctx.homeDir}\\.config\\tool`,
-        'TOOL_LOG_LEVEL': 'info'
-      },
-      aliases: { 't': 'tool', 'ts': 'tool status' }
-    });
+    .bash((shell) =>
+      shell
+        .completions('completions/tool.bash')
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_LOG_LEVEL: 'info'
+        })
+        .aliases({ t: 'tool', ts: 'tool status' })
+    )
+    .powershell((shell) =>
+      shell
+        .completions('completions/tool.ps1')
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.homeDir}\\.config\\tool`,
+          TOOL_LOG_LEVEL: 'info'
+        })
+        .aliases({ t: 'tool', ts: 'tool status' })
+    );
 };
 ```
 
@@ -154,10 +148,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
       logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
-    .zsh({
-      environment: { 'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool` },
-      aliases: { 'ct': 'custom-tool', 'lg': 'custom-tool' }
-    });
+    .zsh((shell) =>
+      shell
+        .environment({ CUSTOM_TOOL_DATA: `${ctx.homeDir}/.local/share/custom-tool` })
+        .aliases({ ct: 'custom-tool', lg: 'custom-tool' })
+    );
 };
 ```
 
@@ -174,7 +169,7 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
   // macOS-specific
   c.platform(Platform.MacOS, (c) => {
     c.install('brew', { formula: 'tool' })
-     .zsh({ aliases: { 't': 'tool --macos-mode' } });
+     .zsh((shell) => shell.aliases({ t: 'tool --macos-mode' }));
   });
   
   // Linux-specific  
@@ -183,7 +178,7 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
       })
-     .zsh({ aliases: { 't': 'tool --linux-mode' } });
+     .zsh((shell) => shell.aliases({ t: 'tool --linux-mode' }));
   });
   
   // Windows with architecture-specific configuration
@@ -192,10 +187,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         repo: 'owner/tool', 
         assetPattern: '*windows-arm64.zip',
       })
-     .powershell({ 
-       environment: { 'TOOL_ARCH': 'arm64' },
-       aliases: { 't': 'tool --windows-mode' }
-     });
+     .powershell((shell) =>
+       shell
+         .environment({ TOOL_ARCH: 'arm64' })
+         .aliases({ t: 'tool --windows-mode' })
+     );
   });
 };
 ```
@@ -213,21 +209,20 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       crateName: 'eza',
       githubRepo: 'eza-community/eza',
     })
-    .zsh({
-      completions: { source: 'completions/eza.zsh' },
-      aliases: {
-        'ls': 'eza',
-        'll': 'eza -l',
-        'la': 'eza -la',
-        'tree': 'eza --tree'
-      },
-      environment: {
-        'EZA_COLORS': 'da=1;34:gm=1;34'
-      }
-    })
-    .bash({
-      completions: { source: 'completions/eza.bash' }
-    });
+    .zsh((shell) =>
+      shell
+        .completions('completions/eza.zsh')
+        .aliases({
+          ls: 'eza',
+          ll: 'eza -l',
+          la: 'eza -la',
+          tree: 'eza --tree'
+        })
+        .environment({
+          EZA_COLORS: 'da=1;34:gm=1;34'
+        })
+    )
+    .bash((shell) => shell.completions('completions/eza.bash'));
 };
 ```
 
@@ -243,20 +238,21 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       binaryPath: './scripts/deploy.sh',  // Script included with dotfiles
     })
     .symlink('./deploy.config.yaml', `${ctx.homeDir}/.config/deploy/config.yaml`)
-    .zsh({
-      aliases: {
-        'dp': 'deploy',
-        'deploy-prod': 'deploy --env production',
-        'deploy-staging': 'deploy --env staging',
-      },
-      environment: {
-        'DEPLOY_CONFIG': `${ctx.homeDir}/.config/deploy/config.yaml`
-      },
-      shellInit: [
-        always`# Deploy tool helpers`,
-        always`function deploy-status() { deploy status "$@"; }`
-      ]
-    });
+    .zsh((shell) =>
+      shell
+        .aliases({
+          dp: 'deploy',
+          'deploy-prod': 'deploy --env production',
+          'deploy-staging': 'deploy --env staging',
+        })
+        .environment({
+          DEPLOY_CONFIG: `${ctx.homeDir}/.config/deploy/config.yaml`
+        })
+        .always(/* zsh */`
+          # Deploy tool helpers
+          function deploy-status() { deploy status "$@"; }
+        `)
+    );
 };
 ```
 
@@ -270,22 +266,23 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .install('manual', {})  // No binary management
     .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
     .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
-    .zsh({
-      aliases: {
-        'g': 'git',
-        'gs': 'git status',
-        'ga': 'git add',
-        'gc': 'git commit',
-        'gp': 'git push',
-        'gl': 'git pull',
-        'gd': 'git diff',
-        'gb': 'git branch',
-        'gco': 'git checkout'
-      },
-      environment: {
-        'GIT_EDITOR': 'nvim'
-      }
-    });
+    .zsh((shell) =>
+      shell
+        .aliases({
+          g: 'git',
+          gs: 'git status',
+          ga: 'git add',
+          gc: 'git commit',
+          gp: 'git push',
+          gl: 'git pull',
+          gd: 'git diff',
+          gb: 'git branch',
+          gco: 'git checkout'
+        })
+        .environment({
+          GIT_EDITOR: 'nvim'
+        })
+    );
 };
 ```
 
@@ -323,9 +320,7 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         );
       }
     })
-    .zsh({
-      aliases: { 'ct': 'custom-tool' }
-    });
+    .zsh((shell) => shell.aliases({ ct: 'custom-tool' }));
 };
 ```
 

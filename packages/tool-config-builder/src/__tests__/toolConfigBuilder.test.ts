@@ -151,8 +151,8 @@ describe('ToolConfigBuilder', () => {
 
   test('zsh method adds zsh code correctly to zshInit', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.zsh({ shellInit: [always`alias ll="ls -l"`] });
-    builder.zsh({ shellInit: [always`export PATH="$HOME/bin:$PATH"`] });
+    builder.zsh((shell) => shell.always(/* zsh */ `alias ll="ls -l"`));
+    builder.zsh((shell) => shell.always(/* zsh */ `export PATH="$HOME/bin:$PATH"`));
     // build() is valid here as zshInit is provided
     const config = builder.build();
     expect(config.shellConfigs?.zsh?.scripts).toEqual([
@@ -182,10 +182,7 @@ describe('ToolConfigBuilder', () => {
       .version('1.0.0')
       .install('github-release', installParams)
       .hook('after-install', mockHook)
-      .zsh({
-        shellInit: [always`alias tt="test-tool"`],
-        completions: { source: 'completion.bash' },
-      })
+      .zsh((shell) => shell.always(/* zsh */ `alias tt="test-tool"`).completions('completion.bash'))
       .symlink('config.yml', '~/.config/tool/config.yml');
 
     const config = builder.build();
@@ -218,7 +215,7 @@ describe('ToolConfigBuilder', () => {
 
   test('build method returns ManualToolConfig if only zshInit is present', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
-    builder.zsh({ shellInit: [always`alias tt="test-tool"`] });
+    builder.zsh((shell) => shell.always(/* zsh */ `alias tt="test-tool"`));
     const config = builder.build();
     expect(config.installationMethod).toBe('manual');
     expect(config.installParams).toEqual({});
@@ -314,14 +311,15 @@ describe('ToolConfigBuilder', () => {
   test('zsh method handles aliases correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
 
-    builder.zsh({
-      aliases: {
-        g: 'git',
-        l: 'ls -la',
-        v: 'vim',
-      },
-      shellInit: [always`echo "test init"`],
-    });
+    builder.zsh((shell) =>
+      shell
+        .aliases({
+          g: 'git',
+          l: 'ls -la',
+          v: 'vim',
+        })
+        .always(always`echo "test init"`)
+    );
 
     expect(builder.shellConfigs.zsh.aliases).toEqual({
       g: 'git',
@@ -334,12 +332,12 @@ describe('ToolConfigBuilder', () => {
   test('bash method handles aliases correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
 
-    builder.bash({
-      aliases: {
+    builder.bash((shell) =>
+      shell.aliases({
         g: 'git',
         dc: 'docker-compose',
-      },
-    });
+      })
+    );
 
     expect(builder.shellConfigs.bash.aliases).toEqual({
       g: 'git',
@@ -350,12 +348,12 @@ describe('ToolConfigBuilder', () => {
   test('powershell method handles aliases correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
 
-    builder.powershell({
-      aliases: {
+    builder.powershell((shell) =>
+      shell.aliases({
         g: 'git',
         cat: 'Get-Content',
-      },
-    });
+      })
+    );
 
     expect(builder.shellConfigs.powershell.aliases).toEqual({
       g: 'git',
@@ -366,12 +364,12 @@ describe('ToolConfigBuilder', () => {
   test('build method includes aliases in shell configs', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
 
-    builder.bin('test-tool').zsh({
-      aliases: {
+    builder.bin('test-tool').zsh((shell) =>
+      shell.aliases({
         g: 'git',
         l: 'ls -la',
-      },
-    });
+      })
+    );
 
     const config = builder.build();
 
@@ -385,12 +383,12 @@ describe('ToolConfigBuilder', () => {
   test('build method stores PowerShell aliases correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
 
-    builder.bin('test-tool').powershell({
-      aliases: {
+    builder.bin('test-tool').powershell((shell) =>
+      shell.aliases({
         g: 'git',
         cat: 'Get-Content',
-      },
-    });
+      })
+    );
 
     const config = builder.build();
 
@@ -404,13 +402,7 @@ describe('ToolConfigBuilder', () => {
   test('multiple zsh calls merge aliases correctly', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
 
-    builder
-      .zsh({
-        aliases: { g: 'git' },
-      })
-      .zsh({
-        aliases: { l: 'ls -la', v: 'vim' },
-      });
+    builder.zsh((shell) => shell.aliases({ g: 'git' })).zsh((shell) => shell.aliases({ l: 'ls -la', v: 'vim' }));
 
     expect(builder.shellConfigs.zsh.aliases).toEqual({
       g: 'git',

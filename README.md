@@ -91,14 +91,15 @@ export default defineTool((install, ctx) =>
     // 3. Create symlinks for configuration files
     .symlink('./ripgreprc', `${ctx.homeDir}/.ripgreprc`)
     // 4. Configure shell-specific integration (aliases, functions, env vars)
-    .zsh({
-      aliases: {
-        rgi: 'rg -i', // Case-insensitive search alias
-      },
-      environment: {
-        RIPGREP_CONFIG_PATH: `${ctx.homeDir}/.ripgreprc`,
-      },
-    })
+    .zsh((shell) =>
+      shell
+        .environment({
+          RIPGREP_CONFIG_PATH: `${ctx.homeDir}/.ripgreprc`,
+        })
+        .aliases({
+          rgi: 'rg -i', // Case-insensitive search alias
+        })
+    )
 );
 ```
 

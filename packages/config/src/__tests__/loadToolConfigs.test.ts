@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { AsyncConfigureTool, InstallFunction, ProjectConfig, ToolConfigContext } from '@dotfiles/core';
-import { always } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
@@ -79,9 +78,8 @@ describe('ToolConfigContext', () => {
         return install('manual', { binaryPath: '/usr/bin/shell-tool' })
           .bin('shell-tool')
           .version('latest')
-          .zsh({
-            shellInit: [
-              always /* zsh */`
+          .zsh((shell) =>
+            shell.always(/* zsh */ `
            export TOOL_DIR="${ctx.toolDir}"
            export HOME_DIR="${ctx.homeDir}"
            export GENERATED_DIR="${ctx.generatedDir}"
@@ -90,9 +88,8 @@ describe('ToolConfigContext', () => {
            if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
              source "${ctx.toolDir}/shell/key-bindings.zsh"
            fi
-         `,
-            ],
-          });
+         `)
+          );
       };
 
       const install = createInstallFunction(logger, 'shell-tool');
@@ -121,9 +118,8 @@ describe('ToolConfigContext', () => {
         return install('manual', { binaryPath: '/usr/bin/dependent-tool' })
           .bin('dependent-tool')
           .version('latest')
-          .zsh({
-            shellInit: [
-              always /* zsh */`
+          .zsh((shell) =>
+            shell.always(/* zsh */ `
            # Reference another tool's directory
            FZF_DIR="${ctx.getToolDir('fzf')}"
            if [[ -d "$FZF_DIR" ]]; then
@@ -132,9 +128,8 @@ describe('ToolConfigContext', () => {
            
            # Use current tool directory
            export DEPENDENT_TOOL_CONFIG="${ctx.toolDir}/config.yaml"
-         `,
-            ],
-          });
+         `)
+          );
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'dependent-tool'), context);
@@ -160,16 +155,14 @@ describe('ToolConfigContext', () => {
         return install('manual', { binaryPath: '/usr/bin/completion-tool' })
           .bin('completion-tool')
           .version('latest')
-          .zsh({
-            shellInit: [
-              always /* zsh */`
+          .zsh((shell) =>
+            shell.always(/* zsh */ `
            # Generate completions to the proper directory
            if command -v completion-tool >/dev/null 2>&1; then
              completion-tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_completion-tool"
            fi
-         `,
-            ],
-          });
+         `)
+          );
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'completion-tool'), context);
@@ -226,10 +219,8 @@ describe('ToolConfigContext', () => {
         return install('github-release', { repo: 'owner/fzf-like' })
           .bin('fzf-like')
           .version('latest')
-          .zsh({
-            completions: { source: 'shell/completion.zsh' },
-            shellInit: [
-              always /* zsh */`
+          .zsh((shell) =>
+            shell.completions('shell/completion.zsh').always(/* zsh */ `
            export FZF_LIKE_DEFAULT_OPTS="--color=fg+:cyan"
            
            # Source key bindings
@@ -237,9 +228,8 @@ describe('ToolConfigContext', () => {
            if [ -f "$_fzf_like_install_dir/shell/key-bindings.zsh" ]; then
              source "$_fzf_like_install_dir/shell/key-bindings.zsh"
            fi
-         `,
-            ],
-          });
+         `)
+          );
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'fzf-like'), context);
@@ -265,18 +255,16 @@ describe('ToolConfigContext', () => {
           .bin('atuin-like')
           .version('latest')
           .symlink('./config.toml', '~/.config/atuin-like/config.toml')
-          .zsh({
-            shellInit: [
-              always /* zsh */`
+          .zsh((shell) =>
+            shell.always(/* zsh */ `
            export ATUIN_LIKE_CONFIG_DIR="${ctx.toolDir}"
            
            # Generate completions
            if command -v atuin-like >/dev/null 2>&1; then
              atuin-like gen-completions --shell zsh > "${ctx.generatedDir}/completions/_atuin-like" 2>/dev/null || true
            fi
-         `,
-            ],
-          });
+         `)
+          );
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'atuin-like'), context);
