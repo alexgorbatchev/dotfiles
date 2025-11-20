@@ -76,6 +76,7 @@ export class Installer implements IInstaller {
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: SystemInfo;
   private readonly registry: InstallerPluginRegistry;
+  private readonly $: typeof import('bun').$;
   private currentToolConfig?: ToolConfig;
 
   constructor(
@@ -84,7 +85,8 @@ export class Installer implements IInstaller {
     projectConfig: ProjectConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
     systemInfo: SystemInfo,
-    registry: InstallerPluginRegistry
+    registry: InstallerPluginRegistry,
+    $shell: typeof import('bun').$
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
@@ -93,6 +95,7 @@ export class Installer implements IInstaller {
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
     this.registry = registry;
+    this.$ = $shell;
 
     // Register event handler for installation events to execute hooks
     this.registry.onEvent(async (event) => {
@@ -651,6 +654,8 @@ export class Installer implements IInstaller {
         shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
         dotfilesDir: this.projectConfig.paths.dotfilesDir,
         generatedDir: this.projectConfig.paths.generatedDir,
+        $: this.$,
+        fileSystem: this.fs,
         // Event emitter for plugins to trigger hooks
         emitEvent: async (type: string, data: Record<string, unknown>) => {
           await this.registry.emitEvent({

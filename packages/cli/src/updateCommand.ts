@@ -3,6 +3,7 @@ import type { BaseInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/co
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
+import { $ } from 'bun';
 import { messages } from './log-messages';
 import type { GlobalProgram, GlobalProgramOptions, Services, UpdateCommandSpecificOptions } from './types';
 
@@ -36,7 +37,7 @@ async function handleToolUpdate(
   toolConfig: ToolConfig,
   shimMode: boolean
 ): Promise<void> {
-  const { pluginRegistry, systemInfo, projectConfig } = services;
+  const { pluginRegistry, systemInfo, projectConfig, fs } = services;
 
   const plugin = pluginRegistry.get(toolConfig.installationMethod);
 
@@ -78,6 +79,8 @@ async function handleToolUpdate(
     shellScriptsDir: projectConfig.paths.shellScriptsDir,
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
+    $: $,
+    fileSystem: fs,
   };
 
   const updateResult = await plugin.updateTool?.(toolName, toolConfig, context, { force: true }, logger);

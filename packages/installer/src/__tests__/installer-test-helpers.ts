@@ -351,7 +351,8 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     mockProjectConfig,
     mockToolInstallationRegistry,
     mockSystemInfo,
-    pluginRegistry
+    pluginRegistry,
+    createMock$()
   );
 
   return {
@@ -503,6 +504,8 @@ export function createTestContext(
     shellScriptsDir: setup.mockProjectConfig.paths.shellScriptsDir,
     dotfilesDir: setup.mockProjectConfig.paths.dotfilesDir,
     generatedDir: setup.mockProjectConfig.paths.generatedDir,
+    $: createMock$(),
+    fileSystem: setup.fs,
     ...overrides,
   };
 }

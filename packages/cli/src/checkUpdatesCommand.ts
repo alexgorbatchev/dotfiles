@@ -4,6 +4,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
+import { $ } from 'bun';
 import { messages } from './log-messages';
 import type { GlobalProgram, Services } from './types';
 
@@ -54,7 +55,8 @@ async function loadToolConfigs(
 function createInstallContext(
   config: ToolConfig,
   projectConfig: ProjectConfig,
-  systemInfo: SystemInfo
+  systemInfo: SystemInfo,
+  fs: IFileSystem
 ): BaseInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
@@ -73,6 +75,8 @@ function createInstallContext(
     shellScriptsDir: projectConfig.paths.shellScriptsDir,
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
+    $: $,
+    fileSystem: fs,
   };
 
   return context;
@@ -108,9 +112,9 @@ async function logVersionStatus(
 }
 
 async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: Services): Promise<void> {
-  const { projectConfig, versionChecker, pluginRegistry, systemInfo } = services;
+  const { projectConfig, versionChecker, pluginRegistry, systemInfo, fs } = services;
 
-  const context = createInstallContext(config, projectConfig, systemInfo);
+  const context = createInstallContext(config, projectConfig, systemInfo, fs);
   const plugin = pluginRegistry.get(config.installationMethod);
 
   if (!plugin) {

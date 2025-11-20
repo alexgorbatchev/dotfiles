@@ -137,7 +137,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param handler - The async hook function to execute
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  hook(event: HookEventName, handler: AsyncInstallHook): this {
+  hook(event: HookEventName, handler: AsyncInstallHook<never>): this {
     if (!this.currentInstallParams) {
       this.logger.warn(
         messages.configurationFieldIgnored(
@@ -148,8 +148,8 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       return this;
     }
 
-    const hooksObj = (this.currentInstallParams['hooks'] as Record<string, AsyncInstallHook[]>) || {};
-    const eventHooks: AsyncInstallHook[] = hooksObj[event] || [];
+    const hooksObj = (this.currentInstallParams['hooks'] as Record<string, AsyncInstallHook<never>[]>) || {};
+    const eventHooks: AsyncInstallHook<never>[] = hooksObj[event] || [];
     eventHooks.push(handler);
     hooksObj[event] = eventHooks;
     this.currentInstallParams['hooks'] = hooksObj;

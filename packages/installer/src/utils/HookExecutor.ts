@@ -1,11 +1,4 @@
-import type {
-  AsyncInstallHook,
-  BaseInstallContext,
-  EnhancedInstallHookContext,
-  InstallHookContext,
-  OperationFailure,
-  OperationSuccess,
-} from '@dotfiles/core';
+import type { AfterInstallContext, AsyncInstallHook, OperationFailure, OperationSuccess } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -48,20 +41,9 @@ export interface HookDefinition {
   /** Name of the hook */
   name: string;
   /** Hook function to execute */
-  hook: AsyncInstallHook;
+  hook: AsyncInstallHook<never>;
   /** Optional execution options */
   options?: HookExecutionOptions;
-}
-
-/**
- * Type guard that checks if a context has a toolConfig property.
- * Distinguishes BaseInstallContext from InstallHookContext based on toolConfig presence.
- *
- * @param context - Context to check
- * @returns True if context is BaseInstallContext with toolConfig, false otherwise
- */
-function hasToolConfig(context: BaseInstallContext | InstallHookContext): context is BaseInstallContext {
-  return 'toolConfig' in context && context.toolConfig !== undefined;
 }
 
 /**
@@ -101,8 +83,8 @@ export class HookExecutor {
    */
   async executeHook(
     hookName: string,
-    hook: AsyncInstallHook,
-    enhancedContext: EnhancedInstallHookContext,
+    hook: AsyncInstallHook<never>,
+    enhancedContext: AfterInstallContext,
     options: HookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
@@ -113,7 +95,7 @@ export class HookExecutor {
 
     try {
       // Create a promise that resolves when the hook completes
-      const hookPromise = hook(enhancedContext);
+      const hookPromise = hook(enhancedContext as never);
 
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -177,25 +159,18 @@ export class HookExecutor {
    * @param fileSystem - File system instance (may be TrackedFileSystem)
    * @returns Enhanced context ready for hook execution
    */
-  createEnhancedContext(
-    baseContext: BaseInstallContext | InstallHookContext,
-    fileSystem: IFileSystem
-  ): EnhancedInstallHookContext {
+  createEnhancedContext(baseContext: AfterInstallContext, fileSystem: IFileSystem): AfterInstallContext {
     // Create a tool-specific TrackedFileSystem if we have one
     const enhancedFileSystem =
       fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
 
-    // Extract toolConfig from BaseInstallContext if available
-    const toolConfig = hasToolConfig(baseContext) ? baseContext.toolConfig : undefined;
-
     // With Bun's $, we provide the shell operator directly
     // Hooks can use `cd` commands if they need to change directories
     // The cwd is available via toolConfig.configFilePath if needed
-    const result: EnhancedInstallHookContext = {
+    const result: AfterInstallContext = {
       ...baseContext,
       fileSystem: enhancedFileSystem,
-      toolConfig,
-      $,
+      $: $,
     };
     return result;
   }
@@ -211,10 +186,7 @@ export class HookExecutor {
    * @param enhancedContext - Enhanced context shared across all hooks
    * @returns Array of execution results for each hook
    */
-  async executeHooks(
-    hooks: HookDefinition[],
-    enhancedContext: EnhancedInstallHookContext
-  ): Promise<HookExecutionResult[]> {
+  async executeHooks(hooks: HookDefinition[], enhancedContext: AfterInstallContext): Promise<HookExecutionResult[]> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 

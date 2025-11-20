@@ -1,5 +1,4 @@
 export * from './BinarySetupService';
-export * from './setupCompletions';
 export * from './createBinarySymlinks';
 export * from './createToolFileSystem';
 export * from './downloadWithProgress';
@@ -9,4 +8,5 @@ export * from './getBinaryPaths';
 export * from './HookExecutor';
 export * from './log-messages';
 export * from './normalizeBinaries';
+export * from './setupCompletions';
 export * from './withErrorHandling';

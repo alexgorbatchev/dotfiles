@@ -9,7 +9,7 @@ describe('setupCompletions', () => {
   const logger = new TestLogger({ name: 'test' });
   const extractDir = '/tmp/extract';
   const shellScriptsDir = '/home/user/.dotfiles/shell';
-  
+
   const mockContext: BaseInstallContext = {
     projectConfig: {
       paths: {
@@ -120,7 +120,7 @@ describe('setupCompletions', () => {
 
     const targetPath = path.join(shellScriptsDir, 'zsh', 'completions', '_test-tool');
     expect(await fs.exists(targetPath)).toBe(false);
-    
+
     logger.expect(['WARN'], ['test', 'setupCompletions'], ['Completion file not found: /tmp/extract/missing.zsh']);
   });
 

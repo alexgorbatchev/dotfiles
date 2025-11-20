@@ -26,6 +26,7 @@ import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
+import { $ } from 'bun';
 
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
@@ -318,7 +319,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     projectConfig,
     toolInstallationRegistry,
     finalSystemInfo,
-    pluginRegistry
+    pluginRegistry,
+    $
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();

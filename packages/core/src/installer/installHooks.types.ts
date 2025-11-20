@@ -4,122 +4,66 @@ import type { BaseToolContext } from '../common/baseToolContext.types';
 import type { ExtractResult } from './archive.types';
 
 /**
- * Defines the context object passed to asynchronous TypeScript installation hooks.
- *
- * This context provides hooks with essential information about the current tool,
- * installation paths, system details, and results from previous steps (like
- * download or extraction). Hooks can use this information to perform custom
- * setup or modification tasks.
- *
- * For running shell commands within hooks, use Bun's built-in `$` shell operator.
- *
- * @public
+ * Phase 1: Installation Start
+ * We now have the full ToolConfig and a target directory.
+ * This context is available in the `before-install` hook.
  */
-export interface InstallHookContext extends BaseToolContext {
-  /**
-   * The target directory where the tool's primary binary or executable should
-   * be (or has been) installed.
-   */
+export interface InstallContext extends BaseToolContext {
+  /** The full tool configuration being processed. */
+  toolConfig: ToolConfig;
+  /** The target directory where the tool's primary binary should be installed. */
   installDir: string;
-
-  /**
-   * The path to the downloaded file or archive.
-   * This is available in `afterDownload`, `afterExtract`, and `afterInstall` hooks.
-   */
-  downloadPath?: string;
-
-  /**
-   * The path to the directory where an archive's contents were extracted.
-   * This is available in `afterExtract` and `afterInstall` hooks if archive
-   * extraction occurred.
-   */
-  extractDir?: string;
-
-  /**
-   * The result of the archive extraction process, including lists of extracted
-   * files and executables.
-   * This is available in `afterExtract` and `afterInstall` hooks if archive
-   * extraction occurred.
-   * @see {@link ExtractResult}
-   */
-  extractResult?: ExtractResult;
-
+  /** A timestamp for the current installation (e.g., `YYYY-MM-DD-HH-MM-SS`). */
+  timestamp: string;
   /**
    * Bun's shell executor for running shell commands.
    * Use the `$` tagged template literal to execute shell commands within hooks.
    * The working directory can be changed using `cd` commands or `process.chdir()`.
    */
   $: typeof import('bun').$;
-
-  // IMPORTANT: `typeof import('bun').$` is here intentionally to make the build work
-}
-
-/**
- * An enhanced context for installation hooks that includes additional utilities.
- *
- * This extends the standard {@link InstallHookContext} with conveniences like a
- * file system instance for file operations. This is the actual context type that hooks receive
- * when executed.
- *
- * @public
- */
-export interface EnhancedInstallHookContext extends InstallHookContext {
   /** An instance of the file system for performing file operations. */
   fileSystem: IFileSystem;
-  /** The path to the installed binary. Available in the `afterInstall` hook. */
-  binaryPath?: string;
-  /** The version of the installed tool. Available in the `afterInstall` hook. */
-  version?: string;
-  /** The full tool configuration being processed. Available in all hooks. */
-  toolConfig?: ToolConfig;
-  /** Bun's shell executor for running shell commands. */
-  $: typeof import('bun').$;
-
-  // IMPORTANT: `typeof import('bun').$` is here intentionally to make the build work
 }
 
 /**
- * The base installation context used internally by the installer.
- *
- * All fields are required, as they represent the minimum context available at
- * the start of the installation process. It extends {@link BaseToolContext}
- * to provide consistent path utilities and includes installation-specific fields.
- *
- * @internal
+ * Phase 2: After Download
+ * We have a file on disk.
+ * This context is available in the `after-download` hook.
  */
-export interface BaseInstallContext extends BaseToolContext {
-  /** The target directory where the tool's primary binary should be installed. */
-  installDir: string;
-  /** A timestamp for the current installation (e.g., `YYYY-MM-DD-HH-MM-SS`). */
-  timestamp: string;
-  /** The full tool configuration being processed. */
-  toolConfig: ToolConfig;
-}
-
-/**
- * The installation context available after the download phase.
- *
- * It extends {@link BaseInstallContext} with download-specific information.
- *
- * @internal
- */
-export interface PostDownloadInstallContext extends BaseInstallContext {
+export interface DownloadContext extends InstallContext {
   /** The path to the downloaded file or archive. */
   downloadPath: string;
 }
 
 /**
- * The installation context available after the extraction phase.
- *
- * It extends {@link PostDownloadInstallContext} with extraction-specific information.
- *
- * @internal
+ * Phase 3: After Extraction
+ * We have extracted files.
+ * This context is available in the `after-extract` hook.
  */
-export interface PostExtractInstallContext extends PostDownloadInstallContext {
+export interface ExtractContext extends DownloadContext {
   /** The path to the directory where the archive contents were extracted. */
   extractDir: string;
   /** The result of the archive extraction process. */
   extractResult: ExtractResult;
+}
+
+/**
+ * Phase 4: After Install
+ * Back to optionals because we don't know how we got here.
+ * This context is available in the `after-install` hook.
+ */
+export interface AfterInstallContext extends InstallContext {
+  /** The path to the downloaded file or archive. */
+  downloadPath?: string;
+  /** The path to the directory where the archive contents were extracted. */
+  extractDir?: string;
+  /** The result of the archive extraction process. */
+  extractResult?: ExtractResult;
+
+  /** The path to the installed binary. */
+  binaryPath?: string;
+  /** The version of the installed tool. */
+  version?: string;
 }
 
 /**
@@ -128,33 +72,54 @@ export interface PostExtractInstallContext extends PostDownloadInstallContext {
  * These hooks allow for custom logic to be executed at various stages of the
  * tool installation process, providing a powerful way to customize behavior.
  *
- * @param context - The {@link EnhancedInstallHookContext} providing details about
- *                  the current installation state.
- * @returns A `Promise` that resolves when the hook's operations are complete.
+ * ### Type Safety Note: Using `never` for Heterogeneous Collections
+ *
+ * When storing hooks that expect different context types (e.g., `DownloadContext` vs `ExtractContext`)
+ * in a single collection, use `AsyncInstallHook<never>`.
+ *
+ * **Why `never` instead of `unknown`?**
+ *
+ * 1. **Constraint Satisfaction**: The generic `T` must extend `InstallContext`. `unknown` does not
+ *    satisfy this constraint, but `never` (the bottom type) extends everything, including `InstallContext`.
+ *
+ * 2. **Contravariance**: Function arguments in TypeScript are contravariant.
+ *    - A function expecting a specific context (e.g., `(ctx: DownloadContext) => void`) **cannot** be assigned
+ *      to a type expecting a base context (e.g., `(ctx: InstallContext) => void`), because the caller might
+ *      pass a base context that lacks required properties like `downloadPath`.
+ *    - However, it **can** be assigned to `(ctx: never) => void`, because `never` is a subtype of `DownloadContext`.
+ *      This makes `AsyncInstallHook<never>` the supertype of all specific hook functions, acting as a
+ *      "universal bucket" for storage while maintaining type safety constraints.
  *
  * @example
  * ```typescript
- * // An example `afterExtract` hook to move a specific binary and set permissions.
- * import type { AsyncInstallHook } from '@dotfiles/core';
- * import { $ } from 'bun';
- * import path from 'path';
- *
- * const myHook: AsyncInstallHook = async (context) => {
- *   const { projectConfig, extractDir, extractResult, toolName, logger } = context;
- *   const customPath = projectConfig.paths.targetDir;
- *
- *   if (extractDir && extractResult?.executables.includes('my-binary')) {
- *     const sourcePath = path.join(extractDir, 'my-binary');
- *     const targetPath = path.join(customPath, toolName);
- *
- *     logger.info(`Moving binary from ${sourcePath} to ${targetPath}`);
- *     await $`mv ${sourcePath} ${targetPath}`;
- *     await $`chmod +x ${targetPath}`;
- *     logger.info(`Moved ${toolName} to user-configured path: ${targetPath}`);
- *   }
+ * // The specific hook we want to store
+ * const downloadHook: AsyncInstallHook<DownloadContext> = async (ctx) => {
+ *   console.log(ctx.downloadPath);
  * };
+ *
+ * // ❌ Option 1: Using the base type
+ * // Fails because the hook expects 'downloadPath', but 'InstallContext' doesn't have it.
+ * const hooks1: AsyncInstallHook<InstallContext>[] = [downloadHook];
+ *
+ * // ❌ Option 2: Using unknown
+ * // Fails because 'unknown' doesn't satisfy 'extends InstallContext'.
+ * // Also fails contravariance: (DownloadContext) => void is not assignable to (unknown) => void.
+ * const hooks2: AsyncInstallHook<unknown>[] = [downloadHook];
+ *
+ * // ✅ Option 3: Using never
+ * // Works! 'never' extends 'InstallContext'.
+ * // Contravariance allows assigning (DownloadContext) => void to (never) => void.
+ * const hooks3: AsyncInstallHook<never>[] = [downloadHook];
  * ```
  *
- * @public
+ * @param context - The context providing details about the current installation state.
+ * @returns A `Promise` that resolves when the hook's operations are complete.
  */
-export type AsyncInstallHook = (context: EnhancedInstallHookContext) => Promise<void>;
+export type AsyncInstallHook<T extends InstallContext = InstallContext> = (context: T) => Promise<void>;
+
+// Deprecated aliases for backward compatibility during refactor
+export type BaseInstallContext = InstallContext;
+export type PostDownloadInstallContext = DownloadContext;
+export type PostExtractInstallContext = ExtractContext;
+export type InstallHookContext = InstallContext;
+export type EnhancedInstallHookContext = AfterInstallContext; // Best approximation

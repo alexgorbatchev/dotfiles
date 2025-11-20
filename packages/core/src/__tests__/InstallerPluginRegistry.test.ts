@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import type { BaseInstallContext } from '@dotfiles/core';
+import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { z } from 'zod';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
@@ -38,6 +39,8 @@ const createMockContext = (): BaseInstallContext => {
     projectConfig: {} as never,
     systemInfo: {} as never,
     toolConfig: {} as never,
+    $: (() => {}) as unknown as typeof import('bun').$,
+    fileSystem: new MemFileSystem({}),
   };
   return context;
 };

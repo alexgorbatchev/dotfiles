@@ -6,7 +6,13 @@
  */
 
 import type { Architecture, BaseToolContext, Platform } from '../common';
-import type { AsyncInstallHook } from '../installer';
+import type {
+  AfterInstallContext,
+  AsyncInstallHook,
+  DownloadContext,
+  ExtractContext,
+  InstallContext,
+} from '../installer';
 import type { AlwaysScript, OnceScript } from '../shell';
 import type { InstallParamsRegistry, ToolConfig } from '../types';
 
@@ -109,7 +115,11 @@ export interface ToolConfigBuilder {
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
-  hook(event: HookEventName, handler: AsyncInstallHook): this;
+  hook(event: 'before-install', handler: AsyncInstallHook<InstallContext>): this;
+  hook(event: 'after-download', handler: AsyncInstallHook<DownloadContext>): this;
+  hook(event: 'after-extract', handler: AsyncInstallHook<ExtractContext>): this;
+  hook(event: 'after-install', handler: AsyncInstallHook<AfterInstallContext>): this;
+  hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   bash(callback: ShellConfiguratorCallback): this;
@@ -140,7 +150,11 @@ export interface PlatformConfigBuilder {
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
-  hook(event: HookEventName, handler: AsyncInstallHook): this;
+  hook(event: 'before-install', handler: AsyncInstallHook<InstallContext>): this;
+  hook(event: 'after-download', handler: AsyncInstallHook<DownloadContext>): this;
+  hook(event: 'after-extract', handler: AsyncInstallHook<ExtractContext>): this;
+  hook(event: 'after-install', handler: AsyncInstallHook<AfterInstallContext>): this;
+  hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   bash(callback: ShellConfiguratorCallback): this;

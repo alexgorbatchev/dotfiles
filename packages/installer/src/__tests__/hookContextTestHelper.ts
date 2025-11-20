@@ -1,4 +1,5 @@
-import type { InstallHookContext } from '@dotfiles/core';
+import type { InstallHookContext, ToolConfig } from '@dotfiles/core';
+import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$ } from '@dotfiles/testing-helpers';
 
@@ -95,6 +96,9 @@ export function createTestInstallHookContext(
       homeDir: '/home/user',
     },
     $: createMock$(),
+    toolConfig: {} as ToolConfig,
+    timestamp: '2025-01-01-00-00-00',
+    fileSystem: new MemFileSystem({}),
   };
 
   return {
