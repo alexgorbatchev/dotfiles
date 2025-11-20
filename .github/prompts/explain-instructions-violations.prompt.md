@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 ---
 
 You must explain why you just violated your instructions.
