@@ -1,12 +1,33 @@
 import path from 'node:path';
-import type { Builder, ProjectConfig, ToolConfig, ToolConfigContext } from '@dotfiles/core';
+import type {
+  AsyncConfigureTool,
+  AsyncConfigureToolWithReturn,
+  ProjectConfig,
+  ToolConfig,
+  ToolConfigContext,
+} from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
 import { messages } from './log-messages';
 
-type AsyncConfigureTool = Builder.AsyncConfigureTool;
-type AsyncConfigureToolWithReturn = Builder.AsyncConfigureToolWithReturn;
+interface ToolConfigModule {
+  default?: unknown;
+}
+
+function isToolConfig(config: unknown): config is ToolConfig {
+  if (typeof config !== 'object' || config === null) {
+    return false;
+  }
+
+  return 'name' in config;
+}
+
+function isConfigureToolFunction(
+  exportedValue: unknown
+): exportedValue is AsyncConfigureTool | AsyncConfigureToolWithReturn {
+  return typeof exportedValue === 'function';
+}
 
 /**
  * Validates a tool configuration against the Zod schema.
@@ -24,7 +45,11 @@ type AsyncConfigureToolWithReturn = Builder.AsyncConfigureToolWithReturn;
 function validateToolConfig(config: unknown): ToolConfig | null {
   // TODO: Add runtime schema validation using InstallerPluginRegistry.getToolConfigSchema()
   // For now, we trust the builder and TypeScript to create valid configs
-  return config as ToolConfig;
+  if (isToolConfig(config)) {
+    return config;
+  }
+
+  return null;
 }
 
 /**
@@ -116,7 +141,7 @@ function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: 
     return path.join(projectConfig.paths.binariesDir, toolName);
   };
 
-  return {
+  const context: ToolConfigContext = {
     toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
@@ -125,13 +150,15 @@ function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: 
     shellScriptsDir: projectConfig.paths.shellScriptsDir,
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
-    projectConfig: projectConfig,
+    projectConfig,
     systemInfo: {
       platform: process.platform,
       arch: process.arch,
       homeDir: projectConfig.paths.homeDir,
     },
   };
+
+  return context;
 }
 
 async function loadToolConfigFromModule(
@@ -141,19 +168,20 @@ async function loadToolConfigFromModule(
   projectConfig: ProjectConfig
 ): Promise<ToolConfig | null> {
   try {
-    const module = await import(filePath);
-    if (!module.default) {
+    const moduleExports: ToolConfigModule = await import(filePath);
+    if (!moduleExports.default) {
       logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'no default export'));
       return null;
     }
 
     let toolConfig: ToolConfig | null;
 
-    if (typeof module.default === 'function') {
-      const configureToolFn = module.default as AsyncConfigureTool | AsyncConfigureToolWithReturn;
-      toolConfig = await processFunctionExport(configureToolFn, logger, toolName, filePath, projectConfig);
+    const exportedValue: unknown = moduleExports.default;
+
+    if (isConfigureToolFunction(exportedValue)) {
+      toolConfig = await processFunctionExport(exportedValue, logger, toolName, filePath, projectConfig);
     } else {
-      toolConfig = processDirectExport(module.default, logger, filePath, toolName);
+      toolConfig = processDirectExport(exportedValue, logger, filePath, toolName);
     }
 
     // Set the config file path after building/loading
@@ -267,7 +295,8 @@ export async function loadToolConfigs(
   try {
     if (!(await fs.exists(toolConfigsDir))) {
       logger.debug(messages.fsItemNotFound('tool configs directory', toolConfigsDir));
-      return {};
+      const emptyConfigs: Record<string, ToolConfig> = {};
+      return emptyConfigs;
     }
 
     logger.trace(messages.toolConfigDirectoryScan(toolConfigsDir));
@@ -286,7 +315,8 @@ export async function loadToolConfigs(
     }
   } catch (error) {
     logger.error(messages.fsReadFailed(toolConfigsDir), error);
-    return {};
+    const emptyConfigs: Record<string, ToolConfig> = {};
+    return emptyConfigs;
   }
 
   return toolConfigs;

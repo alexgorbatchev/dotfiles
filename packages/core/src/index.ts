@@ -1,9 +1,6 @@
 // Export builder types and API
 export * from './builder';
 
-// TODO remove as Builder
-export * as Builder from './builder';
-
 // Export all schema types from organized subdirectories
 export * from './common';
 export * from './config';

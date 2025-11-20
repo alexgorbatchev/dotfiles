@@ -5,14 +5,25 @@
  * where the installer method is selected first.
  */
 
-import type { Builder } from '@dotfiles/core';
+import type {
+  AsyncConfigureTool,
+  InstallFunction,
+  InstallMethod,
+  InstallParamsRegistry,
+  ToolConfig,
+  ToolConfigBuilder as ToolConfigBuilderContract,
+  ToolConfigContext,
+} from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
 
-type AsyncConfigureTool = Builder.AsyncConfigureTool;
-type InstallFunction = Builder.InstallFunction;
-type ToolConfigBuilderContract = Builder.ToolConfigBuilder;
-type ToolConfigContext = Builder.ToolConfigContext;
+type ConfigureToolFnResult =
+  | ToolConfig
+  | ToolConfigBuilderContract
+  | undefined
+  | Promise<ToolConfig | ToolConfigBuilderContract | undefined>;
+
+type ConfigureToolFn = (install: InstallFunction, ctx: ToolConfigContext) => ConfigureToolFnResult;
 
 /**
  * Define a tool configuration with type-safe install method selection.
@@ -34,15 +45,16 @@ type ToolConfigContext = Builder.ToolConfigContext;
  *   install().bin('existing-tool')
  * );
  */
-export function defineTool<T extends (install: InstallFunction, ctx: ToolConfigContext) => unknown>(
-  fn: T
-): AsyncConfigureTool {
-  return async (install: InstallFunction, ctx: ToolConfigContext): Promise<ToolConfigBuilderContract | undefined> => {
-    const result: unknown = fn(install, ctx);
+export function defineTool(fn: ConfigureToolFn): AsyncConfigureTool {
+  return async (
+    install: InstallFunction,
+    ctx: ToolConfigContext
+  ): Promise<ToolConfig | ToolConfigBuilderContract | undefined> => {
+    const result = fn(install, ctx);
     if (result instanceof Promise) {
-      return (await result) as ToolConfigBuilderContract | undefined;
+      return result;
     }
-    return result as ToolConfigBuilderContract | undefined;
+    return result;
   };
 }
 
@@ -59,25 +71,30 @@ export function createInstallFunction(
   toolName: string,
   context?: ToolConfigContext
 ): InstallFunction {
-  // Track which builder instance to return - created on first call
   let builderInstance: ToolConfigBuilder | null = null;
 
-  const installFn = ((method?: string, params?: unknown): ToolConfigBuilderContract => {
-    // Create builder on first call
+  const getOrCreateBuilder = (): ToolConfigBuilder => {
     if (!builderInstance) {
       builderInstance = new ToolConfigBuilder(logger, toolName);
     }
 
     builderInstance.setContext(context);
+    return builderInstance;
+  };
 
-    // Set installation method and params directly on builder fields
+  function install<M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): ToolConfigBuilderContract;
+  function install(): ToolConfigBuilderContract;
+  function install(method?: InstallMethod, params?: InstallParamsRegistry[InstallMethod]): ToolConfigBuilderContract {
+    const builder = getOrCreateBuilder();
+
     if (method) {
-      builderInstance.currentInstallationMethod = method;
-      builderInstance.currentInstallParams = (params as Record<string, unknown>) || {};
+      const fallbackParams: Record<string, unknown> = {};
+      builder.currentInstallationMethod = method;
+      builder.currentInstallParams = params ?? fallbackParams;
     }
 
-    return builderInstance as ToolConfigBuilderContract;
-  }) as InstallFunction;
+    return builder;
+  }
 
-  return installFn;
+  return install;
 }

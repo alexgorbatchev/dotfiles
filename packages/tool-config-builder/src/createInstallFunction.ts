@@ -5,13 +5,9 @@
  * with the installation method and params already configured.
  */
 
-import type { Builder } from '@dotfiles/core';
+import type { InstallFunction, InstallMethod, InstallParamsRegistry, ToolConfigContext } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { ToolConfigBuilder } from './toolConfigBuilder';
-
-type InstallFunction = Builder.InstallFunction;
-type ToolConfigBuilderInterface = Builder.ToolConfigBuilder;
-type ToolConfigContext = Builder.ToolConfigContext;
 
 /**
  * Creates an InstallFunction bound to a specific logger and tool name.
@@ -39,25 +35,30 @@ export function createInstallFunction(
   toolName: string,
   context?: ToolConfigContext
 ): InstallFunction {
-  // Track builder instance - created on first call
   let builderInstance: ToolConfigBuilder | null = null;
 
-  const installFn = ((method?: string, params?: unknown): ToolConfigBuilderInterface => {
-    // Create builder on first call
+  const getOrCreateBuilder = (): ToolConfigBuilder => {
     if (!builderInstance) {
       builderInstance = new ToolConfigBuilder(logger, toolName);
     }
 
     builderInstance.setContext(context);
+    return builderInstance;
+  };
 
-    // Set installation method and params directly on builder's public fields
+  function install<M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): ToolConfigBuilder;
+  function install(): ToolConfigBuilder;
+  function install(method?: InstallMethod, params?: InstallParamsRegistry[InstallMethod]): ToolConfigBuilder {
+    const builder = getOrCreateBuilder();
+
     if (method) {
-      builderInstance.currentInstallationMethod = method;
-      builderInstance.currentInstallParams = (params as Record<string, unknown>) || {};
+      const fallbackParams: Record<string, unknown> = {};
+      builder.currentInstallationMethod = method;
+      builder.currentInstallParams = params ?? fallbackParams;
     }
 
-    return builderInstance as unknown as ToolConfigBuilderInterface;
-  }) as InstallFunction;
+    return builder;
+  }
 
-  return installFn;
+  return install;
 }
