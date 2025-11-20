@@ -21,6 +21,7 @@ import {
   getBinaryPaths,
   setupBinariesFromArchive,
   setupBinariesFromDirectDownload,
+  setupCompletions,
   messages as utilMessages,
 } from '@dotfiles/installer';
 import type {
@@ -421,6 +422,7 @@ async function processArchiveInstallation(
   }
 
   await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
+  await setupCompletions(toolFs, toolName, toolConfig, context, context.installDir, logger);
 
   if (await toolFs.exists(downloadPath)) {
     logger.debug(messages.cleaningArchive(downloadPath));

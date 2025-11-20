@@ -1,8 +1,8 @@
-import type { EnhancedInstallHookContext } from '@dotfiles/core';
-import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
+import type { EnhancedInstallHookContext } from '@dotfiles/core';
+import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 /**
@@ -52,7 +52,7 @@ describe('Hook Integration Tests', () => {
           repo: 'example/tool',
           hooks: {
             'after-install': [
-              (async (context: EnhancedInstallHookContext) => {
+              async (context: EnhancedInstallHookContext) => {
                 // Create a config directory
                 const configDir = path.join(context.installDir, 'config');
                 await context.fileSystem.ensureDir(configDir);
@@ -66,7 +66,7 @@ describe('Hook Integration Tests', () => {
                 if (context.binaryPath) {
                   await context.fileSystem.chmod(context.binaryPath, 0o755);
                 }
-              }),
+              },
             ],
           },
         },
@@ -339,9 +339,9 @@ describe('Hook Integration Tests', () => {
           repo: 'example/failing-tool',
           hooks: {
             'after-download': [
-              (async (_context) => {
+              async (_context) => {
                 throw new Error('Downloaded file validation failed: checksum mismatch');
-              }),
+              },
             ],
           },
         },

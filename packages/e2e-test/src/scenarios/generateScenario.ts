@@ -59,6 +59,12 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
         await harness.verifyOnceScript('github-release-tool', 'echo "echo from github-release-tool"');
       });
 
+      it('should include github-release-tool completion directory in fpath', async () => {
+        const scriptPath = harness.getShellScriptPath('zsh');
+        const content = await harness.readFile(scriptPath);
+        expect(content).toMatch(/fpath=\(".*\/zsh\/completions" \$fpath\)/);
+      });
+
       it('should execute github-release-tool shim and download binary on first run', async () => {
         await harness.verifyShim('github-release-tool', {
           args: ['--version'],

@@ -1,3 +1,4 @@
+// TODO rename file because there's no service in this file
 import path from 'node:path';
 import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';

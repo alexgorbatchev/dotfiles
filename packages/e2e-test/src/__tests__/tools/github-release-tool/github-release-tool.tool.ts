@@ -15,7 +15,7 @@ export default defineTool((install) =>
         .aliases({
           grt: 'github-release-tool --preview "ps -f -p {+}"',
         })
-        .completions('shell/completion.zsh')
+        .completions('./github-release-tool.completion.sh')
         .once(/* zsh */ `
           echo "echo from github-release-tool"
         `)

@@ -38,7 +38,7 @@ describe('Shell String Producers - Completion Handling', () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toContain('fpath=(');
       expect(result[0]).toContain('zsh');
-      expect(result[0]).not.toContain('completions');
+      expect(result[0]).toContain('completions');
     });
 
     test('should use custom target directory', () => {

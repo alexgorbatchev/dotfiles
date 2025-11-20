@@ -50,7 +50,7 @@ describe('ZshGenerator', () => {
 
     const result = generator.processCompletions('test-tool', completions);
 
-    expect(result).toContain('fpath=("/home/test/.dotfiles/.generated/shell-scripts/zsh" $fpath)');
+    expect(result).toContain('fpath=("/home/test/.dotfiles/.generated/shell-scripts/zsh/completions" $fpath)');
   });
 
   it('should generate complete file content', () => {

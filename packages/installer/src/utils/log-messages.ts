@@ -94,6 +94,9 @@ export const messages = {
     generatingCompletions: (count: number) => createSafeLogMessage(`install: generating ${count} completion files`),
     generatedCompletion: (filename: string, targetPath: string) =>
       createSafeLogMessage(`install: generated completion: ${filename} -> ${targetPath}`),
+    symlinking: (shellType: string, sourcePath: string, targetFile: string) =>
+      createSafeLogMessage(`Symlinking completion for ${shellType} from ${sourcePath} to ${targetFile}`),
+    notFound: (sourcePath: string) => createSafeLogMessage(`Completion file not found: ${sourcePath}`),
   } satisfies SafeLogMessageMap,
   hookExecutor: {
     executingHook: (hookName: string, timeoutMs: number) =>

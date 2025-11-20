@@ -45,5 +45,10 @@ export function installScenarios(harness: TestHarness): void {
         stdoutMatcher: (stdout) => stdout === '1.0.0',
       });
     });
+
+    it('should install completion file for github-release-tool', async () => {
+      const completionPath = path.join(harness.shellScriptsDir, 'zsh', 'completions', '_github-release-tool');
+      expect(await harness.fileExists(completionPath)).toBe(true);
+    });
   });
 }

@@ -1,4 +1,5 @@
 export * from './BinarySetupService';
+export * from './setupCompletions';
 export * from './createBinarySymlinks';
 export * from './createToolFileSystem';
 export * from './downloadWithProgress';

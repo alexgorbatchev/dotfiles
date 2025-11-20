@@ -162,7 +162,7 @@ export function generateDefaultPathModification(shellType: ShellType, targetDir:
 export function generateCompletionSetup(shellType: ShellType, completionDir: string): string[] {
   switch (shellType) {
     case 'zsh':
-      return ['typeset -U fpath', `fpath=("${completionDir}" $fpath)`];
+      return ['typeset -U fpath', `fpath=("${completionDir}/completions" $fpath)`];
     default:
       // Bash and PowerShell completions are handled per-tool
       return [];

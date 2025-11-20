@@ -251,7 +251,9 @@ describe('ShellInitGenerator', () => {
 
     expect(content).toContain(createSectionHeader('zsh', 'Shell Completions Setup'));
     expect(content).toContain('typeset -U fpath');
-    expect(content).toContain(`fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`);
+    expect(content).toContain(
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`
+    );
   });
 
   it('should not add "typeset -U fpath" if fpath is already managed in zshInit', async () => {
@@ -279,7 +281,9 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('typeset -U fpath');
     expect(content).toContain('fpath=("/my/custom/fpath" $fpath)');
     // The completion specific fpath add should still be there for its own directory
-    expect(content).toContain(`fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`);
+    expect(content).toContain(
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`
+    );
   });
 
   it('should handle mixed configurations for multiple tools', async () => {
@@ -340,7 +344,9 @@ describe('ShellInitGenerator', () => {
 
     // Completions
     expect(content).toContain('typeset -U fpath');
-    expect(content).toContain(`fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh'))} $fpath)`); // For alpha
+    expect(content).toContain(
+      `fpath=(${JSON.stringify(path.join(testDirs.paths.shellScriptsDir, 'zsh', 'completions'))} $fpath)`
+    ); // For alpha
     expect(content).toContain(`fpath=(${JSON.stringify('/usr/local/share/zsh/site-functions')} $fpath)`); // For gamma
   });
 
