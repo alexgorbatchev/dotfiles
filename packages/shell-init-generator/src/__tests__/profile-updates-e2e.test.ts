@@ -5,9 +5,9 @@ import type { ShellType, ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { dedentString } from '@dotfiles/utils';
-import type { GenerateShellInitOptions } from '../IShellInitGenerator';
+import type { IGenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('Profile Updates E2E Tests', () => {
@@ -15,7 +15,7 @@ describe('Profile Updates E2E Tests', () => {
   let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
   let configFilePath: string;
 
   beforeEach(async () => {
@@ -157,7 +157,7 @@ describe('Profile Updates E2E Tests', () => {
       }
 
       // Execute: Generate shell scripts with profile updates for all shell types
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh', 'bash', 'powershell'] as ShellType[],
         updateProfileFiles: true,
       };
@@ -277,7 +277,7 @@ describe('Profile Updates E2E Tests', () => {
       await mockFileSystem.ensureDir(path.dirname(bashProfile));
       await mockFileSystem.writeFile(bashProfile, `# Bash config\nsource "${bashScriptPath}"\n`);
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh', 'bash', 'powershell'],
         updateProfileFiles: true,
       };
@@ -350,7 +350,7 @@ describe('Profile Updates E2E Tests', () => {
       // Use custom output path
       const customOutputPath = '/custom/location/my-shell-init.zsh';
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh'],
         outputPath: customOutputPath,
         updateProfileFiles: true,
@@ -488,7 +488,7 @@ describe('Profile Updates E2E Tests', () => {
       `)
       );
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh', 'bash'],
         updateProfileFiles: true,
       };

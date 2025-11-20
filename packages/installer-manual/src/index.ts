@@ -8,11 +8,11 @@ import type { ManualInstallParams, ManualToolConfig } from './schemas';
 import type { ManualInstallResult } from './types';
 
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     manual: ManualInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     manual: ManualToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'manual', ManualInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'manual', ManualInstallResult> {}
 }

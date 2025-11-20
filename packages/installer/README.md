@@ -766,12 +766,12 @@ import type {
   MyCustomInstallParams,
 } from './tool-config';
 
-export interface PlatformConfigBuilder {
+export interface IPlatformConfigBuilder {
   // ... other methods
   install(method: 'my-custom', params: MyCustomInstallParams): this;
 }
 
-export interface ToolConfigBuilder {
+export interface IToolConfigBuilder {
   // ... other methods  
   install(method: 'my-custom', params: MyCustomInstallParams): this;
 }
@@ -834,7 +834,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { BaseInstallContext, MyCustomToolConfig } from '@dotfiles/schemas';
 import type { HookExecutor } from '../../utils';
-import type { InstallOptions, InstallResult } from '../../types';
+import type { IInstallOptions, InstallResult } from '../../types';
 import { createToolFileSystem, downloadWithProgress, getBinaryPaths, withInstallErrorHandling } from '../../utils';
 import { messages } from './log-messages';
 
@@ -842,7 +842,7 @@ export async function installFromMyCustom(
   toolName: string,
   toolConfig: MyCustomToolConfig,
   context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   fileSystem: IFileSystem,
   downloader: IDownloader,
   archiveExtractor: IArchiveExtractor,
@@ -968,7 +968,7 @@ import { installFromMyCustom } from './installers';
 
 export class Installer implements IInstaller {
   // Add to the switch statement in the install method
-  async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
+  async install(toolName: string, toolConfig: ToolConfig, options?: IInstallOptions): Promise<InstallResult> {
     // ... existing code ...
     
     switch (toolConfig.installationMethod) {
@@ -985,7 +985,7 @@ export class Installer implements IInstaller {
     toolName: string,
     toolConfig: MyCustomToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult> {
     return installFromMyCustom(
       toolName,
@@ -1175,7 +1175,7 @@ export async function installFromMyCustomPipeline(
   toolName: string,
   toolConfig: MyCustomToolConfig,
   context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   parentLogger: TsLogger
 ): Promise<InstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromMyCustomPipeline' });

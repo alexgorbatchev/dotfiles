@@ -1,4 +1,4 @@
-import type { BinaryConfig, ToolConfig } from '@dotfiles/core';
+import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { getBuiltPackageName } from './getBuiltPackageName';
 
@@ -28,7 +28,7 @@ export function extractBinaryNames(toolConfigs: Record<string, ToolConfig>): Set
         if (typeof binary === 'string') {
           binaryNames.add(binary);
         } else {
-          const binaryConfig: BinaryConfig = binary;
+          const binaryConfig: IBinaryConfig = binary;
           binaryNames.add(binaryConfig.name);
         }
       }
@@ -64,8 +64,8 @@ export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>
   const registryEntries: string = sortedNames.map((name: string): string => `    '${name}': never;`).join('\n');
   const hasEntries: boolean = registryEntries.length > 0;
   const registryBody: string = hasEntries
-    ? `  interface KnownBinNameRegistry {\n${registryEntries}\n  }`
-    : '  interface KnownBinNameRegistry {}';
+    ? `  interface IKnownBinNameRegistry {\n${registryEntries}\n  }`
+    : '  interface IKnownBinNameRegistry {}';
   const moduleBlock: string = `declare module '${getBuiltPackageName()}' {\n${registryBody}\n}`;
   const contentParts: string[] = [TOOL_TYPES_HEADER, moduleBlock, 'export {};', ''];
   const content: string = contentParts.join('\n\n');

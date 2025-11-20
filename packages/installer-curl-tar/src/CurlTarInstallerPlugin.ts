@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { BaseInstallContext, InstallerPlugin, InstallOptions, InstallResult } from '@dotfiles/core';
+import type { BaseInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -11,7 +11,7 @@ import {
   curlTarInstallParamsSchema,
   curlTarToolConfigSchema,
 } from './schemas';
-import type { CurlTarInstallMetadata } from './types';
+import type { ICurlTarInstallMetadata } from './types';
 
 const PLUGIN_VERSION = '1.0.0';
 
@@ -28,7 +28,7 @@ const PLUGIN_VERSION = '1.0.0';
  * are typically static.
  */
 export class CurlTarInstallerPlugin
-  implements InstallerPlugin<'curl-tar', CurlTarInstallParams, CurlTarToolConfig, CurlTarInstallMetadata>
+  implements IInstallerPlugin<'curl-tar', CurlTarInstallParams, CurlTarToolConfig, ICurlTarInstallMetadata>
 {
   readonly method = 'curl-tar';
   readonly displayName = 'Curl Tar Installer';
@@ -66,8 +66,8 @@ export class CurlTarInstallerPlugin
     toolName: string,
     toolConfig: CurlTarToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
-  ): Promise<InstallResult<CurlTarInstallMetadata>> {
+    options?: IInstallOptions
+  ): Promise<InstallResult<ICurlTarInstallMetadata>> {
     const result = await installFromCurlTar(
       toolName,
       toolConfig,
@@ -87,7 +87,7 @@ export class CurlTarInstallerPlugin
       };
     }
 
-    const installResult: InstallResult<CurlTarInstallMetadata> = {
+    const installResult: InstallResult<ICurlTarInstallMetadata> = {
       success: true,
       binaryPaths: result.binaryPaths,
       version: result.version,

@@ -8,7 +8,7 @@ import { architectureToString, platformToString } from './platformUtils';
 /**
  * Options for configuring the TestHarness instance.
  */
-export interface TestHarnessOptions {
+export interface ITestHarnessOptions {
   /**
    * The directory where the test files are located (typically import.meta.dir)
    */
@@ -38,7 +38,7 @@ export interface TestHarnessOptions {
 /**
  * Result of executing a CLI command through the test harness.
  */
-export interface CommandResult {
+export interface ICommandResult {
   exitCode: number;
   stdout: string;
   stderr: string;
@@ -89,7 +89,7 @@ export class TestHarness {
    *
    * @param options - Configuration options for the test harness.
    */
-  constructor(options: TestHarnessOptions) {
+  constructor(options: ITestHarnessOptions) {
     this.testDir = options.testDir;
     this.configPath = options.configPath ?? 'config.yaml';
     this.cleanBeforeRun = options.cleanBeforeRun ?? false;
@@ -123,7 +123,7 @@ export class TestHarness {
    * @param args - Array of command-line arguments to pass to the dotfiles CLI.
    * @returns A Promise that resolves to the command result including exit code, stdout, and stderr.
    */
-  async runCommand(args: string[]): Promise<CommandResult> {
+  async runCommand(args: string[]): Promise<ICommandResult> {
     if (this.cleanBeforeRun) {
       await this.clean();
     }
@@ -138,7 +138,7 @@ export class TestHarness {
       .quiet()
       .nothrow();
 
-    const commandResult: CommandResult = {
+    const commandResult: ICommandResult = {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
       stderr: result.stderr.toString(),
@@ -152,7 +152,7 @@ export class TestHarness {
    * @param additionalArgs - Optional additional command-line arguments.
    * @returns A Promise that resolves to the command result.
    */
-  async generate(additionalArgs: string[] = []): Promise<CommandResult> {
+  async generate(additionalArgs: string[] = []): Promise<ICommandResult> {
     return this.runCommand(['generate', '--config', this.configPath, ...additionalArgs]);
   }
 
@@ -163,7 +163,7 @@ export class TestHarness {
    * @param additionalArgs - Optional additional command-line arguments.
    * @returns A Promise that resolves to the command result.
    */
-  async install(tools: string[] = [], additionalArgs: string[] = []): Promise<CommandResult> {
+  async install(tools: string[] = [], additionalArgs: string[] = []): Promise<ICommandResult> {
     return this.runCommand(['install', '--config', this.configPath, ...tools, ...additionalArgs]);
   }
 
@@ -174,7 +174,7 @@ export class TestHarness {
    * @param additionalArgs - Optional additional command-line arguments.
    * @returns A Promise that resolves to the command result.
    */
-  async update(toolName: string, additionalArgs: string[] = []): Promise<CommandResult> {
+  async update(toolName: string, additionalArgs: string[] = []): Promise<ICommandResult> {
     return this.runCommand(['update', '--config', this.configPath, toolName, ...additionalArgs]);
   }
 
@@ -184,7 +184,7 @@ export class TestHarness {
    * @param additionalArgs - Optional additional command-line arguments.
    * @returns A Promise that resolves to the command result.
    */
-  async detectConflicts(additionalArgs: string[] = []): Promise<CommandResult> {
+  async detectConflicts(additionalArgs: string[] = []): Promise<ICommandResult> {
     return this.runCommand(['detect-conflicts', '--config', this.configPath, ...additionalArgs]);
   }
 
@@ -280,7 +280,7 @@ export class TestHarness {
       const args: string[] = options.args ?? [];
       const result = await $`NODE_ENV=production ${shimPath} ${args}`.cwd(this.testDir).quiet().nothrow();
 
-      const commandResult: CommandResult = {
+      const commandResult: ICommandResult = {
         exitCode: result.exitCode,
         stdout: result.stdout.toString(),
         stderr: result.stderr.toString(),

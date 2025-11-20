@@ -1,15 +1,15 @@
 import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
-import type { FileOperation, FileOperationFilter, FileState, IFileRegistry } from './IFileRegistry';
+import type { IFileOperation, IFileOperationFilter, IFileRegistry, IFileState } from './IFileRegistry';
 import { messages } from './log-messages';
 
-interface DatabaseRow {
+interface IDatabaseRow {
   id: number;
   tool_name: string;
-  operation_type: FileOperation['operationType'];
+  operation_type: IFileOperation['operationType'];
   file_path: string;
   target_path: string | null;
-  file_type: FileOperation['fileType'];
+  file_type: IFileOperation['fileType'];
   metadata: string | null;
   size_bytes: number | null;
   permissions: string | null;
@@ -46,7 +46,7 @@ export class FileRegistry implements IFileRegistry {
     this.initializeSchema();
   }
 
-  async recordOperation(operation: Omit<FileOperation, 'id' | 'createdAt'>): Promise<void> {
+  async recordOperation(operation: Omit<IFileOperation, 'id' | 'createdAt'>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'recordOperation' });
 
     const stmt = this.db.prepare(`
@@ -75,7 +75,7 @@ export class FileRegistry implements IFileRegistry {
     logger.debug(messages.operationRecorded(), operation.operationType, operation.toolName, operation.filePath);
   }
 
-  async getOperations(filter: FileOperationFilter = {}): Promise<FileOperation[]> {
+  async getOperations(filter: IFileOperationFilter = {}): Promise<IFileOperation[]> {
     const logger = this.logger.getSubLogger({ name: 'getOperations' });
 
     let sql = 'SELECT * FROM file_operations WHERE 1=1';
@@ -119,7 +119,7 @@ export class FileRegistry implements IFileRegistry {
     sql += ' ORDER BY created_at DESC, id DESC';
 
     const stmt = this.db.prepare(sql);
-    const rows = params.length > 0 ? (stmt.all(...params) as DatabaseRow[]) : (stmt.all() as DatabaseRow[]);
+    const rows = params.length > 0 ? (stmt.all(...params) as IDatabaseRow[]) : (stmt.all() as IDatabaseRow[]);
 
     logger.debug(messages.operationsRetrieved(), rows.length, filter);
 
@@ -138,12 +138,12 @@ export class FileRegistry implements IFileRegistry {
     }));
   }
 
-  async getFileStatesForTool(toolName: string): Promise<FileState[]> {
+  async getFileStatesForTool(toolName: string): Promise<IFileState[]> {
     const logger = this.logger.getSubLogger({ name: 'getFileStatesForTool' });
 
     // Get all operations for this tool, ordered reverse chronologically (newest first)
     const operations = await this.getOperations({ toolName });
-    const fileStates = new Map<string, FileState>();
+    const fileStates = new Map<string, IFileState>();
 
     // Process operations chronologically (oldest first) - create a copy to reverse
     for (const op of [...operations].reverse()) {
@@ -174,7 +174,7 @@ export class FileRegistry implements IFileRegistry {
     return activeStates;
   }
 
-  async getFileState(filePath: string): Promise<FileState | null> {
+  async getFileState(filePath: string): Promise<IFileState | null> {
     const logger = this.logger.getSubLogger({ name: 'getFileState' });
 
     // Get all operations for this file path, ordered reverse chronologically (newest first)
@@ -186,7 +186,7 @@ export class FileRegistry implements IFileRegistry {
     }
 
     // Process operations chronologically (oldest first) to get final state
-    let state: FileState | null = null;
+    let state: IFileState | null = null;
 
     for (const op of [...operations].reverse()) {
       if (op.operationType === 'rm') {

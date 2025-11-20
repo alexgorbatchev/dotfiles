@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
@@ -37,12 +37,12 @@ import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
-import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
+import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
 export * from './schema-exports';
 
-type SetupServicesOptions = GlobalProgramOptions & {
+type SetupServicesOptions = IGlobalProgramOptions & {
   cwd: string;
   env: NodeJS.ProcessEnv;
 };
@@ -59,8 +59,8 @@ function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
   return fs;
 }
 
-function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): SystemInfo {
-  const systemInfo: SystemInfo = {
+function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): ISystemInfo {
+  const systemInfo: ISystemInfo = {
     platform: options.platform || process.platform,
     arch: options.arch || process.arch,
     homeDir: os.homedir(),
@@ -81,7 +81,7 @@ async function copyToolConfigFile(
   fs: IFileSystem,
   nodeFs: NodeFileSystem,
   filePath: string,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): Promise<void> {
   try {
     const content = await nodeFs.readFile(filePath, 'utf8');
@@ -97,7 +97,7 @@ async function loadToolConfigsForDryRun(
   logger: TsLogger,
   fs: IFileSystem,
   projectConfig: ProjectConfig,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): Promise<void> {
   logger.trace(messages.toolConfigsForDryRun());
   const realToolConfigsDir = projectConfig.paths.toolConfigsDir;
@@ -148,7 +148,7 @@ function createTrackedFileSystems(
   parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): {
   shimTrackedFs: TrackedFileSystem;
   shellInitTrackedFs: TrackedFileSystem;
@@ -199,7 +199,7 @@ function createTrackedFileSystems(
   return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs };
 }
 
-export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<Services> {
+export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<IServices> {
   const logger = parentLogger.getSubLogger({ name: 'setupServices' });
   const { dryRun, env, config } = options;
 
@@ -216,7 +216,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const projectConfig = await loadConfig(logger, configFs, userConfigPath, systemInfo, env);
 
   // Create final systemInfo with correct homeDir from projectConfig
-  const finalSystemInfo: SystemInfo = {
+  const finalSystemInfo: ISystemInfo = {
     platform: systemInfo.platform,
     arch: systemInfo.arch,
     homeDir: projectConfig.paths.homeDir,
@@ -362,8 +362,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
 export function registerAllCommands(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ) {
   const logger = parentLogger.getSubLogger({ name: 'registerAllCommands' });
   registerInstallCommand(logger, program, servicesFactory);
@@ -381,7 +381,7 @@ export async function main(argv: string[]) {
 
   // Parse options first to get quiet/verbose flags
   program.parseOptions(argv);
-  const options: GlobalProgramOptions = program.opts();
+  const options: IGlobalProgramOptions = program.opts();
 
   // Create logger with appropriate level based on CLI flags
   const logLevel = getLogLevelFromFlags(options.log, options.quiet, options.verbose);

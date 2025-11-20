@@ -1,18 +1,18 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
-import type { InstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
+import type { IInstallerPlugin, UpdateCheckResult } from '@dotfiles/core';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Brew Updates', () => {
-  let program: GlobalProgram;
-  let mockPlugin: Partial<InstallerPlugin>;
+  let program: IGlobalProgram;
+  let mockPlugin: Partial<IInstallerPlugin>;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
 
@@ -58,7 +58,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
       services: {
         configService: mockConfigService,
         pluginRegistry: {
-          get: mock((method: string) => (method === 'brew' ? (mockPlugin as InstallerPlugin) : undefined)),
+          get: mock((method: string) => (method === 'brew' ? (mockPlugin as IInstallerPlugin) : undefined)),
           register: mock(() => Promise.resolve()),
           getAll: mock(() => []),
           // biome-ignore lint/suspicious/noExplicitAny: Test mock bypasses strict typing

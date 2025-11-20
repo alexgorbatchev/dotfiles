@@ -4,11 +4,11 @@ GitHub Release installer plugin for the dotfiles tool installer system.
 
 ## Purpose
 
-This package provides a plugin implementation for installing tools from GitHub releases. It implements the `InstallerPlugin` interface from `@dotfiles/installer-plugin-system` and wraps the existing GitHub release installation logic.
+This package provides a plugin implementation for installing tools from GitHub releases. It implements the `IInstallerPlugin` interface from `@dotfiles/installer-plugin-system` and wraps the existing GitHub release installation logic.
 
 ## Architecture
 
-- **GitHubReleaseInstallerPlugin**: Plugin class that implements `InstallerPlugin` interface
+- **GitHubReleaseInstallerPlugin**: Plugin class that implements `IInstallerPlugin` interface
 - **installFromGitHubRelease**: Core installation logic (existing implementation)
 - Schemas defined using Zod for validation
 - Dependencies injected through constructor

@@ -10,11 +10,11 @@ import type { GithubReleaseInstallParams, GithubReleaseToolConfig } from './sche
 import type { GitHubReleaseInstallResult } from './types';
 
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'github-release': GithubReleaseInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'github-release': GithubReleaseToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
 }

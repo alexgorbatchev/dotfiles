@@ -105,7 +105,7 @@ Automatically removes the downloaded tarball after successful extraction to cons
 
 ## Plugin Interface
 
-Implements `InstallerPlugin` with:
+Implements `IInstallerPlugin` with:
 
 - **Method**: `curl-tar`
 - **Schemas**: `curlTarInstallParamsSchema`, `curlTarToolConfigSchema`
@@ -119,13 +119,13 @@ This package extends the core type system via module augmentation:
 
 ```typescript
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'curl-tar': CurlTarInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'curl-tar': CurlTarToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
 }
 ```
 

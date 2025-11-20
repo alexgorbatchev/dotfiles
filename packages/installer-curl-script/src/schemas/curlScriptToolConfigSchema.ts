@@ -15,5 +15,13 @@ export const curlScriptToolConfigSchema = baseToolConfigWithPlatformsSchema.exte
   binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).min(1),
 });
 
+type PrettyTypeDeep<TValue> = TValue extends (...arguments_: unknown[]) => unknown
+  ? TValue
+  : TValue extends readonly unknown[]
+    ? { [TIndex in keyof TValue]: PrettyTypeDeep<TValue[TIndex]> }
+    : TValue extends Record<PropertyKey, unknown>
+      ? { [TKey in keyof TValue]: PrettyTypeDeep<TValue[TKey]> }
+      : TValue;
+
 /** Resolved tool configuration for the 'curl-script' installation method. */
-export type CurlScriptToolConfig = InferToolConfigWithPlatforms<typeof curlScriptToolConfigSchema>;
+export type CurlScriptToolConfig = PrettyTypeDeep<InferToolConfigWithPlatforms<typeof curlScriptToolConfigSchema>>;

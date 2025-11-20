@@ -100,7 +100,7 @@ Configures PowerShell-specific properties.
 
 **ShellConfig Interface:**
 ```typescript
-interface ShellConfig {
+interface IShellConfig {
   completions?: ShellCompletionConfig;
   shellInit?: ShellScript[];
   aliases?: Record<string, string>;
@@ -199,7 +199,7 @@ c.hook('after-install', async (context) => {
 
 #### GitHubReleaseParams
 ```typescript
-interface GitHubReleaseParams {
+interface IGitHubReleaseParams {
   repo: string;
   assetPattern?: string;
   binaryPath?: string;
@@ -214,7 +214,7 @@ interface GitHubReleaseParams {
 ```typescript
 type AssetSelector = (context: AssetSelectionContext) => GitHubReleaseAsset | undefined;
 
-interface AssetSelectionContext extends BaseToolContext {
+interface IAssetSelectionContext extends BaseToolContext {
   /** Available release assets to choose from */
   assets: GitHubReleaseAsset[];
   /** System information for platform/architecture matching */
@@ -260,7 +260,7 @@ assetSelector: (context) => {
 
 #### BrewParams
 ```typescript
-interface BrewParams {
+interface IBrewParams {
   formula?: string;
   cask?: boolean;
   tap?: string | string[];
@@ -269,7 +269,7 @@ interface BrewParams {
 
 #### CargoInstallParams
 ```typescript
-interface CargoInstallParams {
+interface ICargoInstallParams {
   crateName: string;
   binarySource?: 'cargo-quickinstall' | 'github-releases';
   githubRepo?: string;
@@ -283,7 +283,7 @@ interface CargoInstallParams {
 
 #### CurlScriptParams
 ```typescript
-interface CurlScriptParams {
+interface ICurlScriptParams {
   url: string;
   shell: 'bash' | 'sh';
   env?: Record<string, string>;
@@ -292,7 +292,7 @@ interface CurlScriptParams {
 
 #### ManualParams
 ```typescript
-interface ManualParams {
+interface IManualParams {
   binaryPath: string;
 }
 ```
@@ -300,7 +300,7 @@ interface ManualParams {
 ### Hook Context
 
 ```typescript
-interface HookContext {
+interface IHookContext {
   toolName: string;
   installDir: string;
   downloadPath?: string;

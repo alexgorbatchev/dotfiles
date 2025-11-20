@@ -9,7 +9,7 @@ import { MemFileSystem } from '../MemFileSystem';
  * Each property other than `initialVolumeJson` is an optional mock implementation
  * for the corresponding IFileSystem method.
  */
-export interface MemFileSystemOptions {
+export interface IMemFileSystemOptions {
   initialVolumeJson?: DirectoryJSON;
   initialSymlinks?: Record<string, string>;
 
@@ -35,7 +35,7 @@ export interface MemFileSystemOptions {
  * Type for the collection of spies/mocks on the file system methods.
  */
 export type FileSystemSpies = {
-  [K in keyof Omit<Required<MemFileSystemOptions>, 'initialVolumeJson' | 'initialSymlinks'>]: Mock<IFileSystem[K]>;
+  [K in keyof Omit<Required<IMemFileSystemOptions>, 'initialVolumeJson' | 'initialSymlinks'>]: Mock<IFileSystem[K]>;
 };
 
 /**
@@ -48,7 +48,7 @@ export type MockedFileSystem = IFileSystem & { asIFileSystem: IFileSystem } & {
 /**
  * Defines the structure of the object returned by `createMemFileSystem`.
  */
-export interface MemFileSystemReturn {
+export interface IMemFileSystemReturn {
   /** The fully assembled mock/spy IFileSystem instance. */
   fs: MockedFileSystem;
 
@@ -86,7 +86,7 @@ export interface MemFileSystemReturn {
  * @param options... - Optional mock implementations for any `IFileSystem` method.
  * @returns An object containing the `fs` instance and the `spies`.
  */
-export async function createMemFileSystem(options: MemFileSystemOptions = {}): Promise<MemFileSystemReturn> {
+export async function createMemFileSystem(options: IMemFileSystemOptions = {}): Promise<IMemFileSystemReturn> {
   const { initialVolumeJson, initialSymlinks, ...mocks } = options;
   const memFs = new MemFileSystem(initialVolumeJson);
 

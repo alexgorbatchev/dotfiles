@@ -103,7 +103,7 @@ No download, extraction, or automated setup is performed.
 
 ## Plugin Interface
 
-Implements `InstallerPlugin` with:
+Implements `IInstallerPlugin` with:
 
 - **Method**: `manual`
 - **Schemas**: `manualInstallParamsSchema`, `manualToolConfigSchema`
@@ -117,13 +117,13 @@ This package extends the core type system via module augmentation:
 
 ```typescript
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     manual: ManualInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     manual: ManualToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'manual', ManualInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'manual', ManualInstallResult> {}
 }
 ```
 

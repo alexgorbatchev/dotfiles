@@ -5,7 +5,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { dedentString, getCliBinPath } from '@dotfiles/utils';
-import type { GenerateShimsOptions, IShimGenerator } from './IShimGenerator';
+import type { IGenerateShimsOptions, IShimGenerator } from './IShimGenerator';
 import { messages } from './log-messages';
 
 /**
@@ -42,7 +42,7 @@ export class ShimGenerator implements IShimGenerator {
   /**
    * @inheritdoc IShimGenerator.generate
    */
-  async generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]> {
+  async generate(toolConfigs: Record<string, ToolConfig>, options?: IGenerateShimsOptions): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const generatedShimPaths: string[] = [];
 
@@ -63,7 +63,7 @@ export class ShimGenerator implements IShimGenerator {
   /**
    * @inheritdoc IShimGenerator.generateForTool
    */
-  async generateForTool(toolName: string, toolConfig: ToolConfig, options?: GenerateShimsOptions): Promise<string[]> {
+  async generateForTool(toolName: string, toolConfig: ToolConfig, options?: IGenerateShimsOptions): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'generateForTool' });
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;

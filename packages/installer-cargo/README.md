@@ -139,7 +139,7 @@ The plugin queries crates.io for the latest version to support update detection.
 
 ## Plugin Interface
 
-Implements `InstallerPlugin` with:
+Implements `IInstallerPlugin` with:
 
 - **Method**: `cargo`
 - **Schemas**: `cargoInstallParamsSchema`, `cargoToolConfigSchema`
@@ -153,13 +153,13 @@ This package extends the core type system via module augmentation:
 
 ```typescript
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     cargo: CargoInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     cargo: CargoToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'cargo', CargoInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'cargo', CargoInstallResult> {}
 }
 ```
 

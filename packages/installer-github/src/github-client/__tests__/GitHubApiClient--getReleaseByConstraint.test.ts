@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { GitHubRelease } from '@dotfiles/core';
+import type { IGitHubRelease } from '@dotfiles/core';
 import { NotFoundError } from '@dotfiles/downloader';
 import {
   createGitHubConfigOverride,
-  type MockSetup,
+  type IMockSetup,
   setupMockGitHubApiClient,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function
-const createMockRelease = (id: number, tagName: string, prerelease = false): GitHubRelease => ({
+const createMockRelease = (id: number, tagName: string, prerelease = false): IGitHubRelease => ({
   id,
   tag_name: tagName,
   name: `Release ${tagName}`,
@@ -22,7 +22,7 @@ const createMockRelease = (id: number, tagName: string, prerelease = false): Git
 });
 
 describe('GitHubApiClient', () => {
-  let mocks: MockSetup;
+  let mocks: IMockSetup;
 
   beforeEach(async () => {
     mock.restore();
@@ -52,7 +52,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should return the latest satisfying release for a valid semver constraint', async () => {
-      const releasesList: GitHubRelease[] = [
+      const releasesList: IGitHubRelease[] = [
         createMockRelease(1, 'v1.0.0'),
         createMockRelease(2, 'v1.1.0'),
         createMockRelease(3, 'v1.0.1-beta'),
@@ -70,7 +70,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should include prereleases when matching if constraint allows', async () => {
-      const releasesList: GitHubRelease[] = [
+      const releasesList: IGitHubRelease[] = [
         createMockRelease(1, 'v1.0.0'),
         createMockRelease(2, 'v1.1.0-beta.1', true),
         createMockRelease(3, 'v1.1.0-alpha', true),
@@ -85,7 +85,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should return null if no releases satisfy the constraint', async () => {
-      const releasesList: GitHubRelease[] = [createMockRelease(1, 'v1.0.0'), createMockRelease(2, 'v0.9.0')];
+      const releasesList: IGitHubRelease[] = [createMockRelease(1, 'v1.0.0'), createMockRelease(2, 'v0.9.0')];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(releasesList)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -101,7 +101,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should handle tags that are not valid semver by ignoring them', async () => {
-      const releasesList: GitHubRelease[] = [
+      const releasesList: IGitHubRelease[] = [
         createMockRelease(1, 'not-a-version'),
         createMockRelease(2, 'v1.0.0'),
         createMockRelease(3, 'my-feature-branch'),
@@ -116,13 +116,13 @@ describe('GitHubApiClient', () => {
 
     it('should correctly identify the latest satisfying release from multiple pages', async () => {
       const perPage = 30; // Align with GitHubApiClient's internal default
-      const page1Releases: GitHubRelease[] = Array.from({ length: perPage }, (_, i) =>
+      const page1Releases: IGitHubRelease[] = Array.from({ length: perPage }, (_, i) =>
         createMockRelease(i + 1, `v0.${i + 1}.0`)
       );
       // Ensure IDs are unique across pages for clarity, starting page 2 IDs after page 1
       const targetReleaseId = perPage + 2;
       const targetRelease = createMockRelease(targetReleaseId, 'v1.2.4', false);
-      const page2Releases: GitHubRelease[] = [
+      const page2Releases: IGitHubRelease[] = [
         createMockRelease(perPage + 1, 'v1.1.0'),
         targetRelease,
         createMockRelease(perPage + 3, 'v1.2.3'),

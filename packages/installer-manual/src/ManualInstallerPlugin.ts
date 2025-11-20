@@ -1,4 +1,4 @@
-import type { BaseInstallContext, InstallerPlugin, InstallOptions, InstallResult } from '@dotfiles/core';
+import type { BaseInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { installManually } from './installManually';
@@ -25,7 +25,7 @@ type ManualPluginMetadata = {
  * support version checking or automatic updates.
  */
 export class ManualInstallerPlugin
-  implements InstallerPlugin<'manual', ManualInstallParams, ManualToolConfig, ManualPluginMetadata>
+  implements IInstallerPlugin<'manual', ManualInstallParams, ManualToolConfig, ManualPluginMetadata>
 {
   readonly method = 'manual';
   readonly displayName = 'Manual Installer';
@@ -57,7 +57,7 @@ export class ManualInstallerPlugin
     toolName: string,
     toolConfig: ManualToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult<ManualPluginMetadata>> {
     const result = await installManually(toolName, toolConfig, context, options, this.fs, this.logger);
 

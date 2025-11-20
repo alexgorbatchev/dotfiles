@@ -4,10 +4,10 @@ import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { z } from 'zod';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
-import type { InstallerPlugin, InstallOptions, InstallResult, ValidationResult } from '../types';
+import type { IInstallerPlugin, IInstallOptions, InstallResult, IValidationResult } from '../types';
 
-const createMockPlugin = (method: string, options: Partial<InstallerPlugin> = {}): InstallerPlugin => {
-  const plugin: InstallerPlugin = {
+const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {}): IInstallerPlugin => {
+  const plugin: IInstallerPlugin = {
     method,
     displayName: `${method} Plugin`,
     version: '1.0.0',
@@ -305,7 +305,7 @@ describe('InstallerPluginRegistry', () => {
     test('validates plugin before installation if validate method provided', async () => {
       let validateCalled = false;
       const plugin = createMockPlugin('test-method', {
-        async validate(): Promise<ValidationResult> {
+        async validate(): Promise<IValidationResult> {
           validateCalled = true;
           return { valid: true };
         },
@@ -321,7 +321,7 @@ describe('InstallerPluginRegistry', () => {
 
     test('returns error if validation fails', async () => {
       const plugin = createMockPlugin('test-method', {
-        async validate(): Promise<ValidationResult> {
+        async validate(): Promise<IValidationResult> {
           return {
             valid: false,
             errors: ['Validation error 1', 'Validation error 2'],
@@ -342,7 +342,7 @@ describe('InstallerPluginRegistry', () => {
 
     test('logs validation warnings', async () => {
       const plugin = createMockPlugin('test-method', {
-        async validate(): Promise<ValidationResult> {
+        async validate(): Promise<IValidationResult> {
           return {
             valid: true,
             warnings: ['Warning 1', 'Warning 2'],
@@ -366,7 +366,7 @@ describe('InstallerPluginRegistry', () => {
       let validateCallCount = 0;
       const plugin = createMockPlugin('test-method', {
         staticValidation: true,
-        async validate(): Promise<ValidationResult> {
+        async validate(): Promise<IValidationResult> {
           validateCallCount++;
           return { valid: true };
         },
@@ -386,7 +386,7 @@ describe('InstallerPluginRegistry', () => {
       let validateCallCount = 0;
       const plugin = createMockPlugin('test-method', {
         staticValidation: false,
-        async validate(): Promise<ValidationResult> {
+        async validate(): Promise<IValidationResult> {
           validateCallCount++;
           return { valid: true };
         },
@@ -403,7 +403,7 @@ describe('InstallerPluginRegistry', () => {
     });
 
     test('passes all parameters to plugin install', async () => {
-      const options: InstallOptions = { force: true };
+      const options: IInstallOptions = { force: true };
       let receivedParams: unknown[] = [];
 
       const plugin = createMockPlugin('test-method', {
@@ -445,7 +445,7 @@ describe('InstallerPluginRegistry', () => {
       let validateCallCount = 0;
       const plugin = createMockPlugin('test-method', {
         staticValidation: true,
-        async validate(): Promise<ValidationResult> {
+        async validate(): Promise<IValidationResult> {
           validateCallCount++;
           return { valid: true };
         },

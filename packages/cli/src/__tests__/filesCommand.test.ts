@@ -2,13 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
 import { createProgram } from '../createProgram';
 import { registerFilesCommand } from '../filesCommand';
-import type { Services } from '../types';
+import type { IServices } from '../types';
 
 describe('filesCommand', () => {
   it('should register files command successfully', () => {
     const logger = new TestLogger();
     const program = createProgram();
-    const servicesFactory = () => Promise.resolve({} as Services);
+    const servicesFactory = () => Promise.resolve({} as IServices);
 
     registerFilesCommand(logger, program, servicesFactory);
 

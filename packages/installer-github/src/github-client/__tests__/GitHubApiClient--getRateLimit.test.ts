@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GitHubRateLimit } from '@dotfiles/core';
+import type { IGitHubRateLimit } from '@dotfiles/core';
 import { HttpError } from '@dotfiles/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
-  type MockSetup,
+  type IMockSetup,
   setupMockGitHubApiClient,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
-  let mocks: MockSetup;
+  let mocks: IMockSetup;
 
   beforeEach(async () => {
     // Explicitly disable API cache for these non-caching tests
@@ -18,7 +18,7 @@ describe('GitHubApiClient', () => {
 
   describe('getRateLimit', () => {
     it('should fetch and return rate limit information', async () => {
-      const mockCoreRateLimitData: GitHubRateLimit = {
+      const mockCoreRateLimitData: IGitHubRateLimit = {
         limit: 5000,
         remaining: 4999,
         reset: Math.floor(Date.now() / 1000) + 3600,

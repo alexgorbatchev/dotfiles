@@ -1,18 +1,18 @@
 import type { $ } from 'bun';
 
-export interface MockShellExtensions {
+export interface IMockShellExtensions {
   reset(): void;
-  mockResponse(command: string, response: MockShellResponse): void;
+  mockResponse(command: string, response: IMockShellResponse): void;
 }
 
-export interface MockShellResponse {
+export interface IMockShellResponse {
   stdout: Buffer;
   stderr: Buffer;
   exitCode: number;
   shouldThrow?: boolean;
 }
 
-export type MockShell = typeof $ & MockShellExtensions;
+export type MockShell = typeof $ & IMockShellExtensions;
 
 /**
  * Creates a mock shell instance that matches the Bun $ interface.
@@ -22,7 +22,7 @@ export type MockShell = typeof $ & MockShellExtensions;
  */
 export function createMock$(): MockShell {
   const commands: string[] = [];
-  const responses: Map<string, MockShellResponse> = new Map();
+  const responses: Map<string, IMockShellResponse> = new Map();
   let lastCommand: string | null = null;
 
   const mockBuffer = Buffer.from('');
@@ -30,7 +30,7 @@ export function createMock$(): MockShell {
   // Create a chainable result that supports Bun's $ methods
   const createChainableResult = (command: string, shouldNothrow = false): ReturnType<typeof $> => {
     // Check if we have a mocked response for this command
-    const mockedResponse: MockShellResponse | undefined = responses.get(command);
+    const mockedResponse: IMockShellResponse | undefined = responses.get(command);
 
     const resultData = mockedResponse || {
       stdout: mockBuffer,
@@ -108,7 +108,7 @@ export function createMock$(): MockShell {
       responses.clear();
       lastCommand = null;
     },
-    mockResponse: (command: string, response: MockShellResponse) => {
+    mockResponse: (command: string, response: IMockShellResponse) => {
       responses.set(command, response);
     },
 

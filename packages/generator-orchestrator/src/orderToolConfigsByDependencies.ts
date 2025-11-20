@@ -1,20 +1,20 @@
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import { messages } from './log-messages';
 
-interface ToolDependencyMetadata {
+interface IToolDependencyMetadata {
   providedBinaries: string[];
   dependencies: string[];
 }
 
-interface ToolMetadataResult {
-  metadataByTool: Map<string, ToolDependencyMetadata>;
+interface IToolMetadataResult {
+  metadataByTool: Map<string, IToolDependencyMetadata>;
   binaryProviders: Map<string, Set<string>>;
   hasDependencies: boolean;
 }
 
-interface DependencyGraph {
+interface IDependencyGraph {
   adjacency: Map<string, Set<string>>;
   inDegree: Map<string, number>;
 }
@@ -73,8 +73,8 @@ function insertOrdered(queue: string[], toolName: string, orderIndex: Map<string
   queue.splice(insertPosition, 0, toolName);
 }
 
-function collectToolMetadata(toolConfigs: Record<string, ToolConfig>, systemInfo: SystemInfo): ToolMetadataResult {
-  const metadataByTool: Map<string, ToolDependencyMetadata> = new Map();
+function collectToolMetadata(toolConfigs: Record<string, ToolConfig>, systemInfo: ISystemInfo): IToolMetadataResult {
+  const metadataByTool: Map<string, IToolDependencyMetadata> = new Map();
   const binaryProviders: Map<string, Set<string>> = new Map();
   let hasDependencies = false;
 
@@ -87,7 +87,7 @@ function collectToolMetadata(toolConfigs: Record<string, ToolConfig>, systemInfo
     const providedBinaries = extractProvidedBinaries(toolName, resolvedConfig);
     const dependencies = extractDependencies(resolvedConfig);
 
-    const metadata: ToolDependencyMetadata = {
+    const metadata: IToolDependencyMetadata = {
       providedBinaries,
       dependencies,
     };
@@ -108,7 +108,7 @@ function collectToolMetadata(toolConfigs: Record<string, ToolConfig>, systemInfo
     }
   }
 
-  const result: ToolMetadataResult = {
+  const result: IToolMetadataResult = {
     metadataByTool,
     binaryProviders,
     hasDependencies,
@@ -121,7 +121,7 @@ function resolveDependencyProvider(
   toolName: string,
   dependencyName: string,
   binaryProviders: Map<string, Set<string>>,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): string {
   const providers = binaryProviders.get(dependencyName);
   if (!providers || providers.size === 0) {
@@ -151,10 +151,10 @@ function resolveDependencyProvider(
 function buildDependencyGraph(
   logger: TsLogger,
   toolNames: string[],
-  metadataByTool: Map<string, ToolDependencyMetadata>,
+  metadataByTool: Map<string, IToolDependencyMetadata>,
   binaryProviders: Map<string, Set<string>>,
-  systemInfo: SystemInfo
-): DependencyGraph {
+  systemInfo: ISystemInfo
+): IDependencyGraph {
   const adjacency: Map<string, Set<string>> = new Map();
   const inDegree: Map<string, number> = new Map();
 
@@ -186,7 +186,7 @@ function buildDependencyGraph(
     }
   }
 
-  const graph: DependencyGraph = {
+  const graph: IDependencyGraph = {
     adjacency,
     inDegree,
   };
@@ -195,7 +195,7 @@ function buildDependencyGraph(
 
 function performTopologicalSort(
   toolNames: string[],
-  graph: DependencyGraph,
+  graph: IDependencyGraph,
   toolOrderIndex: Map<string, number>
 ): string[] {
   const zeroInDegreeQueue: string[] = [];
@@ -236,7 +236,7 @@ function performTopologicalSort(
 export function orderToolConfigsByDependencies(
   parentLogger: TsLogger,
   toolConfigs: Record<string, ToolConfig>,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): Record<string, ToolConfig> {
   const logger = parentLogger.getSubLogger({ name: 'orderToolConfigsByDependencies' });
 

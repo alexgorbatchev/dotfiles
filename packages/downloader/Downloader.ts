@@ -2,8 +2,8 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { CachedDownloadStrategy } from './CachedDownloadStrategy';
 import type { ICache } from './cache/types';
-import type { DownloadStrategy } from './DownloadStrategy';
-import type { DownloadOptions, IDownloader } from './IDownloader';
+import type { IDownloader, IDownloadOptions } from './IDownloader';
+import type { IDownloadStrategy } from './IDownloadStrategy';
 import { downloaderLogMessages } from './log-messages';
 import { NodeFetchStrategy } from './NodeFetchStrategy';
 
@@ -16,7 +16,7 @@ import { NodeFetchStrategy } from './NodeFetchStrategy';
  * CachedDownloadStrategy if a cache is provided.
  */
 export class Downloader implements IDownloader {
-  private strategies: DownloadStrategy[] = [];
+  private strategies: IDownloadStrategy[] = [];
   private fs: IFileSystem;
   private logger: TsLogger;
 
@@ -28,7 +28,7 @@ export class Downloader implements IDownloader {
    * @param strategies - Optional array of download strategies. If not provided, defaults to NodeFetchStrategy.
    * @param cache - Optional cache instance. If provided, wraps the default strategy with caching.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, strategies?: DownloadStrategy[], cache?: ICache) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, strategies?: IDownloadStrategy[], cache?: ICache) {
     this.logger = parentLogger.getSubLogger({ name: 'Downloader' });
     this.fs = fileSystem;
 
@@ -52,7 +52,7 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.registerStrategy
    */
-  public registerStrategy(strategy: DownloadStrategy): void {
+  public registerStrategy(strategy: IDownloadStrategy): void {
     this.strategies.unshift(strategy);
   }
 
@@ -65,9 +65,9 @@ export class Downloader implements IDownloader {
    * @returns An object indicating success status and the result buffer if successful.
    */
   private async tryDownloadWithStrategy(
-    strategy: DownloadStrategy,
+    strategy: IDownloadStrategy,
     url: string,
-    options: DownloadOptions
+    options: IDownloadOptions
   ): Promise<{ success: boolean; result?: Buffer }> {
     if (!(await strategy.isAvailable())) {
       return { success: false };
@@ -80,7 +80,7 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.download
    */
-  public async download(url: string, options: DownloadOptions = {}): Promise<Buffer | undefined> {
+  public async download(url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
     const logger = this.logger.getSubLogger({ name: 'download' });
     logger.debug(downloaderLogMessages.downloadStarted(url));
 
@@ -118,9 +118,9 @@ export class Downloader implements IDownloader {
    * @throws {Error} If the strategy returns a Buffer instead of writing to the file.
    */
   private async tryDownloadToFileWithStrategy(
-    strategy: DownloadStrategy,
+    strategy: IDownloadStrategy,
     url: string,
-    fileOptions: DownloadOptions
+    fileOptions: IDownloadOptions
   ): Promise<boolean> {
     if (!(await strategy.isAvailable())) {
       return false;
@@ -152,7 +152,7 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.downloadToFile
    */
-  public async downloadToFile(url: string, filePath: string, options: DownloadOptions = {}): Promise<void> {
+  public async downloadToFile(url: string, filePath: string, options: IDownloadOptions = {}): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'downloadToFile' });
     logger.debug(downloaderLogMessages.downloadToFileStarted(url, filePath));
 

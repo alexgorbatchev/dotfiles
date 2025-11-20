@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { DownloadOptions } from '../../IDownloader';
+import type { IDownloadOptions } from '../../IDownloader';
 import { createApiCacheKey, createCacheKey, isApiKey, isDownloadKey } from '../helpers';
 
 describe('DownloadCacheUtils functions', () => {
@@ -20,10 +20,10 @@ describe('DownloadCacheUtils functions', () => {
     });
 
     it('should include relevant headers in cache key', () => {
-      const options1: DownloadOptions = {
+      const options1: IDownloadOptions = {
         headers: { Authorization: 'Bearer token1' },
       };
-      const options2: DownloadOptions = {
+      const options2: IDownloadOptions = {
         headers: { Authorization: 'Bearer token2' },
       };
 
@@ -34,12 +34,12 @@ describe('DownloadCacheUtils functions', () => {
     });
 
     it('should ignore non-content-affecting options', () => {
-      const options1: DownloadOptions = {
+      const options1: IDownloadOptions = {
         timeout: 5000,
         retryCount: 3,
         onProgress: () => {},
       };
-      const options2: DownloadOptions = {
+      const options2: IDownloadOptions = {
         timeout: 10000,
         retryCount: 5,
         onProgress: () => {},

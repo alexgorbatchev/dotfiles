@@ -2,20 +2,20 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import { messages } from '../log-messages';
-import { ToolConfigBuilder } from '../toolConfigBuilder';
+import { IToolConfigBuilder } from '../toolConfigBuilder';
 
-describe('ToolConfigBuilder - Platform Support', () => {
-  let builder: ToolConfigBuilder;
+describe('IToolConfigBuilder - Platform Support', () => {
+  let builder: IToolConfigBuilder;
   let logger: TestLogger;
 
   beforeEach(() => {
     logger = new TestLogger();
-    builder = new ToolConfigBuilder(logger, 'test-tool');
+    builder = new IToolConfigBuilder(logger, 'test-tool');
   });
 
   it('should create a configuration for a single platform', () => {
     builder.platform(Platform.Linux, (install) => {
-      return install('manual', { binaryPath: 'linux-app' }).bin('linux-app') as unknown as ToolConfigBuilder;
+      return install('manual', { binaryPath: 'linux-app' }).bin('linux-app') as unknown as IToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -45,11 +45,11 @@ describe('ToolConfigBuilder - Platform Support', () => {
 
   it('should create configurations for multiple platforms via separate calls', () => {
     builder.platform(Platform.Linux, (install) => {
-      return install('manual', { binaryPath: 'linux-bin' }).bin('linux-bin') as unknown as ToolConfigBuilder;
+      return install('manual', { binaryPath: 'linux-bin' }).bin('linux-bin') as unknown as IToolConfigBuilder;
     });
     builder.platform(Platform.MacOS, (install) => {
       // Changed Darwin to MacOS
-      return install('manual', { binaryPath: 'darwin-bin' }).bin('darwin-bin') as unknown as ToolConfigBuilder;
+      return install('manual', { binaryPath: 'darwin-bin' }).bin('darwin-bin') as unknown as IToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -70,7 +70,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
       // Changed to bitwise OR and MacOS
       return install('manual', { binaryPath: 'multi-platform-bin' }).bin(
         'multi-platform-bin'
-      ) as unknown as ToolConfigBuilder;
+      ) as unknown as IToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -87,21 +87,21 @@ describe('ToolConfigBuilder - Platform Support', () => {
     builder.platform(Platform.Linux, (install) => {
       return install('manual', { binaryPath: 'linux-common-bin' })
         .version('linux-common') // Example common setting
-        .bin('linux-common-bin') as unknown as ToolConfigBuilder; // Ensure at least one binary is set for platform config
+        .bin('linux-common-bin') as unknown as IToolConfigBuilder; // Ensure at least one binary is set for platform config
     });
 
     // Linux X86_64 specific
     builder.platform(Platform.Linux, Architecture.X86_64, (install) => {
       return install('github-release', { repo: 'test/repo', assetPattern: 'linux-x86_64.tar.gz' }).bin(
         'linux-x86_64-bin'
-      ) as unknown as ToolConfigBuilder;
+      ) as unknown as IToolConfigBuilder;
     });
 
     // Linux Arm64 specific
     builder.platform(Platform.Linux, Architecture.Arm64, (install) => {
       return install('github-release', { repo: 'test/repo', assetPattern: 'linux-arm64.tar.gz' }).bin(
         'linux-arm64-bin'
-      ) as unknown as ToolConfigBuilder;
+      ) as unknown as IToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -134,7 +134,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
     builder.platform(Platform.MacOS, Architecture.Arm64, (install) => {
       return install('github-release', { repo: 'test/macrepo', assetPattern: 'macos-arm64.zip' }).bin(
         'darwin-arm64-app'
-      ) as unknown as ToolConfigBuilder;
+      ) as unknown as IToolConfigBuilder;
     });
 
     const config = builder.build();
@@ -152,7 +152,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
 
   it('should log error when platform() called with architecture but no configure callback', () => {
     const testLogger = new TestLogger();
-    const testBuilder = new ToolConfigBuilder(testLogger, 'test-tool');
+    const testBuilder = new IToolConfigBuilder(testLogger, 'test-tool');
 
     let thrownError: Error | null = null;
     try {
@@ -167,7 +167,7 @@ describe('ToolConfigBuilder - Platform Support', () => {
 
     testLogger.expect(
       ['ERROR'],
-      ['ToolConfigBuilder'],
+      ['IToolConfigBuilder'],
       [
         messages.configurationFieldRequired(
           'configure callback',

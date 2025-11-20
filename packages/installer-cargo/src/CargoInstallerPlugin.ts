@@ -1,8 +1,8 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type {
   BaseInstallContext,
-  InstallerPlugin,
-  InstallOptions,
+  IInstallerPlugin,
+  IInstallOptions,
   InstallResult,
   UpdateCheckResult,
 } from '@dotfiles/core';
@@ -55,7 +55,7 @@ type CargoPluginMetadata = {
  * - Tracks installed versions for update detection
  */
 export class CargoInstallerPlugin
-  implements InstallerPlugin<'cargo', CargoInstallParams, CargoToolConfig, CargoPluginMetadata>
+  implements IInstallerPlugin<'cargo', CargoInstallParams, CargoToolConfig, CargoPluginMetadata>
 {
   readonly method = 'cargo';
   readonly displayName = 'Cargo Installer';
@@ -88,7 +88,7 @@ export class CargoInstallerPlugin
     toolName: string,
     toolConfig: CargoToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult<CargoPluginMetadata>> {
     const result = await installFromCargo(
       toolName,

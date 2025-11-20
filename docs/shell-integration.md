@@ -17,7 +17,7 @@ The shell integration system supports:
 Configures Zsh-specific behaviour through a fluent configurator.
 
 ```typescript
-import { always } from '@dotfiles/core';
+import { always } from '@gitea/dotfiles';
 
 c.zsh((shell) =>
   shell
@@ -37,7 +37,7 @@ c.zsh((shell) =>
 Configures Bash using the same chainable API.
 
 ```typescript
-import { always } from '@dotfiles/core';
+import { always } from '@gitea/dotfiles';
 
 c.bash((shell) =>
   shell
@@ -57,7 +57,7 @@ c.bash((shell) =>
 Configures PowerShell-specific behaviour while keeping the fluent style.
 
 ```typescript
-import { always } from '@dotfiles/core';
+import { always } from '@gitea/dotfiles';
 
 c.powershell((shell) =>
   shell
@@ -75,7 +75,7 @@ c.powershell((shell) =>
 ## Configuration Object
 
 ```typescript
-interface ShellConfig {
+interface IShellConfig {
   completions?: ShellCompletionConfig;  // Shell completions
   shellInit?: ShellScript[];           // Shell initialization scripts
   aliases?: Record<string, string>;    // Shell aliases (alias name -> command)
@@ -117,7 +117,7 @@ c.zsh((shell) =>
 Use shell scripts for complex functions and logic:
 
 ```typescript
-import { always, once } from '@dotfiles/core';
+import { always, once } from '@gitea/dotfiles';
 
 c.zsh((shell) =>
   shell
@@ -193,7 +193,7 @@ c.zsh((shell) =>
 Define the same configuration for multiple shells:
 
 ```typescript
-import type { IShellConfigurator } from '@dotfiles/core';
+import type { IShellConfigurator } from '@gitea/dotfiles';
 
 const configureCommonShell = (shell: IShellConfigurator): IShellConfigurator =>
   shell

@@ -4,7 +4,7 @@ import type { AggregateInstallResult, ToolConfig } from '@dotfiles/core';
 /**
  * Options for the install operation
  */
-export interface InstallOptions {
+export interface IInstallOptions {
   /**
    * Whether to force installation even if the tool is already installed
    */
@@ -43,5 +43,5 @@ export interface IInstaller {
    * @param options Installation options
    * @returns Promise resolving to the installation result
    */
-  install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult>;
+  install(toolName: string, toolConfig: ToolConfig, options?: IInstallOptions): Promise<InstallResult>;
 }

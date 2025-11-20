@@ -5,7 +5,7 @@ import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { GlobalProgram, GlobalProgramOptions, Services } from './types';
+import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 
 async function loadToolConfigs(
   logger: TsLogger,
@@ -104,8 +104,8 @@ function reportConflicts(logger: TsLogger, conflictMessages: string[]): ExitCode
 
 export async function detectConflictsActionLogic(
   logger: TsLogger,
-  _options: GlobalProgramOptions,
-  services: Services
+  _options: IGlobalProgramOptions,
+  services: IServices
 ): Promise<ExitCode> {
   const { projectConfig, fs, configService } = services;
   const conflictMessages: string[] = [];
@@ -143,8 +143,8 @@ export async function detectConflictsActionLogic(
 
 export function registerDetectConflictsCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerDetectConflictsCommand' });
   program

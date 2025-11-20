@@ -1,16 +1,16 @@
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, GlobalProgram, Services } from './types';
+import type { IBaseCommandOptions, IGlobalProgram, IServices } from './types';
 
-export interface FeaturesCommandOptions extends BaseCommandOptions {
+export interface IFeaturesCommandOptions extends IBaseCommandOptions {
   // No command-specific options for features command
 }
 
 async function catalogActionLogic(
   logger: TsLogger,
-  _options: FeaturesCommandOptions,
-  services: Services
+  _options: IFeaturesCommandOptions,
+  services: IServices
 ): Promise<void> {
   try {
     const { projectConfig, fs, configService, readmeService } = services;
@@ -31,8 +31,8 @@ async function catalogActionLogic(
 
 export function registerFeaturesCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerFeaturesCommand' });
 
@@ -45,7 +45,7 @@ export function registerFeaturesCommand(
     .command('catalog')
     .description('Catalog of available features documentation')
     .action(async () => {
-      const combinedOptions: FeaturesCommandOptions = program.opts();
+      const combinedOptions: IFeaturesCommandOptions = program.opts();
       const services = await servicesFactory();
       await catalogActionLogic(logger, combinedOptions, services);
 

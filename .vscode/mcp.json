@@ -1,27 +1,17 @@
 // https://code.visualstudio.com/docs/copilot/customization/mcp-servers
 {
-	"servers": {
-		// https://github.com/zcaceres/markdownify-mcp
-		"markdownify": {
-			"command": "docker",
-			"args": [
-				"run",
-				"-i",
-				"--rm",
-				"-v",
-				"${workspaceFolder}/.tmp/markdownify:/local-directory",
-				"mcp/markdownify"
-			],
-			"type": "stdio"
-		},
+  "servers": {
+    // https://github.com/zcaceres/markdownify-mcp
+    "markdownify": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-v", "${workspaceFolder}/.tmp/markdownify:/local-directory", "mcp/markdownify"],
+      "type": "stdio"
+    },
 
-		"context7": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@upstash/context7-mcp"
-			],
-		}
-	},
-	"inputs": []
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    }
+  },
+  "inputs": []
 }

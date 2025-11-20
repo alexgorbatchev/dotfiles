@@ -1,4 +1,4 @@
-import type { BaseInstallContext, InstallerPlugin, InstallOptions, InstallResult } from '@dotfiles/core';
+import type { BaseInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -32,7 +32,7 @@ type CurlScriptPluginMetadata = {
  * the installation is delegated to the external script.
  */
 export class CurlScriptInstallerPlugin
-  implements InstallerPlugin<'curl-script', CurlScriptInstallParams, CurlScriptToolConfig, CurlScriptPluginMetadata>
+  implements IInstallerPlugin<'curl-script', CurlScriptInstallParams, CurlScriptToolConfig, CurlScriptPluginMetadata>
 {
   readonly method = 'curl-script';
   readonly displayName = 'Curl Script Installer';
@@ -68,7 +68,7 @@ export class CurlScriptInstallerPlugin
     toolName: string,
     toolConfig: CurlScriptToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult<CurlScriptPluginMetadata>> {
     const result = await installFromCurlScript(
       toolName,

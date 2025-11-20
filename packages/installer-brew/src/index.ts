@@ -9,11 +9,11 @@ import type { BrewInstallParams, BrewToolConfig } from './schemas';
 import type { BrewInstallResult } from './types';
 
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     brew: BrewInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     brew: BrewToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
 }

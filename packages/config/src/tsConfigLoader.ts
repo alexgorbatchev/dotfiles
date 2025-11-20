@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import type { ProjectConfig, ProjectConfigPartial, SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo, ProjectConfig, ProjectConfigPartial } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
@@ -27,7 +27,7 @@ export async function loadTsConfig(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfigPath: string,
-  systemInfo: SystemInfo,
+  systemInfo: ISystemInfo,
   env: Record<string, string | undefined>
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadTsConfig' });

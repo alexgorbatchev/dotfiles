@@ -3,13 +3,13 @@ import assert from 'node:assert';
 import path from 'node:path';
 import type { EnhancedInstallHookContext } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
-import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
+import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 /**
  * Integration tests demonstrating real-world hook usage scenarios
  */
 describe('Hook Integration Tests', () => {
-  let setup: InstallerTestSetup;
+  let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();

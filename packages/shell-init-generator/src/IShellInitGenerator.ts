@@ -1,10 +1,10 @@
-import type { ShellType, SystemInfo, ToolConfig } from '@dotfiles/core';
-import type { ProfileUpdateResult } from './profile-updater/IProfileUpdater';
+import type { ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
+import type { IProfileUpdateResult } from './profile-updater/IProfileUpdater';
 
 /**
  * Options for generating shell initialization files.
  */
-export interface GenerateShellInitOptions {
+export interface IGenerateShellInitOptions {
   /**
    * Optional path to write the generated init file.
    * If not provided, a default path will be derived from ProjectConfig.
@@ -27,19 +27,19 @@ export interface GenerateShellInitOptions {
    * System information for platform-aware shell generation.
    * When provided, platform-specific configurations matching this system will be included.
    */
-  systemInfo?: SystemInfo;
+  systemInfo?: ISystemInfo;
 }
 
 /**
  * Results from generating shell initialization files.
  */
-export interface ShellInitGenerationResult {
+export interface IShellInitGenerationResult {
   /** Map of shell type to generated file path */
   files: Map<ShellType, string>;
   /** Primary shell initialization file path (for backward compatibility) */
   primaryPath: string | null;
   /** Results from profile file updates, if requested */
-  profileUpdates?: ProfileUpdateResult[];
+  profileUpdates?: IProfileUpdateResult[];
 }
 
 /**
@@ -56,6 +56,6 @@ export interface IShellInitGenerator {
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
-    options?: GenerateShellInitOptions
-  ): Promise<ShellInitGenerationResult | null>;
+    options?: IGenerateShellInitOptions
+  ): Promise<IShellInitGenerationResult | null>;
 }

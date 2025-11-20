@@ -2,7 +2,7 @@
  * defineTool with plugin types pre-loaded.
  *
  * This file explicitly imports all plugins to ensure their module augmentations
- * are loaded before exporting defineTool. This guarantees that InstallParamsRegistry
+ * are loaded before exporting defineTool. This guarantees that IInstallParamsRegistry
  * is populated with all plugin types.
  */
 

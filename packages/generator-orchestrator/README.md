@@ -52,7 +52,7 @@ interface IGeneratorOrchestrator {
 The manifest contains information about all generated files:
 
 ```typescript
-interface GeneratedArtifactsManifest {
+interface IGeneratedArtifactsManifest {
   shellInit: {
     files: string[];
     timestamp: Date;

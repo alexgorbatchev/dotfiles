@@ -1,14 +1,14 @@
 import type { ShellScript, ShellType } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript } from '@dotfiles/core';
 import { dedentString } from '@dotfiles/utils';
-import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
+import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
  * Formatter for always scripts - wraps them in self-executing functions
  * that are automatically unset to prevent variable pollution
  */
 export class AlwaysScriptFormatter implements IScriptFormatter {
-  format(script: ShellScript, toolName: string, shellType: ShellType): FormattedScriptOutput {
+  format(script: ShellScript, toolName: string, shellType: ShellType): IFormattedScriptOutput {
     if (!isAlwaysScript(script)) {
       throw new Error(`AlwaysScriptFormatter can only format AlwaysScript, received: ${typeof script}`);
     }

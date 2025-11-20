@@ -1,7 +1,7 @@
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { createArchitectureRegex } from './createArchitectureRegex';
 import { getArchitecturePatterns } from './getArchitecturePatterns';
-import type { ArchitectureRegex } from './types';
+import type { IArchitectureRegex } from './types';
 
 /**
  * The main function that combines pattern generation and regex creation.
@@ -16,7 +16,7 @@ import type { ArchitectureRegex } from './types';
  *
  * @public
  */
-export function getArchitectureRegex(systemInfo: SystemInfo): ArchitectureRegex {
+export function getArchitectureRegex(systemInfo: ISystemInfo): IArchitectureRegex {
   const patterns = getArchitecturePatterns(systemInfo);
   const regex = createArchitectureRegex(patterns);
   return regex;

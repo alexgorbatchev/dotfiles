@@ -14,7 +14,7 @@ export type TsLogger = SafeLogger<ILogObj>;
  * Configuration options for creating a logger instance.
  * @public
  */
-export interface LoggerConfig {
+export interface ILoggerConfig {
   /**
    * The name of the logger, which will be included in log messages.
    */
@@ -149,9 +149,9 @@ export function createTsLogger(name: string): TsLogger;
  *
  * @public
  */
-export function createTsLogger(config: LoggerConfig): TsLogger;
-export function createTsLogger(configOrName: LoggerConfig | string): TsLogger {
-  let config: LoggerConfig = {} as LoggerConfig;
+export function createTsLogger(config: ILoggerConfig): TsLogger;
+export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
+  let config: ILoggerConfig = {} as ILoggerConfig;
 
   if (typeof configOrName === 'string') {
     config.name = configOrName;

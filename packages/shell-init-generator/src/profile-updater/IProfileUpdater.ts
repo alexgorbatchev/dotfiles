@@ -3,7 +3,7 @@ import type { ShellType } from '@dotfiles/core';
 /**
  * Configuration for updating a specific profile file.
  */
-export interface ProfileUpdateConfig {
+export interface IProfileUpdateConfig {
   /** Shell type this profile belongs to */
   shellType: ShellType;
   /** Path to the generated shell script to source */
@@ -17,7 +17,7 @@ export interface ProfileUpdateConfig {
 /**
  * Result of a profile file update operation.
  */
-export interface ProfileUpdateResult {
+export interface IProfileUpdateResult {
   /** Shell type that was processed */
   shellType: ShellType;
   /** Path to the profile file that was processed */
@@ -40,7 +40,7 @@ export interface IProfileUpdater {
    * @param configs - Array of profile update configurations
    * @returns Promise resolving to array of update results
    */
-  updateProfiles(configs: ProfileUpdateConfig[]): Promise<ProfileUpdateResult[]>;
+  updateProfiles(configs: IProfileUpdateConfig[]): Promise<IProfileUpdateResult[]>;
 
   /**
    * Gets the default profile file path for a given shell type.

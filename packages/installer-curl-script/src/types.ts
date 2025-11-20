@@ -1,10 +1,10 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { ToolInstallationDetails } from '@dotfiles/registry';
+import type { IToolInstallationDetails } from '@dotfiles/registry';
 
 /**
  * Metadata specific to curl-script tool installation.
  */
-export interface CurlScriptInstallMetadata extends Partial<ToolInstallationDetails> {
+export interface ICurlScriptInstallMetadata extends Partial<IToolInstallationDetails> {
   method: 'curl-script';
   scriptUrl: string;
   shell: string;
@@ -13,13 +13,13 @@ export interface CurlScriptInstallMetadata extends Partial<ToolInstallationDetai
 /**
  * Success result for a curl-script tool installation.
  */
-export interface CurlScriptInstallSuccess extends InstallResultSuccess<CurlScriptInstallMetadata> {
+export interface ICurlScriptInstallSuccess extends InstallResultSuccess<ICurlScriptInstallMetadata> {
   binaryPaths: string[];
   version?: string;
-  metadata: CurlScriptInstallMetadata;
+  metadata: ICurlScriptInstallMetadata;
 }
 
 /**
  * Result type for curl-script tool installation (success or failure).
  */
-export type CurlScriptInstallResult = CurlScriptInstallSuccess | InstallResultFailure;
+export type CurlScriptInstallResult = ICurlScriptInstallSuccess | InstallResultFailure;

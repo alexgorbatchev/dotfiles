@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import { createMemFileSystem, type IFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem, type IFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import {
@@ -15,7 +15,7 @@ import { NodeFetchStrategy } from '../NodeFetchStrategy';
 
 describe('NodeFetchStrategy', () => {
   let mockFileSystem: IFileSystem;
-  let fileSystemMocks: MemFileSystemReturn['spies'];
+  let fileSystemMocks: IMemFileSystemReturn['spies'];
   let strategy: NodeFetchStrategy;
   let logger: TestLogger;
   const fetchMockHelper = new FetchMockHelper();

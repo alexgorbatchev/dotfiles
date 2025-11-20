@@ -1,13 +1,13 @@
 import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
 
-export interface CompletionGenerationContext {
+export interface ICompletionGenerationContext {
   toolName: string;
   toolInstallDir: string;
   shellScriptsDir: string;
   homeDir: string;
 }
 
-export interface GeneratedCompletion {
+export interface IGeneratedCompletion {
   content: string;
   filename: string;
   targetPath: string;
@@ -23,6 +23,6 @@ export interface ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: CompletionGenerationContext
-  ): Promise<GeneratedCompletion>;
+    context: ICompletionGenerationContext
+  ): Promise<IGeneratedCompletion>;
 }

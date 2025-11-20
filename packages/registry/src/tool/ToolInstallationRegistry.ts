@@ -2,9 +2,9 @@ import type { Database } from 'bun:sqlite';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from './IToolInstallationRegistry';
 import { messages } from './log-messages';
-import type { ToolInstallationDetails, ToolInstallationRecord } from './types';
+import type { IToolInstallationDetails, IToolInstallationRecord } from './types';
 
-interface ToolInstallationRow {
+interface IToolInstallationRow {
   id: number;
   tool_name: string;
   version: string;
@@ -66,7 +66,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     logger.debug(messages.databaseInitialized());
   }
 
-  async recordToolInstallation(installation: ToolInstallationDetails): Promise<void> {
+  async recordToolInstallation(installation: IToolInstallationDetails): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'recordToolInstallation' });
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO tool_installations 
@@ -89,13 +89,13 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     logger.debug(messages.toolInstallationRecorded(), installation.toolName, installation.version);
   }
 
-  async getToolInstallation(toolName: string): Promise<ToolInstallationRecord | null> {
+  async getToolInstallation(toolName: string): Promise<IToolInstallationRecord | null> {
     const logger = this.logger.getSubLogger({ name: 'getToolInstallation' });
     const stmt = this.db.prepare(`
       SELECT * FROM tool_installations WHERE tool_name = ?
     `);
 
-    const row = stmt.get(toolName) as ToolInstallationRow | undefined;
+    const row = stmt.get(toolName) as IToolInstallationRow | undefined;
     if (!row) {
       logger.debug(messages.toolInstallationNotFound(), toolName);
       return null;
@@ -116,13 +116,13 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     };
   }
 
-  async getAllToolInstallations(): Promise<ToolInstallationRecord[]> {
+  async getAllToolInstallations(): Promise<IToolInstallationRecord[]> {
     const logger = this.logger.getSubLogger({ name: 'getAllToolInstallations' });
     const stmt = this.db.prepare(`
       SELECT * FROM tool_installations ORDER BY tool_name
     `);
 
-    const rows = stmt.all() as ToolInstallationRow[];
+    const rows = stmt.all() as IToolInstallationRow[];
     logger.debug(messages.toolInstallationsRetrieved(), rows.length);
     return rows.map((row) => ({
       id: row.id,
@@ -139,7 +139,7 @@ export class ToolInstallationRegistry implements IToolInstallationRegistry {
     }));
   }
 
-  async updateToolInstallation(toolName: string, updates: Partial<ToolInstallationRecord>): Promise<void> {
+  async updateToolInstallation(toolName: string, updates: Partial<IToolInstallationRecord>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'updateToolInstallation' });
     const fields: string[] = [];
     const values: (string | number | null)[] = [];

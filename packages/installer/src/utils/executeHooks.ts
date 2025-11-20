@@ -1,7 +1,7 @@
 import type {
   AsyncInstallHook,
-  OperationFailure,
-  OperationSuccess,
+  IOperationFailure,
+  IOperationSuccess,
   PostDownloadInstallContext,
   PostExtractInstallContext,
   ToolConfig,
@@ -14,7 +14,7 @@ import { messages } from './log-messages';
 /**
  * Result type for hook execution indicating success or failure with error message.
  */
-export type ExecuteHooksResult = OperationSuccess | OperationFailure;
+export type ExecuteHooksResult = IOperationSuccess | IOperationFailure;
 
 /**
  * Executes the afterDownload hook if defined in tool configuration.

@@ -2,13 +2,13 @@ import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type {
   BaseInstallContext,
-  ExtractResult,
+  IExtractResult,
   PostDownloadInstallContext,
   PostExtractInstallContext,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, InstallOptions } from '@dotfiles/installer';
+import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -21,7 +21,7 @@ import {
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 import type { CurlTarToolConfig } from './schemas';
-import type { CurlTarInstallMetadata, CurlTarInstallResult } from './types';
+import type { CurlTarInstallResult, ICurlTarInstallMetadata } from './types';
 
 /**
  * Installs a tool from a tarball accessible via URL.
@@ -51,7 +51,7 @@ export async function installFromCurlTar(
   toolName: string,
   toolConfig: CurlTarToolConfig,
   context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
   archiveExtractor: IArchiveExtractor,
@@ -107,7 +107,7 @@ export async function installFromCurlTar(
     // Extract the tarball directly to install directory
     logger.debug(messages.extractingTarball());
 
-    const extractResult: ExtractResult = await archiveExtractor.extract(tarballPath, {
+    const extractResult: IExtractResult = await archiveExtractor.extract(tarballPath, {
       targetDir: context.installDir,
     });
     logger.debug(messages.tarballExtracted(), extractResult);
@@ -140,7 +140,7 @@ export async function installFromCurlTar(
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-    const metadata: CurlTarInstallMetadata = {
+    const metadata: ICurlTarInstallMetadata = {
       method: 'curl-tar',
       downloadUrl: url,
       tarballUrl: url,

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { AsyncConfigureTool, InstallFunction, ProjectConfig, ToolConfigContext } from '@dotfiles/core';
+import type { AsyncConfigureTool, InstallFunction, IToolConfigContext, ProjectConfig } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
-import { createInstallFunction, ToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
+import { createInstallFunction, IToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
 
-// Helper function to create ToolConfigContext (extracted from loadToolConfigs.ts)
-function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): ToolConfigContext {
+// Helper function to create IToolConfigContext (extracted from loadToolConfigs.ts)
+function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): IToolConfigContext {
   const getToolDir = (toolName: string): string => {
     return path.join(projectConfig.paths.binariesDir, toolName);
   };
@@ -30,7 +30,7 @@ function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: 
   };
 }
 
-describe('ToolConfigContext', () => {
+describe('IToolConfigContext', () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
 
@@ -75,11 +75,11 @@ describe('ToolConfigContext', () => {
       expect(context.getToolDir('fzf')).toBe(path.join(mockProjectConfig.paths.binariesDir, 'fzf'));
     });
 
-    it('should work correctly with ToolConfigBuilder and context', async () => {
+    it('should work correctly with IToolConfigBuilder and context', async () => {
       const context = createToolConfigContext(mockProjectConfig, 'shell-tool');
 
       // Test that context can be used in a tool configuration function
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
         return install('manual', { binaryPath: '/usr/bin/shell-tool' })
           .bin('shell-tool')
           .version('latest')
@@ -104,7 +104,7 @@ describe('ToolConfigContext', () => {
         throw new Error('Result should not be undefined');
       }
 
-      // Result can be either a ToolConfig or a ToolConfigBuilder
+      // Result can be either a ToolConfig or a IToolConfigBuilder
       const toolConfig = 'build' in result ? result.build() : result;
 
       expect(toolConfig).toBeDefined();
@@ -119,7 +119,7 @@ describe('ToolConfigContext', () => {
       const context = createToolConfigContext(mockProjectConfig, 'dependent-tool');
 
       // Test a tool that references other tools
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
         return install('manual', { binaryPath: '/usr/bin/dependent-tool' })
           .bin('dependent-tool')
           .version('latest')
@@ -139,7 +139,7 @@ describe('ToolConfigContext', () => {
 
       const result = await configureToolFn(createInstallFunction(logger, 'dependent-tool'), context);
       if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected ToolConfigBuilder result');
+        throw new Error('Expected IToolConfigBuilder result');
       }
       const toolConfig = result.build();
 
@@ -156,7 +156,7 @@ describe('ToolConfigContext', () => {
       const context = createToolConfigContext(mockProjectConfig, 'completion-tool');
 
       // Test a tool that generates completions
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
         return install('manual', { binaryPath: '/usr/bin/completion-tool' })
           .bin('completion-tool')
           .version('latest')
@@ -172,7 +172,7 @@ describe('ToolConfigContext', () => {
 
       const result = await configureToolFn(createInstallFunction(logger, 'completion-tool'), context);
       if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected ToolConfigBuilder result');
+        throw new Error('Expected IToolConfigBuilder result');
       }
       const toolConfig = result.build();
 
@@ -220,7 +220,7 @@ describe('ToolConfigContext', () => {
       const context = createToolConfigContext(mockProjectConfig, 'fzf-like');
 
       // Test fzf-like pattern with context
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
         return install('github-release', { repo: 'owner/fzf-like' })
           .bin('fzf-like')
           .version('latest')
@@ -239,7 +239,7 @@ describe('ToolConfigContext', () => {
 
       const result = await configureToolFn(createInstallFunction(logger, 'fzf-like'), context);
       if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected ToolConfigBuilder result');
+        throw new Error('Expected IToolConfigBuilder result');
       }
       const toolConfig = result.build();
 
@@ -255,7 +255,7 @@ describe('ToolConfigContext', () => {
       const context = createToolConfigContext(mockProjectConfig, 'atuin-like');
 
       // Test atuin-like pattern with context
-      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: ToolConfigContext) => {
+      const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
         return install('github-release', { repo: 'owner/atuin-like' })
           .bin('atuin-like')
           .version('latest')
@@ -274,7 +274,7 @@ describe('ToolConfigContext', () => {
 
       const result = await configureToolFn(createInstallFunction(logger, 'atuin-like'), context);
       if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected ToolConfigBuilder result');
+        throw new Error('Expected IToolConfigBuilder result');
       }
       const toolConfig = result.build();
 

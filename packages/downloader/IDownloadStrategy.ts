@@ -1,10 +1,10 @@
-import type { DownloadOptions } from './IDownloader';
+import type { IDownloadOptions } from './IDownloader';
 
 /**
  * Interface for a download strategy.
  * Each strategy provides a specific way to download a file (e.g., using Node.js fetch, curl).
  */
-export interface DownloadStrategy {
+export interface IDownloadStrategy {
   /**
    * The name of the download strategy (e.g., "node-fetch", "curl").
    */
@@ -24,5 +24,5 @@ export interface DownloadStrategy {
    * @returns A promise that resolves with a Buffer containing the downloaded file content, or void if writing to a destinationPath.
    * @throws Will throw an error if the download fails (e.g., network error, HTTP error, timeout).
    */
-  download(url: string, options: DownloadOptions): Promise<Buffer | undefined>;
+  download(url: string, options: IDownloadOptions): Promise<Buffer | undefined>;
 }

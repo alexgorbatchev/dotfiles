@@ -1,10 +1,10 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { ToolInstallationDetails } from '@dotfiles/registry';
+import type { IToolInstallationDetails } from '@dotfiles/registry';
 
 /**
  * Metadata specific to Homebrew tool installation.
  */
-export interface BrewInstallMetadata extends Partial<ToolInstallationDetails> {
+export interface IBrewInstallMetadata extends Partial<IToolInstallationDetails> {
   method: 'brew';
   formula: string;
   isCask: boolean;
@@ -14,13 +14,13 @@ export interface BrewInstallMetadata extends Partial<ToolInstallationDetails> {
 /**
  * Success result for a Homebrew tool installation.
  */
-export interface BrewInstallSuccess extends InstallResultSuccess<BrewInstallMetadata> {
+export interface IBrewInstallSuccess extends InstallResultSuccess<IBrewInstallMetadata> {
   binaryPaths: string[];
   version?: string;
-  metadata: BrewInstallMetadata;
+  metadata: IBrewInstallMetadata;
 }
 
 /**
  * Result type for Homebrew tool installation (success or failure).
  */
-export type BrewInstallResult = BrewInstallSuccess | InstallResultFailure;
+export type BrewInstallResult = IBrewInstallSuccess | InstallResultFailure;

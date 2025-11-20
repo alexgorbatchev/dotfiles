@@ -1,9 +1,9 @@
-import type { OperationFailure, OperationSuccess, ToolConfig } from '@dotfiles/core';
+import type { IOperationFailure, IOperationSuccess, ToolConfig } from '@dotfiles/core';
 
 /**
  * Options for generating symlinks.
  */
-export interface GenerateSymlinksOptions {
+export interface IGenerateSymlinksOptions {
   /**
    * If true, overwrite existing files/symlinks at the target location.
    * @default false
@@ -32,7 +32,7 @@ export type SymlinkOperationStatus =
 /**
  * Represents the result of a single symlink operation - success case
  */
-export type SymlinkOperationResultSuccess = OperationSuccess & {
+export type SymlinkOperationResultSuccess = IOperationSuccess & {
   sourcePath: string;
   targetPath: string;
   status: SymlinkOperationStatus;
@@ -41,7 +41,7 @@ export type SymlinkOperationResultSuccess = OperationSuccess & {
 /**
  * Represents the result of a single symlink operation - failure case
  */
-export type SymlinkOperationResultFailure = OperationFailure & {
+export type SymlinkOperationResultFailure = IOperationFailure & {
   sourcePath: string;
   targetPath: string;
   status: 'failed';
@@ -64,6 +64,6 @@ export interface ISymlinkGenerator {
    */
   generate(
     toolConfigs: Record<string, ToolConfig>,
-    options?: GenerateSymlinksOptions
+    options?: IGenerateSymlinksOptions
   ): Promise<SymlinkOperationResult[]>;
 }

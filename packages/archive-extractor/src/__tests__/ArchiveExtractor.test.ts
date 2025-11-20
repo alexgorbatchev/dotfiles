@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import * as nodePath from 'node:path';
 import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { $ } from 'bun';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
@@ -10,7 +10,7 @@ import type { IArchiveExtractor } from '../IArchiveExtractor';
 describe('ArchiveExtractor (with NodeFS)', () => {
   let nodeFsInstance: IFileSystem;
   let extractor: IArchiveExtractor;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
   let nodeFs: IFileSystem;
   let logger: TestLogger;
 

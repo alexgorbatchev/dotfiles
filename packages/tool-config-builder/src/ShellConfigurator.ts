@@ -2,17 +2,17 @@ import path from 'node:path';
 import type {
   AlwaysScript,
   IShellConfigurator,
+  IToolConfigContext,
   OnceScript,
   ShellCompletionConfig,
   ShellCompletionConfigInput,
-  ToolConfigContext,
 } from '@dotfiles/core';
 import { always, once } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
-import type { ShellStorage, ShellTypeKey } from './types';
+import type { IShellStorage, ShellTypeKey } from './types';
 
-interface CompletionOptions {
+interface ICompletionOptions {
   name?: string;
   targetDir?: string;
 }
@@ -22,16 +22,16 @@ interface CompletionOptions {
  * Handles the accumulation of shell configuration settings for a specific shell type.
  */
 export class ShellConfigurator implements IShellConfigurator {
-  private readonly storage: ShellStorage;
+  private readonly storage: IShellStorage;
   private readonly shellType: ShellTypeKey;
-  private readonly context?: ToolConfigContext;
+  private readonly context?: IToolConfigContext;
   private readonly logger: TsLogger;
   private readonly toolName: string;
 
   constructor(
-    storage: ShellStorage,
+    storage: IShellStorage,
     shellType: ShellTypeKey,
-    context: ToolConfigContext | undefined,
+    context: IToolConfigContext | undefined,
     logger: TsLogger,
     toolName: string
   ) {
@@ -124,7 +124,7 @@ export class ShellConfigurator implements IShellConfigurator {
   /**
    * Creates a completion configuration from a source path and additional options.
    */
-  private createCompletionConfigFromOptions(sourcePath: string, options: CompletionOptions): ShellCompletionConfig {
+  private createCompletionConfigFromOptions(sourcePath: string, options: ICompletionOptions): ShellCompletionConfig {
     const normalizedSource = this.normalizeCompletionSource(sourcePath);
     const completionConfig: ShellCompletionConfig = {
       source: normalizedSource,

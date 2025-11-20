@@ -4,16 +4,16 @@ import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   BaseInstallContext,
-  ExtractResult,
-  GitHubRelease,
-  GitHubReleaseAsset,
+  IExtractResult,
+  IGitHubRelease,
+  IGitHubReleaseAsset,
+  ISystemInfo,
   PostDownloadInstallContext,
   PostExtractInstallContext,
-  SystemInfo,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, InstallOptions } from '@dotfiles/installer';
+import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
 import {
   downloadWithProgress,
   executeAfterDownloadHook as executeAfterDownloadHookUtil,
@@ -25,16 +25,16 @@ import {
   messages as utilMessages,
 } from '@dotfiles/installer';
 import type {
-  AssetSelectionContext,
   GithubReleaseInstallParams,
   GithubReleaseToolConfig,
+  IAssetSelectionContext,
 } from '@dotfiles/installer-github';
 import type { TsLogger } from '@dotfiles/logger';
 import { normalizeVersion } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
 import type { IGitHubApiClient } from './github-client';
 import { messages } from './log-messages';
-import type { GitHubReleaseInstallMetadata, GitHubReleaseInstallResult } from './types';
+import type { GitHubReleaseInstallResult, IGitHubReleaseInstallMetadata } from './types';
 
 /**
  * Install a tool from GitHub releases
@@ -43,7 +43,7 @@ export async function installFromGitHubRelease(
   toolName: string,
   toolConfig: GithubReleaseToolConfig,
   context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   toolFs: IFileSystem,
   downloader: IDownloader,
   githubApiClient: IGitHubApiClient,
@@ -118,7 +118,7 @@ export async function installFromGitHubRelease(
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-    const metadata: GitHubReleaseInstallMetadata = {
+    const metadata: IGitHubReleaseInstallMetadata = {
       method: 'github-release',
       releaseUrl: release.data.html_url,
       publishedAt: release.data.published_at,
@@ -149,7 +149,7 @@ async function fetchGitHubRelease(
   version: string,
   githubApiClient: IGitHubApiClient,
   logger: TsLogger
-): Promise<OperationResult<GitHubRelease>> {
+): Promise<OperationResult<IGitHubRelease>> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     return {
@@ -158,7 +158,7 @@ async function fetchGitHubRelease(
     };
   }
 
-  let release: GitHubRelease | null;
+  let release: IGitHubRelease | null;
   if (version === 'latest') {
     logger.debug(messages.fetchLatest(repo));
     release = await githubApiClient.getLatestRelease(owner, repoName);
@@ -178,16 +178,16 @@ async function fetchGitHubRelease(
 }
 
 async function selectAsset(
-  release: GitHubRelease,
+  release: IGitHubRelease,
   params: GithubReleaseInstallParams,
   context: BaseInstallContext,
   logger: TsLogger
-): Promise<OperationResult<GitHubReleaseAsset>> {
-  let asset: GitHubReleaseAsset | undefined;
+): Promise<OperationResult<IGitHubReleaseAsset>> {
+  let asset: IGitHubReleaseAsset | undefined;
 
   if (params.assetSelector) {
     logger.debug(messages.assetSelectorCustom());
-    const selectionContext: AssetSelectionContext = {
+    const selectionContext: IAssetSelectionContext = {
       ...context,
       assets: release.assets,
       release,
@@ -213,7 +213,7 @@ async function selectAsset(
   return { success: true, data: asset };
 }
 
-function findPlatformAsset(assets: GitHubReleaseAsset[], systemInfo: SystemInfo): GitHubReleaseAsset | undefined {
+function findPlatformAsset(assets: IGitHubReleaseAsset[], systemInfo: ISystemInfo): IGitHubReleaseAsset | undefined {
   const assetNames = assets.map((a) => a.name);
   const selectedName = selectBestMatch(assetNames, systemInfo);
 
@@ -225,7 +225,7 @@ function findPlatformAsset(assets: GitHubReleaseAsset[], systemInfo: SystemInfo)
 }
 
 function createAssetNotFoundError(
-  release: GitHubRelease,
+  release: IGitHubRelease,
   params: GithubReleaseInstallParams,
   context: BaseInstallContext
 ): string {
@@ -318,10 +318,10 @@ function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logge
 
 async function downloadAsset(
   downloadUrl: string,
-  asset: GitHubReleaseAsset,
+  asset: IGitHubReleaseAsset,
   context: BaseInstallContext,
   downloader: IDownloader,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   logger: TsLogger
 ): Promise<OperationResult<{ downloadPath: string }>> {
   logger.debug(messages.downloadingAsset(downloadUrl));
@@ -358,7 +358,7 @@ function isArchiveFile(filename: string): boolean {
 }
 
 async function processAssetInstallation(
-  asset: GitHubReleaseAsset,
+  asset: IGitHubReleaseAsset,
   downloadPath: string,
   toolName: string,
   toolConfig: GithubReleaseToolConfig,
@@ -391,7 +391,7 @@ async function processAssetInstallation(
 }
 
 async function processArchiveInstallation(
-  asset: GitHubReleaseAsset,
+  asset: IGitHubReleaseAsset,
   downloadPath: string,
   toolName: string,
   toolConfig: GithubReleaseToolConfig,
@@ -405,7 +405,7 @@ async function processArchiveInstallation(
 ): Promise<OperationResult<void>> {
   logger.debug(messages.extractingArchive(asset.name));
 
-  const extractResult: ExtractResult = await archiveExtractor.extract(downloadPath, {
+  const extractResult: IExtractResult = await archiveExtractor.extract(downloadPath, {
     targetDir: context.installDir,
   });
   logger.debug(messages.archiveExtracted(), extractResult);

@@ -3,7 +3,7 @@ import type { ToolConfig } from '@dotfiles/core';
 /**
  * Options for generating shims.
  */
-export interface GenerateShimsOptions {
+export interface IGenerateShimsOptions {
   /**
    * If true, overwrite existing shims.
    * @default false
@@ -21,7 +21,7 @@ export interface IShimGenerator {
    * @param options Optional settings for shim generation.
    * @returns A promise that resolves with an array of paths to the shims created/updated.
    */
-  generate(toolConfigs: Record<string, ToolConfig>, options?: GenerateShimsOptions): Promise<string[]>;
+  generate(toolConfigs: Record<string, ToolConfig>, options?: IGenerateShimsOptions): Promise<string[]>;
 
   /**
    * Generates a shim for a single specified tool.
@@ -30,5 +30,5 @@ export interface IShimGenerator {
    * @param options Optional settings for shim generation.
    * @returns A promise that resolves with an array of paths to the shims created/updated (typically one).
    */
-  generateForTool(toolName: string, toolConfig: ToolConfig, options?: GenerateShimsOptions): Promise<string[]>;
+  generateForTool(toolName: string, toolConfig: ToolConfig, options?: IGenerateShimsOptions): Promise<string[]>;
 }

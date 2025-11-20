@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { getArchitectureRegex } from '@dotfiles/arch';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 
 describe('getArchitectureRegex', () => {
   it('should combine pattern generation and regex creation for macOS ARM64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'darwin',
       arch: 'arm64',
       homeDir: '/home/test',
@@ -20,7 +20,7 @@ describe('getArchitectureRegex', () => {
   });
 
   it('should combine pattern generation and regex creation for Linux x86_64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
       homeDir: '/home/test',
@@ -36,7 +36,7 @@ describe('getArchitectureRegex', () => {
   });
 
   it('should escape special regex characters in patterns', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'darwin',
       arch: 'x64',
       homeDir: '/home/test',

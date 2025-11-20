@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { PlatformConfig, SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
 import { always, Platform } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { IShellInitGenerator, ShellInitGenerationResult } from '@dotfiles/shell-init-generator';
+import type { IShellInitGenerationResult, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 // Helper function to generate platform-specific content
-function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, systemInfo: SystemInfo): string {
+function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, systemInfo: ISystemInfo): string {
   let content = '';
 
   for (const [toolName, config] of Object.entries(toolConfigs)) {
@@ -34,7 +34,7 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
 }
 
 // Helper function to create mock shell content
-function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemInfo?: SystemInfo): string {
+function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemInfo?: ISystemInfo): string {
   let mockContent = '# Generated shell init\n';
 
   if (systemInfo) {
@@ -53,9 +53,9 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
-  let macosSystemInfo: SystemInfo;
-  let linuxSystemInfo: SystemInfo;
-  let testDirs: TestDirectories;
+  let macosSystemInfo: ISystemInfo;
+  let linuxSystemInfo: ISystemInfo;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -85,7 +85,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     mockShellInitGenerator = {
       generate: async (toolConfigs, options) => {
         const shellFilePath = path.join(testDirs.paths.shellScriptsDir, 'main.zsh');
-        const mockResult: ShellInitGenerationResult = {
+        const mockResult: IShellInitGenerationResult = {
           files: new Map([['zsh', shellFilePath]]),
           primaryPath: shellFilePath,
         };

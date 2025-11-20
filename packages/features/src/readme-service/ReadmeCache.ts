@@ -3,7 +3,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import { DEFAULT_README_CACHE_TTL } from './constants';
 import type { IReadmeCache } from './IReadmeService';
 import { messages } from './log-messages';
-import type { ReadmeContent } from './types';
+import type { IReadmeContent } from './types';
 
 /**
  * Cache implementation specifically for README content.
@@ -33,9 +33,9 @@ export class ReadmeCache implements IReadmeCache {
   /**
    * @inheritdoc IReadmeCache.get
    */
-  async get(cacheKey: string): Promise<ReadmeContent | null> {
+  async get(cacheKey: string): Promise<IReadmeContent | null> {
     try {
-      const content: ReadmeContent | null = await this.cache.get<ReadmeContent>(cacheKey);
+      const content: IReadmeContent | null = await this.cache.get<IReadmeContent>(cacheKey);
       if (content) {
         this.logger.debug(messages.readmeCacheHit(content.owner, content.repo, content.version));
       }
@@ -49,7 +49,7 @@ export class ReadmeCache implements IReadmeCache {
   /**
    * @inheritdoc IReadmeCache.set
    */
-  async set(cacheKey: string, content: ReadmeContent, ttlMs: number = this.defaultTtl): Promise<void> {
+  async set(cacheKey: string, content: IReadmeContent, ttlMs: number = this.defaultTtl): Promise<void> {
     try {
       await this.cache.set(cacheKey, content, ttlMs);
       this.logger.debug(messages.readmeCached(content.owner, content.repo, content.version, ttlMs));

@@ -2,7 +2,7 @@ import { mock } from 'bun:test';
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { BaseInstallContext, ExtractResult, GitHubRelease, InstallerPluginRegistry } from '@dotfiles/core';
+import type { BaseInstallContext, IExtractResult, IGitHubRelease, InstallerPluginRegistry } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
@@ -15,7 +15,7 @@ import {
   createMock$,
   createMockProjectConfig,
   createTestDirectories,
-  type TestDirectories,
+  type ITestDirectories,
 } from '@dotfiles/testing-helpers';
 import type { ILogObj } from 'tslog';
 import { z } from 'zod';
@@ -49,7 +49,7 @@ export function createMockToolInstallationRegistry() {
 }
 export const MOCK_TOOL_VERSION = '1.0.0';
 
-export const MOCK_GITHUB_RELEASE: GitHubRelease = {
+export const MOCK_GITHUB_RELEASE: IGitHubRelease = {
   id: 123,
   tag_name: MOCK_TOOL_VERSION,
   name: 'Test Release',
@@ -72,7 +72,7 @@ export const MOCK_GITHUB_RELEASE: GitHubRelease = {
   html_url: 'https://github.com/owner/repo/releases/tag/1.0.0',
 };
 
-export const MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS: GitHubRelease = {
+export const MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS: IGitHubRelease = {
   ...MOCK_GITHUB_RELEASE,
   assets: [
     {
@@ -108,7 +108,7 @@ export const MOCK_GITHUB_RELEASE_WITH_MULTIPLE_ASSETS: GitHubRelease = {
   ],
 };
 
-export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: GitHubRelease = {
+export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: IGitHubRelease = {
   ...MOCK_GITHUB_RELEASE,
   assets: [
     {
@@ -145,7 +145,7 @@ export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: GitHubRelease = {
 };
 
 // Test setup interface
-export interface InstallerTestSetup {
+export interface IInstallerTestSetup {
   logger: TestLogger<ILogObj>;
   fs: IFileSystem;
   mockDownloader: IDownloader;
@@ -157,7 +157,7 @@ export interface InstallerTestSetup {
   pluginRegistry: InstallerPluginRegistry;
   installer: Installer;
   fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
-  testDirs: TestDirectories;
+  testDirs: ITestDirectories;
   mockToolBinaryPath: string;
 
   // Individual mocks for fine-grained control
@@ -176,7 +176,7 @@ export interface InstallerTestSetup {
 /**
  * Creates a full installer test setup with all mocks and dependencies
  */
-export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
+export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const logger = new TestLogger();
   const { fs, spies } = await createMemFileSystem();
   const testDirs = await createTestDirectories(logger, fs, { testName: 'installer-tests' });
@@ -213,7 +213,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
   const mockCargoClient = createMockCargoClient();
 
   // Setup mock ArchiveExtractor
-  const mockExtract = mock(async (_archivePath: string, options?: { targetDir?: string }): Promise<ExtractResult> => {
+  const mockExtract = mock(async (_archivePath: string, options?: { targetDir?: string }): Promise<IExtractResult> => {
     // Create the extracted files in the target directory
     if (options?.targetDir) {
       await fs.ensureDir(options.targetDir);
@@ -482,7 +482,7 @@ export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}):
  * Creates a test context for installation
  */
 export function createTestContext(
-  setup: InstallerTestSetup,
+  setup: IInstallerTestSetup,
   overrides: Partial<BaseInstallContext> = {}
 ): BaseInstallContext {
   const getToolDir = (toolName: string): string => {
@@ -496,7 +496,7 @@ export function createTestContext(
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
     projectConfig: setup.mockProjectConfig,
-    // BaseToolContext properties
+    // IBaseToolContext properties
     toolDir: getToolDir(MOCK_TOOL_NAME),
     getToolDir,
     homeDir: setup.mockProjectConfig.paths.homeDir,
@@ -513,7 +513,7 @@ export function createTestContext(
 /**
  * Helper to setup filesystem mocks for common operations
  */
-export function setupFileSystemMocks(setup: InstallerTestSetup): void {
+export function setupFileSystemMocks(setup: IInstallerTestSetup): void {
   setup.fileSystemMocks.chmod.mockResolvedValue(undefined);
 
   // Mock symlink to actually create the symlink in the mock filesystem

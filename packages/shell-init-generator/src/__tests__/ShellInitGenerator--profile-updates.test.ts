@@ -5,8 +5,8 @@ import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import type { GenerateShellInitOptions } from '../IShellInitGenerator';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import type { IGenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Profile Updates', () => {
@@ -14,7 +14,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
   let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
   let configFilePath: string;
 
   beforeEach(async () => {
@@ -58,7 +58,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       await mockFileSystem.ensureDir(path.dirname(zshrcPath));
       await mockFileSystem.writeFile(zshrcPath, '# Existing zsh config\n');
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh'],
       };
 
@@ -89,7 +89,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       await mockFileSystem.ensureDir(path.dirname(bashrcPath));
       await mockFileSystem.writeFile(bashrcPath, '# Existing bash config\n');
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['bash'],
         updateProfileFiles: true,
       };
@@ -114,7 +114,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       await mockFileSystem.ensureDir(path.dirname(zshrcPath));
       await mockFileSystem.writeFile(zshrcPath, '# Existing zsh config\n');
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh'],
         updateProfileFiles: false,
       };
@@ -139,7 +139,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       await mockFileSystem.ensureDir(path.dirname(bashrcPath));
       await mockFileSystem.writeFile(bashrcPath, '# Existing bash config\n');
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh', 'bash'],
         updateProfileFiles: true,
       };
@@ -168,7 +168,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
     it('should only update existing profile files (onlyIfExists behavior)', async () => {
       // Don't create any existing profiles
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh', 'bash'],
         updateProfileFiles: true,
       };
@@ -213,7 +213,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
       await mockFileSystem.ensureDir(path.dirname(zshrcPath));
       await mockFileSystem.writeFile(zshrcPath, `# Existing zsh config\nsource "${generatedScriptPath}"\n`);
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh'],
         updateProfileFiles: true,
       };
@@ -254,7 +254,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['powershell'],
         updateProfileFiles: true,
       };
@@ -296,7 +296,7 @@ describe('ShellInitGenerator - Profile Updates', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh'],
         updateProfileFiles: true,
       };

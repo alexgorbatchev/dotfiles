@@ -6,7 +6,7 @@ import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
 import { FileRegistry } from '../FileRegistry';
-import { TrackedFileSystem, type TrackingContext } from '../TrackedFileSystem';
+import { type ITrackingContext, TrackedFileSystem } from '../TrackedFileSystem';
 
 describe('TrackedFileSystem', () => {
   let logger: TestLogger;
@@ -14,7 +14,7 @@ describe('TrackedFileSystem', () => {
   let registry: FileRegistry;
   let registryDatabase: RegistryDatabase;
   let trackedFs: TrackedFileSystem;
-  let context: TrackingContext;
+  let context: ITrackingContext;
   let dbPath: string;
 
   beforeEach(async () => {

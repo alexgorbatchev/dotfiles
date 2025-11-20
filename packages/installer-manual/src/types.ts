@@ -1,10 +1,10 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { ToolInstallationDetails } from '@dotfiles/registry';
+import type { IToolInstallationDetails } from '@dotfiles/registry';
 
 /**
  * Metadata specific to manual tool installation.
  */
-export interface ManualInstallMetadata extends Partial<ToolInstallationDetails> {
+export interface IManualInstallMetadata extends Partial<IToolInstallationDetails> {
   method: 'manual';
   manualInstall: boolean;
 }
@@ -12,12 +12,12 @@ export interface ManualInstallMetadata extends Partial<ToolInstallationDetails> 
 /**
  * Success result for a manual tool installation.
  */
-export interface ManualInstallSuccess extends InstallResultSuccess<ManualInstallMetadata> {
+export interface IManualInstallSuccess extends InstallResultSuccess<IManualInstallMetadata> {
   binaryPaths: string[];
-  metadata: ManualInstallMetadata;
+  metadata: IManualInstallMetadata;
 }
 
 /**
  * Result type for manual tool installation (success or failure).
  */
-export type ManualInstallResult = ManualInstallSuccess | InstallResultFailure;
+export type ManualInstallResult = IManualInstallSuccess | InstallResultFailure;

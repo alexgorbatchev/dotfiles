@@ -1,7 +1,7 @@
 /**
  * Base interface for all cache entries
  */
-interface BaseCacheEntry {
+interface IBaseCacheEntry {
   /**
    * Timestamp when the entry was created (milliseconds since epoch)
    */
@@ -16,7 +16,7 @@ interface BaseCacheEntry {
 /**
  * Cache entry for JSON data (API responses, configuration, etc.)
  */
-export interface JsonCacheEntry<T> extends BaseCacheEntry {
+export interface IJsonCacheEntry<T> extends IBaseCacheEntry {
   type: 'json';
   /**
    * The actual cached data
@@ -27,7 +27,7 @@ export interface JsonCacheEntry<T> extends BaseCacheEntry {
 /**
  * Cache entry for binary data (downloaded files, archives, etc.)
  */
-export interface BinaryCacheEntry extends BaseCacheEntry {
+export interface IBinaryCacheEntry extends IBaseCacheEntry {
   type: 'binary';
   /**
    * Filename of the binary file (without path)
@@ -46,7 +46,7 @@ export interface BinaryCacheEntry extends BaseCacheEntry {
 /**
  * Cache entry for downloaded content with additional metadata
  */
-export interface DownloadCacheEntry extends BinaryCacheEntry {
+export interface IDownloadCacheEntry extends IBinaryCacheEntry {
   /**
    * Original URL the content was downloaded from
    */
@@ -60,12 +60,12 @@ export interface DownloadCacheEntry extends BinaryCacheEntry {
 /**
  * Union type for all possible cache entry types
  */
-export type CacheEntry<T = unknown> = JsonCacheEntry<T> | BinaryCacheEntry | DownloadCacheEntry;
+export type CacheEntry<T = unknown> = IJsonCacheEntry<T> | IBinaryCacheEntry | IDownloadCacheEntry;
 
 /**
  * Configuration for the cache.
  */
-export interface CacheConfig {
+export interface ICacheConfig {
   /**
    * Whether caching is enabled
    */

@@ -1,11 +1,11 @@
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { expandToolConfigPath } from '@dotfiles/utils';
-import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
+import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
 import { messages } from './log-messages';
 
 /**
@@ -19,7 +19,7 @@ import { messages } from './log-messages';
 export class SymlinkGenerator implements ISymlinkGenerator {
   private readonly fs: IFileSystem;
   private readonly projectConfig: ProjectConfig;
-  private readonly systemInfo: SystemInfo;
+  private readonly systemInfo: ISystemInfo;
   private readonly logger: TsLogger;
 
   /**
@@ -30,7 +30,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    * @param projectConfig - The project configuration containing paths and settings.
    * @param systemInfo - System information for path expansion.
    */
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, projectConfig: ProjectConfig, systemInfo: SystemInfo) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, projectConfig: ProjectConfig, systemInfo: ISystemInfo) {
     this.fs = fileSystem;
     this.projectConfig = projectConfig;
     this.systemInfo = systemInfo;
@@ -42,7 +42,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    */
   async generate(
     toolConfigs: Record<string, ToolConfig>,
-    options: GenerateSymlinksOptions = {}
+    options: IGenerateSymlinksOptions = {}
   ): Promise<SymlinkOperationResult[]> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const results: SymlinkOperationResult[] = [];
@@ -103,7 +103,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolConfig: ToolConfig,
     symlinkConfig: { source: string; target: string },
     toolFs: IFileSystem,
-    options: GenerateSymlinksOptions,
+    options: IGenerateSymlinksOptions,
     logger: TsLogger
   ): Promise<SymlinkOperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'processSymlink' });

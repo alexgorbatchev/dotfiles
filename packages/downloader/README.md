@@ -54,7 +54,7 @@ interface IDownloader {
   download(options: DownloadOptions): Promise<void>;
 }
 
-interface DownloadOptions {
+interface IDownloadOptions {
   url: string;
   destination: string;
   filename: string;
@@ -69,7 +69,7 @@ interface DownloadOptions {
 Interface for implementing custom download methods.
 
 ```typescript
-interface DownloadStrategy {
+interface IDownloadStrategy {
   download(options: DownloadOptions): Promise<void>;
 }
 ```
@@ -274,7 +274,7 @@ await cache.clear();
 ### Cache Options
 
 ```typescript
-interface CacheOptions {
+interface ICacheOptions {
   /**
    * Time-to-live in seconds
    * @default 86400 (24 hours)

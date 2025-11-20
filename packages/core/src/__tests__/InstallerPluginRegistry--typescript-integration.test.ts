@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
-import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
+import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
 import { z } from 'zod';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
-import type { InstallerPlugin, InstallResult } from '../types';
+import type { IInstallerPlugin, InstallResult } from '../types';
 // Import plugins to load type augmentations for this test
 import '../plugins';
 
@@ -27,10 +27,10 @@ type CustomNpmConfig = z.infer<typeof customNpmConfigSchema>;
 
 // Module augmentation using inferred types (as plugin packages would do)
 declare module '@dotfiles/core' {
-  interface ToolConfigBuilder {
+  interface IToolConfigBuilder {
     install(method: 'custom-npm', params: CustomNpmParams): this;
   }
-  interface PlatformConfigBuilder {
+  interface IPlatformConfigBuilder {
     install(method: 'custom-npm', params: CustomNpmParams): this;
   }
 }
@@ -44,9 +44,9 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
     registry = new InstallerPluginRegistry(logger);
   });
 
-  test('ToolConfigBuilder with custom plugin method - TypeScript types work correctly', async () => {
+  test('IToolConfigBuilder with custom plugin method - TypeScript types work correctly', async () => {
     // Create a custom plugin using module-level schemas and types
-    const customPlugin: InstallerPlugin<'custom-npm', CustomNpmParams, CustomNpmConfig, { npmVersion: string }> = {
+    const customPlugin: IInstallerPlugin<'custom-npm', CustomNpmParams, CustomNpmConfig, { npmVersion: string }> = {
       method: 'custom-npm',
       displayName: 'Custom NPM Installer',
       version: '1.0.0',
@@ -66,8 +66,8 @@ describe('InstallerPluginRegistry - TypeScript Integration', () => {
     await registry.register(customPlugin);
     registry.composeSchemas();
 
-    // Create ToolConfigBuilder with registry
-    const builder = new ToolConfigBuilder(logger, 'my-custom-tool', registry);
+    // Create IToolConfigBuilder with registry
+    const builder = new IToolConfigBuilder(logger, 'my-custom-tool', registry);
 
     // Valid params - should work fine
     const config = builder

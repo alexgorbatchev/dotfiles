@@ -13,4 +13,4 @@ export const binaryConfigSchema = z
 /**
  * Configuration for a single binary within a tool
  */
-export type BinaryConfig = z.infer<typeof binaryConfigSchema>;
+export type IBinaryConfig = z.infer<typeof binaryConfigSchema>;

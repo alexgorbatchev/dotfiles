@@ -105,7 +105,7 @@ Note: The actual script execution is currently simulated in the implementation.
 
 ## Plugin Interface
 
-Implements `InstallerPlugin` with:
+Implements `IInstallerPlugin` with:
 
 - **Method**: `curl-script`
 - **Schemas**: `curlScriptInstallParamsSchema`, `curlScriptToolConfigSchema`
@@ -119,13 +119,13 @@ This package extends the core type system via module augmentation:
 
 ```typescript
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'curl-script': CurlScriptInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'curl-script': CurlScriptToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
 }
 ```
 

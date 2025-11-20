@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
-import { createInstallerTestSetup, type InstallerTestSetup } from './installer-test-helpers';
+import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - externally managed plugins', () => {
-  let setup: InstallerTestSetup;
+  let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();

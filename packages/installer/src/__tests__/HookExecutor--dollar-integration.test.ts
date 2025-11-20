@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { EnhancedInstallHookContext, ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { HookExecutor } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
@@ -13,7 +13,7 @@ import { createTestInstallHookContext } from './hookContextTestHelper';
 describe('HookExecutor $ Integration', () => {
   let logger: TestLogger;
   let hookExecutor: HookExecutor;
-  let memFs: MemFileSystemReturn;
+  let memFs: IMemFileSystemReturn;
   let tempDir: string;
   let toolConfigPath: string;
 

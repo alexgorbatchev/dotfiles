@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { ShellType } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { generateProfileHeader, generateSourceLine } from '../shellTemplates';
-import type { IProfileUpdater, ProfileUpdateConfig, ProfileUpdateResult } from './IProfileUpdater';
+import type { IProfileUpdateConfig, IProfileUpdateResult, IProfileUpdater } from './IProfileUpdater';
 
 /**
  * Implementation of profile file updater that manages sourcing generated shell scripts
@@ -17,8 +17,8 @@ export class ProfileUpdater implements IProfileUpdater {
     this.homeDir = homeDir;
   }
 
-  async updateProfiles(configs: ProfileUpdateConfig[]): Promise<ProfileUpdateResult[]> {
-    const results: ProfileUpdateResult[] = [];
+  async updateProfiles(configs: IProfileUpdateConfig[]): Promise<IProfileUpdateResult[]> {
+    const results: IProfileUpdateResult[] = [];
 
     for (const config of configs) {
       const result = await this.updateProfile(config);
@@ -57,11 +57,11 @@ export class ProfileUpdater implements IProfileUpdater {
   /**
    * Updates a single profile file based on the provided configuration.
    */
-  private async updateProfile(config: ProfileUpdateConfig): Promise<ProfileUpdateResult> {
+  private async updateProfile(config: IProfileUpdateConfig): Promise<IProfileUpdateResult> {
     const profilePath = this.getProfilePath(config.shellType);
     const fileExists = await this.fileSystem.exists(profilePath);
 
-    const result: ProfileUpdateResult = {
+    const result: IProfileUpdateResult = {
       shellType: config.shellType,
       profilePath,
       fileExists,
@@ -93,7 +93,7 @@ export class ProfileUpdater implements IProfileUpdater {
   /**
    * Adds a source line to the profile file.
    */
-  private async addSourceLine(profilePath: string, config: ProfileUpdateConfig): Promise<void> {
+  private async addSourceLine(profilePath: string, config: IProfileUpdateConfig): Promise<void> {
     const sourceLine = generateSourceLine(config.shellType, config.generatedScriptPath);
     const headerBlock = generateProfileHeader(config.shellType, config.projectConfigPath);
 

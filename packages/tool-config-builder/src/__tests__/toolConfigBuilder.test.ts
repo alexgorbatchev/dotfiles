@@ -4,9 +4,9 @@ import type { GithubReleaseInstallParams } from '@dotfiles/installer-github';
 import { isGitHubReleaseToolConfig } from '@dotfiles/installer-github';
 import { TestLogger } from '@dotfiles/logger';
 import { messages } from '../log-messages';
-import { ToolConfigBuilder } from '../toolConfigBuilder';
+import { IToolConfigBuilder } from '../toolConfigBuilder';
 
-describe('ToolConfigBuilder', () => {
+describe('IToolConfigBuilder', () => {
   let logger: TestLogger;
 
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('constructor initializes with default values', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     expect(builder.toolName).toBe('test-tool');
     expect(builder.versionNum).toBe('latest');
     expect(builder.binaries).toEqual([]);
@@ -25,11 +25,11 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('bin method sets binaries correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     expect(builder.binaries).toEqual([{ name: 'test-bin', pattern: '*/test-bin' }]);
 
-    const builder2 = new ToolConfigBuilder(logger, 'test-tool');
+    const builder2 = new IToolConfigBuilder(logger, 'test-tool');
     builder2.bin('bin1').bin('bin2');
     expect(builder2.binaries).toEqual([
       { name: 'bin1', pattern: '*/bin1' },
@@ -38,13 +38,13 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('version method sets version correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.version('1.2.3');
     expect(builder.versionNum).toBe('1.2.3');
   });
 
   test('install method sets installation method and params correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin'); // Add bin to make build valid
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     builder.install('github-release', installParams);
@@ -57,7 +57,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('hooks method sets hooks correctly on installParams', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin'); // Add bin to make build valid
     const mockHook: AsyncInstallHook = async () => {};
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
@@ -72,7 +72,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('hook method sets individual hook correctly on installParams', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     const mockHook: AsyncInstallHook = async () => {};
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
@@ -87,7 +87,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('hook method appends multiple hooks for the same event', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     const mockHook1: AsyncInstallHook = async () => {};
     const mockHook2: AsyncInstallHook = async () => {};
@@ -104,7 +104,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('hook method supports all lifecycle events', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     const beforeInstall: AsyncInstallHook = async () => {};
     const afterDownload: AsyncInstallHook = async () => {};
@@ -131,7 +131,7 @@ describe('ToolConfigBuilder', () => {
 
   test('hook method does not set hooks and warns if install was not called first', () => {
     const testLogger = new TestLogger();
-    const builder = new ToolConfigBuilder(testLogger, 'test-tool');
+    const builder = new IToolConfigBuilder(testLogger, 'test-tool');
     const mockHook: AsyncInstallHook = async () => {};
     builder.hook('before-install', mockHook);
 
@@ -139,7 +139,7 @@ describe('ToolConfigBuilder', () => {
 
     testLogger.expect(
       ['WARN'],
-      ['ToolConfigBuilder'],
+      ['IToolConfigBuilder'],
       [
         messages.configurationFieldIgnored(
           'hook',
@@ -150,7 +150,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('zsh method adds zsh code correctly to zshInit', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.zsh((shell) => shell.always(/* zsh */ `alias ll="ls -l"`));
     builder.zsh((shell) => shell.always(/* zsh */ `export PATH="$HOME/bin:$PATH"`));
     // build() is valid here as zshInit is provided
@@ -162,7 +162,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('symlink method adds symlinks correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.symlink('configs/.mytoolrc', '~/.mytoolrc');
     builder.symlink('configs/another.conf', '~/.config/another.conf');
     // build() is valid here as symlinks are provided
@@ -173,7 +173,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns correct ToolConfig object for github-release', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     const mockHook: AsyncInstallHook = async () => {};
 
@@ -200,7 +200,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns ManualToolConfig if binaries are specified but no installation method', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');
     const config = builder.build();
     expect(config.name).toBe('test-tool');
@@ -214,7 +214,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns ManualToolConfig if only zshInit is present', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.zsh((shell) => shell.always(/* zsh */ `alias tt="test-tool"`));
     const config = builder.build();
     expect(config.installationMethod).toBe('manual');
@@ -224,7 +224,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method returns ManualToolConfig if only symlinks are present', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.symlink('a', 'b');
     const config = builder.build();
     expect(config.installationMethod).toBe('manual');
@@ -234,14 +234,14 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method throws error if nothing is configured', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     expect(() => builder.build()).toThrow(
       'Required configuration missing: tool definition. Example: Tool "test-tool" must define at least binaries, shell init scripts (zsh/bash/powershell), symlinks, or platformConfigs'
     );
   });
 
   test('build method returns ManualToolConfig with binaries if set, but no install method', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('my-binary');
     const config = builder.build();
     expect(config.installationMethod).toBe('manual');
@@ -251,7 +251,7 @@ describe('ToolConfigBuilder', () => {
 
   test('build method should log error when invalid installation method is set', () => {
     const testLogger = new TestLogger();
-    const builder = new ToolConfigBuilder(testLogger, 'test-tool');
+    const builder = new IToolConfigBuilder(testLogger, 'test-tool');
     builder.bin('test-binary');
     // Test error handling by forcing an invalid installation method
     // This simulates a corrupted state that should never occur in normal usage
@@ -270,7 +270,7 @@ describe('ToolConfigBuilder', () => {
 
     testLogger.expect(
       ['ERROR'],
-      ['ToolConfigBuilder'],
+      ['IToolConfigBuilder'],
       [
         messages.configurationFieldInvalid(
           'installationMethod',
@@ -283,7 +283,7 @@ describe('ToolConfigBuilder', () => {
 
   test('build method should log error when no configuration is provided', () => {
     const testLogger = new TestLogger();
-    const builder = new ToolConfigBuilder(testLogger, 'empty-tool');
+    const builder = new IToolConfigBuilder(testLogger, 'empty-tool');
     // Don't set any configuration - this should trigger the "nothing configured" error
 
     let thrownError: Error | null = null;
@@ -298,7 +298,7 @@ describe('ToolConfigBuilder', () => {
 
     testLogger.expect(
       ['ERROR'],
-      ['ToolConfigBuilder'],
+      ['IToolConfigBuilder'],
       [
         messages.configurationFieldRequired(
           'tool definition',
@@ -309,7 +309,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('zsh method handles aliases correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
 
     builder.zsh((shell) =>
       shell
@@ -330,7 +330,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('bash method handles aliases correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
 
     builder.bash((shell) =>
       shell.aliases({
@@ -346,7 +346,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('powershell method handles aliases correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
 
     builder.powershell((shell) =>
       shell.aliases({
@@ -362,7 +362,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method includes aliases in shell configs', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
 
     builder.bin('test-tool').zsh((shell) =>
       shell.aliases({
@@ -381,7 +381,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('build method stores PowerShell aliases correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
 
     builder.bin('test-tool').powershell((shell) =>
       shell.aliases({
@@ -400,7 +400,7 @@ describe('ToolConfigBuilder', () => {
   });
 
   test('multiple zsh calls merge aliases correctly', () => {
-    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
 
     builder.zsh((shell) => shell.aliases({ g: 'git' })).zsh((shell) => shell.aliases({ l: 'ls -la', v: 'vim' }));
 

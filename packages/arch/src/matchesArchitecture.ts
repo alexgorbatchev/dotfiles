@@ -1,4 +1,4 @@
-import type { ArchitectureRegex } from './types';
+import type { IArchitectureRegex } from './types';
 
 /**
  * Checks if a given asset name matches the specified architecture patterns.
@@ -30,7 +30,7 @@ import type { ArchitectureRegex } from './types';
  *
  * @public
  */
-export function matchesArchitecture(assetName: string, architectureRegex: ArchitectureRegex): boolean {
+export function matchesArchitecture(assetName: string, architectureRegex: IArchitectureRegex): boolean {
   const lowerAssetName = assetName.toLowerCase();
 
   // System and CPU patterns are the primary filters.

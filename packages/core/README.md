@@ -23,27 +23,27 @@ The core package uses TypeScript's module augmentation to create a type-safe plu
 
 ```typescript
 // Plugins extend these registries via module augmentation
-interface InstallParamsRegistry {
+interface IInstallParamsRegistry {
   // 'method-name': MethodParams
 }
 
-interface ToolConfigRegistry {
+interface IToolConfigRegistry {
   // 'method-name': MethodConfig
 }
 
-interface PluginResultRegistry {
+interface IPluginResultRegistry {
   // 'method-name': MethodResult
 }
 ```
 
 ### Core Interfaces
 
-#### InstallerPlugin
+#### IInstallerPlugin
 
 The base interface all installer plugins must implement:
 
 ```typescript
-interface InstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
+interface IInstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
   readonly method: TMethod;
   readonly displayName: string;
   readonly version: string;
@@ -57,7 +57,7 @@ interface InstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
     toolName: string,
     toolConfig: TConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: IInstallOptions,
     logger?: TsLogger
   ): Promise<InstallResult<TMetadata>>;
   
@@ -83,11 +83,11 @@ interface InstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
 Standard result types for operations:
 
 ```typescript
-interface OperationSuccess {
+interface IOperationSuccess {
   success: true;
 }
 
-interface OperationFailure {
+interface IOperationFailure {
   success: false;
   error: string;
 }
@@ -107,7 +107,7 @@ type InstallResult<TMetadata> =
 ### Context Types
 
 ```typescript
-interface BaseInstallContext {
+interface IBaseInstallContext {
   homeDir: string;
   workingDir: string;
   binDir: string;
@@ -118,7 +118,7 @@ interface BaseInstallContext {
   databasePath: string;
 }
 
-interface BaseToolContext extends BaseInstallContext {
+interface IBaseToolContext extends BaseInstallContext {
   toolName: string;
   installDir: string;
   tempDir: string;
@@ -171,7 +171,7 @@ type SystemType = 'darwin' | 'linux' | 'win32';
 type ArchType = 'x64' | 'arm64' | 'x86';
 type CpuType = 'intel' | 'arm' | 'amd';
 
-interface PlatformInfo {
+interface IPlatformInfo {
   system: SystemType;
   arch: ArchType;
   cpu: CpuType;
@@ -181,7 +181,7 @@ interface PlatformInfo {
 ### Platform Configuration
 
 ```typescript
-interface PlatformConfig {
+interface IPlatformConfig {
   system?: SystemType | SystemType[];
   arch?: ArchType | ArchType[];
   cpu?: CpuType | CpuType[];
@@ -195,13 +195,13 @@ interface PlatformConfig {
 ```typescript
 type ShellType = 'zsh' | 'bash' | 'fish';
 
-interface ShellScript {
+interface IShellScript {
   type: 'path' | 'env' | 'custom';
   priority: number;
   content: string;
 }
 
-interface ShellCompletionConfig {
+interface IShellCompletionConfig {
   shell: ShellType;
   source: string | string[];
   inline?: string;
@@ -213,7 +213,7 @@ interface ShellCompletionConfig {
 ### Tool Config Builder Types
 
 ```typescript
-interface ToolConfigBuilder<TMethod> {
+interface IToolConfigBuilder<TMethod> {
   version(version: string): this;
   binary(config: BinaryConfig): this;
   binaries(configs: BinaryConfig[]): this;
@@ -234,15 +234,15 @@ Plugins use module augmentation to register their types:
 ```typescript
 // In your plugin package
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'my-method': MyMethodParams;
   }
   
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'my-method': MyMethodToolConfig;
   }
   
-  interface PluginResultRegistry {
+  interface IPluginResultRegistry {
     'my-method': MyMethodResult;
   }
 }
@@ -251,9 +251,9 @@ declare module '@dotfiles/core' {
 ### Creating a Plugin
 
 ```typescript
-import type { InstallerPlugin, BaseInstallContext } from '@dotfiles/core';
+import type { IInstallerPlugin, BaseInstallContext } from '@dotfiles/core';
 
-export const myPlugin: InstallerPlugin<
+export const myPlugin: IInstallerPlugin<
   'my-method',
   MyMethodParams,
   MyMethodToolConfig,
@@ -281,7 +281,7 @@ export const myPlugin: InstallerPlugin<
 ### Plugin Validation
 
 ```typescript
-interface ValidationResult {
+interface IValidationResult {
   valid: boolean;
   errors?: string[];
   warnings?: string[];
@@ -340,7 +340,7 @@ type UpdateCheckResult =
 ### Update Operations
 
 ```typescript
-interface UpdateOptions {
+interface IUpdateOptions {
   force?: boolean;
   targetVersion?: string;
 }
@@ -368,12 +368,12 @@ async function installTool(
 
 ```typescript
 import {
-  type InstallerPlugin,
+  type IInstallerPlugin,
   type BaseInstallContext,
   type InstallResult,
 } from '@dotfiles/core';
 
-export const myPlugin: InstallerPlugin</* ... */> = {
+export const myPlugin: IInstallerPlugin</* ... */> = {
   // Implementation
 };
 ```

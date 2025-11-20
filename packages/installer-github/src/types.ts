@@ -1,10 +1,10 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { ToolInstallationDetails } from '@dotfiles/registry';
+import type { IToolInstallationDetails } from '@dotfiles/registry';
 
 /**
  * Metadata for GitHub Release installations
  */
-export interface GitHubReleaseInstallMetadata extends Partial<ToolInstallationDetails> {
+export interface IGitHubReleaseInstallMetadata extends Partial<IToolInstallationDetails> {
   method: 'github-release';
   releaseUrl: string;
   publishedAt: string;
@@ -14,14 +14,14 @@ export interface GitHubReleaseInstallMetadata extends Partial<ToolInstallationDe
 /**
  * Success result for GitHub Release installations
  */
-export interface GitHubReleaseInstallSuccess extends InstallResultSuccess<GitHubReleaseInstallMetadata> {
+export interface IGitHubReleaseInstallSuccess extends InstallResultSuccess<IGitHubReleaseInstallMetadata> {
   binaryPaths: string[];
   version: string;
   originalTag: string;
-  metadata: GitHubReleaseInstallMetadata;
+  metadata: IGitHubReleaseInstallMetadata;
 }
 
 /**
  * Result type for GitHub Release installations
  */
-export type GitHubReleaseInstallResult = GitHubReleaseInstallSuccess | InstallResultFailure;
+export type GitHubReleaseInstallResult = IGitHubReleaseInstallSuccess | InstallResultFailure;

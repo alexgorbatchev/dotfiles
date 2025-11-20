@@ -1,4 +1,4 @@
-import type { CargoTomlPackage, CrateMetadata } from './CargoClient';
+import type { CargoTomlPackage, ICrateMetadata } from './CargoClient';
 
 /**
  * Interface for a client that interacts with Cargo-related APIs.
@@ -9,7 +9,7 @@ export interface ICargoClient {
    * @param crateName The name of the crate.
    * @returns A promise that resolves to the crate metadata, or null if not found.
    */
-  getCrateMetadata(crateName: string): Promise<CrateMetadata | null>;
+  getCrateMetadata(crateName: string): Promise<ICrateMetadata | null>;
 
   /**
    * Builds a GitHub raw URL for a Cargo.toml file.

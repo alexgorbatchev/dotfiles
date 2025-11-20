@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { selectBestMatch } from '../selectBestMatch';
 
 describe('selectBestMatch', () => {
   it('should return undefined when no assets match', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'darwin',
       arch: 'arm64',
       homeDir: '/home/test',
@@ -16,7 +16,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should return the only matching asset', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'darwin',
       arch: 'arm64',
       homeDir: '/home/test',
@@ -31,7 +31,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should prefer musl variant when both musl and gnu are available for Linux', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
       homeDir: '/home/test',
@@ -51,7 +51,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should accept gnu variant if musl is not available', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
       homeDir: '/home/test',
@@ -66,7 +66,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should work with assets that have no variant info (most common case)', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
       homeDir: '/home/test',
@@ -81,7 +81,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should return first match when multiple assets match without variants', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
       homeDir: '/home/test',
@@ -98,7 +98,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should prefer mingw variant for Windows when multiple Windows variants exist', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'win32',
       arch: 'x64',
       homeDir: '/home/test',
@@ -118,7 +118,7 @@ describe('selectBestMatch', () => {
   });
 
   it('should handle ARM eabihf variant correctly', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'armv7l',
       homeDir: '/home/test',

@@ -22,7 +22,7 @@ The tool-config-builder package provides a fluent builder pattern for constructi
 Main builder interface for creating tool configurations.
 
 ```typescript
-interface ToolConfigBuilder {
+interface IToolConfigBuilder {
   bin(name: string | string[]): this;
   version(version: string): this;
   install(method: InstallationMethod, params: InstallParams): this;

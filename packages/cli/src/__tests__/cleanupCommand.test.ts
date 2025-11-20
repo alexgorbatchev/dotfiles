@@ -5,7 +5,7 @@ import type { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
 import { clearMockRegistry, createModuleMocker, setupTestCleanup } from '@rageltd/bun-test-utils';
 import { registerCleanupCommand } from '../cleanupCommand';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 setupTestCleanup();
@@ -13,7 +13,7 @@ setupTestCleanup();
 const mockModules = createModuleMocker();
 
 describe('cleanupCommand', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
   let mockFs: MockedFileSystem;
   let mockFileRegistry: ReturnType<typeof createMockFileRegistry>;

@@ -1,10 +1,10 @@
-import type { InstallMethod, InstallParamsRegistry, ManualInstallParams } from '@gitea/dotfiles';
+import type { IInstallParamsRegistry, InstallMethod, ManualInstallParams } from '@gitea/dotfiles';
 import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
 
-type ManualParams = InstallParamsRegistry['manual'];
+type ManualParams = IInstallParamsRegistry['manual'];
 export type InstallIncludesManual = ExpectTrue<'manual' extends InstallMethod ? true : false>;
 export type ManualParamsMatchSchema = ExpectTrue<ManualParams extends ManualInstallParams ? true : false>;
 export type ManualSchemaMatchesParams = ExpectTrue<ManualInstallParams extends ManualParams ? true : false>;

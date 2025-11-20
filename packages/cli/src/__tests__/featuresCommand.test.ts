@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import type { MemFileSystemReturn } from '@dotfiles/file-system';
+import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerFeaturesCommand } from '../featuresCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
@@ -15,10 +15,10 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 });
 
 describe('featuresCommand', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
-  let mockFs: MemFileSystemReturn;
+  let mockFs: IMemFileSystemReturn;
   let mockConfigService: MockedInterface<IConfigService>;
 
   const toolAConfig: ToolConfig = {

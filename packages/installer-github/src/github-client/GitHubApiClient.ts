@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { GitHubRateLimit, GitHubRelease } from '@dotfiles/core';
+import type { IGitHubRateLimit, IGitHubRelease } from '@dotfiles/core';
 import type { ICache } from '@dotfiles/downloader';
 import {
   ClientError,
@@ -282,11 +282,11 @@ export class GitHubApiClient implements IGitHubApiClient {
     throw new GitHubApiClientError(`Unknown error during GitHub API request to ${url}`);
   }
 
-  async getLatestRelease(owner: string, repo: string): Promise<GitHubRelease | null> {
+  async getLatestRelease(owner: string, repo: string): Promise<IGitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'getLatestRelease' });
     logger.debug(messages.releases.fetchingLatest(owner, repo));
     try {
-      return await this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/latest`);
+      return await this.request<IGitHubRelease>(`/repos/${owner}/${repo}/releases/latest`);
     } catch (error) {
       if (error instanceof Error && error.message.includes('GitHub resource not found')) {
         logger.debug(messages.releases.latestNotFound(owner, repo));
@@ -297,11 +297,11 @@ export class GitHubApiClient implements IGitHubApiClient {
     }
   }
 
-  async getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease | null> {
+  async getReleaseByTag(owner: string, repo: string, tag: string): Promise<IGitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'getReleaseByTag' });
     logger.debug(messages.releases.fetchingByTag(tag, owner, repo));
     try {
-      return await this.request<GitHubRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
+      return await this.request<IGitHubRelease>(`/repos/${owner}/${repo}/releases/tags/${tag}`);
     } catch (error) {
       if (error instanceof Error && error.message.includes('GitHub resource not found')) {
         logger.debug(messages.releases.tagNotFound(tag, owner, repo));
@@ -316,18 +316,18 @@ export class GitHubApiClient implements IGitHubApiClient {
     owner: string,
     repo: string,
     options?: { perPage?: number; includePrerelease?: boolean }
-  ): Promise<GitHubRelease[]> {
+  ): Promise<IGitHubRelease[]> {
     const logger = this.logger.getSubLogger({ name: 'getAllReleases' });
     logger.debug(messages.releases.fetchingAll(owner, repo), options);
     const perPage = options?.perPage || 30; // Default to 30, max 100
     let page = 1;
-    let allReleases: GitHubRelease[] = [];
+    let allReleases: IGitHubRelease[] = [];
     let keepFetching = true;
 
     while (keepFetching) {
       const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
       logger.debug(messages.releases.fetchingPage(page, endpoint));
-      const releasesPage = await this.request<GitHubRelease[]>(endpoint);
+      const releasesPage = await this.request<IGitHubRelease[]>(endpoint);
 
       if (releasesPage.length === 0) {
         keepFetching = false;
@@ -353,7 +353,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     return allReleases;
   }
 
-  async getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null> {
+  async getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<IGitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'getReleaseByConstraint' });
     logger.debug(messages.constraints.searching(constraint, owner, repo));
 
@@ -364,7 +364,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     return await this.findReleaseByVersionConstraint(owner, repo, constraint);
   }
 
-  private async handleLatestConstraint(owner: string, repo: string): Promise<GitHubRelease | null> {
+  private async handleLatestConstraint(owner: string, repo: string): Promise<IGitHubRelease | null> {
     try {
       return await this.getLatestRelease(owner, repo);
     } catch (error) {
@@ -378,11 +378,11 @@ export class GitHubApiClient implements IGitHubApiClient {
     owner: string,
     repo: string,
     constraint: string
-  ): Promise<GitHubRelease | null> {
+  ): Promise<IGitHubRelease | null> {
     const logger = this.logger.getSubLogger({ name: 'findReleaseByVersionConstraint' });
     logger.debug(messages.constraints.pageFetch(constraint));
 
-    let latestSatisfyingRelease: GitHubRelease | null = null;
+    let latestSatisfyingRelease: IGitHubRelease | null = null;
     let latestSatisfyingVersionClean: string | null = null;
     let page = 1;
     const perPage = 30;
@@ -427,13 +427,13 @@ export class GitHubApiClient implements IGitHubApiClient {
     page: number,
     perPage: number,
     constraint: string
-  ): Promise<GitHubRelease[] | null> {
+  ): Promise<IGitHubRelease[] | null> {
     const endpoint = `/repos/${owner}/${repo}/releases?per_page=${perPage}&page=${page}`;
     const logger = this.logger.getSubLogger({ name: 'fetchReleasesPage' });
     logger.debug(messages.constraints.pageRequest(page, owner, repo));
 
     try {
-      return await this.request<GitHubRelease[]>(endpoint);
+      return await this.request<IGitHubRelease[]>(endpoint);
     } catch (error) {
       logger.debug(messages.errors.constraintError(constraint, owner, repo), error);
       return null;
@@ -441,11 +441,11 @@ export class GitHubApiClient implements IGitHubApiClient {
   }
 
   private findBestReleaseFromPage(
-    releasesPage: GitHubRelease[],
+    releasesPage: IGitHubRelease[],
     constraint: string,
-    currentBest: GitHubRelease | null,
+    currentBest: IGitHubRelease | null,
     currentBestVersion: string | null
-  ): { release: GitHubRelease | null; version: string | null } {
+  ): { release: IGitHubRelease | null; version: string | null } {
     const logger = this.logger.getSubLogger({ name: 'findBestReleaseFromPage' });
     let bestRelease = currentBest;
     let bestVersion = currentBestVersion;
@@ -477,7 +477,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     return !currentBestVersion || semver.gt(newVersion, currentBestVersion);
   }
 
-  private logConstraintResult(constraint: string, result: GitHubRelease | null): void {
+  private logConstraintResult(constraint: string, result: IGitHubRelease | null): void {
     const logger = this.logger.getSubLogger({ name: 'logConstraintResult' });
     if (result) {
       logger.debug(messages.constraints.resultFound(constraint, result.tag_name));
@@ -486,22 +486,22 @@ export class GitHubApiClient implements IGitHubApiClient {
     }
   }
 
-  async getRateLimit(): Promise<GitHubRateLimit> {
+  async getRateLimit(): Promise<IGitHubRateLimit> {
     const logger = this.logger.getSubLogger({ name: 'getRateLimit' });
     logger.debug(messages.rateLimit.fetching());
     // The actual rate limit data is nested under "resources"
     type RateLimitResponse = {
       resources: {
-        core: GitHubRateLimit;
-        search: GitHubRateLimit;
-        graphql: GitHubRateLimit;
-        integration_manifest: GitHubRateLimit;
-        source_import: GitHubRateLimit;
-        code_scanning_upload: GitHubRateLimit;
-        actions_runner_registration: GitHubRateLimit;
-        scim: GitHubRateLimit;
+        core: IGitHubRateLimit;
+        search: IGitHubRateLimit;
+        graphql: IGitHubRateLimit;
+        integration_manifest: IGitHubRateLimit;
+        source_import: IGitHubRateLimit;
+        code_scanning_upload: IGitHubRateLimit;
+        actions_runner_registration: IGitHubRateLimit;
+        scim: IGitHubRateLimit;
       };
-      rate: GitHubRateLimit; // This is the primary one usually referred to
+      rate: IGitHubRateLimit; // This is the primary one usually referred to
     };
     const response = await this.request<RateLimitResponse>('/rate_limit');
     return response.resources.core; // Or response.rate, depending on which one is more relevant

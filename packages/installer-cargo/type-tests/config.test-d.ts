@@ -1,10 +1,10 @@
-import type { CargoInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
+import type { CargoInstallParams, IInstallParamsRegistry, InstallMethod } from '@gitea/dotfiles';
 import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
 
-type CargoParams = InstallParamsRegistry['cargo'];
+type CargoParams = IInstallParamsRegistry['cargo'];
 export type InstallIncludesCargo = ExpectTrue<'cargo' extends InstallMethod ? true : false>;
 export type CargoParamsMatchSchema = ExpectTrue<CargoParams extends CargoInstallParams ? true : false>;
 export type CargoSchemaMatchesParams = ExpectTrue<CargoInstallParams extends CargoParams ? true : false>;

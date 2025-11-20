@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { type BuiltPackageEnvironment, getBuiltPackageName } from '../getBuiltPackageName';
+import { getBuiltPackageName, type IBuiltPackageEnvironment } from '../getBuiltPackageName';
 
 describe('getBuiltPackageName', () => {
   test('returns default package name when environment variable is not set', () => {
-    const env: BuiltPackageEnvironment = {};
+    const env: IBuiltPackageEnvironment = {};
 
     const packageName: string = getBuiltPackageName(env);
 
@@ -11,7 +11,7 @@ describe('getBuiltPackageName', () => {
   });
 
   test('returns configured package name when environment variable is set', () => {
-    const env: BuiltPackageEnvironment = {
+    const env: IBuiltPackageEnvironment = {
       DOTFILES_BUILT_PACKAGE_NAME: '@dotfiles/core',
     };
 
@@ -21,7 +21,7 @@ describe('getBuiltPackageName', () => {
   });
 
   test('falls back to default when environment variable is empty', () => {
-    const env: BuiltPackageEnvironment = {
+    const env: IBuiltPackageEnvironment = {
       DOTFILES_BUILT_PACKAGE_NAME: '   ',
     };
 

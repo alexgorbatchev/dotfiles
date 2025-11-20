@@ -1,13 +1,13 @@
 import path from 'node:path';
 import type { BaseInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { InstallOptions } from '@dotfiles/installer';
+import type { IInstallOptions } from '@dotfiles/installer';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { expandToolConfigPath } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { ManualToolConfig } from './schemas';
-import type { ManualInstallMetadata, ManualInstallResult } from './types';
+import type { IManualInstallMetadata, ManualInstallResult } from './types';
 
 /**
  * Installs a manually managed tool.
@@ -28,7 +28,7 @@ export async function installManually(
   toolName: string,
   toolConfig: ManualToolConfig,
   context: BaseInstallContext,
-  _options: InstallOptions | undefined,
+  _options: IInstallOptions | undefined,
   fs: IFileSystem,
   parentLogger: TsLogger
 ): Promise<ManualInstallResult> {
@@ -61,7 +61,7 @@ export async function installManually(
       binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
     }
 
-    const metadata: ManualInstallMetadata = {
+    const metadata: IManualInstallMetadata = {
       method: 'manual',
       manualInstall: true,
     };

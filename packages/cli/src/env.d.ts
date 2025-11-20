@@ -1,5 +1,7 @@
 declare namespace NodeJS {
-  interface ProcessEnv {
+  interface IProcessEnvOverrides {
     DOTFILES_VERSION: string;
   }
+
+  interface ProcessEnv extends IProcessEnvOverrides {}
 }

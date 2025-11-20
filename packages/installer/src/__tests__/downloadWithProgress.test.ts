@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { downloadWithProgress } from '../utils/downloadWithProgress';
-import { createInstallerTestSetup, type InstallerTestSetup } from './installer-test-helpers';
+import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('downloadWithProgress utility', () => {
-  let setup: InstallerTestSetup;
+  let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();

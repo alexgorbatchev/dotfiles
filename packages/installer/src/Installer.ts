@@ -4,8 +4,8 @@ import type {
   AsyncInstallHook,
   BaseInstallContext,
   InstallerPluginRegistry,
+  ISystemInfo,
   PluginEmittedHookEvent,
-  SystemInfo,
   ToolConfig,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -13,7 +13,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
-import type { IInstaller, InstallOptions, InstallResult } from './types';
+import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { HookExecutor, messages } from './utils';
 
 /**
@@ -74,7 +74,7 @@ export class Installer implements IInstaller {
   private readonly projectConfig: ProjectConfig;
   private readonly hookExecutor: HookExecutor;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
-  private readonly systemInfo: SystemInfo;
+  private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
   private readonly $: typeof import('bun').$;
   private currentToolConfig?: ToolConfig;
@@ -84,7 +84,7 @@ export class Installer implements IInstaller {
     fileSystem: IFileSystem,
     projectConfig: ProjectConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
-    systemInfo: SystemInfo,
+    systemInfo: ISystemInfo,
     registry: InstallerPluginRegistry,
     $shell: typeof import('bun').$
   ) {
@@ -176,7 +176,7 @@ export class Installer implements IInstaller {
   private async shouldSkipInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
-    options: InstallOptions | undefined,
+    options: IInstallOptions | undefined,
     parentLogger: TsLogger
   ): Promise<boolean> {
     const logger = parentLogger.getSubLogger({ name: 'shouldSkipInstallation' });
@@ -301,7 +301,7 @@ export class Installer implements IInstaller {
    *
    * Combines base installation details with plugin-specific metadata:
    * - Base fields: toolName, version, installPath, timestamp, binaryPaths, configuredVersion, originalTag
-   * - Plugin metadata: Spread from result.metadata (plugins extending Partial<ToolInstallationDetails>)
+   * - Plugin metadata: Spread from result.metadata (plugins extending Partial<IToolInstallationDetails>)
    *
    * The Installer is plugin-agnostic and simply spreads whatever metadata the plugin provides.
    * Plugins can include optional fields like downloadUrl, assetName, or any method-specific data.
@@ -311,7 +311,7 @@ export class Installer implements IInstaller {
    * @param context - Base install context with paths
    * @param result - Installation result with success status and metadata
    * @param parentLogger - Logger for registry operations
-   * @see {@link ToolInstallationDetails} for the complete field structure
+   * @see {@link IToolInstallationDetails} for the complete field structure
    */
   private async recordInstallation(
     toolName: string,
@@ -345,7 +345,7 @@ export class Installer implements IInstaller {
       const originalTag: string | undefined =
         'originalTag' in result && typeof result.originalTag === 'string' ? result.originalTag : undefined;
 
-      // Spread metadata - installers now extend ToolInstallationDetails so they provide the right fields
+      // Spread metadata - installers now extend IToolInstallationDetails so they provide the right fields
       await this.toolInstallationRegistry.recordToolInstallation({
         toolName,
         version,
@@ -378,7 +378,7 @@ export class Installer implements IInstaller {
     toolName: string,
     resolvedToolConfig: ToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: IInstallOptions,
     _logger?: TsLogger
   ): Promise<InstallResult> {
     const result = await this.registry.install(
@@ -403,7 +403,7 @@ export class Installer implements IInstaller {
    * @returns Installation result with success status, binary paths, version, and metadata
    */
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multiple stages require sequential checks
-  async install(toolName: string, toolConfig: ToolConfig, options?: InstallOptions): Promise<InstallResult> {
+  async install(toolName: string, toolConfig: ToolConfig, options?: IInstallOptions): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
 
     // Resolve platform-specific configuration
@@ -603,7 +603,7 @@ export class Installer implements IInstaller {
 
   /**
    * Creates a complete BaseInstallContext with all required properties for installation.
-   * Includes properties from BaseToolContext plus installation-specific fields.
+   * Includes properties from IBaseToolContext plus installation-specific fields.
    *
    * The context provides plugins with:
    * - Tool identification (toolName)
@@ -646,7 +646,7 @@ export class Installer implements IInstaller {
         systemInfo: this.getSystemInfo(),
         toolConfig,
         projectConfig: this.projectConfig,
-        // BaseToolContext properties
+        // IBaseToolContext properties
         toolDir: getToolDir(toolName),
         getToolDir,
         homeDir: this.projectConfig.paths.homeDir,
@@ -678,7 +678,7 @@ export class Installer implements IInstaller {
    *
    * @returns System information with platform and architecture
    */
-  private getSystemInfo(): SystemInfo {
+  private getSystemInfo(): ISystemInfo {
     return this.systemInfo;
   }
 }

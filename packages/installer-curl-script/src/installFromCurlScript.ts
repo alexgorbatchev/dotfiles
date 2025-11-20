@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { BaseInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
-import type { HookExecutor, InstallOptions } from '@dotfiles/installer';
+import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
 import {
   createToolFileSystem,
   downloadWithProgress,
@@ -15,7 +15,7 @@ import {
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
-import type { CurlScriptInstallMetadata, CurlScriptInstallResult } from './types';
+import type { CurlScriptInstallResult, ICurlScriptInstallMetadata } from './types';
 
 /**
  * Installs a tool using a curl script.
@@ -39,7 +39,7 @@ export async function installFromCurlScript(
   toolName: string,
   toolConfig: CurlScriptToolConfig,
   context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
   hookExecutor: HookExecutor,
@@ -105,7 +105,7 @@ export async function installFromCurlScript(
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-    const metadata: CurlScriptInstallMetadata = {
+    const metadata: ICurlScriptInstallMetadata = {
       method: 'curl-script',
       scriptUrl: url,
       shell,

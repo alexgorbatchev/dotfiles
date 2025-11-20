@@ -6,7 +6,7 @@ Core plugin infrastructure for the installer system. Provides the registry, base
 
 This package enables the plugin-based architecture for tool installers. It provides:
 
-- `InstallerPlugin` interface that all plugins must implement
+- `IInstallerPlugin` interface that all plugins must implement
 - `InstallerPluginRegistry` for managing and dispatching to plugins
 - Base types and utilities for plugin development
 - Schema composition for runtime validation
@@ -15,10 +15,10 @@ This package enables the plugin-based architecture for tool installers. It provi
 
 ### Plugin Interface
 
-All installer plugins implement the `InstallerPlugin` interface:
+All installer plugins implement the `IInstallerPlugin` interface:
 
 ```typescript
-interface InstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
+interface IInstallerPlugin<TMethod, TParams, TConfig, TMetadata> {
   readonly method: TMethod;
   readonly displayName: string;
   readonly version: string;
@@ -69,19 +69,19 @@ Main registry class for managing plugins.
 
 ### Types
 
-- `InstallerPlugin<TMethod, TParams, TConfig, TMetadata>` - Plugin interface
+- `IInstallerPlugin<TMethod, TParams, TConfig, TMetadata>` - Plugin interface
 - `InstallResult<TMetadata>` - Result from plugin installation
 - `ValidationResult` - Result from plugin validation
-- `InstallOptions` - Options passed to install method
+- `IInstallOptions` - Options passed to install method
 
 ## Usage
 
 ### Creating a Plugin
 
 ```typescript
-import type { InstallerPlugin, InstallResult } from '@dotfiles/installer-plugin-system';
+import type { IInstallerPlugin, InstallResult } from '@dotfiles/installer-plugin-system';
 
-export class MyInstallerPlugin implements InstallerPlugin<'my-method', MyParams, MyConfig, MyMetadata> {
+export class MyInstallerPlugin implements IInstallerPlugin<'my-method', MyParams, MyConfig, MyMetadata> {
   readonly method = 'my-method';
   readonly displayName = 'My Installer';
   readonly version = '1.0.0';
@@ -100,7 +100,7 @@ export class MyInstallerPlugin implements InstallerPlugin<'my-method', MyParams,
     toolName: string,
     toolConfig: MyConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: IInstallOptions,
     logger?: TsLogger
   ): Promise<InstallResult<MyMetadata>> {
     // Implement installation logic

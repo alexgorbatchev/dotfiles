@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GitHubRelease } from '@dotfiles/core';
+import type { IGitHubRelease } from '@dotfiles/core';
 import { NetworkError, NotFoundError, RateLimitError } from '@dotfiles/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
-  type MockSetup,
+  type IMockSetup,
   setupMockGitHubApiClient,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
-  let mocks: MockSetup;
+  let mocks: IMockSetup;
 
   beforeEach(async () => {
     // Explicitly disable API cache for these non-caching tests
@@ -20,7 +20,7 @@ describe('GitHubApiClient', () => {
 
   describe('getLatestRelease', () => {
     it('should fetch and return the latest release', async () => {
-      const mockReleaseData: GitHubRelease = {
+      const mockReleaseData: IGitHubRelease = {
         tag_name: 'v1.0.0',
         name: 'Version 1.0.0',
         draft: false,

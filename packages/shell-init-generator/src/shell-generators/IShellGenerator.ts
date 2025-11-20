@@ -3,7 +3,7 @@ import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '
 /**
  * Represents shell-specific initialization content for a single tool.
  */
-export interface ShellInitContent {
+export interface IShellInitContent {
   /** Path to the tool configuration file that generated this content */
   configFilePath?: string;
   /** Tool-specific shell initialization code */
@@ -23,7 +23,7 @@ export interface ShellInitContent {
 /**
  * Additional file that needs to be written during shell generation
  */
-export interface AdditionalShellFile {
+export interface IAdditionalShellFile {
   /** Content of the file */
   content: string;
   /** Path where the file should be written */
@@ -48,7 +48,7 @@ export interface IShellGenerator {
    * @param toolConfig - Tool configuration to process
    * @returns Shell-specific initialization content
    */
-  extractShellContent(toolName: string, toolConfig: ToolConfig): ShellInitContent;
+  extractShellContent(toolName: string, toolConfig: ToolConfig): IShellInitContent;
 
   /**
    * Processes completion configuration for this shell.
@@ -63,14 +63,14 @@ export interface IShellGenerator {
    * @param toolContents - Map of tool names to their shell content
    * @returns Complete shell initialization file content
    */
-  generateFileContent(toolContents: Map<string, ShellInitContent>): string;
+  generateFileContent(toolContents: Map<string, IShellInitContent>): string;
 
   /**
    * Gets additional files that need to be written during generation (e.g., once scripts)
    * @param toolContents - Map of tool names to their shell content
    * @returns Array of additional files to write
    */
-  getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[];
+  getAdditionalFiles(toolContents: Map<string, IShellInitContent>): IAdditionalShellFile[];
 
   /**
    * Gets the default output filename for this shell.

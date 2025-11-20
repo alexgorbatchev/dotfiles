@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { InstallerPlugin, ToolConfig } from '@dotfiles/core';
+import type { IInstallerPlugin, ToolConfig } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { IToolInstallationRegistry, ToolInstallationRecord } from '@dotfiles/registry';
+import type { IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
 import { createMockFileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { ReadmeService } from '../ReadmeService';
-import type { ReadmeContent } from '../types';
+import type { IReadmeContent } from '../types';
 
 describe('ReadmeService', () => {
   let logger: TestLogger;
@@ -50,12 +50,12 @@ describe('ReadmeService', () => {
 
     // Create mock plugin registry with a GitHub release plugin
     mockPluginRegistry = new InstallerPluginRegistry(logger);
-    const mockGitHubPlugin: Partial<InstallerPlugin> = {
+    const mockGitHubPlugin: Partial<IInstallerPlugin> = {
       method: 'github-release',
       supportsReadme: () => true,
       getReadmeUrl: () => 'https://raw.githubusercontent.com/owner/repo/main/README.md',
     };
-    await mockPluginRegistry.register(mockGitHubPlugin as InstallerPlugin);
+    await mockPluginRegistry.register(mockGitHubPlugin as IInstallerPlugin);
 
     // Create real TrackedFileSystem
     catalogFileSystem = new TrackedFileSystem(
@@ -86,7 +86,7 @@ describe('ReadmeService', () => {
       const readmeContent: string = '# Test Tool\n\nThis is a test tool description.';
       fetchMock.mockTextResponseOnce(readmeContent);
 
-      const result: ReadmeContent | null = await readmeService.fetchReadmeForVersion(
+      const result: IReadmeContent | null = await readmeService.fetchReadmeForVersion(
         'owner',
         'repo',
         'v1.0.0',
@@ -109,7 +109,7 @@ describe('ReadmeService', () => {
     test('should return null when README not found', async () => {
       fetchMock.mockErrorOnce(new Error('Not Found'));
 
-      const result: ReadmeContent | null = await readmeService.fetchReadmeForVersion(
+      const result: IReadmeContent | null = await readmeService.fetchReadmeForVersion(
         'owner',
         'repo',
         'v1.0.0',
@@ -124,7 +124,7 @@ describe('ReadmeService', () => {
       fetchMock.mockTextResponseOnce(readmeContent);
 
       // First call should fetch from network
-      const result1: ReadmeContent | null = await readmeService.fetchReadmeForVersion(
+      const result1: IReadmeContent | null = await readmeService.fetchReadmeForVersion(
         'owner',
         'repo',
         'v1.0.0',
@@ -132,7 +132,7 @@ describe('ReadmeService', () => {
       );
 
       // Second call should use cache
-      const result2: ReadmeContent | null = await readmeService.fetchReadmeForVersion(
+      const result2: IReadmeContent | null = await readmeService.fetchReadmeForVersion(
         'owner',
         'repo',
         'v1.0.0',
@@ -146,7 +146,7 @@ describe('ReadmeService', () => {
 
   describe('getCachedReadme', () => {
     test('should return null for non-cached README', async () => {
-      const result: ReadmeContent | null = await readmeService.getCachedReadme('owner', 'repo', 'v1.0.0');
+      const result: IReadmeContent | null = await readmeService.getCachedReadme('owner', 'repo', 'v1.0.0');
       expect(result).toBeNull();
     });
 
@@ -158,7 +158,7 @@ describe('ReadmeService', () => {
       await readmeService.fetchReadmeForVersion('owner', 'repo', 'v1.0.0', 'test-tool');
 
       // Then retrieve from cache
-      const result: ReadmeContent | null = await readmeService.getCachedReadme('owner', 'repo', 'v1.0.0');
+      const result: IReadmeContent | null = await readmeService.getCachedReadme('owner', 'repo', 'v1.0.0');
 
       expect(result).not.toBeNull();
       expect(result!.content).toBe(readmeContent);
@@ -172,7 +172,7 @@ describe('ReadmeService', () => {
     });
 
     test('should filter and return GitHub tools', async () => {
-      const mockInstallations: ToolInstallationRecord[] = [
+      const mockInstallations: IToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'github-tool',
@@ -214,7 +214,7 @@ describe('ReadmeService', () => {
     });
 
     test('should generate combined README for multiple tools', async () => {
-      const mockInstallations: ToolInstallationRecord[] = [
+      const mockInstallations: IToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'tool1',
@@ -253,7 +253,7 @@ describe('ReadmeService', () => {
     });
 
     test('should handle missing READMEs gracefully', async () => {
-      const mockInstallations: ToolInstallationRecord[] = [
+      const mockInstallations: IToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'tool1',
@@ -277,7 +277,7 @@ describe('ReadmeService', () => {
     });
 
     test('should include full README content', async () => {
-      const mockInstallations: ToolInstallationRecord[] = [
+      const mockInstallations: IToolInstallationRecord[] = [
         {
           id: 1,
           toolName: 'tool1',
@@ -416,7 +416,7 @@ describe('ReadmeService', () => {
       };
 
       // Mock registry to return installed GitHub tools
-      const installedTool: ToolInstallationRecord = {
+      const installedTool: IToolInstallationRecord = {
         id: 1,
         toolName: 'test-tool',
         version: 'v1.0.0',

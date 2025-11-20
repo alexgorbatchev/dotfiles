@@ -1,7 +1,3 @@
 {
-  "recommendations": [
-    "timonwong.shellcheck",
-    "foxundermoon.shell-format",
-    "bierner.comment-tagged-templates"
-  ]
+  "recommendations": ["timonwong.shellcheck", "foxundermoon.shell-format", "bierner.comment-tagged-templates"]
 }

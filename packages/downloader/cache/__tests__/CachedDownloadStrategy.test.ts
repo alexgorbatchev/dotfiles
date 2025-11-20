@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { CachedDownloadStrategy } from '../../CachedDownloadStrategy';
-import type { DownloadStrategy } from '../../DownloadStrategy';
-import type { DownloadOptions } from '../../IDownloader';
+import type { IDownloadOptions } from '../../IDownloader';
+import type { IDownloadStrategy } from '../../IDownloadStrategy';
 import type { ICache } from '../types';
 
-class MockDownloadStrategy implements DownloadStrategy {
+class MockDownloadStrategy implements IDownloadStrategy {
   public readonly name = 'mock-strategy';
-  public downloadCalls: Array<{ url: string; options: DownloadOptions }> = [];
+  public downloadCalls: Array<{ url: string; options: IDownloadOptions }> = [];
   public downloadResult: Buffer = Buffer.from('mock-download-result');
   public shouldFail = false;
   public isAvailableResult = true;
@@ -17,7 +17,7 @@ class MockDownloadStrategy implements DownloadStrategy {
     return this.isAvailableResult;
   }
 
-  async download(url: string, options: DownloadOptions): Promise<Buffer | undefined> {
+  async download(url: string, options: IDownloadOptions): Promise<Buffer | undefined> {
     this.downloadCalls.push({ url, options });
     if (this.shouldFail) {
       throw new Error('Mock download failed');
@@ -148,7 +148,7 @@ describe('CachedDownloadStrategy', () => {
 
   describe('download', () => {
     it('should skip cache when progress callback is provided', async () => {
-      const options: DownloadOptions = {
+      const options: IDownloadOptions = {
         onProgress: () => {},
       };
 
@@ -162,7 +162,7 @@ describe('CachedDownloadStrategy', () => {
     });
 
     it('should use cache when destination path is provided', async () => {
-      const options: DownloadOptions = {
+      const options: IDownloadOptions = {
         destinationPath: '/tmp/file.txt',
       };
 
@@ -217,7 +217,7 @@ describe('CachedDownloadStrategy', () => {
     });
 
     it('should include content type from Accept header in metadata', async () => {
-      const options: DownloadOptions = {
+      const options: IDownloadOptions = {
         headers: {
           Accept: 'application/json',
         },
@@ -302,8 +302,8 @@ describe('CachedDownloadStrategy', () => {
     });
 
     it('should handle headers affecting cache keys', async () => {
-      const options1: DownloadOptions = { headers: { Authorization: 'Bearer token1' } };
-      const options2: DownloadOptions = { headers: { Authorization: 'Bearer token2' } };
+      const options1: IDownloadOptions = { headers: { Authorization: 'Bearer token1' } };
+      const options2: IDownloadOptions = { headers: { Authorization: 'Bearer token2' } };
 
       await cachedStrategy.download('https://example.com/file.txt', options1);
       await cachedStrategy.download('https://example.com/file.txt', options2);

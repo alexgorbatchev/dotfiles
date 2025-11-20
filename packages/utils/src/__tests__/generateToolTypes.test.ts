@@ -74,7 +74,7 @@ describe('generateToolTypes', () => {
       expect(binaryNames.size).toBe(0);
     });
 
-    test('should handle BinaryConfig objects', () => {
+    test('should handle IBinaryConfig objects', () => {
       const toolConfigs: Record<string, ToolConfig> = {
         tool: createMockToolConfig('tool', [{ name: 'binary-name' }]),
       };
@@ -85,7 +85,7 @@ describe('generateToolTypes', () => {
       expect(binaryNames.has('binary-name')).toBe(true);
     });
 
-    test('should handle mix of string and BinaryConfig', () => {
+    test('should handle mix of string and IBinaryConfig', () => {
       const toolConfigs: Record<string, ToolConfig> = {
         tool: createMockToolConfig('tool', ['string-binary', { name: 'config-binary' }]),
       };
@@ -133,7 +133,7 @@ describe('generateToolTypes', () => {
       const content: string = generateToolTypesContent(toolConfigs);
 
       expect(content).toContain("declare module '@gitea/dotfiles'");
-      expect(content).toContain('interface KnownBinNameRegistry');
+      expect(content).toContain('interface IKnownBinNameRegistry');
       expect(content).toContain("    'rg': never;");
       expect(content).toContain('export {};');
     });
@@ -144,7 +144,7 @@ describe('generateToolTypes', () => {
       const content: string = generateToolTypesContent(toolConfigs);
 
       expect(content).toContain("declare module '@gitea/dotfiles'");
-      expect(content).toContain('interface KnownBinNameRegistry {}');
+      expect(content).toContain('interface IKnownBinNameRegistry {}');
       expect(content).toContain('export {};');
     });
 

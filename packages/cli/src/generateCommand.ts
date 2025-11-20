@@ -2,23 +2,23 @@ import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, generateToolTypes } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { BaseCommandOptions, GlobalProgram, Services } from './types';
+import type { IBaseCommandOptions, IGlobalProgram, IServices } from './types';
 
-export interface GenerateCommandOptions extends BaseCommandOptions {
+export interface IGenerateCommandOptions extends IBaseCommandOptions {
   // No command-specific options for generate command
 }
 
 export function registerGenerateCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerGenerateCommand' });
   program
     .command('generate')
     .description('Generates shims, shell init files, and symlinks based on tool configurations.')
     .action(async () => {
-      const combinedOptions: GenerateCommandOptions = program.opts();
+      const combinedOptions: IGenerateCommandOptions = program.opts();
       const services = await servicesFactory();
       const { projectConfig, fs, generatorOrchestrator, configService } = services;
 

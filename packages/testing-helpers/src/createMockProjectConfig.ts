@@ -1,6 +1,6 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import { createProjectConfigFromObject } from '@dotfiles/config';
-import type { PartialDeep, SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo, PartialDeep } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
@@ -33,7 +33,7 @@ export type CreateMockProjectConfigOptions = {
   /**
    * System information.
    */
-  systemInfo: SystemInfo;
+  systemInfo: ISystemInfo;
   /**
    * Environment variables.
    */

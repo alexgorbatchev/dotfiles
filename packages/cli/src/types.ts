@@ -1,6 +1,6 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { InstallerPluginRegistry, SystemInfo } from '@dotfiles/core';
+import type { InstallerPluginRegistry, ISystemInfo } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { IReadmeService } from '@dotfiles/features';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -16,7 +16,7 @@ import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import type { IVersionChecker } from '@dotfiles/version-checker';
 import type { Command } from 'commander';
 
-export interface Services {
+export interface IServices {
   projectConfig: ProjectConfig;
   fs: IFileSystem;
   configService: IConfigService;
@@ -38,10 +38,10 @@ export interface Services {
   archiveExtractor: IArchiveExtractor;
   versionChecker: IVersionChecker;
   pluginRegistry: InstallerPluginRegistry;
-  systemInfo: SystemInfo;
+  systemInfo: ISystemInfo;
 }
 
-export interface GlobalProgramOptions {
+export interface IGlobalProgramOptions {
   config: string;
   dryRun: boolean;
   log: string;
@@ -54,7 +54,7 @@ export interface GlobalProgramOptions {
 /**
  * Base interface for command options that includes global program options
  */
-export interface BaseCommandOptions extends GlobalProgramOptions {}
+export interface IBaseCommandOptions extends IGlobalProgramOptions {}
 
 /**
  * Command-specific options for install command (excludes global options)
@@ -67,7 +67,7 @@ export interface InstallCommandSpecificOptions {
 /**
  * Command-specific options for update command (excludes global options)
  */
-export interface UpdateCommandSpecificOptions {
+export interface IUpdateCommandSpecificOptions {
   // TODO --yes is not yet implemented
   yes: boolean;
   shimMode: boolean;
@@ -76,7 +76,7 @@ export interface UpdateCommandSpecificOptions {
 /**
  * Command-specific options for cleanup command (excludes global options)
  */
-export interface CleanupCommandSpecificOptions {
+export interface ICleanupCommandSpecificOptions {
   tool?: string;
   type?: string;
   all?: boolean;
@@ -85,17 +85,17 @@ export interface CleanupCommandSpecificOptions {
 /**
  * Command-specific options for files command (excludes global options)
  */
-export interface FilesCommandSpecificOptions {
+export interface IFilesCommandSpecificOptions {
   tool?: string;
   type?: string;
   status?: boolean;
   since?: string;
 }
 
-export interface GlobalProgram extends Omit<Command, 'opts'> {
+export interface IGlobalProgram extends Omit<Command, 'opts'> {
   /**
-   * Get the parsed options for this command, properly typed as GlobalProgramOptions
+   * Get the parsed options for this command, properly typed as IGlobalProgramOptions
    * @returns The parsed global program options
    */
-  opts(): GlobalProgramOptions;
+  opts(): IGlobalProgramOptions;
 }

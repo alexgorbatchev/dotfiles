@@ -1,18 +1,18 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
 import {
   createMockProjectConfig,
   createTestDirectories,
+  type ITestDirectories,
   type MockedInterface,
-  type TestDirectories,
 } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { createProgram } from '../createProgram';
-import type { GlobalProgram, Services } from '../types';
+import type { IGlobalProgram, IServices } from '../types';
 
 /**
  * Options for creating customizable service mocks.
@@ -21,7 +21,7 @@ import type { GlobalProgram, Services } from '../types';
  * - A mock implementation for that service
  */
 type ServicesConfig = {
-  [K in keyof Services]?: MockedInterface<Services[K]> | true;
+  [K in keyof IServices]?: MockedInterface<IServices[K]> | true;
 };
 
 /**
@@ -29,23 +29,23 @@ type ServicesConfig = {
  * Each service that was configured will be available as a properly typed mock.
  */
 type MockedServices = {
-  [K in keyof Services]?: MockedInterface<Services[K]>;
+  [K in keyof IServices]?: MockedInterface<IServices[K]>;
 };
 
-interface CliTestSetupOptions {
+interface ICliTestSetupOptions {
   testName: string;
   memFileSystem?: Parameters<typeof createMemFileSystem>[0];
   services?: ServicesConfig;
 }
 
-interface CliTestSetup {
-  program: GlobalProgram;
+interface ICliTestSetup {
+  program: IGlobalProgram;
   logger: TestLogger;
-  mockFs: MemFileSystemReturn;
-  testDirs: TestDirectories;
+  mockFs: IMemFileSystemReturn;
+  testDirs: ITestDirectories;
   mockProjectConfig: ProjectConfig;
   mockServices: MockedServices;
-  createServices: () => MockedInterface<Services>;
+  createServices: () => MockedInterface<IServices>;
 }
 
 /**
@@ -82,7 +82,7 @@ interface CliTestSetup {
  *   }
  * });
  */
-export async function createCliTestSetup(options: CliTestSetupOptions): Promise<CliTestSetup> {
+export async function createCliTestSetup(options: ICliTestSetupOptions): Promise<ICliTestSetup> {
   const mockServices: MockedServices = {};
   const program = createProgram();
   const logger = new TestLogger();
@@ -108,7 +108,7 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
     for (const [serviceName, serviceConfig] of Object.entries(options.services)) {
       if (serviceConfig === true) {
         // Create default mock for this service
-        switch (serviceName as keyof Services) {
+        switch (serviceName as keyof IServices) {
           case 'configService':
             mockServices.configService = {
               loadSingleToolConfig: mock(async () => undefined),
@@ -199,14 +199,14 @@ export async function createCliTestSetup(options: CliTestSetupOptions): Promise<
         }
       } else {
         // Use provided mock directly - bypass strict typing for test setup
-        const serviceKey = serviceName as keyof Services;
+        const serviceKey = serviceName as keyof IServices;
         // biome-ignore lint/suspicious/noExplicitAny: Test utility needs to bypass strict service typing
         mockServices[serviceKey] = serviceConfig as any;
       }
     }
   }
 
-  const createServices = (): MockedInterface<Services> =>
+  const createServices = (): MockedInterface<IServices> =>
     ({
       projectConfig: mockProjectConfig,
       fs: mockFs.fs.asIFileSystem,

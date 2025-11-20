@@ -1,7 +1,7 @@
 /**
  * Represents a filesystem operation recorded in the registry.
  */
-export interface FileOperation {
+export interface IFileOperation {
   /** Unique ID for this operation */
   id: number;
   /** Tool that performed the operation */
@@ -29,13 +29,13 @@ export interface FileOperation {
 /**
  * Filter criteria for querying file operations.
  */
-export interface FileOperationFilter {
+export interface IFileOperationFilter {
   /** Filter by tool name */
   toolName?: string;
   /** Filter by operation type */
-  operationType?: FileOperation['operationType'];
+  operationType?: IFileOperation['operationType'];
   /** Filter by file type */
-  fileType?: FileOperation['fileType'];
+  fileType?: IFileOperation['fileType'];
   /** Filter by file path (exact match) */
   filePath?: string;
   /** Filter by operations after this timestamp */
@@ -49,15 +49,15 @@ export interface FileOperationFilter {
 /**
  * Current state of a file based on registry operations.
  */
-export interface FileState {
+export interface IFileState {
   /** File path */
   filePath: string;
   /** Tool that owns this file */
   toolName: string;
   /** Current file type */
-  fileType: FileOperation['fileType'];
+  fileType: IFileOperation['fileType'];
   /** Last operation performed on this file */
-  lastOperation: FileOperation['operationType'];
+  lastOperation: IFileOperation['operationType'];
   /** Target path for symlinks */
   targetPath?: string;
   /** Last modification timestamp */
@@ -77,24 +77,24 @@ export interface IFileRegistry {
   /**
    * Records a filesystem operation in the registry.
    */
-  recordOperation(operation: Omit<FileOperation, 'id' | 'createdAt'>): Promise<void>;
+  recordOperation(operation: Omit<IFileOperation, 'id' | 'createdAt'>): Promise<void>;
 
   /**
    * Retrieves all operations matching the given filter.
    */
-  getOperations(filter?: FileOperationFilter): Promise<FileOperation[]>;
+  getOperations(filter?: IFileOperationFilter): Promise<IFileOperation[]>;
 
   /**
    * Gets the current state of all files for a given tool.
    * This computes the final state by processing all operations chronologically.
    */
-  getFileStatesForTool(toolName: string): Promise<FileState[]>;
+  getFileStatesForTool(toolName: string): Promise<IFileState[]>;
 
   /**
    * Gets the current state of a specific file.
    * Returns null if the file has no recorded operations.
    */
-  getFileState(filePath: string): Promise<FileState | null>;
+  getFileState(filePath: string): Promise<IFileState | null>;
 
   /**
    * Gets all tools that have registered files.

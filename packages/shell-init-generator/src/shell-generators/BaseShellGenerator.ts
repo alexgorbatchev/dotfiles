@@ -13,7 +13,7 @@ import {
   generateSectionHeader,
   generateToolHeader,
 } from '../shellTemplates';
-import type { AdditionalShellFile, IShellGenerator, ShellInitContent } from './IShellGenerator';
+import type { IAdditionalShellFile, IShellGenerator, IShellInitContent } from './IShellGenerator';
 
 /**
  * Interface for shell-specific string generation strategy.
@@ -64,8 +64,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
   protected abstract getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined;
 
-  extractShellContent(toolName: string, toolConfig: ToolConfig): ShellInitContent {
-    const content: ShellInitContent = {
+  extractShellContent(toolName: string, toolConfig: ToolConfig): IShellInitContent {
+    const content: IShellInitContent = {
       configFilePath: toolConfig.configFilePath,
       toolInit: [],
       pathModifications: [],
@@ -107,7 +107,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     return this.stringProducer.processCompletions(toolName, completions);
   }
 
-  generateFileContent(toolContents: Map<string, ShellInitContent>): string {
+  generateFileContent(toolContents: Map<string, IShellInitContent>): string {
     const allPathModifications: string[] = [];
     const allEnvironmentVariables: string[] = [];
     const allToolInits: string[] = [];
@@ -199,8 +199,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     return path.join(this.projectConfig.paths.shellScriptsDir, `main${this.fileExtension}`);
   }
 
-  getAdditionalFiles(toolContents: Map<string, ShellInitContent>): AdditionalShellFile[] {
-    const additionalFiles: AdditionalShellFile[] = [];
+  getAdditionalFiles(toolContents: Map<string, IShellInitContent>): IAdditionalShellFile[] {
+    const additionalFiles: IAdditionalShellFile[] = [];
     const onceFormatter = new OnceScriptFormatter(this.projectConfig.paths.shellScriptsDir);
 
     for (const [toolName, content] of toolContents) {
@@ -225,7 +225,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    * Collects content from all tools with proper attribution.
    */
   private collectContentWithAttribution(
-    toolContents: Map<string, ShellInitContent>,
+    toolContents: Map<string, IShellInitContent>,
     allPathModifications: string[],
     allEnvironmentVariables: string[],
     allToolInits: string[],
@@ -246,8 +246,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   private generateHoistedSection(
     sectionTitle: string,
     items: string[],
-    toolContents: Map<string, ShellInitContent>,
-    contentType: keyof ShellInitContent
+    toolContents: Map<string, IShellInitContent>,
+    contentType: keyof IShellInitContent
   ): string {
     if (items.length === 0) return '';
 
@@ -293,7 +293,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   /**
    * Generates the tool-specific initialization section with file path headers.
    */
-  private generateToolInitSection(allToolInits: string[], toolContents: Map<string, ShellInitContent>): string {
+  private generateToolInitSection(allToolInits: string[], toolContents: Map<string, IShellInitContent>): string {
     if (allToolInits.length === 0) return '';
 
     let section = `${generateSectionHeader(this.shellType, 'Tool-Specific Initializations')}\n`;
@@ -325,8 +325,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    */
   private findSourceTools(
     item: string,
-    toolContents: Map<string, ShellInitContent>,
-    contentType: keyof ShellInitContent
+    toolContents: Map<string, IShellInitContent>,
+    contentType: keyof IShellInitContent
   ): string[] {
     const sourceTools: string[] = [];
 

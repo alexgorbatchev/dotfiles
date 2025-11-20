@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { MemFileSystemReturn } from '@dotfiles/file-system';
+import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerDetectConflictsCommand } from '../detectConflictsCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
@@ -17,10 +17,10 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 });
 
 describe('detectConflictsCommand', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
-  let mockFs: MemFileSystemReturn;
+  let mockFs: IMemFileSystemReturn;
   let mockConfigService: MockedInterface<IConfigService>;
 
   const toolAConfig: ManualToolConfig = {

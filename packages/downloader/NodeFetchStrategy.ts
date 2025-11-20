@@ -1,6 +1,5 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { DownloadStrategy } from './DownloadStrategy';
 import {
   ClientError,
   ForbiddenError,
@@ -10,10 +9,11 @@ import {
   RateLimitError,
   ServerError,
 } from './errors';
-import type { DownloadOptions } from './IDownloader';
+import type { IDownloadOptions } from './IDownloader';
+import type { IDownloadStrategy } from './IDownloadStrategy';
 import { nodeFetchStrategyLogMessages } from './log-messages';
 
-export class NodeFetchStrategy implements DownloadStrategy {
+export class NodeFetchStrategy implements IDownloadStrategy {
   public readonly name = 'node-fetch';
   private readonly logger: TsLogger;
   private readonly fileSystem: IFileSystem;
@@ -202,7 +202,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
 
   private async handleDownloadAttempt(
     url: string,
-    options: DownloadOptions,
+    options: IDownloadOptions,
     attempt: number
   ): Promise<Buffer | undefined> {
     const { headers, timeout, onProgress, destinationPath } = options;
@@ -270,7 +270,7 @@ export class NodeFetchStrategy implements DownloadStrategy {
     await new Promise((resolve) => setTimeout(resolve, retryDelay));
   }
 
-  public async download(url: string, options: DownloadOptions): Promise<Buffer | undefined> {
+  public async download(url: string, options: IDownloadOptions): Promise<Buffer | undefined> {
     const { retryCount = 0, retryDelay = 1000, onProgress } = options;
 
     let attempt = 0;

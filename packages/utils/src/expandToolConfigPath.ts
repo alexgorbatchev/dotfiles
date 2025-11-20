@@ -1,11 +1,11 @@
 import path from 'node:path';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { expandHomePath } from './expandHomePath';
 
 /**
  * Config paths interface to avoid circular dependency with @dotfiles/config
  */
-interface ConfigWithPaths {
+interface IConfigWithPaths {
   paths: {
     homeDir: string;
     dotfilesDir: string;
@@ -32,8 +32,8 @@ interface ConfigWithPaths {
 export function expandToolConfigPath(
   toolConfigFilePath: string | undefined,
   inputPath: string,
-  projectConfig: ConfigWithPaths,
-  _systemInfo: SystemInfo
+  projectConfig: IConfigWithPaths,
+  _systemInfo: ISystemInfo
 ): string {
   // Step 1: Expand variables like ${paths.homeDir}
   let expandedPath = expandVariables(inputPath, projectConfig);
@@ -59,7 +59,7 @@ export function expandToolConfigPath(
  * Expands variables in a path string using the project configuration.
  * Supports syntax like ${paths.homeDir}, ${paths.dotfilesDir}, etc.
  */
-function expandVariables(inputPath: string, projectConfig: ConfigWithPaths): string {
+function expandVariables(inputPath: string, projectConfig: IConfigWithPaths): string {
   return inputPath.replace(/\${([^}]+)}/g, (match, varName) => {
     if (varName.includes('.')) {
       const parts = varName.split('.');

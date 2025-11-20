@@ -1,4 +1,4 @@
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { getArchitecturePatterns } from './getArchitecturePatterns';
 import { getArchitectureRegex } from './getArchitectureRegex';
 import { matchesArchitecture } from './matchesArchitecture';
@@ -34,7 +34,7 @@ import { matchesArchitecture } from './matchesArchitecture';
  *
  * @public
  */
-export function selectBestMatch(assetNames: string[], systemInfo: SystemInfo): string | undefined {
+export function selectBestMatch(assetNames: string[], systemInfo: ISystemInfo): string | undefined {
   const architectureRegex = getArchitectureRegex(systemInfo);
 
   // First pass: filter by system and CPU patterns

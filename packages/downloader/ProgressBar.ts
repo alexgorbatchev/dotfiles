@@ -4,7 +4,7 @@ import type { ProgressCallback } from './IDownloader';
 /**
  * Options for configuring the ProgressBar behavior.
  */
-export interface ProgressBarOptions {
+export interface IProgressBarOptions {
   /** Whether progress bar should be shown at all */
   enabled?: boolean;
 }
@@ -30,7 +30,7 @@ export class ProgressBar {
    */
   constructor(
     private filename: string,
-    options: ProgressBarOptions = {}
+    options: IProgressBarOptions = {}
   ) {
     this.enabled = options.enabled ?? true;
   }

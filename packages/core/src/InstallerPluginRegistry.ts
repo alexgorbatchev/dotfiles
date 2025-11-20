@@ -3,7 +3,13 @@ import type { TsLogger } from '@dotfiles/logger';
 import { z } from 'zod';
 import type { PluginEmittedHookEvent } from './builder/builder.types';
 import { messages } from './log-messages';
-import type { AggregateInstallResult, InstallerPlugin, InstallOptions, InstallResult, ValidationResult } from './types';
+import type {
+  AggregateInstallResult,
+  IInstallerPlugin,
+  IInstallOptions,
+  InstallResult,
+  IValidationResult,
+} from './types';
 
 type InstallEventHandler = (event: InstallEvent) => Promise<void>;
 
@@ -17,8 +23,8 @@ export interface InstallEvent {
  * Central registry for installer plugins
  */
 export class InstallerPluginRegistry {
-  private plugins = new Map<string, InstallerPlugin>();
-  private validationCache = new Map<string, ValidationResult>();
+  private plugins = new Map<string, IInstallerPlugin>();
+  private validationCache = new Map<string, IValidationResult>();
   private composedToolConfigSchema?: z.ZodTypeAny;
   private composedInstallParamsSchema?: z.ZodTypeAny;
   private logger: TsLogger;
@@ -48,7 +54,7 @@ export class InstallerPluginRegistry {
   /**
    * Register a plugin (fails fast on error)
    */
-  async register<T extends InstallerPlugin>(plugin: T): Promise<void> {
+  async register<T extends IInstallerPlugin>(plugin: T): Promise<void> {
     const { method } = plugin;
 
     try {
@@ -82,7 +88,7 @@ export class InstallerPluginRegistry {
   /**
    * Get a plugin by method name
    */
-  get(method: string): InstallerPlugin | undefined {
+  get(method: string): IInstallerPlugin | undefined {
     return this.plugins.get(method);
   }
 
@@ -96,7 +102,7 @@ export class InstallerPluginRegistry {
   /**
    * Get all registered plugins
    */
-  getAll(): InstallerPlugin[] {
+  getAll(): IInstallerPlugin[] {
     return Array.from(this.plugins.values());
   }
 
@@ -163,7 +169,7 @@ export class InstallerPluginRegistry {
    * Validate plugin can run (with caching for static validations)
    */
   private async validatePlugin(
-    plugin: InstallerPlugin,
+    plugin: IInstallerPlugin,
     context: BaseInstallContext,
     logger: TsLogger
   ): Promise<InstallResult | null> {
@@ -207,7 +213,7 @@ export class InstallerPluginRegistry {
     toolName: string,
     toolConfig: unknown,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<AggregateInstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
     const plugin = this.get(method);

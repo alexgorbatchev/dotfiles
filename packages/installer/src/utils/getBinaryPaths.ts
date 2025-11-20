@@ -1,4 +1,4 @@
-import type { BinaryConfig } from '@dotfiles/core';
+import type { IBinaryConfig } from '@dotfiles/core';
 import { normalizeBinaries } from './normalizeBinaries';
 
 /**
@@ -11,13 +11,13 @@ import { normalizeBinaries } from './normalizeBinaries';
  * - Shim generation
  * - Verification
  *
- * @param binaries - Array of strings or BinaryConfig objects, or undefined
+ * @param binaries - Array of strings or IBinaryConfig objects, or undefined
  * @param fallbackName - Name to use if binaries array is empty or undefined
  * @param installDir - Directory where binaries are installed
  * @returns Array of absolute paths to binaries (e.g., ['/path/to/install/rg', '/path/to/install/ripgrep'])
  */
 export function getBinaryPaths(
-  binaries: (string | BinaryConfig)[] | undefined,
+  binaries: (string | IBinaryConfig)[] | undefined,
   fallbackName: string,
   installDir: string
 ): string[] {

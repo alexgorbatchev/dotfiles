@@ -136,7 +136,7 @@ The plugin implements `checkUpdate()` to query for available updates. Full imple
 
 ## Plugin Interface
 
-Implements `InstallerPlugin` with:
+Implements `IInstallerPlugin` with:
 
 - **Method**: `brew`
 - **Schemas**: `brewInstallParamsSchema`, `brewToolConfigSchema`
@@ -150,13 +150,13 @@ This package extends the core type system via module augmentation:
 
 ```typescript
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     brew: BrewInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     brew: BrewToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'brew', BrewInstallResult> {}
 }
 ```
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
@@ -9,7 +9,7 @@ import { expandToolConfigPath } from '../src/expandToolConfigPath';
 describe('expandToolConfigPath', () => {
   let mockProjectConfig: ProjectConfig;
 
-  const mockSystemInfo: SystemInfo = {
+  const mockSystemInfo: ISystemInfo = {
     platform: 'darwin',
     arch: 'arm64',
     homeDir: '/Users/testuser',

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { GitHubRelease } from '@dotfiles/core';
+import type { IGitHubRelease } from '@dotfiles/core';
 import { RateLimitError, ServerError } from '@dotfiles/downloader';
 import { GitHubApiClientError } from '../GitHubApiClientError';
 import {
   createGitHubConfigOverride,
-  type MockSetup,
+  type IMockSetup,
   setupMockGitHubApiClient,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 // Helper function from original test file
-const createMockRelease = (id: number, tagName: string, prerelease = false): GitHubRelease => ({
+const createMockRelease = (id: number, tagName: string, prerelease = false): IGitHubRelease => ({
   id,
   tag_name: tagName,
   name: `Release ${tagName}`,
@@ -23,7 +23,7 @@ const createMockRelease = (id: number, tagName: string, prerelease = false): Git
 });
 
 describe('GitHubApiClient', () => {
-  let mocks: MockSetup;
+  let mocks: IMockSetup;
 
   beforeEach(async () => {
     mock.restore();
@@ -34,10 +34,10 @@ describe('GitHubApiClient', () => {
 
   describe('getAllReleases', () => {
     it('should fetch all releases with default pagination (30 per page)', async () => {
-      const page1Releases: GitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
+      const page1Releases: IGitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
         createMockRelease(i + 1, `v1.${i}.0`)
       );
-      const page2Releases: GitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
+      const page2Releases: IGitHubRelease[] = Array.from({ length: 30 }, (_, i) =>
         createMockRelease(i + 31, `v0.${i}.0`)
       );
 
@@ -55,7 +55,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should fetch releases with custom perPage option', async () => {
-      const customPageReleases: GitHubRelease[] = [createMockRelease(1, 'v1.0.0')];
+      const customPageReleases: IGitHubRelease[] = [createMockRelease(1, 'v1.0.0')];
       mocks.mockDownloader.download
         .mockResolvedValueOnce(Buffer.from(JSON.stringify(customPageReleases)))
         .mockResolvedValueOnce(Buffer.from(JSON.stringify([])));
@@ -68,7 +68,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should filter out prereleases if includePrerelease is false', async () => {
-      const mixedReleases: GitHubRelease[] = [
+      const mixedReleases: IGitHubRelease[] = [
         createMockRelease(1, 'v1.0.0', false),
         createMockRelease(2, 'v0.9.0-beta', true),
         createMockRelease(3, 'v0.8.0', false),
@@ -84,7 +84,7 @@ describe('GitHubApiClient', () => {
     });
 
     it('should return all releases (including prereleases) if includePrerelease is true or undefined', async () => {
-      const mixedReleases: GitHubRelease[] = [
+      const mixedReleases: IGitHubRelease[] = [
         createMockRelease(1, 'v1.0.0', false),
         createMockRelease(2, 'v0.9.0-beta', true),
       ];

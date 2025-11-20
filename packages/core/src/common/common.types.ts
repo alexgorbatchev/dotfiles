@@ -3,7 +3,7 @@
  * This information is typically derived from the operating system's properties.
  * It is used as input, for example, to `getArchitectureRegex` for testability via Dependency Injection.
  */
-export interface SystemInfo {
+export interface ISystemInfo {
   /**
    * The operating system platform identifier.
    * Corresponds to the value returned by `os.platform()` in Node.js (e.g., 'darwin', 'linux', 'win32').

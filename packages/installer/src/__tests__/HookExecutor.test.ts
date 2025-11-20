@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
 import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import type { $ } from 'bun';
-import { type HookExecutionOptions, HookExecutor } from '../utils/HookExecutor';
+import { HookExecutor, type IHookExecutionOptions } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 
 // Helper function for tests to create SafeLogMessage
 describe('HookExecutor', () => {
   let logger: TestLogger;
   let hookExecutor: HookExecutor;
-  let memFs: MemFileSystemReturn;
+  let memFs: IMemFileSystemReturn;
   let mockTrackedFileSystem: TrackedFileSystem;
 
   beforeEach(async () => {
@@ -73,7 +73,7 @@ describe('HookExecutor', () => {
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
-      const options: HookExecutionOptions = { timeoutMs: 50 };
+      const options: IHookExecutionOptions = { timeoutMs: 50 };
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
@@ -89,7 +89,7 @@ describe('HookExecutor', () => {
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
-      const options: HookExecutionOptions = { continueOnError: true };
+      const options: IHookExecutionOptions = { continueOnError: true };
       const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);

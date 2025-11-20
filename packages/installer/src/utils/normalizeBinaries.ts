@@ -1,8 +1,8 @@
-import type { BinaryConfig } from '@dotfiles/core';
+import type { IBinaryConfig } from '@dotfiles/core';
 
 /**
- * Normalizes a mixed array of strings and BinaryConfig objects to a consistent BinaryConfig array.
- * Converts string entries to BinaryConfig objects with flexible minimatch glob patterns.
+ * Normalizes a mixed array of strings and IBinaryConfig objects to a consistent IBinaryConfig array.
+ * Converts string entries to IBinaryConfig objects with flexible minimatch glob patterns.
  *
  * Pattern Generation:
  * - String 'tool' becomes object with name: 'tool', pattern: '{,star/}tool'
@@ -13,14 +13,14 @@ import type { BinaryConfig } from '@dotfiles/core';
  * - If binaries array is empty or undefined, creates config for fallbackName
  * - Ensures every tool has at least one binary configured
  *
- * @param binaries - Array of strings or BinaryConfig objects, or undefined
+ * @param binaries - Array of strings or IBinaryConfig objects, or undefined
  * @param fallbackName - Name to use as single binary if binaries is empty or undefined
- * @returns Array of BinaryConfig objects with minimatch glob patterns for locating binaries
+ * @returns Array of IBinaryConfig objects with minimatch glob patterns for locating binaries
  */
 export function normalizeBinaries(
-  binaries: (string | BinaryConfig)[] | undefined,
+  binaries: (string | IBinaryConfig)[] | undefined,
   fallbackName: string
-): BinaryConfig[] {
+): IBinaryConfig[] {
   if (!binaries || binaries.length === 0) {
     return [{ name: fallbackName, pattern: `{,*/}${fallbackName}` }];
   }

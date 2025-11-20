@@ -5,7 +5,7 @@ import type { ShellCompletionConfig, ShellScript } from '@dotfiles/core';
  * Holds the accumulated scripts, aliases, environment variables, and completions
  * for a specific shell type before they are finalized into the ToolConfig.
  */
-export interface ShellStorage {
+export interface IShellStorage {
   /**
    * List of shell scripts to execute (once or always).
    */
@@ -35,17 +35,17 @@ export interface InternalShellConfigs {
   /**
    * Configuration storage for Zsh.
    */
-  zsh: ShellStorage;
+  zsh: IShellStorage;
 
   /**
    * Configuration storage for Bash.
    */
-  bash: ShellStorage;
+  bash: IShellStorage;
 
   /**
    * Configuration storage for PowerShell.
    */
-  powershell: ShellStorage;
+  powershell: IShellStorage;
 }
 
 /**

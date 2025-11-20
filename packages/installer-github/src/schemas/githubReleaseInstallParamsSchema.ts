@@ -1,4 +1,4 @@
-import type { BaseInstallParams, GitHubRelease, GitHubReleaseAsset, InstallContext } from '@dotfiles/core';
+import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
 
@@ -7,11 +7,11 @@ import { z } from 'zod';
  * Provides consistent interface with install hooks, including access to
  * system information, logging, tool configuration, and release data.
  */
-export interface AssetSelectionContext extends InstallContext {
+export interface IAssetSelectionContext extends IInstallContext {
   /** Available release assets to choose from */
-  assets: GitHubReleaseAsset[];
+  assets: IGitHubReleaseAsset[];
   /** The GitHub release being processed */
-  release: GitHubRelease;
+  release: IGitHubRelease;
   /** Asset pattern from configuration (if provided) */
   assetPattern?: string;
 }
@@ -43,7 +43,7 @@ export interface AssetSelectionContext extends InstallContext {
  * };
  * ```
  */
-export type AssetSelector = (context: AssetSelectionContext) => GitHubReleaseAsset | undefined;
+export type AssetSelector = (context: IAssetSelectionContext) => IGitHubReleaseAsset | undefined;
 
 export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
   /**
@@ -81,7 +81,7 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    * An optional custom function to select the desired asset from a list of available assets for a release.
    * This provides more fine-grained control than `assetPattern` for complex selection logic.
    *
-   * Uses context-based signature: `(context: AssetSelectionContext) => GitHubReleaseAsset | undefined`
+   * Uses context-based signature: `(context: IAssetSelectionContext) => IGitHubReleaseAsset | undefined`
    */
   assetSelector: z.custom<AssetSelector>((val) => typeof val === 'function', 'Must be a function').optional(),
 });

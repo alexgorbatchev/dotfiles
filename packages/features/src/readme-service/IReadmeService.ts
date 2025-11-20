@@ -1,6 +1,6 @@
 import type { ToolConfig } from '@dotfiles/core';
-import type { ToolInstallationRecord } from '@dotfiles/registry';
-import type { CombinedReadmeOptions, ReadmeContent } from './types';
+import type { IToolInstallationRecord } from '@dotfiles/registry';
+import type { ICombinedReadmeOptions, IReadmeContent } from './types';
 
 /**
  * Interface for a service that manages README files for tools
@@ -14,7 +14,7 @@ export interface IReadmeService {
    * @param toolName Tool name for metadata
    * @returns Promise resolving to README content or null if not found
    */
-  fetchReadmeForVersion(owner: string, repo: string, version: string, toolName: string): Promise<ReadmeContent | null>;
+  fetchReadmeForVersion(owner: string, repo: string, version: string, toolName: string): Promise<IReadmeContent | null>;
 
   /**
    * Gets cached README content for a tool version
@@ -23,20 +23,20 @@ export interface IReadmeService {
    * @param version Tool version
    * @returns Promise resolving to cached README content or null if not cached
    */
-  getCachedReadme(owner: string, repo: string, version: string): Promise<ReadmeContent | null>;
+  getCachedReadme(owner: string, repo: string, version: string): Promise<IReadmeContent | null>;
 
   /**
    * Generates a combined README from all installed tools
    * @param options Options for README generation
    * @returns Promise resolving to combined README markdown content
    */
-  generateCombinedReadme(options?: CombinedReadmeOptions): Promise<string>;
+  generateCombinedReadme(options?: ICombinedReadmeOptions): Promise<string>;
 
   /**
    * Gets list of installed tools that have GitHub repositories
    * @returns Promise resolving to array of installed tool information
    */
-  getGitHubTools(): Promise<ToolInstallationRecord[]>;
+  getGitHubTools(): Promise<IToolInstallationRecord[]>;
 
   /**
    * Clears expired README cache entries
@@ -71,7 +71,7 @@ export interface IReadmeService {
   generateCatalogFromConfigs(
     catalogPath: string,
     toolConfigs: Record<string, ToolConfig>,
-    options?: CombinedReadmeOptions
+    options?: ICombinedReadmeOptions
   ): Promise<string | null>;
 }
 
@@ -84,7 +84,7 @@ export interface IReadmeCache {
    * @param cacheKey Cache key for the README
    * @returns Promise resolving to cached content or null if not found
    */
-  get(cacheKey: string): Promise<ReadmeContent | null>;
+  get(cacheKey: string): Promise<IReadmeContent | null>;
 
   /**
    * Stores README content in cache
@@ -93,7 +93,7 @@ export interface IReadmeCache {
    * @param ttlMs Time to live in milliseconds
    * @returns Promise resolving when content is cached
    */
-  set(cacheKey: string, content: ReadmeContent, ttlMs?: number): Promise<void>;
+  set(cacheKey: string, content: IReadmeContent, ttlMs?: number): Promise<void>;
 
   /**
    * Checks if README is cached and not expired

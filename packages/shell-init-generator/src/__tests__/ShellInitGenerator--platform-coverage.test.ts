@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { always, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import type { GenerateShellInitOptions } from '../IShellInitGenerator';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import type { IGenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Platform Coverage Tests', () => {
@@ -14,7 +14,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
   let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -39,7 +39,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
   describe('multiple shell types with platform-specific code', () => {
     it('should generate platform-specific code for all shell types', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -71,7 +71,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh', 'bash', 'powershell'],
       };
@@ -100,7 +100,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
   describe('platform-specific symlinks processing', () => {
     it('should not directly process symlinks but should include them in resolved config', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -125,7 +125,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -147,7 +147,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
   describe('environment variables and PATH modifications', () => {
     it('should properly categorize and hoist platform-specific env vars and PATH mods', async () => {
-      const linuxSystemInfo: SystemInfo = {
+      const linuxSystemInfo: ISystemInfo = {
         platform: 'linux',
         arch: 'x64',
         homeDir: '/home/test',
@@ -187,7 +187,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: linuxSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -216,13 +216,13 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
   describe('real-world tool configurations', () => {
     it('should work with aerospace-like macOS-only tool', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
       };
 
-      const linuxSystemInfo: SystemInfo = {
+      const linuxSystemInfo: ISystemInfo = {
         platform: 'linux',
         arch: 'x64',
         homeDir: '/home/test',
@@ -249,7 +249,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       };
 
       // Test on macOS - should include aerospace
-      const macosOptions: GenerateShellInitOptions = {
+      const macosOptions: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -260,7 +260,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       expect(macosContent).toContain('# Aerospace window manager integration');
 
       // Test on Linux - should not include aerospace
-      const linuxOptions: GenerateShellInitOptions = {
+      const linuxOptions: IGenerateShellInitOptions = {
         systemInfo: linuxSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -277,13 +277,13 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
     });
 
     it('should work with eza-like multi-platform tool with different install methods', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
       };
 
-      const linuxSystemInfo: SystemInfo = {
+      const linuxSystemInfo: ISystemInfo = {
         platform: 'linux',
         arch: 'x64',
         homeDir: '/home/test',
@@ -325,7 +325,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       };
 
       // Test macOS version
-      const macosOptions: GenerateShellInitOptions = {
+      const macosOptions: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -340,7 +340,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       expect(macosContent).not.toContain('# Linux specific eza setup');
 
       // Test Linux version
-      const linuxOptions: GenerateShellInitOptions = {
+      const linuxOptions: IGenerateShellInitOptions = {
         systemInfo: linuxSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -358,7 +358,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
   describe('edge cases and error conditions', () => {
     it('should handle empty platform-specific shell init arrays', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -382,7 +382,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -396,7 +396,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
     });
 
     it('should handle tools with only platform-specific configs and no base shell init', async () => {
-      const windowsSystemInfo: SystemInfo = {
+      const windowsSystemInfo: ISystemInfo = {
         platform: 'win32',
         arch: 'x64',
         homeDir: 'C:\\Users\\test',
@@ -420,7 +420,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: windowsSystemInfo,
         shellTypes: ['zsh'],
       };

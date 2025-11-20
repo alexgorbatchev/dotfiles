@@ -4,14 +4,14 @@ import type { ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { resolvePlatformConfig } from '@dotfiles/utils';
-import type { GenerateShellInitOptions, IShellInitGenerator, ShellInitGenerationResult } from './IShellInitGenerator';
+import type { IGenerateShellInitOptions, IShellInitGenerationResult, IShellInitGenerator } from './IShellInitGenerator';
 import { messages } from './log-messages';
-import { type ProfileUpdateConfig, ProfileUpdater } from './profile-updater';
+import { type IProfileUpdateConfig, ProfileUpdater } from './profile-updater';
 import {
-  type AdditionalShellFile,
   createGenerator,
+  type IAdditionalShellFile,
   type IShellGenerator,
-  type ShellInitContent,
+  type IShellInitContent,
 } from './shell-generators';
 
 /**
@@ -54,8 +54,8 @@ export class ShellInitGenerator implements IShellInitGenerator {
 
   async generate(
     toolConfigs: Record<string, ToolConfig>,
-    options?: GenerateShellInitOptions
-  ): Promise<ShellInitGenerationResult | null> {
+    options?: IGenerateShellInitOptions
+  ): Promise<IShellInitGenerationResult | null> {
     const logger = this.logger.getSubLogger({ name: 'generate' });
     const shellTypes: ShellType[] = options?.shellTypes ?? ['zsh'];
     const generatedFiles = new Map<ShellType, string>();
@@ -78,7 +78,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
       return null;
     }
 
-    const result: ShellInitGenerationResult = {
+    const result: IShellInitGenerationResult = {
       files: generatedFiles,
       primaryPath,
     };
@@ -94,7 +94,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async generateForShellType(
     shellType: ShellType,
     toolConfigs: Record<string, ToolConfig>,
-    options?: GenerateShellInitOptions
+    options?: IGenerateShellInitOptions
   ): Promise<{ outputPath: string } | null> {
     const logger = this.logger.getSubLogger({ name: 'generateForShellType' });
     try {
@@ -119,9 +119,9 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async extractToolContents(
     toolConfigs: Record<string, ToolConfig>,
     generator: IShellGenerator,
-    options?: GenerateShellInitOptions
-  ): Promise<Map<string, ShellInitContent>> {
-    const toolContents = new Map<string, ShellInitContent>();
+    options?: IGenerateShellInitOptions
+  ): Promise<Map<string, IShellInitContent>> {
+    const toolContents = new Map<string, IShellInitContent>();
 
     for (const toolName in toolConfigs) {
       const config = toolConfigs[toolName];
@@ -143,7 +143,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async writeShellFiles(
     outputPath: string,
     fileContent: string,
-    additionalFiles: AdditionalShellFile[]
+    additionalFiles: IAdditionalShellFile[]
   ): Promise<boolean> {
     const logger = this.logger.getSubLogger({ name: 'writeShellFiles' });
     try {
@@ -161,7 +161,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     }
   }
 
-  private async writeAdditionalFile(additionalFile: AdditionalShellFile): Promise<void> {
+  private async writeAdditionalFile(additionalFile: IAdditionalShellFile): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'writeAdditionalFile' });
     try {
       await this.fs.ensureDir(path.dirname(additionalFile.outputPath));
@@ -180,7 +180,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
     const logger = this.logger.getSubLogger({ name: 'updateProfileFiles' });
     const profileUpdater = new ProfileUpdater(this.fs, this.projectConfig.paths.homeDir);
 
-    const configs: ProfileUpdateConfig[] = [];
+    const configs: IProfileUpdateConfig[] = [];
     for (const [shellType, scriptPath] of generatedFiles) {
       configs.push({
         shellType,
@@ -249,7 +249,7 @@ export class ShellInitGenerator implements IShellInitGenerator {
    * @param content - Shell content to check
    * @returns True if content has meaningful data
    */
-  private hasContent(content: ShellInitContent): boolean {
+  private hasContent(content: IShellInitContent): boolean {
     return (
       content.toolInit.length > 0 ||
       content.pathModifications.length > 0 ||

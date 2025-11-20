@@ -3,12 +3,12 @@ import {
   Architecture,
   hasArchitecture,
   hasPlatform,
+  type ISystemInfo,
   Platform,
   type ProjectConfig,
   type ProjectConfigPartial,
   privateProjectConfigFields,
   projectConfigSchema,
-  type SystemInfo,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -43,7 +43,7 @@ function detectArch(arch: string): string {
 /**
  * Platform match condition from config.yaml
  */
-export interface PlatformMatch {
+export interface IPlatformMatch {
   os?: 'macos' | 'linux' | 'windows';
   arch?: 'x86_64' | 'arm64';
 }
@@ -51,8 +51,8 @@ export interface PlatformMatch {
 /**
  * Platform override from config.yaml
  */
-export interface PlatformOverride {
-  match: PlatformMatch[];
+export interface IPlatformOverride {
+  match: IPlatformMatch[];
   config: Record<string, unknown>;
 }
 
@@ -97,10 +97,10 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Record<
 function applyPlatformOverrides(
   parentLogger: TsLogger,
   config: Record<string, unknown>,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): Record<string, unknown> {
   const logger = parentLogger.getSubLogger({ name: 'applyPlatformOverrides' });
-  const platformOverrides = (config['platform'] as PlatformOverride[]) || [];
+  const platformOverrides = (config['platform'] as IPlatformOverride[]) || [];
 
   if (!Array.isArray(platformOverrides)) {
     return config;
@@ -250,7 +250,7 @@ function substituteTokens(
   config: Record<string, unknown>,
   env: Record<string, string | undefined>,
   fullConfig: Record<string, unknown>,
-  systemInfo: SystemInfo
+  systemInfo: ISystemInfo
 ): Record<string, unknown> {
   const configFileDir =
     hasConfigFilePath(fullConfig) && fullConfig.configFilePath
@@ -276,7 +276,7 @@ function processConfig(
   userConfigPath: string,
   defaultConfig: Record<string, unknown>,
   userConfig: Record<string, unknown>,
-  systemInfo: SystemInfo,
+  systemInfo: ISystemInfo,
   env: Record<string, string | undefined>
 ): ProjectConfig {
   const logger = parentLogger.getSubLogger({ name: 'processConfig' });
@@ -304,7 +304,7 @@ function processConfig(
 export async function getDefaultConfig(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
-  systemInfo: SystemInfo,
+  systemInfo: ISystemInfo,
   env: Record<string, string | undefined>,
   userConfigPath: string
 ): Promise<ProjectConfig> {
@@ -349,7 +349,7 @@ export async function loadProjectConfig(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfigPath: string,
-  systemInfo: SystemInfo,
+  systemInfo: ISystemInfo,
   env: Record<string, string | undefined>
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadProjectConfig' });
@@ -373,7 +373,7 @@ export async function loadProjectConfig(
   return processConfig(parentLogger, userConfigPath, defaultConfig, userConfig, systemInfo, env);
 }
 
-export interface CreateProjectConfigFromObjectOptions {
+export interface ICreateProjectConfigFromObjectOptions {
   userConfigPath: string;
 }
 
@@ -384,7 +384,7 @@ export interface CreateProjectConfigFromObjectOptions {
  * with default configuration, applies platform overrides, and performs token substitution,
  * but does not read from the filesystem.
  *
- * The associated file path must be provided via {@link CreateProjectConfigFromObjectOptions.userConfigPath}
+ * The associated file path must be provided via {@link ICreateProjectConfigFromObjectOptions.userConfigPath}
  * so token substitution and relative path resolution behave the same as when loading from disk.
  *
  * @param parentLogger - Parent logger instance (a sublogger will be created).
@@ -402,9 +402,9 @@ export async function createProjectConfigFromObject(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfig: ProjectConfigPartial = {},
-  systemInfo: SystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
+  systemInfo: ISystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
   env: Record<string, string | undefined> = {},
-  options: CreateProjectConfigFromObjectOptions
+  options: ICreateProjectConfigFromObjectOptions
 ): Promise<ProjectConfig> {
   const resolvedUserConfigPath: string = options.userConfigPath;
   const defaultConfig = await loadDefaultProjectConfigAsRecord(fileSystem);

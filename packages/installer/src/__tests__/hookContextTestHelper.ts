@@ -5,7 +5,7 @@ import { createMock$ } from '@dotfiles/testing-helpers';
 
 /**
  * Helper function to create a proper InstallHookContext for tests.
- * This creates a context that extends BaseToolContext with all required properties.
+ * This creates a context that extends IBaseToolContext with all required properties.
  *
  * @returns An object containing the context and logger for test usage
  */
@@ -75,9 +75,9 @@ export function createTestInstallHookContext(
     platform: [],
   };
 
-  // Create the base context with all BaseToolContext properties
+  // Create the base context with all IBaseToolContext properties
   const baseContext: InstallHookContext = {
-    // BaseToolContext properties
+    // IBaseToolContext properties
     toolName: 'test-tool',
     toolDir: '/test/binaries/test-tool',
     getToolDir: (toolName: string) => `/test/binaries/${toolName}`,

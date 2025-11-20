@@ -1,5 +1,5 @@
-import type { SystemInfo } from '@dotfiles/core';
-import type { ArchitecturePatterns } from './types';
+import type { ISystemInfo } from '@dotfiles/core';
+import type { IArchitecturePatterns } from './types';
 
 /**
  * Generates a set of architecture-specific patterns based on the provided
@@ -17,8 +17,8 @@ import type { ArchitecturePatterns } from './types';
  *
  * @public
  */
-export function getArchitecturePatterns(systemInfo: SystemInfo): ArchitecturePatterns {
-  const patterns: ArchitecturePatterns = {
+export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitecturePatterns {
+  const patterns: IArchitecturePatterns = {
     system: [],
     cpu: [],
     variants: [],

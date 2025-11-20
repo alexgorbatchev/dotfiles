@@ -3,7 +3,14 @@ import path from 'node:path';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
-import type { BinaryCacheEntry, CacheConfig, CacheEntry, DownloadCacheEntry, ICache, JsonCacheEntry } from './types';
+import type {
+  CacheEntry,
+  IBinaryCacheEntry,
+  ICache,
+  ICacheConfig,
+  IDownloadCacheEntry,
+  IJsonCacheEntry,
+} from './types';
 
 /**
  * File-based cache implementation that supports both JSON and binary storage strategies.
@@ -11,13 +18,13 @@ import type { BinaryCacheEntry, CacheConfig, CacheEntry, DownloadCacheEntry, ICa
  * - Binary strategy: Stores binary content separately with JSON metadata (good for large files)
  */
 export class FileCache implements ICache {
-  private readonly config: CacheConfig;
+  private readonly config: ICacheConfig;
   private readonly fileSystem: IFileSystem;
   private readonly logger: TsLogger;
   private readonly metadataDir: string;
   private readonly binariesDir?: string;
 
-  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: CacheConfig) {
+  constructor(parentLogger: TsLogger, fileSystem: IFileSystem, config: ICacheConfig) {
     this.logger = parentLogger.getSubLogger({ name: 'FileCache' });
     this.fileSystem = fileSystem;
     this.config = config;
@@ -113,7 +120,7 @@ export class FileCache implements ICache {
 
       if (this.config.storageStrategy === 'json') {
         // For JSON strategy, store everything in one file
-        const entry: JsonCacheEntry<T> = {
+        const entry: IJsonCacheEntry<T> = {
           type: 'json',
           data,
           timestamp: now,
@@ -143,7 +150,7 @@ export class FileCache implements ICache {
         await this.fileSystem.writeFile(binaryFilePath, buffer);
 
         // Store metadata with reference to binary file
-        const entry: BinaryCacheEntry = {
+        const entry: IBinaryCacheEntry = {
           type: 'binary',
           binaryFileName,
           contentHash,
@@ -199,7 +206,7 @@ export class FileCache implements ICache {
       await this.fileSystem.writeFile(binaryFilePath, data);
 
       // Store metadata with download information
-      const entry: DownloadCacheEntry = {
+      const entry: IDownloadCacheEntry = {
         type: 'binary',
         binaryFileName,
         contentHash,

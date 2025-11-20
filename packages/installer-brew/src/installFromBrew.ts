@@ -1,4 +1,4 @@
-import type { BaseInstallContext, InstallOptions } from '@dotfiles/core';
+import type { BaseInstallContext, IInstallOptions } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { normalizeVersion } from '@dotfiles/utils';
@@ -6,7 +6,7 @@ import { $ } from 'bun';
 import { z } from 'zod';
 import { messages } from './log-messages';
 import type { BrewToolConfig } from './schemas';
-import type { BrewInstallMetadata, BrewInstallResult } from './types';
+import type { BrewInstallResult, IBrewInstallMetadata } from './types';
 
 type ShellExecutor = typeof $;
 
@@ -42,7 +42,7 @@ export async function installFromBrew(
   toolName: string,
   toolConfig: BrewToolConfig,
   _context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: ShellExecutor = $
 ): Promise<BrewInstallResult> {
@@ -68,7 +68,7 @@ export async function installFromBrew(
     const formulaPrefix: string = await getBrewPrefix(formula, logger, shellExecutor);
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, `${formulaPrefix}/bin`);
 
-    const metadata: BrewInstallMetadata = {
+    const metadata: IBrewInstallMetadata = {
       method: 'brew',
       formula,
       isCask,

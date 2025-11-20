@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'bun:test';
-import type { ArchitectureRegex } from '@dotfiles/arch';
+import type { IArchitectureRegex } from '@dotfiles/arch';
 import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 
 describe('matchesArchitecture', () => {
-  const macosArm64SystemInfo: SystemInfo = {
+  const macosArm64SystemInfo: ISystemInfo = {
     platform: 'darwin',
     arch: 'arm64',
     homeDir: '/home/test',
   };
 
-  const linuxX64SystemInfo: SystemInfo = {
+  const linuxX64SystemInfo: ISystemInfo = {
     platform: 'linux',
     arch: 'x86_64',
     homeDir: '/home/test',
@@ -47,7 +47,7 @@ describe('matchesArchitecture', () => {
   });
 
   it('should match when patterns are empty (match all)', () => {
-    const emptyRegex: ArchitectureRegex = {
+    const emptyRegex: IArchitectureRegex = {
       systemPattern: '',
       cpuPattern: '',
       variantPattern: '',
@@ -57,7 +57,7 @@ describe('matchesArchitecture', () => {
   });
 
   it('should match when only system pattern is present', () => {
-    const systemOnlyRegex: ArchitectureRegex = {
+    const systemOnlyRegex: IArchitectureRegex = {
       systemPattern: '(darwin)',
       cpuPattern: '',
       variantPattern: '',
@@ -68,7 +68,7 @@ describe('matchesArchitecture', () => {
   });
 
   it('should match when only CPU pattern is present', () => {
-    const cpuOnlyRegex: ArchitectureRegex = {
+    const cpuOnlyRegex: IArchitectureRegex = {
       systemPattern: '',
       cpuPattern: '(arm64)',
       variantPattern: '',
@@ -104,7 +104,7 @@ describe('matchesArchitecture with FZF release assets', () => {
 
   function expectMatchingAssets(platform: string, arch: string, expectedAssets: string[]): void {
     it(`should find correct file for ${platform}/${arch}`, () => {
-      const systemInfo: SystemInfo = {
+      const systemInfo: ISystemInfo = {
         platform,
         arch,
         homeDir: '/home/test',

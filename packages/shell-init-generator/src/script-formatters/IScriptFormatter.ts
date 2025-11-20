@@ -3,7 +3,7 @@ import type { ShellScript, ShellType } from '@dotfiles/core';
 /**
  * Output from script formatter containing formatted content and metadata
  */
-export interface FormattedScriptOutput {
+export interface IFormattedScriptOutput {
   /** The formatted script content */
   content: string;
   /** Whether this script requires execution (for once scripts) */
@@ -24,5 +24,5 @@ export interface IScriptFormatter {
    * @param shellType - Type of shell (zsh, bash, powershell)
    * @returns Formatted script output
    */
-  format(script: ShellScript, toolName: string, shellType: ShellType): FormattedScriptOutput;
+  format(script: ShellScript, toolName: string, shellType: ShellType): IFormattedScriptOutput;
 }

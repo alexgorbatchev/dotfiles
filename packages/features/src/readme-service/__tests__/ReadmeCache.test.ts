@@ -3,7 +3,7 @@ import type { ICache } from '@dotfiles/downloader';
 import type { TsLogger } from '@dotfiles/logger';
 import { TestLogger } from '@dotfiles/logger';
 import { ReadmeCache } from '../ReadmeCache';
-import type { ReadmeContent } from '../types';
+import type { IReadmeContent } from '../types';
 
 describe('ReadmeCache', () => {
   let logger: TsLogger;
@@ -45,7 +45,7 @@ describe('ReadmeCache', () => {
 
   describe('get', () => {
     test('should return cached content when available', async () => {
-      const mockContent: ReadmeContent = {
+      const mockContent: IReadmeContent = {
         content: '# Test',
         toolName: 'test-tool',
         owner: 'owner',
@@ -57,7 +57,7 @@ describe('ReadmeCache', () => {
 
       (mockCache.get as ReturnType<typeof mock>).mockResolvedValueOnce(mockContent);
 
-      const result: ReadmeContent | null = await readmeCache.get('test-key');
+      const result: IReadmeContent | null = await readmeCache.get('test-key');
 
       expect(result).toEqual(mockContent);
       expect(mockCache.get).toHaveBeenCalledWith('test-key');
@@ -66,7 +66,7 @@ describe('ReadmeCache', () => {
     test('should return null when cache miss', async () => {
       (mockCache.get as ReturnType<typeof mock>).mockResolvedValueOnce(null);
 
-      const result: ReadmeContent | null = await readmeCache.get('test-key');
+      const result: IReadmeContent | null = await readmeCache.get('test-key');
 
       expect(result).toBeNull();
     });
@@ -74,7 +74,7 @@ describe('ReadmeCache', () => {
     test('should handle cache errors gracefully', async () => {
       (mockCache.get as ReturnType<typeof mock>).mockRejectedValueOnce(new Error('Cache error'));
 
-      const result: ReadmeContent | null = await readmeCache.get('test-key');
+      const result: IReadmeContent | null = await readmeCache.get('test-key');
 
       expect(result).toBeNull();
     });
@@ -82,7 +82,7 @@ describe('ReadmeCache', () => {
 
   describe('set', () => {
     test('should store content in cache', async () => {
-      const content: ReadmeContent = {
+      const content: IReadmeContent = {
         content: '# Test',
         toolName: 'test-tool',
         owner: 'owner',
@@ -98,7 +98,7 @@ describe('ReadmeCache', () => {
     });
 
     test('should handle cache errors gracefully', async () => {
-      const content: ReadmeContent = {
+      const content: IReadmeContent = {
         content: '# Test',
         toolName: 'test-tool',
         owner: 'owner',

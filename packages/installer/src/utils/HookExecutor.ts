@@ -1,4 +1,4 @@
-import type { AfterInstallContext, AsyncInstallHook, OperationFailure, OperationSuccess } from '@dotfiles/core';
+import type { AsyncInstallHook, IAfterInstallContext, IOperationFailure, IOperationSuccess } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -8,7 +8,7 @@ import { messages } from './log-messages';
 /**
  * Configuration options for controlling hook execution behavior.
  */
-export interface HookExecutionOptions {
+export interface IHookExecutionOptions {
   /** Timeout in milliseconds for hook execution (default: 60000ms) */
   timeoutMs?: number;
   /** Whether to continue installation if hook fails (default: false) */
@@ -20,13 +20,13 @@ export interface HookExecutionOptions {
  * Indicates whether hook completed successfully or failed, and whether it was skipped.
  */
 export type HookExecutionResult =
-  | (OperationSuccess & {
+  | (IOperationSuccess & {
       /** Duration of hook execution in milliseconds */
       durationMs: number;
       /** Whether hook was skipped due to timeout or other reason */
       skipped: boolean;
     })
-  | (OperationFailure & {
+  | (IOperationFailure & {
       /** Duration of hook execution in milliseconds */
       durationMs: number;
       /** Whether hook was skipped due to timeout or other reason */
@@ -37,13 +37,13 @@ export type HookExecutionResult =
  * Complete definition of a hook including the function, name, and execution options.
  * Used by `executeHooks` to run multiple hooks in sequence.
  */
-export interface HookDefinition {
+export interface IHookDefinition {
   /** Name of the hook */
   name: string;
   /** Hook function to execute */
   hook: AsyncInstallHook<never>;
   /** Optional execution options */
-  options?: HookExecutionOptions;
+  options?: IHookExecutionOptions;
 }
 
 /**
@@ -84,8 +84,8 @@ export class HookExecutor {
   async executeHook(
     hookName: string,
     hook: AsyncInstallHook<never>,
-    enhancedContext: AfterInstallContext,
-    options: HookExecutionOptions = {}
+    enhancedContext: IAfterInstallContext,
+    options: IHookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
     const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
@@ -159,7 +159,7 @@ export class HookExecutor {
    * @param fileSystem - File system instance (may be TrackedFileSystem)
    * @returns Enhanced context ready for hook execution
    */
-  createEnhancedContext(baseContext: AfterInstallContext, fileSystem: IFileSystem): AfterInstallContext {
+  createEnhancedContext(baseContext: IAfterInstallContext, fileSystem: IFileSystem): IAfterInstallContext {
     // Create a tool-specific TrackedFileSystem if we have one
     const enhancedFileSystem =
       fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
@@ -167,7 +167,7 @@ export class HookExecutor {
     // With Bun's $, we provide the shell operator directly
     // Hooks can use `cd` commands if they need to change directories
     // The cwd is available via toolConfig.configFilePath if needed
-    const result: AfterInstallContext = {
+    const result: IAfterInstallContext = {
       ...baseContext,
       fileSystem: enhancedFileSystem,
       $: $,
@@ -186,7 +186,7 @@ export class HookExecutor {
    * @param enhancedContext - Enhanced context shared across all hooks
    * @returns Array of execution results for each hook
    */
-  async executeHooks(hooks: HookDefinition[], enhancedContext: AfterInstallContext): Promise<HookExecutionResult[]> {
+  async executeHooks(hooks: IHookDefinition[], enhancedContext: IAfterInstallContext): Promise<HookExecutionResult[]> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 

@@ -4,10 +4,10 @@ import type { TsLogger } from '@dotfiles/logger';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
 import { messages } from './log-messages';
 import type {
-  CompletionGenerationContext,
-  GeneratedCompletion,
   ICompletionCommandExecutor,
+  ICompletionGenerationContext,
   ICompletionGenerator,
+  IGeneratedCompletion,
 } from './types';
 
 export class CompletionGenerator implements ICompletionGenerator {
@@ -23,8 +23,8 @@ export class CompletionGenerator implements ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: CompletionGenerationContext
-  ): Promise<GeneratedCompletion> {
+    context: ICompletionGenerationContext
+  ): Promise<IGeneratedCompletion> {
     this.logger.debug(messages.generationStarted(toolName, shellType));
 
     if (config.cmd) {
@@ -40,8 +40,8 @@ export class CompletionGenerator implements ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: CompletionGenerationContext
-  ): Promise<GeneratedCompletion> {
+    context: ICompletionGenerationContext
+  ): Promise<IGeneratedCompletion> {
     if (!config.cmd) {
       throw new Error(`Command not provided for ${toolName}`);
     }
@@ -68,8 +68,8 @@ export class CompletionGenerator implements ICompletionGenerator {
     config: ShellCompletionConfig,
     toolName: string,
     shellType: ShellType,
-    context: CompletionGenerationContext
-  ): Promise<GeneratedCompletion> {
+    context: ICompletionGenerationContext
+  ): Promise<IGeneratedCompletion> {
     if (!config.source) {
       throw new Error(`Source not provided for ${toolName}`);
     }
@@ -116,7 +116,7 @@ export class CompletionGenerator implements ICompletionGenerator {
   private resolveTargetPath(
     customTargetDir: string | undefined,
     shellType: ShellType,
-    context: CompletionGenerationContext
+    context: ICompletionGenerationContext
   ): string {
     if (customTargetDir) {
       return customTargetDir;

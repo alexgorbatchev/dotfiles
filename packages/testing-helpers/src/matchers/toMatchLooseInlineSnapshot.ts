@@ -2,9 +2,11 @@ import { expect } from 'bun:test';
 import { dedentString } from '@dotfiles/utils';
 
 declare module 'bun:test' {
-  interface Matchers<T> {
+  interface ILooseInlineSnapshotMatchers<T> {
     toMatchLooseInlineSnapshot(strings: TemplateStringsArray, ...matchers: unknown[]): T;
   }
+
+  interface Matchers<T> extends ILooseInlineSnapshotMatchers<T> {}
 }
 
 function escapeRegexLiteral(value: unknown): string {

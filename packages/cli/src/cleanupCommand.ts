@@ -1,9 +1,9 @@
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
+import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { CleanupCommandSpecificOptions, GlobalProgram, GlobalProgramOptions, Services } from './types';
+import type { ICleanupCommandSpecificOptions, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 
 async function cleanupAllTrackedFiles(
   logger: TsLogger,
@@ -58,7 +58,7 @@ async function cleanupSpecificType(
   dryRun: boolean
 ): Promise<void> {
   logger.info(messages.cleanupTypeFiles(fileType));
-  const operations = await fileRegistry.getOperations({ fileType: fileType as FileOperation['fileType'] });
+  const operations = await fileRegistry.getOperations({ fileType: fileType as IFileOperation['fileType'] });
 
   for (const operation of operations) {
     const fileState = await fileRegistry.getFileState(operation.filePath);
@@ -70,8 +70,8 @@ async function cleanupSpecificType(
 
 async function registryBasedCleanup(
   logger: TsLogger,
-  services: Services,
-  options: CleanupCommandSpecificOptions & GlobalProgramOptions
+  services: IServices,
+  options: ICleanupCommandSpecificOptions & IGlobalProgramOptions
 ): Promise<void> {
   const { fs, fileRegistry } = services;
   const { dryRun, tool, type, all } = options;
@@ -146,8 +146,8 @@ async function removeFile(
 
 async function cleanupActionLogic(
   logger: TsLogger,
-  options: CleanupCommandSpecificOptions & GlobalProgramOptions,
-  services: Services
+  options: ICleanupCommandSpecificOptions & IGlobalProgramOptions,
+  services: IServices
 ): Promise<void> {
   const { dryRun, tool, type, all } = options;
 
@@ -167,8 +167,8 @@ async function cleanupActionLogic(
 
 export function registerCleanupCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCleanupCommand' });
   program
@@ -177,8 +177,8 @@ export function registerCleanupCommand(
     .option('--tool <name>', 'Remove files for specific tool only (registry-based)')
     .option('--type <type>', 'Remove files of specific type only (registry-based)')
     .option('--all', 'Remove all tracked files (registry-based)')
-    .action(async (options: CleanupCommandSpecificOptions) => {
-      const combinedOptions: CleanupCommandSpecificOptions & GlobalProgramOptions = { ...options, ...program.opts() };
+    .action(async (options: ICleanupCommandSpecificOptions) => {
+      const combinedOptions: ICleanupCommandSpecificOptions & IGlobalProgramOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();
       await cleanupActionLogic(logger, combinedOptions, services);
     });

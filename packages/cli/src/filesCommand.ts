@@ -1,13 +1,13 @@
 import type { ProjectConfig } from '@dotfiles/config';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { FileOperation, IFileRegistry } from '@dotfiles/registry/file';
+import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { FilesCommandSpecificOptions, GlobalProgram, GlobalProgramOptions, Services } from './types';
+import type { IFilesCommandSpecificOptions, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 
 function buildOperationsFilter(
-  options: FilesCommandSpecificOptions & GlobalProgramOptions,
+  options: IFilesCommandSpecificOptions & IGlobalProgramOptions,
   parentLogger: TsLogger
 ): { filter: Record<string, unknown>; exitCode: ExitCode } {
   const logger = parentLogger.getSubLogger({ name: 'buildOperationsFilter' });
@@ -125,7 +125,7 @@ function formatTimestamp(createdAt: number): string {
 
 function logOperationByType(
   parentLogger: TsLogger,
-  operation: FileOperation,
+  operation: IFileOperation,
   timestamp: string,
   contractedPath: string,
   metadataString: string,
@@ -185,8 +185,8 @@ function logOperationByType(
   }
 }
 
-function groupOperationsByTool(operations: FileOperation[]): Record<string, FileOperation[]> {
-  const operationsByTool: Record<string, FileOperation[]> = {};
+function groupOperationsByTool(operations: IFileOperation[]): Record<string, IFileOperation[]> {
+  const operationsByTool: Record<string, IFileOperation[]> = {};
 
   for (const operation of operations) {
     if (!operationsByTool[operation.toolName]) {
@@ -200,7 +200,7 @@ function groupOperationsByTool(operations: FileOperation[]): Record<string, File
 
 async function showOperations(
   parentLogger: TsLogger,
-  operations: FileOperation[],
+  operations: IFileOperation[],
   projectConfig: ProjectConfig
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'showOperations' });
@@ -224,8 +224,8 @@ async function showOperations(
 
 async function filesActionLogic(
   parentLogger: TsLogger,
-  options: FilesCommandSpecificOptions & GlobalProgramOptions,
-  services: Services
+  options: IFilesCommandSpecificOptions & IGlobalProgramOptions,
+  services: IServices
 ): Promise<void> {
   const logger = parentLogger.getSubLogger({ name: 'filesActionLogic' });
   const { fileRegistry, fs, projectConfig } = services;
@@ -251,8 +251,8 @@ async function filesActionLogic(
 
 export function registerFilesCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerFilesCommand' });
 
@@ -263,8 +263,8 @@ export function registerFilesCommand(
     .option('--type <type>', 'Show files of specific type only (shim, binary, symlink, etc.)')
     .option('--status', 'Check file status (missing, broken links, etc.)')
     .option('--since <date>', 'Show files created since date (ISO format: 2025-08-01)')
-    .action(async (commandOptions: FilesCommandSpecificOptions) => {
-      const combinedOptions: FilesCommandSpecificOptions & GlobalProgramOptions = {
+    .action(async (commandOptions: IFilesCommandSpecificOptions) => {
+      const combinedOptions: IFilesCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,
         ...program.opts(),
       };

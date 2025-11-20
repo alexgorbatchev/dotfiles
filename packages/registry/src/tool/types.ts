@@ -8,7 +8,7 @@
  * Optional fields (provided by specific installer plugins via metadata):
  * - downloadUrl, assetName, configuredVersion, originalTag
  */
-export interface ToolInstallationDetails {
+export interface IToolInstallationDetails {
   toolName: string;
   version: string;
   installPath: string;
@@ -22,9 +22,9 @@ export interface ToolInstallationDetails {
 
 /**
  * Complete tool installation record as stored in the registry database.
- * Extends ToolInstallationDetails with auto-generated database fields.
+ * Extends IToolInstallationDetails with auto-generated database fields.
  */
-export interface ToolInstallationRecord extends ToolInstallationDetails {
+export interface IToolInstallationRecord extends IToolInstallationDetails {
   id: number;
   readonly installedAt: Date;
 }

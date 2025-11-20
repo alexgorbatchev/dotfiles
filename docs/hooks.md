@@ -23,7 +23,7 @@ Event names: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-
 Each hook receives an enhanced context object with the following properties:
 
 ```typescript
-interface HookContext {
+interface IHookContext {
   // Basic installation info
   toolName: string;           // Name of the tool
   installDir: string;         // Installation directory

@@ -3,7 +3,7 @@ import { spyOn } from 'bun:test';
 /**
  * Options for mocking a fetch response.
  */
-interface MockResponseOptions {
+interface IMockResponseOptions {
   /** The body of the response. Can be string, Blob, ArrayBuffer, FormData, URLSearchParams, ReadableStream, or null. */
   body?: string | Blob | ArrayBuffer | FormData | URLSearchParams | ReadableStream | null;
   /** The HTTP status code of the response. Defaults to 200. */
@@ -67,7 +67,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response. Defaults to a 200 OK response with an empty body.
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockResponseOnce(options: MockResponseOptions = {}): void {
+  mockResponseOnce(options: IMockResponseOptions = {}): void {
     if (!this.spyFetch) {
       throw new Error('FetchMockHelper not setup. Call setup() before mocking responses.');
     }
@@ -88,7 +88,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error` as they are handled by this method).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockJsonResponseOnce(data: unknown, options: Omit<MockResponseOptions, 'body' | 'error'> = {}): void {
+  mockJsonResponseOnce(data: unknown, options: Omit<IMockResponseOptions, 'body' | 'error'> = {}): void {
     const responseHeaders = new Headers(options.headers);
     responseHeaders.set('Content-Type', 'application/json');
     this.mockResponseOnce({
@@ -104,7 +104,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response (excluding `body` and `error`).
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockTextResponseOnce(text: string, options: Omit<MockResponseOptions, 'body' | 'error'> = {}): void {
+  mockTextResponseOnce(text: string, options: Omit<IMockResponseOptions, 'body' | 'error'> = {}): void {
     this.mockResponseOnce({
       body: text,
       ...options,
@@ -127,7 +127,7 @@ export class FetchMockHelper {
    * @param options - Options for the mock response. Defaults to a 200 OK response with an empty body.
    * @throws {Error} If `setup()` has not been called before this method.
    */
-  mockImplementation(options: MockResponseOptions = {}): void {
+  mockImplementation(options: IMockResponseOptions = {}): void {
     if (!this.spyFetch) {
       throw new Error('FetchMockHelper not setup. Call setup() before mocking responses.');
     }

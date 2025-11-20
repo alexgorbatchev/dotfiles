@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GitHubRateLimit } from '@dotfiles/core';
+import type { IGitHubRateLimit } from '@dotfiles/core';
 import { FIXTURE_RELEASE, FIXTURE_RELEASES_LIST } from './fixtures/cacheTestFixtures';
 import {
   createGitHubConfigOverride,
-  type MockSetup,
+  type IMockSetup,
   setupMockGitHubApiClient,
 } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient', () => {
   describe('caching', () => {
-    let mocks: MockSetup;
+    let mocks: IMockSetup;
 
     beforeEach(async () => {
       // Default setup for most caching tests, cache enabled.
@@ -180,7 +180,7 @@ describe('GitHubApiClient', () => {
           used: 1,
           resource: 'core',
         },
-      } as unknown as GitHubRateLimit;
+      } as unknown as IGitHubRateLimit;
       mocks.mockDownloader.download.mockResolvedValue(Buffer.from(JSON.stringify(mockRateLimitData)));
 
       await mocks.apiClient.getRateLimit();

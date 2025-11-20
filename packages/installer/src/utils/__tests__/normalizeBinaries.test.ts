@@ -14,7 +14,7 @@ describe('normalizeBinaries', () => {
     expect(result).toEqual([{ name: 'mytool', pattern: '{,*/}mytool' }]);
   });
 
-  test('should convert string array to BinaryConfig array', () => {
+  test('should convert string array to IBinaryConfig array', () => {
     const result = normalizeBinaries(['tool1', 'tool2'], 'mytool');
     expect(result).toEqual([
       { name: 'tool1', pattern: '{,*/}tool1' },
@@ -22,7 +22,7 @@ describe('normalizeBinaries', () => {
     ]);
   });
 
-  test('should pass through BinaryConfig array unchanged', () => {
+  test('should pass through IBinaryConfig array unchanged', () => {
     const input = [
       { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: 'bin/tool2' },
@@ -31,7 +31,7 @@ describe('normalizeBinaries', () => {
     expect(result).toEqual(input);
   });
 
-  test('should handle mixed array of strings and BinaryConfig', () => {
+  test('should handle mixed array of strings and IBinaryConfig', () => {
     const input = ['tool1', { name: 'tool2', pattern: '*/tool2' }];
     const result = normalizeBinaries(input, 'mytool');
     expect(result).toEqual([
@@ -47,7 +47,7 @@ describe('getBinaryNames', () => {
     expect(result).toEqual(['tool1', 'tool2']);
   });
 
-  test('should extract names from BinaryConfig array', () => {
+  test('should extract names from IBinaryConfig array', () => {
     const binaries = [
       { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: 'bin/tool2' },
@@ -79,7 +79,7 @@ describe('getBinaryPaths', () => {
     expect(result).toEqual(['/install/dir/tool1', '/install/dir/tool2']);
   });
 
-  test('should get binary paths from BinaryConfig array', () => {
+  test('should get binary paths from IBinaryConfig array', () => {
     const binaries = [
       { name: 'tool1', pattern: '*/tool1' },
       { name: 'tool2', pattern: 'bin/tool2' },

@@ -10,11 +10,11 @@ import type { CargoInstallParams, CargoToolConfig } from './schemas';
 import type { CargoInstallResult } from './types';
 
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     cargo: CargoInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     cargo: CargoToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'cargo', CargoInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'cargo', CargoInstallResult> {}
 }

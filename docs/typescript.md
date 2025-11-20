@@ -19,11 +19,11 @@ When you run the `generate` command, the system automatically creates a `tool-ty
 export type KnownBinName = 'rg' | 'eza' | 'borders' | 'fd';
 
 declare module '@gitea/dotfiles' {
-  interface ToolConfigBuilder {
+  interface IToolConfigBuilder {
     dependsOn(...binaryNames: KnownBinName[]): this;
   }
   
-  interface PlatformConfigBuilder {
+  interface IPlatformConfigBuilder {
     dependsOn(...binaryNames: KnownBinName[]): this;
   }
 }
@@ -207,7 +207,7 @@ const homeDir = ctx.homeDir;
 The builder provides these typed methods:
 
 ```typescript
-interface ToolConfigBuilder {
+interface IToolConfigBuilder {
   bin(names: string | string[]): ToolConfigBuilder;
   version(version: string): ToolConfigBuilder;
   install(method: InstallMethod, params: InstallParams): ToolConfigBuilder;
@@ -225,14 +225,14 @@ interface ToolConfigBuilder {
 ### Shell Configuration Types
 
 ```typescript
-interface ShellConfig {
+interface IShellConfig {
   completions?: ShellCompletionConfig;
   shellInit?: ShellScript[];
   aliases?: Record<string, string>;
   environment?: Record<string, string>;
 }
 
-interface ShellCompletionConfig {
+interface IShellCompletionConfig {
   source: string;
   name?: string;
   targetDir?: string;
@@ -251,7 +251,7 @@ type InstallMethod =
   | 'manual';
 
 // Each method has its own parameter type
-interface GitHubReleaseParams {
+interface IGitHubReleaseParams {
   repo: string;
   assetPattern?: string;
   binaryPath?: string;
@@ -261,7 +261,7 @@ interface GitHubReleaseParams {
   assetSelector?: (assets: Asset[], sysInfo: SystemInfo) => Asset | undefined;
 }
 
-interface BrewParams {
+interface IBrewParams {
   formula?: string;
   cask?: boolean;
   tap?: string | string[];

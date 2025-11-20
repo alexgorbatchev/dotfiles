@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { BaseInstallContext, ExtractResult, InstallOptions } from '@dotfiles/core';
+import type { BaseInstallContext, IExtractResult, IInstallOptions } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -16,13 +16,13 @@ import { normalizeVersion } from '@dotfiles/utils';
 import type { ICargoClient } from './cargo-client';
 import { messages } from './log-messages';
 import type { CargoInstallParams, CargoToolConfig } from './schemas';
-import type { CargoInstallMetadata, CargoInstallResult } from './types';
+import type { CargoInstallResult, ICargoInstallMetadata } from './types';
 
 export async function installFromCargo(
   toolName: string,
   toolConfig: CargoToolConfig,
   context: BaseInstallContext,
-  options: InstallOptions | undefined,
+  options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
   cargoClient: ICargoClient,
@@ -95,7 +95,7 @@ export async function installFromCargo(
 
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
-    const metadata: CargoInstallMetadata = {
+    const metadata: ICargoInstallMetadata = {
       method: 'cargo',
       crateName,
       binarySource: params.binarySource || 'cargo-quickinstall',
@@ -142,7 +142,7 @@ async function executeAfterInstallHook(
   toolConfig: CargoToolConfig,
   hookExecutor: HookExecutor,
   hookContext: BaseInstallContext & { version: string },
-  extractResult: ExtractResult,
+  extractResult: IExtractResult,
   toolFs: IFileSystem
 ): Promise<{ success: true } | { success: false; error: string }> {
   const afterInstallHooks = toolConfig['installParams']?.hooks?.['after-install'];

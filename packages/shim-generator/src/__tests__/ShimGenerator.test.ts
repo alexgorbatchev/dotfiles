@@ -4,7 +4,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type FileSystemSpies, type Stats } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { ShimGenerator } from '../ShimGenerator';
 
 import '@dotfiles/testing-helpers';
@@ -14,7 +14,7 @@ describe('ShimGenerator', () => {
   let shimGenerator: ShimGenerator;
   let fsMocks: FileSystemSpies;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     const { fs, spies } = await createMemFileSystem({});

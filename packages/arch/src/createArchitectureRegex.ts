@@ -1,4 +1,4 @@
-import type { ArchitecturePatterns, ArchitectureRegex } from './types';
+import type { IArchitecturePatterns, IArchitectureRegex } from './types';
 
 /**
  * Creates a set of combined regular expression patterns from architecture patterns.
@@ -12,7 +12,7 @@ import type { ArchitecturePatterns, ArchitectureRegex } from './types';
  *
  * @public
  */
-export function createArchitectureRegex(patterns: ArchitecturePatterns): ArchitectureRegex {
+export function createArchitectureRegex(patterns: IArchitecturePatterns): IArchitectureRegex {
   // Escape special regex characters in pattern strings
   const escapeRegex = (str: string): string => {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -23,7 +23,7 @@ export function createArchitectureRegex(patterns: ArchitecturePatterns): Archite
   const cpuPattern = patterns.cpu.length > 0 ? `(${patterns.cpu.map(escapeRegex).join('|')})` : '';
   const variantPattern = patterns.variants.length > 0 ? `(${patterns.variants.map(escapeRegex).join('|')})` : '';
 
-  const result: ArchitectureRegex = {
+  const result: IArchitectureRegex = {
     systemPattern,
     cpuPattern,
     variantPattern,

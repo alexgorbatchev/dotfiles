@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import type { MemFileSystemReturn } from '@dotfiles/file-system';
+import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerGenerateCommand } from '../generateCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
@@ -17,10 +17,10 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 });
 
 describe('generateCommand', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
-  let mockFs: MemFileSystemReturn;
+  let mockFs: IMemFileSystemReturn;
   let mockGeneratorOrchestrator: IGeneratorOrchestrator;
   let mockConfigService: MockedInterface<IConfigService>;
 
@@ -109,7 +109,7 @@ describe('generateCommand', () => {
 
     const toolTypesContent: string = await mockFs.fs.readFile(expectedPath, 'utf8');
     expect(toolTypesContent).toContain("declare module '@dotfiles/core'");
-    expect(toolTypesContent).toContain('interface KnownBinNameRegistry');
+    expect(toolTypesContent).toContain('interface IKnownBinNameRegistry');
     expect(toolTypesContent).toContain("    'toolA-bin': never;");
     expect(toolTypesContent).toContain('export {};');
   });

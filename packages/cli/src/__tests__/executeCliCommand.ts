@@ -3,7 +3,7 @@ import * as path from 'node:path';
 /**
  * Options for executing a CLI command
  */
-export interface CliCommandOptions {
+export interface ICliCommandOptions {
   /** CLI command and arguments */
   command: string[];
   /** Environment variables */
@@ -19,7 +19,7 @@ export interface CliCommandOptions {
 /**
  * Result of executing a CLI command
  */
-export interface CliCommandResult {
+export interface ICliCommandResult {
   /** Exit code of the command */
   exitCode: number | null;
   /** Standard output */
@@ -34,7 +34,7 @@ export interface CliCommandResult {
  * @param options - Options for executing the command
  * @returns Result of the command execution
  */
-export function executeCliCommand(options: CliCommandOptions): CliCommandResult {
+export function executeCliCommand(options: ICliCommandOptions): ICliCommandResult {
   const { command, env = {}, cwd, homeDir, customCmd } = options;
 
   // Prepare environment variables

@@ -1,17 +1,17 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { ToolInstallationDetails } from '@dotfiles/registry';
+import type { IToolInstallationDetails } from '@dotfiles/registry';
 
-export interface CargoInstallMetadata extends Partial<ToolInstallationDetails> {
+export interface ICargoInstallMetadata extends Partial<IToolInstallationDetails> {
   method: 'cargo';
   crateName: string;
   binarySource: string;
 }
 
-export interface CargoInstallSuccess extends InstallResultSuccess<CargoInstallMetadata> {
+export interface ICargoInstallSuccess extends InstallResultSuccess<ICargoInstallMetadata> {
   binaryPaths: string[];
   version: string;
   originalTag?: string;
-  metadata: CargoInstallMetadata;
+  metadata: ICargoInstallMetadata;
 }
 
-export type CargoInstallResult = CargoInstallSuccess | InstallResultFailure;
+export type CargoInstallResult = ICargoInstallSuccess | InstallResultFailure;

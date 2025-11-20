@@ -1,9 +1,9 @@
-import type { PlatformConfig, PlatformConfigEntry, SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, PlatformConfig, PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
 import { Architecture, hasArchitecture, hasPlatform, Platform } from '@dotfiles/core';
 
 /**
  * Detects the current operating system using the same logic as projectConfigLoader
- * @param platform - The platform from SystemInfo (from NodeJS.Process)
+ * @param platform - The platform from ISystemInfo (from NodeJS.Process)
  * @returns The detected OS as a Platform enum
  */
 function detectPlatformEnum(platform: string): Platform {
@@ -15,7 +15,7 @@ function detectPlatformEnum(platform: string): Platform {
 
 /**
  * Detects the current architecture using the same logic as projectConfigLoader
- * @param arch - The architecture from SystemInfo (from NodeJS.Process)
+ * @param arch - The architecture from ISystemInfo (from NodeJS.Process)
  * @returns The detected architecture as an Architecture enum
  */
 function detectArchitectureEnum(arch: string): Architecture {
@@ -30,7 +30,7 @@ function detectArchitectureEnum(arch: string): Architecture {
  * @param systemInfo - The current system information
  * @returns True if the platform config matches the system
  */
-function matchesPlatform(entry: PlatformConfigEntry, systemInfo: SystemInfo): boolean {
+function matchesPlatform(entry: PlatformConfigEntry, systemInfo: ISystemInfo): boolean {
   const currentPlatformEnum = detectPlatformEnum(systemInfo.platform);
   const currentArchEnum = detectArchitectureEnum(systemInfo.arch);
 
@@ -181,7 +181,7 @@ function createBaseResolvedConfig(toolConfig: ToolConfig): ToolConfig {
  * @param systemInfo - The current system information
  * @returns A resolved tool configuration with platform-specific overrides applied
  */
-export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: SystemInfo): ToolConfig {
+export function resolvePlatformConfig(toolConfig: ToolConfig, systemInfo: ISystemInfo): ToolConfig {
   // If no platform configs exist, return the original config
   if (!toolConfig.platformConfigs || toolConfig.platformConfigs.length === 0) {
     return toolConfig;

@@ -1,7 +1,7 @@
 /**
  * Represents README content with metadata
  */
-export interface ReadmeContent {
+export interface IReadmeContent {
   /**
    * The raw markdown content of the README
    */
@@ -41,7 +41,7 @@ export interface ReadmeContent {
 /**
  * Options for generating combined README
  */
-export interface CombinedReadmeOptions {
+export interface ICombinedReadmeOptions {
   /**
    * Title for the combined README
    */

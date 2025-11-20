@@ -1,5 +1,5 @@
 import { type IDownloader, ProgressBar, shouldShowProgress } from '@dotfiles/downloader';
-import type { InstallOptions } from '../types';
+import type { IInstallOptions } from '../types';
 
 /**
  * Downloads a file with progress tracking via progress bar display.
@@ -22,7 +22,7 @@ export async function downloadWithProgress(
   destinationPath: string,
   filename: string,
   downloader: IDownloader,
-  options?: InstallOptions
+  options?: IInstallOptions
 ): Promise<void> {
   const showProgress = shouldShowProgress(options?.quiet);
   const progressBar = new ProgressBar(filename, { enabled: showProgress });

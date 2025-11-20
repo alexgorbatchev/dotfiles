@@ -1,4 +1,4 @@
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/core';
+import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
 
 /**
  * Interface for a service that extracts various archive formats.
@@ -12,11 +12,11 @@ export interface IArchiveExtractor {
    *                archive format (if not auto-detected), number of path
    *                components to strip, target directory, and whether to
    *                preserve permissions or auto-detect/set executables.
-   * @returns A promise that resolves with an ExtractResult object containing
+   * @returns A promise that resolves with an IExtractResult object containing
    *          information about the extracted files and any detected executables.
    * @throws Will throw an error if extraction fails (e.g., unsupported format, corrupted archive, I/O error).
    */
-  extract(archivePath: string, options?: ExtractOptions): Promise<ExtractResult>;
+  extract(archivePath: string, options?: IExtractOptions): Promise<IExtractResult>;
 
   /**
    * Attempts to detect the format of an archive file.

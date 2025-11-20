@@ -1,19 +1,19 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { InstallerPlugin, InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
+import type { IInstallerPlugin, InstallerPluginRegistry, ToolConfig } from '@dotfiles/core';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
-  let mockPlugin: Partial<InstallerPlugin> | undefined;
+  let mockPlugin: Partial<IInstallerPlugin> | undefined;
 
   const manualToolConfig: ToolConfig = {
     name: 'manualtool',
@@ -36,7 +36,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     };
 
     const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
-      get: mock((method: string) => (method === 'manual' ? (mockPlugin as InstallerPlugin) : undefined)),
+      get: mock((method: string) => (method === 'manual' ? (mockPlugin as IInstallerPlugin) : undefined)),
       register: mock(() => Promise.resolve()),
       getAll: mock(() => []),
     };

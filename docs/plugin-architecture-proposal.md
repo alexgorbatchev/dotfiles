@@ -158,7 +158,7 @@ import type { BaseInstallContext } from '@dotfiles/schemas';
 /**
  * Core plugin interface that all installer plugins must implement
  */
-export interface InstallerPlugin<
+export interface IInstallerPlugin<
   TMethod extends string = string,
   TParams = unknown,
   TConfig = unknown,
@@ -187,7 +187,7 @@ export interface InstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: IInstallOptions,
     logger?: TsLogger
   ): Promise<InstallResult<TMetadata>>;
   
@@ -215,7 +215,7 @@ export interface InstallResult<TMetadata = unknown> {
 /**
  * Plugin validation result
  */
-export interface ValidationResult {
+export interface IValidationResult {
   valid: boolean;
   errors?: string[];
   warnings?: string[];
@@ -228,13 +228,13 @@ export interface ValidationResult {
 // packages/installer-plugin-system/src/InstallerPluginRegistry.ts
 
 import type { TsLogger } from '@dotfiles/logger';
-import type { InstallerPlugin } from './types';
+import type { IInstallerPlugin } from './types';
 
 /**
  * Central registry for installer plugins
  */
 export class InstallerPluginRegistry {
-  private plugins = new Map<string, InstallerPlugin>();
+  private plugins = new Map<string, IInstallerPlugin>();
   private logger: TsLogger;
   
   constructor(logger: TsLogger) {
@@ -244,7 +244,7 @@ export class InstallerPluginRegistry {
   /**
    * Register a plugin
    */
-  register<T extends InstallerPlugin>(plugin: T): void {
+  register<T extends IInstallerPlugin>(plugin: T): void {
     const { method } = plugin;
     
     // Validate plugin
@@ -268,7 +268,7 @@ export class InstallerPluginRegistry {
   /**
    * Get a plugin by method name
    */
-  get(method: string): InstallerPlugin | undefined {
+  get(method: string): IInstallerPlugin | undefined {
     return this.plugins.get(method);
   }
   
@@ -282,7 +282,7 @@ export class InstallerPluginRegistry {
   /**
    * Get all registered plugins
    */
-  getAll(): InstallerPlugin[] {
+  getAll(): IInstallerPlugin[] {
     return Array.from(this.plugins.values());
   }
   
@@ -327,7 +327,7 @@ export class InstallerPluginRegistry {
     toolName: string,
     toolConfig: any,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult> {
     const plugin = this.get(method);
     
@@ -361,12 +361,12 @@ export class InstallerPluginRegistry {
 // Third-party plugin package: @myorg/installer-custom
 
 // types.ts - Define plugin-specific types
-export interface CustomInstallParams {
+export interface ICustomInstallParams {
   customUrl: string;
   customOptions?: Record<string, string>;
 }
 
-export interface CustomToolConfig {
+export interface ICustomToolConfig {
   name: string;
   version: string;
   binaries: string[];
@@ -378,17 +378,17 @@ export interface CustomToolConfig {
 // augmentation.ts - Extend core types
 declare module '@dotfiles/schemas' {
   // Extend ToolConfigBuilder interface
-  export interface ToolConfigBuilder {
+  export interface IToolConfigBuilder {
     install(method: 'custom', params: CustomInstallParams): this;
   }
   
-  export interface PlatformConfigBuilder {
+  export interface IPlatformConfigBuilder {
     install(method: 'custom', params: CustomInstallParams): this;
   }
 }
 
 // plugin.ts - Implement plugin
-export class CustomInstallerPlugin implements InstallerPlugin {
+export class CustomInstallerPlugin implements IInstallerPlugin {
   readonly method = 'custom';
   readonly displayName = 'Custom Installer';
   readonly version = '1.0.0';
@@ -399,7 +399,7 @@ export class CustomInstallerPlugin implements InstallerPlugin {
     toolName: string,
     toolConfig: CustomToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult> {
     // Implementation
   }
@@ -479,7 +479,7 @@ export class Installer implements IInstaller {
   async install(
     toolName: string,
     toolConfig: ToolConfig,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });
 
@@ -533,7 +533,7 @@ Each existing installer becomes a plugin:
 ```typescript
 // packages/installer-github/src/index.ts
 
-export class GitHubReleaseInstallerPlugin implements InstallerPlugin {
+export class GitHubReleaseInstallerPlugin implements IInstallerPlugin {
   readonly method = 'github-release';
   readonly displayName = 'GitHub Release';
   readonly version = '1.0.0';
@@ -545,7 +545,7 @@ export class GitHubReleaseInstallerPlugin implements InstallerPlugin {
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: IInstallOptions,
     logger?: TsLogger
   ): Promise<InstallResult<GithubReleaseInstallMetadata>> {
     // Move existing installFromGitHubRelease logic here
@@ -636,7 +636,7 @@ async function autoRegisterPlugins(registry: InstallerPluginRegistry) {
   // Dynamically import and register
   for (const pluginName of installerPlugins) {
     const plugin = await import(pluginName);
-    if (plugin.default && plugin.default.prototype instanceof InstallerPlugin) {
+    if (plugin.default && plugin.default.prototype instanceof IInstallerPlugin) {
       registry.register(new plugin.default());
     }
   }
@@ -691,7 +691,7 @@ async function autoRegisterPlugins(registry: InstallerPluginRegistry) {
 
 ```typescript
 // Plugin receives all dependencies in constructor
-export class GitHubReleaseInstallerPlugin implements InstallerPlugin {
+export class GitHubReleaseInstallerPlugin implements IInstallerPlugin {
   constructor(
     private downloader: IDownloader,
     private githubClient: IGitHubApiClient,
@@ -872,7 +872,7 @@ async function initializeServices() {
 
 ```typescript
 export class InstallerPluginRegistry {
-  async register(plugin: InstallerPlugin): Promise<void> {
+  async register(plugin: IInstallerPlugin): Promise<void> {
     try {
       // Validate plugin
       if (!plugin.method) {
@@ -930,14 +930,14 @@ export class InstallerPluginRegistry {
     return await plugin.install(/* ... */);
   }
   
-  private isStaticValidation(plugin: InstallerPlugin): boolean {
+  private isStaticValidation(plugin: IInstallerPlugin): boolean {
     // Plugins can declare if their validation is static
     return plugin.staticValidation ?? false;
   }
 }
 
 // Plugin declares static validation
-export class BrewInstallerPlugin implements InstallerPlugin {
+export class BrewInstallerPlugin implements IInstallerPlugin {
   readonly staticValidation = true; // Validation based on OS only
   
   async validate(context: BaseInstallContext): Promise<ValidationResult> {
@@ -960,7 +960,7 @@ export class BrewInstallerPlugin implements InstallerPlugin {
 /**
  * Registry interface that plugins augment to register their config types
  */
-export interface ToolConfigRegistry {
+export interface IToolConfigRegistry {
   // Empty initially - plugins add to this via declaration merging
 }
 
@@ -973,7 +973,7 @@ export type ToolConfig = ToolConfigRegistry[keyof ToolConfigRegistry];
 /**
  * Base interface that all tool configs must implement
  */
-export interface ToolConfigBase {
+export interface IToolConfigBase {
   name: string;
   version: string;
   binaries: string[];
@@ -988,14 +988,14 @@ export interface ToolConfigBase {
 ```typescript
 // packages/installer-github/src/types.ts
 
-export interface GithubReleaseToolConfig extends ToolConfigBase {
+export interface IGitHubReleaseToolConfig extends ToolConfigBase {
   installationMethod: 'github-release';
   installParams: GithubReleaseInstallParams;
 }
 
 // Augment the registry
 declare module '@dotfiles/schemas' {
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'github-release': GithubReleaseToolConfig;
   }
 }
@@ -1006,14 +1006,14 @@ declare module '@dotfiles/schemas' {
 ```typescript
 // @mycompany/dotfiles-installer-npm
 
-export interface NpmToolConfig extends ToolConfigBase {
+export interface INpmToolConfig extends ToolConfigBase {
   installationMethod: 'npm';
   installParams: NpmInstallParams;
 }
 
 // Augment the registry
 declare module '@dotfiles/schemas' {
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'npm': NpmToolConfig;
   }
 }
@@ -1038,11 +1038,11 @@ type ToolConfig =
 ```typescript
 // In plugin package
 declare module '@dotfiles/schemas' {
-  interface ToolConfigBuilder {
+  interface IToolConfigBuilder {
     install(method: 'my-method', params: MyParams): this;
   }
   
-  interface PlatformConfigBuilder {
+  interface IPlatformConfigBuilder {
     install(method: 'my-method', params: MyParams): this;
   }
 }
@@ -1052,7 +1052,7 @@ declare module '@dotfiles/schemas' {
 
 ```typescript
 // After all plugins imported, TypeScript sees:
-interface ToolConfigBuilder {
+interface IToolConfigBuilder {
   install(method: 'github-release', params: GithubReleaseInstallParams): this;
   install(method: 'brew', params: BrewInstallParams): this;
   install(method: 'npm', params: NpmInstallParams): this; // Third-party
@@ -1172,10 +1172,10 @@ Users must update their `main.ts` or initialization code to register plugins. Th
 // @mycompany/dotfiles-installer-apt
 // npm install @mycompany/dotfiles-installer-apt
 
-import type { InstallerPlugin } from '@dotfiles/installer-plugin-system';
+import type { IInstallerPlugin } from '@dotfiles/installer-plugin-system';
 
 // Define types
-export interface AptInstallParams {
+export interface IAptInstallParams {
   package: string;
   ppa?: string;
   version?: string;
@@ -1183,17 +1183,17 @@ export interface AptInstallParams {
 
 // Type augmentation
 declare module '@dotfiles/schemas' {
-  interface ToolConfigBuilder {
+  interface IToolConfigBuilder {
     install(method: 'apt', params: AptInstallParams): this;
   }
   
-  interface PlatformConfigBuilder {
+  interface IPlatformConfigBuilder {
     install(method: 'apt', params: AptInstallParams): this;
   }
 }
 
 // Implement plugin
-export class AptInstallerPlugin implements InstallerPlugin {
+export class AptInstallerPlugin implements IInstallerPlugin {
   readonly method = 'apt';
   readonly displayName = 'APT Package Manager';
   readonly version = '1.0.0';
@@ -1213,7 +1213,7 @@ export class AptInstallerPlugin implements InstallerPlugin {
     toolName: string,
     toolConfig: AptToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult> {
     const { package: packageName, ppa, version } = toolConfig.installParams;
     

@@ -53,7 +53,7 @@ const extractor = new ArchiveExtractor(logger, fileSystem);
 Result object returned after extraction.
 
 ```typescript
-interface ExtractResult {
+interface IExtractResult {
   extractedFiles: string[];
   extractedDir: string;
   success: boolean;
@@ -209,7 +209,7 @@ Captures and reports any extraction errors with context.
 ## Extract Options
 
 ```typescript
-interface ExtractOptions {
+interface IExtractOptions {
   /**
    * Callback for progress updates
    */

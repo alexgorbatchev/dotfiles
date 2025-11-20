@@ -62,7 +62,7 @@ describe('createCliTestSetup', () => {
     expect(setup.mockServices.versionChecker).toBeUndefined();
   });
 
-  it('should create proper Services object', async () => {
+  it('should create proper IServices object', async () => {
     const setup = await createCliTestSetup({
       testName: 'services-test',
       services: {

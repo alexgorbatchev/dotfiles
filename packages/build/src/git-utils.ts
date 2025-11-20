@@ -3,7 +3,7 @@ import { $ } from 'bun';
 /**
  * Options for configuring command execution.
  */
-interface ExecuteCommandOptions {
+interface IExecuteCommandOptions {
   /** Working directory for command execution. Defaults to current directory. */
   cwd?: string;
   /** Environment variables to merge with process.env. */
@@ -22,7 +22,7 @@ interface ExecuteCommandOptions {
  * @param opts - Optional execution options.
  * @throws {Error} If the command exits with a non-zero code.
  */
-export async function executeCommand(args: string[], opts: ExecuteCommandOptions = {}): Promise<void> {
+export async function executeCommand(args: string[], opts: IExecuteCommandOptions = {}): Promise<void> {
   const { cwd = process.cwd(), env, expectToFail = false } = opts;
   const command = args.join(' ');
 

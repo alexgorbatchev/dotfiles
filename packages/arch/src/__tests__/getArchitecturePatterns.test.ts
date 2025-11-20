@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { getArchitecturePatterns } from '../getArchitecturePatterns';
 
 describe('getArchitecturePatterns', () => {
   it('should generate correct patterns for macOS ARM64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'darwin',
       arch: 'arm64',
       homeDir: '/home/test',
@@ -29,7 +29,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should generate correct patterns for macOS x86_64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'darwin',
       arch: 'x64',
       homeDir: '/home/test',
@@ -54,7 +54,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should generate correct patterns for Linux x86_64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'x86_64',
       homeDir: '/home/test',
@@ -68,7 +68,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should generate correct patterns for Linux ARM64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'aarch64',
       homeDir: '/home/test',
@@ -82,7 +82,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should generate correct patterns for Windows x64', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'win32',
       arch: 'x64',
       homeDir: '/home/test',
@@ -99,7 +99,7 @@ describe('getArchitecturePatterns', () => {
     const testCases = ['ia32', 'x86', 'i386', 'i486', 'i686', 'i786'];
 
     testCases.forEach((arch) => {
-      const systemInfo: SystemInfo = {
+      const systemInfo: ISystemInfo = {
         platform: 'linux',
         arch,
         homeDir: '/home/test',
@@ -111,7 +111,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should handle ARM variants with eabihf', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'armv6l',
       homeDir: '/home/test',
@@ -127,7 +127,7 @@ describe('getArchitecturePatterns', () => {
     const testCases = ['armv7l', 'armv8l'];
 
     testCases.forEach((arch) => {
-      const systemInfo: SystemInfo = {
+      const systemInfo: ISystemInfo = {
         platform: 'linux',
         arch,
         homeDir: '/home/test',
@@ -140,7 +140,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should handle unknown platforms gracefully', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'freebsd',
       arch: 'x64',
       homeDir: '/home/test',
@@ -154,7 +154,7 @@ describe('getArchitecturePatterns', () => {
   });
 
   it('should handle unknown architectures gracefully', () => {
-    const systemInfo: SystemInfo = {
+    const systemInfo: ISystemInfo = {
       platform: 'linux',
       arch: 'riscv64',
       homeDir: '/home/test',

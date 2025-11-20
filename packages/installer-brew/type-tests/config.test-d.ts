@@ -1,10 +1,10 @@
-import type { BrewInstallParams, InstallMethod, InstallParamsRegistry } from '@gitea/dotfiles';
+import type { BrewInstallParams, IInstallParamsRegistry, InstallMethod } from '@gitea/dotfiles';
 import { defineTool } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 
 type ExpectTrue<T extends true> = T;
 
-type BrewParams = InstallParamsRegistry['brew'];
+type BrewParams = IInstallParamsRegistry['brew'];
 type UnknownKeyCheck = 'unknown' extends keyof BrewParams ? true : false;
 type FormulaType = BrewParams['formula'];
 export type InstallIncludesBrew = ExpectTrue<'brew' extends InstallMethod ? true : false>;

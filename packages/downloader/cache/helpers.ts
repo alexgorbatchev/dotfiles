@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { DownloadOptions } from '../IDownloader';
+import type { IDownloadOptions } from '../IDownloader';
 
 /**
  * Creates a cache key for a download operation.
@@ -8,7 +8,7 @@ import type { DownloadOptions } from '../IDownloader';
  * @param options The download options
  * @returns A unique cache key for this download
  */
-export function createCacheKey(url: string, options: DownloadOptions = {}): string {
+export function createCacheKey(url: string, options: IDownloadOptions = {}): string {
   // Only include options that affect the actual download content
   const relevantOptions = {
     headers: options.headers || {},

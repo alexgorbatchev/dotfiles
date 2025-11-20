@@ -1,20 +1,20 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type MemFileSystemReturn } from '@dotfiles/file-system';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
+import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import type { GenerateSymlinksOptions } from '../ISymlinkGenerator';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import type { IGenerateSymlinksOptions } from '../ISymlinkGenerator';
 import { SymlinkGenerator } from '../SymlinkGenerator';
 
 describe('SymlinkGenerator', () => {
-  let mockFs: MemFileSystemReturn;
+  let mockFs: IMemFileSystemReturn;
   let projectConfig: ProjectConfig;
   let symlinkGenerator: SymlinkGenerator;
   let logger: TestLogger;
-  let systemInfo: SystemInfo;
-  let testDirs: TestDirectories;
+  let systemInfo: ISystemInfo;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     mock.restore();
@@ -174,7 +174,7 @@ describe('SymlinkGenerator', () => {
       [targetPath]: 'existing target content',
     });
 
-    const options: GenerateSymlinksOptions = { overwrite: true };
+    const options: IGenerateSymlinksOptions = { overwrite: true };
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
     expect(await mockFs.fs.exists(targetPath)).toBe(true);
@@ -203,7 +203,7 @@ describe('SymlinkGenerator', () => {
       [targetPath]: 'existing target content',
     });
 
-    const options: GenerateSymlinksOptions = { overwrite: true, backup: true };
+    const options: IGenerateSymlinksOptions = { overwrite: true, backup: true };
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
     expect(await mockFs.fs.exists(backupPath)).toBe(true);
@@ -262,7 +262,7 @@ describe('SymlinkGenerator', () => {
     });
 
     // No dryRun option passed
-    const options: GenerateSymlinksOptions = { overwrite: true, backup: true };
+    const options: IGenerateSymlinksOptions = { overwrite: true, backup: true };
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
     // MemFS will reflect backup and overwrite
@@ -332,7 +332,7 @@ describe('SymlinkGenerator', () => {
       [backupPath]: 'old backup content', // Pre-existing backup
     });
 
-    const options: GenerateSymlinksOptions = { overwrite: true, backup: true };
+    const options: IGenerateSymlinksOptions = { overwrite: true, backup: true };
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
     expect(await mockFs.fs.readFile(backupPath)).toBe('original target content'); // New backup
@@ -362,7 +362,7 @@ describe('SymlinkGenerator', () => {
     await mockFs.fs.mkdir(targetPath, { recursive: true });
     await mockFs.fs.writeFile(fileInTargetDir, 'content in dir');
 
-    const options: GenerateSymlinksOptions = { overwrite: true };
+    const options: IGenerateSymlinksOptions = { overwrite: true };
     const results = await symlinkGenerator.generate(toolConfigs, options);
 
     // Directory should be removed and replaced by symlink

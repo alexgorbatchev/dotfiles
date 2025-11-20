@@ -5,7 +5,6 @@ applyTo: '**/*'
 # TypeScript Code Quality Requirements
 
 ## General Requirements
-
 - `any` type is PROHIBITED
 - Line length is 120 characters
 - Do not add file header comments
@@ -25,6 +24,12 @@ Filenames must match the exact name and casing of the main exported element.
 - **Type collections**: Use `types.ts` for package-specific type collections
 - **Index files**: Always named `index.ts` and re-export package's public API
 - **Test files**: Use `{sourceFileName}.test.ts` pattern in `__tests__` directories
+
+## Variable Naming Rules
+- **camelCase**: Variables, functions, methods, properties
+- **PascalCase**: Classes, interfaces, types, enums
+- **SCREAMING_SNAKE_CASE**: Constants
+- **IInterface**: Interface names must start with `I`
 
 ## Type Safety Rules
 
@@ -78,8 +83,11 @@ Only use `as` for:
 ## Import Statements
 
 - All import statements must be placed at the top of the file, before any other code
-- Dynamic imports using `await import()` are PROHIBITED
-- Do not rename import bindings
+- Dynamic imports using `await import()` are PROHIBITED 
+- Inline imports and require statements are PROHIBITED
+- Importing `* as Foo` is PROHIBITED (e.g., `import * as Foo from 'foo'`) 
+- Exporting `* as Foo` is PROHIBITED (e.g., `export * as Foo from 'foo'`)
+- Renaming import bindings is PROHIBITED (e.g., `import { Foo as Bar } from 'foo'`)
 - When editing files with `as Foo` imports, replace them with the actual binding name
 - When using `@foo/bar` imports use the shortest path possible (e.g., `@foo/bar` instead of `@foo/bar/baz`)
 

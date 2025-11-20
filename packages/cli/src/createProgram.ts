@@ -1,7 +1,7 @@
 import { ARCH_VALUES, OS_VALUES } from '@dotfiles/config';
 import { LOG_LEVEL_NAMES } from '@dotfiles/logger';
 import { Command } from 'commander';
-import type { GlobalProgram } from './types';
+import type { IGlobalProgram } from './types';
 
 /**
  * Creates and configures the main Commander.js program with global options.
@@ -24,8 +24,8 @@ import type { GlobalProgram } from './types';
  *   });
  * ```
  */
-export function createProgram(): GlobalProgram {
-  const program: GlobalProgram = new Command()
+export function createProgram(): IGlobalProgram {
+  const program: IGlobalProgram = new Command()
     .name('generator')
     .description('CLI tool for managing dotfiles and tool configurations')
     .version(process.env.DOTFILES_VERSION ?? '0.0.0')

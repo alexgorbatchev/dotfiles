@@ -69,7 +69,7 @@ const TSD_TESTS_GITEA_SYMLINK_PATH = path.join(TSD_TESTS_GITEA_NAMESPACE_PATH, '
 /**
  * Version information for key dependencies required by the build.
  */
-interface DependencyVersions {
+interface IDependencyVersions {
   /** Version of the zod validation library. */
   zod: string;
   /** Version of the @types/bun TypeScript definitions. */
@@ -78,7 +78,7 @@ interface DependencyVersions {
   nodeTypes: string;
 }
 
-interface TypeTestFile {
+interface ITypeTestFile {
   packageName: string;
   fileName: string;
   sourcePath: string;
@@ -147,9 +147,9 @@ function linkBunStoreDependencies(nodeModulesPath: string): void {
   }
 }
 
-function getTypeTestFiles(): TypeTestFile[] {
+function getTypeTestFiles(): ITypeTestFile[] {
   const packages: fs.Dirent[] = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
-  const files: TypeTestFile[] = [];
+  const files: ITypeTestFile[] = [];
 
   for (const entry of packages) {
     if (!entry.isDirectory()) {
@@ -175,7 +175,7 @@ function getTypeTestFiles(): TypeTestFile[] {
       }
 
       const sourcePath: string = path.join(typeTestsDir, typeTestEntry.name);
-      const file: TypeTestFile = {
+      const file: ITypeTestFile = {
         packageName,
         fileName: typeTestEntry.name,
         sourcePath,
@@ -189,7 +189,7 @@ function getTypeTestFiles(): TypeTestFile[] {
 }
 
 function copyTypeTestFiles(destinationDir: string): void {
-  const files: TypeTestFile[] = getTypeTestFiles();
+  const files: ITypeTestFile[] = getTypeTestFiles();
 
   for (const file of files) {
     const packageDestinationDir: string = path.join(destinationDir, file.packageName);
@@ -331,7 +331,7 @@ async function cleanPreviousBuild(): Promise<void> {
  * @returns Version information for required dependencies.
  * @throws {BuildError} If any required dependency version cannot be determined.
  */
-async function getDependencyVersions(): Promise<DependencyVersions> {
+async function getDependencyVersions(): Promise<IDependencyVersions> {
   const pmLsResult = await $`bun pm ls --all`.quiet();
   const pmLsOutput = pmLsResult.stdout.toString();
 
@@ -350,7 +350,7 @@ async function getDependencyVersions(): Promise<DependencyVersions> {
     throw new BuildError('Could not extract version numbers from dependency output');
   }
 
-  const versions: DependencyVersions = {
+  const versions: IDependencyVersions = {
     zod: zodVersion,
     bunTypes: bunTypesVersion,
     nodeTypes: nodeTypesVersion,
@@ -456,7 +456,7 @@ async function createTempTsConfig(): Promise<void> {
  *
  * @param dependencyVersions - Version information for required dependencies.
  */
-async function createTempSchemasPackage(dependencyVersions: DependencyVersions): Promise<void> {
+async function createTempSchemasPackage(dependencyVersions: IDependencyVersions): Promise<void> {
   const tempPackageJson = {
     name: 'temp-schemas',
     version: '0.0.0',
@@ -501,7 +501,7 @@ async function createTempSchemasPackage(dependencyVersions: DependencyVersions):
  *
  * @param dependencyVersions - Version information for dependencies to include in package.json.
  */
-async function buildSchemaTypes(dependencyVersions: DependencyVersions): Promise<void> {
+async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promise<void> {
   await createTempTsConfig();
   await $`bun tsgo --project ${BUILD_TSCONFIG_PATH}`.quiet();
 
@@ -605,7 +605,7 @@ async function cleanupTempFiles(): Promise<void> {
  * @param dependencyVersions - Version information for dependencies.
  * @throws {BuildError} If schema generation or validation fails.
  */
-async function generateSchemaTypes(dependencyVersions: DependencyVersions): Promise<void> {
+async function generateSchemaTypes(dependencyVersions: IDependencyVersions): Promise<void> {
   console.log('📝 Building @dotfiles/core config types...');
 
   try {
@@ -628,7 +628,7 @@ async function generateSchemaTypes(dependencyVersions: DependencyVersions): Prom
  *
  * @param dependencyVersions - Version information for runtime dependencies.
  */
-async function generatePackageJson(dependencyVersions: DependencyVersions): Promise<void> {
+async function generatePackageJson(dependencyVersions: IDependencyVersions): Promise<void> {
   const packageJson = {
     name: '@gitea/dotfiles',
     version: getPackageJson().version,

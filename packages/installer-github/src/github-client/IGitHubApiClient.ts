@@ -1,4 +1,4 @@
-import type { GitHubRateLimit, GitHubRelease } from '@dotfiles/core';
+import type { IGitHubRateLimit, IGitHubRelease } from '@dotfiles/core';
 
 /**
  * Interface for a client that interacts with the GitHub API.
@@ -11,7 +11,7 @@ export interface IGitHubApiClient {
    * @param repo The name of the repository.
    * @returns A promise that resolves to the latest GitHub release, or null if not found.
    */
-  getLatestRelease(owner: string, repo: string): Promise<GitHubRelease | null>;
+  getLatestRelease(owner: string, repo: string): Promise<IGitHubRelease | null>;
 
   /**
    * Fetches a specific release by tag name.
@@ -21,7 +21,7 @@ export interface IGitHubApiClient {
    * @param tag The tag name of the release.
    * @returns A promise that resolves to the GitHub release, or null if not found.
    */
-  getReleaseByTag(owner: string, repo: string, tag: string): Promise<GitHubRelease | null>;
+  getReleaseByTag(owner: string, repo: string, tag: string): Promise<IGitHubRelease | null>;
 
   /**
    * Fetches all releases for a given repository.
@@ -38,7 +38,7 @@ export interface IGitHubApiClient {
     owner: string,
     repo: string,
     options?: { perPage?: number; includePrerelease?: boolean }
-  ): Promise<GitHubRelease[]>;
+  ): Promise<IGitHubRelease[]>;
 
   /**
    * Fetches a release that satisfies a given version constraint (e.g., "v1.2.x", "^2.0.0").
@@ -48,11 +48,11 @@ export interface IGitHubApiClient {
    * @param constraint The version constraint string.
    * @returns A promise that resolves to the matching GitHub release or null if not found.
    */
-  getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<GitHubRelease | null>;
+  getReleaseByConstraint(owner: string, repo: string, constraint: string): Promise<IGitHubRelease | null>;
 
   /**
    * Fetches the current rate limit status from the GitHub API.
    * @returns A promise that resolves to the GitHub rate limit information.
    */
-  getRateLimit(): Promise<GitHubRateLimit>;
+  getRateLimit(): Promise<IGitHubRateLimit>;
 }

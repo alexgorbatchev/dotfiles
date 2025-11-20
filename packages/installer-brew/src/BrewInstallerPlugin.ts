@@ -1,7 +1,7 @@
 import type {
   BaseInstallContext,
-  InstallerPlugin,
-  InstallOptions,
+  IInstallerPlugin,
+  IInstallOptions,
   InstallResult,
   UpdateCheckResult,
 } from '@dotfiles/core';
@@ -31,7 +31,7 @@ type BrewPluginMetadata = {
  * handles the actual file placement and versioning.
  */
 export class BrewInstallerPlugin
-  implements InstallerPlugin<'brew', BrewInstallParams, BrewToolConfig, BrewPluginMetadata>
+  implements IInstallerPlugin<'brew', BrewInstallParams, BrewToolConfig, BrewPluginMetadata>
 {
   readonly method = 'brew';
   readonly displayName = 'Homebrew Installer';
@@ -60,7 +60,7 @@ export class BrewInstallerPlugin
     toolName: string,
     toolConfig: BrewToolConfig,
     context: BaseInstallContext,
-    options?: InstallOptions
+    options?: IInstallOptions
   ): Promise<InstallResult<BrewPluginMetadata>> {
     const result = await installFromBrew(toolName, toolConfig, context, options, this.logger);
 

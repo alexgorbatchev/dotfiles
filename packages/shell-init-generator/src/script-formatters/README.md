@@ -78,7 +78,7 @@ interface IScriptFormatter {
   format(script: ShellScript, toolName: string, shellType: ShellType): FormattedScriptOutput;
 }
 
-interface FormattedScriptOutput {
+interface IFormattedScriptOutput {
   content: string;           // The formatted shell code
   requiresExecution?: boolean; // Whether script needs external execution
   outputPath?: string;       // File path for external scripts

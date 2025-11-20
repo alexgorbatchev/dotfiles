@@ -1,18 +1,18 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { InstallerPlugin, ToolConfig, UpdateResult } from '@dotfiles/core';
+import type { IInstallerPlugin, ToolConfig, UpdateResult } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { registerUpdateCommand } from '../updateCommand';
 import { createCliTestSetup } from './createCliTestSetup';
 
 describe('updateCommand', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockProjectConfig: ProjectConfig;
-  let mockPlugin: InstallerPlugin;
+  let mockPlugin: IInstallerPlugin;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
 
@@ -47,7 +47,7 @@ describe('updateCommand', () => {
           newVersion: '0.41.0',
         })
       ),
-    } as unknown as InstallerPlugin;
+    } as unknown as IInstallerPlugin;
 
     const setup = await createCliTestSetup({
       testName: 'update-command',

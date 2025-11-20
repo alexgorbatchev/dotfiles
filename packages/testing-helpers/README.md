@@ -52,14 +52,14 @@ const response = await fetch(`${url}/api/releases/latest`);
 await server.close();
 ```
 
-### `createTestDirectories(testName: string): TestDirectories`
+### `createITestDirectories(testName: string): ITestDirectories`
 
 Creates temporary test directories with automatic cleanup.
 
 ```typescript
-import { createTestDirectories } from '@dotfiles/testing-helpers';
+import { createITestDirectories } from '@dotfiles/testing-helpers';
 
-const { workingDir, homeDir, cleanup } = await createTestDirectories('my-test');
+const { workingDir, homeDir, cleanup } = await createITestDirectories('my-test');
 
 // Use directories in test
 await fs.writeFile(path.join(workingDir, 'config.yaml'), '...');
@@ -70,7 +70,7 @@ await fs.writeFile(path.join(workingDir, 'config.yaml'), '...');
 
 **Returns:**
 ```typescript
-interface TestDirectories {
+interface ITestDirectories {
   workingDir: string;    // Temporary working directory
   homeDir: string;       // Temporary home directory
   cleanup: () => Promise<void>;  // Cleanup function
@@ -189,14 +189,14 @@ expect(result.stdout).toContain('git version');
 expect(mock$.wasCommandCalled('git --version')).toBe(true);
 ```
 
-## Custom Matchers
+## Snapshot Helpers
 
-### `toMatchLooseInlineSnapshot(snapshot: string)`
+### `toMatchLooseInlineSnapshot`
 
-Custom matcher for flexible snapshot testing with regex patterns.
+Custom Bun matcher for flexible inline snapshot testing with regex support. Import `@dotfiles/testing-helpers` once in your test suite to register the matcher globally, then use the standard `expect(...).toMatchLooseInlineSnapshot\`\`` syntax.
 
 ```typescript
-import '@dotfiles/testing-helpers/matchers';
+import '@dotfiles/testing-helpers';
 
 test('loose snapshot matching', () => {
   const output = `
@@ -206,12 +206,12 @@ test('loose snapshot matching', () => {
     Size: 1234567 bytes
   `;
   
-  expect(output).toMatchLooseInlineSnapshot(`
+  expect(output).toMatchLooseInlineSnapshot`
     Tool: fzf
     Version: \\d+\\.\\d+\\.\\d+
     Path: /.*/.dotfiles/tools/fzf
     Size: \\d+ bytes
-  `);
+  `;
 });
 ```
 
@@ -227,21 +227,21 @@ test('loose snapshot matching', () => {
 
 ```typescript
 import { 
-  createTestDirectories, 
+  createITestDirectories, 
   createMockProjectConfig,
   FetchMockHelper,
   createMockApiServer 
 } from '@dotfiles/testing-helpers';
 
 describe('MyFeature', () => {
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
   let config: ProjectConfig;
   let fetchMock: FetchMockHelper;
   let apiServer: MockApiServer;
   
   beforeEach(async () => {
     // Setup test directories
-    testDirs = await createTestDirectories('my-feature-test');
+    testDirs = await createITestDirectories('my-feature-test');
     
     // Create config
     config = createMockProjectConfig({
@@ -280,12 +280,12 @@ describe('MyFeature', () => {
 import { 
   createMockApiServer,
   createMockProjectConfig,
-  createTestDirectories 
+  createITestDirectories 
 } from '@dotfiles/testing-helpers';
 
 test('installs tool from GitHub release', async () => {
   const server = createMockApiServer();
-  const testDirs = await createTestDirectories('install-test');
+  const testDirs = await createITestDirectories('install-test');
   
   // Mock GitHub API
   server.get('/repos/:owner/:repo/releases/latest', (req, res) => {
@@ -355,7 +355,7 @@ test('loads tool configuration', async () => {
 ```typescript
 test('generates shims', async () => {
   // Arrange
-  const testDirs = await createTestDirectories('shim-test');
+  const testDirs = await createITestDirectories('shim-test');
   const config = createMockProjectConfig({
     paths: { targetDir: testDirs.workingDir },
   });
@@ -450,8 +450,8 @@ afterEach(async () => {
 
 ```typescript
 test('creates temporary directory with unique name', async () => {
-  const dirs1 = await createTestDirectories('test');
-  const dirs2 = await createTestDirectories('test');
+  const dirs1 = await createITestDirectories('test');
+  const dirs2 = await createITestDirectories('test');
   
   expect(dirs1.workingDir).not.toBe(dirs2.workingDir);
 });
@@ -462,13 +462,13 @@ test('creates temporary directory with unique name', async () => {
 ```typescript
 // Each test gets its own directories
 test('test 1', async () => {
-  const dirs = await createTestDirectories('test-1');
+  const dirs = await createITestDirectories('test-1');
   // Use dirs
   await dirs.cleanup();
 });
 
 test('test 2', async () => {
-  const dirs = await createTestDirectories('test-2');
+  const dirs = await createITestDirectories('test-2');
   // Use dirs
   await dirs.cleanup();
 });

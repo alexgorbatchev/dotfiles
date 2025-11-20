@@ -1,9 +1,9 @@
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { GenerateShellInitOptions, IShellInitGenerator } from '@dotfiles/shell-init-generator';
-import type { GenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
-import type { GenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import type { IGenerateShellInitOptions, IShellInitGenerator } from '@dotfiles/shell-init-generator';
+import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
+import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import type { IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
@@ -22,7 +22,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly shellInitGenerator: IShellInitGenerator;
   private readonly symlinkGenerator: ISymlinkGenerator;
   private readonly fs: IFileSystem;
-  private readonly systemInfo: SystemInfo;
+  private readonly systemInfo: ISystemInfo;
 
   /**
    * Creates a new GeneratorOrchestrator instance.
@@ -40,7 +40,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
     fs: IFileSystem,
-    systemInfo: SystemInfo
+    systemInfo: ISystemInfo
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
     const logger = this.logger.getSubLogger({ name: 'constructor' });
@@ -69,14 +69,14 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.debug(messages.generateAll.parsedOptions(toolConfigsCount));
 
     // 1. Generate Shims
-    const shimOptions: GenerateShimsOptions = { overwrite: true };
+    const shimOptions: IGenerateShimsOptions = { overwrite: true };
     logger.debug(messages.generateAll.shimGenerate());
     const generatedShimsPaths = await this.shimGenerator.generate(orderedToolConfigs, shimOptions);
     const shimCount = generatedShimsPaths?.length ?? 0;
     logger.debug(messages.generateAll.shimGenerationComplete(shimCount));
 
     // 2. Generate Shell Init for all supported shells
-    const shellInitOptions: GenerateShellInitOptions = {
+    const shellInitOptions: IGenerateShellInitOptions = {
       shellTypes: ['zsh', 'bash', 'powershell'],
       systemInfo: this.systemInfo,
     };
@@ -86,7 +86,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.debug(messages.generateAll.shellInitComplete(primaryPath));
 
     // 3. Generate Symlinks
-    const symlinkOptions: GenerateSymlinksOptions = { overwrite: true, backup: true };
+    const symlinkOptions: IGenerateSymlinksOptions = { overwrite: true, backup: true };
     const symlinkResults: SymlinkOperationResult[] = await this.symlinkGenerator.generate(
       orderedToolConfigs,
       symlinkOptions

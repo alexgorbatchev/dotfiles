@@ -5,7 +5,7 @@ import type { ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import type { IShellInitGenerator } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 import { createSectionHeader, generateEndOfFile, generateFileHeader } from '../shellTemplates';
@@ -15,7 +15,7 @@ describe('ShellInitGenerator', () => {
   let mockProjectConfig: ProjectConfig;
   let generator: IShellInitGenerator;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});

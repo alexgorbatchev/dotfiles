@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { Architecture, always, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
-import type { GenerateShellInitOptions } from '../IShellInitGenerator';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import type { IGenerateShellInitOptions } from '../IShellInitGenerator';
 import { ShellInitGenerator } from '../ShellInitGenerator';
 
 describe('ShellInitGenerator - Platform-Aware Generation', () => {
@@ -14,7 +14,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
   let mockProjectConfig: ProjectConfig;
   let generator: ShellInitGenerator;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
+  let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     const { fs } = await createMemFileSystem({});
@@ -39,7 +39,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
   describe('with platform-specific tool configurations', () => {
     it('should generate shell code including macOS platform-specific content', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -70,7 +70,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -90,7 +90,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
     });
 
     it('should generate shell code excluding non-matching platform content', async () => {
-      const linuxSystemInfo: SystemInfo = {
+      const linuxSystemInfo: ISystemInfo = {
         platform: 'linux',
         arch: 'x64',
         homeDir: '/home/test',
@@ -114,7 +114,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: linuxSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -131,7 +131,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
     });
 
     it('should handle multiple platform-specific configurations', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -161,7 +161,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -187,13 +187,13 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
     });
 
     it('should handle architecture-specific configurations', async () => {
-      const macosArmSystemInfo: SystemInfo = {
+      const macosArmSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
       };
 
-      const macosIntelSystemInfo: SystemInfo = {
+      const macosIntelSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'x64',
         homeDir: '/Users/test',
@@ -227,7 +227,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       };
 
       // Test ARM64 system
-      const armOptions: GenerateShellInitOptions = {
+      const armOptions: IGenerateShellInitOptions = {
         systemInfo: macosArmSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -241,7 +241,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       expect(armContent).not.toContain('# macOS x86_64 init');
 
       // Test x86_64 system
-      const intelOptions: GenerateShellInitOptions = {
+      const intelOptions: IGenerateShellInitOptions = {
         systemInfo: macosIntelSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -276,7 +276,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       };
 
       // No systemInfo provided - should not resolve platform configs
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         shellTypes: ['zsh'],
       };
 
@@ -292,7 +292,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
     });
 
     it('should process platform-specific completions', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -321,7 +321,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };
@@ -340,7 +340,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
   describe('multiple tools with mixed platform configurations', () => {
     it('should handle mix of platform-specific and regular tools', async () => {
-      const macosSystemInfo: SystemInfo = {
+      const macosSystemInfo: ISystemInfo = {
         platform: 'darwin',
         arch: 'arm64',
         homeDir: '/Users/test',
@@ -386,7 +386,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
         },
       };
 
-      const options: GenerateShellInitOptions = {
+      const options: IGenerateShellInitOptions = {
         systemInfo: macosSystemInfo,
         shellTypes: ['zsh'],
       };

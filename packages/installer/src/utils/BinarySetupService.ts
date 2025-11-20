@@ -1,6 +1,6 @@
 // TODO rename file because there's no service in this file
 import path from 'node:path';
-import type { BaseInstallContext, BinaryConfig, ToolConfig } from '@dotfiles/core';
+import type { BaseInstallContext, IBinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { minimatch } from 'minimatch';
@@ -54,7 +54,7 @@ export async function setupBinariesFromArchive(
 async function setupBinariesUsingPatterns(
   fs: IFileSystem,
   toolName: string,
-  binaryConfigs: BinaryConfig[],
+  binaryConfigs: IBinaryConfig[],
   versionOrTimestamp: string,
   extractDir: string,
   binariesDir: string,

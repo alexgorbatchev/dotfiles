@@ -11,7 +11,7 @@ import { messages } from './log-messages';
 /**
  * Cargo crate metadata from crates.io API
  */
-export interface CrateMetadata {
+export interface ICrateMetadata {
   crate: {
     name: string;
     newest_version: string;
@@ -31,7 +31,7 @@ type CargoCacheKind = 'cratesIo' | 'githubRaw';
 /**
  * Cache options used by requests to determine which host level cache to use.
  */
-interface CargoCacheOptions {
+interface ICargoCacheOptions {
   kind: CargoCacheKind;
 }
 
@@ -105,7 +105,7 @@ export class CargoClient implements ICargoClient {
     logger.debug(messages.constructor.initialized('CargoClient', this.cargoConfig.userAgent));
   }
 
-  private async request<T>(url: string, cacheOptions?: CargoCacheOptions): Promise<T> {
+  private async request<T>(url: string, cacheOptions?: ICargoCacheOptions): Promise<T> {
     const logger = this.logger.getSubLogger({ name: 'request' });
     logger.debug(messages.request.makingRequest('GET', url));
     const headers = this.buildRequestHeaders();
@@ -123,7 +123,7 @@ export class CargoClient implements ICargoClient {
 
   private resolveCacheOptions(
     url: string,
-    cacheOptions?: CargoCacheOptions
+    cacheOptions?: ICargoCacheOptions
   ): {
     useCache: boolean;
     cacheKey?: string;
@@ -201,12 +201,12 @@ export class CargoClient implements ICargoClient {
     };
   }
 
-  async getCrateMetadata(crateName: string): Promise<CrateMetadata | null> {
+  async getCrateMetadata(crateName: string): Promise<ICrateMetadata | null> {
     const logger = this.logger.getSubLogger({ name: 'getCrateMetadata' });
     logger.debug(messages.cratesIo.querying(crateName));
     const url = `${this.cargoConfig.cratesIo.host}/api/v1/crates/${crateName}`;
     try {
-      return await this.request<CrateMetadata>(url, { kind: 'cratesIo' });
+      return await this.request<ICrateMetadata>(url, { kind: 'cratesIo' });
     } catch (error) {
       if (error instanceof NotFoundError) {
         logger.error(messages.cratesIo.notFound(crateName));

@@ -5,7 +5,7 @@ Use the `.platform()` method to define different configurations for different op
 ## Platform Enumeration
 
 ```typescript
-import { Platform, Architecture } from '@types';
+import { Platform, Architecture } from '@gitea/dotfiles';
 
 // Available platforms (bitwise flags)
 Platform.Linux    // 1
@@ -41,7 +41,7 @@ install()
 ### Single Platform
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -56,7 +56,7 @@ export default defineTool((install, ctx) =>
 ### Multiple Platforms
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -82,7 +82,7 @@ export default defineTool((install, ctx) =>
 ### Platform and Architecture Combined
 
 ```typescript
-import { defineTool, Platform, Architecture } from '@dotfiles/cli';
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -109,7 +109,7 @@ export default defineTool((install, ctx) =>
 ## Complete Multi-Platform Example
 
 ```typescript
-import { defineTool, Platform, Architecture } from '@dotfiles/cli';
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -156,7 +156,7 @@ export default defineTool((install, ctx) =>
 ### Different Methods per Platform
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -185,7 +185,7 @@ export default defineTool((install, ctx) =>
 ### Different Shell Setups
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
@@ -232,7 +232,7 @@ export default defineTool((install, ctx) =>
 ## Platform-Specific Hooks
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
@@ -264,7 +264,7 @@ export default defineTool((install, ctx) =>
 ## Platform Detection in Hooks
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
@@ -326,7 +326,7 @@ assetPattern: '*aarch64*.tar.gz'  // ARM64 (alternative naming)
 ### 1. Start with Common Configuration
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -341,7 +341,7 @@ export default defineTool((install, ctx) =>
 ### 2. Use Logical Platform Groups
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -358,7 +358,7 @@ export default defineTool((install, ctx) =>
 ### 3. Handle Architecture Differences
 
 ```typescript
-import { defineTool, Platform, Architecture } from '@dotfiles/cli';
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install()
@@ -382,7 +382,7 @@ export default defineTool((install, ctx) =>
 ### 5. Document Platform Requirements
 
 ```typescript
-import { defineTool, Platform } from '@dotfiles/cli';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
 // Document platform-specific requirements
 export default defineTool((install, ctx) =>
@@ -408,7 +408,7 @@ export default defineTool((install, ctx) =>
 ### Platform Detection Issues
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from '@gitea/dotfiles';
 
 // Debug platform detection
 export default defineTool((install, ctx) =>
@@ -424,7 +424,7 @@ export default defineTool((install, ctx) =>
 ### Asset Selection Problems
 
 ```typescript
-import { defineTool } from '@dotfiles/cli';
+import { defineTool } from '@gitea/dotfiles';
 
 // Debug asset selection (assetSelector doesn't have logger access)
 export default defineTool((install, ctx) =>
@@ -440,9 +440,3 @@ export default defineTool((install, ctx) =>
   }).bin('tool')
 );
 ```
-
-## Next Steps
-
-- [Installation Methods](./installation/README.md) - Learn about different installation options
-- [Shell Integration](./shell-integration.md) - Configure shell environments per platform
-- [Common Patterns](./common-patterns.md) - See real-world cross-platform examples

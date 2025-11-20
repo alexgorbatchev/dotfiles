@@ -1,10 +1,10 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
-import type { ToolInstallationDetails } from '@dotfiles/registry';
+import type { IToolInstallationDetails } from '@dotfiles/registry';
 
 /**
  * Metadata specific to curl-tar tool installation.
  */
-export interface CurlTarInstallMetadata extends Partial<ToolInstallationDetails> {
+export interface ICurlTarInstallMetadata extends Partial<IToolInstallationDetails> {
   method: 'curl-tar';
   tarballUrl: string;
 }
@@ -12,13 +12,13 @@ export interface CurlTarInstallMetadata extends Partial<ToolInstallationDetails>
 /**
  * Success result for a curl-tar tool installation.
  */
-export interface CurlTarInstallSuccess extends InstallResultSuccess<CurlTarInstallMetadata> {
+export interface ICurlTarInstallSuccess extends InstallResultSuccess<ICurlTarInstallMetadata> {
   binaryPaths: string[];
   version?: string;
-  metadata: CurlTarInstallMetadata;
+  metadata: ICurlTarInstallMetadata;
 }
 
 /**
  * Result type for curl-tar tool installation (success or failure).
  */
-export type CurlTarInstallResult = CurlTarInstallSuccess | InstallResultFailure;
+export type CurlTarInstallResult = ICurlTarInstallSuccess | InstallResultFailure;

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
-import { Architecture, always, Platform, type SystemInfo } from '@dotfiles/core';
+import { Architecture, always, type ISystemInfo, Platform } from '@dotfiles/core';
 import { resolvePlatformConfig } from '../src/resolvePlatformConfig';
 
 describe('resolvePlatformConfig', () => {
   let baseToolConfig: ToolConfig;
-  let macosSystemInfo: SystemInfo;
-  let linuxSystemInfo: SystemInfo;
-  let windowsSystemInfo: SystemInfo;
+  let macosSystemInfo: ISystemInfo;
+  let linuxSystemInfo: ISystemInfo;
+  let windowsSystemInfo: ISystemInfo;
 
   beforeEach(() => {
     baseToolConfig = {
@@ -259,7 +259,7 @@ describe('resolvePlatformConfig', () => {
 
   describe('unknown platform/architecture handling', () => {
     it('should not match when system platform is unknown', () => {
-      const unknownPlatformSystem: SystemInfo = {
+      const unknownPlatformSystem: ISystemInfo = {
         platform: 'freebsd',
         arch: 'x64',
         homeDir: '/home/test',
@@ -282,7 +282,7 @@ describe('resolvePlatformConfig', () => {
     });
 
     it('should not match when system architecture is unknown but architecture is specified', () => {
-      const unknownArchSystem: SystemInfo = {
+      const unknownArchSystem: ISystemInfo = {
         platform: 'darwin',
         arch: 'sparc', // Unknown architecture
         homeDir: '/Users/test',

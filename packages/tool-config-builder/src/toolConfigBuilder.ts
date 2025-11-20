@@ -2,33 +2,33 @@ import type {
   Architecture,
   AsyncInstallHook,
   HookEventName,
+  IInstallParamsRegistry,
   InstallerPluginRegistry,
   InstallMethod,
-  InstallParamsRegistry,
+  IPlatformInstallFunction,
+  IToolConfigContext,
   Platform,
   PlatformConfig,
-  PlatformConfigBuilder as PlatformConfigBuilderInterface,
+  IPlatformConfigBuilder as PlatformConfigBuilderInterface,
   PlatformConfigEntry,
-  PlatformInstallFunction,
   ShellConfigs,
   ShellConfiguratorAsyncCallback,
   ShellConfiguratorCallback,
   ToolConfig,
-  ToolConfigBuilder as ToolConfigBuilderInterface,
-  ToolConfigContext,
+  IToolConfigBuilder as ToolConfigBuilderInterface,
   ToolConfigUpdateCheck,
 } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 import { ShellConfigurator } from './ShellConfigurator';
-import type { InternalShellConfigs, ShellStorage, ShellTypeKey } from './types';
+import type { InternalShellConfigs, IShellStorage, ShellTypeKey } from './types';
 
-export interface BinaryConfig {
+export interface IBinaryConfig {
   name: string;
   pattern: string;
 }
 
-type InstallParams = InstallParamsRegistry[InstallMethod];
+type InstallParams = IInstallParamsRegistry[InstallMethod];
 
 /**
  * A fluent API for creating {@link @dotfiles/core#ToolConfig} objects.
@@ -39,7 +39,7 @@ type InstallParams = InstallParamsRegistry[InstallMethod];
  *
  * @example
  * ```typescript
- * const nodeConfig = new ToolConfigBuilder(logger, 'node')
+ * const nodeConfig = new IToolConfigBuilder(logger, 'node')
  *   .version('20.0.0')
  *   .bin('node')
  *   .bin('npm')
@@ -53,11 +53,11 @@ type InstallParams = InstallParamsRegistry[InstallMethod];
  *   .build();
  * ```
  */
-export class ToolConfigBuilder implements ToolConfigBuilderInterface {
+export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   private logger: TsLogger;
   private registry?: InstallerPluginRegistry;
   public toolName: string;
-  public binaries: BinaryConfig[] = [];
+  public binaries: IBinaryConfig[] = [];
   public versionNum: string = 'latest';
   public currentInstallationMethod?: string;
   public currentInstallParams?: InstallParams | Record<string, unknown>;
@@ -69,7 +69,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     bash: { scripts: [], aliases: {}, environment: {} },
     powershell: { scripts: [], aliases: {}, environment: {} },
   };
-  private context?: ToolConfigContext;
+  private context?: IToolConfigContext;
 
   public symlinkPairs: { source: string; target: string }[] = [];
   private updateCheckConfig?: ToolConfigUpdateCheck;
@@ -86,7 +86,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * @param name - The name of the binary (e.g., `node`, `npm`).
    * @param pattern - An optional glob pattern to locate the binary within the installed files.
    *   If not provided, it defaults to `* /${name}`.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   bin(name: string, pattern?: string): this {
     const binaryPattern = pattern || `*/${name}`;
@@ -101,7 +101,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * **This method should only be called once**; subsequent calls will override the previous value.
    *
    * @param version - The version identifier.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   version(version: string): this {
     this.versionNum = version;
@@ -117,9 +117,9 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @param method - The installation method (e.g., 'github-release', 'brew').
    * @param params - A configuration object specific to the chosen method.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
-  install<M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): this;
+  install<M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): this;
   install(method: string, params: Record<string, unknown>): this;
   install(method: string, params: Record<string, unknown>): this {
     this.currentInstallationMethod = method;
@@ -131,11 +131,11 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * Attach a hook handler to a specific lifecycle event.
    *
    * Multiple handlers can be added by calling this method multiple times with the same event name.
-   * **This method must be called after {@link ToolConfigBuilder.install}**.
+   * **This method must be called after {@link IToolConfigBuilder.install}**.
    *
    * @param event - The lifecycle event name (kebab-case: 'before-install', 'after-download', 'after-extract', 'after-install')
    * @param handler - The async hook function to execute
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this {
     if (!this.currentInstallParams) {
@@ -165,7 +165,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * **This method can be called multiple times**; configurations are merged.
    *
    * @param config - A {@link @dotfiles/core#ShellConfig} object for Zsh.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
@@ -181,7 +181,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * **This method can be called multiple times**; configurations are merged.
    *
    * @param config - A {@link @dotfiles/core#ShellConfig} object for Bash.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   bash(callback: ShellConfiguratorCallback): this;
   bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
@@ -197,7 +197,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * **This method can be called multiple times**; configurations are merged.
    *
    * @param config - A {@link @dotfiles/core#ShellConfig} object for PowerShell.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   powershell(callback: ShellConfiguratorCallback): this;
   powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
@@ -248,7 +248,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    *
    * @param source - The path to the source file, relative to the location of the current `.tool.ts` file.
    * @param target - The absolute path where the symbolic link should be created.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   symlink(source: string, target: string): this {
     this.symlinkPairs.push({ source, target });
@@ -259,7 +259,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * Declares binary dependencies required before generating this tool.
    *
    * @param binaryNames - One or more binary names that must be available
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   dependsOn(...binaryNames: string[]): this {
     for (const rawName of binaryNames) {
@@ -289,18 +289,18 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    *   Multiple platforms can be combined with a bitwise OR (e.g., `Platform.MacOS | Platform.Linux`).
    * @param architecturesOrConfigure - Either an {@link @dotfiles/core#Architecture} enum to target
    *   specific CPU architectures, or the configuration callback function if architecture is not specified.
-   * @param configureCallback - The callback function that receives a new `ToolConfigBuilder`
+   * @param configureCallback - The callback function that receives a new `IToolConfigBuilder`
    *   instance to define the platform-specific overrides. This is required if `architecturesOrConfigure`
    *   is an architecture.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   platform(
     platforms: Platform,
-    architecturesOrConfigure: Architecture | ((install: PlatformInstallFunction) => PlatformConfigBuilderInterface),
-    configureCallback?: (install: PlatformInstallFunction) => PlatformConfigBuilderInterface
+    architecturesOrConfigure: Architecture | ((install: IPlatformInstallFunction) => PlatformConfigBuilderInterface),
+    configureCallback?: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface
   ): this {
     let targetArchitectures: Architecture | undefined;
-    let configureFn: (install: PlatformInstallFunction) => PlatformConfigBuilderInterface;
+    let configureFn: (install: IPlatformInstallFunction) => PlatformConfigBuilderInterface;
 
     if (typeof architecturesOrConfigure === 'function') {
       configureFn = architecturesOrConfigure;
@@ -318,11 +318,11 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       configureFn = configureCallback;
     }
 
-    const platformBuilder = new ToolConfigBuilder(this.logger, this.toolName, true);
+    const platformBuilder = new IToolConfigBuilder(this.logger, this.toolName, true);
     platformBuilder.setContext(this.context);
 
     // Create platform install function that works like the main install function
-    const platformInstall: PlatformInstallFunction = ((...args: [InstallMethod, InstallParams] | []) => {
+    const platformInstall: IPlatformInstallFunction = ((...args: [InstallMethod, InstallParams] | []) => {
       if (args.length === 0) {
         return platformBuilder as unknown as PlatformConfigBuilderInterface;
       }
@@ -330,7 +330,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
       const [method, params] = args;
       platformBuilder.install(method, params);
       return platformBuilder as unknown as PlatformConfigBuilderInterface;
-    }) as PlatformInstallFunction;
+    }) as IPlatformInstallFunction;
 
     configureFn(platformInstall);
     const platformConfig = platformBuilder.buildPlatformConfig();
@@ -350,7 +350,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
    * **This method should only be called once**; subsequent calls will override the previous value.
    *
    * @param config - A {@link @dotfiles/core#ToolConfigUpdateCheck} object.
-   * @returns The `ToolConfigBuilder` instance for chaining.
+   * @returns The `IToolConfigBuilder` instance for chaining.
    */
   updateCheck(config: ToolConfig['updateCheck']): this {
     this.updateCheckConfig = config;
@@ -580,7 +580,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Creates a new ToolConfigBuilder instance.
+   * Creates a new IToolConfigBuilder instance.
    *
    * @param parentLogger - The parent logger from which a sublogger will be created.
    * @param toolName - The name of the tool being configured.
@@ -595,7 +595,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     registryOrIsPlatformScope?: InstallerPluginRegistry | boolean,
     isPlatformScope = false
   ) {
-    this.logger = parentLogger.getSubLogger({ name: 'ToolConfigBuilder' });
+    this.logger = parentLogger.getSubLogger({ name: 'IToolConfigBuilder' });
     this.toolName = toolName;
 
     // Handle overloaded constructor
@@ -611,7 +611,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     }
   }
 
-  public setContext(context: ToolConfigContext | undefined): void {
+  public setContext(context: IToolConfigContext | undefined): void {
     this.context = context;
   }
 
@@ -631,7 +631,7 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
     shellType: ShellTypeKey,
     callback: ShellConfiguratorCallback | ShellConfiguratorAsyncCallback
   ): this | Promise<this> {
-    const storage: ShellStorage = this.internalShellConfigs[shellType];
+    const storage: IShellStorage = this.internalShellConfigs[shellType];
     const configurator = new ShellConfigurator(storage, shellType, this.context, this.logger, this.toolName);
     const callbackResult = callback(configurator);
 

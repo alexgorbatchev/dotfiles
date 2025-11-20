@@ -29,7 +29,7 @@ import { getRepoRoot } from '../path-utils';
 /**
  * Metadata from a package.json file.
  */
-interface PackageJson {
+interface IPackageJson {
   /** The package name (e.g., '@dotfiles/core'). */
   name: string;
   /** Production dependencies. */
@@ -43,7 +43,7 @@ interface PackageJson {
 /**
  * Analyzed information about a workspace package.
  */
-interface PackageInfo {
+interface IPackageInfo {
   /** The package name. */
   name: string;
   /** Formatted source code size (e.g., '21.93 KB'). */
@@ -95,11 +95,11 @@ async function loadPackages(projectRoot: string) {
   const glob = new Bun.Glob('packages/*/package.json');
   const packageJsonPaths = await Array.fromAsync(glob.scan({ cwd: projectRoot, absolute: true }));
 
-  const packages = new Map<string, PackageJson>();
+  const packages = new Map<string, IPackageJson>();
   const packagePaths = new Map<string, string>();
 
   for (const p of packageJsonPaths) {
-    const content: PackageJson = await Bun.file(p).json();
+    const content: IPackageJson = await Bun.file(p).json();
     if (content.name) {
       packages.set(content.name, content);
       packagePaths.set(content.name, path.dirname(p));
@@ -119,11 +119,11 @@ async function loadPackages(projectRoot: string) {
  * @returns Array of package information including dependencies and sizes.
  */
 async function analyzeDependencies(
-  packages: Map<string, PackageJson>,
+  packages: Map<string, IPackageJson>,
   packagePaths: Map<string, string>
-): Promise<PackageInfo[]> {
+): Promise<IPackageInfo[]> {
   const packageNames = [...packages.keys()];
-  const packageInfos: PackageInfo[] = [];
+  const packageInfos: IPackageInfo[] = [];
 
   for (const name of packageNames) {
     const pkg = packages.get(name);
@@ -161,7 +161,7 @@ async function analyzeDependencies(
  *
  * @param packageInfos - Array of package information to display.
  */
-function printDependencyTree(packageInfos: PackageInfo[]) {
+function printDependencyTree(packageInfos: IPackageInfo[]) {
   console.log('Workspace Package Dependency Tree:');
 
   for (const info of packageInfos) {

@@ -2,18 +2,18 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createCacheKey } from './cache/helpers';
 import type { ICache } from './cache/types';
-import type { DownloadStrategy } from './DownloadStrategy';
-import type { DownloadOptions } from './IDownloader';
+import type { IDownloadOptions } from './IDownloader';
+import type { IDownloadStrategy } from './IDownloadStrategy';
 import { cachedDownloadStrategyLogMessages } from './log-messages';
 
 /**
  * A download strategy decorator that adds caching functionality.
  * This strategy checks the cache before delegating to the underlying strategy.
  */
-export class CachedDownloadStrategy implements DownloadStrategy {
+export class CachedDownloadStrategy implements IDownloadStrategy {
   public readonly name: string;
   private readonly cache: ICache;
-  private readonly underlyingStrategy: DownloadStrategy;
+  private readonly underlyingStrategy: IDownloadStrategy;
   private readonly logger: TsLogger;
   private readonly cacheTtl: number;
   private readonly fileSystem: IFileSystem;
@@ -30,7 +30,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     parentLogger: TsLogger,
     fileSystem: IFileSystem,
     cache: ICache,
-    underlyingStrategy: DownloadStrategy,
+    underlyingStrategy: IDownloadStrategy,
     cacheTtl: number = 24 * 60 * 60 * 1000 // Default 24 hours
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'CachedDownloadStrategy' });
@@ -56,7 +56,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     cachedBuffer: Buffer,
     cacheKey: string,
     url: string,
-    options: DownloadOptions
+    options: IDownloadOptions
   ): Promise<Buffer | undefined> {
     logger.trace(cachedDownloadStrategyLogMessages.cacheHit(cacheKey, 'binary', cachedBuffer.length), { url });
 
@@ -97,7 +97,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
   private async determineBufferToCache(
     logger: TsLogger,
     result: Buffer | undefined,
-    options: DownloadOptions
+    options: IDownloadOptions
   ): Promise<Buffer | null> {
     if (result instanceof Buffer) {
       return result;
@@ -113,7 +113,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
     bufferToCache: Buffer,
     cacheKey: string,
     url: string,
-    options: DownloadOptions
+    options: IDownloadOptions
   ): Promise<void> {
     try {
       await this.cache.setDownload(
@@ -139,7 +139,7 @@ export class CachedDownloadStrategy implements DownloadStrategy {
    * @param options The download options
    * @returns A promise that resolves with a Buffer containing the downloaded file's content
    */
-  async download(url: string, options: DownloadOptions = {}): Promise<Buffer | undefined> {
+  async download(url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
     const logger = this.logger.getSubLogger({ name: 'download' });
 
     // Don't cache downloads with progress callbacks as they are meant to be streamed

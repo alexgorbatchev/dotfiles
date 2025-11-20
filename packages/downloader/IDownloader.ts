@@ -1,11 +1,11 @@
-import type { DownloadStrategy } from './DownloadStrategy';
+import type { IDownloadStrategy } from './IDownloadStrategy';
 
 export type ProgressCallback = (bytesDownloaded: number, totalBytes: number | null) => void;
 
 /**
  * Options for downloading files.
  */
-export interface DownloadOptions {
+export interface IDownloadOptions {
   /** Optional HTTP headers to include in the download request. */
   headers?: Record<string, string>;
   /** Optional timeout for the download request in milliseconds. */
@@ -28,15 +28,15 @@ export interface IDownloader {
   /**
    * Registers a new download strategy with the downloader service.
    * Registered strategies can then be used for subsequent download operations.
-   * @param strategy The DownloadStrategy to register.
+   * @param strategy The IDownloadStrategy to register.
    */
-  registerStrategy(strategy: DownloadStrategy): void;
+  registerStrategy(strategy: IDownloadStrategy): void;
 
   /**
    * Downloads a file from the given URL and returns its content as a Buffer.
    * The service will attempt to use the best available registered strategy.
    * @param url The URL of the file to download.
-   * @param options Optional DownloadOptions to customize the download.
+   * @param options Optional IDownloadOptions to customize the download.
    * @returns A promise that resolves with a Buffer containing the downloaded file's content.
    * @throws {DownloaderError} If a generic download error occurs.
    * @throws {NetworkError} If a network-level error occurs.
@@ -47,15 +47,15 @@ export interface IDownloader {
    * @throws {ClientError} If a generic client-side HTTP error occurs (4xx).
    * @throws {ServerError} If a server-side HTTP error occurs (5xx).
    */
-  download(url: string, options?: DownloadOptions): Promise<Buffer | undefined>;
+  download(url: string, options?: IDownloadOptions): Promise<Buffer | undefined>;
 
   /**
    * Downloads a file from the given URL and saves it directly to the specified file path.
    * The service will attempt to use the best available registered strategy.
    * @param url The URL of the file to download.
    * @param filePath The local path where the downloaded file should be saved.
-   * @param options Optional DownloadOptions to customize the download.
+   * @param options Optional IDownloadOptions to customize the download.
    * @returns A promise that resolves when the file has been successfully downloaded and saved.
    */
-  downloadToFile(url: string, filePath: string, options?: DownloadOptions): Promise<void>;
+  downloadToFile(url: string, filePath: string, options?: IDownloadOptions): Promise<void>;
 }

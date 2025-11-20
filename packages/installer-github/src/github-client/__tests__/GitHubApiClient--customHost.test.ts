@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { MockSetup } from './helpers/sharedGitHubApiClientTestSetup';
+import type { IMockSetup } from './helpers/sharedGitHubApiClientTestSetup';
 import { createGitHubConfigOverride, setupMockGitHubApiClient } from './helpers/sharedGitHubApiClientTestSetup';
 
 describe('GitHubApiClient with custom host', () => {
-  let mocks: MockSetup;
+  let mocks: IMockSetup;
   const customHost = 'https://github.example.com';
 
   beforeEach(async () => {

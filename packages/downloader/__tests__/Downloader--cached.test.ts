@@ -4,7 +4,7 @@ import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FetchMockHelper } from '@dotfiles/testing-helpers';
 import { FileCache } from '../cache/FileCache';
-import type { CacheConfig } from '../cache/types';
+import type { ICacheConfig } from '../cache/types';
 import { Downloader } from '../Downloader';
 
 describe('Downloader with Cache', () => {
@@ -12,7 +12,7 @@ describe('Downloader with Cache', () => {
   let mockFileSystem: IFileSystem;
   let cache: FileCache;
   let downloader: Downloader;
-  let cacheConfig: CacheConfig;
+  let cacheConfig: ICacheConfig;
   let fetchMockHelper: FetchMockHelper;
 
   beforeEach(async () => {

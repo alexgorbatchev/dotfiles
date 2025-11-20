@@ -4,13 +4,13 @@ import { Platform } from '@dotfiles/core';
 import {
   createGithubReleaseToolConfig,
   createInstallerTestSetup,
-  type InstallerTestSetup,
+  type IInstallerTestSetup,
   MOCK_TOOL_NAME,
   MOCK_TOOL_REPO,
 } from './installer-test-helpers';
 
 describe('Installer - install (orchestrator)', () => {
-  let setup: InstallerTestSetup;
+  let setup: IInstallerTestSetup;
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();

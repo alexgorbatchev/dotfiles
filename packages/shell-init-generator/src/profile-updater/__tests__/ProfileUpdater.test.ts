@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { ShellType } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { dedentString } from '@dotfiles/utils';
-import type { ProfileUpdateConfig } from '../IProfileUpdater';
+import type { IProfileUpdateConfig } from '../IProfileUpdater';
 import { ProfileUpdater } from '../ProfileUpdater';
 
 describe('ProfileUpdater', () => {
@@ -109,7 +109,7 @@ describe('ProfileUpdater', () => {
 
   describe('updateProfiles', () => {
     it('should skip updating if profile does not exist and onlyIfExists is true', async () => {
-      const configs: ProfileUpdateConfig[] = [
+      const configs: IProfileUpdateConfig[] = [
         {
           shellType: 'zsh',
           generatedScriptPath: '/path/to/script.zsh',
@@ -132,7 +132,7 @@ describe('ProfileUpdater', () => {
 
     it('should create profile file if it does not exist and onlyIfExists is false', async () => {
       const scriptPath = '/path/to/script.zsh';
-      const configs: ProfileUpdateConfig[] = [
+      const configs: IProfileUpdateConfig[] = [
         {
           shellType: 'zsh',
           generatedScriptPath: scriptPath,
@@ -173,7 +173,7 @@ describe('ProfileUpdater', () => {
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, existingContent);
 
-      const configs: ProfileUpdateConfig[] = [
+      const configs: IProfileUpdateConfig[] = [
         {
           shellType: 'zsh',
           generatedScriptPath: scriptPath,
@@ -216,7 +216,7 @@ describe('ProfileUpdater', () => {
       await mockFileSystem.ensureDir(path.dirname(profilePath));
       await mockFileSystem.writeFile(profilePath, existingContent);
 
-      const configs: ProfileUpdateConfig[] = [
+      const configs: IProfileUpdateConfig[] = [
         {
           shellType: 'zsh',
           generatedScriptPath: scriptPath,
@@ -250,7 +250,7 @@ describe('ProfileUpdater', () => {
       await mockFileSystem.ensureDir(path.dirname(bashProfilePath));
       await mockFileSystem.writeFile(bashProfilePath, '# Existing bash config');
 
-      const configs: ProfileUpdateConfig[] = [
+      const configs: IProfileUpdateConfig[] = [
         {
           shellType: 'zsh',
           generatedScriptPath: zshScriptPath,
@@ -296,7 +296,7 @@ describe('ProfileUpdater', () => {
       const scriptPath = '/path/to/script.ps1';
       const profilePath = path.join(homeDir, '.config/powershell/profile.ps1');
 
-      const configs: ProfileUpdateConfig[] = [
+      const configs: IProfileUpdateConfig[] = [
         {
           shellType: 'powershell',
           generatedScriptPath: scriptPath,

@@ -5,7 +5,7 @@ The `ToolConfigContext` provides access to configuration paths and directories f
 ## Interface
 
 ```typescript
-interface ToolConfigContext {
+interface IToolConfigContext {
   /** Current tool's installation directory (should contain version subdirectories) */
   toolDir: string;
   

@@ -1,18 +1,18 @@
 import { beforeEach, describe, mock, test } from 'bun:test';
 import type { IConfigService } from '@dotfiles/config';
-import type { InstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
+import type { IInstallerPlugin, InstallerPluginRegistry, UpdateCheckResult } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { VersionComparisonStatus } from '@dotfiles/version-checker';
 import { registerCheckUpdatesCommand } from '../checkUpdatesCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram } from '../types';
+import type { IGlobalProgram } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 describe('checkUpdatesCommand - Mixed Tool Types', () => {
-  let program: GlobalProgram;
-  let mockPlugin: MockedInterface<Partial<InstallerPlugin>>;
+  let program: IGlobalProgram;
+  let mockPlugin: MockedInterface<Partial<IInstallerPlugin>>;
   let logger: TestLogger;
   let mockConfigService: MockedInterface<IConfigService>;
 
@@ -53,7 +53,7 @@ describe('checkUpdatesCommand - Mixed Tool Types', () => {
     };
 
     const mockPluginRegistry: Partial<MockedInterface<InstallerPluginRegistry>> = {
-      get: mock((method: string) => (method === 'github-release' ? (mockPlugin as InstallerPlugin) : undefined)),
+      get: mock((method: string) => (method === 'github-release' ? (mockPlugin as IInstallerPlugin) : undefined)),
       register: mock(() => Promise.resolve()),
       getAll: mock(() => []),
     };

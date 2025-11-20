@@ -6,7 +6,7 @@ import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
 import { registerInstallCommand } from '../installCommand';
 import { messages } from '../log-messages';
-import type { GlobalProgram, Services } from '../types';
+import type { IGlobalProgram, IServices } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
 const createMockConfigService = (): MockedInterface<IConfigService> => ({
@@ -15,11 +15,11 @@ const createMockConfigService = (): MockedInterface<IConfigService> => ({
 });
 
 describe('installCommand', () => {
-  let program: GlobalProgram;
+  let program: IGlobalProgram;
   let mockInstaller: MockedInterface<IInstaller>;
   let mockProjectConfig: ProjectConfig;
   let testLogger: TestLogger;
-  let mockServices: Services;
+  let mockServices: IServices;
   let mockConfigService: MockedInterface<IConfigService>;
 
   const toolAConfig: ToolConfig = {

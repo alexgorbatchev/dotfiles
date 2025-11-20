@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { Architecture, Platform } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import { orderToolConfigsByDependencies } from '../orderToolConfigsByDependencies';
 
-const systemInfoLinux: SystemInfo = {
+const systemInfoLinux: ISystemInfo = {
   platform: 'linux',
   arch: 'x64',
   homeDir: '/home/test',
@@ -173,7 +173,7 @@ describe('orderToolConfigsByDependencies', () => {
         },
       ],
     });
-    const linuxArmSystem: SystemInfo = {
+    const linuxArmSystem: ISystemInfo = {
       platform: 'linux',
       arch: 'arm64',
       homeDir: '/home/test-arm',

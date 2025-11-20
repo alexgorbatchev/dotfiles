@@ -84,14 +84,14 @@ interface IProfileUpdater {
   hasSourceLine(profilePath: string, scriptPath: string): Promise<boolean>;
 }
 
-interface ProfileUpdateConfig {
+interface IProfileUpdateConfig {
   shellType: ShellType;              // 'zsh', 'bash', 'powershell'
   generatedScriptPath: string;       // Path to generated script
   onlyIfExists: boolean;             // Skip if profile doesn't exist
   projectConfigPath: string;            // Reference for comments
 }
 
-interface ProfileUpdateResult {
+interface IProfileUpdateResult {
   shellType: ShellType;              // Shell that was processed
   profilePath: string;               // Path to profile file
   fileExists: boolean;               // Whether profile existed

@@ -12,7 +12,7 @@ export const commonToolConfigPropertiesSchema = z
   .object({
     /**
      * An array of binary names or configurations that should have shims generated for this tool.
-     * Can be simple strings for basic binaries or BinaryConfig objects for pattern-based location.
+     * Can be simple strings for basic binaries or IBinaryConfig objects for pattern-based location.
      * Defined by `c.bin()`. Can be undefined if no binaries are specified (e.g., for a config-only tool).
      */
     binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).optional(),

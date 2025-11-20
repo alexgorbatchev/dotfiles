@@ -60,7 +60,7 @@ export const createMockGitHubApiCache = (): ICache & {
   };
 };
 
-export interface MockSetup {
+export interface IMockSetup {
   mockProjectConfig: ProjectConfig;
   mockDownloader: IDownloader & {
     download: ReturnType<typeof mock<IDownloader['download']>>;
@@ -78,7 +78,7 @@ export interface MockSetup {
   logger: TestLogger;
 }
 
-export const setupMockGitHubApiClient = async (configOverrides: PartialProjectConfig = {}): Promise<MockSetup> => {
+export const setupMockGitHubApiClient = async (configOverrides: PartialProjectConfig = {}): Promise<IMockSetup> => {
   const mockProjectConfig = await createMockProjectConfigForGitHubApi(configOverrides);
   const mockDownloader = createMockDownloader();
   const mockCache = createMockGitHubApiCache();

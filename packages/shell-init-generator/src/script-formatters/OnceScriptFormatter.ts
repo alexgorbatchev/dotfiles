@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { ShellScript, ShellType } from '@dotfiles/core';
 import { getScriptContent, isOnceScript } from '@dotfiles/core';
 import { dedentString, dedentTemplate } from '@dotfiles/utils';
-import type { FormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
+import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
  * Formatter for once scripts - generates individual executable files in .once/ directory
@@ -15,7 +15,7 @@ export class OnceScriptFormatter implements IScriptFormatter {
     this.shellScriptsDir = shellScriptsDir;
   }
 
-  format(script: ShellScript, toolName: string, shellType: ShellType, scriptIndex: number = 0): FormattedScriptOutput {
+  format(script: ShellScript, toolName: string, shellType: ShellType, scriptIndex: number = 0): IFormattedScriptOutput {
     if (!isOnceScript(script)) {
       throw new Error(`OnceScriptFormatter can only format OnceScript, received: ${typeof script}`);
     }

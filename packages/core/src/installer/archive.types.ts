@@ -44,7 +44,7 @@ export type ArchiveFormat =
  *
  * @public
  */
-export interface ExtractOptions {
+export interface IExtractOptions {
   /**
    * The format of the archive. If not provided, the extractor will attempt to
    * auto-detect it.
@@ -77,7 +77,7 @@ export interface ExtractOptions {
  *
  * @public
  */
-export interface ExtractResult {
+export interface IExtractResult {
   /** An array of absolute paths to all files that were successfully extracted. */
   extractedFiles: string[];
 

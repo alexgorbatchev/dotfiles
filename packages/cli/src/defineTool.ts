@@ -7,15 +7,15 @@
 
 import type {
   AsyncConfigureTool,
+  IInstallParamsRegistry,
   InstallFunction,
   InstallMethod,
-  InstallParamsRegistry,
+  IToolConfigContext,
   ToolConfig,
-  ToolConfigBuilder as ToolConfigBuilderContract,
-  ToolConfigContext,
+  IToolConfigBuilder as ToolConfigBuilderContract,
 } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
-import { ToolConfigBuilder } from '@dotfiles/tool-config-builder';
+import { IToolConfigBuilder } from '@dotfiles/tool-config-builder';
 
 type ConfigureToolFnResult =
   | ToolConfig
@@ -23,7 +23,7 @@ type ConfigureToolFnResult =
   | undefined
   | Promise<ToolConfig | ToolConfigBuilderContract | undefined>;
 
-type ConfigureToolFn = (install: InstallFunction, ctx: ToolConfigContext) => ConfigureToolFnResult;
+type ConfigureToolFn = (install: InstallFunction, ctx: IToolConfigContext) => ConfigureToolFnResult;
 
 /**
  * Define a tool configuration with type-safe install method selection.
@@ -48,7 +48,7 @@ type ConfigureToolFn = (install: InstallFunction, ctx: ToolConfigContext) => Con
 export function defineTool(fn: ConfigureToolFn): AsyncConfigureTool {
   return async (
     install: InstallFunction,
-    ctx: ToolConfigContext
+    ctx: IToolConfigContext
   ): Promise<ToolConfig | ToolConfigBuilderContract | undefined> => {
     const result = fn(install, ctx);
     if (result instanceof Promise) {
@@ -64,27 +64,27 @@ export function defineTool(fn: ConfigureToolFn): AsyncConfigureTool {
  * @param logger - Logger instance for the builder
  * @param toolName - Name of the tool being configured
  * @param context - Tool configuration context providing path helpers
- * @returns InstallFunction that creates configured ToolConfigBuilder instances
+ * @returns InstallFunction that creates configured IToolConfigBuilder instances
  */
 export function createInstallFunction(
   logger: TsLogger,
   toolName: string,
-  context?: ToolConfigContext
+  context?: IToolConfigContext
 ): InstallFunction {
-  let builderInstance: ToolConfigBuilder | null = null;
+  let builderInstance: IToolConfigBuilder | null = null;
 
-  const getOrCreateBuilder = (): ToolConfigBuilder => {
+  const getOrCreateBuilder = (): IToolConfigBuilder => {
     if (!builderInstance) {
-      builderInstance = new ToolConfigBuilder(logger, toolName);
+      builderInstance = new IToolConfigBuilder(logger, toolName);
     }
 
     builderInstance.setContext(context);
     return builderInstance;
   };
 
-  function install<M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): ToolConfigBuilderContract;
+  function install<M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): ToolConfigBuilderContract;
   function install(): ToolConfigBuilderContract;
-  function install(method?: InstallMethod, params?: InstallParamsRegistry[InstallMethod]): ToolConfigBuilderContract {
+  function install(method?: InstallMethod, params?: IInstallParamsRegistry[InstallMethod]): ToolConfigBuilderContract {
     const builder = getOrCreateBuilder();
 
     if (method) {

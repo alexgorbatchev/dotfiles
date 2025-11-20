@@ -2,11 +2,11 @@ import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   BaseInstallContext,
-  InstallerPlugin,
-  InstallOptions,
+  IInstallerPlugin,
+  IInstallOptions,
   InstallResult,
+  IUpdateOptions,
   UpdateCheckResult,
-  UpdateOptions,
   UpdateResult,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -23,7 +23,7 @@ import {
   githubReleaseInstallParamsSchema,
   githubReleaseToolConfigSchema,
 } from './schemas';
-import type { GitHubReleaseInstallMetadata } from './types';
+import type { IGitHubReleaseInstallMetadata } from './types';
 
 /**
  * Installer plugin for tools distributed via GitHub Releases.
@@ -55,7 +55,12 @@ import type { GitHubReleaseInstallMetadata } from './types';
  */
 export class GitHubReleaseInstallerPlugin
   implements
-    InstallerPlugin<'github-release', GithubReleaseInstallParams, GithubReleaseToolConfig, GitHubReleaseInstallMetadata>
+    IInstallerPlugin<
+      'github-release',
+      GithubReleaseInstallParams,
+      GithubReleaseToolConfig,
+      IGitHubReleaseInstallMetadata
+    >
 {
   public readonly method = 'github-release' as const;
   public readonly displayName = 'GitHub Release';
@@ -88,9 +93,9 @@ export class GitHubReleaseInstallerPlugin
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     context: BaseInstallContext,
-    options: InstallOptions | undefined,
+    options: IInstallOptions | undefined,
     logger: TsLogger
-  ): Promise<InstallResult<GitHubReleaseInstallMetadata>> {
+  ): Promise<InstallResult<IGitHubReleaseInstallMetadata>> {
     // Create tool-specific file system
     const toolFs = createToolFileSystem(this.fs, toolName);
 
@@ -182,7 +187,7 @@ export class GitHubReleaseInstallerPlugin
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
     context: BaseInstallContext,
-    options: UpdateOptions,
+    options: IUpdateOptions,
     logger: TsLogger
   ): Promise<UpdateResult> {
     try {

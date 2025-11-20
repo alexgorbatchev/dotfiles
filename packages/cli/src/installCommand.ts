@@ -5,7 +5,7 @@ import type { InstallResult } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { GlobalProgram, GlobalProgramOptions, InstallCommandSpecificOptions, Services } from './types';
+import type { IGlobalProgram, IGlobalProgramOptions, InstallCommandSpecificOptions, IServices } from './types';
 
 async function loadToolConfigSafely(
   logger: TsLogger,
@@ -67,8 +67,8 @@ function handleInstallationError(logger: TsLogger, error: Error, toolName: strin
 
 export function registerInstallCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerInstallCommand' });
   program
@@ -77,7 +77,7 @@ export function registerInstallCommand(
     .option('--force', 'Force installation even if the tool is already installed', false)
     .option('--shim-mode', 'Optimized output for shim usage: shows progress bars but suppresses log messages', false)
     .action(async (toolName: string, commandOptions: InstallCommandSpecificOptions) => {
-      const combinedOptions: InstallCommandSpecificOptions & GlobalProgramOptions = {
+      const combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,
         ...program.opts(),
       };

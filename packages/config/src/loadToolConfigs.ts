@@ -2,16 +2,16 @@ import path from 'node:path';
 import type {
   AsyncConfigureTool,
   AsyncConfigureToolWithReturn,
+  IToolConfigContext,
   ProjectConfig,
   ToolConfig,
-  ToolConfigContext,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
 import { messages } from './log-messages';
 
-interface ToolConfigModule {
+interface IToolConfigModule {
   default?: unknown;
 }
 
@@ -127,21 +127,21 @@ function processDirectExport(
 }
 
 /**
- * Creates a {@link @dotfiles/core#ToolConfigContext} for use in tool configuration functions.
+ * Creates a {@link @dotfiles/core#IToolConfigContext} for use in tool configuration functions.
  *
  * The context provides access to all relevant paths and configuration data that a tool
  * might need during configuration.
  *
  * @param projectConfig - The application configuration containing all path information.
  * @param currentToolName - The name of the tool currently being configured.
- * @returns A fully populated ToolConfigContext for the tool.
+ * @returns A fully populated IToolConfigContext for the tool.
  */
-function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): ToolConfigContext {
+function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): IToolConfigContext {
   const getToolDir = (toolName: string): string => {
     return path.join(projectConfig.paths.binariesDir, toolName);
   };
 
-  const context: ToolConfigContext = {
+  const context: IToolConfigContext = {
     toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
@@ -168,7 +168,7 @@ async function loadToolConfigFromModule(
   projectConfig: ProjectConfig
 ): Promise<ToolConfig | null> {
   try {
-    const moduleExports: ToolConfigModule = await import(filePath);
+    const moduleExports: IToolConfigModule = await import(filePath);
     if (!moduleExports.default) {
       logger.error(messages.configurationParseError(filePath, 'ToolConfig', 'no default export'));
       return null;

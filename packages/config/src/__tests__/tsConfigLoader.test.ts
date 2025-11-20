@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { SystemInfo } from '@dotfiles/core';
+import type { ISystemInfo } from '@dotfiles/core';
 import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
 import { loadTsConfig } from '../tsConfigLoader';
 
 describe('tsConfigLoader', () => {
-  const mockSystemInfo: SystemInfo = {
+  const mockSystemInfo: ISystemInfo = {
     platform: 'darwin',
     arch: 'arm64',
     homeDir: '/Users/testuser',

@@ -9,7 +9,7 @@
  *
  * @public
  */
-export interface GitHubRateLimit {
+export interface IGitHubRateLimit {
   /** The maximum number of requests allowed in the current rate limit window. */
   limit: number;
   /** The number of requests remaining in the current window. */
@@ -33,7 +33,7 @@ export interface GitHubRateLimit {
  *
  * @public
  */
-export interface GitHubReleaseAsset {
+export interface IGitHubReleaseAsset {
   /** The name of the asset file (e.g., `mytool-linux-amd64.tar.gz`). */
   name: string;
   /** The direct URL for downloading the asset. */
@@ -61,7 +61,7 @@ export interface GitHubReleaseAsset {
  *
  * @public
  */
-export interface GitHubRelease {
+export interface IGitHubRelease {
   /** The unique identifier for the release. */
   id: number;
   /** The tag name associated with the release (e.g., `v1.0.0`). */
@@ -76,8 +76,8 @@ export interface GitHubRelease {
   created_at: string;
   /** An ISO 8601 timestamp string for when the release was published. Can be `null` for drafts. */
   published_at: string;
-  /** An array of {@link GitHubReleaseAsset} objects associated with this release. */
-  assets: GitHubReleaseAsset[];
+  /** An array of {@link IGitHubReleaseAsset} objects associated with this release. */
+  assets: IGitHubReleaseAsset[];
   /** The release notes or description, often in Markdown format. */
   body?: string;
   /** The URL to view this release on the GitHub website. */

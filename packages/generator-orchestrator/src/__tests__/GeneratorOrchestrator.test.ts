@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { SystemInfo, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { always } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
@@ -9,7 +9,7 @@ import { TestLogger } from '@dotfiles/logger';
 import type { IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createMockProjectConfig, createTestDirectories, type TestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 describe('GeneratorOrchestrator', () => {
@@ -20,8 +20,8 @@ describe('GeneratorOrchestrator', () => {
   let mockProjectConfig: ProjectConfig;
   let orchestrator: GeneratorOrchestrator;
   let logger: TestLogger;
-  let testDirs: TestDirectories;
-  let systemInfo: SystemInfo;
+  let testDirs: ITestDirectories;
+  let systemInfo: ISystemInfo;
 
   let mockFsExists: ReturnType<typeof spyOn>;
 

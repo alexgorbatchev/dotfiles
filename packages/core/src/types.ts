@@ -43,7 +43,7 @@ export type PartialDeep<T> = T extends Primitive
 /**
  * Standard success result for operations.
  */
-export interface OperationSuccess {
+export interface IOperationSuccess {
   success: true;
 }
 
@@ -51,7 +51,7 @@ export interface OperationSuccess {
  * Standard failure result for operations.
  * When an operation fails, it MUST provide an error explaining why.
  */
-export interface OperationFailure {
+export interface IOperationFailure {
   success: false;
   error: string;
 }
@@ -59,7 +59,7 @@ export interface OperationFailure {
 /**
  * Options passed to plugin install method
  */
-export interface InstallOptions {
+export interface IInstallOptions {
   force?: boolean;
   shimMode?: boolean;
 }
@@ -67,7 +67,7 @@ export interface InstallOptions {
 /**
  * Result from plugin installation - success case
  */
-export type InstallResultSuccess<TMetadata = unknown> = OperationSuccess & {
+export type InstallResultSuccess<TMetadata = unknown> = IOperationSuccess & {
   version?: string;
   binaryPaths?: string[];
   metadata?: TMetadata;
@@ -77,7 +77,7 @@ export type InstallResultSuccess<TMetadata = unknown> = OperationSuccess & {
 /**
  * Result from plugin installation - failure case
  */
-export type InstallResultFailure = OperationFailure & {
+export type InstallResultFailure = IOperationFailure & {
   installationMethod?: string;
 };
 
@@ -89,7 +89,7 @@ export type InstallResult<TMetadata = unknown> = InstallResultSuccess<TMetadata>
 /**
  * Result from plugin update check - success case
  */
-export type UpdateCheckResultSuccess = OperationSuccess & {
+export type UpdateCheckResultSuccess = IOperationSuccess & {
   hasUpdate: boolean;
   currentVersion?: string;
   latestVersion?: string;
@@ -98,7 +98,7 @@ export type UpdateCheckResultSuccess = OperationSuccess & {
 /**
  * Result from plugin update check - failure case
  */
-export type UpdateCheckResultFailure = OperationFailure;
+export type UpdateCheckResultFailure = IOperationFailure;
 
 /**
  * Result from plugin update check
@@ -108,7 +108,7 @@ export type UpdateCheckResult = UpdateCheckResultSuccess | UpdateCheckResultFail
 /**
  * Options for updating a tool
  */
-export interface UpdateOptions {
+export interface IUpdateOptions {
   force?: boolean;
   targetVersion?: string;
 }
@@ -116,7 +116,7 @@ export interface UpdateOptions {
 /**
  * Result from plugin update - success case
  */
-export type UpdateResultSuccess = OperationSuccess & {
+export type UpdateResultSuccess = IOperationSuccess & {
   oldVersion?: string;
   newVersion?: string;
 };
@@ -124,7 +124,7 @@ export type UpdateResultSuccess = OperationSuccess & {
 /**
  * Result from plugin update - failure case
  */
-export type UpdateResultFailure = OperationFailure;
+export type UpdateResultFailure = IOperationFailure;
 
 /**
  * Result from plugin update
@@ -138,14 +138,14 @@ export type UpdateResult = UpdateResultSuccess | UpdateResultFailure;
  * ```typescript
  * // In your plugin file
  * declare module '@dotfiles/core' {
- *   interface InstallParamsRegistry {
+ *   interface IInstallParamsRegistry {
  *     'github-release': GithubReleaseInstallParams;
  *   }
  * }
  * ```
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extended via module augmentation
-export interface InstallParamsRegistry {
+export interface IInstallParamsRegistry {
   // Plugins add their install param types via module augmentation
 }
 
@@ -156,14 +156,14 @@ export interface InstallParamsRegistry {
  * ```typescript
  * // In your plugin file
  * declare module '@dotfiles/core' {
- *   interface ToolConfigRegistry {
+ *   interface IToolConfigRegistry {
  *     'github-release': GithubReleaseToolConfig;
  *   }
  * }
  * ```
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extended via module augmentation
-export interface ToolConfigRegistry {
+export interface IToolConfigRegistry {
   // Plugins add their tool config types via module augmentation
 }
 
@@ -174,14 +174,14 @@ export interface ToolConfigRegistry {
  * ```typescript
  * // In your plugin file
  * declare module '@dotfiles/core' {
- *   interface PluginResultRegistry {
+ *   interface IPluginResultRegistry {
  *     'github-release': GitHubReleaseInstallResult;
  *   }
  * }
  * ```
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extended via module augmentation
-export interface PluginResultRegistry {
+export interface IPluginResultRegistry {
   // Plugins add their result types via module augmentation
 }
 
@@ -192,7 +192,7 @@ export interface PluginResultRegistry {
  * @example
  * ```typescript
  * declare module '@dotfiles/core' {
- *   interface PluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
+ *   interface IPluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
  * }
  * ```
  */
@@ -204,22 +204,22 @@ export type RegisterPluginResult<TMethod extends string, TResult> = {
  * Union of all registered plugin tool config types.
  * Built dynamically from plugins via module augmentation.
  */
-export type ToolConfig = ToolConfigRegistry extends Record<string, never>
+export type ToolConfig = IToolConfigRegistry extends Record<string, never>
   ? never // No plugins registered - this should be an error case
-  : ToolConfigRegistry[keyof ToolConfigRegistry];
+  : IToolConfigRegistry[keyof IToolConfigRegistry];
 
 /**
  * Union of all registered plugin result types
  * If no plugins are registered, falls back to generic InstallResult<unknown>
  */
-export type AggregateInstallResult = PluginResultRegistry extends Record<string, never>
+export type AggregateInstallResult = IPluginResultRegistry extends Record<string, never>
   ? InstallResult<unknown>
-  : PluginResultRegistry[keyof PluginResultRegistry];
+  : IPluginResultRegistry[keyof IPluginResultRegistry];
 
 /**
  * Plugin validation result
  */
-export interface ValidationResult {
+export interface IValidationResult {
   valid: boolean;
   errors?: string[];
   warnings?: string[];
@@ -228,7 +228,7 @@ export interface ValidationResult {
 /**
  * Core plugin interface that all installer plugins must implement
  */
-export interface InstallerPlugin<
+export interface IInstallerPlugin<
   TMethod extends string = string,
   TParams = unknown,
   TConfig = unknown,
@@ -269,12 +269,12 @@ export interface InstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: BaseInstallContext,
-    options?: InstallOptions,
+    options?: IInstallOptions,
     logger?: TsLogger
   ): Promise<InstallResult<TMetadata>>;
 
   /** Optional: Validate plugin can run in current environment */
-  validate?(context: BaseInstallContext): Promise<ValidationResult>;
+  validate?(context: BaseInstallContext): Promise<IValidationResult>;
 
   /** Optional: Plugin initialization */
   initialize?(): Promise<void>;
@@ -301,7 +301,7 @@ export interface InstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: BaseInstallContext,
-    options: UpdateOptions,
+    options: IUpdateOptions,
     logger: TsLogger
   ): Promise<UpdateResult>;
 

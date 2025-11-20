@@ -9,7 +9,7 @@ type InternalProjectConfigPaths = Omit<ProjectConfigPaths, 'manifestPath'>;
 /**
  * Options for creating test directories
  */
-export interface TestDirectoryOptions {
+export interface ITestDirectoryOptions {
   /** Name for the temporary directory */
   testName?: string;
   /** Optional map of additional directories to create (key: directory identifier, value: path relative to base directory) */
@@ -24,7 +24,7 @@ export interface TestDirectoryOptions {
 /**
  * Structure containing paths to test directories
  */
-export interface TestDirectories {
+export interface ITestDirectories {
   paths: ProjectConfigPaths;
 
   /** Map of additional directories created */
@@ -64,8 +64,8 @@ async function createTempDir(fs: IFileSystem, name: string) {
 export async function createTestDirectories(
   logger: TsLogger,
   fs: IFileSystem,
-  options: TestDirectoryOptions
-): Promise<TestDirectories> {
+  options: ITestDirectoryOptions
+): Promise<ITestDirectories> {
   const homeDir = await createTempDir(
     fs,
     `createTestDirectories${options.testName !== undefined ? `--${options.testName}` : ''}`
@@ -87,7 +87,7 @@ export async function createTestDirectories(
   await fs.ensureDir(paths.targetDir);
   await fs.ensureDir(paths.shellScriptsDir);
 
-  const result: TestDirectories = {
+  const result: ITestDirectories = {
     paths: {
       ...paths,
     },

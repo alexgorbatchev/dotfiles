@@ -9,11 +9,11 @@ import type { CurlTarInstallParams, CurlTarToolConfig } from './schemas';
 import type { CurlTarInstallResult } from './types';
 
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'curl-tar': CurlTarInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'curl-tar': CurlTarToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'curl-tar', CurlTarInstallResult> {}
 }

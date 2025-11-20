@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { createArchitectureRegex } from '../createArchitectureRegex';
-import type { ArchitecturePatterns } from '../types';
+import type { IArchitecturePatterns } from '../types';
 
 describe('createArchitectureRegex', () => {
   it('should create proper regex patterns from architecture patterns', () => {
-    const patterns: ArchitecturePatterns = {
+    const patterns: IArchitecturePatterns = {
       system: ['darwin', 'macos'],
       cpu: ['arm64', 'aarch64'],
       variants: ['darwin'],
@@ -18,7 +18,7 @@ describe('createArchitectureRegex', () => {
   });
 
   it('should handle empty pattern arrays', () => {
-    const patterns: ArchitecturePatterns = {
+    const patterns: IArchitecturePatterns = {
       system: [],
       cpu: [],
       variants: [],
@@ -32,7 +32,7 @@ describe('createArchitectureRegex', () => {
   });
 
   it('should escape special regex characters', () => {
-    const patterns: ArchitecturePatterns = {
+    const patterns: IArchitecturePatterns = {
       system: ['x86-64', 'pc-windows-gnu'],
       cpu: ['amd64'],
       variants: ['gnu'],
@@ -46,7 +46,7 @@ describe('createArchitectureRegex', () => {
   });
 
   it('should handle patterns with regex special characters', () => {
-    const patterns: ArchitecturePatterns = {
+    const patterns: IArchitecturePatterns = {
       system: ['test.system', 'test+system'],
       cpu: ['test*cpu'],
       variants: ['test(variant)'],

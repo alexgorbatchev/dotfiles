@@ -180,7 +180,7 @@ The plugin queries GitHub API for the latest release and compares versions to su
 
 ## Plugin Interface
 
-Implements `InstallerPlugin` with:
+Implements `IInstallerPlugin` with:
 
 - **Method**: `github-release`
 - **Schemas**: `githubReleaseInstallParamsSchema`, `githubReleaseToolConfigSchema`
@@ -194,13 +194,13 @@ This package extends the core type system via module augmentation:
 
 ```typescript
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'github-release': GithubReleaseInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'github-release': GithubReleaseToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'github-release', GitHubReleaseInstallResult> {}
 }
 ```
 

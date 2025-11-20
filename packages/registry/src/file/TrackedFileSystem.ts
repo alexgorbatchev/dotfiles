@@ -3,18 +3,18 @@ import path from 'node:path';
 import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { SafeLogMessage, TsLogger } from '@dotfiles/logger';
 import { contractHomePath, formatPermissions } from '@dotfiles/utils';
-import type { FileOperation, IFileRegistry } from './IFileRegistry';
+import type { IFileOperation, IFileRegistry } from './IFileRegistry';
 import { messages } from './log-messages';
 
 /**
  * Context for tracking filesystem operations.
  * Passed to TrackedFileSystem to provide operation metadata.
  */
-export interface TrackingContext {
+export interface ITrackingContext {
   /** Tool performing the operations */
   toolName: string;
   /** Type of file being operated on */
-  fileType: FileOperation['fileType'];
+  fileType: IFileOperation['fileType'];
   /** UUID to group related operations */
   operationId: string;
   /** Additional metadata to store */
@@ -29,7 +29,7 @@ export class TrackedFileSystem implements IFileSystem {
   private readonly fs: IFileSystem;
   private readonly registry: IFileRegistry;
   private readonly logger: TsLogger;
-  private readonly context: TrackingContext;
+  private readonly context: ITrackingContext;
   private readonly homeDir: string;
   private suppressLogging = false;
 
@@ -37,7 +37,7 @@ export class TrackedFileSystem implements IFileSystem {
     parentLogger: TsLogger,
     fs: IFileSystem,
     registry: IFileRegistry,
-    context: TrackingContext,
+    context: ITrackingContext,
     homeDir: string
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'TrackedFileSystem' });
@@ -48,13 +48,13 @@ export class TrackedFileSystem implements IFileSystem {
   }
 
   /**
-   * Creates a new TrackingContext with a unique operation ID.
+   * Creates a new ITrackingContext with a unique operation ID.
    */
   static createContext(
     toolName: string,
-    fileType: FileOperation['fileType'],
+    fileType: IFileOperation['fileType'],
     metadata?: Record<string, unknown>
-  ): TrackingContext {
+  ): ITrackingContext {
     return {
       toolName,
       fileType,
@@ -67,8 +67,8 @@ export class TrackedFileSystem implements IFileSystem {
    * Creates a new TrackedFileSystem with a different context.
    * Useful for changing file type or metadata within the same tool operation.
    */
-  withContext(context: Partial<TrackingContext>): TrackedFileSystem {
-    const newContext: TrackingContext = {
+  withContext(context: Partial<ITrackingContext>): TrackedFileSystem {
+    const newContext: ITrackingContext = {
       ...this.context,
       ...context,
     };

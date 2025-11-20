@@ -2,18 +2,18 @@ import { beforeEach, describe, expect, it, type Mock, mock } from 'bun:test';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { Downloader } from '../Downloader';
-import type { DownloadStrategy } from '../DownloadStrategy';
-import type { DownloadOptions } from '../IDownloader';
+import type { IDownloadOptions } from '../IDownloader';
+import type { IDownloadStrategy } from '../IDownloadStrategy';
 import { NodeFetchStrategy } from '../NodeFetchStrategy';
 
-// Mock DownloadStrategy
+// Mock IDownloadStrategy
 // Define types for our mock strategies to be reassigned in beforeEach
-let mockStrategy1: DownloadStrategy;
-let mockStrategy2: DownloadStrategy;
-let unavailableStrategy: DownloadStrategy;
-let failingStrategy: DownloadStrategy;
-let nonErrorObjectThrowingStrategy: DownloadStrategy;
-let nonErrorStringThrowingStrategy: DownloadStrategy;
+let mockStrategy1: IDownloadStrategy;
+let mockStrategy2: IDownloadStrategy;
+let unavailableStrategy: IDownloadStrategy;
+let failingStrategy: IDownloadStrategy;
+let nonErrorObjectThrowingStrategy: IDownloadStrategy;
+let nonErrorStringThrowingStrategy: IDownloadStrategy;
 let fileSystem: IFileSystem;
 let logger: TestLogger;
 
@@ -26,7 +26,7 @@ describe('Downloader', () => {
     mockStrategy1 = {
       name: 'mockStrategy1',
       isAvailable: mock(async () => true),
-      download: mock(async (url: string, options: DownloadOptions) => {
+      download: mock(async (url: string, options: IDownloadOptions) => {
         if (options.destinationPath) return;
         return Buffer.from(`content from ${url} via mockStrategy1`);
       }),
@@ -35,7 +35,7 @@ describe('Downloader', () => {
     mockStrategy2 = {
       name: 'mockStrategy2',
       isAvailable: mock(async () => true),
-      download: mock(async (url: string, options: DownloadOptions) => {
+      download: mock(async (url: string, options: IDownloadOptions) => {
         if (options.destinationPath) return;
         return Buffer.from(`content from ${url} via mockStrategy2`);
       }),
@@ -88,7 +88,7 @@ describe('Downloader', () => {
   it('should use NodeFetchStrategy by default if no strategies are provided', async () => {
     // We need to mock NodeFetchStrategy's methods for this test
     const originalNodeFetchDownload = NodeFetchStrategy.prototype.download;
-    NodeFetchStrategy.prototype.download = mock(async (url: string, options: DownloadOptions) => {
+    NodeFetchStrategy.prototype.download = mock(async (url: string, options: IDownloadOptions) => {
       if (options.destinationPath) return;
       return Buffer.from(`content from ${url} via NodeFetchStrategy`);
     });
@@ -200,7 +200,7 @@ describe('Downloader', () => {
   describe('onProgress callback', () => {
     it('should call onProgress callback if provided via options', async () => {
       const mockOnProgress = mock(() => {}); // vi.fn() equivalent in bun:test is just mock()
-      const mockStrategyDownload = mock(async (_url: string, opts: DownloadOptions) => {
+      const mockStrategyDownload = mock(async (_url: string, opts: IDownloadOptions) => {
         if (opts.onProgress) {
           opts.onProgress(50, 100); // Simulate progress
           opts.onProgress(100, 100); // Simulate completion
@@ -208,7 +208,7 @@ describe('Downloader', () => {
         return Buffer.from('downloaded data');
       });
 
-      const mockProgressStrategy: DownloadStrategy = {
+      const mockProgressStrategy: IDownloadStrategy = {
         name: 'MockProgressStrategy',
         isAvailable: mock(async () => true),
         download: mockStrategyDownload,
@@ -228,7 +228,7 @@ describe('Downloader', () => {
     });
 
     it('should not fail if onProgress is not provided and strategy handles its absence', async () => {
-      const mockStrategyDownload = mock(async (_url: string, opts: DownloadOptions) => {
+      const mockStrategyDownload = mock(async (_url: string, opts: IDownloadOptions) => {
         // Strategy should be robust enough not to try calling a non-existent onProgress
         if (opts.onProgress) {
           // This should not be reached if onProgress is not provided
@@ -237,7 +237,7 @@ describe('Downloader', () => {
         return Buffer.from('data');
       });
 
-      const mockNoProgressStrategy: DownloadStrategy = {
+      const mockNoProgressStrategy: IDownloadStrategy = {
         name: 'MockNoProgressStrategy',
         isAvailable: mock(async () => true),
         download: mockStrategyDownload,

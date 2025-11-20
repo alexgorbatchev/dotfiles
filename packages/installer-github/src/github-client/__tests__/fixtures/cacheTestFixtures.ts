@@ -1,9 +1,9 @@
-import type { GitHubRelease, GitHubReleaseAsset } from '@dotfiles/core';
+import type { IGitHubRelease, IGitHubReleaseAsset } from '@dotfiles/core';
 
 /**
  * Mock GitHub release asset
  */
-export const FIXTURE_RELEASE_ASSET: GitHubReleaseAsset = {
+export const FIXTURE_RELEASE_ASSET: IGitHubReleaseAsset = {
   name: 'test-asset-v1.0.0-darwin-amd64.tar.gz',
   browser_download_url: 'https://example.com/download/test-asset-v1.0.0-darwin-amd64.tar.gz',
   size: 1024,
@@ -17,7 +17,7 @@ export const FIXTURE_RELEASE_ASSET: GitHubReleaseAsset = {
 /**
  * Mock GitHub release
  */
-export const FIXTURE_RELEASE: GitHubRelease = {
+export const FIXTURE_RELEASE: IGitHubRelease = {
   id: 12345,
   tag_name: 'v1.0.0',
   name: 'Release v1.0.0',
@@ -33,7 +33,7 @@ export const FIXTURE_RELEASE: GitHubRelease = {
 /**
  * Mock GitHub release with prerelease flag set to true
  */
-export const FIXTURE_PRERELEASE: GitHubRelease = {
+export const FIXTURE_PRERELEASE: IGitHubRelease = {
   id: 12346,
   tag_name: 'v1.1.0-beta.1',
   name: 'Beta Release v1.1.0-beta.1',
@@ -55,7 +55,7 @@ export const FIXTURE_PRERELEASE: GitHubRelease = {
 /**
  * Mock GitHub releases list
  */
-export const FIXTURE_RELEASES_LIST: GitHubRelease[] = [
+export const FIXTURE_RELEASES_LIST: IGitHubRelease[] = [
   FIXTURE_RELEASE,
   FIXTURE_PRERELEASE,
   {

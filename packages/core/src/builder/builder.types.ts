@@ -5,28 +5,28 @@
  * Plugin types are loaded via module augmentation from installer packages.
  */
 
-import type { Architecture, BaseToolContext, Platform } from '../common';
+import type { Architecture, IBaseToolContext, Platform } from '../common';
 import type {
-  AfterInstallContext,
   AsyncInstallHook,
-  DownloadContext,
-  ExtractContext,
-  InstallContext,
+  IAfterInstallContext,
+  IDownloadContext,
+  IExtractContext,
+  IInstallContext,
 } from '../installer';
 import type { AlwaysScript, OnceScript } from '../shell';
-import type { InstallParamsRegistry, ToolConfig } from '../types';
+import type { IInstallParamsRegistry, ToolConfig } from '../types';
 
-export interface ShellCompletionConfigOptions {
+export interface IShellCompletionConfigOptions {
   source: string;
   name?: string;
   targetDir?: string;
 }
 
-export type ShellCompletionConfigInput = string | ShellCompletionConfigOptions;
+export type ShellCompletionConfigInput = string | IShellCompletionConfigOptions;
 
 /**
- * Install params come from plugins via InstallParamsRegistry module augmentation.
- * Each plugin registers its param types by augmenting the InstallParamsRegistry interface.
+ * Install params come from plugins via IInstallParamsRegistry module augmentation.
+ * Each plugin registers its param types by augmenting the IInstallParamsRegistry interface.
  */
 
 /**
@@ -82,11 +82,11 @@ export type ShellConfiguratorAsyncCallback = (shell: IShellConfigurator) => Shel
  * Generated tool type definitions augment this registry with string literal properties.
  * The fallback behaviour resolves to `string` when no binary names are registered.
  */
-export interface KnownBinNameRegistry {
+export interface IKnownBinNameRegistry {
   __placeholder__?: never;
 }
 
-type KnownBinNameKeys = Exclude<keyof KnownBinNameRegistry, '__placeholder__'>;
+type KnownBinNameKeys = Exclude<keyof IKnownBinNameRegistry, '__placeholder__'>;
 
 export type KnownBinName = [KnownBinNameKeys] extends [never] ? string : KnownBinNameKeys;
 
@@ -104,7 +104,7 @@ export type HookEventName = 'before-install' | PluginEmittedHookEvent | 'after-i
  * Fluent builder interface for configuring a tool.
  * Returned by InstallFunction after selecting installer method.
  */
-export interface ToolConfigBuilder {
+export interface IToolConfigBuilder {
   bin(name: string, pattern?: string): this;
   version(version: string): this;
   dependsOn(...binaryNames: KnownBinName[]): this;
@@ -115,10 +115,10 @@ export interface ToolConfigBuilder {
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
-  hook(event: 'before-install', handler: AsyncInstallHook<InstallContext>): this;
-  hook(event: 'after-download', handler: AsyncInstallHook<DownloadContext>): this;
-  hook(event: 'after-extract', handler: AsyncInstallHook<ExtractContext>): this;
-  hook(event: 'after-install', handler: AsyncInstallHook<AfterInstallContext>): this;
+  hook(event: 'before-install', handler: AsyncInstallHook<IInstallContext>): this;
+  hook(event: 'after-download', handler: AsyncInstallHook<IDownloadContext>): this;
+  hook(event: 'after-extract', handler: AsyncInstallHook<IExtractContext>): this;
+  hook(event: 'after-install', handler: AsyncInstallHook<IAfterInstallContext>): this;
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
@@ -127,11 +127,11 @@ export interface ToolConfigBuilder {
   powershell(callback: ShellConfiguratorCallback): this;
   powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
   symlink(source: string, target: string): this;
-  platform(platforms: Platform, configure: (install: PlatformInstallFunction) => PlatformConfigBuilder): this;
+  platform(platforms: Platform, configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder): this;
   platform(
     platforms: Platform,
     architectures: Architecture,
-    configure: (install: PlatformInstallFunction) => PlatformConfigBuilder
+    configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder
   ): this;
   build(): ToolConfig;
 }
@@ -139,7 +139,7 @@ export interface ToolConfigBuilder {
 /**
  * Platform-specific configuration builder.
  */
-export interface PlatformConfigBuilder {
+export interface IPlatformConfigBuilder {
   bin(name: string, pattern?: string): this;
   version(version: string): this;
   dependsOn(...binaryNames: KnownBinName[]): this;
@@ -150,10 +150,10 @@ export interface PlatformConfigBuilder {
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
-  hook(event: 'before-install', handler: AsyncInstallHook<InstallContext>): this;
-  hook(event: 'after-download', handler: AsyncInstallHook<DownloadContext>): this;
-  hook(event: 'after-extract', handler: AsyncInstallHook<ExtractContext>): this;
-  hook(event: 'after-install', handler: AsyncInstallHook<AfterInstallContext>): this;
+  hook(event: 'before-install', handler: AsyncInstallHook<IInstallContext>): this;
+  hook(event: 'after-download', handler: AsyncInstallHook<IDownloadContext>): this;
+  hook(event: 'after-extract', handler: AsyncInstallHook<IExtractContext>): this;
+  hook(event: 'after-install', handler: AsyncInstallHook<IAfterInstallContext>): this;
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
@@ -166,9 +166,9 @@ export interface PlatformConfigBuilder {
 
 /**
  * Map of installer methods to their parameter types.
- * Built dynamically from plugins via InstallParamsRegistry module augmentation.
+ * Built dynamically from plugins via IInstallParamsRegistry module augmentation.
  */
-export type InstallMethod = keyof InstallParamsRegistry;
+export type InstallMethod = keyof IInstallParamsRegistry;
 
 /**
  * Install function with generic type inference for perfect type safety.
@@ -187,27 +187,27 @@ export type InstallMethod = keyof InstallParamsRegistry;
  * install('brew', { repo: 'test' })
  */
 export interface InstallFunction {
-  <M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): ToolConfigBuilder;
-  (): ToolConfigBuilder; // For manual tools with no install params
+  <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): IToolConfigBuilder;
+  (): IToolConfigBuilder; // For manual tools with no install params
 }
 
 /**
  * Platform-specific install function with the same generic type inference.
  */
-export interface PlatformInstallFunction {
-  <M extends InstallMethod>(method: M, params: InstallParamsRegistry[M]): PlatformConfigBuilder;
-  (): PlatformConfigBuilder;
+export interface IPlatformInstallFunction {
+  <M extends InstallMethod>(method: M, params: IInstallParamsRegistry[M]): IPlatformConfigBuilder;
+  (): IPlatformConfigBuilder;
 }
 
 /**
  * Context object for tool configuration.
  */
-export interface ToolConfigContext extends BaseToolContext {}
+export interface IToolConfigContext extends IBaseToolContext {}
 
 /**
  * Tool configuration function using the new install-first API.
  *
- * @param install - Function to select installer and provide params, returns ToolConfigBuilder
+ * @param install - Function to select installer and provide params, returns IToolConfigBuilder
  * @param ctx - Context with paths and configuration
  *
  * @example
@@ -219,13 +219,13 @@ export interface ToolConfigContext extends BaseToolContext {}
  */
 export type AsyncConfigureTool = (
   install: InstallFunction,
-  ctx: ToolConfigContext
-) => Promise<undefined | ToolConfigBuilder | ToolConfig> | undefined | ToolConfigBuilder | ToolConfig;
+  ctx: IToolConfigContext
+) => Promise<undefined | IToolConfigBuilder | ToolConfig> | undefined | IToolConfigBuilder | ToolConfig;
 
 /**
  * Tool configuration function that returns a ToolConfig.
  */
 export type AsyncConfigureToolWithReturn = (
   install: InstallFunction,
-  ctx: ToolConfigContext
+  ctx: IToolConfigContext
 ) => Promise<ToolConfig> | ToolConfig;

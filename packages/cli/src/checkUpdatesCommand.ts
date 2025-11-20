@@ -1,4 +1,4 @@
-import type { IConfigService, ProjectConfig, SystemInfo, ToolConfig } from '@dotfiles/config';
+import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
 import type { BaseInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -6,7 +6,7 @@ import { ExitCode, exitCli } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { $ } from 'bun';
 import { messages } from './log-messages';
-import type { GlobalProgram, Services } from './types';
+import type { IGlobalProgram, IServices } from './types';
 
 async function loadToolConfigs(
   logger: TsLogger,
@@ -55,7 +55,7 @@ async function loadToolConfigs(
 function createInstallContext(
   config: ToolConfig,
   projectConfig: ProjectConfig,
-  systemInfo: SystemInfo,
+  systemInfo: ISystemInfo,
   fs: IFileSystem
 ): BaseInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
@@ -111,7 +111,7 @@ async function logVersionStatus(
   }
 }
 
-async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: Services): Promise<void> {
+async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: IServices): Promise<void> {
   const { projectConfig, versionChecker, pluginRegistry, systemInfo, fs } = services;
 
   const context = createInstallContext(config, projectConfig, systemInfo, fs);
@@ -158,7 +158,7 @@ async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: S
 export async function checkUpdatesActionLogic(
   logger: TsLogger,
   toolName: string | undefined,
-  services: Services
+  services: IServices
 ): Promise<void> {
   logger.trace(messages.commandActionStarted('check-updates', toolName || 'all'));
 
@@ -181,8 +181,8 @@ export async function checkUpdatesActionLogic(
 
 export function registerCheckUpdatesCommand(
   parentLogger: TsLogger,
-  program: GlobalProgram,
-  servicesFactory: () => Promise<Services>
+  program: IGlobalProgram,
+  servicesFactory: () => Promise<IServices>
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerCheckUpdatesCommand' });
   program

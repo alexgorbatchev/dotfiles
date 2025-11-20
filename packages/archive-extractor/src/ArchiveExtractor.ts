@@ -1,7 +1,7 @@
 import { exec as execCallback } from 'node:child_process';
 import { basename, extname, join } from 'node:path';
 import { promisify } from 'node:util';
-import type { ArchiveFormat, ExtractOptions, ExtractResult } from '@dotfiles/core';
+import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IArchiveExtractor } from './IArchiveExtractor';
@@ -10,7 +10,7 @@ import { messages } from './log-messages';
 /**
  * Error interface from child_process.exec with optional code, stdout, and stderr properties.
  */
-interface ExecError extends Error {
+interface IExecError extends Error {
   code?: number;
   stdout?: string;
   stderr?: string;
@@ -19,11 +19,11 @@ interface ExecError extends Error {
 /**
  * Augmented error interface that includes captured stdout/stderr and the original error.
  */
-interface AugmentedExecError extends Error {
+interface IAugmentedExecError extends Error {
   stdout: string;
   stderr: string;
   exitCode: number;
-  originalError: ExecError;
+  originalError: IExecError;
 }
 
 /**
@@ -60,7 +60,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    *
    * @param command - The command string to execute.
    * @returns A promise that resolves with stdout, stderr, and exit code.
-   * @throws {AugmentedExecError} An error augmented with stdout, stderr, and exitCode if the command fails.
+   * @throws {IAugmentedExecError} An error augmented with stdout, stderr, and exitCode if the command fails.
    */
   private async executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
@@ -69,11 +69,11 @@ export class ArchiveExtractor implements IArchiveExtractor {
       const { stdout, stderr } = await this.promisedExec(command);
       return { stdout, stderr, exitCode: 0 };
     } catch (error: unknown) {
-      const execError = error as ExecError;
+      const execError = error as IExecError;
       // Augment the error object with stdio and exit code
-      const augmentedError: AugmentedExecError = new Error(
+      const augmentedError: IAugmentedExecError = new Error(
         `Command failed with exit code ${execError.code || 'unknown'}: ${command}\nStderr: ${execError.stderr?.trim() || 'N/A'}\nStdout: ${execError.stdout?.trim() || 'N/A'}\n${execError.message}`
-      ) as AugmentedExecError;
+      ) as IAugmentedExecError;
       augmentedError.stdout = execError.stdout || '';
       augmentedError.stderr = execError.stderr || '';
       augmentedError.exitCode = typeof execError.code === 'number' ? execError.code : 1;
@@ -247,7 +247,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
   /**
    * @inheritdoc IArchiveExtractor.extract
    */
-  public async extract(archivePath: string, options: ExtractOptions = {}): Promise<ExtractResult> {
+  public async extract(archivePath: string, options: IExtractOptions = {}): Promise<IExtractResult> {
     const logger = this.logger.getSubLogger({ name: 'extract' });
     const {
       format: explicitFormat,
@@ -278,7 +278,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
     // Find the newly extracted files (files that weren't there before)
     const extractedFiles = filesAfter.filter((file) => !filesBefore.includes(file));
 
-    const result: ExtractResult = {
+    const result: IExtractResult = {
       extractedFiles,
       executables: [],
     };

@@ -2,22 +2,24 @@ const DEFAULT_BUILT_PACKAGE_NAME = '@gitea/dotfiles';
 
 declare global {
   namespace NodeJS {
-    interface ProcessEnv {
+    interface IProcessEnvOverrides {
       DOTFILES_BUILT_PACKAGE_NAME?: string;
     }
+
+    interface ProcessEnv extends IProcessEnvOverrides {}
   }
 }
 
-export interface BuiltPackageEnvironment {
+export interface IBuiltPackageEnvironment {
   DOTFILES_BUILT_PACKAGE_NAME?: string;
 }
 
 /**
- * We intentionally augment ProcessEnv so the bundler can statically replace
+ * We intentionally augment ProcessEnv via IProcessEnvOverrides so the bundler can statically replace
  * process.env.DOTFILES_BUILT_PACKAGE_NAME with its configured value.
  * Using bracket notation prevents this optimization and breaks the build output.
  */
-export function getBuiltPackageName(env?: BuiltPackageEnvironment): string {
+export function getBuiltPackageName(env?: IBuiltPackageEnvironment): string {
   const configuredName: string | undefined =
     env?.DOTFILES_BUILT_PACKAGE_NAME ?? process.env.DOTFILES_BUILT_PACKAGE_NAME;
 

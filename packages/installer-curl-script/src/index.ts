@@ -9,11 +9,11 @@ import type { CurlScriptInstallParams, CurlScriptToolConfig } from './schemas';
 import type { CurlScriptInstallResult } from './types';
 
 declare module '@dotfiles/core' {
-  interface InstallParamsRegistry {
+  interface IInstallParamsRegistry {
     'curl-script': CurlScriptInstallParams;
   }
-  interface ToolConfigRegistry {
+  interface IToolConfigRegistry {
     'curl-script': CurlScriptToolConfig;
   }
-  interface PluginResultRegistry extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
+  interface IPluginResultRegistry extends RegisterPluginResult<'curl-script', CurlScriptInstallResult> {}
 }
