@@ -148,13 +148,11 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .version('latest')
     .install('github-release', { repo: 'owner/custom-tool' })
     .symlink('./config.yml', `${ctx.homeDir}/.config/custom-tool/config.yml`)
-    .hooks({
-      afterInstall: async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
-        const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
-        await fileSystem.mkdir(dataDir, { recursive: true });
-        await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
-        logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
-      }
+    .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+      const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
+      await fileSystem.mkdir(dataDir, { recursive: true });
+      await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
+      logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh({
       environment: { 'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool` },

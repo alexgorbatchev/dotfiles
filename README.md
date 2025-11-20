@@ -196,12 +196,12 @@ installParams:
   # Environment variables to set during installation. (record, optional)
   env:
     CUSTOM_FLAG: "true"
-  # Hooks to run at different stages of the installation lifecycle. (object, optional)
-  hooks:
-    beforeInstall: (ctx) => { console.log('Starting install...'); }
-    afterDownload: (ctx) => { console.log('Download complete.'); }
-    afterExtract: (ctx) => { console.log('Extraction complete.'); }
-    afterInstall: (ctx) => { console.log('Installation finished.'); }
+  # Hooks: Use .hook(event, handler) method in TypeScript configs.
+  # Example:
+  #   .hook('before-install', async (ctx) => { console.log('Starting...'); })
+  #   .hook('after-download', async (ctx) => { console.log('Downloaded.'); })
+  #   .hook('after-extract', async (ctx) => { console.log('Extracted.'); })
+  #   .hook('after-install', async (ctx) => { console.log('Done!'); })
 
 # An array of symlink configurations.
 # (array of objects, optional)

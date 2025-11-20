@@ -1,6 +1,7 @@
 import type {
   Architecture,
   AsyncInstallHook,
+  HookEventName,
   InstallerPluginRegistry,
   InstallMethod,
   InstallParamsRegistry,
@@ -145,33 +146,32 @@ export class ToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
-   * Attaches asynchronous hooks to the installation process.
+   * Attach a hook handler to a specific lifecycle event.
    *
-   * These hooks allow for custom logic to be executed at different stages of the
-   * installation lifecycle, such as before installation or after extraction.
+   * Multiple handlers can be added by calling this method multiple times with the same event name.
    * **This method must be called after {@link ToolConfigBuilder.install}**.
-   * **This method can be called multiple times**; subsequent calls will merge with existing hooks.
    *
-   * @param hooks - An object containing one or more hook functions.
+   * @param event - The lifecycle event name (kebab-case: 'before-install', 'after-download', 'after-extract', 'after-install')
+   * @param handler - The async hook function to execute
    * @returns The `ToolConfigBuilder` instance for chaining.
    */
-  hooks(hooks: {
-    beforeInstall?: AsyncInstallHook;
-    afterDownload?: AsyncInstallHook;
-    afterExtract?: AsyncInstallHook;
-    afterInstall?: AsyncInstallHook;
-  }): this {
-    if (this.currentInstallParams) {
-      const existingHooks = (this.currentInstallParams['hooks'] as Record<string, unknown>) || {};
-      this.currentInstallParams['hooks'] = { ...existingHooks, ...hooks };
-    } else {
+  hook(event: HookEventName, handler: AsyncInstallHook): this {
+    if (!this.currentInstallParams) {
       this.logger.warn(
         messages.configurationFieldIgnored(
-          'hooks',
-          `hooks() called for tool "${this.toolName}" before install(). Hooks will not be set as install() was not called first.`
+          'hook',
+          `hook() called for tool "${this.toolName}" before install(). Hook will not be set as install() was not called first.`
         )
       );
+      return this;
     }
+
+    const hooksObj = (this.currentInstallParams['hooks'] as Record<string, AsyncInstallHook[]>) || {};
+    const eventHooks: AsyncInstallHook[] = hooksObj[event] || [];
+    eventHooks.push(handler);
+    hooksObj[event] = eventHooks;
+    this.currentInstallParams['hooks'] = hooksObj;
+
     return this;
   }
 

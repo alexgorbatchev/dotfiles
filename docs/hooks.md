@@ -4,16 +4,19 @@ Hooks allow custom logic at different stages of the installation process, enabli
 
 ## Installation Hooks
 
-Hooks provide entry points for custom logic during tool installation:
+Use the `.hook()` method to attach handlers to lifecycle events:
 
 ```typescript
-c.hooks({
-  beforeInstall?: async (context) => { /* setup */ },
-  afterDownload?: async (context) => { /* post-download */ },
-  afterExtract?: async (context) => { /* post-extract */ },
-  afterInstall?: async (context) => { /* finalization */ },
-})
+c.hook('after-install', async (context) => {
+  // Your custom logic here
+});
+
+// Multiple hooks for the same event
+c.hook('after-install', async (context) => { /* setup 1 */ })
+  .hook('after-install', async (context) => { /* setup 2 */ });
 ```
+
+Event names: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
 
 ## Hook Context
 
@@ -72,31 +75,27 @@ The `$` property provides Bun's built-in shell executor for running shell comman
 ### Simple Hook
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $ }) => {
-    // Commands run in the .tool.ts file's directory
-    await $`ls -la ./`;                    // List tool config directory
-    await $`cat ./config.toml`;            // Read config file next to .tool.ts
-    await $`mkdir -p ./generated/`;        // Create subdirectory
-  }
+c.hook('after-install', async ({ $ }) => {
+  // Commands run in the .tool.ts file's directory
+  await $`ls -la ./`;                    // List tool config directory
+  await $`cat ./config.toml`;            // Read config file next to .tool.ts
+  await $`mkdir -p ./generated/`;        // Create subdirectory
 })
 ```
 
 ### File Operations
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ fileSystem, systemInfo, logger }) => {
-    // Create configuration directory
-    const configDir = path.join(systemInfo.homeDir, '.config', 'my-tool');
-    await fileSystem.mkdir(configDir, { recursive: true });
-    
-    // Write default configuration
-    const defaultConfig = 'theme = "dark"\nverbose = true\n';
-    await fileSystem.writeFile(path.join(configDir, 'config.toml'), defaultConfig);
-    
-    logger.info(`Created configuration at ${configDir}`);
-  }
+c.hook('after-install', async ({ fileSystem, systemInfo, logger }) => {
+  // Create configuration directory
+  const configDir = path.join(systemInfo.homeDir, '.config', 'my-tool');
+  await fileSystem.mkdir(configDir, { recursive: true });
+  
+  // Write default configuration
+  const defaultConfig = 'theme = "dark"\nverbose = true\n';
+  await fileSystem.writeFile(path.join(configDir, 'config.toml'), defaultConfig);
+  
+  logger.info(`Created configuration at ${configDir}`);
 })
 ```
 
@@ -105,14 +104,12 @@ c.hooks({
 ### Check File Existence
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $ }) => {
-    // Check if files exist
-    const configExists = await $`test -f ./config.toml && echo "yes" || echo "no"`;
-    if (configExists.stdout.includes('yes')) {
-      // Config file exists
-      await $`cp ./config.toml ${systemInfo.homeDir}/.config/tool/`;
-    }
+c.hook('after-install', async ({ $ }) => {
+  // Check if files exist
+  const configExists = await $`test -f ./config.toml && echo "yes" || echo "no"`;
+  if (configExists.stdout.includes('yes')) {
+    // Config file exists
+    await $`cp ./config.toml ${systemInfo.homeDir}/.config/tool/`;
   }
 })
 ```
@@ -120,34 +117,28 @@ c.hooks({
 ### Copy Files
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, systemInfo }) => {
-    // Copy files from tool directory to user's home
-    await $`cp ./dotfiles/.vimrc ${systemInfo.homeDir}/.vimrc`;
-    await $`cp -r ./themes/ ${systemInfo.homeDir}/.config/tool/themes/`;
-  }
+c.hook('after-install', async ({ $, systemInfo }) => {
+  // Copy files from tool directory to user's home
+  await $`cp ./dotfiles/.vimrc ${systemInfo.homeDir}/.vimrc`;
+  await $`cp -r ./themes/ ${systemInfo.homeDir}/.config/tool/themes/`;
 })
 ```
 
 ### Run Setup Scripts
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $ }) => {
-    // Run tool-specific setup scripts
-    await $`chmod +x ./setup.sh && ./setup.sh`;
-  }
+c.hook('after-install', async ({ $ }) => {
+  // Run tool-specific setup scripts
+  await $`chmod +x ./setup.sh && ./setup.sh`;
 })
 ```
 
 ### Process Templates
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, systemInfo }) => {
-    // Process configuration templates
-    await $`HOME=${systemInfo.homeDir} envsubst < ./config.template > ./config.generated`;
-  }
+c.hook('after-install', async ({ $, systemInfo }) => {
+  // Process configuration templates
+  await $`HOME=${systemInfo.homeDir} envsubst < ./config.template > ./config.generated`;
 })
 ```
 
@@ -156,19 +147,17 @@ c.hooks({
 Always include proper error handling in hooks:
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, logger }) => {
-    try {
-      // Command that might fail
-      const result = await $`./configure --enable-feature`;
-      logger.info(`Configure output: ${result.stdout.toString()}`);
-    } catch (error) {
-      // Bun throws errors with exitCode, stdout, and stderr properties
-      const stderr = error && typeof error === 'object' && 'stderr' in error ? 
-        (error.stderr as Buffer).toString() : 'Unknown error';
-      logger.error(`Configure failed: ${stderr}`);
-      throw error; // Re-throw to fail the hook
-    }
+c.hook('after-install', async ({ $, logger }) => {
+  try {
+    // Command that might fail
+    const result = await $`./configure --enable-feature`;
+    logger.info(`Configure output: ${result.stdout.toString()}`);
+  } catch (error) {
+    // Bun throws errors with exitCode, stdout, and stderr properties
+    const stderr = error && typeof error === 'object' && 'stderr' in error ? 
+      (error.stderr as Buffer).toString() : 'Unknown error';
+    logger.error(`Configure failed: ${stderr}`);
+    throw error; // Re-throw to fail the hook
   }
 })
 ```
@@ -176,28 +165,26 @@ c.hooks({
 ## Working with Command Output
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, logger }) => {
-    // Capture and process command output
-    const version = await $`./tool --version`.text();
-    logger.info(`Installed version: ${version.trim()}`);
-    
-    // Use output in subsequent commands
-    if (version.includes('2.')) {
-      await $`./tool migrate-config`;
-    }
-    
-    // Check exit codes
-    try {
-      await $`./tool self-test`;
-      logger.info('Self-test passed');
-    } catch (error) {
-      const exitCode = error && typeof error === 'object' && 'exitCode' in error ?
-        error.exitCode as number : -1;
-      logger.error(`Self-test failed with exit code: ${exitCode}`);
-    if (testResult !== 0) {
-      throw new Error('Self-test failed');
-    }
+c.hook('after-install', async ({ $, logger }) => {
+  // Capture and process command output
+  const version = await $`./tool --version`.text();
+  logger.info(`Installed version: ${version.trim()}`);
+  
+  // Use output in subsequent commands
+  if (version.includes('2.')) {
+    await $`./tool migrate-config`;
+  }
+  
+  // Check exit codes
+  try {
+    await $`./tool self-test`;
+    logger.info('Self-test passed');
+  } catch (error) {
+    const exitCode = error && typeof error === 'object' && 'exitCode' in error ?
+      error.exitCode as number : -1;
+    logger.error(`Self-test failed with exit code: ${exitCode}`);
+  if (testResult !== 0) {
+    throw new Error('Self-test failed');
   }
 })
 ```
@@ -207,18 +194,16 @@ c.hooks({
 ### Build from Source
 
 ```typescript
-c.hooks({
-  afterExtract: async ({ extractDir, installDir, logger, $ }) => {
-    if (extractDir) {
-      logger.info('Building tool from source...');
-      await $`cd ${extractDir} && make build`;
-      
-      const builtBinary = path.join(extractDir, 'target/release/tool');
-      const targetPath = path.join(installDir, 'tool');
-      await $`mv ${builtBinary} ${targetPath}`;
-      
-      logger.info('Build completed successfully');
-    }
+c.hook('after-extract', async ({ extractDir, installDir, logger, $ }) => {
+  if (extractDir) {
+    logger.info('Building tool from source...');
+    await $`cd ${extractDir} && make build`;
+    
+    const builtBinary = path.join(extractDir, 'target/release/tool');
+    const targetPath = path.join(installDir, 'tool');
+    await $`mv ${builtBinary} ${targetPath}`;
+    
+    logger.info('Build completed successfully');
   }
 })
 ```
@@ -226,36 +211,32 @@ c.hooks({
 ### Post-Installation Setup
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
-    // Create configuration directory using file system API
-    const configDir = path.join(systemInfo.homeDir, '.config', toolName);
-    await fileSystem.mkdir(configDir, { recursive: true });
-    
-    // Initialize tool-specific data using shell executor
-    await $`${path.join(installDir, toolName)} init --data-dir ${configDir}`;
-    
-    logger.info(`Initialized ${toolName} at ${configDir}`);
-  }
+c.hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+  // Create configuration directory using file system API
+  const configDir = path.join(systemInfo.homeDir, '.config', toolName);
+  await fileSystem.mkdir(configDir, { recursive: true });
+  
+  // Initialize tool-specific data using shell executor
+  await $`${path.join(installDir, toolName)} init --data-dir ${configDir}`;
+  
+  logger.info(`Initialized ${toolName} at ${configDir}`);
 })
 ```
 
 ### Custom Binary Processing
 
 ```typescript
-c.hooks({
-  afterExtract: async ({ extractDir, installDir, fileSystem, logger }) => {
-    if (extractDir) {
-      // Custom binary selection and processing
-      const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
-      const mainBinary = binaries.find(name => name.startsWith('main-'));
-      
-      if (mainBinary) {
-        const sourcePath = path.join(extractDir, 'bin', mainBinary);
-        const targetPath = path.join(installDir, 'tool');
-        await fileSystem.copyFile(sourcePath, targetPath);
-        logger.info(`Selected binary: ${mainBinary}`);
-      }
+c.hook('after-extract', async ({ extractDir, installDir, fileSystem, logger }) => {
+  if (extractDir) {
+    // Custom binary selection and processing
+    const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
+    const mainBinary = binaries.find(name => name.startsWith('main-'));
+    
+    if (mainBinary) {
+      const sourcePath = path.join(extractDir, 'bin', mainBinary);
+      const targetPath = path.join(installDir, 'tool');
+      await fileSystem.copyFile(sourcePath, targetPath);
+      logger.info(`Selected binary: ${mainBinary}`);
     }
   }
 })
@@ -264,22 +245,20 @@ c.hooks({
 ### Environment-Specific Setup
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ systemInfo, fileSystem, logger, $ }) => {
-    // Platform-specific setup
-    if (systemInfo.platform === 'darwin') {
-      // macOS-specific setup
-      await $`./setup-macos.sh`;
-    } else if (systemInfo.platform === 'linux') {
-      // Linux-specific setup
-      await $`./setup-linux.sh`;
-    }
-    
-    // Architecture-specific setup
-    if (systemInfo.arch === 'arm64') {
-      logger.info('Configuring for ARM64 architecture');
-      await $`./configure-arm64.sh`;
-    }
+c.hook('after-install', async ({ systemInfo, fileSystem, logger, $ }) => {
+  // Platform-specific setup
+  if (systemInfo.platform === 'darwin') {
+    // macOS-specific setup
+    await $`./setup-macos.sh`;
+  } else if (systemInfo.platform === 'linux') {
+    // Linux-specific setup
+    await $`./setup-linux.sh`;
+  }
+  
+  // Architecture-specific setup
+  if (systemInfo.arch === 'arm64') {
+    logger.info('Configuring for ARM64 architecture');
+    await $`./configure-arm64.sh`;
   }
 })
 ```
@@ -332,32 +311,28 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .version('latest')
     .install('github-release', { repo: 'owner/custom-tool' })
     .symlink('./config.yml', `${ctx.homeDir}/.config/custom-tool/config.yml`)
-    .hooks({
-      beforeInstall: async ({ logger }) => {
-        logger.info('Starting custom-tool installation...');
-      },
-      
-      afterExtract: async ({ extractDir, logger, $ }) => {
-        if (extractDir) {
-          // Build additional components
-          logger.info('Building plugins...');
-          await $`cd ${extractDir} && make plugins`;
-        }
-      },
-      
-      afterInstall: async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
-        // Create data directory
-        const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
-        await fileSystem.mkdir(dataDir, { recursive: true });
-        
-        // Initialize tool
-        await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
-        
-        // Set up completion
-        await $`${path.join(installDir, toolName)} completion zsh > ${ctx.generatedDir}/completions/_${toolName}`;
-        
-        logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
+    .hook('before-install', async ({ logger }) => {
+      logger.info('Starting custom-tool installation...');
+    })
+    .hook('after-extract', async ({ extractDir, logger, $ }) => {
+      if (extractDir) {
+        // Build additional components
+        logger.info('Building plugins...');
+        await $`cd ${extractDir} && make plugins`;
       }
+    })
+    .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+      // Create data directory
+      const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
+      await fileSystem.mkdir(dataDir, { recursive: true });
+      
+      // Initialize tool
+      await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
+      
+      // Set up completion
+      await $`${path.join(installDir, toolName)} completion zsh > ${ctx.generatedDir}/completions/_${toolName}`;
+      
+      logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh({
       environment: { 'CUSTOM_TOOL_DATA': `${ctx.homeDir}/.local/share/custom-tool` },

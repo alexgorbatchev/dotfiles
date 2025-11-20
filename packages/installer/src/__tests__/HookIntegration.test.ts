@@ -1,8 +1,8 @@
+import type { EnhancedInstallHookContext } from '@dotfiles/core';
+import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import type { AsyncInstallHook, EnhancedInstallHookContext } from '@dotfiles/core';
-import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { createInstallerTestSetup, type InstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
 /**
@@ -51,21 +51,23 @@ describe('Hook Integration Tests', () => {
         installParams: {
           repo: 'example/tool',
           hooks: {
-            afterInstall: (async (context: EnhancedInstallHookContext) => {
-              // Create a config directory
-              const configDir = path.join(context.installDir, 'config');
-              await context.fileSystem.ensureDir(configDir);
+            'after-install': [
+              (async (context: EnhancedInstallHookContext) => {
+                // Create a config directory
+                const configDir = path.join(context.installDir, 'config');
+                await context.fileSystem.ensureDir(configDir);
 
-              // Create a default configuration file
-              const configPath = path.join(configDir, 'default.yaml');
-              const configContent = `# Default configuration for ${context.toolName}\\nversion: ${context.version}\\ninstall_dir: ${context.installDir}`;
-              await context.fileSystem.writeFile(configPath, configContent);
+                // Create a default configuration file
+                const configPath = path.join(configDir, 'default.yaml');
+                const configContent = `# Default configuration for ${context.toolName}\\nversion: ${context.version}\\ninstall_dir: ${context.installDir}`;
+                await context.fileSystem.writeFile(configPath, configContent);
 
-              // Make the main binary executable with specific permissions
-              if (context.binaryPath) {
-                await context.fileSystem.chmod(context.binaryPath, 0o755);
-              }
-            }) as AsyncInstallHook,
+                // Make the main binary executable with specific permissions
+                if (context.binaryPath) {
+                  await context.fileSystem.chmod(context.binaryPath, 0o755);
+                }
+              }),
+            ],
           },
         },
       };
@@ -131,39 +133,41 @@ describe('Hook Integration Tests', () => {
         installParams: {
           repo: 'example/multi-binary-tool',
           hooks: {
-            afterExtract: (async (context: EnhancedInstallHookContext) => {
-              if (!context.extractDir || !context.extractResult) {
-                throw new Error('No extraction results available');
-              }
-
-              // Organize binaries in a bin subdirectory
-              const binDir = path.join(context.installDir, 'bin');
-              await context.fileSystem.ensureDir(binDir);
-
-              // Create the expected binaries from the extracted tool
-              const srcPath = path.join(context.extractDir, 'tool');
-              for (const binaryName of ['main-tool', 'helper-tool']) {
-                const destPath = path.join(binDir, binaryName);
-                await context.fileSystem.copyFile(srcPath, destPath);
-                await context.fileSystem.chmod(destPath, 0o755);
-              }
-
-              // Copy documentation files
-              const docFiles = context.extractResult.extractedFiles.filter(
-                (file) => file.includes('README') || file.includes('LICENSE')
-              );
-
-              if (docFiles.length > 0) {
-                const docDir = path.join(context.installDir, 'docs');
-                await context.fileSystem.ensureDir(docDir);
-
-                for (const docFile of docFiles) {
-                  const srcPath = path.join(context.extractDir, docFile);
-                  const destPath = path.join(docDir, docFile);
-                  await context.fileSystem.copyFile(srcPath, destPath);
+            'after-extract': [
+              async (context: EnhancedInstallHookContext) => {
+                if (!context.extractDir || !context.extractResult) {
+                  throw new Error('No extraction results available');
                 }
-              }
-            }) as AsyncInstallHook,
+
+                // Organize binaries in a bin subdirectory
+                const binDir = path.join(context.installDir, 'bin');
+                await context.fileSystem.ensureDir(binDir);
+
+                // Create the expected binaries from the extracted tool
+                const srcPath = path.join(context.extractDir, 'tool');
+                for (const binaryName of ['main-tool', 'helper-tool']) {
+                  const destPath = path.join(binDir, binaryName);
+                  await context.fileSystem.copyFile(srcPath, destPath);
+                  await context.fileSystem.chmod(destPath, 0o755);
+                }
+
+                // Copy documentation files
+                const docFiles = context.extractResult.extractedFiles.filter(
+                  (file) => file.includes('README') || file.includes('LICENSE')
+                );
+
+                if (docFiles.length > 0) {
+                  const docDir = path.join(context.installDir, 'docs');
+                  await context.fileSystem.ensureDir(docDir);
+
+                  for (const docFile of docFiles) {
+                    const srcPath = path.join(context.extractDir, docFile);
+                    const destPath = path.join(docDir, docFile);
+                    await context.fileSystem.copyFile(srcPath, destPath);
+                  }
+                }
+              },
+            ],
           },
         },
       };
@@ -247,33 +251,34 @@ describe('Hook Integration Tests', () => {
         installParams: {
           repo: 'example/source-tool',
           hooks: {
-            afterExtract: (async (context: EnhancedInstallHookContext) => {
-              if (!context.extractDir) {
-                throw new Error('No extraction directory available');
-              }
+            'after-extract': [
+              async (context: EnhancedInstallHookContext) => {
+                if (!context.extractDir) {
+                  throw new Error('No extraction directory available');
+                }
 
-              // Check if this is a source distribution
-              const makefilePath = path.join(context.extractDir, 'Makefile');
-              const hasMakefile = await context.fileSystem.exists(makefilePath);
+                // Check if this is a source distribution
+                const makefilePath = path.join(context.extractDir, 'Makefile');
+                const hasMakefile = await context.fileSystem.exists(makefilePath);
 
-              if (hasMakefile) {
-                // In a real scenario, this would run: make PREFIX=${context.installDir} install
-                // For this test, we'll simulate the process
+                if (hasMakefile) {
+                  // In a real scenario, this would run: make PREFIX=${context.installDir} install
+                  // For this test, we'll simulate the process
 
-                // Create the binary in the extract directory so the binary setup service can find it
-                const binaryPath = path.join(context.extractDir, context.toolName);
-                await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\necho "Compiled binary"');
-                await context.fileSystem.chmod(binaryPath, 0o755);
+                  // Create the binary in the extract directory so the binary setup service can find it
+                  const binaryPath = path.join(context.extractDir, context.toolName);
+                  await context.fileSystem.writeFile(binaryPath, '#!/bin/bash\necho "Compiled binary"');
+                  await context.fileSystem.chmod(binaryPath, 0o755);
 
-                // Create additional compiled artifacts
-                const libDir = path.join(context.installDir, 'lib');
-                await context.fileSystem.ensureDir(libDir);
+                  // Create additional compiled artifacts
+                  const libDir = path.join(context.installDir, 'lib');
+                  await context.fileSystem.ensureDir(libDir);
 
-                const libPath = path.join(libDir, 'libsource-tool.so');
-                await context.fileSystem.writeFile(libPath, 'compiled library content');
-              } else {
-              }
-            }) as AsyncInstallHook,
+                  const libPath = path.join(libDir, 'libsource-tool.so');
+                  await context.fileSystem.writeFile(libPath, 'compiled library content');
+                }
+              },
+            ],
           },
         },
       };
@@ -333,9 +338,11 @@ describe('Hook Integration Tests', () => {
         installParams: {
           repo: 'example/failing-tool',
           hooks: {
-            afterDownload: (async (_context) => {
-              throw new Error('Downloaded file validation failed: checksum mismatch');
-            }) as AsyncInstallHook,
+            'after-download': [
+              (async (_context) => {
+                throw new Error('Downloaded file validation failed: checksum mismatch');
+              }),
+            ],
           },
         },
       };
@@ -344,14 +351,14 @@ describe('Hook Integration Tests', () => {
 
       expect(result.success).toBe(false);
       assert(!result.success);
-      expect(result.error).toContain('afterDownload hook failed');
+      expect(result.error).toContain('after-download hook failed');
       expect(result.error).toContain('Downloaded file validation failed: checksum mismatch');
 
       // Verify that the hook failure was logged appropriately
       setup.logger.expect(
         ['ERROR'],
         ['HookExecutor', 'executeHook'],
-        ['Installation failed [afterDownload hook] for tool "failing-tool"']
+        ['Installation failed [after-download hook] for tool "failing-tool"']
       );
     });
   });

@@ -60,36 +60,90 @@ describe('ToolConfigBuilder', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin'); // Add bin to make build valid
     const mockHook: AsyncInstallHook = async () => {};
-    const hooks = { beforeInstall: mockHook };
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
 
     builder.install('github-release', installParams);
-    builder.hooks(hooks);
+    builder.hook('before-install', mockHook);
 
     const config = builder.build();
     if (isGitHubReleaseToolConfig(config)) {
-      expect(config.installParams?.hooks).toEqual(hooks);
+      expect(config.installParams?.hooks).toEqual({ 'before-install': [mockHook] });
     }
   });
 
-  test('hooks method does not set hooks and warns if install was not called first', () => {
+  test('hook method sets individual hook correctly on installParams', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    builder.bin('test-bin');
+    const mockHook: AsyncInstallHook = async () => {};
+    const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
+
+    builder.install('github-release', installParams);
+    builder.hook('before-install', mockHook);
+
+    const config = builder.build();
+    if (isGitHubReleaseToolConfig(config)) {
+      expect(config.installParams?.hooks).toEqual({ 'before-install': [mockHook] });
+    }
+  });
+
+  test('hook method appends multiple hooks for the same event', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    builder.bin('test-bin');
+    const mockHook1: AsyncInstallHook = async () => {};
+    const mockHook2: AsyncInstallHook = async () => {};
+    const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
+
+    builder.install('github-release', installParams);
+    builder.hook('after-install', mockHook1);
+    builder.hook('after-install', mockHook2);
+
+    const config = builder.build();
+    if (isGitHubReleaseToolConfig(config)) {
+      expect(config.installParams?.hooks).toEqual({ 'after-install': [mockHook1, mockHook2] });
+    }
+  });
+
+  test('hook method supports all lifecycle events', () => {
+    const builder = new ToolConfigBuilder(logger, 'test-tool');
+    builder.bin('test-bin');
+    const beforeInstall: AsyncInstallHook = async () => {};
+    const afterDownload: AsyncInstallHook = async () => {};
+    const afterExtract: AsyncInstallHook = async () => {};
+    const afterInstall: AsyncInstallHook = async () => {};
+    const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
+
+    builder.install('github-release', installParams);
+    builder.hook('before-install', beforeInstall);
+    builder.hook('after-download', afterDownload);
+    builder.hook('after-extract', afterExtract);
+    builder.hook('after-install', afterInstall);
+
+    const config = builder.build();
+    if (isGitHubReleaseToolConfig(config)) {
+      expect(config.installParams?.hooks).toEqual({
+        'before-install': [beforeInstall],
+        'after-download': [afterDownload],
+        'after-extract': [afterExtract],
+        'after-install': [afterInstall],
+      });
+    }
+  });
+
+  test('hook method does not set hooks and warns if install was not called first', () => {
     const testLogger = new TestLogger();
     const builder = new ToolConfigBuilder(testLogger, 'test-tool');
     const mockHook: AsyncInstallHook = async () => {};
-    const hooksData = { beforeInstall: mockHook };
-    builder.hooks(hooksData); // Call hooks without install
+    builder.hook('before-install', mockHook);
 
-    // Check internal state directly
     expect(builder.currentInstallParams?.['hooks']).toBeUndefined();
 
-    // Use TestLogger.expect() to verify the warning was logged
     testLogger.expect(
       ['WARN'],
       ['ToolConfigBuilder'],
       [
         messages.configurationFieldIgnored(
-          'hooks',
-          'hooks() called for tool "test-tool" before install(). Hooks will not be set as install() was not called first.'
+          'hook',
+          'hook() called for tool "test-tool" before install(). Hook will not be set as install() was not called first.'
         ),
       ]
     );
@@ -122,13 +176,12 @@ describe('ToolConfigBuilder', () => {
     const builder = new ToolConfigBuilder(logger, 'test-tool');
     const installParams: GithubReleaseInstallParams = { repo: 'owner/repo' };
     const mockHook: AsyncInstallHook = async () => {};
-    const hooks = { afterInstall: mockHook };
 
     builder
       .bin('tool-bin')
       .version('1.0.0')
       .install('github-release', installParams)
-      .hooks(hooks)
+      .hook('after-install', mockHook)
       .zsh({
         shellInit: [always`alias tt="test-tool"`],
         completions: { source: 'completion.bash' },
@@ -142,7 +195,7 @@ describe('ToolConfigBuilder', () => {
     expect(config.version).toBe('1.0.0');
     expect(config.installationMethod).toBe('github-release');
     if (isGitHubReleaseToolConfig(config)) {
-      expect(config.installParams).toEqual({ ...installParams, hooks });
+      expect(config.installParams).toEqual({ ...installParams, hooks: { 'after-install': [mockHook] } });
     }
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
     expect(config.shellConfigs?.zsh?.completions).toEqual({ source: 'completion.bash' });

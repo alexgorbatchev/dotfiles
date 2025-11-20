@@ -1,4 +1,5 @@
 import type {
+  AsyncInstallHook,
   OperationFailure,
   OperationSuccess,
   PostDownloadInstallContext,
@@ -39,24 +40,27 @@ export async function executeAfterDownloadHook(
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<ExecuteHooksResult> {
-  if (!toolConfig.installParams?.hooks?.afterDownload) {
+  // TODO fix so that installParams and hooks don't need string based accessors
+  const hooks = toolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+  const afterDownloadHooks = hooks?.['after-download'];
+
+  if (!afterDownloadHooks) {
     return { success: true };
   }
 
-  logger.debug(messages.hooks.afterDownload());
+  logger.debug(messages.lifecycle.hookExecution('after-download'));
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
-  const hookResult = await hookExecutor.executeHook(
-    'afterDownload',
-    toolConfig.installParams.hooks.afterDownload,
-    enhancedContext
-  );
 
-  if (!hookResult.success) {
-    return {
-      success: false,
-      error: `afterDownload hook failed: ${hookResult.error}`,
-    };
+  for (const hook of afterDownloadHooks) {
+    const hookResult = await hookExecutor.executeHook('after-download', hook, enhancedContext);
+
+    if (!hookResult.success) {
+      return {
+        success: false,
+        error: `afterDownload hook failed: ${hookResult.error}`,
+      };
+    }
   }
 
   return { success: true };
@@ -87,24 +91,26 @@ export async function executeAfterExtractHook(
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<ExecuteHooksResult> {
-  if (!toolConfig.installParams?.hooks?.afterExtract) {
+  const hooks = toolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+  const afterExtractHooks = hooks?.['after-extract'];
+
+  if (!afterExtractHooks) {
     return { success: true };
   }
 
-  logger.debug(messages.hooks.afterExtract());
+  logger.debug(messages.lifecycle.hookExecution('after-extract'));
 
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
-  const hookResult = await hookExecutor.executeHook(
-    'afterExtract',
-    toolConfig.installParams.hooks.afterExtract,
-    enhancedContext
-  );
 
-  if (!hookResult.success) {
-    return {
-      success: false,
-      error: `afterExtract hook failed: ${hookResult.error}`,
-    };
+  for (const hook of afterExtractHooks) {
+    const hookResult = await hookExecutor.executeHook('after-extract', hook, enhancedContext);
+
+    if (!hookResult.success) {
+      return {
+        success: false,
+        error: `afterExtract hook failed: ${hookResult.error}`,
+      };
+    }
   }
 
   return { success: true };

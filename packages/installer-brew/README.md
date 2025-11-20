@@ -30,7 +30,7 @@ The `install('brew', params)` function accepts the following parameters:
 - **cask** (optional): Set to `true` to install as a Homebrew Cask. Default: `false`
 - **tap** (optional): Tap or array of taps to add before installation (e.g., `'user/tap'` or `['tap1', 'tap2']`)
 - **env** (optional): Environment variables for the installation process
-- **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterInstall`)
+- **hooks** (optional): Lifecycle hooks (`'before-install'`, `'after-install'`)
 
 ### Examples
 

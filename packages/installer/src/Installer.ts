@@ -4,6 +4,7 @@ import type {
   AsyncInstallHook,
   BaseInstallContext,
   InstallerPluginRegistry,
+  PluginEmittedHookEvent,
   SystemInfo,
   ToolConfig,
 } from '@dotfiles/core';
@@ -100,27 +101,17 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Type guard that validates if a value is an AsyncInstallHook function.
-   * Used to safely access hook functions from tool configuration before execution.
-   *
-   * @param value - Unknown value to check
-   * @returns True if value is a function (AsyncInstallHook), false otherwise
-   */
-  private isAsyncInstallHook(value: unknown): value is AsyncInstallHook {
-    return typeof value === 'function';
-  }
-
-  /**
    * Handles installation events emitted by plugins by executing corresponding hooks.
    * Registered with the plugin registry during constructor initialization.
    *
    * Flow:
    * 1. Checks if current tool config exists
    * 2. Extracts hooks from tool config install params
-   * 3. Finds hook function matching event type (e.g., 'afterDownload')
-   * 4. Creates enhanced context with file system from event
-   * 5. Executes hook with proper error handling
-   * 6. Throws error if hook fails to propagate back to plugin
+   * 3. Maps plugin event names to hook keys
+   * 4. Finds hook function array matching the key
+   * 5. Creates enhanced context with file system from event
+   * 6. Executes hook(s) with proper error handling
+   * 7. Throws error if hook execution fails to propagate back to plugin
    *
    * @param event - Installation event containing type, tool name, and context
    * @throws Error if hook execution fails
@@ -134,15 +125,13 @@ export class Installer implements IInstaller {
       return;
     }
 
-    const hooks = (this.currentToolConfig.installParams as Record<string, unknown>)?.['hooks'] as
-      | Record<string, unknown>
-      | undefined;
+    const hooks = this.currentToolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
     if (!hooks) {
       return;
     }
 
-    const hook = hooks[event.type];
-    if (!this.isAsyncInstallHook(hook)) {
+    const hookArray = hooks[event.type];
+    if (!hookArray) {
       return;
     }
 
@@ -150,13 +139,15 @@ export class Installer implements IInstaller {
     const toolFs = (event.context['fileSystem'] as typeof this.fs) || this.fs;
     const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs);
 
-    // Execute the hook with the enhanced context
-    const result = await this.hookExecutor.executeHook(event.type, hook, enhancedContext);
+    // Execute all hooks in sequence
+    for (const hook of hookArray) {
+      const result = await this.hookExecutor.executeHook(event.type, hook, enhancedContext);
 
-    // If hook failed, throw error to propagate back to plugin
-    if (!result.success) {
-      const errorMessage = result.error ? `${event.type} hook failed: ${result.error}` : `Hook ${event.type} failed`;
-      throw new Error(errorMessage);
+      // If hook failed, throw error to propagate back to plugin
+      if (!result.success) {
+        const errorMessage = result.error ? `${event.type} hook failed: ${result.error}` : `Hook ${event.type} failed`;
+        throw new Error(errorMessage);
+      }
     }
   }
 
@@ -227,24 +218,27 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<InstallResult | null> {
     const logger = parentLogger.getSubLogger({ name: 'executeBeforeInstallHook' });
-    if (!resolvedToolConfig.installParams?.hooks?.beforeInstall) {
+    const hooks = resolvedToolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+    const beforeInstallHooks = hooks?.['before-install'];
+
+    if (!beforeInstallHooks) {
       return null;
     }
 
-    logger.debug(messages.lifecycle.hookExecution('beforeInstall'));
+    logger.debug(messages.lifecycle.hookExecution('before-install'));
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
-    const result = await this.hookExecutor.executeHook(
-      'beforeInstall',
-      resolvedToolConfig.installParams.hooks.beforeInstall,
-      enhancedContext
-    );
 
-    if (!result.success) {
-      const failureResult: InstallResult = {
-        success: false,
-        error: `beforeInstall hook failed: ${result.error}`,
-      };
-      return failureResult;
+    // Execute all hooks in sequence
+    for (const hook of beforeInstallHooks) {
+      const result = await this.hookExecutor.executeHook('before-install', hook, enhancedContext);
+
+      if (!result.success) {
+        const failureResult: InstallResult = {
+          success: false,
+          error: `beforeInstall hook failed: ${result.error}`,
+        };
+        return failureResult;
+      }
     }
 
     return null;
@@ -279,22 +273,23 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'executeAfterInstallHook' });
-    if (!resolvedToolConfig.installParams?.hooks?.afterInstall) {
+    const hooks = resolvedToolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+    const afterInstallHooks = hooks?.['after-install'];
+
+    if (!afterInstallHooks) {
       return;
     }
 
-    logger.debug(messages.lifecycle.hookExecution('afterInstall'));
+    logger.debug(messages.lifecycle.hookExecution('after-install'));
 
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
     enhancedContext.binaryPath = result.success && result.binaryPaths.length > 0 ? result.binaryPaths[0] : undefined;
     enhancedContext.version = result.success && 'version' in result ? result.version : undefined;
 
-    await this.hookExecutor.executeHook(
-      'afterInstall',
-      resolvedToolConfig.installParams.hooks.afterInstall,
-      enhancedContext,
-      { continueOnError: true }
-    );
+    // Execute all hooks in sequence
+    for (const hook of afterInstallHooks) {
+      await this.hookExecutor.executeHook('after-install', hook, enhancedContext, { continueOnError: true });
+    }
   }
 
   /**
@@ -659,7 +654,7 @@ export class Installer implements IInstaller {
         // Event emitter for plugins to trigger hooks
         emitEvent: async (type: string, data: Record<string, unknown>) => {
           await this.registry.emitEvent({
-            type: type as 'afterDownload' | 'afterExtract',
+            type: type as PluginEmittedHookEvent,
             toolName,
             context: {
               ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger).context,

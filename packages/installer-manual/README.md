@@ -34,7 +34,7 @@ The `install('manual', params)` function accepts the following parameters:
 
 - **binaryPath** (optional): Path to an existing binary file relative to the tool configuration file location. Supports path expansion using `~` and environment variables.
 - **env** (optional): Environment variables for the installation process
-- **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterInstall`)
+- **hooks** (optional): Lifecycle hooks (`'before-install'`, `'after-install'`)
 
 If `binaryPath` is not specified, the plugin only processes shell configurations and symlinks without binary installation.
 

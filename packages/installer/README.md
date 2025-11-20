@@ -214,21 +214,19 @@ Downloads and installs tools from GitHub releases with flexible asset selection.
 
 **Example:**
 ```typescript
-const toolConfig: GithubReleaseToolConfig = {
-  name: 'fzf',
-  binaries: ['fzf'],
-  version: 'latest',
-  installationMethod: 'github-release',
-  installParams: {
+import { defineTool } from '@dotfiles/cli';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
     repo: 'junegunn/fzf',
     assetPattern: '*linux*amd64*.tar.gz',
-    hooks: {
-      afterExtract: async (context) => {
-        // Custom post-extraction logic
-      }
-    }
-  }
-};
+  })
+    .bin('fzf')
+    .version('latest')
+    .hook('after-extract', async (context) => {
+      // Custom post-extraction logic
+    })
+);
 ```
 
 ### 2. Homebrew
@@ -385,10 +383,10 @@ The installer supports four lifecycle hooks that allow custom logic at different
 
 ### Hook Types
 
-1. **beforeInstall**: Executed before any installation steps
-2. **afterDownload**: Executed after downloading files (GitHub, Cargo, curl-tar)
-3. **afterExtract**: Executed after extracting archives (GitHub, Cargo, curl-tar)
-4. **afterInstall**: Executed after all installation steps (all methods)
+1. **'before-install'**: Executed before any installation steps
+2. **'after-download'**: Executed after downloading files (GitHub, Cargo, curl-tar)
+3. **'after-extract'**: Executed after extracting archives (GitHub, Cargo, curl-tar)
+4. **'after-install'**: Executed after all installation steps (all methods)
 
 ### Hook Context
 
@@ -415,36 +413,34 @@ interface InstallHookContext extends BaseToolContext {
 ### Example Hook Usage
 
 ```typescript
-const toolConfig: GithubReleaseToolConfig = {
-  name: 'bat',
-  binaries: ['bat'],
-  version: 'latest',
-  installationMethod: 'github-release',
-  installParams: {
+import { defineTool } from '@dotfiles/cli';
+import path from 'node:path';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
     repo: 'sharkdp/bat',
-    hooks: {
-      afterExtract: async (context) => {
-        // Create config directory
-        const configDir = path.join(context.installDir, 'config');
-        await context.fileSystem.ensureDir(configDir);
-        
-        // Create default config
-        const configPath = path.join(configDir, 'config');
-        await context.fileSystem.writeFile(
-          configPath, 
-          `--theme="Monokai Extended"\n--style="numbers,changes,header"\n`
-        );
-        
-        context.logger.debug('Configuration setup completed');
-      },
+  })
+    .bin('bat')
+    .version('latest')
+    .hook('after-extract', async (context) => {
+      // Create config directory
+      const configDir = path.join(context.installDir, 'config');
+      await context.fileSystem.ensureDir(configDir);
       
-      afterInstall: async (context) => {
-        // Use the $ shell executor for running commands
-        await context.$`${context.binaryPath} --version`;
-      }
-    }
-  }
-};
+      // Create default config
+      const configPath = path.join(configDir, 'config');
+      await context.fileSystem.writeFile(
+        configPath, 
+        `--theme="Monokai Extended"\n--style="numbers,changes,header"\n`
+      );
+      
+      context.logger.debug('Configuration setup completed');
+    })
+    .hook('after-install', async (context) => {
+      // Use the $ shell executor for running commands
+      await context.$`${context.binaryPath} --version`;
+    })
+);
 ```
 
 ### Hook Execution
@@ -619,7 +615,7 @@ const result = await setup.installer.install('tool-name', toolConfig);
 
 ```typescript
 import { Installer } from '@dotfiles/installer';
-import type { GithubReleaseToolConfig } from '@dotfiles/schemas';
+import { defineTool } from '@dotfiles/cli';
 
 // Create installer instance
 const installer = new Installer(
@@ -634,19 +630,18 @@ const installer = new Installer(
   systemInfo
 );
 
-// Define tool configuration
-const toolConfig: GithubReleaseToolConfig = {
-  name: 'fzf',
-  binaries: ['fzf'],
-  version: 'latest',
-  installationMethod: 'github-release',
-  installParams: {
+// Define tool configuration using defineTool
+const toolConfigFn = defineTool((install, ctx) =>
+  install('github-release', {
     repo: 'junegunn/fzf',
     assetPattern: '*linux*amd64*.tar.gz'
-  }
-};
+  })
+    .bin('fzf')
+    .version('latest')
+);
 
-// Install the tool
+// Build the config and install
+const toolConfig = await toolConfigFn(...);
 const result = await installer.install('fzf', toolConfig);
 
 if (result.success) {
@@ -686,7 +681,7 @@ export const myCustomInstallParamsSchema = baseInstallParamsSchema.extend({
    */
   hooks: z
     .object({
-      beforeInstall: installHookSchema.optional(),
+      'before-install': z.array(installHookSchema).optional(),
       afterDownload: installHookSchema.optional(),
       afterExtract: installHookSchema.optional(),
       afterInstall: installHookSchema.optional(),

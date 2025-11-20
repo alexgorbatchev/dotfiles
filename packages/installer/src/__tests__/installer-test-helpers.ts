@@ -285,7 +285,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
-        await context.emitEvent('afterDownload', {
+        await context.emitEvent('after-download', {
           downloadPath: `${context.installDir}/${toolName}-darwin-arm64.tar.gz`,
           fileSystem: fs,
         });
@@ -311,7 +311,7 @@ export async function createInstallerTestSetup(): Promise<InstallerTestSetup> {
 
       // Simulate extract event - this will throw if hook throws
       if (context.emitEvent) {
-        await context.emitEvent('afterExtract', {
+        await context.emitEvent('after-extract', {
           extractDir,
           extractResult: {
             extractedFiles: [toolName, 'tool', 'README.md', 'LICENSE'],

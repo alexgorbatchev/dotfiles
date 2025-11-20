@@ -85,8 +85,8 @@ describe('Installer - install (orchestrator)', () => {
       installParams: {
         repo: MOCK_TOOL_REPO,
         hooks: {
-          beforeInstall: beforeInstallHook,
-          afterInstall: afterInstallHook,
+          'before-install': [beforeInstallHook],
+          'after-install': [afterInstallHook],
         },
       },
     });

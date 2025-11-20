@@ -32,7 +32,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            beforeInstall: beforeInstallHook,
+            'before-install': [beforeInstallHook],
           },
         },
       };
@@ -60,7 +60,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            beforeInstall: beforeInstallHook,
+            'before-install': [beforeInstallHook],
           },
         },
       };
@@ -87,7 +87,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            beforeInstall: beforeInstallHook,
+            'before-install': [beforeInstallHook],
           },
         },
       };
@@ -130,7 +130,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterInstall: afterInstallHook,
+            'after-install': [afterInstallHook],
           },
         },
       };
@@ -155,7 +155,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterInstall: afterInstallHook,
+            'after-install': [afterInstallHook],
           },
         },
       };
@@ -185,7 +185,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterDownload: afterDownloadHook,
+            'after-download': [afterDownloadHook],
           },
         },
       };
@@ -210,7 +210,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterDownload: afterDownloadHook,
+            'after-download': [afterDownloadHook],
           },
         },
       };
@@ -244,7 +244,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterExtract: afterExtractHook,
+            'after-extract': [afterExtractHook],
           },
         },
       };
@@ -269,7 +269,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterExtract: afterExtractHook,
+            'after-extract': [afterExtractHook],
           },
         },
       };
@@ -311,10 +311,10 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            beforeInstall: beforeInstallHook,
-            afterDownload: afterDownloadHook,
-            afterExtract: afterExtractHook,
-            afterInstall: afterInstallHook,
+            'before-install': [beforeInstallHook],
+            'after-download': [afterDownloadHook],
+            'after-extract': [afterExtractHook],
+            'after-install': [afterInstallHook],
           },
         },
       };
@@ -353,10 +353,10 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            beforeInstall: beforeInstallHook,
-            afterDownload: afterDownloadHook,
-            afterExtract: afterExtractHook,
-            afterInstall: afterInstallHook,
+            'before-install': [beforeInstallHook],
+            'after-download': [afterDownloadHook],
+            'after-extract': [afterExtractHook],
+            'after-install': [afterInstallHook],
           },
         },
       };
@@ -389,7 +389,7 @@ describe('Installer - Enhanced Hooks', () => {
         installParams: {
           repo: mockToolRepo,
           hooks: {
-            afterExtract: afterExtractHook,
+            'after-extract': [afterExtractHook],
           },
         },
       };

@@ -178,11 +178,11 @@ ls -ld ~/.config/tool-name
 **Verify path resolution:**
 ```typescript
 // Debug path resolution in hook context
-afterInstall: async ({ logger, toolConfig, ctx }) => {
+c.hook('after-install', async ({ logger, toolConfig, ctx }) => {
   logger.warn('Tool config directory:', toolConfig.configDir);
   logger.warn('Source path:', './config.toml');
   logger.warn('Target path:', `${ctx.homeDir}/.config/tool/config.toml`);
-}
+});
 
 **Check relative paths:**
 - Ensure source paths start with `./` for relative paths

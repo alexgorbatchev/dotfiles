@@ -41,6 +41,16 @@ type KnownBinNameKeys = Exclude<keyof KnownBinNameRegistry, '__placeholder__'>;
 export type KnownBinName = [KnownBinNameKeys] extends [never] ? string : KnownBinNameKeys;
 
 /**
+ * Hook event names that plugins can emit during installation.
+ */
+export type PluginEmittedHookEvent = 'after-download' | 'after-extract';
+
+/**
+ * Hook event names used in the installation lifecycle.
+ */
+export type HookEventName = 'before-install' | PluginEmittedHookEvent | 'after-install';
+
+/**
  * Fluent builder interface for configuring a tool.
  * Returned by InstallFunction after selecting installer method.
  */
@@ -48,12 +58,14 @@ export interface ToolConfigBuilder {
   bin(name: string, pattern?: string): this;
   version(version: string): this;
   dependsOn(...binaryNames: KnownBinName[]): this;
-  hooks(hooks: {
-    beforeInstall?: AsyncInstallHook;
-    afterDownload?: AsyncInstallHook;
-    afterExtract?: AsyncInstallHook;
-    afterInstall?: AsyncInstallHook;
-  }): this;
+  /**
+   * Attach a hook handler to a specific lifecycle event.
+   * Multiple handlers can be added by calling this method multiple times with the same event name.
+   *
+   * @param event - The lifecycle event name (kebab-case)
+   * @param handler - The async hook function to execute
+   */
+  hook(event: HookEventName, handler: AsyncInstallHook): this;
   zsh(config: ShellConfig): this;
   bash(config: ShellConfig): this;
   powershell(config: ShellConfig): this;
@@ -74,12 +86,14 @@ export interface PlatformConfigBuilder {
   bin(name: string, pattern?: string): this;
   version(version: string): this;
   dependsOn(...binaryNames: KnownBinName[]): this;
-  hooks(hooks: {
-    beforeInstall?: AsyncInstallHook;
-    afterDownload?: AsyncInstallHook;
-    afterExtract?: AsyncInstallHook;
-    afterInstall?: AsyncInstallHook;
-  }): this;
+  /**
+   * Attach a hook handler to a specific lifecycle event.
+   * Multiple handlers can be added by calling this method multiple times with the same event name.
+   *
+   * @param event - The lifecycle event name (kebab-case)
+   * @param handler - The async hook function to execute
+   */
+  hook(event: HookEventName, handler: AsyncInstallHook): this;
   zsh(config: ShellConfig): this;
   bash(config: ShellConfig): this;
   powershell(config: ShellConfig): this;

@@ -1,13 +1,14 @@
 import type { BaseInstallContext } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { z } from 'zod';
+import type { PluginEmittedHookEvent } from './builder/builder.types';
 import { messages } from './log-messages';
 import type { AggregateInstallResult, InstallerPlugin, InstallOptions, InstallResult, ValidationResult } from './types';
 
 type InstallEventHandler = (event: InstallEvent) => Promise<void>;
 
 export interface InstallEvent {
-  type: 'afterDownload' | 'afterExtract';
+  type: PluginEmittedHookEvent;
   toolName: string;
   context: BaseInstallContext & Record<string, unknown>;
 }

@@ -16,17 +16,20 @@ export const baseInstallParamsSchema = z
     /**
      * A collection of optional asynchronous hook functions that can be executed at different stages
      * of the installation lifecycle.
+     *
+     * Hooks are specified as arrays of functions with kebab-case keys:
+     * - 'before-install', 'after-download', 'after-extract', 'after-install'
      */
     hooks: z
       .object({
         /** Runs before any other installation steps (download, extract, main install command) begin. */
-        beforeInstall: installHookSchema.optional(),
-        /** Runs after the tool's primary artifact (e.g., archive, script) has been downloaded but before extraction or execution. */
-        afterDownload: installHookSchema.optional(),
-        /** Runs after an archive has been extracted (if applicable to the installation method) but before the main binary is finalized. */
-        afterExtract: installHookSchema.optional(),
-        /** Runs after the main installation command or process for the tool has completed and the binary is expected to be in place. */
-        afterInstall: installHookSchema.optional(),
+        'before-install': z.array(installHookSchema).optional(),
+        /** Runs after download but before extraction or execution. */
+        'after-download': z.array(installHookSchema).optional(),
+        /** Runs after extraction but before the main binary is finalized. */
+        'after-extract': z.array(installHookSchema).optional(),
+        /** Runs after the main installation command completes. */
+        'after-install': z.array(installHookSchema).optional(),
       })
       .partial()
       .optional(),

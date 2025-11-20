@@ -199,22 +199,20 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### Multi-Stage Build Process
 
 ```typescript
-c.hooks({
-  afterExtract: async ({ extractDir, installDir, logger, $ }) => {
-    if (extractDir) {
-      logger.info('Starting multi-stage build...');
-      
-      // Stage 1: Configure
-      await $`cd ${extractDir} && ./configure --prefix=${installDir}`;
-      
-      // Stage 2: Build
-      await $`cd ${extractDir} && make -j$(nproc)`;
-      
-      // Stage 3: Install
-      await $`cd ${extractDir} && make install`;
-      
-      logger.info('Multi-stage build completed');
-    }
+c.hook('after-extract', async ({ extractDir, installDir, logger, $ }) => {
+  if (extractDir) {
+    logger.info('Starting multi-stage build...');
+    
+    // Stage 1: Configure
+    await $`cd ${extractDir} && ./configure --prefix=${installDir}`;
+    
+    // Stage 2: Build
+    await $`cd ${extractDir} && make -j$(nproc)`;
+    
+    // Stage 3: Install
+    await $`cd ${extractDir} && make install`;
+    
+    logger.info('Multi-stage build completed');
   }
 })
 ```
@@ -238,16 +236,14 @@ For more complex setups you can combine dependency declarations with hooks—for
 ```typescript
 c.dependsOn('node');
 
-c.hooks({
-  beforeInstall: async ({ logger, $ }) => {
-    const versionCheck = await $`node --version`.nothrow();
-    if (versionCheck.exitCode !== 0) {
-      throw new Error('Node is required but not available');
-    }
-
-    const version = versionCheck.stdout.toString().trim();
-    logger.info(`Using system Node ${version}`);
+c.hook('before-install', async ({ logger, $ }) => {
+  const versionCheck = await $`node --version`.nothrow();
+  if (versionCheck.exitCode !== 0) {
+    throw new Error('Node is required but not available');
   }
+
+  const version = versionCheck.stdout.toString().trim();
+  logger.info(`Using system Node ${version}`);
 });
 ```
 
@@ -371,54 +367,50 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### Runtime Validation
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ toolConfig, logger }) => {
-    // Validate configuration
-    const requiredBinaries = toolConfig.binaries || [];
-    if (requiredBinaries.length === 0) {
-      throw new Error('No binaries defined for tool');
-    }
-    
-    // Validate shell configuration
-    const shellConfig = toolConfig.shell?.zsh;
-    if (shellConfig?.environment) {
-      for (const [key, value] of Object.entries(shellConfig.environment)) {
-        if (!key || !value) {
-          logger.warn(`Invalid environment variable: ${key}=${value}`);
-        }
+c.hook('after-install', async ({ toolConfig, logger }) => {
+  // Validate configuration
+  const requiredBinaries = toolConfig.binaries || [];
+  if (requiredBinaries.length === 0) {
+    throw new Error('No binaries defined for tool');
+  }
+  
+  // Validate shell configuration
+  const shellConfig = toolConfig.shell?.zsh;
+  if (shellConfig?.environment) {
+    for (const [key, value] of Object.entries(shellConfig.environment)) {
+      if (!key || !value) {
+        logger.warn(`Invalid environment variable: ${key}=${value}`);
       }
     }
-    
-    logger.info('Configuration validation passed');
   }
+  
+  logger.info('Configuration validation passed');
 })
 ```
 
 ### Schema Validation
 
 ```typescript
-c.hooks({
-  beforeInstall: async ({ toolConfig, logger }) => {
-    // Custom validation logic
-    const schema = {
-      requiredFields: ['binaries', 'version', 'install'],
-      validInstallMethods: ['github-release', 'brew', 'cargo', 'manual']
-    };
-    
-    // Validate required fields
-    for (const field of schema.requiredFields) {
-      if (!toolConfig[field]) {
-        throw new Error(`Required field missing: ${field}`);
-      }
+c.hook('before-install', async ({ toolConfig, logger }) => {
+  // Custom validation logic
+  const schema = {
+    requiredFields: ['binaries', 'version', 'install'],
+    validInstallMethods: ['github-release', 'brew', 'cargo', 'manual']
+  };
+  
+  // Validate required fields
+  for (const field of schema.requiredFields) {
+    if (!toolConfig[field]) {
+      throw new Error(`Required field missing: ${field}`);
     }
-    
-    // Validate install method
-    if (!schema.validInstallMethods.includes(toolConfig.install.method)) {
-      throw new Error(`Invalid install method: ${toolConfig.install.method}`);
-    }
-    
-    logger.info('Schema validation passed');
   }
+  
+  // Validate install method
+  if (!schema.validInstallMethods.includes(toolConfig.install.method)) {
+    throw new Error(`Invalid install method: ${toolConfig.install.method}`);
+  }
+  
+  logger.info('Schema validation passed');
 })
 ```
 
@@ -448,24 +440,22 @@ c.zsh({
 ### Parallel Operations
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, logger }) => {
-    logger.info('Running parallel setup tasks...');
-    
-    // Run multiple setup tasks in parallel
-    const tasks = [
-      $`tool setup-task-1`,
-      $`tool setup-task-2`,
-      $`tool setup-task-3`
-    ];
-    
-    try {
-      await Promise.all(tasks);
-      logger.info('All setup tasks completed');
-    } catch (error) {
-      logger.error('Some setup tasks failed:', error);
-      throw error;
-    }
+c.hook('after-install', async ({ $, logger }) => {
+  logger.info('Running parallel setup tasks...');
+  
+  // Run multiple setup tasks in parallel
+  const tasks = [
+    $`tool setup-task-1`,
+    $`tool setup-task-2`,
+    $`tool setup-task-3`
+  ];
+  
+  try {
+    await Promise.all(tasks);
+    logger.info('All setup tasks completed');
+  } catch (error) {
+    logger.error('Some setup tasks failed:', error);
+    throw error;
   }
 })
 ```

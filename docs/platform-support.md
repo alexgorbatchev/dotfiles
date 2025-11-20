@@ -24,14 +24,16 @@ Architecture.All     // Architecture.X86_64 | Architecture.Arm64 (3)
 
 ```typescript
 // Platform-only configuration
-c.platform(platforms: Platform, configure: (builder) => void)
+install()
+  .platform(platforms: Platform, configure: (install) => PlatformConfigBuilder)
 
 // Platform and architecture-specific configuration  
-c.platform(
-  platforms: Platform, 
-  architectures: Architecture, 
-  configure: (builder) => void
-)
+install()
+  .platform(
+    platforms: Platform, 
+    architectures: Architecture, 
+    configure: (install) => PlatformConfigBuilder
+  )
 ```
 
 ## Basic Platform Configuration
@@ -39,42 +41,40 @@ c.platform(
 ### Single Platform
 
 ```typescript
-import { Platform } from '@types';
+import { defineTool, Platform } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').version('latest');
-  
-  // macOS-specific configuration
-  c.platform(Platform.MacOS, (c) => {
-    c.install('brew', { formula: 'tool' });
-  });
-};
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+);
 ```
 
 ### Multiple Platforms
 
 ```typescript
-import { Platform } from '@types';
+import { defineTool, Platform } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').version('latest');
-  
-  // Unix platforms (Linux + macOS)
-  c.platform(Platform.Unix, (c) => {
-    c.install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*unix*.tar.gz'
-    });
-  });
-  
-  // Windows-specific
-  c.platform(Platform.Windows, (c) => {
-    c.install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*windows*.zip'
-    });
-  });
-};
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    .platform(Platform.Unix, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*unix*.tar.gz'
+      })
+    )
+    .platform(Platform.Windows, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*windows*.zip'
+      })
+    )
+);
 ```
 
 ## Architecture-Specific Configuration
@@ -82,83 +82,71 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### Platform and Architecture Combined
 
 ```typescript
-import { Platform, Architecture } from '@types';
+import { defineTool, Platform, Architecture } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').version('latest');
-  
-  // Linux x86_64
-  c.platform(Platform.Linux, Architecture.X86_64, (c) => {
-    c.install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*linux-amd64*.tar.gz'
-    });
-  });
-  
-  // Linux ARM64
-  c.platform(Platform.Linux, Architecture.Arm64, (c) => {
-    c.install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*linux-arm64*.tar.gz'
-    });
-  });
-  
-  // macOS (both architectures)
-  c.platform(Platform.MacOS, Architecture.All, (c) => {
-    c.install('brew', { formula: 'tool' });
-  });
-};
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    .platform(Platform.Linux, Architecture.X86_64, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*linux-amd64*.tar.gz'
+      })
+    )
+    .platform(Platform.Linux, Architecture.Arm64, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*linux-arm64*.tar.gz'
+      })
+    )
+    .platform(Platform.MacOS, Architecture.All, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+);
 ```
 
 ## Complete Multi-Platform Example
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { Platform, Architecture } from '@types';
+import { defineTool, Platform, Architecture } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  // Common configuration for all platforms
-  c.bin('tool').version('latest');
-    
-  // macOS-specific
-  c.platform(Platform.MacOS, (c) => {
-    c.install('brew', { formula: 'tool' })
-     .zsh({ aliases: { 't': 'tool --macos-mode' } });
-  });
-  
-  // Linux-specific  
-  c.platform(Platform.Linux, (c) => {
-    c.install('github-release', {
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+        .zsh({ aliases: { 't': 'tool --macos-mode' } })
+    )
+    .platform(Platform.Linux, (install) =>
+      install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
       })
-     .zsh({ aliases: { 't': 'tool --linux-mode' } });
-  });
-  
-  // Windows with architecture-specific configuration
-  c.platform(Platform.Windows, Architecture.Arm64, (c) => {
-    c.install('github-release', {
+        .zsh({ aliases: { 't': 'tool --linux-mode' } })
+    )
+    .platform(Platform.Windows, Architecture.Arm64, (install) =>
+      install('github-release', {
         repo: 'owner/tool', 
         assetPattern: '*windows-arm64.zip',
       })
-     .powershell({ 
-       environment: { 'TOOL_ARCH': 'arm64' },
-       aliases: { 't': 'tool --windows-mode' }
-     });
-  });
-  
-  // Windows x86_64
-  c.platform(Platform.Windows, Architecture.X86_64, (c) => {
-    c.install('github-release', {
+        .powershell({ 
+          environment: { 'TOOL_ARCH': 'arm64' },
+          aliases: { 't': 'tool --windows-mode' }
+        })
+    )
+    .platform(Platform.Windows, Architecture.X86_64, (install) =>
+      install('github-release', {
         repo: 'owner/tool', 
         assetPattern: '*windows-amd64.zip',
       })
-     .powershell({ 
-       environment: { 'TOOL_ARCH': 'amd64' },
-       aliases: { 't': 'tool --windows-mode' }
-     });
-  });
-};
+        .powershell({ 
+          environment: { 'TOOL_ARCH': 'amd64' },
+          aliases: { 't': 'tool --windows-mode' }
+        })
+    )
+);
 ```
 
 ## Platform-Specific Installation Methods
@@ -166,32 +154,28 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### Different Methods per Platform
 
 ```typescript
-import { Platform } from '@types';
+import { defineTool, Platform } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').version('latest');
-  
-  // macOS: Use Homebrew
-  c.platform(Platform.MacOS, (c) => {
-    c.install('brew', { formula: 'tool' });
-  });
-  
-  // Linux: Use GitHub releases
-  c.platform(Platform.Linux, (c) => {
-    c.install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*linux*.tar.gz'
-    });
-  });
-  
-  // Windows: Use curl script
-  c.platform(Platform.Windows, (c) => {
-    c.install('curl-script', {
-      url: 'https://tool.example.com/install.ps1',
-      shell: 'powershell'
-    });
-  });
-};
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+    .platform(Platform.Linux, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*linux*.tar.gz'
+      })
+    )
+    .platform(Platform.Windows, (install) =>
+      install('curl-script', {
+        url: 'https://tool.example.com/install.ps1',
+        shell: 'powershell'
+      })
+    )
+);
 ```
 
 ## Platform-Specific Shell Configuration
@@ -199,114 +183,111 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### Different Shell Setups
 
 ```typescript
-import { Platform } from '@types';
+import { defineTool, Platform } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').install('github-release', { repo: 'owner/tool' });
-  
-  // Unix platforms (Linux + macOS)
-  c.platform(Platform.Unix, (c) => {
-    c.zsh({
-      environment: {
-        'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
-      },
-      aliases: {
-        't': 'tool',
-        'tl': 'tool list'
-      }
-    })
-    .bash({
-      environment: {
-        'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
-      },
-      aliases: {
-        't': 'tool',
-        'tl': 'tool list'
-      }
-    });
-  });
-  
-  // Windows-specific PowerShell configuration
-  c.platform(Platform.Windows, (c) => {
-    c.powershell({
-      environment: {
-        'TOOL_CONFIG': `${ctx.homeDir}\.config\tool\config.toml`
-      },
-      aliases: {
-        't': 'tool',
-        'tl': 'tool list'
-      }
-    });
-  });
-};
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .platform(Platform.Unix, (install) =>
+      install()
+        .zsh({
+          environment: {
+            'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
+          },
+          aliases: {
+            't': 'tool',
+            'tl': 'tool list'
+          }
+        })
+        .bash({
+          environment: {
+            'TOOL_CONFIG': `${ctx.homeDir}/.config/tool/config.toml`
+          },
+          aliases: {
+            't': 'tool',
+            'tl': 'tool list'
+          }
+        })
+    )
+    .platform(Platform.Windows, (install) =>
+      install()
+        .powershell({
+          environment: {
+            'TOOL_CONFIG': `${ctx.homeDir}\.config\tool\config.toml`
+          },
+          aliases: {
+            't': 'tool',
+            'tl': 'tool list'
+          }
+        })
+    )
+);
 ```
 
 ## Platform-Specific Hooks
 
 ```typescript
-import { Platform } from '@types';
+import { defineTool, Platform } from '@dotfiles/cli';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').install('github-release', { repo: 'owner/tool' });
-  
-  // Platform-specific post-installation setup
-  c.platform(Platform.MacOS, (c) => {
-    c.hooks({
-      afterInstall: async ({ $, logger }) => {
-        logger.info('Running macOS-specific setup...');
-        await $`./setup-macos.sh`;
-      }
-    });
-  });
-  
-  c.platform(Platform.Linux, (c) => {
-    c.hooks({
-      afterInstall: async ({ $, logger }) => {
-        logger.info('Running Linux-specific setup...');
-        await $`./setup-linux.sh`;
-      }
-    });
-  });
-  
-  c.platform(Platform.Windows, (c) => {
-    c.hooks({
-      afterInstall: async ({ $, logger }) => {
-        logger.info('Running Windows-specific setup...');
-        await $`./setup-windows.ps1`;
-      }
-    });
-  });
-};
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .platform(Platform.MacOS, (install) =>
+      install()
+        .hook('after-install', async ({ $, logger }) => {
+          logger.info('Running macOS-specific setup...');
+          await $`./setup-macos.sh`;
+        })
+    )
+    .platform(Platform.Linux, (install) =>
+      install()
+        .hook('after-install', async ({ $, logger }) => {
+          logger.info('Running Linux-specific setup...');
+          await $`./setup-linux.sh`;
+        })
+    )
+    .platform(Platform.Windows, (install) =>
+      install()
+        .hook('after-install', async ({ $, logger }) => {
+          logger.info('Running Windows-specific setup...');
+          await $`./setup-windows.ps1`;
+        })
+    )
+);
 ```
 
 ## Platform Detection in Hooks
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ systemInfo, logger, $ }) => {
-    // Platform-specific logic within hooks
-    switch (systemInfo.platform) {
-      case 'darwin':
-        logger.info('Detected macOS');
-        await $`./configure-macos.sh`;
-        break;
-      case 'linux':
-        logger.info('Detected Linux');
-        await $`./configure-linux.sh`;
-        break;
-      case 'win32':
-        logger.info('Detected Windows');
-        await $`./configure-windows.ps1`;
-        break;
-    }
-    
-    // Architecture-specific logic
-    if (systemInfo.arch === 'arm64') {
-      logger.info('Configuring for ARM64');
-      await $`./configure-arm64.sh`;
-    }
-  }
-})
+import { defineTool } from '@dotfiles/cli';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ systemInfo, logger, $ }) => {
+      // Platform-specific logic within hooks
+      switch (systemInfo.platform) {
+        case 'darwin':
+          logger.info('Detected macOS');
+          await $`./configure-macos.sh`;
+          break;
+        case 'linux':
+          logger.info('Detected Linux');
+          await $`./configure-linux.sh`;
+          break;
+        case 'win32':
+          logger.info('Detected Windows');
+          await $`./configure-windows.ps1`;
+          break;
+      }
+      
+      // Architecture-specific logic
+      if (systemInfo.arch === 'arm64') {
+        logger.info('Configuring for ARM64');
+        await $`./configure-arm64.sh`;
+      }
+    })
+);
 ```
 
 ## Asset Pattern Examples
@@ -340,41 +321,50 @@ assetPattern: '*aarch64*.tar.gz'  // ARM64 (alternative naming)
 ### 1. Start with Common Configuration
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  // Common configuration first
-  c.bin('tool').version('latest');
-  
-  // Then platform-specific overrides
-  c.platform(Platform.MacOS, (c) => {
-    // macOS-specific config
-  });
-};
+import { defineTool, Platform } from '@dotfiles/cli';
+
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+);
 ```
 
 ### 2. Use Logical Platform Groups
 
 ```typescript
-// Group similar platforms
-c.platform(Platform.Unix, (c) => {
-  // Configuration for both Linux and macOS
-});
+import { defineTool, Platform } from '@dotfiles/cli';
 
-c.platform(Platform.Windows, (c) => {
-  // Windows-specific configuration
-});
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .platform(Platform.Unix, (install) =>
+      install('github-release', { repo: 'owner/tool' })
+    )
+    .platform(Platform.Windows, (install) =>
+      install('github-release', { repo: 'owner/tool', assetPattern: '*windows*.zip' })
+    )
+);
 ```
 
 ### 3. Handle Architecture Differences
 
 ```typescript
-// Consider both platform and architecture
-c.platform(Platform.Linux, Architecture.X86_64, (c) => {
-  // Linux x86_64 specific
-});
+import { defineTool, Platform, Architecture } from '@dotfiles/cli';
 
-c.platform(Platform.Linux, Architecture.Arm64, (c) => {
-  // Linux ARM64 specific
-});
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .platform(Platform.Linux, Architecture.X86_64, (install) =>
+      install('github-release', { repo: 'owner/tool', assetPattern: '*linux-amd64*' })
+    )
+    .platform(Platform.Linux, Architecture.Arm64, (install) =>
+      install('github-release', { repo: 'owner/tool', assetPattern: '*linux-arm64*' })
+    )
+);
 ```
 
 ### 4. Test Across Platforms
@@ -387,23 +377,25 @@ c.platform(Platform.Linux, Architecture.Arm64, (c) => {
 ### 5. Document Platform Requirements
 
 ```typescript
+import { defineTool, Platform } from '@dotfiles/cli';
+
 // Document platform-specific requirements
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').version('latest');
-  
-  // macOS: Requires Homebrew
-  c.platform(Platform.MacOS, (c) => {
-    c.install('brew', { formula: 'tool' });
-  });
-  
-  // Linux: Requires glibc 2.17+
-  c.platform(Platform.Linux, (c) => {
-    c.install('github-release', {
-      repo: 'owner/tool',
-      assetPattern: '*linux*.tar.gz'
-    });
-  });
-};
+export default defineTool((install, ctx) =>
+  install()
+    .bin('tool')
+    .version('latest')
+    // macOS: Requires Homebrew
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+    // Linux: Requires glibc 2.17+
+    .platform(Platform.Linux, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*linux*.tar.gz'
+      })
+    )
+);
 ```
 
 ## Troubleshooting
@@ -411,28 +403,37 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### Platform Detection Issues
 
 ```typescript
+import { defineTool } from '@dotfiles/cli';
+
 // Debug platform detection
-c.hooks({
-  beforeInstall: async ({ systemInfo, logger }) => {
-    logger.info(`Detected platform: ${systemInfo.platform}`);
-    logger.info(`Detected architecture: ${systemInfo.arch}`);
-  }
-})
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('before-install', async ({ systemInfo, logger }) => {
+      logger.info(`Detected platform: ${systemInfo.platform}`);
+      logger.info(`Detected architecture: ${systemInfo.arch}`);
+    })
+);
 ```
 
 ### Asset Selection Problems
 
 ```typescript
+import { defineTool } from '@dotfiles/cli';
+
 // Debug asset selection (assetSelector doesn't have logger access)
-c.install('github-release', {
-  repo: 'owner/tool',
-  assetSelector: (assets, sysInfo) => {
-    // Note: Use console.log here since logger is not available in assetSelector
-    console.log('Available assets:', assets.map(a => a.name));
-    console.log('System info:', sysInfo);
-    // Your selection logic
-  }
-})
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/tool',
+    assetSelector: (assets, sysInfo) => {
+      // Note: Use console.log here since logger is not available in assetSelector
+      console.log('Available assets:', assets.map(a => a.name));
+      console.log('System info:', sysInfo);
+      // Your selection logic
+      return assets[0];
+    }
+  }).bin('tool')
+);
 ```
 
 ## Next Steps

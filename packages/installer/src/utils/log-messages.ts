@@ -1,5 +1,6 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
+// TODO flatten
 export const messages = {
   binarySetupService: {
     binaryNotFound: (binaryName: string, pattern: string) =>
@@ -82,6 +83,7 @@ export const messages = {
     extracted: () => createSafeLogMessage('Archive extracted: %o'),
     cleaning: (resourcePath: string) => createSafeLogMessage(`Cleaning up downloaded archive: ${resourcePath}`),
   } satisfies SafeLogMessageMap,
+
   binaryMovement: {
     moving: (sourcePath: string, targetPath: string) =>
       createSafeLogMessage(`Moving binary from ${sourcePath} to ${targetPath}`),
@@ -92,10 +94,6 @@ export const messages = {
     generatingCompletions: (count: number) => createSafeLogMessage(`install: generating ${count} completion files`),
     generatedCompletion: (filename: string, targetPath: string) =>
       createSafeLogMessage(`install: generated completion: ${filename} -> ${targetPath}`),
-  } satisfies SafeLogMessageMap,
-  hooks: {
-    afterDownload: () => createSafeLogMessage('Running afterDownload hook'),
-    afterExtract: () => createSafeLogMessage('Running afterExtract hook'),
   } satisfies SafeLogMessageMap,
   hookExecutor: {
     executingHook: (hookName: string, timeoutMs: number) =>

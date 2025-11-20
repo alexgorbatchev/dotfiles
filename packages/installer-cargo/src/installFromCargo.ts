@@ -121,17 +121,20 @@ async function executeAfterDownloadHook(
   downloadPath: string,
   toolFs: IFileSystem
 ): Promise<CargoInstallResult | { success: true }> {
-  if (toolConfig.installParams?.hooks?.afterDownload) {
-    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs);
-    const hookResult = await hookExecutor.executeHook(
-      'afterDownload',
-      toolConfig.installParams.hooks.afterDownload,
-      enhancedContext
-    );
+  const afterDownloadHooks = toolConfig['installParams']?.hooks?.['after-download'];
+  if (!afterDownloadHooks) {
+    return { success: true };
+  }
+
+  const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs);
+
+  for (const hook of afterDownloadHooks) {
+    const hookResult = await hookExecutor.executeHook('afterDownload', hook, enhancedContext);
     if (!hookResult.success) {
       return { success: false, error: hookResult.error };
     }
   }
+
   return { success: true };
 }
 
@@ -142,13 +145,15 @@ async function executeAfterInstallHook(
   extractResult: ExtractResult,
   toolFs: IFileSystem
 ): Promise<{ success: true } | { success: false; error: string }> {
-  if (toolConfig.installParams?.hooks?.afterInstall) {
-    const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs);
-    const finalHookResult = await hookExecutor.executeHook(
-      'afterInstall',
-      toolConfig.installParams.hooks.afterInstall,
-      enhancedContext
-    );
+  const afterInstallHooks = toolConfig['installParams']?.hooks?.['after-install'];
+  if (!afterInstallHooks) {
+    return { success: true };
+  }
+
+  const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs);
+
+  for (const hook of afterInstallHooks) {
+    const finalHookResult = await hookExecutor.executeHook('afterInstall', hook, enhancedContext);
     if (!finalHookResult.success) {
       return { success: false, error: finalHookResult.error };
     }

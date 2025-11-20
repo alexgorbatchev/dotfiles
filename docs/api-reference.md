@@ -160,22 +160,22 @@ Creates symbolic links for configuration files.
 
 ### Advanced Features
 
-#### `.hooks(hooks: HookConfig)`
+#### `.hook(event: string, handler: HookHandler)`
 Configures installation hooks for custom logic.
 
 **Parameters:**
-- `hooks`: Hook configuration object
+- `event`: Hook event name (`'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`)
+- `handler`: Async function that receives HookContext
 
 **Returns:** `ToolConfigBuilder` (for chaining)
 
-**HookConfig Interface:**
+**Example:**
 ```typescript
-interface HookConfig {
-  beforeInstall?: (context: HookContext) => Promise<void>;
-  afterDownload?: (context: HookContext) => Promise<void>;
-  afterExtract?: (context: HookContext) => Promise<void>;
-  afterInstall?: (context: HookContext) => Promise<void>;
-}
+c.hook('after-install', async (context) => {
+  const { logger, $ } = context;
+  await $`tool init`;
+  logger.info('Tool initialized');
+});
 ```
 
 ## ToolConfigContext Properties
@@ -377,11 +377,9 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     .bin('tool')
     .version('latest')
     .install('github-release', { repo: 'owner/tool' })
-    .hooks({
-      afterInstall: async ({ logger, $ }) => {
-        await $`tool init`;
-        logger.info('Tool initialized');
-      }
+    .hook('after-install', async ({ logger, $ }) => {
+      await $`tool init`;
+      logger.info('Tool initialized');
     })
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
     .zsh({
