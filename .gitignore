@@ -31,6 +31,9 @@ _.log
 .cache
 *.tsbuildinfo
 
+# generated files
+tool-types.d.ts
+
 tmp
 .generated
 

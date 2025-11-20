@@ -15,6 +15,7 @@
     "**/Thumbs.db": true,
     "**/bun.lock": true
   },
+
   "workbench.colorCustomizations": {
     "activityBar.activeBackground": "#7e2cc2",
     "activityBar.background": "#7e2cc2",
@@ -36,9 +37,14 @@
     "titleBar.inactiveForeground": "#e7e7e799"
   },
   "peacock.color": "#632399",
+
   "bun.test.customScript": "bun test:agent",
   "bun.test.customFlag": "",
   "testing.coverageToolbarEnabled": true,
   "typescript.tsdk": "node_modules/typescript/lib",
-  "biome.lsp.bin": "./node_modules/.bin/biome"
+  "biome.lsp.bin": "./node_modules/.bin/biome",
+
+  "todo-tree.filtering.includeGlobs": ["**/packages/**"],
+  "todo-tree.filtering.excludeGlobs": ["**/node_modules/**", "**/README.md"],
+  "todo-tree.tree.autoRefresh": false
 }

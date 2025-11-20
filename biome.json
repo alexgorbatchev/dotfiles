@@ -11,6 +11,8 @@
     "includes": [
       "packages/**",
       "test-project/**",
+      "**/*.json",
+      "!.worktrees",
       "!**/dist",
       "!**/.generated",
       "!**/node_modules",

@@ -53,7 +53,7 @@ Create `dotfiles.config.ts` alongside your YAML config to take advantage of Type
 
 ```typescript
 // dotfiles.config.ts
-import { defineConfig } from '@dotfiles/config';
+import { defineConfig } from '@gitea/dotfiles';
 
 export default defineConfig(async () => ({
   paths: {

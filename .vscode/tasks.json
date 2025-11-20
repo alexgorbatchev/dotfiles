@@ -102,6 +102,32 @@
         "panel": "shared"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "release-next",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "release-next"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "build"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
     }
   ]
 }
