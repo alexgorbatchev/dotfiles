@@ -1,3 +1,6 @@
+import type { ProjectConfig } from '../config';
+import type { SystemInfo } from './common.types';
+
 // TODO remove properties from BaseToolContext that are already available in projectConfig
 // TODO shell.completions(...) needs to somehow to know where tool binary/archive are extracted to be able to point to bundled completion files
 
@@ -12,6 +15,17 @@
  * @see {@link InstallerContext}
  */
 export interface BaseToolContext {
+  /**
+   * The user's parsed application configuration from the main `config.yaml` file.
+   */
+  projectConfig: ProjectConfig;
+
+  /**
+   * Information about the system on which the installation is occurring
+   * (e.g., platform, architecture).
+   */
+  systemInfo: SystemInfo;
+
   /**
    * The name of the tool currently being processed.
    */

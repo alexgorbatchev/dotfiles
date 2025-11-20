@@ -1,11 +1,4 @@
-import type {
-  BaseInstallParams,
-  BaseToolContext,
-  GitHubRelease,
-  GitHubReleaseAsset,
-  SystemInfo,
-  ToolConfig,
-} from '@dotfiles/core';
+import type { BaseInstallParams, BaseToolContext, GitHubRelease, GitHubReleaseAsset, ToolConfig } from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
 
@@ -17,8 +10,6 @@ import { z } from 'zod';
 export interface AssetSelectionContext extends BaseToolContext {
   /** Available release assets to choose from */
   assets: GitHubReleaseAsset[];
-  /** System information for platform/architecture matching */
-  systemInfo: SystemInfo;
   /** The GitHub release being processed */
   release: GitHubRelease;
   /** The tool configuration being processed */

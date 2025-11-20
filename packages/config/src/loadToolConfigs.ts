@@ -126,6 +126,11 @@ function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: 
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
     projectConfig: projectConfig,
+    systemInfo: {
+      platform: process.platform,
+      arch: process.arch,
+      homeDir: projectConfig.paths.homeDir,
+    },
   };
 }
 

@@ -6,7 +6,6 @@
  */
 
 import type { Architecture, BaseToolContext, Platform } from '../common';
-import type { ProjectConfig } from '../config';
 import type { AsyncInstallHook } from '../installer';
 import type { AlwaysScript, OnceScript } from '../shell';
 import type { InstallParamsRegistry, ToolConfig } from '../types';
@@ -189,12 +188,7 @@ export interface PlatformInstallFunction {
 /**
  * Context object for tool configuration.
  */
-export interface ToolConfigContext extends BaseToolContext {
-  /**
-   * The user's parsed application configuration from the main config file.
-   */
-  projectConfig: ProjectConfig;
-}
+export interface ToolConfigContext extends BaseToolContext {}
 
 /**
  * Tool configuration function using the new install-first API.

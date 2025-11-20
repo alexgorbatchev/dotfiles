@@ -1,8 +1,6 @@
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { BaseToolContext } from '../common/baseToolContext.types';
-import type { SystemInfo } from '../common/common.types';
-import type { ProjectConfig } from '../config';
 import type { ExtractResult } from './archive.types';
 
 /**
@@ -18,10 +16,6 @@ import type { ExtractResult } from './archive.types';
  * @public
  */
 export interface InstallHookContext extends BaseToolContext {
-  /**
-   * The user's parsed application configuration from the main `config.yaml` file.
-   */
-  projectConfig: ProjectConfig;
   /**
    * The target directory where the tool's primary binary or executable should
    * be (or has been) installed.
@@ -49,14 +43,6 @@ export interface InstallHookContext extends BaseToolContext {
    * @see {@link ExtractResult}
    */
   extractResult?: ExtractResult;
-
-  /**
-   * Information about the system on which the installation is occurring
-   * (e.g., platform, architecture).
-   * This is available in all hooks.
-   * @see {@link SystemInfo}
-   */
-  systemInfo: SystemInfo;
 
   /**
    * Bun's shell executor for running shell commands.
@@ -106,12 +92,8 @@ export interface BaseInstallContext extends BaseToolContext {
   installDir: string;
   /** A timestamp for the current installation (e.g., `YYYY-MM-DD-HH-MM-SS`). */
   timestamp: string;
-  /** System information for the installation environment. */
-  systemInfo: SystemInfo;
   /** The full tool configuration being processed. */
   toolConfig: ToolConfig;
-  /** The user's parsed application configuration from the main `config.yaml` file. */
-  projectConfig: ProjectConfig;
 }
 
 /**

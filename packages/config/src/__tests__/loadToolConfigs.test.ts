@@ -22,6 +22,11 @@ function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: 
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
     projectConfig: projectConfig,
+    systemInfo: {
+      platform: 'linux',
+      arch: 'x64',
+      homeDir: projectConfig.paths.homeDir,
+    },
   };
 }
 
