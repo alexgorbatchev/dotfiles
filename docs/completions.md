@@ -7,9 +7,9 @@ Command completions make your tools more user-friendly by providing tab completi
 Completions are configured within each shell's configuration using the `completions` property:
 
 ```typescript
-c.zsh((shell) => shell.completions('completions/_tool.zsh'))
- .bash((shell) => shell.completions('completions/tool.bash'))
- .powershell((shell) => shell.completions('completions/tool.ps1'));
+.zsh((shell) => shell.completions('completions/_tool.zsh'))
+.bash((shell) => shell.completions('completions/tool.bash'))
+.powershell((shell) => shell.completions('completions/tool.ps1'));
 ```
 
 ## Completion Configuration
@@ -46,7 +46,7 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 Use `source` when completion files are included in the tool's archive:
 
 ```typescript
-c.zsh((shell) => shell.completions('completions/_tool.zsh'));
+.zsh((shell) => shell.completions('completions/_tool.zsh'));
 ```
 
 ### Dynamic Completions (cmd)
@@ -54,7 +54,7 @@ c.zsh((shell) => shell.completions('completions/_tool.zsh'));
 Use `cmd` when the tool can generate completions dynamically:
 
 ```typescript
-c.zsh((shell) => shell.completions({ cmd: 'my-tool completion zsh' }));
+.zsh((shell) => shell.completions({ cmd: 'my-tool completion zsh' }));
 ```
 
 ## Basic Examples
@@ -62,29 +62,29 @@ c.zsh((shell) => shell.completions({ cmd: 'my-tool completion zsh' }));
 ### Command-Generated Completions
 
 ```typescript
-c.zsh((shell) => shell.completions({ cmd: 'kubectl completion zsh' }))
- .bash((shell) => shell.completions({ cmd: 'kubectl completion bash' }))
- .powershell((shell) => shell.completions({ cmd: 'kubectl completion powershell' }));
+.zsh((shell) => shell.completions({ cmd: 'kubectl completion zsh' }))
+.bash((shell) => shell.completions({ cmd: 'kubectl completion bash' }))
+.powershell((shell) => shell.completions({ cmd: 'kubectl completion powershell' }));
 ```
 
 ### Static File Completions
 
 ```typescript
-c.zsh((shell) => shell.completions('completions/_tool.zsh'));
+.zsh((shell) => shell.completions('completions/_tool.zsh'));
 ```
 
 ### Multiple Shell Support
 
 ```typescript
-c.zsh((shell) => shell.completions('completions/_tool.zsh'))
- .bash((shell) => shell.completions('completions/tool.bash'))
- .powershell((shell) => shell.completions('completions/tool.ps1'));
+.zsh((shell) => shell.completions('completions/_tool.zsh'))
+.bash((shell) => shell.completions('completions/tool.bash'))
+.powershell((shell) => shell.completions('completions/tool.ps1'));
 ```
 
 ### Custom Completion Names
 
 ```typescript
-c.zsh((shell) => shell.completions({
+.zsh((shell) => shell.completions({
   source: 'autocomplete/complete.zsh',
   name: '_my-tool'
 }));
@@ -93,7 +93,7 @@ c.zsh((shell) => shell.completions({
 ### Custom Installation Directory
 
 ```typescript
-c.zsh((shell) => shell.completions({
+.zsh((shell) => shell.completions({
   source: 'completions/tool.zsh',
   targetDir: `${ctx.homeDir}/.zsh/completions`
 }));
@@ -104,7 +104,7 @@ c.zsh((shell) => shell.completions({
 Some tools can generate their own completions. Use shell initialization scripts for this:
 
 ```typescript
-c.zsh((shell) =>
+.zsh((shell) =>
   shell.once(/* zsh */`
     # Generate completions once after installation
     if command -v tool >/dev/null 2>&1; then
@@ -121,7 +121,7 @@ c.zsh((shell) =>
 Zsh completions are automatically loaded from the generated completions directory. The completion files should follow zsh completion conventions:
 
 ```typescript
-c.zsh((shell) => shell.completions('completions/_tool'));
+.zsh((shell) => shell.completions('completions/_tool'));
 ```
 
 ### Bash Completions
@@ -129,7 +129,7 @@ c.zsh((shell) => shell.completions('completions/_tool'));
 Bash completions are sourced during shell initialization:
 
 ```typescript
-c.bash((shell) => shell.completions('completions/tool.bash'));
+.bash((shell) => shell.completions('completions/tool.bash'));
 ```
 
 ### PowerShell Completions
@@ -137,7 +137,7 @@ c.bash((shell) => shell.completions('completions/tool.bash'));
 PowerShell completions are loaded during shell initialization:
 
 ```typescript
-c.powershell((shell) => shell.completions('completions/tool.ps1'));
+.powershell((shell) => shell.completions('completions/tool.ps1'));
 ```
 
 ## Path Resolution
@@ -170,7 +170,7 @@ autoload -U compinit && compinit
 3. **Check permissions**: Ensure the generated file is readable
 
 ```typescript
-c.zsh((shell) =>
+.zsh((shell) =>
   shell.once(/* zsh */`
     # Add error checking for completion generation
     if command -v tool >/dev/null 2>&1; then
@@ -198,7 +198,7 @@ Completions work seamlessly with other shell integration features:
 
 ```typescript
 export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('my-tool')
+  .bin('my-tool')
    .install('github-release', { repo: 'owner/my-tool' })
    .zsh((shell) =>
      shell

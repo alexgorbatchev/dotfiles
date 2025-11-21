@@ -2,10 +2,6 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": ["./.generated/tool-types.d.ts"],
-    "paths": {
-      "@gitea/dotfiles": ["../packages/cli/src/index.ts"],
-      "@dotfiles/core": ["../packages/core/src/index.ts"]
-    }
   },
   "include": ["tools", ".generated/tool-types.d.ts"]
 }
