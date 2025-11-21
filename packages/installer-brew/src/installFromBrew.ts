@@ -1,4 +1,4 @@
-import type { BaseInstallContext, IInstallOptions } from '@dotfiles/core';
+import type { IInstallOptions, InstallContext } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { normalizeVersion } from '@dotfiles/utils';
@@ -41,7 +41,7 @@ type BrewInfo = z.infer<typeof BrewInfoSchema>;
 export async function installFromBrew(
   toolName: string,
   toolConfig: BrewToolConfig,
-  _context: BaseInstallContext,
+  _context: InstallContext,
   options: IInstallOptions | undefined,
   parentLogger: TsLogger,
   shellExecutor: ShellExecutor = $

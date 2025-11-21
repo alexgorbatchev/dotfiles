@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import type { EnhancedInstallHookContext } from '@dotfiles/core';
+import type { AfterInstallContext } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
@@ -52,7 +52,7 @@ describe('Hook Integration Tests', () => {
           repo: 'example/tool',
           hooks: {
             'after-install': [
-              async (context: EnhancedInstallHookContext) => {
+              async (context: AfterInstallContext) => {
                 // Create a config directory
                 const configDir = path.join(context.installDir, 'config');
                 await context.fileSystem.ensureDir(configDir);
@@ -134,7 +134,7 @@ describe('Hook Integration Tests', () => {
           repo: 'example/multi-binary-tool',
           hooks: {
             'after-extract': [
-              async (context: EnhancedInstallHookContext) => {
+              async (context: AfterInstallContext) => {
                 if (!context.extractDir || !context.extractResult) {
                   throw new Error('No extraction results available');
                 }
@@ -252,7 +252,7 @@ describe('Hook Integration Tests', () => {
           repo: 'example/source-tool',
           hooks: {
             'after-extract': [
-              async (context: EnhancedInstallHookContext) => {
+              async (context: AfterInstallContext) => {
                 if (!context.extractDir) {
                   throw new Error('No extraction directory available');
                 }

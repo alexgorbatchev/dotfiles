@@ -1,9 +1,9 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
-  BaseInstallContext,
   IInstallerPlugin,
   IInstallOptions,
+  InstallContext,
   InstallResult,
   IUpdateOptions,
   UpdateCheckResult,
@@ -92,7 +92,7 @@ export class GitHubReleaseInstallerPlugin
   async install(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    context: BaseInstallContext,
+    context: InstallContext,
     options: IInstallOptions | undefined,
     logger: TsLogger
   ): Promise<InstallResult<IGitHubReleaseInstallMetadata>> {
@@ -124,7 +124,7 @@ export class GitHubReleaseInstallerPlugin
   async checkUpdate(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    _context: BaseInstallContext,
+    _context: InstallContext,
     logger: TsLogger
   ): Promise<UpdateCheckResult> {
     try {
@@ -186,7 +186,7 @@ export class GitHubReleaseInstallerPlugin
   async updateTool(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    context: BaseInstallContext,
+    context: InstallContext,
     options: IUpdateOptions,
     logger: TsLogger
   ): Promise<UpdateResult> {
@@ -227,7 +227,7 @@ export class GitHubReleaseInstallerPlugin
       const versionedInstallDir = `${binariesDir}/${toolName}/${newVersion}`;
       await this.fs.ensureDir(versionedInstallDir);
 
-      const updatedContext: BaseInstallContext = {
+      const updatedContext: InstallContext = {
         ...context,
         installDir: versionedInstallDir,
       };

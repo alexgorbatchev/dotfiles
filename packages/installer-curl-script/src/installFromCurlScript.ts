@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { BaseInstallContext } from '@dotfiles/core';
+import type { InstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
@@ -38,7 +38,7 @@ import type { CurlScriptInstallResult, ICurlScriptInstallMetadata } from './type
 export async function installFromCurlScript(
   toolName: string,
   toolConfig: CurlScriptToolConfig,
-  context: BaseInstallContext,
+  context: InstallContext,
   options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,

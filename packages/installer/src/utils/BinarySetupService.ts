@@ -1,6 +1,6 @@
 // TODO rename file because there's no service in this file
 import path from 'node:path';
-import type { BaseInstallContext, IBinaryConfig, ToolConfig } from '@dotfiles/core';
+import type { IBinaryConfig, InstallContext, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { minimatch } from 'minimatch';
@@ -32,7 +32,7 @@ export async function setupBinariesFromArchive(
   fs: IFileSystem,
   toolName: string,
   toolConfig: ToolConfig,
-  context: BaseInstallContext,
+  context: InstallContext,
   extractDir: string,
   parentLogger: TsLogger
 ): Promise<void> {
@@ -254,7 +254,7 @@ export async function setupBinariesFromDirectDownload(
   fs: IFileSystem,
   toolName: string,
   toolConfig: ToolConfig,
-  context: BaseInstallContext,
+  context: InstallContext,
   downloadPath: string,
   parentLogger: TsLogger
 ): Promise<void> {

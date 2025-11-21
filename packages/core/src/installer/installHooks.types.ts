@@ -117,9 +117,8 @@ export interface IAfterInstallContext extends IInstallContext {
  */
 export type AsyncInstallHook<T extends IInstallContext = IInstallContext> = (context: T) => Promise<void>;
 
-// Deprecated aliases for backward compatibility during refactor
-export type BaseInstallContext = IInstallContext;
-export type PostDownloadInstallContext = IDownloadContext;
-export type PostExtractInstallContext = IExtractContext;
-export type InstallHookContext = IInstallContext;
-export type EnhancedInstallHookContext = IAfterInstallContext; // Best approximation
+// Type aliases for commonly used contexts
+export type InstallContext = IInstallContext;
+export type DownloadContext = IDownloadContext;
+export type ExtractContext = IExtractContext;
+export type AfterInstallContext = IAfterInstallContext;

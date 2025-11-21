@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { BaseInstallContext } from '@dotfiles/core';
+import type { InstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IInstallOptions } from '@dotfiles/installer';
 import { createToolFileSystem, getBinaryNames, getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
@@ -27,7 +27,7 @@ import type { IManualInstallMetadata, ManualInstallResult } from './types';
 export async function installManually(
   toolName: string,
   toolConfig: ManualToolConfig,
-  context: BaseInstallContext,
+  context: InstallContext,
   _options: IInstallOptions | undefined,
   fs: IFileSystem,
   parentLogger: TsLogger
@@ -94,7 +94,7 @@ export async function installManually(
 async function installBinariesManually(
   toolConfig: ManualToolConfig,
   toolName: string,
-  context: BaseInstallContext,
+  context: InstallContext,
   toolFs: IFileSystem,
   binaryPath: string,
   parentLogger: TsLogger

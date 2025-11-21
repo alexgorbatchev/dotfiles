@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { BaseInstallContext, ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
+import type { InstallContext, ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
@@ -16,7 +16,7 @@ export async function setupCompletions(
   fs: IFileSystem,
   toolName: string,
   toolConfig: ToolConfig,
-  context: BaseInstallContext,
+  context: InstallContext,
   extractDir: string,
   parentLogger: TsLogger
 ): Promise<void> {
@@ -52,7 +52,7 @@ async function setupShellCompletion(
   shellType: ShellType,
   completions: ShellCompletionConfig,
   extractDir: string,
-  context: BaseInstallContext,
+  context: InstallContext,
   logger: TsLogger
 ): Promise<void> {
   if (!completions.source) {

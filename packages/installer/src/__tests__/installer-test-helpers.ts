@@ -2,7 +2,7 @@ import { mock } from 'bun:test';
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { BaseInstallContext, IExtractResult, IGitHubRelease, InstallerPluginRegistry } from '@dotfiles/core';
+import type { IExtractResult, IGitHubRelease, InstallContext, InstallerPluginRegistry } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
@@ -251,14 +251,12 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
 
   // Setup mock HookExecutor
   const mockExecuteHook = mock(async () => ({ success: true, durationMs: 100, skipped: false }));
-  const mockCreateEnhancedContext = mock(
-    (baseContext: BaseInstallContext, fileSystem: IFileSystem, logger: TsLogger) => ({
-      ...baseContext,
-      fileSystem,
-      logger,
-      $: createMock$(),
-    })
-  );
+  const mockCreateEnhancedContext = mock((baseContext: InstallContext, fileSystem: IFileSystem, logger: TsLogger) => ({
+    ...baseContext,
+    fileSystem,
+    logger,
+    $: createMock$(),
+  }));
   const mockHookExecutor = {
     executeHook: mockExecuteHook,
     createEnhancedContext: mockCreateEnhancedContext,
@@ -281,7 +279,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     install: async (
       toolName: string,
       _toolConfig: unknown,
-      context: BaseInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> }
+      context: InstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> }
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
@@ -483,8 +481,8 @@ export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}):
  */
 export function createTestContext(
   setup: IInstallerTestSetup,
-  overrides: Partial<BaseInstallContext> = {}
-): BaseInstallContext {
+  overrides: Partial<InstallContext> = {}
+): InstallContext {
   const getToolDir = (toolName: string): string => {
     return path.join(setup.testDirs.paths.binariesDir, toolName);
   };

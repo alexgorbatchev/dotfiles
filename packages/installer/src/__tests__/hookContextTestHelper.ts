@@ -1,18 +1,18 @@
-import type { InstallHookContext, ToolConfig } from '@dotfiles/core';
+import type { InstallContext, ToolConfig } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$ } from '@dotfiles/testing-helpers';
 
 /**
- * Helper function to create a proper InstallHookContext for tests.
+ * Helper function to create a proper InstallContext for tests.
  * This creates a context that extends IBaseToolContext with all required properties.
  *
  * @returns An object containing the context and logger for test usage
  */
 export function createTestInstallHookContext(
-  overrides: Partial<InstallHookContext> = {},
+  overrides: Partial<InstallContext> = {},
   testLogger?: TestLogger
-): { context: InstallHookContext; logger: TestLogger } {
+): { context: InstallContext; logger: TestLogger } {
   const logger = testLogger || new TestLogger();
 
   const mockProjectConfig = {
@@ -75,9 +75,7 @@ export function createTestInstallHookContext(
     platform: [],
   };
 
-  // Create the base context with all IBaseToolContext properties
-  const baseContext: InstallHookContext = {
-    // IBaseToolContext properties
+  const baseContext: InstallContext = {
     toolName: 'test-tool',
     toolDir: '/test/binaries/test-tool',
     getToolDir: (toolName: string) => `/test/binaries/${toolName}`,
@@ -88,7 +86,7 @@ export function createTestInstallHookContext(
     generatedDir: mockProjectConfig.paths.generatedDir,
     projectConfig: mockProjectConfig,
 
-    // InstallHookContext specific properties
+    // InstallContext specific properties
     installDir: '/test/install/dir',
     systemInfo: {
       platform: 'darwin',
