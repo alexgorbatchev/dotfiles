@@ -137,9 +137,9 @@ const pathsConfigSchema = z
     /**
      * The directory where executable shims for tools will be placed. This
      * directory should be in the system's `PATH`.
-     * @default /usr/local/bin
+     * @default `${paths.generatedDir}/bin-default`
      */
-    targetDir: z.string().default('/usr/local/bin'),
+    targetDir: z.string().default(`\${paths.generatedDir}/bin-default`),
 
     /**
      * The directory where all generated files (e.g., binaries, shell scripts)

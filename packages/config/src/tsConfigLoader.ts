@@ -49,11 +49,14 @@ export async function loadTsConfig(
       exitCli(1);
     }
 
-    // Handle direct object export (from defineConfig which already executed the function)
-    if (typeof module.default === 'object') {
+    // Handle Promise from defineConfig (which wraps sync/async config functions)
+    if (module.default instanceof Promise) {
+      userConfig = await module.default;
+    } else if (typeof module.default === 'object') {
+      // Handle direct object export
       userConfig = module.default as ProjectConfigPartial;
     } else {
-      logger.error(messages.configurationParseError(userConfigPath, 'TypeScript', 'default export must be an object'));
+      logger.error(messages.configurationParseError(userConfigPath, 'TypeScript', 'default export must be an object or Promise'));
       exitCli(1);
     }
   } catch (error) {
