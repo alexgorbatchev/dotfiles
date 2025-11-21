@@ -5,12 +5,32 @@ import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 
 /**
- * Sets up shell completions for a tool.
+ * Sets up shell completions for a tool by symlinking completion files from the extracted archive.
  *
- * Iterates through the tool's shell configurations and sets up completions for each shell
- * that has a completion source defined. It handles resolving the source file path (checking
- * both the extraction directory and relative to the config file) and creating a symlink
- * in the appropriate shell completion directory.
+ * This function is called during installation after the tool archive has been extracted.
+ * It iterates through the tool's shell configurations and processes completions with `source` paths.
+ *
+ * **Path Resolution:**
+ * - `source` paths are relative to the extracted archive root directory
+ * - Primary: Checks `extractDir/source` (e.g., `extractDir/completions/_tool.zsh`)
+ * - Fallback: Checks relative to tool config file if not found in archive
+ * - Creates symlinks from resolved source to the target completion directory
+ *
+ * **Note:** This only handles `source`-based completions. Command-based completions (`cmd`)
+ * are handled separately by the completion generator during shell init generation.
+ *
+ * @param fs - File system interface for file operations
+ * @param toolName - Name of the tool being installed
+ * @param toolConfig - Complete tool configuration including shell configs
+ * @param context - Installation context with paths and configuration
+ * @param extractDir - Directory where the tool archive was extracted
+ * @param parentLogger - Logger for creating sub-loggers
+ *
+ * @example
+ * // Tool config specifies: source: 'completions/_ripgrep.zsh'
+ * // Archive extracted to: /path/to/.generated/binaries/rg/2025-11-21-12-00-00/
+ * // System looks for: /path/to/.generated/binaries/rg/2025-11-21-12-00-00/completions/_ripgrep.zsh
+ * // Symlinks to: /path/to/.generated/shell/zsh/completions/_rg
  */
 export async function setupCompletions(
   fs: IFileSystem,
@@ -78,6 +98,22 @@ async function setupShellCompletion(
   }
 }
 
+/**
+ * Resolves the source path for a completion file.
+ *
+ * Attempts to find the completion file in two locations:
+ * 1. **Primary:** Relative to the extracted archive directory (`extractDir/source`)
+ * 2. **Fallback:** Relative to the tool's config file directory
+ *
+ * The fallback allows for completions to be provided alongside config files
+ * when tools don't include completions in their release archives.
+ *
+ * @param fs - File system interface
+ * @param toolConfig - Tool configuration with optional config file path
+ * @param extractDir - Directory where the tool archive was extracted
+ * @param source - Relative path to completion file (from tool config)
+ * @returns Resolved absolute path to the completion source file
+ */
 async function resolveSourcePath(
   fs: IFileSystem,
   toolConfig: ToolConfig,

@@ -128,9 +128,22 @@ This enables IDE autocomplete for the `dependsOn()` method with all known binary
 
 ## Documentation
 
-- **[Tool Configuration Guide](docs/README.md)** - The complete guide to creating `.tool.ts` files.
-- **[Migration Guide](docs/migration-guide.md)** - How to move from shell scripts to the new system.
-- **[Common Patterns](docs/common-patterns.md)** - Real-world configuration examples.
+### Getting Started
+- **[Tool Configuration Guide](docs/README.md)** - The complete guide to creating `.tool.ts` files
+- **[Migration Guide](docs/migration-guide.md)** - How to move from shell scripts to the new system
+- **[Common Patterns](docs/common-patterns.md)** - Real-world configuration examples
+
+### Shell Integration
+- **[Shell Configuration](docs/shell-integration.md)** - Aliases, environment variables, and shell functions
+- **[Command Completions](docs/completions.md)** - Setting up tab completions for your tools
+- **[Symbolic Links](docs/symlinks.md)** - Managing configuration file symlinks
+
+### Installation Methods
+- **[GitHub Releases](docs/installation/github-release.md)** - Install from GitHub release archives
+- **[Cargo/Crates.io](docs/installation/cargo.md)** - Install Rust tools via Cargo
+- **[Homebrew](docs/installation/homebrew.md)** - Install via Homebrew package manager
+- **[Curl Scripts](docs/installation/curl-script.md)** - Install via shell scripts
+- **[Manual Installation](docs/installation/manual.md)** - Manually managed tools
 
 ## Global Configuration (`config.yaml`)
 

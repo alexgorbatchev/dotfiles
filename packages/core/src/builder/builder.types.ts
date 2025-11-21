@@ -52,8 +52,30 @@ export interface IShellConfigurator {
   source(relativePath: string): IShellConfigurator;
 
   /**
-   * Configures shell completions.
-   * @param completion - Completion configuration or path to completion script.
+   * Configures shell completions from extracted archive or generated dynamically.
+   *
+   * **For static completions from archives:**
+   * - Use string path or `source` property relative to extracted archive root
+   * - Path is automatically resolved during installation when archive is extracted
+   * - No context variables needed for `source` paths
+   *
+   * **For dynamic completions:**
+   * - Use `cmd` property to execute a command that generates completion content
+   *
+   * @param completion - Completion configuration or path relative to extracted archive
+   *
+   * @example
+   * // Static completion from downloaded archive
+   * shell.completions('completions/_tool.zsh')
+   *
+   * // With custom target directory
+   * shell.completions({
+   *   source: 'completions/_tool.zsh',  // Relative to extracted archive (no ctx needed)
+   *   targetDir: `${ctx.homeDir}/.zsh/completions`  // Absolute path using context
+   * })
+   *
+   * // Dynamic completion generation
+   * shell.completions({ cmd: 'tool completion zsh' })
    */
   completions(completion: ShellCompletionConfigInput): IShellConfigurator;
 

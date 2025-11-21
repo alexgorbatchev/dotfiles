@@ -83,6 +83,7 @@ The main `Installer` class coordinates the installation process by:
 - Delegating to appropriate installation methods
 - Tracking installations in the registry
 - Executing lifecycle hooks
+- Setting up shell completions from extracted archives
 
 ### 2. Installation Methods
 Standalone functions organized by installation method (brew, cargo, curl-script, curl-tar, github-release, manual). Each method:
@@ -96,11 +97,17 @@ Specialized clients for external services:
 - **GitHubApiClient**: Interfaces with GitHub API for releases and rate limits
 - **CargoClient**: Interfaces with crates.io and cargo-quickinstall
 
-### 4. Shared Utilities
+### 4. Shell Integration
+- **Completion Setup**: Automatically symlinks completion files from extracted archives to shell-specific directories
+- **Path Resolution**: Resolves completion source paths relative to extracted archive during installation
+- **Multi-Shell Support**: Handles completions for Zsh, Bash, and PowerShell
+
+### 5. Shared Utilities
 Common functionality to eliminate code duplication:
 - Download management with progress tracking
 - Hook execution framework
 - Binary setup and symlinking
+- Completion file setup and symlinking
 - Error handling wrappers
 
 ## API Clients
@@ -1295,6 +1302,35 @@ await setupBinariesFromArchive(fileSystem, toolName, toolConfig, context, extrac
 await setupBinariesFromDirectDownload(fileSystem, toolName, toolConfig, context, downloadPath, logger);
 ```
 
+### 8. Completion Setup
+Use `setupCompletions` to install shell completions from extracted archives:
+
+```typescript
+import { setupCompletions } from '@dotfiles/installer/utils';
+
+// After extracting an archive
+await setupCompletions(fileSystem, toolName, toolConfig, context, extractDir, logger);
+```
+
+**How it works:**
+- Reads completion configuration from `toolConfig.shellConfigs[shellType].completions`
+- Resolves `source` paths relative to `extractDir` (the extracted archive location)
+- Falls back to paths relative to config file if not found in archive
+- Creates symlinks from source to target completion directory
+
+**Example:**
+```typescript
+// In your .tool.ts file:
+.zsh((shell) => shell.completions('completions/_ripgrep.zsh'))
+
+// During installation:
+// Archive extracted to: ~/.generated/binaries/rg/2025-11-21-12-00-00/
+// Looks for: ~/.generated/binaries/rg/2025-11-21-12-00-00/completions/_ripgrep.zsh
+// Symlinks to: ~/.generated/shell/zsh/completions/_rg
+```
+
+See [Command Completions documentation](../../docs/completions.md) for configuration details.
+
 ## Architecture Decisions
 
 ### Why Multiple Installation Methods?
@@ -1309,9 +1345,11 @@ The GitHub and Cargo clients encapsulate complex API interactions, caching, and 
 ### Why Hook System?
 Hooks provide flexibility for tool-specific post-installation steps without modifying the core installer logic. Common use cases:
 - Creating configuration files
-- Setting up shell completions
+- Setting up additional shell completions via commands
 - Running tool-specific initialization
 - Compiling from source
+
+**Note:** Static completions from archives are handled automatically by `setupCompletions`. Use hooks for dynamic completion generation via commands.
 
 ### Why Shared Utilities?
 Extracting common patterns into utilities:

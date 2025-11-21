@@ -29,33 +29,50 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 
 ## Parameters
 
-- **`source`**: Path to completion file **relative to the extracted tool archive root**
-  - Example: `'completions/_tool.zsh'` looks for `completions/_tool.zsh` inside the extracted archive
-  - Example: `'shell/completion.zsh'` looks for `shell/completion.zsh` inside the extracted archive
+- **`source`**: Path to completion file **relative to the extracted archive root**
+  - The path is resolved during installation when the archive is extracted
+  - Example: `'completions/_tool.zsh'` looks for the file in the extracted archive at `<extract-dir>/completions/_tool.zsh`
+  - Example: `'shell/completion.zsh'` looks for the file at `<extract-dir>/shell/completion.zsh`
+  - **No context variables needed** - the system automatically resolves this relative to where the archive was extracted
+  - Falls back to checking relative to the config file if not found in extracted archive
 - **`cmd`**: Command to execute to generate completion content dynamically
   - Example: `'my-tool completion zsh'` executes the tool's completion command
   - Example: `'kubectl completion bash'` generates Kubernetes completions
   - The command is executed in the tool's installation directory
-- **`name`**: Optional custom name for the installed completion file (defaults to shell-specific naming)
-- **`targetDir`**: Optional custom installation directory **absolute path** (defaults to shell-specific completion directory)
+- **`name`**: Optional custom name for the installed completion file (defaults to `_<toolname>` for zsh)
+- **`targetDir`**: Optional custom installation directory using **absolute paths** with context variables
+  - Example: `targetDir: \`\${ctx.homeDir}/.zsh/completions\``
+  - If not specified, defaults to the shell-specific completion directory in your generated files
 
 ## Completion Methods
 
-### Static Completions (source)
+### Static Completions from Downloaded Archive (source)
 
-Use `source` when completion files are included in the tool's archive:
+Use `source` when completion files are included in the tool's release archive. The path is relative to the extracted archive root and is automatically resolved during installation:
 
 ```typescript
-.zsh((shell) => shell.completions('completions/_tool.zsh'));
+// For a tool downloaded from GitHub releases
+.zsh((shell) => shell.completions('completions/_tool.zsh'))
 ```
+
+**How it works:**
+1. Tool archive is downloaded and extracted to a timestamped directory
+2. During installation, the system looks for `<extract-dir>/completions/_tool.zsh`
+3. The completion file is symlinked to the shell-specific completion directory
+4. No context variables needed - all path resolution happens automatically
 
 ### Dynamic Completions (cmd)
 
-Use `cmd` when the tool can generate completions dynamically:
+Use `cmd` when the tool can generate completions dynamically at installation time:
 
 ```typescript
-.zsh((shell) => shell.completions({ cmd: 'my-tool completion zsh' }));
+.zsh((shell) => shell.completions({ cmd: 'my-tool completion zsh' }))
 ```
+
+**How it works:**
+1. After installation, the command is executed in the tool's installation directory
+2. The output is captured and saved as a completion file
+3. Useful for tools that generate shell-specific completions on-demand
 
 ## Basic Examples
 
@@ -92,12 +109,16 @@ Use `cmd` when the tool can generate completions dynamically:
 
 ### Custom Installation Directory
 
+Specify where completion files should be installed using context variables for absolute paths:
+
 ```typescript
 .zsh((shell) => shell.completions({
-  source: 'completions/tool.zsh',
-  targetDir: `${ctx.homeDir}/.zsh/completions`
-}));
+  source: 'completions/tool.zsh',  // Relative to extracted archive
+  targetDir: `${ctx.homeDir}/.zsh/completions`  // Absolute path using context
+}))
 ```
+
+**Note:** The `source` path is always relative to the extracted archive and doesn't need context variables. Only `targetDir` uses context variables to specify absolute installation paths.
 
 ## Generated Completions
 
@@ -142,26 +163,79 @@ PowerShell completions are loaded during shell initialization:
 
 ## Path Resolution
 
-- **Source paths** are relative to the extracted tool archive root
-- **Target directories** must be absolute paths using context variables
-- Completion files are automatically copied to the appropriate shell completion directories
+### Source Path Resolution (Automatic)
+
+When you specify `source: 'completions/_tool.zsh'`, the system automatically resolves this during installation:
+
+1. **Primary location**: Checks `<extract-dir>/completions/_tool.zsh` (relative to extracted archive)
+2. **Fallback location**: Checks relative to config file if not found in extracted archive
+3. **No context variables needed**: Path resolution happens automatically during installation
+
+**Example:**
+```typescript
+// Your configuration
+.zsh((shell) => shell.completions('completions/_tool.zsh'))
+
+// What happens during installation:
+// 1. Archive extracted to: /path/to/.generated/binaries/tool/2025-11-21-12-00-00/
+// 2. System looks for: /path/to/.generated/binaries/tool/2025-11-21-12-00-00/completions/_tool.zsh
+// 3. File symlinked to: /path/to/.generated/shell/zsh/completions/_tool
+```
+
+### Target Directory Resolution (Manual)
+
+When you specify `targetDir`, use context variables to create absolute paths:
+
+```typescript
+.zsh((shell) => shell.completions({
+  source: 'completions/_tool.zsh',           // Automatic - relative to extracted archive
+  targetDir: `${ctx.homeDir}/.zsh/completions`  // Manual - absolute path with context
+}))
+```
+
+**Available context variables for targetDir:**
+- `ctx.homeDir` - User's home directory
+- `ctx.generatedDir` - Generated files directory
+- `ctx.shellScriptsDir` - Shell scripts directory
+- `ctx.dotfilesDir` - Dotfiles root directory
+
+If `targetDir` is not specified, completions are installed to the default shell-specific directory in your generated files.
 
 ## Troubleshooting
 
 ### Completions Not Loading
 
-1. **Check file exists**: Verify the completion file exists in the extracted archive
-2. **Check path**: Ensure the source path is correct relative to archive root
-3. **Test manually**: Try loading the completion file directly
-4. **Check shell setup**: Ensure completion loading is configured in your shell
+**Symptom:** You see a warning like `WARN Completion file not found: /path/to/completions/_tool`
 
-```bash
-# Check if completion file was installed
-ls -la ${ctx.generatedDir}/completions/_tool
+**Causes and solutions:**
 
-# Test zsh completion loading
-autoload -U compinit && compinit
-```
+1. **Wrong path in configuration**: Check that the `source` path matches the actual location in the archive
+   ```bash
+   # Download and extract the archive manually to inspect its structure
+   tar -tzf downloaded-archive.tar.gz | grep completion
+   ```
+
+2. **Archive doesn't include completions**: Some tools don't ship completion files in their releases
+   - Solution: Use `cmd` to generate completions instead
+   - Or use `once` scripts to generate completions after installation
+
+3. **Path relative to wrong location**: Remember `source` is relative to the extracted archive root, not your config file
+   ```typescript
+   // ❌ Wrong - trying to use context variable for source
+   .zsh((shell) => shell.completions(`${ctx.toolDir}/completions/_tool`))
+   
+   // ✅ Correct - path relative to extracted archive
+   .zsh((shell) => shell.completions('completions/_tool'))
+   ```
+
+4. **Verify installation**:
+   ```bash
+   # Check if completion file was symlinked
+   ls -la ~/.generated/shell/zsh/completions/_tool
+   
+   # Test zsh completion loading
+   autoload -U compinit && compinit
+   ```
 
 ### Generated Completions Not Working
 
