@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { BaseInstallContext, ToolConfig } from '@dotfiles/core';
+import type { InstallContext, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { setupCompletions } from '../setupCompletions';
@@ -10,13 +10,13 @@ describe('setupCompletions', () => {
   const extractDir = '/tmp/extract';
   const shellScriptsDir = '/home/user/.dotfiles/shell';
 
-  const mockContext: BaseInstallContext = {
+  const mockContext: InstallContext = {
     projectConfig: {
       paths: {
         shellScriptsDir,
       },
     },
-  } as BaseInstallContext;
+  } as InstallContext;
 
   it('should do nothing if toolConfig has no shellConfigs', async () => {
     const { fs } = await createMemFileSystem();

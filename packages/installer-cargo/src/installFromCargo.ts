@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { BaseInstallContext, IExtractResult, IInstallOptions } from '@dotfiles/core';
+import type { IExtractResult, IInstallOptions, InstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -21,7 +21,7 @@ import type { CargoInstallResult, ICargoInstallMetadata } from './types';
 export async function installFromCargo(
   toolName: string,
   toolConfig: CargoToolConfig,
-  context: BaseInstallContext,
+  context: InstallContext,
   options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
@@ -117,7 +117,7 @@ export async function installFromCargo(
 async function executeAfterDownloadHook(
   toolConfig: CargoToolConfig,
   hookExecutor: HookExecutor,
-  hookContext: BaseInstallContext & { version: string },
+  hookContext: InstallContext & { version: string },
   downloadPath: string,
   toolFs: IFileSystem
 ): Promise<CargoInstallResult | { success: true }> {
@@ -141,7 +141,7 @@ async function executeAfterDownloadHook(
 async function executeAfterInstallHook(
   toolConfig: CargoToolConfig,
   hookExecutor: HookExecutor,
-  hookContext: BaseInstallContext & { version: string },
+  hookContext: InstallContext & { version: string },
   extractResult: IExtractResult,
   toolFs: IFileSystem
 ): Promise<{ success: true } | { success: false; error: string }> {
@@ -215,7 +215,7 @@ async function buildDownloadUrl(
   crateName: string,
   version: string,
   params: CargoInstallParams,
-  context: BaseInstallContext,
+  context: InstallContext,
   githubReleaseHost: string
 ): Promise<string> {
   const binarySource = params.binarySource || 'cargo-quickinstall';

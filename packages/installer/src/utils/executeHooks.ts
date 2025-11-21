@@ -1,9 +1,9 @@
 import type {
   AsyncInstallHook,
+  DownloadContext,
+  ExtractContext,
   IOperationFailure,
   IOperationSuccess,
-  PostDownloadInstallContext,
-  PostExtractInstallContext,
   ToolConfig,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -35,7 +35,7 @@ export type ExecuteHooksResult = IOperationSuccess | IOperationFailure;
  */
 export async function executeAfterDownloadHook(
   toolConfig: ToolConfig,
-  context: PostDownloadInstallContext,
+  context: DownloadContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger
@@ -86,7 +86,7 @@ export async function executeAfterDownloadHook(
  */
 export async function executeAfterExtractHook(
   toolConfig: ToolConfig,
-  context: PostExtractInstallContext,
+  context: ExtractContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger

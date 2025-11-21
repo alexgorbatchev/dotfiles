@@ -1,4 +1,4 @@
-import type { BaseInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
+import type { IInstallerPlugin, IInstallOptions, InstallContext, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -67,7 +67,7 @@ export class CurlScriptInstallerPlugin
   async install(
     toolName: string,
     toolConfig: CurlScriptToolConfig,
-    context: BaseInstallContext,
+    context: InstallContext,
     options?: IInstallOptions
   ): Promise<InstallResult<CurlScriptPluginMetadata>> {
     const result = await installFromCurlScript(

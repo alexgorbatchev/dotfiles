@@ -1,5 +1,5 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { BaseInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
+import type { IInstallerPlugin, IInstallOptions, InstallContext, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -65,7 +65,7 @@ export class CurlTarInstallerPlugin
   async install(
     toolName: string,
     toolConfig: CurlTarToolConfig,
-    context: BaseInstallContext,
+    context: InstallContext,
     options?: IInstallOptions
   ): Promise<InstallResult<ICurlTarInstallMetadata>> {
     const result = await installFromCurlTar(

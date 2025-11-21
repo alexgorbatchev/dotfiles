@@ -149,7 +149,7 @@ export class HookExecutor {
    *
    * Enhancements:
    * - fileSystem: Tool-specific TrackedFileSystem or provided filesystem
-   * - toolConfig: Extracted from BaseInstallContext if available
+   * - toolConfig: Extracted from InstallContext if available
    * - $: Bun's shell operator for executing commands
    *
    * The TrackedFileSystem integration allows proper tracking of file operations

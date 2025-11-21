@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
-import type { AsyncInstallHook, InstallHookContext, ToolConfig } from '@dotfiles/core';
+import type { AsyncInstallHook, InstallContext, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -27,7 +27,7 @@ describe('HookExecutor', () => {
   });
 
   describe('executeHook', () => {
-    let baseContext: InstallHookContext;
+    let baseContext: InstallContext;
 
     beforeEach(() => {
       const result = createTestInstallHookContext({});
@@ -224,7 +224,7 @@ describe('HookExecutor', () => {
       const { context: baseContext } = createTestInstallHookContext({});
       let capturedDollar: typeof $ | undefined;
 
-      const hookThatUsesShell = mock(async (ctx: InstallHookContext) => {
+      const hookThatUsesShell = mock(async (ctx: InstallContext) => {
         capturedDollar = ctx.$;
         expect(ctx.$).toBeDefined();
         expect(typeof ctx.$).toBe('function');
@@ -259,7 +259,7 @@ describe('HookExecutor', () => {
 
       let receivedDollar: typeof $ | undefined;
 
-      const hook = mock(async (ctx: InstallHookContext) => {
+      const hook = mock(async (ctx: InstallContext) => {
         receivedDollar = ctx.$;
         // The $ instance should be available and configured with correct cwd
         expect(ctx.$).toBeDefined();

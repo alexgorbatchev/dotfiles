@@ -1,8 +1,8 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type {
-  BaseInstallContext,
   IInstallerPlugin,
   IInstallOptions,
+  InstallContext,
   InstallResult,
   UpdateCheckResult,
 } from '@dotfiles/core';
@@ -87,7 +87,7 @@ export class CargoInstallerPlugin
   async install(
     toolName: string,
     toolConfig: CargoToolConfig,
-    context: BaseInstallContext,
+    context: InstallContext,
     options?: IInstallOptions
   ): Promise<InstallResult<CargoPluginMetadata>> {
     const result = await installFromCargo(
@@ -128,7 +128,7 @@ export class CargoInstallerPlugin
   async checkUpdate(
     toolName: string,
     toolConfig: CargoToolConfig,
-    _context: BaseInstallContext,
+    _context: InstallContext,
     logger: TsLogger
   ): Promise<UpdateCheckResult> {
     try {

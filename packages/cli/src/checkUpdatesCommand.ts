@@ -1,5 +1,5 @@
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
-import type { BaseInstallContext } from '@dotfiles/core';
+import type { InstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
@@ -57,11 +57,11 @@ function createInstallContext(
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
   fs: IFileSystem
-): BaseInstallContext {
+): InstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
-  const context: BaseInstallContext = {
+  const context: InstallContext = {
     toolName: config.name,
     installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',
