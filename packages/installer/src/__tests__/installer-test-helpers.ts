@@ -479,10 +479,7 @@ export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}):
 /**
  * Creates a test context for installation
  */
-export function createTestContext(
-  setup: IInstallerTestSetup,
-  overrides: Partial<InstallContext> = {}
-): InstallContext {
+export function createTestContext(setup: IInstallerTestSetup, overrides: Partial<InstallContext> = {}): InstallContext {
   const getToolDir = (toolName: string): string => {
     return path.join(setup.testDirs.paths.binariesDir, toolName);
   };

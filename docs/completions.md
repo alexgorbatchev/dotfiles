@@ -31,7 +31,9 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 
 - **`source`**: Path to completion file **relative to the extracted archive root**
   - The path is resolved during installation when the archive is extracted
+  - **Supports glob patterns** using minimatch syntax (wildcards: `*`, `?`, `[...]`)
   - Example: `'completions/_tool.zsh'` looks for the file in the extracted archive at `<extract-dir>/completions/_tool.zsh`
+  - Example: `'*/complete/_tool'` matches `tool-1.0.0-darwin/complete/_tool` or any versioned directory
   - Example: `'shell/completion.zsh'` looks for the file at `<extract-dir>/shell/completion.zsh`
   - **No context variables needed** - the system automatically resolves this relative to where the archive was extracted
   - Falls back to checking relative to the config file if not found in extracted archive
@@ -87,7 +89,11 @@ Use `cmd` when the tool can generate completions dynamically at installation tim
 ### Static File Completions
 
 ```typescript
+// Simple path
 .zsh((shell) => shell.completions('completions/_tool.zsh'));
+
+// With glob pattern to match versioned directories
+.zsh((shell) => shell.completions('*/complete/_tool'));
 ```
 
 ### Multiple Shell Support
@@ -167,20 +173,40 @@ PowerShell completions are loaded during shell initialization:
 
 When you specify `source: 'completions/_tool.zsh'`, the system automatically resolves this during installation:
 
-1. **Primary location**: Checks `<extract-dir>/completions/_tool.zsh` (relative to extracted archive)
-2. **Fallback location**: Checks relative to config file if not found in extracted archive
-3. **No context variables needed**: Path resolution happens automatically during installation
+1. **Glob pattern matching**: If the path contains wildcards (`*`, `?`, `[...]`), uses minimatch to find matching files
+2. **Primary location**: Checks `<extract-dir>/completions/_tool.zsh` (relative to extracted archive)
+3. **Fallback location**: Checks relative to config file if not found in extracted archive
+4. **No context variables needed**: Path resolution happens automatically during installation
 
-**Example:**
+**Example with simple path:**
 ```typescript
 // Your configuration
 .zsh((shell) => shell.completions('completions/_tool.zsh'))
 
 // What happens during installation:
-// 1. Archive extracted to: /path/to/.generated/binaries/tool/2025-11-21-12-00-00/
-// 2. System looks for: /path/to/.generated/binaries/tool/2025-11-21-12-00-00/completions/_tool.zsh
+// 1. Archive extracted to: /path/to/.generated/binaries/tool/15.1.0/
+// 2. System looks for: /path/to/.generated/binaries/tool/15.1.0/completions/_tool.zsh
 // 3. File symlinked to: /path/to/.generated/shell/zsh/completions/_tool
 ```
+
+**Example with glob pattern:**
+```typescript
+// Your configuration
+.zsh((shell) => shell.completions('*/complete/_rg'))
+
+// What happens during installation:
+// 1. Archive extracted to: /path/to/.generated/binaries/rg/15.1.0/
+// 2. Archive contains: ripgrep-15.1.0-aarch64-apple-darwin/complete/_rg
+// 3. System matches: ripgrep-15.1.0-aarch64-apple-darwin/complete/_rg
+// 4. File symlinked to: /path/to/.generated/shell/zsh/completions/_rg
+```
+
+**Supported glob patterns:**
+- `*` - Matches any characters except `/`
+- `**` - Matches any characters including `/`
+- `?` - Matches a single character
+- `[abc]` - Matches any character in the set
+- `tool-*/bin` - Matches versioned directories like `tool-1.0.0/bin`
 
 ### Target Directory Resolution (Manual)
 
@@ -214,6 +240,18 @@ If `targetDir` is not specified, completions are installed to the default shell-
    # Download and extract the archive manually to inspect its structure
    tar -tzf downloaded-archive.tar.gz | grep completion
    ```
+   
+   **Tip**: The system logs all files found in the archive when a completion file is not found. Check the warning logs to see what files are available and adjust your glob pattern accordingly.
+
+2. **Glob pattern not matching**: If using wildcards, verify the pattern matches the actual file structure
+   ```typescript
+   // ❌ Wrong - pattern doesn't match archive structure
+   .zsh((shell) => shell.completions('completions/_tool'))
+   // Archive has: tool-1.0.0/complete/_tool
+   
+   // ✅ Correct - pattern matches the archive structure
+   .zsh((shell) => shell.completions('*/complete/_tool'))
+   ```
 
 2. **Archive doesn't include completions**: Some tools don't ship completion files in their releases
    - Solution: Use `cmd` to generate completions instead
@@ -226,12 +264,18 @@ If `targetDir` is not specified, completions are installed to the default shell-
    
    // ✅ Correct - path relative to extracted archive
    .zsh((shell) => shell.completions('completions/_tool'))
+   
+   // ✅ Correct - using glob pattern for versioned directories
+   .zsh((shell) => shell.completions('*/completions/_tool'))
    ```
 
 4. **Verify installation**:
    ```bash
    # Check if completion file was symlinked
    ls -la ~/.generated/shell/zsh/completions/_tool
+   
+   # Check where it points to
+   readlink ~/.generated/shell/zsh/completions/_tool
    
    # Test zsh completion loading
    autoload -U compinit && compinit

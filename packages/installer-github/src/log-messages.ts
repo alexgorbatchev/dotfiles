@@ -26,6 +26,12 @@ export const messages = {
   archiveExtracted: () => createSafeLogMessage('Archive extracted: %o'),
   cleaningArchive: (downloadPath: string) => createSafeLogMessage(`Cleaning up downloaded archive: ${downloadPath}`),
   invalidUrl: (url: string) => createSafeLogMessage(`Invalid URL: ${url}`),
+  versionResolutionResolved: (toolName: string, version: string) =>
+    createSafeLogMessage(`Resolved version for ${toolName}: ${version}`),
+  versionResolutionFailed: (toolName: string, error: string) =>
+    createSafeLogMessage(`Failed to resolve version for ${toolName}: ${error}`),
+  versionResolutionException: (toolName: string, error: unknown) =>
+    createSafeLogMessage(`Exception while resolving version for ${toolName}: ${String(error)}`),
   updateCheckFailed: (toolName: string) => createSafeLogMessage(`Failed to check update for ${toolName}`),
   updateFailed: (toolName: string) => createSafeLogMessage(`Failed to update ${toolName}`),
 } as const satisfies SafeLogMessageMap;

@@ -103,6 +103,14 @@ export class TrackedFileSystem implements IFileSystem {
     return this.withContext({ toolName });
   }
 
+  /**
+   * Creates a new TrackedFileSystem for a specific file type.
+   * This is used to attribute filesystem operations to the correct file type.
+   */
+  withFileType(fileType: IFileOperation['fileType']): TrackedFileSystem {
+    return this.withContext({ fileType });
+  }
+
   async readFile(filePath: string, encoding?: BufferEncoding): Promise<string> {
     // Read operations are not tracked since they don't modify the filesystem
     return this.fs.readFile(filePath, encoding);
@@ -228,13 +236,13 @@ export class TrackedFileSystem implements IFileSystem {
     // Perform the actual operation
     await this.fs.symlink(target, linkPath, type);
 
-    // Record the operation
+    // Record the operation using context fileType (e.g., 'completion', 'symlink', 'binary')
     await this.registry.recordOperation({
       toolName: this.context.toolName,
       operationType: 'symlink',
       filePath: path.resolve(linkPath),
       targetPath: path.resolve(target),
-      fileType: 'symlink', // Symlinks always have type 'symlink'
+      fileType: this.context.fileType,
       operationId: this.context.operationId,
       metadata: this.context.metadata,
     });

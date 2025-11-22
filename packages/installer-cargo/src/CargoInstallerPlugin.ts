@@ -10,6 +10,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
+import { normalizeVersion } from '@dotfiles/utils';
 import type { ICargoClient } from './cargo-client';
 import { installFromCargo } from './installFromCargo';
 import { messages } from './log-messages';
@@ -119,6 +120,54 @@ export class CargoInstallerPlugin
     };
 
     return installResult;
+  }
+
+  /**
+   * Resolves the version of a Cargo crate before installation.
+   *
+   * This method queries crates.io for the latest version of the specified crate
+   * and returns a normalized version string that can be used for the installation
+   * directory name.
+   *
+   * @param toolName - Name of the tool (for logging purposes)
+   * @param toolConfig - Complete tool configuration including crate name and version
+   * @param _context - Installation context (not used but required by interface)
+   * @param logger - Logger instance for debug output
+   * @returns Normalized version string, or null if version cannot be resolved
+   */
+  async resolveVersion(
+    toolName: string,
+    toolConfig: CargoToolConfig,
+    _context: InstallContext,
+    logger: TsLogger
+  ): Promise<string | null> {
+    const subLogger: TsLogger = logger.getSubLogger({ name: 'resolveVersion' });
+
+    try {
+      const cargoParams = toolConfig.installParams;
+      const crateName: string | undefined = cargoParams?.crateName;
+
+      if (!crateName) {
+        subLogger.debug(messages.versionResolutionFailed(toolName, 'Missing crateName in install params'));
+        return null;
+      }
+
+      // Query crates.io for the latest version
+      const latestVersion: string | null = await this.cargoClient.getLatestVersion(crateName);
+
+      if (!latestVersion) {
+        subLogger.debug(messages.versionResolutionFailed(toolName, `Could not fetch version for crate: ${crateName}`));
+        return null;
+      }
+
+      // Normalize and return the version
+      const normalizedVersion: string = normalizeVersion(latestVersion);
+      subLogger.debug(messages.versionResolutionResolved(toolName, normalizedVersion));
+      return normalizedVersion;
+    } catch (error) {
+      subLogger.debug(messages.versionResolutionException(toolName, error));
+      return null;
+    }
   }
 
   supportsUpdateCheck(): boolean {

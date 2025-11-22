@@ -205,4 +205,31 @@ describe('setupCompletions', () => {
     expect(await fs.exists(targetPath)).toBe(true);
     expect(await fs.readlink(targetPath)).toBe(sourcePath);
   });
+
+  it('should resolve glob pattern in completion source path', async () => {
+    const { fs } = await createMemFileSystem();
+    const toolConfig: ToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      installationMethod: 'manual',
+      shellConfigs: {
+        zsh: {
+          completions: {
+            source: '*/complete/_tool',
+          },
+        },
+      },
+    };
+
+    // Create the actual file structure like ripgrep
+    const sourcePath = path.join(extractDir, 'tool-1.0.0-aarch64-darwin/complete/_tool');
+    await fs.mkdir(path.dirname(sourcePath), { recursive: true });
+    await fs.writeFile(sourcePath, '# completion');
+
+    await setupCompletions(fs, 'test-tool', toolConfig, mockContext, extractDir, logger);
+
+    const targetPath = path.join(shellScriptsDir, 'zsh', 'completions', '_test-tool');
+    expect(await fs.exists(targetPath)).toBe(true);
+    expect(await fs.readlink(targetPath)).toBe(sourcePath);
+  });
 });

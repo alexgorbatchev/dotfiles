@@ -1,12 +1,29 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
+import type { IGitHubRelease, InstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
+import { TestLogger } from '@dotfiles/logger';
 import { GitHubReleaseInstallerPlugin } from '../GitHubReleaseInstallerPlugin';
 import type { IGitHubApiClient } from '../github-client';
+
+function createMockRelease(tagName: string): IGitHubRelease {
+  const mockRelease: IGitHubRelease = {
+    id: 1,
+    tag_name: tagName,
+    name: tagName,
+    draft: false,
+    prerelease: false,
+    created_at: '2023-01-01T00:00:00Z',
+    published_at: '2023-01-01T00:00:00Z',
+    assets: [],
+    html_url: `https://github.com/owner/repo/releases/tag/${tagName}`,
+  };
+  return mockRelease;
+}
 
 describe('GitHubReleaseInstallerPlugin', () => {
   let plugin: GitHubReleaseInstallerPlugin;
@@ -83,5 +100,115 @@ describe('GitHubReleaseInstallerPlugin', () => {
 
     const result = plugin.toolConfigSchema.safeParse(invalidConfig);
     expect(result.success).toBe(false);
+  });
+
+  describe('resolveVersion', () => {
+    let testLogger: TestLogger;
+    let mockContext: InstallContext;
+
+    beforeEach(() => {
+      testLogger = new TestLogger();
+      mockContext = {} as InstallContext;
+    });
+
+    it('should resolve version from GitHub release tag', async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'github-release',
+        installParams: {
+          repo: 'owner/repo',
+        },
+      };
+
+      mockGitHubClient.getLatestRelease = mock(async () => createMockRelease('v1.2.3'));
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, testLogger);
+
+      expect(version).toBe('1.2.3');
+      expect(mockGitHubClient.getLatestRelease).toHaveBeenCalledWith('owner', 'repo');
+    });
+
+    it('should return null when GitHub API call fails', async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'github-release',
+        installParams: {
+          repo: 'owner/repo',
+        },
+      };
+
+      mockGitHubClient.getLatestRelease = mock(async () => null);
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, testLogger);
+
+      expect(version).toBeNull();
+      testLogger.expect(
+        ['DEBUG'],
+        [],
+        ['Getting latest release for owner/repo', 'Failed to resolve version for test-tool']
+      );
+    });
+
+    it('should return null when exception occurs', async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'github-release',
+        installParams: {
+          repo: 'owner/repo',
+        },
+      };
+
+      mockGitHubClient.getLatestRelease = mock(async () => {
+        throw new Error('Network error');
+      });
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, testLogger);
+
+      expect(version).toBeNull();
+      testLogger.expect(['DEBUG'], [], ['Getting latest release for owner/repo', /Exception while resolving version/]);
+    });
+
+    it('should normalize version by stripping v prefix', async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'github-release',
+        installParams: {
+          repo: 'owner/repo',
+        },
+      };
+
+      mockGitHubClient.getLatestRelease = mock(async () => createMockRelease('v15.1.0'));
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, testLogger);
+
+      expect(version).toBe('15.1.0');
+    });
+
+    it('should resolve version by tag when specific version is requested', async () => {
+      const mockToolConfig: GithubReleaseToolConfig = {
+        name: 'test-tool',
+        version: 'v2.0.0',
+        binaries: ['test-tool'],
+        installationMethod: 'github-release',
+        installParams: {
+          repo: 'owner/repo',
+        },
+      };
+
+      mockGitHubClient.getReleaseByTag = mock(async () => createMockRelease('v2.0.0'));
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, testLogger);
+
+      expect(version).toBe('2.0.0');
+      expect(mockGitHubClient.getReleaseByTag).toHaveBeenCalledWith('owner', 'repo', 'v2.0.0');
+    });
   });
 });

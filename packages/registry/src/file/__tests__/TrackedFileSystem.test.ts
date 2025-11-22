@@ -329,7 +329,7 @@ describe('TrackedFileSystem', () => {
         operationType: 'symlink',
         filePath: path.resolve(linkPath),
         targetPath: path.resolve(targetPath),
-        fileType: 'symlink', // Symlinks always have type 'symlink'
+        fileType: 'shim', // Uses context.fileType (in this test, 'shim')
       });
     });
   });

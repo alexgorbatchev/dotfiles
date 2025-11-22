@@ -144,7 +144,7 @@ export async function installFromGitHubRelease(
 
 type OperationResult<T> = { success: true; data: T } | { success: false; error: string };
 
-async function fetchGitHubRelease(
+export async function fetchGitHubRelease(
   repo: string,
   version: string,
   githubApiClient: IGitHubApiClient,
