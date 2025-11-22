@@ -1,9 +1,9 @@
 import path from 'node:path';
-import { minimatch } from 'minimatch';
 import type { InstallContext, ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
+import { minimatch } from 'minimatch';
 import { messages } from './log-messages';
 
 /**
@@ -90,10 +90,8 @@ async function setupShellCompletion(
   logger.debug(messages.completion.symlinking(shellType, sourcePath, targetFile));
 
   if (await fs.exists(sourcePath)) {
-    // TODO make a helper for instance
-    // Use a completion-specific filesystem if using TrackedFileSystem
     const completionFs = fs instanceof TrackedFileSystem ? fs.withFileType('completion') : fs;
-    
+
     await completionFs.ensureDir(targetDir);
     if (await completionFs.exists(targetFile)) {
       await completionFs.rm(targetFile);

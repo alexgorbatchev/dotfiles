@@ -57,3 +57,9 @@ describe('...', () => {
   });
 });
 ```
+
+## Testing project
+
+- Folder `test-project` contains a few tools and `config.ts` file that should be used for live testing
+- Use `bun cli --config=test-project/config.ts` to run the CLI with the test project configuration
+- Sometimes it's necessary to delete `test-project/.generated` folder to force re-generating the project
