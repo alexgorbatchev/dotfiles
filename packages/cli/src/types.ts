@@ -86,7 +86,7 @@ export interface ICleanupCommandSpecificOptions {
  * Command-specific options for files command (excludes global options)
  */
 export interface IFilesCommandSpecificOptions {
-  tool?: string;
+  tool?: string; // Positional argument
   type?: string;
   status?: boolean;
   since?: string;

@@ -163,13 +163,19 @@ Manage tracked generated files.
 # List all generated files
 dotfiles files
 
-# List by category
-dotfiles files --category shims
-dotfiles files --category shell-init
-dotfiles files --category symlinks
+# List files for specific tool
+dotfiles files fzf
 
-# Show file details
-dotfiles files --verbose
+# List by file type
+dotfiles files --type shim
+dotfiles files --type shell-init
+dotfiles files --type symlink
+
+# Check file status
+dotfiles files --status
+
+# List files created since a date
+dotfiles files --since 2025-08-01
 ```
 
 ### `cleanup`
@@ -280,6 +286,9 @@ dotfiles detect-conflicts
 
 # View all generated files
 dotfiles files
+
+# View files for specific tool
+dotfiles files fzf
 
 # Clean up old files
 dotfiles cleanup --dry-run

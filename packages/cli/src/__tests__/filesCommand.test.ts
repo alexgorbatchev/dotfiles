@@ -20,9 +20,11 @@ describe('filesCommand', () => {
 
     // Check that all expected options are present
     const options = filesCommand?.options;
-    expect(options?.some((opt) => opt.long === '--tool')).toBe(true);
     expect(options?.some((opt) => opt.long === '--type')).toBe(true);
     expect(options?.some((opt) => opt.long === '--status')).toBe(true);
     expect(options?.some((opt) => opt.long === '--since')).toBe(true);
+
+    // Check that tool is a positional argument, not an option
+    expect(options?.some((opt) => opt.long === '--tool')).toBe(false);
   });
 });

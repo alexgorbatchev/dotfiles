@@ -257,15 +257,15 @@ export function registerFilesCommand(
   const logger = parentLogger.getSubLogger({ name: 'registerFilesCommand' });
 
   program
-    .command('files')
+    .command('files [tool]')
     .description('Inspect tracked files in the registry')
-    .option('--tool <name>', 'Show files for specific tool only')
     .option('--type <type>', 'Show files of specific type only (shim, binary, symlink, etc.)')
     .option('--status', 'Check file status (missing, broken links, etc.)')
     .option('--since <date>', 'Show files created since date (ISO format: 2025-08-01)')
-    .action(async (commandOptions: IFilesCommandSpecificOptions) => {
+    .action(async (tool: string | undefined, commandOptions: IFilesCommandSpecificOptions) => {
       const combinedOptions: IFilesCommandSpecificOptions & IGlobalProgramOptions = {
         ...commandOptions,
+        tool,
         ...program.opts(),
       };
       const services = await servicesFactory();
