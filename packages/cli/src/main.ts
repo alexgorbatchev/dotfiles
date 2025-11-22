@@ -295,13 +295,20 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Register all installer plugins
   pluginRegistry.register(
-    new GitHubReleaseInstallerPlugin(fs, downloader, githubApiClient, archiveExtractor, projectConfig, hookExecutor)
+    new GitHubReleaseInstallerPlugin(
+      installerTrackedFs,
+      downloader,
+      githubApiClient,
+      archiveExtractor,
+      projectConfig,
+      hookExecutor
+    )
   );
   pluginRegistry.register(new BrewInstallerPlugin(parentLogger));
   pluginRegistry.register(
     new CargoInstallerPlugin(
       parentLogger,
-      fs,
+      installerTrackedFs,
       downloader,
       cargoClient,
       archiveExtractor,
@@ -309,9 +316,11 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       projectConfig.cargo.githubRelease.host
     )
   );
-  pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, fs, downloader, hookExecutor));
-  pluginRegistry.register(new CurlTarInstallerPlugin(parentLogger, fs, downloader, archiveExtractor, hookExecutor));
-  pluginRegistry.register(new ManualInstallerPlugin(parentLogger, fs));
+  pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, installerTrackedFs, downloader, hookExecutor));
+  pluginRegistry.register(
+    new CurlTarInstallerPlugin(parentLogger, installerTrackedFs, downloader, archiveExtractor, hookExecutor)
+  );
+  pluginRegistry.register(new ManualInstallerPlugin(parentLogger, installerTrackedFs));
 
   const installer = new Installer(
     logger,

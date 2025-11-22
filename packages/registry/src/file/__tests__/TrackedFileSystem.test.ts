@@ -332,6 +332,28 @@ describe('TrackedFileSystem', () => {
         fileType: 'shim', // Uses context.fileType (in this test, 'shim')
       });
     });
+
+    it('should track symlink with fileType=completion when using withFileType', async () => {
+      const targetPath = '/test/completion-source.zsh';
+      const linkPath = '/test/completions/_tool';
+
+      await fs.mkdir('/test', { recursive: true });
+      await fs.mkdir('/test/completions', { recursive: true });
+      await fs.writeFile(targetPath, '# completion');
+
+      const completionFs = trackedFs.withFileType('completion');
+      await completionFs.symlink(targetPath, linkPath);
+
+      const operations = await registry.getOperations({ fileType: 'completion' });
+      expect(operations).toHaveLength(1);
+      expect(operations[0]).toMatchObject({
+        toolName: 'test-tool',
+        operationType: 'symlink',
+        filePath: path.resolve(linkPath),
+        targetPath: path.resolve(targetPath),
+        fileType: 'completion',
+      });
+    });
   });
 
   describe('rm', () => {
