@@ -310,4 +310,22 @@ export interface IInstallerPlugin<
 
   /** Optional: Get README URL for a tool */
   getReadmeUrl?(toolName: string, toolConfig: TConfig): string | null;
+
+  /**
+   * Optional: Resolve the version that will be installed without performing full installation.
+   * This allows the installer to create version-based directories instead of timestamp-based ones.
+   * If this method is not implemented or returns null, the installer will fall back to timestamps.
+   *
+   * @param toolName - Name of the tool being installed
+   * @param toolConfig - Complete tool configuration
+   * @param context - Installation context with system information
+   * @param logger - Logger instance for debug output
+   * @returns Normalized version string, or null if version cannot be resolved
+   */
+  resolveVersion?(
+    toolName: string,
+    toolConfig: TConfig,
+    context: InstallContext,
+    logger: TsLogger
+  ): Promise<string | null>;
 }

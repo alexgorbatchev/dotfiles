@@ -132,7 +132,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm /usr/bin/shim1',
         '[cleanup] rm ~/.generated/bin/shim2',
         '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
-        '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
+        '[cleanup] rm ~/.generated/bin-default/.config/tool/config.yml',
         'registry database cleanup',
       ]
     );
@@ -154,7 +154,7 @@ describe('cleanupCommand', () => {
         '[cleanup] rm /usr/bin/shim1',
         '[cleanup] rm ~/.generated/bin/shim2',
         '[cleanup] rm ~/.generated/shell-scripts/main.zsh',
-        '[cleanup] rm /usr/local/bin/.config/tool/config.yml',
+        '[cleanup] rm ~/.generated/bin-default/.config/tool/config.yml',
         'Removed registry entries for tool: tool1',
       ]
     );

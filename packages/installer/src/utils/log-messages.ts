@@ -55,6 +55,11 @@ export const messages = {
       createSafeLogMessage(`install: Created installation directory: ${installDir}`),
     cleaningFailedInstallDir: (installDir: string) =>
       createSafeLogMessage(`install: Cleaning up failed installation directory: ${installDir}`),
+    versionResolved: (version: string) => createSafeLogMessage(`install: Resolved version: ${version}`),
+    versionFallbackToTimestamp: () =>
+      createSafeLogMessage('install: Version resolution returned null, using timestamp'),
+    versionResolutionFailed: (error: unknown) =>
+      createSafeLogMessage(`install: Version resolution failed, using timestamp: ${String(error)}`),
     externalBinaryMissing: (toolName: string, binaryName: string, binaryPath: string) =>
       createSafeLogMessage(
         `Cannot create symlink for ${toolName}/${binaryName}: external binary missing at ${binaryPath}`
@@ -97,6 +102,7 @@ export const messages = {
     symlinking: (shellType: string, sourcePath: string, targetFile: string) =>
       createSafeLogMessage(`Symlinking completion for ${shellType} from ${sourcePath} to ${targetFile}`),
     notFound: (sourcePath: string) => createSafeLogMessage(`Completion file not found: ${sourcePath}`),
+    directoryListing: (filePath: string) => createSafeLogMessage(`  ${filePath}`),
   } satisfies SafeLogMessageMap,
   hookExecutor: {
     executingHook: (hookName: string, timeoutMs: number) =>

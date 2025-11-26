@@ -6,6 +6,6 @@ export default defineTool((install, _ctx) =>
     .bin('rg')
     .zsh((shell) =>
       //
-      shell.completions('completions/zsh/_rg')
+      shell.completions('*/complete/_rg')
     )
 );

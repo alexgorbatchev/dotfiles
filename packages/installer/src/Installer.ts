@@ -437,10 +437,37 @@ export class Installer implements IInstaller {
       const plugin = this.registry.get(resolvedToolConfig.installationMethod);
       const isExternallyManaged: boolean = plugin?.externallyManaged === true;
 
-      // Create timestamped installation directory (skip for externally managed plugins)
+      // Try to resolve version before creating installation directory
+      // Fall back to timestamp if version cannot be resolved
       const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
       const timestamp = generateTimestamp();
-      const installDir: string = isExternallyManaged ? '' : path.join(binariesDir, toolName, timestamp);
+      let versionOrTimestamp: string = timestamp;
+
+      if (!isExternallyManaged && plugin?.resolveVersion) {
+        // Create minimal context for version resolution
+        const tempContext: InstallContext = this.createMinimalContext(resolvedToolConfig);
+
+        try {
+          const resolvedVersion: string | null = await plugin.resolveVersion(
+            toolName,
+            resolvedToolConfig as never,
+            tempContext,
+            logger
+          );
+
+          if (resolvedVersion) {
+            versionOrTimestamp = resolvedVersion;
+            logger.debug(messages.lifecycle.versionResolved(resolvedVersion));
+          } else {
+            logger.debug(messages.lifecycle.versionFallbackToTimestamp());
+          }
+        } catch (error) {
+          logger.debug(messages.lifecycle.versionResolutionFailed(error));
+        }
+      }
+
+      // Create installation directory with version or timestamp (skip for externally managed plugins)
+      const installDir: string = isExternallyManaged ? '' : path.join(binariesDir, toolName, versionOrTimestamp);
 
       if (!isExternallyManaged) {
         await toolFs.ensureDir(installDir);
@@ -451,7 +478,7 @@ export class Installer implements IInstaller {
       const { context, logger: contextLogger } = this.createBaseInstallContext(
         toolName,
         installDir,
-        timestamp,
+        versionOrTimestamp,
         resolvedToolConfig,
         logger
       );
@@ -599,6 +626,35 @@ export class Installer implements IInstaller {
 
       logger.debug(messages.lifecycle.externalSymlinkCreated(symlinkPath, binaryPath));
     }
+  }
+
+  /**
+   * Creates a minimal installation context for version resolution.
+   * This lightweight context contains only system information needed
+   * to resolve versions before installation directories are created.
+   *
+   * @param toolConfig - Complete tool configuration
+   * @returns Minimal context with system info
+   */
+  private createMinimalContext(toolConfig: ToolConfig): InstallContext {
+    const minimalContext: InstallContext = {
+      toolName: '',
+      installDir: '',
+      timestamp: '',
+      systemInfo: this.getSystemInfo(),
+      toolConfig,
+      projectConfig: this.projectConfig,
+      toolDir: '',
+      getToolDir: () => '',
+      homeDir: this.projectConfig.paths.homeDir,
+      binDir: this.projectConfig.paths.targetDir,
+      shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
+      dotfilesDir: this.projectConfig.paths.dotfilesDir,
+      generatedDir: this.projectConfig.paths.generatedDir,
+      $: this.$,
+      fileSystem: this.fs,
+    };
+    return minimalContext;
   }
 
   /**

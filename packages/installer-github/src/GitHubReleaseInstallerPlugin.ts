@@ -14,8 +14,9 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import { createToolFileSystem } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
+import { normalizeVersion } from '@dotfiles/utils';
 import type { IGitHubApiClient } from './github-client';
-import { installFromGitHubRelease } from './installFromGitHubRelease';
+import { fetchGitHubRelease, installFromGitHubRelease } from './installFromGitHubRelease';
 import { messages } from './log-messages';
 import {
   type GithubReleaseInstallParams,
@@ -115,6 +116,44 @@ export class GitHubReleaseInstallerPlugin
     );
 
     return result;
+  }
+
+  /**
+   * Resolves the version that will be installed by fetching release information from GitHub.
+   * This allows the installer to create version-based directories instead of timestamp-based ones.
+   *
+   * @param toolName - Name of the tool (for logging purposes)
+   * @param toolConfig - Complete tool configuration including repository and version
+   * @param context - Installation context (not used but required by interface)
+   * @param logger - Logger instance for debug output
+   * @returns Normalized version string, or null if version cannot be resolved
+   */
+  async resolveVersion(
+    toolName: string,
+    toolConfig: GithubReleaseToolConfig,
+    _context: InstallContext,
+    logger: TsLogger
+  ): Promise<string | null> {
+    try {
+      const params = toolConfig.installParams as GithubReleaseInstallParams;
+      const version: string = toolConfig.version || 'latest';
+
+      // Fetch release information from GitHub API
+      const releaseResult = await fetchGitHubRelease(params.repo, version, this.githubApiClient, logger);
+
+      if (!releaseResult.success) {
+        logger.debug(messages.versionResolutionFailed(toolName, releaseResult.error));
+        return null;
+      }
+
+      // Normalize and return the version from the release tag
+      const normalizedVersion: string = normalizeVersion(releaseResult.data.tag_name);
+      logger.debug(messages.versionResolutionResolved(toolName, normalizedVersion));
+      return normalizedVersion;
+    } catch (error) {
+      logger.debug(messages.versionResolutionException(toolName, error));
+      return null;
+    }
   }
 
   supportsUpdateCheck(): boolean {

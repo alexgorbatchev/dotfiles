@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { IInstallerPlugin, ToolConfig } from '@dotfiles/core';
+import type { IInstallerPlugin, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -57,13 +57,26 @@ describe('ReadmeService', () => {
     };
     await mockPluginRegistry.register(mockGitHubPlugin as IInstallerPlugin);
 
+    // Create mock project config
+    const mockProjectConfig: ProjectConfig = {
+      paths: {
+        homeDir: '/home/test',
+        dotfilesDir: '/home/test/.dotfiles',
+        targetDir: '/home/test',
+        generatedDir: '/home/test/.generated',
+        toolConfigsDir: '/home/test/.dotfiles/tools',
+        shellScriptsDir: '/home/test/.generated/shell-scripts',
+        binariesDir: '/home/test/.generated/binaries',
+      },
+    } as ProjectConfig;
+
     // Create real TrackedFileSystem
     catalogFileSystem = new TrackedFileSystem(
       logger,
       fileSystem,
       mockFileRegistry,
       TrackedFileSystem.createContext('readme-service', 'catalog'),
-      '/home/test'
+      mockProjectConfig
     );
 
     readmeService = new ReadmeService(

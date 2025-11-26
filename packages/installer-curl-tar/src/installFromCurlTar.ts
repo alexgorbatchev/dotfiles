@@ -1,11 +1,6 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type {
-  DownloadContext,
-  ExtractContext,
-  IExtractResult,
-  InstallContext,
-} from '@dotfiles/core';
+import type { DownloadContext, ExtractContext, IExtractResult, InstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';

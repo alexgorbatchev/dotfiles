@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { InstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -70,5 +71,88 @@ describe('CargoInstallerPlugin', () => {
 
     const result = plugin.toolConfigSchema.safeParse(validConfig);
     expect(result.success).toBe(true);
+  });
+
+  describe('resolveVersion', () => {
+    let mockContext: InstallContext;
+
+    beforeEach(() => {
+      mockContext = {} as InstallContext;
+    });
+
+    it('should resolve version from crates.io', async () => {
+      const mockToolConfig: CargoToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'cargo',
+        installParams: {
+          crateName: 'test-crate',
+        },
+      };
+
+      mockCargoClient.getLatestVersion = mock(async () => '1.2.3');
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, logger);
+
+      expect(version).toBe('1.2.3');
+      expect(mockCargoClient.getLatestVersion).toHaveBeenCalledWith('test-crate');
+    });
+
+    it('should return null when crates.io query fails', async () => {
+      const mockToolConfig: CargoToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'cargo',
+        installParams: {
+          crateName: 'test-crate',
+        },
+      };
+
+      mockCargoClient.getLatestVersion = mock(async () => null);
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, logger);
+
+      expect(version).toBeNull();
+    });
+
+    it('should return null when exception occurs', async () => {
+      const mockToolConfig: CargoToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'cargo',
+        installParams: {
+          crateName: 'test-crate',
+        },
+      };
+
+      mockCargoClient.getLatestVersion = mock(async () => {
+        throw new Error('Network error');
+      });
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, logger);
+
+      expect(version).toBeNull();
+    });
+
+    it('should normalize version by stripping v prefix', async () => {
+      const mockToolConfig: CargoToolConfig = {
+        name: 'test-tool',
+        version: 'latest',
+        binaries: ['test-tool'],
+        installationMethod: 'cargo',
+        installParams: {
+          crateName: 'test-crate',
+        },
+      };
+
+      mockCargoClient.getLatestVersion = mock(async () => 'v15.1.0');
+
+      const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, logger);
+
+      expect(version).toBe('15.1.0');
+    });
   });
 });

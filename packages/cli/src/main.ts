@@ -148,7 +148,7 @@ function createTrackedFileSystems(
   parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
-  systemInfo: ISystemInfo
+  projectConfig: ProjectConfig
 ): {
   shimTrackedFs: TrackedFileSystem;
   shellInitTrackedFs: TrackedFileSystem;
@@ -161,7 +161,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'shim'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const shellInitTrackedFs = new TrackedFileSystem(
@@ -169,7 +169,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'init'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const symlinkTrackedFs = new TrackedFileSystem(
@@ -177,7 +177,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'symlink'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const installerTrackedFs = new TrackedFileSystem(
@@ -185,7 +185,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'binary'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const catalogTrackedFs = new TrackedFileSystem(
@@ -193,7 +193,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'catalog'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs };
@@ -270,7 +270,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Create tracked filesystem instances for each generator
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
-    createTrackedFileSystems(parentLogger, fs, fileRegistry, systemInfo);
+    createTrackedFileSystems(parentLogger, fs, fileRegistry, projectConfig);
 
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, projectConfig);
   const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, projectConfig);
@@ -295,13 +295,20 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Register all installer plugins
   pluginRegistry.register(
-    new GitHubReleaseInstallerPlugin(fs, downloader, githubApiClient, archiveExtractor, projectConfig, hookExecutor)
+    new GitHubReleaseInstallerPlugin(
+      installerTrackedFs,
+      downloader,
+      githubApiClient,
+      archiveExtractor,
+      projectConfig,
+      hookExecutor
+    )
   );
   pluginRegistry.register(new BrewInstallerPlugin(parentLogger));
   pluginRegistry.register(
     new CargoInstallerPlugin(
       parentLogger,
-      fs,
+      installerTrackedFs,
       downloader,
       cargoClient,
       archiveExtractor,
@@ -309,9 +316,11 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       projectConfig.cargo.githubRelease.host
     )
   );
-  pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, fs, downloader, hookExecutor));
-  pluginRegistry.register(new CurlTarInstallerPlugin(parentLogger, fs, downloader, archiveExtractor, hookExecutor));
-  pluginRegistry.register(new ManualInstallerPlugin(parentLogger, fs));
+  pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, installerTrackedFs, downloader, hookExecutor));
+  pluginRegistry.register(
+    new CurlTarInstallerPlugin(parentLogger, installerTrackedFs, downloader, archiveExtractor, hookExecutor)
+  );
+  pluginRegistry.register(new ManualInstallerPlugin(parentLogger, installerTrackedFs));
 
   const installer = new Installer(
     logger,

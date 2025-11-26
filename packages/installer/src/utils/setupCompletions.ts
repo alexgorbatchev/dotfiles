@@ -2,6 +2,8 @@ import path from 'node:path';
 import type { InstallContext, ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { TrackedFileSystem } from '@dotfiles/registry/file';
+import { minimatch } from 'minimatch';
 import { messages } from './log-messages';
 
 /**
@@ -88,11 +90,13 @@ async function setupShellCompletion(
   logger.debug(messages.completion.symlinking(shellType, sourcePath, targetFile));
 
   if (await fs.exists(sourcePath)) {
-    await fs.ensureDir(targetDir);
-    if (await fs.exists(targetFile)) {
-      await fs.rm(targetFile);
+    const completionFs = fs instanceof TrackedFileSystem ? fs.withFileType('completion') : fs;
+
+    await completionFs.ensureDir(targetDir);
+    if (await completionFs.exists(targetFile)) {
+      await completionFs.rm(targetFile);
     }
-    await fs.symlink(sourcePath, targetFile);
+    await completionFs.symlink(sourcePath, targetFile);
   } else {
     logger.warn(messages.completion.notFound(sourcePath));
   }
@@ -120,6 +124,15 @@ async function resolveSourcePath(
   extractDir: string,
   source: string
 ): Promise<string> {
+  // If source contains glob patterns, resolve using minimatch
+  if (source.includes('*') || source.includes('?') || source.includes('[')) {
+    const allFiles = await getAllFiles(fs, extractDir);
+    const matched = allFiles.find((file) => minimatch(file, source));
+    if (matched) {
+      return path.join(extractDir, matched);
+    }
+  }
+
   let sourcePath = path.join(extractDir, source);
 
   // If not found in extractDir, try relative to config file
@@ -132,4 +145,25 @@ async function resolveSourcePath(
   }
 
   return sourcePath;
+}
+
+async function getAllFiles(fs: IFileSystem, directory: string, baseDir?: string): Promise<string[]> {
+  const base = baseDir ?? directory;
+  const results: string[] = [];
+  const entries = await fs.readdir(directory);
+
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry);
+    const stats = await fs.stat(fullPath);
+
+    if (stats.isDirectory()) {
+      const subFiles = await getAllFiles(fs, fullPath, base);
+      results.push(...subFiles);
+    } else {
+      const relativePath = path.relative(base, fullPath);
+      results.push(relativePath);
+    }
+  }
+
+  return results;
 }

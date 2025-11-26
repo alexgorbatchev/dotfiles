@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import type { InstallContext, ToolConfig } from '@dotfiles/core';
+import type { InstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { setupCompletions } from '../setupCompletions';
 
 describe('setupCompletions', () => {
@@ -204,5 +208,88 @@ describe('setupCompletions', () => {
 
     expect(await fs.exists(targetPath)).toBe(true);
     expect(await fs.readlink(targetPath)).toBe(sourcePath);
+  });
+
+  it('should resolve glob pattern in completion source path', async () => {
+    const { fs } = await createMemFileSystem();
+    const toolConfig: ToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      installationMethod: 'manual',
+      shellConfigs: {
+        zsh: {
+          completions: {
+            source: '*/complete/_tool',
+          },
+        },
+      },
+    };
+
+    // Create the actual file structure like ripgrep
+    const sourcePath = path.join(extractDir, 'tool-1.0.0-aarch64-darwin/complete/_tool');
+    await fs.mkdir(path.dirname(sourcePath), { recursive: true });
+    await fs.writeFile(sourcePath, '# completion');
+
+    await setupCompletions(fs, 'test-tool', toolConfig, mockContext, extractDir, logger);
+
+    const targetPath = path.join(shellScriptsDir, 'zsh', 'completions', '_test-tool');
+    expect(await fs.exists(targetPath)).toBe(true);
+    expect(await fs.readlink(targetPath)).toBe(sourcePath);
+  });
+
+  it('should track completion operations with fileType=completion when using TrackedFileSystem', async () => {
+    const { fs } = await createMemFileSystem();
+    const dbPath = path.join('/tmp', `test-completions-${randomUUID()}.db`);
+    const registryDatabase = new RegistryDatabase(logger, dbPath);
+    const registry = new FileRegistry(logger, registryDatabase.getConnection());
+
+    const mockProjectConfig: ProjectConfig = {
+      paths: {
+        homeDir: '/home/user',
+        dotfilesDir: '/home/user/.dotfiles',
+        targetDir: '/home/user',
+        generatedDir: '/home/user/.generated',
+        toolConfigsDir: '/home/user/.dotfiles/tools',
+        shellScriptsDir: '/home/user/.generated/shell-scripts',
+        binariesDir: '/home/user/.generated/binaries',
+      },
+    } as ProjectConfig;
+
+    const trackedFs = new TrackedFileSystem(
+      logger,
+      fs,
+      registry,
+      TrackedFileSystem.createContext('test-tool', 'binary'),
+      mockProjectConfig
+    );
+
+    const toolConfig: ToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      installationMethod: 'manual',
+      shellConfigs: {
+        zsh: {
+          completions: {
+            source: 'completion.zsh',
+          },
+        },
+      },
+    };
+
+    const sourcePath = path.join(extractDir, 'completion.zsh');
+    await fs.mkdir(extractDir, { recursive: true });
+    await fs.writeFile(sourcePath, '# completion');
+
+    await setupCompletions(trackedFs, 'test-tool', toolConfig, mockContext, extractDir, logger);
+
+    const operations = await registry.getOperations({ fileType: 'completion' });
+    expect(operations.length).toBeGreaterThan(0);
+
+    const symlinkOps = operations.filter((op: { operationType: string }) => op.operationType === 'symlink');
+    expect(symlinkOps.length).toBe(1);
+    expect(symlinkOps[0]?.toolName).toBe('test-tool');
+    expect(symlinkOps[0]?.fileType).toBe('completion');
+
+    await unlink(dbPath);
   });
 });

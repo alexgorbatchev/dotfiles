@@ -1,4 +1,5 @@
 import { beforeEach, test } from 'bun:test';
+import type { ProjectConfig } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -10,18 +11,30 @@ let fs: MemFileSystem;
 let registry: FileRegistry;
 let registryDatabase: RegistryDatabase;
 let trackedFs: TrackedFileSystem;
+let mockProjectConfig: ProjectConfig;
 
 beforeEach(() => {
   logger = new TestLogger();
   fs = new MemFileSystem({});
   registryDatabase = new RegistryDatabase(logger, ':memory:');
   registry = new FileRegistry(logger, registryDatabase.getConnection());
+  mockProjectConfig = {
+    paths: {
+      homeDir: '/home/test',
+      dotfilesDir: '/home/test/.dotfiles',
+      targetDir: '/home/test',
+      generatedDir: '/home/test/.generated',
+      toolConfigsDir: '/home/test/.dotfiles/tools',
+      shellScriptsDir: '/home/test/.generated/shell-scripts',
+      binariesDir: '/home/test/.generated/binaries',
+    },
+  } as ProjectConfig;
   trackedFs = new TrackedFileSystem(
     logger,
     fs,
     registry,
     TrackedFileSystem.createContext('nodejs', 'binary'),
-    '/home/test'
+    mockProjectConfig
   );
 });
 
@@ -43,7 +56,7 @@ test('should show different tool names for different contexts', async () => {
     fs,
     registry,
     TrackedFileSystem.createContext('curl', 'binary'),
-    '/home/test'
+    mockProjectConfig
   );
 
   // Create parent directories
