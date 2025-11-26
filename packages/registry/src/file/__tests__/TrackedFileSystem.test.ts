@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
+import type { ProjectConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -16,6 +17,7 @@ describe('TrackedFileSystem', () => {
   let trackedFs: TrackedFileSystem;
   let context: ITrackingContext;
   let dbPath: string;
+  let mockProjectConfig: ProjectConfig;
 
   beforeEach(async () => {
     logger = new TestLogger();
@@ -26,8 +28,20 @@ describe('TrackedFileSystem', () => {
     registryDatabase = new RegistryDatabase(logger, dbPath);
     registry = new FileRegistry(logger, registryDatabase.getConnection());
 
+    mockProjectConfig = {
+      paths: {
+        homeDir: '/home/test',
+        dotfilesDir: '/home/test/.dotfiles',
+        targetDir: '/home/test',
+        generatedDir: '/home/test/.generated',
+        toolConfigsDir: '/home/test/.dotfiles/tools',
+        shellScriptsDir: '/home/test/.generated/shell-scripts',
+        binariesDir: '/home/test/.generated/binaries',
+      },
+    } as ProjectConfig;
+
     context = TrackedFileSystem.createContext('test-tool', 'shim');
-    trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
+    trackedFs = new TrackedFileSystem(logger, fs, registry, context, mockProjectConfig);
   });
 
   afterEach(async () => {
@@ -140,7 +154,7 @@ describe('TrackedFileSystem', () => {
       registryDatabase.close();
       registryDatabase = new RegistryDatabase(logger, dbPath);
       registry = new FileRegistry(logger, registryDatabase.getConnection());
-      trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
+      trackedFs = new TrackedFileSystem(logger, fs, registry, context, mockProjectConfig);
 
       // Try to write identical content
       await trackedFs.writeFile(filePath, content);
@@ -244,7 +258,7 @@ describe('TrackedFileSystem', () => {
       registryDatabase.close();
       registryDatabase = new RegistryDatabase(logger, dbPath);
       registry = new FileRegistry(logger, registryDatabase.getConnection());
-      trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
+      trackedFs = new TrackedFileSystem(logger, fs, registry, context, mockProjectConfig);
 
       // Try to write identical buffer content
       await trackedFs.writeFile(filePath, buffer);
@@ -532,8 +546,8 @@ describe('TrackedFileSystem', () => {
 
   describe('operation grouping', () => {
     it('should use same operation ID for related operations', async () => {
-      const context = TrackedFileSystem.createContext('nodejs', 'shim');
-      const trackedFs = new TrackedFileSystem(logger, fs, registry, context, '/home/test');
+      const context = TrackedFileSystem.createContext('nodejs', 'shim', { version: '1.0' });
+      const trackedFs = new TrackedFileSystem(logger, fs, registry, context, mockProjectConfig);
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });
@@ -552,8 +566,8 @@ describe('TrackedFileSystem', () => {
       const context1 = TrackedFileSystem.createContext('nodejs', 'shim');
       const context2 = TrackedFileSystem.createContext('python', 'binary');
 
-      const trackedFs1 = new TrackedFileSystem(logger, fs, registry, context1, '/home/test');
-      const trackedFs2 = new TrackedFileSystem(logger, fs, registry, context2, '/home/test');
+      const trackedFs1 = new TrackedFileSystem(logger, fs, registry, context1, mockProjectConfig);
+      const trackedFs2 = new TrackedFileSystem(logger, fs, registry, context2, mockProjectConfig);
 
       // Ensure directory exists first
       await fs.mkdir('/test', { recursive: true });

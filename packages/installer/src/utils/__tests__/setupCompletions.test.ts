@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import type { InstallContext, ToolConfig } from '@dotfiles/core';
+import type { InstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
@@ -243,12 +243,24 @@ describe('setupCompletions', () => {
     const registryDatabase = new RegistryDatabase(logger, dbPath);
     const registry = new FileRegistry(logger, registryDatabase.getConnection());
 
+    const mockProjectConfig: ProjectConfig = {
+      paths: {
+        homeDir: '/home/user',
+        dotfilesDir: '/home/user/.dotfiles',
+        targetDir: '/home/user',
+        generatedDir: '/home/user/.generated',
+        toolConfigsDir: '/home/user/.dotfiles/tools',
+        shellScriptsDir: '/home/user/.generated/shell-scripts',
+        binariesDir: '/home/user/.generated/binaries',
+      },
+    } as ProjectConfig;
+
     const trackedFs = new TrackedFileSystem(
       logger,
       fs,
       registry,
       TrackedFileSystem.createContext('test-tool', 'binary'),
-      '/home/user'
+      mockProjectConfig
     );
 
     const toolConfig: ToolConfig = {

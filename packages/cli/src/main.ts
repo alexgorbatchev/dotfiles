@@ -148,7 +148,7 @@ function createTrackedFileSystems(
   parentLogger: TsLogger,
   fs: IFileSystem,
   fileRegistry: IFileRegistry,
-  systemInfo: ISystemInfo
+  projectConfig: ProjectConfig
 ): {
   shimTrackedFs: TrackedFileSystem;
   shellInitTrackedFs: TrackedFileSystem;
@@ -161,7 +161,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'shim'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const shellInitTrackedFs = new TrackedFileSystem(
@@ -169,7 +169,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'init'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const symlinkTrackedFs = new TrackedFileSystem(
@@ -177,7 +177,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'symlink'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const installerTrackedFs = new TrackedFileSystem(
@@ -185,7 +185,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'binary'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   const catalogTrackedFs = new TrackedFileSystem(
@@ -193,7 +193,7 @@ function createTrackedFileSystems(
     fs,
     fileRegistry,
     TrackedFileSystem.createContext('system', 'catalog'),
-    systemInfo.homeDir
+    projectConfig
   );
 
   return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs };
@@ -270,7 +270,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Create tracked filesystem instances for each generator
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
-    createTrackedFileSystems(parentLogger, fs, fileRegistry, systemInfo);
+    createTrackedFileSystems(parentLogger, fs, fileRegistry, projectConfig);
 
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, projectConfig);
   const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, projectConfig);
