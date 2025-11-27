@@ -179,14 +179,42 @@ export class ShellInitGenerator implements IShellInitGenerator {
   private async updateProfileFiles(generatedFiles: Map<ShellType, string>) {
     const logger = this.logger.getSubLogger({ name: 'updateProfileFiles' });
     const profileUpdater = new ProfileUpdater(this.fs, this.projectConfig.paths.homeDir);
+    const shellInstallConfig = this.projectConfig.features.shellInstall;
+
+    if (!shellInstallConfig) {
+      logger.debug(messages.profiles.skipped('all' as ShellType));
+      return [];
+    }
 
     const configs: IProfileUpdateConfig[] = [];
     for (const [shellType, scriptPath] of generatedFiles) {
+      let profilePath: string | undefined;
+
+      if (shellType === 'zsh') {
+        profilePath = shellInstallConfig?.zsh;
+      } else if (shellType === 'bash') {
+        profilePath = shellInstallConfig?.bash;
+      } else if (shellType === 'powershell') {
+        profilePath = shellInstallConfig?.powershell;
+      }
+
+      if (!profilePath) {
+        logger.debug(messages.profiles.skipped(shellType));
+        continue;
+      }
+
+      if (profilePath?.startsWith('~/')) {
+        profilePath = path.join(this.projectConfig.paths.homeDir, profilePath.slice(2));
+      } else if (profilePath === '~') {
+        profilePath = this.projectConfig.paths.homeDir;
+      }
+
       configs.push({
         shellType,
         generatedScriptPath: scriptPath,
         onlyIfExists: true, // Only update profile files if they already exist
         projectConfigPath: this.projectConfig.configFilePath,
+        profilePath,
       });
     }
 

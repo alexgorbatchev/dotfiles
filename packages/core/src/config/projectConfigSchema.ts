@@ -324,6 +324,30 @@ const featuresConfigSchema = z
       })
       .strict()
       .default({ generate: true, filePath: `\${paths.dotfilesDir}/CATALOG.md` }),
+    /**
+     * Configuration for shell initialization.
+     * Controls where the shell initialization scripts are sourced.
+     */
+    shellInstall: z
+      .object({
+        /**
+         * The path to the zsh configuration file (e.g., ~/.zshrc).
+         * If not provided, zsh initialization will be skipped.
+         */
+        zsh: z.string().optional(),
+        /**
+         * The path to the bash configuration file (e.g., ~/.bashrc).
+         * If not provided, bash initialization will be skipped.
+         */
+        bash: z.string().optional(),
+        /**
+         * The path to the powershell configuration file (e.g., ~/.config/powershell/profile.ps1).
+         * If not provided, powershell initialization will be skipped.
+         */
+        powershell: z.string().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -377,7 +401,7 @@ const baseProjectConfigSchemaRequired = z
     github: gitHubConfigSchema.required().default(gitHubConfigSchema.parse({})),
     cargo: cargoConfigSchema.required().default(cargoConfigSchema.parse({})),
     downloader: downloaderConfigSchema.required().default(downloaderConfigSchema.parse({})),
-    features: featuresConfigSchema.required().default(featuresConfigSchema.parse({})),
+    features: featuresConfigSchema.default(featuresConfigSchema.parse({})),
   })
   .strict();
 

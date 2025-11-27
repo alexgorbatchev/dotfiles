@@ -211,6 +211,32 @@ updates:
   checkInterval: 86400
 
 # -----------------------------------------------------------------------------
+# Features Configuration
+# -----------------------------------------------------------------------------
+features:
+  # Configuration for the tool catalog generation.
+  catalog:
+    # If true, generate a markdown catalog of all tools.
+    # (boolean, default: true)
+    generate: true
+    # Path where the catalog file will be generated.
+    # (string, default: ${paths.dotfilesDir}/CATALOG.md)
+    filePath: "${paths.dotfilesDir}/CATALOG.md"
+
+  # Configuration for shell initialization.
+  # Controls where the shell initialization scripts are sourced.
+  shellInstall:
+    # Path to zsh configuration file (e.g., ~/.zshrc).
+    # If not provided, zsh initialization will be skipped.
+    zsh: "~/.zshrc"
+    # Path to bash configuration file (e.g., ~/.bashrc).
+    # If not provided, bash initialization will be skipped.
+    bash: "~/.bashrc"
+    # Path to powershell configuration file (e.g., ~/.config/powershell/profile.ps1).
+    # If not provided, powershell initialization will be skipped.
+    powershell: "~/.config/powershell/profile.ps1"
+
+# -----------------------------------------------------------------------------
 # API and Service Configurations
 # -----------------------------------------------------------------------------
 github:

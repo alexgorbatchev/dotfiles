@@ -58,7 +58,7 @@ export class ProfileUpdater implements IProfileUpdater {
    * Updates a single profile file based on the provided configuration.
    */
   private async updateProfile(config: IProfileUpdateConfig): Promise<IProfileUpdateResult> {
-    const profilePath = this.getProfilePath(config.shellType);
+    const profilePath = config.profilePath ?? this.getProfilePath(config.shellType);
     const fileExists = await this.fileSystem.exists(profilePath);
 
     const result: IProfileUpdateResult = {
