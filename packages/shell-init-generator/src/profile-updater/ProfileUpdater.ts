@@ -69,58 +69,80 @@ export class ProfileUpdater implements IProfileUpdater {
       wasAlreadyPresent: false,
     };
 
-    // Skip if file doesn't exist and onlyIfExists is true
     if (!fileExists && config.onlyIfExists) {
       return result;
     }
 
-    // Check if sourcing line already exists
+    let content = '';
     if (fileExists) {
-      const hasExistingLine = await this.hasSourceLine(profilePath, config.generatedScriptPath);
-      if (hasExistingLine) {
-        result.wasAlreadyPresent = true;
-        return result;
+      try {
+        content = await this.fileSystem.readFile(profilePath);
+      } catch (_error) {
+        content = '';
       }
     }
 
-    // Add or update the sourcing line
-    await this.addSourceLine(profilePath, config);
+    const sourceLine = generateSourceLine(config.shellType, config.generatedScriptPath);
+    const headerBlock = generateProfileHeader(config.shellType, config.projectConfigPath);
+    const newBlock = `${headerBlock}\n${sourceLine}`;
+
+    const headerMarker = '# Generated via dotfiles generator - do not modify';
+    if (content.includes(headerMarker)) {
+      const newContent = this.replaceGeneratedBlocks(content, newBlock);
+      if (newContent !== content) {
+        await this.fileSystem.writeFile(profilePath, newContent);
+        result.wasUpdated = true;
+      } else {
+        result.wasAlreadyPresent = true;
+      }
+      return result;
+    }
+
+    const sourcePatterns = this.getSourcePatterns(config.generatedScriptPath);
+    if (sourcePatterns.some((pattern) => content.includes(pattern))) {
+      result.wasAlreadyPresent = true;
+      return result;
+    }
+
+    if (content && !content.endsWith('\n')) {
+      content += '\n';
+    }
+    const finalContent = `${content}\n${newBlock}\n`;
+
+    const parentDir = path.dirname(profilePath);
+    await this.fileSystem.ensureDir(parentDir);
+
+    await this.fileSystem.writeFile(profilePath, finalContent);
     result.wasUpdated = true;
 
     return result;
   }
 
-  /**
-   * Adds a source line to the profile file.
-   */
-  private async addSourceLine(profilePath: string, config: IProfileUpdateConfig): Promise<void> {
-    const sourceLine = generateSourceLine(config.shellType, config.generatedScriptPath);
-    const headerBlock = generateProfileHeader(config.shellType, config.projectConfigPath);
+  private replaceGeneratedBlocks(content: string, newBlock: string): string {
+    const headerMarker = '# Generated via dotfiles generator - do not modify';
+    const escapedMarker = headerMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const blockRegex = new RegExp(
+      `${escapedMarker}[\\s\\S]*?^\\s*(?:source|\\.)\\s+["'].*?["'].*?$`,
+      'gm'
+    );
 
-    let content = '';
+    const parts = content.split(blockRegex);
+    let newContent = parts[0] || '';
 
-    // Read existing content if file exists
-    try {
-      content = await this.fileSystem.readFile(profilePath);
-    } catch (_error) {
-      // File doesn't exist, start with empty content
-      content = '';
+    if (newContent && !newContent.endsWith('\n')) {
+      newContent += '\n';
     }
 
-    // Ensure content ends with a newline before adding our lines
-    if (content && !content.endsWith('\n')) {
-      content += '\n';
+    newContent += `${newBlock}\n`;
+
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i];
+      if (part) {
+        newContent += part;
+      }
     }
 
-    // Add our sourcing section with enhanced header
-    const newContent = `${content}\n${headerBlock}\n${sourceLine}\n`;
-
-    // Ensure parent directory exists
-    const parentDir = path.dirname(profilePath);
-    await this.fileSystem.ensureDir(parentDir);
-
-    // Write updated content
-    await this.fileSystem.writeFile(profilePath, newContent);
+    return newContent;
   }
 
   /**

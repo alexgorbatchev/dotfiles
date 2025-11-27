@@ -272,7 +272,6 @@ describe('ShellInitGenerator - Profile Updates', () => {
       const generatedScriptPath = path.join(testDirs.paths.shellScriptsDir, 'main.ps1');
       expect(profileContent).toContain(`. "${generatedScriptPath}"`);
       expect(profileContent).toContain('# Generated via dotfiles generator - do not modify');
-      expect(profileContent).toContain(`# ${configFilePath}`);
       expect(profileContent).toContain(
         '# ------------------------------------------------------------------------------'
       );

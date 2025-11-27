@@ -223,7 +223,6 @@ describe('Profile Updates E2E Tests', () => {
 
         // Verify the header comments were added
         expect(profileContent).toContain('# Generated via dotfiles generator - do not modify');
-        expect(profileContent).toContain(`# ${configFilePath}`);
         expect(profileContent).toContain(
           '# ------------------------------------------------------------------------------'
         );

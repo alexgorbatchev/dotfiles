@@ -203,10 +203,9 @@ export function generateSourceLine(shellType: ShellType, scriptPath: string): st
  * @param projectConfigPath - Full path to the project config file
  * @returns Multi-line header comment block
  */
-export function generateProfileHeader(shellType: ShellType, projectConfigPath: string): string {
+export function generateProfileHeader(shellType: ShellType, _projectConfigPath: string): string {
   return [
     commentLine(shellType, 'Generated via dotfiles generator - do not modify'),
-    commentLine(shellType, projectConfigPath),
     headerLine(shellType, '-'),
   ].join('\n');
 }

@@ -157,7 +157,6 @@ describe('ProfileUpdater', () => {
       const content = await mockFileSystem.readFile(profilePath);
 
       expect(content).toContain('# Generated via dotfiles generator - do not modify');
-      expect(content).toContain(`# ${testProjectConfigPath}`);
       expect(content).toContain('# ------------------------------------------------------------------------------');
       expect(content).toContain(`source "${scriptPath}"`);
     });
@@ -197,7 +196,6 @@ describe('ProfileUpdater', () => {
       const updatedContent = await mockFileSystem.readFile(profilePath);
       expect(updatedContent).toContain(existingContent);
       expect(updatedContent).toContain('# Generated via dotfiles generator - do not modify');
-      expect(updatedContent).toContain(`# ${testProjectConfigPath}`);
       expect(updatedContent).toContain(
         '# ------------------------------------------------------------------------------'
       );
@@ -314,7 +312,6 @@ describe('ProfileUpdater', () => {
       const content = await mockFileSystem.readFile(profilePath);
       expect(content).toContain(`. "${scriptPath}"`);
       expect(content).toContain('# Generated via dotfiles generator - do not modify');
-      expect(content).toContain(`# ${testProjectConfigPath}`);
       expect(content).toContain('# ------------------------------------------------------------------------------');
     });
   });
