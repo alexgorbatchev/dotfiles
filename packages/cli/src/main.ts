@@ -33,10 +33,10 @@ import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
 import { registerFeaturesCommand } from './featuresCommand';
-import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
+import { registerLogCommand } from './logCommand';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -382,7 +382,7 @@ export function registerAllCommands(
   registerCheckUpdatesCommand(logger, program, servicesFactory);
   registerUpdateCommand(logger, program, servicesFactory);
   registerDetectConflictsCommand(logger, program, servicesFactory);
-  registerFilesCommand(logger, program, servicesFactory);
+  registerLogCommand(logger, program, servicesFactory);
 }
 
 export async function main(argv: string[]) {

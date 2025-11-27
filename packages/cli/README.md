@@ -155,27 +155,27 @@ Conflicts found:
     - Shim: ~/.dotfiles/bin/rg
 ```
 
-### `files`
+### `log`
 
 Manage tracked generated files.
 
 ```bash
 # List all generated files
-dotfiles files
+dotfiles log
 
 # List files for specific tool
-dotfiles files fzf
+dotfiles log fzf
 
 # List by file type
-dotfiles files --type shim
-dotfiles files --type shell-init
-dotfiles files --type symlink
+dotfiles log --type shim
+dotfiles log --type shell-init
+dotfiles log --type symlink
 
 # Check file status
-dotfiles files --status
+dotfiles log --status
 
 # List files created since a date
-dotfiles files --since 2025-08-01
+dotfiles log --since 2025-08-01
 ```
 
 ### `cleanup`
@@ -285,10 +285,10 @@ dotfiles update fzf
 dotfiles detect-conflicts
 
 # View all generated files
-dotfiles files
+dotfiles log
 
 # View files for specific tool
-dotfiles files fzf
+dotfiles log fzf
 
 # Clean up old files
 dotfiles cleanup --dry-run
@@ -325,7 +325,7 @@ Each command is implemented as a separate module:
 - `checkUpdatesCommand` - Update checking logic
 - `updateCommand` - Update installation logic
 - `detectConflictsCommand` - Conflict detection logic
-- `filesCommand` - File tracking logic
+- `logCommand` - File tracking logic
 - `cleanupCommand` - Cleanup logic
 
 ## Dependencies

@@ -45,6 +45,9 @@ bun run cli.ts generate
 
 # Update all tools to their latest versions
 bun run cli.ts update
+
+# View logs of file operations
+bun run cli.ts log
 ```
 
 ### Configure with TypeScript

@@ -32,6 +32,7 @@ describe('generateCommand', () => {
   } as ToolConfig;
 
   beforeEach(async () => {
+    process.env.DOTFILES_BUILT_PACKAGE_NAME = '@dotfiles/core';
     const setup = await createCliTestSetup({
       testName: 'generate-command',
     });

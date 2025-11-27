@@ -82,13 +82,13 @@ export const messages = {
   configParameterOverridden: (field: string, value: string) =>
     createSafeLogMessage(`${field.charAt(0).toUpperCase() + field.slice(1)} overridden to: ${value}`),
   cleanupProcessFinished: (dryRun: boolean) => createSafeLogMessage(`cleanup process finished, dryRun=${dryRun}`),
-  filesCheckingFileStates: () => createSafeLogMessage('Checking file states for all tools'),
-  filesFileStatesForTool: (toolName: string) => createSafeLogMessage(`${toolName} files`),
-  filesFileStatus: (statusIcon: string, filePath: string, fileType: string, statusText: string, sizeText: string) =>
+  logCheckingFileStates: () => createSafeLogMessage('Checking file states for all tools'),
+  logFileStatesForTool: (toolName: string) => createSafeLogMessage(`${toolName} files`),
+  logFileStatus: (statusIcon: string, filePath: string, fileType: string, statusText: string, sizeText: string) =>
     createSafeLogMessage(`${statusIcon} ${filePath} [${fileType}] - ${statusText}${sizeText}`),
-  filesTargetStatus: (targetIcon: string, targetPath: string) => createSafeLogMessage(`${targetIcon} ${targetPath}`),
-  filesNoOperationsFound: () => createSafeLogMessage('No file operations found matching criteria'),
-  filesOperationHistory: (timestamp: string, operationMessage: string, metadata: string) =>
+  logTargetStatus: (targetIcon: string, targetPath: string) => createSafeLogMessage(`${targetIcon} ${targetPath}`),
+  logNoOperationsFound: () => createSafeLogMessage('No file operations found matching criteria'),
+  logOperationHistory: (timestamp: string, operationMessage: string, metadata: string) =>
     createSafeLogMessage(`${timestamp} ${operationMessage}${metadata ? ` ${metadata}` : ''}`),
   cachingDisabled: () => createSafeLogMessage('Caching disabled'),
   registryInitialized: (path: string) => createSafeLogMessage(`File tracking initialized: ${path}`),

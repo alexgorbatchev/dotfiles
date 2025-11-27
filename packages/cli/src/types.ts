@@ -83,9 +83,9 @@ export interface ICleanupCommandSpecificOptions {
 }
 
 /**
- * Command-specific options for files command (excludes global options)
+ * Command-specific options for log command (excludes global options)
  */
-export interface IFilesCommandSpecificOptions {
+export interface ILogCommandSpecificOptions {
   tool?: string; // Positional argument
   type?: string;
   status?: boolean;

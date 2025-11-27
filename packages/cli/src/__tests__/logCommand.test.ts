@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
 import { createProgram } from '../createProgram';
-import { registerFilesCommand } from '../filesCommand';
+import { registerLogCommand } from '../logCommand';
 import type { IServices } from '../types';
 
-describe('filesCommand', () => {
-  it('should register files command successfully', () => {
+describe('logCommand', () => {
+  it('should register log command successfully', () => {
     const logger = new TestLogger();
     const program = createProgram();
     const servicesFactory = () => Promise.resolve({} as IServices);
 
-    registerFilesCommand(logger, program, servicesFactory);
+    registerLogCommand(logger, program, servicesFactory);
 
     const commands = program.commands;
-    const filesCommand = commands.find((cmd) => cmd.name() === 'files');
+    const logCommand = commands.find((cmd) => cmd.name() === 'log');
 
-    expect(filesCommand).toBeDefined();
-    expect(filesCommand?.description()).toBe('Inspect tracked files in the registry');
+    expect(logCommand).toBeDefined();
+    expect(logCommand?.description()).toBe('Inspect tracked files in the registry');
 
     // Check that all expected options are present
-    const options = filesCommand?.options;
+    const options = logCommand?.options;
     expect(options?.some((opt) => opt.long === '--type')).toBe(true);
     expect(options?.some((opt) => opt.long === '--status')).toBe(true);
     expect(options?.some((opt) => opt.long === '--since')).toBe(true);
