@@ -138,12 +138,12 @@ paths: {
   targetDir: '~/.local/bin',
 
   // Directory for generated shell initialization scripts
-  // Default: ${paths.generatedDir}/shell-init
-  shellScriptsDir: '~/.dotfiles/.generated/shell-init',
+  // Default: ${paths.generatedDir}/shell-scripts
+  shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
 
   // Directory for tool binaries
-  // Default: ${paths.generatedDir}/bin
-  binariesDir: '~/.dotfiles/.generated/bin',
+  // Default: ${paths.generatedDir}/binaries
+  binariesDir: '~/.dotfiles/.generated/binaries',
 }
 ```
 
@@ -217,6 +217,22 @@ features: {
     // Where to write the catalog file
     // Default: ${paths.dotfilesDir}/CATALOG.md
     filePath: '~/.dotfiles/CATALOG.md',
+  },
+
+  // Shell initialization configuration
+  // Controls where the shell initialization scripts are sourced
+  shellInstall: {
+    // Path to zsh configuration file
+    // If not provided, zsh initialization is skipped
+    zsh: '~/.zshrc',
+
+    // Path to bash configuration file
+    // If not provided, bash initialization is skipped
+    bash: '~/.bashrc',
+
+    // Path to powershell configuration file
+    // If not provided, powershell initialization is skipped
+    powershell: '~/.config/powershell/profile.ps1',
   },
 }
 ```
@@ -351,13 +367,17 @@ export default defineConfig(async () => {
       toolConfigsDir: '~/.dotfiles/tools',
       generatedDir: '~/.dotfiles/.generated',
       targetDir: '~/.local/bin',
-      shellScriptsDir: '~/.dotfiles/.generated/shell',
+      shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
     },
 
     features: {
       catalog: {
         generate: true,
         filePath: '~/.dotfiles/CATALOG.md',
+      },
+      shellInstall: {
+        zsh: '~/.zshrc',
+        bash: '~/.bashrc',
       },
     },
 
@@ -424,7 +444,7 @@ Your dotfiles project should have this structure:
 ├── CATALOG.md               # Auto-generated tool catalog
 └── .generated/              # Generated files (not version controlled)
     ├── bin/                 # Tool shims
-    ├── shell-init/          # Shell initialization scripts
+    ├── shell-scripts/       # Shell initialization scripts
     └── binaries/            # Downloaded tool binaries
 ```
 

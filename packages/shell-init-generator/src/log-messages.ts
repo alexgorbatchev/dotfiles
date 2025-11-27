@@ -15,6 +15,8 @@ export const messages = {
   } satisfies SafeLogMessageMap,
   profiles: {
     starting: (entryCount: number) => createSafeLogMessage(`Updating ${entryCount} shell profile entries`),
+    skipped: (shellType: ShellType) =>
+      createSafeLogMessage(`Skipping profile update for ${shellType} as it is not configured`),
   } satisfies SafeLogMessageMap,
   cleanup: {
     onceScriptRemoved: (scriptPath: string) => createSafeLogMessage(`Removed stale once script ${scriptPath}`),

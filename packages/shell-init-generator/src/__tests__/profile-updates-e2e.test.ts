@@ -30,6 +30,13 @@ describe('Profile Updates E2E Tests', () => {
     mockProjectConfig = await createMockProjectConfig({
       config: {
         paths: testDirs.paths,
+        features: {
+          shellInstall: {
+            zsh: '~/.zshrc',
+            bash: '~/.bashrc',
+            powershell: '~/.config/powershell/profile.ps1',
+          },
+        },
       },
       filePath: configFilePath,
       fileSystem: mockFileSystem,

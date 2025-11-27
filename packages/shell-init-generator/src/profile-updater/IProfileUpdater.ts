@@ -12,6 +12,8 @@ export interface IProfileUpdateConfig {
   onlyIfExists: boolean;
   /** Path to the project config file for reference in comments */
   projectConfigPath: string;
+  /** Optional explicit path to the profile file. If not provided, default is used. */
+  profilePath?: string;
 }
 
 /**
