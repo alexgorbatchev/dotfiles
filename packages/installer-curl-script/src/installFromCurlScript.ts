@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { shell as bunShell } from './shell';
 import type { InstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -9,7 +10,6 @@ import {
   executeAfterDownloadHook,
   getBinaryNames,
   getBinaryPaths,
-  messages as utilMessages,
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
@@ -90,8 +90,13 @@ export async function installFromCurlScript(
     // Execute the script
     logger.debug(messages.executingScript(shell));
 
-    // [TODO] In a real implementation, we would execute the script here
-    // For now, we'll just simulate success
+    const args = params.args ?? [];
+
+    if (shell === 'bash') {
+      await bunShell`bash ${scriptPath} ${args}`.quiet();
+    } else {
+      await bunShell`sh ${scriptPath} ${args}`.quiet();
+    }
 
     // Handle all binaries by copying from script installation to versioned directory
     const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
@@ -99,7 +104,7 @@ export async function installFromCurlScript(
       const sourcePath = path.join('/usr/local/bin', binaryName);
       const finalBinaryPath = path.join(context.installDir, binaryName);
 
-      logger.debug(utilMessages.binaryMovement.moving(sourcePath, finalBinaryPath));
+      logger.debug(messages.movingBinary(sourcePath, finalBinaryPath));
     }
 
     // Return paths to all binaries

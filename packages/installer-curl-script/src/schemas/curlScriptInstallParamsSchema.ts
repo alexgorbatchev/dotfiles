@@ -18,6 +18,8 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
   url: z.string().url(),
   /** The shell to use for executing the downloaded script (e.g., `bash`, `sh`). */
   shell: z.enum(['bash', 'sh']),
+  /** Arguments to pass to the script. */
+  args: z.array(z.string()).optional(),
 });
 
 /**
