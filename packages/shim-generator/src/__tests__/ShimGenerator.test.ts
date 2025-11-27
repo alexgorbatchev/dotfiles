@@ -92,6 +92,14 @@ describe('ShimGenerator', () => {
         GENERATOR_CLI_EXECUTABLE="${expect.anything}"
         CONFIG_PATH="${/.+\/config\.yaml/}"
 
+        # Check for recursion
+        RECURSION_ENV_VAR="DOTFILES_INSTALLING_MY_TOOL"
+
+        if [ -n "\${!RECURSION_ENV_VAR:-}" ]; then
+          echo "Recursive installation detected for $TOOL_NAME. Aborting to prevent infinite loop." >&2
+          exit 1
+        fi
+
         # Check if the first argument is @update
         if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
           echo "Updating $TOOL_NAME to latest version..."

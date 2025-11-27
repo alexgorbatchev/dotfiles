@@ -2,7 +2,13 @@ import { mock } from 'bun:test';
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { IExtractResult, IGitHubRelease, InstallContext, InstallerPluginRegistry } from '@dotfiles/core';
+import type {
+  $extended,
+  IExtractResult,
+  IGitHubRelease,
+  InstallContext,
+  InstallerPluginRegistry,
+} from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
@@ -255,7 +261,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     ...baseContext,
     fileSystem,
     logger,
-    $: createMock$(),
+    $: createMock$() as unknown as $extended,
   }));
   const mockHookExecutor = {
     executeHook: mockExecuteHook,
@@ -320,6 +326,11 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
         });
       }
 
+      // Create the binary file so Installer can symlink it
+      await fs.ensureDir(path.dirname(mockToolBinaryPath));
+      await fs.writeFile(mockToolBinaryPath, 'mock binary content');
+      await fs.chmod(mockToolBinaryPath, 0o755);
+
       return {
         success: true,
         binaryPaths: [mockToolBinaryPath],
@@ -350,7 +361,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     mockToolInstallationRegistry,
     mockSystemInfo,
     pluginRegistry,
-    createMock$()
+    createMock$() as unknown as $extended
   );
 
   return {
@@ -499,7 +510,7 @@ export function createTestContext(setup: IInstallerTestSetup, overrides: Partial
     shellScriptsDir: setup.mockProjectConfig.paths.shellScriptsDir,
     dotfilesDir: setup.mockProjectConfig.paths.dotfilesDir,
     generatedDir: setup.mockProjectConfig.paths.generatedDir,
-    $: createMock$(),
+    $: createMock$() as unknown as $extended,
     fileSystem: setup.fs,
     ...overrides,
   };

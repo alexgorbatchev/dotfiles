@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import path from 'node:path';
 import type { PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
 import {
@@ -14,6 +15,10 @@ describe('Installer - install (orchestrator)', () => {
 
   beforeEach(async () => {
     setup = await createInstallerTestSetup();
+    // Create the mock binary file so symlink creation succeeds
+    await setup.fs.ensureDir(path.dirname(setup.mockToolBinaryPath));
+    await setup.fs.writeFile(setup.mockToolBinaryPath, 'mock binary content');
+    await setup.fs.chmod(setup.mockToolBinaryPath, 0o755);
   });
 
   it('should create installation directory', async () => {

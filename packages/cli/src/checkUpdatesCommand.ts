@@ -1,6 +1,7 @@
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
 import type { InstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
+import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
@@ -75,7 +76,7 @@ function createInstallContext(
     shellScriptsDir: projectConfig.paths.shellScriptsDir,
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
-    $: $,
+    $: createConfiguredShell($, process.env),
     fileSystem: fs,
   };
 

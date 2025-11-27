@@ -59,6 +59,22 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### Infinite Recursion / Loop
+
+**Symptoms:**
+- Installation hangs indefinitely
+- Logs show repeated execution of the same tool
+- Error message: "Recursive installation detected for [TOOL]. Aborting to prevent infinite loop."
+
+**Causes:**
+- A tool's shim is calling itself (e.g., `curl` shim calling `curl` during installation)
+- A script uses a tool that is currently being installed, and the shim intercepts the call
+
+**Solutions:**
+- The installer now includes automatic recursion guards (`DOTFILES_INSTALLING_<TOOL>`) to prevent this.
+- If you see the recursion error, it means the guard is working. Check your installation scripts to ensure they aren't inadvertently calling the tool being installed via its shim.
+- Ensure that `PATH` is correctly set up so that the installer can find the real binary (the installer automatically prepends the installation directory to `PATH`).
+
 ### Dependency errors
 
 **Symptoms:**

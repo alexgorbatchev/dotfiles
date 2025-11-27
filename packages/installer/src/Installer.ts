@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
+  $extended,
   AsyncInstallHook,
   InstallContext,
   InstallerPluginRegistry,
@@ -14,7 +15,7 @@ import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
-import { HookExecutor, messages } from './utils';
+import { HookExecutor, createConfiguredShell, messages } from './utils';
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -190,13 +191,22 @@ export class Installer implements IInstaller {
     }
 
     const targetVersion = await this.getTargetVersion(toolName, resolvedToolConfig);
-    if (targetVersion && existingInstallation.version === targetVersion) {
-      logger.debug(messages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
-      return true;
+    if (targetVersion) {
+      if (existingInstallation.version === targetVersion) {
+        logger.debug(messages.outcome.installSuccess(toolName, targetVersion, 'already-installed'));
+        return true;
+      }
+      logger.debug(messages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion));
+      return false;
     }
 
-    logger.debug(messages.outcome.outdatedVersion(toolName, existingInstallation.version, targetVersion || 'unknown'));
-    return false;
+    // If target version is NOT explicit (e.g. 'latest'), and we have an installation
+    // We should skip unless we want to force update.
+    // Since we don't support update checks for some plugins (like curl-script),
+    // assuming "installed is good enough" prevents the infinite reinstall loop.
+    // Users can use --force to update.
+    logger.debug(messages.outcome.installSuccess(toolName, existingInstallation.version, 'already-installed-latest'));
+    return true;
   }
 
   /**
@@ -474,16 +484,20 @@ export class Installer implements IInstaller {
         logger.debug(messages.lifecycle.directoryCreated(installDir));
       }
 
-      // Create context for installation hooks
-      const { context, logger: contextLogger } = this.createBaseInstallContext(
-        toolName,
-        installDir,
-        versionOrTimestamp,
-        resolvedToolConfig,
-        logger
-      );
+    // Create context for installation hooks
+    // Create a configured shell that automatically includes the current environment variables
+    // This ensures that plugins don't need to manually call .env({ ...process.env })
+    // to pick up the modified PATH and recursion guard variables.
+    const configuredShell = createConfiguredShell(this.$, process.env);
 
-      // Run beforeInstall hook if defined
+    const { context, logger: contextLogger } = this.createBaseInstallContext(
+      toolName,
+      installDir,
+      versionOrTimestamp,
+      resolvedToolConfig,
+      logger,
+      configuredShell
+    );      // Run beforeInstall hook if defined
       const beforeInstallResult = await this.executeBeforeInstallHook(
         resolvedToolConfig,
         context,
@@ -495,6 +509,19 @@ export class Installer implements IInstaller {
       }
 
       let result: InstallResult;
+      // Set recursion guard environment variable
+      // Sanitize tool name to ensure valid env var name (replace non-alphanumeric chars with _)
+      const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`;
+      process.env[envVarName] = 'true';
+
+      // Prepend installDir to PATH to allow scripts/hooks to find the newly installed binary
+      // This prevents recursion (finding the shim) and allows post-install steps to run the tool
+      const originalPath = process.env['PATH'] || '';
+      const pathSeparator = process.platform === 'win32' ? ';' : ':';
+      if (installDir) {
+        process.env['PATH'] = `${installDir}${pathSeparator}${originalPath}`;
+      }
+
       try {
         // Install based on the installation method
         result = await this.executeInstallationMethod(toolName, resolvedToolConfig, context, options, contextLogger);
@@ -504,14 +531,23 @@ export class Installer implements IInstaller {
           success: false,
           error: error instanceof Error ? error.message : String(error),
         };
+      } finally {
+        // Restore PATH
+        if (installDir) {
+          process.env['PATH'] = originalPath;
+        }
+        // Clean up recursion guard
+        delete process.env[envVarName];
       }
 
       // Add the resolved installation method to the result
       result.installationMethod = resolvedToolConfig.installationMethod;
 
-      // For externally managed tools, create symlinks to the actual binaries
-      if (isExternallyManaged && result.success && result.binaryPaths) {
-        await this.createExternalBinarySymlinks(toolName, result.binaryPaths, toolFs, logger);
+      // Create symlinks to the actual binaries for all tools
+      // This ensures that shims always point to a stable location in the tool directory
+      // regardless of whether the tool is versioned (timestamped) or externally managed
+      if (result.success && result.binaryPaths) {
+        await this.createBinarySymlinks(toolName, result.binaryPaths, toolFs, logger);
       }
 
       // If installation failed, clean up the empty installation directory (skip for externally managed)
@@ -575,22 +611,22 @@ export class Installer implements IInstaller {
   }
 
   /**
-   * Creates symlinks for externally-managed binaries (e.g., Homebrew).
-   * Since externally-managed tools don't create timestamped directories,
-   * we create direct symlinks in binaries/<toolName>/ pointing to the actual binaries.
+   * Creates symlinks for binaries in the tool directory.
+   * This ensures that shims always point to a stable location in the tool directory
+   * regardless of whether the tool is versioned (timestamped) or externally managed.
    *
    * @param toolName - Name of the tool
    * @param binaryPaths - Array of absolute paths to the actual binaries
    * @param fs - File system instance for creating symlinks
    * @param parentLogger - Logger for diagnostic messages
    */
-  private async createExternalBinarySymlinks(
+  private async createBinarySymlinks(
     toolName: string,
     binaryPaths: string[],
     fs: IFileSystem,
     parentLogger: TsLogger
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'createExternalBinarySymlinks' });
+    const logger = parentLogger.getSubLogger({ name: 'createBinarySymlinks' });
     const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
     const toolDir = path.join(binariesDir, toolName);
 
@@ -605,7 +641,7 @@ export class Installer implements IInstaller {
       // Verify the target binary exists
       if (!(await fs.exists(binaryPath))) {
         logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
-        throw new Error(`Cannot create symlink: external binary does not exist at ${binaryPath}`);
+        throw new Error(`Cannot create symlink: binary does not exist at ${binaryPath}`);
       }
 
       // Remove existing symlink if it exists
@@ -614,7 +650,7 @@ export class Installer implements IInstaller {
         await fs.rm(symlinkPath, { force: true });
       }
 
-      // Create symlink pointing to the external binary
+      // Create symlink pointing to the binary
       logger.debug(messages.lifecycle.creatingExternalSymlink(symlinkPath, binaryPath));
       await fs.symlink(binaryPath, symlinkPath);
 
@@ -651,7 +687,7 @@ export class Installer implements IInstaller {
       shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
       dotfilesDir: this.projectConfig.paths.dotfilesDir,
       generatedDir: this.projectConfig.paths.generatedDir,
-      $: this.$,
+      $: createConfiguredShell(this.$, process.env),
       fileSystem: this.fs,
     };
     return minimalContext;
@@ -682,7 +718,8 @@ export class Installer implements IInstaller {
     installDir: string,
     timestamp: string,
     toolConfig: ToolConfig,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
+    $shell: $extended = createConfiguredShell(this.$, process.env)
   ): {
     context: InstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> };
     logger: TsLogger;
@@ -709,7 +746,7 @@ export class Installer implements IInstaller {
       shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
       dotfilesDir: this.projectConfig.paths.dotfilesDir,
       generatedDir: this.projectConfig.paths.generatedDir,
-      $: this.$,
+      $: $shell,
       fileSystem: this.fs,
       // Event emitter for plugins to trigger hooks
       emitEvent: async (type: string, data: Record<string, unknown>) => {
@@ -717,7 +754,7 @@ export class Installer implements IInstaller {
           type: type as PluginEmittedHookEvent,
           toolName,
           context: {
-            ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger).context,
+            ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger, $shell).context,
             ...data,
             logger: contextLogger,
           },

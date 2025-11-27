@@ -1,6 +1,7 @@
 import type { ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { IBaseToolContext } from '../common/baseToolContext.types';
+import type { $extended } from '../shell/extendedShell.types';
 import type { IExtractResult } from './archive.types';
 
 /**
@@ -20,7 +21,7 @@ export interface IInstallContext extends IBaseToolContext {
    * Use the `$` tagged template literal to execute shell commands within hooks.
    * The working directory can be changed using `cd` commands or `process.chdir()`.
    */
-  $: typeof import('bun').$;
+  $: $extended;
   /** An instance of the file system for performing file operations. */
   fileSystem: IFileSystem;
 }

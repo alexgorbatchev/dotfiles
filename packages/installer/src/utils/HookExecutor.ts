@@ -2,7 +2,6 @@ import type { AsyncInstallHook, IAfterInstallContext, IOperationFailure, IOperat
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
-import { $ } from 'bun';
 import { messages } from './log-messages';
 
 /**
@@ -170,7 +169,6 @@ export class HookExecutor {
     const result: IAfterInstallContext = {
       ...baseContext,
       fileSystem: enhancedFileSystem,
-      $: $,
     };
     return result;
   }

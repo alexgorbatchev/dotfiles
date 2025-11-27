@@ -69,6 +69,7 @@ fileSystem.stat(path)
 The `$` property provides Bun's built-in shell executor for running shell commands within hooks.
 
 **Key Features:**
+- **Configured Environment**: Automatically handles `PATH` and recursion guards to prevent infinite loops.
 - **Template Literals**: Use tagged template literals for shell commands: `` $`command` ``
 - **Promise-Based**: All `$` commands return promises with stdout (as Buffer), stderr, and exitCode
 - **Working Directory**: Use `cd` commands or `process.chdir()` to change working directory

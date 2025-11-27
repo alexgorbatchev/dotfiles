@@ -6,4 +6,7 @@ export const messages = {
   executingScript: (shell: string) => createSafeLogMessage(`Executing install script using: ${shell}`),
   movingBinary: (sourcePath: string, targetPath: string) =>
     createSafeLogMessage(`Moving binary from ${sourcePath} to ${targetPath}`),
+  binaryFoundInInstallDir: (path: string) => createSafeLogMessage(`Binary found in install directory: ${path}`),
+  binaryNotFound: (binaryName: string, searchPaths: string) =>
+    createSafeLogMessage(`Binary ${binaryName} not found in search paths: ${searchPaths}`),
 } as const satisfies SafeLogMessageMap;

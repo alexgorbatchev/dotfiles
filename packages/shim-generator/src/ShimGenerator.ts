@@ -136,6 +136,8 @@ export class ShimGenerator implements IShimGenerator {
 
     logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 
+    const envVarSuffix = toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+
     const shimContent = dedentString(`
       #!/usr/bin/env bash
       # Shim for ${binaryName}
@@ -147,6 +149,14 @@ export class ShimGenerator implements IShimGenerator {
       TOOL_EXECUTABLE="${toolBinaryPath}"
       GENERATOR_CLI_EXECUTABLE="${getCliBinPath()}"
       CONFIG_PATH="${this.config.configFilePath}"
+
+      # Check for recursion
+      RECURSION_ENV_VAR="DOTFILES_INSTALLING_${envVarSuffix}"
+
+      if [ -n "\${!RECURSION_ENV_VAR:-}" ]; then
+        echo "Recursive installation detected for $TOOL_NAME. Aborting to prevent infinite loop." >&2
+        exit 1
+      fi
 
       # Check if the first argument is @update
       if [ $# -gt 0 ] && [ "$1" = "@update" ]; then

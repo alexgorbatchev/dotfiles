@@ -91,20 +91,50 @@ export async function installFromCurlScript(
     logger.debug(messages.executingScript(shell));
 
     const args = params.args ?? [];
+    const env = {
+      ...process.env,
+      ...params.env,
+      INSTALL_DIR: context.installDir,
+    };
 
     if (shell === 'bash') {
-      await bunShell`bash ${scriptPath} ${args}`.quiet();
+      await bunShell`bash ${scriptPath} ${args}`.env(env).quiet();
     } else {
-      await bunShell`sh ${scriptPath} ${args}`.quiet();
+      await bunShell`sh ${scriptPath} ${args}`.env(env).quiet();
     }
 
     // Handle all binaries by copying from script installation to versioned directory
     const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
     for (const binaryName of binaryNames) {
-      const sourcePath = path.join('/usr/local/bin', binaryName);
       const finalBinaryPath = path.join(context.installDir, binaryName);
 
-      logger.debug(messages.movingBinary(sourcePath, finalBinaryPath));
+      // If binary already exists in installDir (script installed it there), we are good
+      if (await fs.exists(finalBinaryPath)) {
+        logger.debug(messages.binaryFoundInInstallDir(finalBinaryPath));
+        continue;
+      }
+
+      const sourcePath = path.join('/usr/local/bin', binaryName);
+
+      if (await fs.exists(sourcePath)) {
+        logger.debug(messages.movingBinary(sourcePath, finalBinaryPath));
+        // Copy and remove to handle cross-device moves safely
+        await fs.copyFile(sourcePath, finalBinaryPath);
+        await fs.chmod(finalBinaryPath, 0o755);
+        // Optional: remove source? Maybe not, as it might be shared or system-wide.
+        // But if we don't remove it, next time we might pick it up again?
+        // The goal is to have a versioned install.
+        // If the script installs to /usr/local/bin, it's a system install.
+        // We are trying to capture it into our versioned dir.
+        // If we leave it there, it might conflict or be used by others.
+        // But we probably shouldn't delete from /usr/local/bin unless we are sure.
+        // Let's leave it for now, or maybe try to remove it if we own it?
+        // Given the user intent is "dotfiles management", we probably want to own the binary.
+        // But deleting from /usr/local/bin might require sudo which we might not have.
+        // So let's just copy.
+      } else {
+        logger.warn(messages.binaryNotFound(binaryName, `/usr/local/bin, ${context.installDir}`));
+      }
     }
 
     // Return paths to all binaries
@@ -120,6 +150,7 @@ export async function installFromCurlScript(
       success: true,
       binaryPaths,
       metadata,
+      version: toolConfig.version !== 'latest' ? toolConfig.version : undefined,
     };
   };
 

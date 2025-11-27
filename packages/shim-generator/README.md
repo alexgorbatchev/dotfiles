@@ -119,6 +119,14 @@ TOOL_EXECUTABLE="{config.paths.binariesDir}/fzf/fzf"
 GENERATOR_CLI_EXECUTABLE="path/to/cli"
 CONFIG_PATH="path/to/config.yaml"
 
+# Check for recursion
+RECURSION_ENV_VAR="DOTFILES_INSTALLING_FZF"
+
+if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
+  echo "Recursive installation detected for $TOOL_NAME. Aborting to prevent infinite loop." >&2
+  exit 1
+fi
+
 # Check if the first argument is @update
 if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
   echo "Updating $TOOL_NAME to latest version..."
@@ -151,6 +159,7 @@ fi
 - **Absolute Path**: Uses full path to binary for reliability
 - **Auto-Install**: Automatically installs tool if not found
 - **Update Support**: Use `{tool} @update` to update tool to latest version
+- **Recursion Guard**: Prevents infinite loops if a tool calls itself during installation
 
 ## Tool with Multiple Binaries
 

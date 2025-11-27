@@ -7,6 +7,8 @@ import path from 'node:path';
 import type { AfterInstallContext, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { $ } from 'bun';
+import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 
@@ -47,7 +49,9 @@ describe('HookExecutor $ Integration', () => {
       installParams: {},
     };
 
-    const { context: baseContext } = createTestInstallHookContext();
+    const { context: baseContext } = createTestInstallHookContext({
+      $: createConfiguredShell($, process.env),
+    });
 
     const contextWithToolConfig = {
       ...baseContext,
@@ -94,6 +98,7 @@ describe('HookExecutor $ Integration', () => {
     const { context: baseContext } = createTestInstallHookContext({
       toolName: 'file-creator-tool',
       installDir: '/test/install/dir',
+      $: createConfiguredShell($, process.env),
     });
 
     const contextWithToolConfig = {
@@ -137,6 +142,7 @@ describe('HookExecutor $ Integration', () => {
     const { context: baseContext } = createTestInstallHookContext({
       toolName: 'fallback-tool',
       installDir: '/test/install/dir',
+      $: createConfiguredShell($, process.env),
     });
 
     const contextWithoutConfigPath = {

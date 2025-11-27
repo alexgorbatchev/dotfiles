@@ -84,6 +84,7 @@ The main `Installer` class coordinates the installation process by:
 - Tracking installations in the registry
 - Executing lifecycle hooks
 - Setting up shell completions from extracted archives
+- **Recursion Prevention**: Sets global environment variables (`DOTFILES_INSTALLING_<TOOL>`) and prepends installation directories to `PATH` to prevent infinite loops when tools call themselves via shims.
 
 ### 2. Installation Methods
 Standalone functions organized by installation method (brew, cargo, curl-script, curl-tar, github-release, manual). Each method:
