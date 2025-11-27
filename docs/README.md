@@ -43,6 +43,7 @@ configs/
 
 ## Quick Start
 
+- [Project Configuration](./config.md) - Setting up your main config file
 - [Getting Started](./getting-started.md) - Basic configuration anatomy and file structure
 - [Core Methods](./core-methods.md) - Essential methods for tool configuration
 

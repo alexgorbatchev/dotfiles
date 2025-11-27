@@ -2,6 +2,10 @@
 
 This guide covers the basic structure and anatomy of `.tool.ts` configuration files.
 
+## Prerequisites
+
+Before creating tool configurations, you need to set up your project configuration. See [Project Configuration](./config.md) for setup instructions for your main `config.ts` or `config.yaml` file.
+
 ## Basic Configuration Anatomy
 
 ### Minimal Configuration
