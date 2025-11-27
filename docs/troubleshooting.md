@@ -41,16 +41,22 @@ ${ctx.binDir}/tool-name --version
 - Test asset selector logic
 
 ```typescript
-// Debug asset selection (assetSelector doesn't have logger access)
-c.install('github-release', {
-  repo: 'owner/tool',
-  assetSelector: (assets, sysInfo) => {
-    // Note: Use console.log here since logger is not available in assetSelector
-    console.log('Available assets:', assets.map(a => a.name));
-    console.log('System info:', sysInfo);
-    // Your selection logic here
-  }
-})
+// Debug asset selection
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/tool',
+    assetSelector: (context) => {
+      const { assets, systemInfo, logger } = context;
+      logger.debug('Available assets:', assets.map(a => a.name).join(', '));
+      logger.debug('System info:', systemInfo);
+      // Your selection logic here
+      return assets[0];
+    }
+  })
+    .bin('tool')
+);
 ```
 
 ### Dependency errors
@@ -112,19 +118,26 @@ source ${ctx.shellScriptsDir}/main.zsh
 
 ```typescript
 // ✅ Correct declarative approach
-c.zsh((shell) =>
-  shell.environment({
-    TOOL_HOME: `${ctx.toolDir}`,
-    TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
-  })
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.environment({
+        TOOL_HOME: `${ctx.toolDir}`,
+        TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
+      })
+    )
+);
 
 // ❌ Avoid inline exports for simple variables
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    export TOOL_HOME="${ctx.toolDir}"  # Use declarative instead
-  `)
-)
+// Instead of:
+// c.zsh((shell) =>
+//   shell.always(`
+//     export TOOL_HOME="${ctx.toolDir}"  # Use declarative instead
+//   `)
+// )
 ```
 
 ## Platform-Specific Issues
@@ -167,10 +180,19 @@ c.install('github-release', {
 
 ```typescript
 // ✅ Correct cross-platform paths
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+import { defineTool } from '@gitea/dotfiles';
+import path from 'path';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .symlink('./config.toml', path.join(ctx.homeDir, '.config', 'tool', 'config.toml'))
+);
 
 // ❌ Platform-specific paths
-c.symlink('./config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)  // Windows only
+// Don't do:
+// c.symlink('./config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)  // Windows only
+// c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)  // Unix only
 ```
 
 ## Completion Issues
@@ -207,14 +229,20 @@ source ${ctx.generatedDir}/completions/_tool
 - Test completion generation manually
 
 ```typescript
-c.zsh((shell) =>
-  shell.once(/* zsh */`
-    # Add error checking
-    if command -v tool >/dev/null 2>&1; then
-      tool completion zsh > "${ctx.generatedDir}/completions/_tool" || echo "Completion generation failed"
-    fi
-  `)
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.once(`
+        # Add error checking
+        if command -v tool >/dev/null 2>&1; then
+          tool completion zsh > "${ctx.generatedDir}/completions/_tool" || echo "Completion generation failed"
+        fi
+      `)
+    )
+);
 ```
 
 ## Path Resolution Issues
@@ -231,12 +259,20 @@ c.zsh((shell) =>
 - Check file locations
 
 ```typescript
+import { defineTool } from '@gitea/dotfiles';
+import path from 'path';
+
 // ✅ Correct path usage
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .symlink('./config.toml', path.join(ctx.homeDir, '.config', 'tool', 'config.toml'))
+);
 
 // ❌ Incorrect hardcoded paths
-c.symlink('./config.toml', '~/.config/tool/config.toml')
-c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
+// Don't do:
+// c.symlink('./config.toml', '~/.config/tool/config.toml')
+// c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
 ```
 
 ## Hook Issues
@@ -253,18 +289,22 @@ c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
 - Test hooks in isolation
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ logger, $ }) => {
-    try {
-      logger.info('Starting post-install setup...');
-      await $`./setup.sh`;
-      logger.info('Post-install setup completed');
-    } catch (error) {
-      logger.error(`Setup failed: ${error.message}`);
-      throw error; // Re-throw to fail the installation
-    }
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ logger, $ }) => {
+      try {
+        logger.info('Starting post-install setup...');
+        await $`./setup.sh`;
+        logger.info('Post-install setup completed');
+      } catch (error) {
+        logger.error(`Setup failed`);
+        throw error; // Re-throw to fail the installation
+      }
+    })
+);
 ```
 
 ### Shell executor (`$`) issues
@@ -279,20 +319,24 @@ c.hooks({
 - Handle cross-platform commands
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ $, logger, systemInfo }) => {
-    // Check current directory
-    const pwd = await $`pwd`;
-    logger.info(`Working directory: ${pwd.stdout.trim()}`);
-    
-    // Cross-platform commands
-    if (systemInfo.platform === 'win32') {
-      await $`dir .`;
-    } else {
-      await $`ls -la ./`;
-    }
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $, logger, systemInfo }) => {
+      // Check current directory
+      const pwd = await $`pwd`;
+      logger.info(`Working directory: ${pwd.stdout.trim()}`);
+      
+      // Cross-platform commands
+      if (systemInfo.platform === 'win32') {
+        await $`dir .`;
+      } else {
+        await $`ls -la ./`;
+      }
+    })
+);
 ```
 
 ## Debugging Tools
@@ -356,20 +400,26 @@ dotfiles check-updates tool-name
 
 ```typescript
 // ✅ Optimize with once scripts
-c.zsh((shell) =>
-  shell
-    .once(/* zsh */`
-      # Expensive operations run only once
-      tool build-cache
-      tool gen-completions zsh > "${ctx.generatedDir}/completions/_tool"
-    `)
-    .always(/* zsh */`
-      # Fast operations only
-      function quick-helper() {
-        tool "$@"
-      }
-    `)
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .once(`
+          # Expensive operations run only once
+          tool build-cache
+          tool gen-completions zsh > "${ctx.generatedDir}/completions/_tool"
+        `)
+        .always(`
+          # Fast operations only
+          function quick-helper() {
+            tool "$@"
+          }
+        `)
+    )
+);
 ```
 
 ## Security Issues
@@ -387,13 +437,21 @@ c.zsh((shell) =>
 
 ```typescript
 // ✅ Prefer GitHub releases
-c.install('github-release', { repo: 'trusted/tool' })
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'trusted/tool' })
+    .bin('tool')
+);
 
 // ⚠️ Use curl scripts carefully
-c.install('curl-script', {
-  url: 'https://trusted-source.com/install.sh',  // Verify source
-  shell: 'bash'
-})
+// export default defineTool((install, ctx) =>
+//   install('curl-script', {
+//     url: 'https://trusted-source.com/install.sh',  // Verify source
+//     shell: 'bash'
+//   })
+//     .bin('tool')
+// );
 ```
 
 ## Shell Executor (`$`) Issues
@@ -406,11 +464,19 @@ Error: ./config.toml: No such file or directory
 ```
 **Solution:** Ensure you're using `$` (not `fileSystem` methods) for shell commands that need to access files relative to your `.tool.ts` file:
 ```typescript
-// ❌ Wrong - fileSystem doesn't use tool directory as cwd
-await fileSystem.readFile('./config.toml');
+import { defineTool } from '@gitea/dotfiles';
 
-// ✅ Correct - $ automatically uses tool directory as cwd
-const result = await $`cat ./config.toml`;
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $, fileSystem }) => {
+      // ❌ Wrong - fileSystem doesn't use tool directory as cwd
+      // await fileSystem.readFile('./config.toml');
+
+      // ✅ Correct - $ automatically uses tool directory as cwd
+      const result = await $`cat ./config.toml`;
+    })
+);
 ```
 
 **Problem: Working directory not what you expected**
@@ -419,14 +485,19 @@ Error: Commands running in wrong directory
 ```
 **Solution:** Remember that `$` automatically sets `cwd` to your `.tool.ts` file's directory:
 ```typescript
-// In hook context - use logger.warn for debugging
-afterInstall: async ({ logger, $ }) => {
-  const pwd = await $`pwd`;
-  logger.warn('Working directory:', pwd.stdout.trim());
-  
-  // Use absolute paths if you need to work elsewhere
-  await $`cd ${installDir} && ./binary --version`;
-}
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ logger, $, installDir }) => {
+      const pwd = await $`pwd`;
+      logger.warn('Working directory:', pwd.stdout.trim());
+      
+      // Use absolute paths if you need to work elsewhere
+      await $`cd ${installDir} && ./binary --version`;
+    })
+);
 ```
 
 **Problem: Shell commands failing on Windows**
@@ -435,15 +506,23 @@ Error: 'ls' is not recognized as an internal or external command
 ```
 **Solution:** Use cross-platform commands or detect platform:
 ```typescript
-// ❌ Unix-specific command
-await $`ls -la ./`;
+import { defineTool } from '@gitea/dotfiles';
 
-// ✅ Cross-platform approach
-if (systemInfo.platform === 'win32') {
-  await $`dir .`;
-} else {
-  await $`ls -la ./`;
-}
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ systemInfo, $ }) => {
+      // ❌ Unix-specific command
+      // await $`ls -la ./`;
+
+      // ✅ Cross-platform approach
+      if (systemInfo.platform === 'win32') {
+        await $`dir .`;
+      } else {
+        await $`ls -la ./`;
+      }
+    })
+);
 ```
 
 **Problem: Command output not captured correctly**
@@ -452,16 +531,24 @@ Error: Cannot read property 'stdout' of undefined
 ```
 **Solution:** Always await `$` commands and handle errors:
 ```typescript
-// ❌ Missing await
-const result = $`tool --version`;
+import { defineTool } from '@gitea/dotfiles';
 
-// ✅ Proper async/await with error handling
-try {
-  const result = await $`tool --version`;
-  const version = result.stdout.trim();
-} catch (error) {
-  logger.error(`Command failed: ${error.stderr}`);
-}
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $ }) => {
+      // ❌ Missing await
+      // const result = $`tool --version`;
+
+      // ✅ Proper async/await with error handling
+      try {
+        const result = await $`tool --version`;
+        const version = result.stdout.trim();
+      } catch (error) {
+        // Handle error
+      }
+    })
+);
 ```
 
 **Problem: Environment variables not available in `$` commands**
@@ -470,11 +557,19 @@ Error: Environment variable not found
 ```
 **Solution:** Pass environment variables explicitly or use systemInfo:
 ```typescript
-// Using systemInfo for common paths
-await $`cp ./config ${ctx.homeDir}/.config/tool/`;
+import { defineTool } from '@gitea/dotfiles';
 
-// Setting environment variables for the command
-await $`CUSTOM_VAR=value ./script.sh`;
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $, fileSystem, systemInfo }) => {
+      // Using systemInfo for common paths
+      await $`cp ./config ${systemInfo.homeDir}/.config/tool/`;
+
+      // Setting environment variables for the command
+      await $`CUSTOM_VAR=value ./script.sh`;
+    })
+);
 ```
 
 ### Shell Executor Best Practices

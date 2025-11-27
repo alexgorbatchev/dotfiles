@@ -336,47 +336,45 @@ function once(template: TemplateStringsArray, ...values: any[]): OnceScript;
 ### Basic Tool Configuration
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .version('latest')
-    .install('github-release', { repo: 'owner/tool' })
-    .zsh((shell) => shell.aliases({ t: 'tool' }));
-};
+    .zsh((shell) => shell.aliases({ t: 'tool' }))
+);
 ```
 
 ### Cross-Platform Configuration
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { Platform } from '@types';
+import { defineTool, Platform } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.bin('tool').version('latest');
-  
-  c.platform(Platform.MacOS, (c) => {
-    c.install('brew', { formula: 'tool' });
-  });
-  
-  c.platform(Platform.Linux, (c) => {
-    c.install('github-release', { repo: 'owner/tool' });
-  });
-};
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .version('latest')
+    
+    .platform(Platform.MacOS, (c) => {
+      c.install('brew', { formula: 'tool' });
+    })
+    
+    .platform(Platform.Linux, (c) => {
+      c.install('github-release', { repo: 'owner/tool' });
+    })
+);
 ```
 
 ### Complex Configuration with Hooks
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { always } from '@types';
+import { defineTool, always } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .version('latest')
-    .install('github-release', { repo: 'owner/tool' })
     .hook('after-install', async ({ logger, $ }) => {
       await $`tool init`;
       logger.info('Tool initialized');
@@ -387,13 +385,13 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         .completions('completions/_tool')
         .environment({ TOOL_HOME: `${ctx.toolDir}` })
         .aliases({ t: 'tool' })
-        .always(always/* zsh */`
+        .always(/* zsh */`
           function tool-helper() {
             tool --config "$TOOL_HOME/config.toml" "$@"
           }
         `)
-    );
-};
+    )
+);
 ```
 
 ## Next Steps

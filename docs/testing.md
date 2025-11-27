@@ -187,7 +187,7 @@ Create tests for your configurations:
 ```typescript
 // test-tool-config.ts
 import { describe, it, expect } from 'bun:test';
-import { toolConfigBuilder } from './your-tool.tool';
+import { defineTool } from '@gitea/dotfiles';
 
 describe('Your Tool Configuration', () => {
   it('should have valid configuration', async () => {
@@ -198,9 +198,12 @@ describe('Your Tool Configuration', () => {
     };
     
     // Test that configuration doesn't throw
-    expect(() => {
-      toolConfigBuilder(mockBuilder, mockContext);
-    }).not.toThrow();
+    const tool = defineTool((install, ctx) =>
+      install('github-release', { repo: 'owner/your-tool' })
+        .bin('your-tool')
+    );
+    
+    expect(tool).toBeDefined();
   });
 });
 ```

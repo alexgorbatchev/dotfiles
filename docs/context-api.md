@@ -34,67 +34,84 @@ interface IToolConfigContext {
 ### Accessing Current Tool Directory
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh((shell) =>
-    shell
-      .environment({
-        TOOL_CONFIG_DIR: `${ctx.toolDir}`
-      })
-      .always(/* zsh */`
-        # Source tool-specific files
-        if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-          source "${ctx.toolDir}/shell/key-bindings.zsh"
-        fi
-      `)
-  );
-};
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.toolDir}`
+        })
+        .always(/* zsh */`
+          # Source tool-specific files
+          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.toolDir}/shell/key-bindings.zsh"
+          fi
+        `)
+    )
+);
 ```
 
 ### Accessing Other Tool Directories
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh((shell) =>
-    shell.always(/* zsh */`
-      # Reference another tool's directory
-      FZF_DIR="${ctx.getToolDir('fzf')}"
-      if [[ -d "$FZF_DIR" ]]; then
-        export FZF_BASE="$FZF_DIR"
-      fi
-    `)
-  );
-};
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.always(/* zsh */`
+        # Reference another tool's directory
+        FZF_DIR="${ctx.getToolDir('fzf')}"
+        if [[ -d "$FZF_DIR" ]]; then
+          export FZF_BASE="$FZF_DIR"
+        fi
+      `)
+    )
+);
 ```
 
 ### Using Generated Directories
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c.zsh((shell) =>
-    shell.once(/* zsh */`
-      # Generate completions to the proper directory
-      tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-    `)
-  );
-};
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.once(/* zsh */`
+        # Generate completions to the proper directory
+        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+      `)
+    )
+);
 ```
 
-## Path Properties
+### Path Properties
 
 ### `ctx.homeDir`
 User's home directory from the YAML configuration.
 
 **Usage:**
 ```typescript
-// Symlink configuration files
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+import { defineTool } from '@gitea/dotfiles';
 
-// Set environment variables
-c.zsh((shell) =>
-  shell.environment({
-    TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
-  })
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    // Symlink configuration files
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    // Set environment variables
+    .zsh((shell) =>
+      shell.environment({
+        TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
+      })
+    )
+);
 ```
 
 ### `ctx.toolDir`
@@ -114,18 +131,24 @@ ${ctx.toolDir}/
 
 **Usage:**
 ```typescript
-c.zsh((shell) =>
-  shell
-    .environment({
-      TOOL_HOME: `${ctx.toolDir}`
-    })
-    .always(/* zsh */`
-      # Access tool assets
-      if [[ -f "${ctx.toolDir}/latest/share/themes/default.toml" ]]; then
-        export TOOL_THEME="${ctx.toolDir}/latest/share/themes/default.toml"
-      fi
-    `)
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_HOME: `${ctx.toolDir}`
+        })
+        .always(/* zsh */`
+          # Access tool assets
+          if [[ -f "${ctx.toolDir}/latest/share/themes/default.toml" ]]; then
+            export TOOL_THEME="${ctx.toolDir}/latest/share/themes/default.toml"
+          fi
+        `)
+    )
+);
 ```
 
 ### `ctx.getToolDir(toolName)`
@@ -133,17 +156,23 @@ Get the installation directory for any other tool.
 
 **Usage:**
 ```typescript
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    # Integration with other tools
-    NVIM_DIR="${ctx.getToolDir('nvim')}"
-    FZF_DIR="${ctx.getToolDir('fzf')}"
-    
-    if [[ -d "$FZF_DIR" && -d "$NVIM_DIR" ]]; then
-      export FZF_NVIM_INTEGRATION=true
-    fi
-  `)
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.always(/* zsh */`
+        # Integration with other tools
+        NVIM_DIR="${ctx.getToolDir('nvim')}"
+        FZF_DIR="${ctx.getToolDir('fzf')}"
+        
+        if [[ -d "$FZF_DIR" && -d "$NVIM_DIR" ]]; then
+          export FZF_NVIM_INTEGRATION=true
+        fi
+      `)
+    )
+);
 ```
 
 ### `ctx.generatedDir`
@@ -151,13 +180,19 @@ Directory for generated files (completions, caches, etc.).
 
 **Usage:**
 ```typescript
-c.zsh((shell) =>
-  shell.once(/* zsh */`
-    # Generate completions once
-    mkdir -p "${ctx.generatedDir}/completions"
-    tool completion zsh > "${ctx.generatedDir}/completions/_tool"
-  `)
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.once(/* zsh */`
+        # Generate completions once
+        mkdir -p "${ctx.generatedDir}/completions"
+        tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+      `)
+    )
+);
 ```
 
 ### `ctx.binDir`
@@ -206,43 +241,69 @@ Directory for generated shell scripts.
 
 ```typescript
 // ✅ Correct - using context for target path
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+);
 
 // ❌ Incorrect - hardcoded path
-c.symlink('./config.toml', '~/.config/tool/config.toml')
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .symlink('./config.toml', '~/.config/tool/config.toml')
+);
 ```
 
 ### Environment Variables
 
 ```typescript
 // ✅ Correct - using context variables
-c.zsh((shell) =>
-  shell.environment({
-    TOOL_HOME: `${ctx.toolDir}`,
-    TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
-  })
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.environment({
+        TOOL_HOME: `${ctx.toolDir}`,
+        TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
+      })
+    )
+);
 
 // ❌ Incorrect - hardcoded paths
-c.zsh((shell) =>
-  shell.environment({
-    TOOL_HOME: '$DOTFILES/.generated/binaries/tool',
-    TOOL_CONFIG: '$HOME/.config/tool'
-  })
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.environment({
+        TOOL_HOME: '$DOTFILES/.generated/binaries/tool',
+        TOOL_CONFIG: '$HOME/.config/tool'
+      })
+    )
+);
 ```
 
 ### Shell Script Paths
 
 ```typescript
 // ✅ Correct - using context in shell scripts
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    if [[ -f "${ctx.toolDir}/shell/init.zsh" ]]; then
-      source "${ctx.toolDir}/shell/init.zsh"
-    fi
-  `)
-)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.always(/* zsh */`
+        if [[ -f "${ctx.toolDir}/shell/init.zsh" ]]; then
+          source "${ctx.toolDir}/shell/init.zsh"
+        fi
+      `)
+    )
+);
 ```
 
 ## Next Steps

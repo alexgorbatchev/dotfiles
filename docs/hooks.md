@@ -7,13 +7,18 @@ Hooks allow custom logic at different stages of the installation process, enabli
 Use the `.hook()` method to attach handlers to lifecycle events:
 
 ```typescript
-c.hook('after-install', async (context) => {
-  // Your custom logic here
-});
+import { defineTool } from '@gitea/dotfiles';
 
-// Multiple hooks for the same event
-c.hook('after-install', async (context) => { /* setup 1 */ })
-  .hook('after-install', async (context) => { /* setup 2 */ });
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async (context) => {
+      // Your custom logic here
+    })
+    // Multiple hooks for the same event
+    .hook('after-install', async (context) => { /* setup 1 */ })
+    .hook('after-install', async (context) => { /* setup 2 */ })
+);
 ```
 
 Event names: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
@@ -75,28 +80,41 @@ The `$` property provides Bun's built-in shell executor for running shell comman
 ### Simple Hook
 
 ```typescript
-c.hook('after-install', async ({ $ }) => {
-  // Commands run in the .tool.ts file's directory
-  await $`ls -la ./`;                    // List tool config directory
-  await $`cat ./config.toml`;            // Read config file next to .tool.ts
-  await $`mkdir -p ./generated/`;        // Create subdirectory
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $ }) => {
+      // Commands run in the .tool.ts file's directory
+      await $`ls -la ./`;                    // List tool config directory
+      await $`cat ./config.toml`;            // Read config file next to .tool.ts
+      await $`mkdir -p ./generated/`;        // Create subdirectory
+    })
+);
 ```
 
 ### File Operations
 
 ```typescript
-c.hook('after-install', async ({ fileSystem, systemInfo, logger }) => {
-  // Create configuration directory
-  const configDir = path.join(systemInfo.homeDir, '.config', 'my-tool');
-  await fileSystem.mkdir(configDir, { recursive: true });
-  
-  // Write default configuration
-  const defaultConfig = 'theme = "dark"\nverbose = true\n';
-  await fileSystem.writeFile(path.join(configDir, 'config.toml'), defaultConfig);
-  
-  logger.info(`Created configuration at ${configDir}`);
-})
+import { defineTool } from '@gitea/dotfiles';
+import path from 'path';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ fileSystem, systemInfo, logger }) => {
+      // Create configuration directory
+      const configDir = path.join(systemInfo.homeDir, '.config', 'my-tool');
+      await fileSystem.mkdir(configDir, { recursive: true });
+      
+      // Write default configuration
+      const defaultConfig = 'theme = "dark"\nverbose = true\n';
+      await fileSystem.writeFile(path.join(configDir, 'config.toml'), defaultConfig);
+      
+      logger.info(`Created configuration at ${configDir}`);
+    })
+);
 ```
 
 ## Common Patterns
@@ -104,42 +122,68 @@ c.hook('after-install', async ({ fileSystem, systemInfo, logger }) => {
 ### Check File Existence
 
 ```typescript
-c.hook('after-install', async ({ $ }) => {
-  // Check if files exist
-  const configExists = await $`test -f ./config.toml && echo "yes" || echo "no"`;
-  if (configExists.stdout.includes('yes')) {
-    // Config file exists
-    await $`cp ./config.toml ${systemInfo.homeDir}/.config/tool/`;
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ fileSystem, systemInfo, logger }) => {
+      const configPath = path.join(systemInfo.homeDir, '.config', 'tool', 'config.toml');
+      const exists = await fileSystem.exists(configPath);
+      
+      if (exists) {
+        logger.info('Custom configuration found');
+      } else {
+        logger.info('Creating default configuration');
+      }
+    })
+);
 ```
 
 ### Copy Files
 
 ```typescript
-c.hook('after-install', async ({ $, systemInfo }) => {
-  // Copy files from tool directory to user's home
-  await $`cp ./dotfiles/.vimrc ${systemInfo.homeDir}/.vimrc`;
-  await $`cp -r ./themes/ ${systemInfo.homeDir}/.config/tool/themes/`;
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ fileSystem, systemInfo }) => {
+      // Copy files from tool directory to user's home
+      await fileSystem.copy('./dotfiles/.vimrc', path.join(systemInfo.homeDir, '.vimrc'));
+      await fileSystem.copy('./themes/', path.join(systemInfo.homeDir, '.config', 'tool', 'themes'));
+    })
+);
 ```
 
 ### Run Setup Scripts
 
 ```typescript
-c.hook('after-install', async ({ $ }) => {
-  // Run tool-specific setup scripts
-  await $`chmod +x ./setup.sh && ./setup.sh`;
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $ }) => {
+      // Run tool-specific setup scripts
+      await $`chmod +x ./setup.sh && ./setup.sh`;
+    })
+);
 ```
 
 ### Process Templates
 
 ```typescript
-c.hook('after-install', async ({ $, systemInfo }) => {
-  // Process configuration templates
-  await $`HOME=${systemInfo.homeDir} envsubst < ./config.template > ./config.generated`;
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $, systemInfo }) => {
+      // Process configuration templates
+      await $`HOME=${systemInfo.homeDir} envsubst < ./config.template > ./config.generated`;
+    })
+);
 ```
 
 ## Error Handling
@@ -147,46 +191,57 @@ c.hook('after-install', async ({ $, systemInfo }) => {
 Always include proper error handling in hooks:
 
 ```typescript
-c.hook('after-install', async ({ $, logger }) => {
-  try {
-    // Command that might fail
-    const result = await $`./configure --enable-feature`;
-    logger.info(`Configure output: ${result.stdout.toString()}`);
-  } catch (error) {
-    // Bun throws errors with exitCode, stdout, and stderr properties
-    const stderr = error && typeof error === 'object' && 'stderr' in error ? 
-      (error.stderr as Buffer).toString() : 'Unknown error';
-    logger.error(`Configure failed: ${stderr}`);
-    throw error; // Re-throw to fail the hook
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $, logger }) => {
+      try {
+        // Command that might fail
+        const result = await $`./configure --enable-feature`;
+        logger.info(`Configure output: ${result.stdout.toString()}`);
+      } catch (error) {
+        // Bun throws errors with exitCode, stdout, and stderr properties
+        const stderr = error && typeof error === 'object' && 'stderr' in error ? 
+          (error.stderr as Buffer).toString() : 'Unknown error';
+        logger.error(`Configure failed: ${stderr}`);
+        throw error; // Re-throw to fail the hook
+      }
+    })
+);
 ```
 
 ## Working with Command Output
 
 ```typescript
-c.hook('after-install', async ({ $, logger }) => {
-  // Capture and process command output
-  const version = await $`./tool --version`.text();
-  logger.info(`Installed version: ${version.trim()}`);
-  
-  // Use output in subsequent commands
-  if (version.includes('2.')) {
-    await $`./tool migrate-config`;
-  }
-  
-  // Check exit codes
-  try {
-    await $`./tool self-test`;
-    logger.info('Self-test passed');
-  } catch (error) {
-    const exitCode = error && typeof error === 'object' && 'exitCode' in error ?
-      error.exitCode as number : -1;
-    logger.error(`Self-test failed with exit code: ${exitCode}`);
-  if (testResult !== 0) {
-    throw new Error('Self-test failed');
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async ({ $, logger }) => {
+      // Capture and process command output
+      const version = await $`./tool --version`.text();
+      logger.info(`Installed version: ${version.trim()}`);
+      
+      // Use output in subsequent commands
+      if (version.includes('2.')) {
+        await $`./tool migrate-config`;
+      }
+      
+      // Check exit codes
+      try {
+        await $`./tool self-test`;
+        logger.info('Self-test passed');
+      } catch (error) {
+        const exitCode = error && typeof error === 'object' && 'exitCode' in error ?
+          error.exitCode as number : -1;
+        logger.error(`Self-test failed with exit code: ${exitCode}`);
+        throw error;
+      }
+    })
+);
 ```
 
 ## Hook Examples
@@ -194,73 +249,100 @@ c.hook('after-install', async ({ $, logger }) => {
 ### Build from Source
 
 ```typescript
-c.hook('after-extract', async ({ extractDir, installDir, logger, $ }) => {
-  if (extractDir) {
-    logger.info('Building tool from source...');
-    await $`cd ${extractDir} && make build`;
-    
-    const builtBinary = path.join(extractDir, 'target/release/tool');
-    const targetPath = path.join(installDir, 'tool');
-    await $`mv ${builtBinary} ${targetPath}`;
-    
-    logger.info('Build completed successfully');
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+import path from 'path';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/custom-tool' })
+    .bin('custom-tool')
+    .hook('after-extract', async ({ extractDir, installDir, logger, $ }) => {
+      if (extractDir) {
+        logger.info('Building tool from source...');
+        await $`cd ${extractDir} && make build`;
+        
+        const builtBinary = path.join(extractDir, 'target/release/tool');
+        const targetPath = path.join(installDir, 'tool');
+        await $`mv ${builtBinary} ${targetPath}`;
+        
+        logger.info('Build completed successfully');
+      }
+    })
+);
 ```
 
 ### Post-Installation Setup
 
 ```typescript
-c.hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
-  // Create configuration directory using file system API
-  const configDir = path.join(systemInfo.homeDir, '.config', toolName);
-  await fileSystem.mkdir(configDir, { recursive: true });
-  
-  // Initialize tool-specific data using shell executor
-  await $`${path.join(installDir, toolName)} init --data-dir ${configDir}`;
-  
-  logger.info(`Initialized ${toolName} at ${configDir}`);
-})
+import { defineTool } from '@gitea/dotfiles';
+import path from 'path';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/custom-tool' })
+    .bin('custom-tool')
+    .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+      // Create configuration directory using file system API
+      const configDir = path.join(systemInfo.homeDir, '.config', toolName);
+      await fileSystem.mkdir(configDir, { recursive: true });
+      
+      // Initialize tool-specific data using shell executor
+      await $`${path.join(installDir, toolName)} init --data-dir ${configDir}`;
+      
+      logger.info(`Initialized ${toolName} at ${configDir}`);
+    })
+);
 ```
 
 ### Custom Binary Processing
 
 ```typescript
-c.hook('after-extract', async ({ extractDir, installDir, fileSystem, logger }) => {
-  if (extractDir) {
-    // Custom binary selection and processing
-    const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
-    const mainBinary = binaries.find(name => name.startsWith('main-'));
-    
-    if (mainBinary) {
-      const sourcePath = path.join(extractDir, 'bin', mainBinary);
-      const targetPath = path.join(installDir, 'tool');
-      await fileSystem.copyFile(sourcePath, targetPath);
-      logger.info(`Selected binary: ${mainBinary}`);
-    }
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+import path from 'path';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/custom-tool' })
+    .bin('custom-tool')
+    .hook('after-extract', async ({ extractDir, installDir, fileSystem, logger }) => {
+      if (extractDir) {
+        // Custom binary selection and processing
+        const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
+        const mainBinary = binaries.find(name => name.startsWith('main-'));
+        
+        if (mainBinary) {
+          const sourcePath = path.join(extractDir, 'bin', mainBinary);
+          const targetPath = path.join(installDir, 'tool');
+          await fileSystem.copy(sourcePath, targetPath);
+          logger.info(`Selected binary: ${mainBinary}`);
+        }
+      }
+    })
+);
 ```
 
 ### Environment-Specific Setup
 
 ```typescript
-c.hook('after-install', async ({ systemInfo, fileSystem, logger, $ }) => {
-  // Platform-specific setup
-  if (systemInfo.platform === 'darwin') {
-    // macOS-specific setup
-    await $`./setup-macos.sh`;
-  } else if (systemInfo.platform === 'linux') {
-    // Linux-specific setup
-    await $`./setup-linux.sh`;
-  }
-  
-  // Architecture-specific setup
-  if (systemInfo.arch === 'arm64') {
-    logger.info('Configuring for ARM64 architecture');
-    await $`./configure-arm64.sh`;
-  }
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/custom-tool' })
+    .bin('custom-tool')
+    .hook('after-install', async ({ systemInfo, fileSystem, logger, $ }) => {
+      // Platform-specific setup
+      if (systemInfo.platform === 'darwin') {
+        // macOS-specific setup
+        await $`./setup-macos.sh`;
+      } else if (systemInfo.platform === 'linux') {
+        // Linux-specific setup
+        await $`./setup-linux.sh`;
+      }
+      
+      // Architecture-specific setup
+      if (systemInfo.arch === 'arm64') {
+        logger.info('Configuring for ARM64 architecture');
+        await $`./configure-arm64.sh`;
+      }
+    })
+);
 ```
 
 ## Environment Variables in Installation
@@ -268,15 +350,20 @@ c.hook('after-install', async ({ systemInfo, fileSystem, logger, $ }) => {
 Set environment variables during installation (for curl-script installs):
 
 ```typescript
-c.install('curl-script', {
-  url: 'https://example.com/install.sh',
-  shell: 'bash',
-  env: {
-    INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
-    ENABLE_FEATURE: 'true',
-    API_KEY: process.env.TOOL_API_KEY || 'default',
-  },
-})
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://example.com/install.sh',
+    shell: 'bash',
+    env: {
+      INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
+      ENABLE_FEATURE: 'true',
+      API_KEY: process.env.TOOL_API_KEY || 'default',
+    },
+  })
+    .bin('my-tool')
+);
 ```
 
 ## Best Practices
@@ -302,15 +389,13 @@ c.install('curl-script', {
 ## Complete Example
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 import path from 'path';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .version('latest')
-    .install('github-release', { repo: 'owner/custom-tool' })
-    .symlink('./config.yml', `${ctx.homeDir}/.config/custom-tool/config.yml`)
+    .symlink('./config.yml', path.join(ctx.homeDir, '.config', 'custom-tool', 'config.yml'))
     .hook('before-install', async ({ logger }) => {
       logger.info('Starting custom-tool installation...');
     })
@@ -336,10 +421,10 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
     })
     .zsh((shell) =>
       shell
-        .environment({ CUSTOM_TOOL_DATA: `${ctx.homeDir}/.local/share/custom-tool` })
+        .environment({ CUSTOM_TOOL_DATA: path.join(ctx.homeDir, '.local/share', 'custom-tool') })
         .aliases({ ct: 'custom-tool' })
-    );
-};
+    )
+);
 ```
 
 ## Next Steps

@@ -73,13 +73,12 @@ c
 ## Complete Example
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/my-tool' })
     .bin('my-tool')
     .version('latest')
-    .install('github-release', { repo: 'owner/my-tool' })
     
     // Link configuration files
     .symlink('./config.yml', `${ctx.homeDir}/.config/my-tool/config.yml`)
@@ -95,8 +94,8 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         .aliases({
           mt: 'my-tool'
         })
-    );
-};
+    )
+);
 ```
 
 ## Use Cases
@@ -209,10 +208,11 @@ c.hook('after-install', async ({ logger, toolConfig, ctx }) => {
 Symlinks work seamlessly with other configuration features:
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .install('github-release', { repo: 'owner/tool' })
     
     // Symlink configuration files
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
@@ -224,14 +224,14 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         .environment({
           TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
         })
-        .always(/* zsh */`
+        .always(`
           # Tool will automatically find config at symlinked location
           function tool-reload() {
             tool --config "$TOOL_CONFIG" reload
           }
         `)
-    );
-};
+    )
+);
 ```
 
 ## Next Steps

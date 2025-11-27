@@ -44,12 +44,9 @@ install()
 import { defineTool, Platform } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
-  install()
+  install('brew', { formula: 'tool' })
     .bin('tool')
     .version('latest')
-    .platform(Platform.MacOS, (install) =>
-      install('brew', { formula: 'tool' })
-    )
 );
 ```
 
@@ -426,17 +423,18 @@ export default defineTool((install, ctx) =>
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-// Debug asset selection (assetSelector doesn't have logger access)
+// Debug asset selection
 export default defineTool((install, ctx) =>
   install('github-release', {
     repo: 'owner/tool',
-    assetSelector: (assets, sysInfo) => {
-      // Note: Use console.log here since logger is not available in assetSelector
-      console.log('Available assets:', assets.map(a => a.name));
-      console.log('System info:', sysInfo);
+    assetSelector: (context) => {
+      const { assets, systemInfo, logger } = context;
+      logger.debug('Available assets:', assets.map(a => a.name).join(', '));
+      logger.debug('System info:', systemInfo);
       // Your selection logic
       return assets[0];
     }
-  }).bin('tool')
+  })
+    .bin('tool')
 );
 ```

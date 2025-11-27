@@ -17,18 +17,22 @@ The shell integration system supports:
 Configures Zsh-specific behaviour through a fluent configurator.
 
 ```typescript
-import { always } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 
-c.zsh((shell) =>
-  shell
-    .environment({ TOOL_HOME: `${ctx.toolDir}` })
-    .aliases({ t: 'tool', ts: 'tool status' })
-    .completions('completions/_tool')
-    .always(always/* zsh */`
-      function tool-helper() {
-        tool --config "$TOOL_HOME/config.toml" "$@"
-      }
-    `)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .aliases({ t: 'tool', ts: 'tool status' })
+        .completions('completions/_tool')
+        .always(`
+          function tool-helper() {
+            tool --config "$TOOL_HOME/config.toml" "$@"
+          }
+        `)
+    )
 );
 ```
 
@@ -37,18 +41,22 @@ c.zsh((shell) =>
 Configures Bash using the same chainable API.
 
 ```typescript
-import { always } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 
-c.bash((shell) =>
-  shell
-    .environment({ TOOL_HOME: `${ctx.toolDir}` })
-    .aliases({ t: 'tool', ts: 'tool status' })
-    .completions('completions/tool.bash')
-    .always(always/* bash */`
-      function tool-helper() {
-        tool --config "$TOOL_HOME/config.toml" "$@"
-      }
-    `)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .bash((shell) =>
+      shell
+        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .aliases({ t: 'tool', ts: 'tool status' })
+        .completions('completions/tool.bash')
+        .always(`
+          function tool-helper() {
+            tool --config "$TOOL_HOME/config.toml" "$@"
+          }
+        `)
+    )
 );
 ```
 
@@ -57,18 +65,22 @@ c.bash((shell) =>
 Configures PowerShell-specific behaviour while keeping the fluent style.
 
 ```typescript
-import { always } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 
-c.powershell((shell) =>
-  shell
-    .environment({ TOOL_HOME: `${ctx.homeDir}\\.tool` })
-    .aliases({ t: 'tool', ts: 'tool status' })
-    .completions('completions/tool.ps1')
-    .always(always/* powershell */`
-      function tool-helper {
-        tool --config "$env:TOOL_HOME\config.toml" @args
-      }
-    `)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .powershell((shell) =>
+      shell
+        .environment({ TOOL_HOME: `${ctx.homeDir}\\.tool` })
+        .aliases({ t: 'tool', ts: 'tool status' })
+        .completions('completions/tool.ps1')
+        .always(`
+          function tool-helper {
+            tool --config "$env:TOOL_HOME\config.toml" @args
+          }
+        `)
+    )
 );
 ```
 
@@ -117,23 +129,27 @@ c.zsh((shell) =>
 Use shell scripts for complex functions and logic:
 
 ```typescript
-import { always, once } from '@gitea/dotfiles';
+import { defineTool } from '@gitea/dotfiles';
 
-c.zsh((shell) =>
-  shell
-    .once(once/* zsh */`
-      # Expensive operations (run only once after installation)
-      tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-    `)
-    .always(always/* zsh */`
-      # Fast runtime setup (runs every shell startup)
-      function tool-helper() {
-        tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-      }
-      
-      # Key bindings
-      bindkey '^T' tool-fuzzy-search
-    `)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .once(`
+          # Expensive operations (run only once after installation)
+          tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+        `)
+        .always(`
+          # Fast runtime setup (runs every shell startup)
+          function tool-helper() {
+            tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+          }
+          
+          # Key bindings
+          bindkey '^T' tool-fuzzy-search
+        `)
+    )
 );
 ```
 
@@ -144,12 +160,20 @@ c.zsh((shell) =>
 Run every time the shell starts (traditional behavior):
 
 ```typescript
-always/* zsh */`
-  # Fast operations only
-  function quick-helper() {
-    tool "$@"
-  }
-`
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.always(`
+        # Fast operations only
+        function quick-helper() {
+          tool "$@"
+        }
+      `)
+    )
+);
 ```
 
 ### Once Scripts
@@ -157,11 +181,19 @@ always/* zsh */`
 Run only once after tool installation or updates (for expensive operations):
 
 ```typescript
-once/* zsh */`
-  # Expensive operations
-  tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
-  tool build-cache
-`
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.once(`
+        # Expensive operations
+        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+        tool build-cache
+      `)
+    )
+);
 ```
 
 ## Path Usage in Shell Scripts
@@ -169,22 +201,28 @@ once/* zsh */`
 Always use ToolConfigContext variables for paths:
 
 ```typescript
-c.zsh((shell) =>
-  shell
-    .environment({
-      TOOL_CONFIG_DIR: `${ctx.toolDir}`,
-      TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
-    })
-    .always(always/* zsh */`
-      # Reference tool directory
-      if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-        source "${ctx.toolDir}/shell/key-bindings.zsh"
-      fi
-      
-      # Reference other tools
-      FZF_DIR="${ctx.getToolDir('fzf')}"
-      [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
-    `)
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.toolDir}`,
+          TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
+        })
+        .always(`
+          # Reference tool directory
+          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.toolDir}/shell/key-bindings.zsh"
+          fi
+          
+          # Reference other tools
+          FZF_DIR="${ctx.getToolDir('fzf')}"
+          [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
+        `)
+    )
 );
 ```
 
@@ -193,6 +231,7 @@ c.zsh((shell) =>
 Define the same configuration for multiple shells:
 
 ```typescript
+import { defineTool } from '@gitea/dotfiles';
 import type { IShellConfigurator } from '@gitea/dotfiles';
 
 const configureCommonShell = (shell: IShellConfigurator): IShellConfigurator =>
@@ -206,11 +245,15 @@ const configureCommonShell = (shell: IShellConfigurator): IShellConfigurator =>
       ts: 'tool status'
     });
 
-c.zsh(configureCommonShell)
- .bash(configureCommonShell)
- .powershell((shell) =>
-   configureCommonShell(shell).environment({ TOOL_HOME: `${ctx.toolDir}` })
- );
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh(configureCommonShell)
+    .bash(configureCommonShell)
+    .powershell((shell) =>
+      configureCommonShell(shell).environment({ TOOL_HOME: `${ctx.toolDir}` })
+    )
+);
 ```
 
 ## Benefits

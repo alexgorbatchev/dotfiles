@@ -33,28 +33,26 @@ zinit load junegunn/fzf
 **After (ToolConfig):**
 ```typescript
 // ripgrep.tool.ts
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'BurntSushi/ripgrep',
+  })
     .bin('rg')
     .version('latest')
-    .install('github-release', {
-      repo: 'BurntSushi/ripgrep',
-    });
-};
+);
 
 // fzf.tool.ts
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'junegunn/fzf',
+  })
     .bin('fzf')
     .version('latest')
-    .install('github-release', {
-      repo: 'junegunn/fzf',
-    });
-};
+);
 ```
 
 ## Migration Process
@@ -81,11 +79,11 @@ Create the main configuration file:
 
 ```typescript
 // configs/tool-name/tool-name.tool.ts
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+export default defineTool((install, ctx) => {
   // Configuration will go here
-};
+});
 ```
 
 ### Step 4: Map Installation Method
@@ -100,9 +98,11 @@ zinit load owner/repo
 
 **ToolConfig Equivalent:**
 ```typescript
-c.install('github-release', {
-  repo: 'owner/repo'
-})
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/repo'
+  })
+);
 ```
 
 **Homebrew:**
@@ -112,9 +112,11 @@ brew install tool-name
 
 **ToolConfig Equivalent:**
 ```typescript
-c.install('brew', {
-  formula: 'tool-name'
-})
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'tool-name'
+  })
+);
 ```
 
 ### Step 5: Convert Shell Initialization
@@ -136,22 +138,25 @@ function tool-helper() {
 
 **After (in .tool.ts):**
 ```typescript
-c.zsh((shell) =>
-  shell
-    .environment({
-      TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
-      TOOL_DEBUG: 'true'
-    })
-    .aliases({
-      t: 'tool',
-      tl: 'tool list'
-    })
-    .always(/* zsh */`
-      function tool-helper() {
-        tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-      }
-    `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_DEBUG: 'true'
+        })
+        .aliases({
+          t: 'tool',
+          tl: 'tool list'
+        })
+        .always(`
+          function tool-helper() {
+            tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+          }
+        `)
+    )
+);
 ```
 
 ### Step 6: Replace Hardcoded Paths
@@ -173,17 +178,20 @@ source "$DOTFILES/.config/tool/init.zsh"
 
 **After:**
 ```typescript
-c.zsh((shell) =>
-  shell
-    .environment({
-      TOOL_HOME: `${ctx.homeDir}/.local/share/tool`
-    })
-    .always(/* zsh */`
-      if [[ -f "${ctx.toolDir}/init.zsh" ]]; then
-        source "${ctx.toolDir}/init.zsh"
-      fi
-    `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_HOME: `${ctx.homeDir}/.local/share/tool`
+        })
+        .always(`
+          if [[ -f "${ctx.toolDir}/init.zsh" ]]; then
+            source "${ctx.toolDir}/init.zsh"
+          fi
+        `)
+    )
+);
 ```
 
 ### Step 7: Add Symbolic Links
@@ -197,7 +205,10 @@ ln -sf ${ctx.dotfilesDir}/configs/tool/config.toml ~/.config/tool/config.toml
 
 **After:**
 ```typescript
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+);
 ```
 
 ### Step 8: Add Completions
@@ -213,7 +224,11 @@ autoload -U compinit && compinit
 
 **After:**
 ```typescript
-c.zsh((shell) => shell.completions('completions/_tool'))
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'my-tool/releases' })
+    .bin('tool')
+    .zsh((shell) => shell.completions('completions/_tool'))
+);
 ```
 
 ### Step 9: Test Migration
@@ -273,35 +288,39 @@ fi
 
 **After (Declarative + Script hybrid):**
 ```typescript
-c.zsh((shell) =>
-  shell
-    // Extract simple environment variables to declarative config
-    .environment({
-      TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
-      TOOL_DEBUG: 'true',
-      TOOL_MODE: 'production'
-    })
-    
-    // Extract simple aliases to declarative config  
-    .aliases({
-      t: 'tool',
-      tl: 'tool list', 
-      ts: 'tool status --verbose',
-      tc: 'tool config edit'
-    })
-    
-    .always(/* zsh */`
-      # Keep complex functions in scripts
-      function tool-helper() {
-        tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-      }
-      
-      # Keep conditional logic in scripts
-      if [[ -f "${ctx.homeDir}/.tool-extra" ]]; then
-        source "${ctx.homeDir}/.tool-extra"
-      fi
-    `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'my-tool/releases' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        // Extract simple environment variables to declarative config
+        .environment({
+          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_DEBUG: 'true',
+          TOOL_MODE: 'production'
+        })
+        
+        // Extract simple aliases to declarative config  
+        .aliases({
+          t: 'tool',
+          tl: 'tool list', 
+          ts: 'tool status --verbose',
+          tc: 'tool config edit'
+        })
+        
+        .always(`
+          # Keep complex functions in scripts
+          function tool-helper() {
+            tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
+          }
+          
+          # Keep conditional logic in scripts
+          if [[ -f "${ctx.homeDir}/.tool-extra" ]]; then
+            source "${ctx.homeDir}/.tool-extra"
+          fi
+        `)
+    )
+);
 ```
 
 ## Benefits of Migration
@@ -364,12 +383,16 @@ export PAGER="less -R"
 
 **After:**
 ```typescript
-c.zsh((shell) =>
-  shell.environment({
-    EDITOR: 'nvim',
-    PAGER: 'less -R'
-  })
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'my-tool/releases' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.environment({
+        EDITOR: 'nvim',
+        PAGER: 'less -R'
+      })
+    )
+);
 ```
 
 ### Aliases
@@ -383,13 +406,17 @@ alias l="ls -CF"
 
 **After:**
 ```typescript
-c.zsh((shell) =>
-  shell.aliases({
-    ll: 'ls -la',
-    la: 'ls -A',
-    l: 'ls -CF'
-  })
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'my-tool/releases' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.aliases({
+        ll: 'ls -la',
+        la: 'ls -A',
+        l: 'ls -CF'
+      })
+    )
+);
 ```
 
 ### Complex Functions
@@ -403,13 +430,17 @@ function git-branch-clean() {
 
 **After:**
 ```typescript
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    function git-branch-clean() {
-      git branch --merged | grep -v "\\*\\|main\\|master" | xargs -n 1 git branch -d
-    }
-  `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'my-tool/releases' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.always(`
+        function git-branch-clean() {
+          git branch --merged | grep -v "\\*\\|main\\|master" | xargs -n 1 git branch -d
+        }
+      `)
+    )
+);
 ```
 
 ### Conditional Logic
@@ -423,13 +454,17 @@ fi
 
 **After:**
 ```typescript
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    if command -v fzf >/dev/null 2>&1; then
-      export FZF_DEFAULT_COMMAND='rg --files'
-    fi
-  `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'fzf/fzf' })
+    .bin('fzf')
+    .zsh((shell) =>
+      shell.always(`
+        if command -v fzf >/dev/null 2>&1; then
+          export FZF_DEFAULT_COMMAND='rg --files'
+        fi
+      `)
+    )
+);
 ```
 
 ## Troubleshooting Migration Issues

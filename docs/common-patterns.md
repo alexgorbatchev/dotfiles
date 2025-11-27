@@ -86,13 +86,13 @@ export default defineTool((install, ctx) =>
 ## Cross-Shell Tool with Declarative Configuration
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin(['tool', 't'])
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .bin('t')
     .version('latest')
-    .install('github-release', { repo: 'owner/tool' })
     
     // Zsh configuration
     .zsh((shell) =>
@@ -108,7 +108,7 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         `)
     )
     
-    // Bash and PowerShell configurations
+    // Bash configuration
     .bash((shell) =>
       shell
         .completions('completions/tool.bash')
@@ -126,25 +126,24 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
           TOOL_LOG_LEVEL: 'info'
         })
         .aliases({ t: 'tool', ts: 'tool status' })
-    );
-};
+    )
+);
 ```
 
 ## Tool with Configuration Files and Hooks
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 import path from 'path';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
     .version('latest')
-    .install('github-release', { repo: 'owner/custom-tool' })
     .symlink('./config.yml', `${ctx.homeDir}/.config/custom-tool/config.yml`)
     .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
       const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
-      await fileSystem.mkdir(dataDir, { recursive: true });
+      await fileSystem.ensureDir(dataDir);
       await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
       logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
@@ -152,63 +151,64 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
       shell
         .environment({ CUSTOM_TOOL_DATA: `${ctx.homeDir}/.local/share/custom-tool` })
         .aliases({ ct: 'custom-tool', lg: 'custom-tool' })
-    );
-};
+    )
+);
 ```
 
 ## Platform-Specific Configuration
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { Platform, Architecture } from '@types';
+import { defineTool } from '@gitea/dotfiles';
+import { Platform, Architecture } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  // Common configuration for all platforms
-  c.bin('tool').version('latest');
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .version('latest')
     
-  // macOS-specific
-  c.platform(Platform.MacOS, (c) => {
-    c.install('brew', { formula: 'tool' })
-     .zsh((shell) => shell.aliases({ t: 'tool --macos-mode' }));
-  });
-  
-  // Linux-specific  
-  c.platform(Platform.Linux, (c) => {
-    c.install('github-release', {
+    // macOS-specific
+    .platform(Platform.MacOS, (installMac) => {
+      return installMac('brew', { formula: 'tool' })
+        .zsh((shell) => shell.aliases({ t: 'tool --macos-mode' }));
+    })
+    
+    // Linux-specific  
+    .platform(Platform.Linux, (installLinux) => {
+      return installLinux('github-release', {
         repo: 'owner/tool',
         assetPattern: '*linux*.tar.gz',
       })
-     .zsh((shell) => shell.aliases({ t: 'tool --linux-mode' }));
-  });
-  
-  // Windows with architecture-specific configuration
-  c.platform(Platform.Windows, Architecture.Arm64, (c) => {
-    c.install('github-release', {
+        .zsh((shell) => shell.aliases({ t: 'tool --linux-mode' }));
+    })
+    
+    // Windows with architecture-specific configuration
+    .platform(Platform.Windows, Architecture.Arm64, (installWin) => {
+      return installWin('github-release', {
         repo: 'owner/tool', 
         assetPattern: '*windows-arm64.zip',
       })
-     .powershell((shell) =>
-       shell
-         .environment({ TOOL_ARCH: 'arm64' })
-         .aliases({ t: 'tool --windows-mode' })
-     );
-  });
-};
+        .powershell((shell) =>
+          shell
+            .environment({ TOOL_ARCH: 'arm64' })
+            .aliases({ t: 'tool --windows-mode' })
+        );
+    })
+);
 ```
 
 ## Rust Tool with Cargo
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .bin(['eza', 'exa'])  // Provides both new and legacy binary names
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'eza',
+    githubRepo: 'eza-community/eza',
+  })
+    .bin('eza')
+    .bin('exa')
     .version('latest')
-    .install('cargo', {
-      crateName: 'eza',
-      githubRepo: 'eza-community/eza',
-    })
     .zsh((shell) =>
       shell
         .completions('completions/eza.zsh')
@@ -222,21 +222,20 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
           EZA_COLORS: 'da=1;34:gm=1;34'
         })
     )
-    .bash((shell) => shell.completions('completions/eza.bash'));
-};
+    .bash((shell) => shell.completions('completions/eza.bash'))
+);
 ```
 
 ## Custom Script Tool
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './scripts/deploy.sh',
+  })
     .bin('deploy')
-    .install('manual', {
-      binaryPath: './scripts/deploy.sh',  // Script included with dotfiles
-    })
     .symlink('./deploy.config.yaml', `${ctx.homeDir}/.config/deploy/config.yaml`)
     .zsh((shell) =>
       shell
@@ -252,18 +251,17 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
           # Deploy tool helpers
           function deploy-status() { deploy status "$@"; }
         `)
-    );
-};
+    )
+);
 ```
 
 ## Configuration-Only Tool
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
-    .install('manual', {})  // No binary management
+export default defineTool((install, ctx) =>
+  install('manual', {})
     .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
     .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
     .zsh((shell) =>
@@ -282,46 +280,47 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
         .environment({
           GIT_EDITOR: 'nvim'
         })
-    );
-};
+    )
+);
 ```
 
 ## Tool with Custom Asset Selection
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/custom-tool',
+    assetSelector: (context) => {
+      const { assets, systemInfo } = context;
+      
+      // Custom logic for complex naming schemes
+      const platformMap = {
+        'darwin': 'macos',
+        'linux': 'linux',
+        'win32': 'windows'
+      };
+      
+      const archMap = {
+        'x64': 'amd64',
+        'arm64': 'arm64'
+      };
+      
+      const platform = platformMap[systemInfo.platform];
+      const arch = archMap[systemInfo.arch];
+      
+      return assets.find(asset => 
+        asset.name.includes(platform) && 
+        asset.name.includes(arch) &&
+        asset.name.endsWith('.tar.gz')
+      );
+    }
+  })
     .bin('custom-tool')
     .version('latest')
-    .install('github-release', {
-      repo: 'owner/custom-tool',
-      assetSelector: (assets, sysInfo) => {
-        // Custom logic for complex naming schemes
-        const platformMap = {
-          'darwin': 'macos',
-          'linux': 'linux',
-          'win32': 'windows'
-        };
-        
-        const archMap = {
-          'x64': 'amd64',
-          'arm64': 'arm64'
-        };
-        
-        const platform = platformMap[sysInfo.platform];
-        const arch = archMap[sysInfo.arch];
-        
-        return assets.find(asset => 
-          asset.name.includes(platform) && 
-          asset.name.includes(arch) &&
-          asset.name.endsWith('.tar.gz')
-        );
-      }
-    })
-    .zsh((shell) => shell.aliases({ ct: 'custom-tool' }));
-};
+    .zsh((shell) => shell.aliases({ ct: 'custom-tool' }))
+);
 ```
 
 ## Best Practices Summary
@@ -340,24 +339,33 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 ### GitHub Tools (Most Common)
 ```typescript
 // For most open source tools hosted on GitHub
-c.install('github-release', {
-  repo: 'owner/tool',
-  assetPattern: '*linux_amd64.tar.gz',
-})
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/tool',
+    assetPattern: '*linux_amd64.tar.gz',
+  })
+    .bin('tool')
+);
 ```
 
 ### Custom Scripts and Binaries
 ```typescript
 // For scripts/binaries included with your dotfiles
-c.install('manual', {
-  binaryPath: './scripts/my-tool.sh',  // Relative to .tool.ts
-})
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: './scripts/my-tool.sh',  // Relative to .tool.ts
+  })
+    .bin('my-tool')
+);
 ```
 
 ### Configuration-Only Tool
 ```typescript
 // For pure shell configuration without binaries
-c.install('manual', {})  // No binaryPath = configuration only
+export default defineTool((install, ctx) =>
+  install('manual', {})  // No binaryPath = configuration only
+    .zsh((shell) => shell.aliases({ myalias: 'mycommand' }))
+);
 ```
 
 ### When to Use Each Method

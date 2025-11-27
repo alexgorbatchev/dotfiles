@@ -1242,12 +1242,13 @@ import { AptInstallerPlugin } from '@mycompany/dotfiles-installer-apt';
 registry.register(new AptInstallerPlugin());
 
 // Use in tool config
-export default async (c: ToolConfigBuilder) => {
-  c.bin('jq')
-    .version('latest')
-    .install('apt', {
-      package: 'jq'
-    });
+export default defineTool((install, ctx) => {
+  return install('apt', {
+    package: 'jq'
+  })
+    .bin('jq')
+    .version('latest');
+};
 };
 ```
 
@@ -1275,12 +1276,13 @@ registry.register(new NpmInstallerPlugin());
 ```typescript
 // test/tools/node.tool.ts
 
-export default async (c: ToolConfigBuilder) => {
-  c.bin(['node', 'npm', 'npx'])
-    .version('20.0.0')
-    .install('npm', {  // New method from plugin
-      package: 'node',
-      global: false
+export default defineTool((install, ctx) => {
+  return install('npm', {  // New method from plugin
+    package: 'node',
+    global: false
+  })
+    .bin(['node', 'npm', 'npx'])
+    .version('20.0.0');
     });
 };
 ```

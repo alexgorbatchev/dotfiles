@@ -52,41 +52,40 @@ To enable autocomplete for `dependsOn()` in your tool configuration files, add t
 
 ## Import Statements
 
-Always import required types at the top of your configuration file:
+Always import required types and utilities at the top of your configuration file:
 
 ```typescript
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
-import { Platform, Architecture } from '@types';
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
 ```
 
 ### Available Imports
 
-- **`ToolConfigBuilder`**: The main configuration builder interface
-- **`ToolConfigContext`**: Context object with paths and configuration
+- **`defineTool`**: Factory function to create tool configurations
 - **`Platform`**: Platform enumeration for cross-platform configuration
 - **`Architecture`**: Architecture enumeration for architecture-specific configuration
-- **`always`, `once`**: Script timing markers for shell integration
 
 ## Function Signature
 
-The default export must be an async function with this exact signature:
+The default export must use `defineTool` with this signature:
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) => {
   // Configuration goes here
-};
+});
 ```
 
 ### Parameters
 
-- **`c`**: The ToolConfigBuilder instance for configuring the tool
+- **`install`**: Function to create installation configuration
 - **`ctx`**: The ToolConfigContext with paths and configuration information
 
 ### Return Type
 
-- Must return `Promise<void>`
-- The function should not return any value
-- All configuration is done through method calls on the builder
+- Must return the configured tool from the `defineTool` callback
+- Use fluent builder methods to configure the tool
+- All configuration is done through method calls on the returned builder
 
 ## Type Safety Features
 
@@ -95,13 +94,21 @@ export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<voi
 All method calls are type-checked at compile time:
 
 ```typescript
+import { defineTool } from '@gitea/dotfiles';
+
 // ✅ Correct - all required parameters provided
-c.install('github-release', {
-  repo: 'owner/repository'
-})
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/repository'
+  })
+    .bin('tool')
+);
 
 // ❌ Type error - missing required 'repo' parameter
-c.install('github-release', {})
+export default defineTool((install, ctx) =>
+  install('github-release', {})
+    .bin('tool')
+);
 ```
 
 ### Parameter Validation
@@ -109,15 +116,23 @@ c.install('github-release', {})
 Installation parameters are validated based on the method:
 
 ```typescript
+import { defineTool } from '@gitea/dotfiles';
+
 // ✅ Correct - valid brew parameters
-c.install('brew', {
-  formula: 'tool-name'
-})
+export default defineTool((install, ctx) =>
+  install('brew', {
+    formula: 'tool-name'
+  })
+    .bin('tool')
+);
 
 // ❌ Type error - 'repo' is not valid for brew
-c.install('brew', {
-  repo: 'owner/tool'  // This will cause a type error
-})
+export default defineTool((install, ctx) =>
+  install('brew', {
+    repo: 'owner/tool'  // This will cause a type error
+  })
+    .bin('tool')
+);
 ```
 
 ### Platform and Architecture Validation
@@ -125,15 +140,25 @@ c.install('brew', {
 Platform and Architecture values must use the provided enums:
 
 ```typescript
-import { Platform, Architecture } from '@types';
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
 
 // ✅ Correct - using enum values
-c.platform(Platform.MacOS, (c) => {
-  // macOS-specific configuration
-})
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+);
 
 // ❌ Type error - string literals not allowed
-c.platform('macos', (c) => {})  // Type error
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .platform('macos', (install) =>
+      install('brew', { formula: 'tool' })
+    )
+);
 ```
 
 ## Common Type Errors and Solutions
@@ -143,13 +168,19 @@ c.platform('macos', (c) => {})  // Type error
 **Error:**
 ```typescript
 // ❌ Wrong - 'formula' is required for brew
-c.install('brew', {})
+export default defineTool((install, ctx) =>
+  install('brew', {})
+    .bin('tool')
+);
 ```
 
 **Solution:**
 ```typescript
 // ✅ Correct
-c.install('brew', { formula: 'tool-name' })
+export default defineTool((install, ctx) =>
+  install('brew', { formula: 'tool-name' })
+    .bin('tool')
+);
 ```
 
 ### Invalid Installation Method Parameters
@@ -157,18 +188,24 @@ c.install('brew', { formula: 'tool-name' })
 **Error:**
 ```typescript
 // ❌ Wrong - 'assetPattern' is not valid for manual install
-c.install('manual', {
-  binaryPath: '/usr/bin/tool',
-  assetPattern: '*.tar.gz'  // Type error
-})
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: '/usr/bin/tool',
+    assetPattern: '*.tar.gz'  // Type error
+  })
+    .bin('tool')
+);
 ```
 
 **Solution:**
 ```typescript
 // ✅ Correct - only valid parameters for manual install
-c.install('manual', {
-  binaryPath: '/usr/bin/tool'
-})
+export default defineTool((install, ctx) =>
+  install('manual', {
+    binaryPath: '/usr/bin/tool'
+  })
+    .bin('tool')
+);
 ```
 
 ### Invalid Platform Values
@@ -176,14 +213,27 @@ c.install('manual', {
 **Error:**
 ```typescript
 // ❌ Wrong - Platform is an enum, not a string
-c.platform('macos', (c) => {})
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .platform('macos', (install) =>
+      install('github-release', { repo: 'owner/tool' })
+    )
+);
 ```
 
 **Solution:**
 ```typescript
 // ✅ Correct - use Platform enum
-import { Platform } from '@types';
-c.platform(Platform.MacOS, (c) => {})
+import { defineTool, Platform } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+);
 ```
 
 ### Incorrect Context Usage
@@ -191,13 +241,22 @@ c.platform(Platform.MacOS, (c) => {})
 **Error:**
 ```typescript
 // ❌ Wrong - ctx properties are not functions
-const homeDir = ctx.homeDir();
+export default defineTool((install, ctx) => {
+  const homeDir = ctx.homeDir();
+  return install('github-release', { repo: 'owner/tool' })
+    .bin('tool');
+});
 ```
 
 **Solution:**
 ```typescript
 // ✅ Correct - ctx properties are values
-const homeDir = ctx.homeDir;
+export default defineTool((install, ctx) => {
+  const homeDir = ctx.homeDir;
+  return install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .environment({ HOME: homeDir });
+});
 ```
 
 ## Type Definitions
@@ -297,34 +356,38 @@ npx tsc --noEmit
 ### 1. Import Types Correctly
 
 ```typescript
-// ✅ Correct - use type-only imports for interfaces
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+// ✅ Correct - import defineTool and types from @gitea/dotfiles
+import { defineTool } from '@gitea/dotfiles';
 
-// ✅ Correct - use regular imports for enums and values
-import { Platform, Architecture, always, once } from '@types';
+// ✅ Correct - import utility types if needed
+import type { ToolConfig } from '@gitea/dotfiles';
 ```
 
 ### 2. Use Proper Function Signature
 
 ```typescript
-// ✅ Correct - async function with proper types
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  // Configuration
-};
+// ✅ Correct - use defineTool pattern
+export default defineTool((install, ctx) => {
+  return install('github-release', {
+    repo: 'owner/tool'
+  });
+});
 
-// ❌ Wrong - missing async or wrong return type
-export default (c: ToolConfigBuilder, ctx: ToolConfigContext) => {
-  // Configuration
+// ❌ Wrong - old async function pattern
+export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
+  // This pattern is no longer supported
 };
 ```
 
 ### 3. Leverage Type Inference
 
 ```typescript
-// ✅ Good - let TypeScript infer the type
-c.install('github-release', {
-  repo: 'owner/tool',
-  assetPattern: '*.tar.gz'
+// ✅ Good - let TypeScript infer the types
+export default defineTool((install, ctx) => {
+  return install('github-release', {
+    repo: 'owner/tool',
+    assetPattern: '*.tar.gz'
+  });
 });
 
 // ❌ Unnecessary - explicit typing not needed
@@ -334,10 +397,17 @@ c.install('github-release' as const, {
 });
 ```
 
-### 4. Use Enum Values
+### 4. Use Proper API Patterns
 
 ```typescript
-// ✅ Correct - use provided enums
+// ✅ Correct - method chaining with defineTool
+export default defineTool((install, ctx) => {
+  return install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .version('latest');
+});
+
+// ❌ Wrong - old builder pattern
 import { Platform, Architecture } from '@types';
 
 c.platform(Platform.MacOS, Architecture.Arm64, (c) => {
@@ -345,23 +415,27 @@ c.platform(Platform.MacOS, Architecture.Arm64, (c) => {
 });
 
 // ❌ Wrong - magic numbers or strings
-c.platform(2, 2, (c) => {});  // Type error
+c.platform(2, 2, (c) => {});
 ```
 
 ### 5. Handle Optional Parameters
 
 ```typescript
 // ✅ Good - only provide parameters you need
-c.install('github-release', {
-  repo: 'owner/tool'
-  // assetPattern is optional
+export default defineTool((install, ctx) => {
+  return install('github-release', {
+    repo: 'owner/tool'
+    // assetPattern is optional
+  });
 });
 
 // ✅ Also good - provide optional parameters when needed
-c.install('github-release', {
-  repo: 'owner/tool',
-  assetPattern: '*linux*.tar.gz',
-  binaryPath: 'bin/tool'
+export default defineTool((install, ctx) => {
+  return install('github-release', {
+    repo: 'owner/tool',
+    assetPattern: '*linux*.tar.gz',
+    binaryPath: 'bin/tool'
+  });
 });
 ```
 
@@ -395,10 +469,10 @@ Ensure you're importing from the correct module:
 
 ```typescript
 // ✅ Correct
-import type { ToolConfigBuilder, ToolConfigContext } from '@types';
+import { defineTool } from '@gitea/dotfiles';
 
 // ❌ Wrong - incorrect import path
-import type { ToolConfigBuilder, ToolConfigContext } from './types';
+import type { ToolConfigBuilder, ToolConfigContext } from '@types';
 ```
 
 ### Verify Method Signatures

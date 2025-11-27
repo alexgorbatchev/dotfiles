@@ -315,27 +315,29 @@ If `targetDir` is not specified, completions are installed to the default shell-
 Completions work seamlessly with other shell integration features:
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  .bin('my-tool')
-   .install('github-release', { repo: 'owner/my-tool' })
-   .zsh((shell) =>
-     shell
-       .completions('completions/_my-tool')
-       .aliases({
-         mt: 'my-tool'
-       })
-       .environment({
-         MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`
-       })
-   )
-   .bash((shell) =>
-     shell
-       .completions('completions/my-tool.bash')
-       .aliases({
-         mt: 'my-tool'
-       })
-   );
-};
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/my-tool' })
+    .bin('my-tool')
+    .zsh((shell) =>
+      shell
+        .completions('completions/_my-tool')
+        .aliases({
+          mt: 'my-tool'
+        })
+        .environment({
+          MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`
+        })
+    )
+    .bash((shell) =>
+      shell
+        .completions('completions/my-tool.bash')
+        .aliases({
+          mt: 'my-tool'
+        })
+    )
+);
 ```
 
 ## Next Steps

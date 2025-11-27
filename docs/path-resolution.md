@@ -51,41 +51,59 @@ For referencing files within the current tool version, you'll typically need to 
 
 ```typescript
 // ✅ Correct symlink usage
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .zsh((shell) => shell.completions('shell/completion.zsh'))
+);
 
-// ✅ Correct completion usage  
-c.zsh((shell) => shell.completions('shell/completion.zsh'))
-
-// ✅ Correct install usage  
-c.install('github-release', {
-  repo: 'owner/tool',
-  binaryPath: 'bin/tool',           // Binary location inside archive (used for shim generation)
-})
+// ✅ Correct install usage with binary path
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/tool',
+    binaryPath: 'bin/tool',           // Binary location inside archive
+  })
+    .bin('tool')
+);
 
 // ✅ Correct shell script paths
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-      source "${ctx.toolDir}/shell/key-bindings.zsh"
-    fi
-  `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.always(`
+        if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+          source "${ctx.toolDir}/shell/key-bindings.zsh"
+        fi
+      `)
+    )
+);
 ```
 
 ### Incorrect Usage
 
 ```typescript
 // ❌ Incorrect - using hardcoded paths
-c.symlink('./config.toml', '~/.config/tool/config.toml')
-c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('./config.toml', '~/.config/tool/config.toml')  // Wrong
+);
 
-// ❌ Incorrect - hardcoded environment variables
-c.zsh((shell) =>
-  shell.always(/* zsh */`
-    export TOOL_HOME="$HOME/.local/share/tool"  # Use declarative environment instead
-    source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.toolDir} instead
-  `)
-)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('./config.toml', '/home/user/.config/tool/config.toml')  // Wrong
+);
+
+// ❌ Incorrect - hardcoded environment variables in shell scripts
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .zsh((shell) =>
+      shell.always(`
+        export TOOL_HOME="$HOME/.local/share/tool"  # Use declarative environment instead
+        source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.toolDir} instead
+      `)
+    )
+);
 ```
 
 ## Recommended Directory Structure
@@ -131,9 +149,12 @@ ${ctx.generatedDir}/binaries/
 //     ├── dark.toml
 //     └── light.toml
 
-c
-  .symlink('./config.toml', `${ctx.homeDir}/.config/my-tool/config.toml`)
-  .symlink('./themes/', `${ctx.homeDir}/.config/my-tool/themes`)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/my-tool' })
+    .bin('my-tool')
+    .symlink('./config.toml', `${ctx.homeDir}/.config/my-tool/config.toml`)
+    .symlink('./themes/', `${ctx.homeDir}/.config/my-tool/themes`)
+);
 
 // Results in:
 // ~/.config/my-tool/config.toml -> configs/my-tool/config.toml
@@ -151,8 +172,12 @@ c
 //     ├── _tool.zsh
 //     └── tool.bash
 
-c.zsh((shell) => shell.completions('completions/_tool.zsh'))
-.bash((shell) => shell.completions('completions/tool.bash'))
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) => shell.completions('completions/_tool.zsh'))
+    .bash((shell) => shell.completions('completions/tool.bash'))
+);
 
 // Completions are copied from:
 // extracted-archive/completions/_tool.zsh -> ${ctx.generatedDir}/completions/_tool
@@ -169,10 +194,13 @@ c.zsh((shell) => shell.completions('completions/_tool.zsh'))
 // ├── lib/
 // └── share/
 
-c.install('github-release', {
-  repo: 'owner/my-tool',
-  binaryPath: 'bin/my-tool'  // Points to extracted-archive/bin/my-tool
-})
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'owner/my-tool',
+    binaryPath: 'bin/my-tool'  // Points to extracted-archive/bin/my-tool
+  })
+    .bin('my-tool')
+);
 
 // Shim created at: ${ctx.binDir}/my-tool
 // Shim executes: ${ctx.toolDir}/latest/bin/my-tool
@@ -184,10 +212,16 @@ c.install('github-release', {
 
 ```typescript
 // ✅ Correct - works on all platforms
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+);
 
-// ❌ Incorrect - Windows-specific
-c.symlink('.\\config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)
+// ❌ Incorrect - Windows-specific paths in forward slashes
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('.\\config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)  // Wrong
+);
 ```
 
 ### Context Variables Handle Platform Differences
@@ -197,7 +231,10 @@ c.symlink('.\\config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)
 // Linux/macOS: /home/user/.config/tool/config.toml
 // Windows: C:\Users\user\.config\tool\config.toml
 
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+);
 ```
 
 ## Debugging Path Issues
@@ -218,16 +255,24 @@ c.hooks({
 ### Verify File Existence
 
 ```typescript
-c.hooks({
-  afterInstall: async ({ fileSystem, logger }) => {
-    const configExists = await fileSystem.exists('./config.toml');
-    logger.info(`Config file exists: ${configExists}`);
-    
-    const symlinkTarget = `${ctx.homeDir}/.config/tool/config.toml`;
-    const symlinkExists = await fileSystem.exists(symlinkTarget);
-    logger.info(`Symlink created: ${symlinkExists}`);
-  }
-})
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('before-install', async ({ logger }) => {
+      logger.info(`Tool directory: ${ctx.toolDir}`);
+      logger.info(`Home directory: ${ctx.homeDir}`);
+      logger.info(`Generated directory: ${ctx.generatedDir}`);
+      logger.info(`Bin directory: ${ctx.binDir}`);
+    })
+    .hook('after-install', async ({ fileSystem, logger }) => {
+      const configExists = await fileSystem.exists('./config.toml');
+      logger.info(`Config file exists: ${configExists}`);
+      
+      const symlinkTarget = `${ctx.homeDir}/.config/tool/config.toml`;
+      const symlinkExists = await fileSystem.exists(symlinkTarget);
+      logger.info(`Symlink created: ${symlinkExists}`);
+    })
+);
 ```
 
 ## Best Practices

@@ -120,19 +120,20 @@ See the [Installation Methods](./installation/README.md) section for detailed in
 All methods return the builder instance, allowing for fluent method chaining:
 
 ```typescript
-export default async (c: ToolConfigBuilder, ctx: ToolConfigContext): Promise<void> => {
-  c
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .version('latest')
-    .install('github-release', { repo: 'owner/tool' })
     .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
     .zsh((shell) =>
       shell
         .completions('completions/_tool')
         .aliases({ t: 'tool' })
         .environment({ TOOL_HOME: `${ctx.toolDir}` })
-    );
-};
+    )
+);
 ```
 
 ## Next Steps

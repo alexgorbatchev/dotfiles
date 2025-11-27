@@ -74,7 +74,7 @@ import { defineTool } from '@gitea/dotfiles';
 
 ### Function Signature
 
-The default export must use the `defineTool` helper with the install function:
+The default export must use the `defineTool` helper:
 
 ```typescript
 export default defineTool((install, ctx) =>
@@ -91,6 +91,8 @@ export default defineTool((install, ctx) =>
 - Invalid installation parameters will cause compilation errors
 - Platform and Architecture values are validated
 - Completion configurations are validated
+- ToolConfigContext provides typed access to all configured paths
+- Builder methods return the builder instance for proper chaining
 
 ## Next Steps
 
