@@ -28,6 +28,7 @@ The `install('curl-script', params)` function accepts the following parameters:
 
 - **url** (required): The URL of the installation script to download (must be a valid HTTP/HTTPS URL)
 - **shell** (required): The shell to use for executing the script (must be either `'bash'` or `'sh'`)
+- **args** (optional): Arguments to pass to the script. Can be an array of strings or a function returning an array of strings (sync or async).
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`)
 
@@ -46,6 +47,52 @@ export default defineTool((install, ctx) =>
 ```
 
 #### With Environment Variables
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://fly.io/install.sh',
+    shell: 'sh',
+    env: {
+      INSTALL_DIR: '$HOME/.local/bin',
+    },
+  })
+    .bin('fly')
+);
+```
+
+#### With Arguments and Context
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://example.com/install.sh',
+    shell: 'bash',
+    // Static arguments
+    args: ['--verbose', '--install-dir', '/usr/local/bin'],
+  })
+    .bin('tool')
+);
+```
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://example.com/install.sh',
+    shell: 'bash',
+    // Dynamic arguments with context
+    args: (context) => [
+      '--install-dir',
+      context.installDir,
+      '--platform',
+      context.projectConfig.platform
+    ],
+  })
+    .bin('tool')
+);
+```
+
+#### With Hooks
 
 ```typescript
 export default defineTool((install, ctx) =>

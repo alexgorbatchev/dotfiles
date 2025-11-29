@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
-import { ProfileUpdater } from '../ProfileUpdater';
 import type { IProfileUpdateConfig } from '../IProfileUpdater';
+import { ProfileUpdater } from '../ProfileUpdater';
 
 describe('ProfileUpdater - Duplicate Entries', () => {
   let fs: IFileSystem;
@@ -18,7 +18,7 @@ describe('ProfileUpdater - Duplicate Entries', () => {
     const zshrcPath = `${homeDir}/.zshrc`;
     const oldConfigPath = '/old/project/config.ts';
     const oldScriptPath = '/old/project/.generated/shell-init/main.zsh';
-    
+
     // Simulate existing content from a previous run (or different project)
     const existingContent = [
       '# Some user content',
@@ -29,7 +29,7 @@ describe('ProfileUpdater - Duplicate Entries', () => {
       '# ------------------------------------------------------------------------------',
       `source "${oldScriptPath}"`,
       '',
-      '# More user content'
+      '# More user content',
     ].join('\n');
 
     await fs.ensureDir(homeDir);
@@ -42,19 +42,19 @@ describe('ProfileUpdater - Duplicate Entries', () => {
       shellType: 'zsh',
       projectConfigPath: newConfigPath,
       generatedScriptPath: newScriptPath,
-      onlyIfExists: false
+      onlyIfExists: false,
     };
 
     await updater.updateProfiles([config]);
 
     const content = await fs.readFile(zshrcPath);
-    
+
     // Should contain the new script path
     expect(content).toContain(`source "${newScriptPath}"`);
-    
+
     // Should NOT contain the old script path (it should be replaced)
     expect(content).not.toContain(`source "${oldScriptPath}"`);
-    
+
     // Should NOT contain duplicate headers
     const headerMatches = content.match(/# Generated via dotfiles generator - do not modify/g);
     expect(headerMatches).toHaveLength(1);

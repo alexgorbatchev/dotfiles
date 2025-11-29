@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
-import {
-  createInstallerTestSetup,
-  type IInstallerTestSetup,
-} from './installer-test-helpers';
+import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Recursion Guard Edge Cases', () => {
   let setup: IInstallerTestSetup;
@@ -16,7 +13,7 @@ describe('Installer - Recursion Guard Edge Cases', () => {
     const toolName = 'my.cool-tool@v2';
     // Expected: MY_COOL_TOOL_V2
     const envVarName = 'DOTFILES_INSTALLING_MY_COOL_TOOL_V2';
-    
+
     const toolConfig: ToolConfig = {
       name: toolName,
       version: '1.0.0',

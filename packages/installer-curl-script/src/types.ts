@@ -1,6 +1,13 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
 import type { IToolInstallationDetails } from '@dotfiles/registry';
 
+export * from './types/ICurlScriptArgsContext';
+
+import type { ICurlScriptArgsContext } from './types/ICurlScriptArgsContext';
+
+export type CurlScriptArgsFunction = (ctx: ICurlScriptArgsContext) => string[] | Promise<string[]>;
+export type CurlScriptArgs = string[] | CurlScriptArgsFunction;
+
 /**
  * Metadata specific to curl-script tool installation.
  */

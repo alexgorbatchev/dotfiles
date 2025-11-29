@@ -204,8 +204,7 @@ export function generateSourceLine(shellType: ShellType, scriptPath: string): st
  * @returns Multi-line header comment block
  */
 export function generateProfileHeader(shellType: ShellType, _projectConfigPath: string): string {
-  return [
-    commentLine(shellType, 'Generated via dotfiles generator - do not modify'),
-    headerLine(shellType, '-'),
-  ].join('\n');
+  return [commentLine(shellType, 'Generated via dotfiles generator - do not modify'), headerLine(shellType, '-')].join(
+    '\n'
+  );
 }

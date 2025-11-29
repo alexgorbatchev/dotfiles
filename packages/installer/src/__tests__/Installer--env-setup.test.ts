@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
-import {
-  createInstallerTestSetup,
-  type IInstallerTestSetup,
-} from './installer-test-helpers';
+import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Environment Setup', () => {
   let setup: IInstallerTestSetup;
@@ -42,7 +39,7 @@ describe('Installer - Environment Setup', () => {
     expect(pathDuringInstall).toBeDefined();
     expect(pathDuringInstall?.startsWith(installDir!)).toBe(true);
     expect(pathDuringInstall).not.toBe(originalPath);
-    
+
     // Verify PATH is restored
     expect(process.env['PATH']).toBe(originalPath);
   });

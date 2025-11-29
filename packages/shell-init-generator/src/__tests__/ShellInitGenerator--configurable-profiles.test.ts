@@ -71,7 +71,7 @@ describe('ShellInitGenerator - Configurable Profiles', () => {
 
     expect(result?.profileUpdates).toBeDefined();
     const update = result?.profileUpdates?.find((u) => u.shellType === 'zsh');
-    
+
     expect(update?.profilePath).toBe(customZshrc);
     expect(update?.wasUpdated).toBe(true);
 

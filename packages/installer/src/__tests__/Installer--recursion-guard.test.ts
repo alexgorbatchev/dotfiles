@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
-import {
-  createInstallerTestSetup,
-  type IInstallerTestSetup,
-} from './installer-test-helpers';
+import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Recursion Guard', () => {
   let setup: IInstallerTestSetup;
@@ -15,7 +12,7 @@ describe('Installer - Recursion Guard', () => {
   it('should set the recursion guard environment variable during installation', async () => {
     const toolName = 'my-test-tool';
     const envVarName = 'DOTFILES_INSTALLING_MY_TEST_TOOL';
-    
+
     const toolConfig: ToolConfig = {
       name: toolName,
       version: '1.0.0',
@@ -52,7 +49,7 @@ describe('Installer - Recursion Guard', () => {
   it('should handle tool names with hyphens correctly', async () => {
     const toolName = 'complex-tool-name-v2';
     const envVarName = 'DOTFILES_INSTALLING_COMPLEX_TOOL_NAME_V2';
-    
+
     const toolConfig: ToolConfig = {
       name: toolName,
       version: '1.0.0',
@@ -81,7 +78,7 @@ describe('Installer - Recursion Guard', () => {
   it('should clean up environment variable even if installation fails', async () => {
     const toolName = 'failing-tool';
     const envVarName = 'DOTFILES_INSTALLING_FAILING_TOOL';
-    
+
     const toolConfig: ToolConfig = {
       name: toolName,
       version: '1.0.0',

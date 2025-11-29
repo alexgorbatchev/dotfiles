@@ -1,6 +1,7 @@
 import type { BaseInstallParams } from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
+import type { CurlScriptArgs } from '../types';
 
 /**
  * Parameters for installing a tool by downloading and executing a shell script using `curl`.
@@ -18,8 +19,8 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
   url: z.string().url(),
   /** The shell to use for executing the downloaded script (e.g., `bash`, `sh`). */
   shell: z.enum(['bash', 'sh']),
-  /** Arguments to pass to the script. */
-  args: z.array(z.string()).optional(),
+  /** Arguments to pass to the script - can be static array or function returning array. */
+  args: z.any().optional(),
 });
 
 /**
@@ -28,4 +29,8 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
  * Example: `curl -fsSL <url> | sh`.
  * This is analogous to Zinit's `dl` ice combined with `atclone` for script execution.
  */
-export type CurlScriptInstallParams = BaseInstallParams & z.infer<typeof curlScriptInstallParamsSchema>;
+export type CurlScriptInstallParams = Omit<BaseInstallParams, 'args'> & {
+  url: string;
+  shell: 'bash' | 'sh';
+  args?: CurlScriptArgs;
+};

@@ -121,10 +121,7 @@ export class ProfileUpdater implements IProfileUpdater {
   private replaceGeneratedBlocks(content: string, newBlock: string): string {
     const headerMarker = '# Generated via dotfiles generator - do not modify';
     const escapedMarker = headerMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockRegex = new RegExp(
-      `${escapedMarker}[\\s\\S]*?^\\s*(?:source|\\.)\\s+["'].*?["'].*?$`,
-      'gm'
-    );
+    const blockRegex = new RegExp(`${escapedMarker}[\\s\\S]*?^\\s*(?:source|\\.)\\s+["'].*?["'].*?$`, 'gm');
 
     const parts = content.split(blockRegex);
     let newContent = parts[0] || '';

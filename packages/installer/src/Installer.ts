@@ -15,7 +15,7 @@ import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
-import { HookExecutor, createConfiguredShell, messages } from './utils';
+import { createConfiguredShell, HookExecutor, messages } from './utils';
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -484,20 +484,20 @@ export class Installer implements IInstaller {
         logger.debug(messages.lifecycle.directoryCreated(installDir));
       }
 
-    // Create context for installation hooks
-    // Create a configured shell that automatically includes the current environment variables
-    // This ensures that plugins don't need to manually call .env({ ...process.env })
-    // to pick up the modified PATH and recursion guard variables.
-    const configuredShell = createConfiguredShell(this.$, process.env);
+      // Create context for installation hooks
+      // Create a configured shell that automatically includes the current environment variables
+      // This ensures that plugins don't need to manually call .env({ ...process.env })
+      // to pick up the modified PATH and recursion guard variables.
+      const configuredShell = createConfiguredShell(this.$, process.env);
 
-    const { context, logger: contextLogger } = this.createBaseInstallContext(
-      toolName,
-      installDir,
-      versionOrTimestamp,
-      resolvedToolConfig,
-      logger,
-      configuredShell
-    );      // Run beforeInstall hook if defined
+      const { context, logger: contextLogger } = this.createBaseInstallContext(
+        toolName,
+        installDir,
+        versionOrTimestamp,
+        resolvedToolConfig,
+        logger,
+        configuredShell
+      ); // Run beforeInstall hook if defined
       const beforeInstallResult = await this.executeBeforeInstallHook(
         resolvedToolConfig,
         context,

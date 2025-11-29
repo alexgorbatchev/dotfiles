@@ -10,14 +10,9 @@ import {
   curlScriptInstallParamsSchema,
   curlScriptToolConfigSchema,
 } from './schemas';
+import type { ICurlScriptInstallMetadata } from './types';
 
 const PLUGIN_VERSION = '1.0.0';
-
-type CurlScriptPluginMetadata = {
-  method: 'curl-script';
-  scriptUrl: string;
-  shell: string;
-};
 
 /**
  * Installer plugin for tools installed via curl scripts.
@@ -32,7 +27,7 @@ type CurlScriptPluginMetadata = {
  * the installation is delegated to the external script.
  */
 export class CurlScriptInstallerPlugin
-  implements IInstallerPlugin<'curl-script', CurlScriptInstallParams, CurlScriptToolConfig, CurlScriptPluginMetadata>
+  implements IInstallerPlugin<'curl-script', CurlScriptInstallParams, CurlScriptToolConfig, ICurlScriptInstallMetadata>
 {
   readonly method = 'curl-script';
   readonly displayName = 'Curl Script Installer';
@@ -69,7 +64,7 @@ export class CurlScriptInstallerPlugin
     toolConfig: CurlScriptToolConfig,
     context: InstallContext,
     options?: IInstallOptions
-  ): Promise<InstallResult<CurlScriptPluginMetadata>> {
+  ): Promise<InstallResult<ICurlScriptInstallMetadata>> {
     const result = await installFromCurlScript(
       toolName,
       toolConfig,
@@ -88,7 +83,7 @@ export class CurlScriptInstallerPlugin
       };
     }
 
-    const installResult: InstallResult<CurlScriptPluginMetadata> = {
+    const installResult: InstallResult<ICurlScriptInstallMetadata> = {
       success: true,
       binaryPaths: result.binaryPaths,
       metadata: result.metadata,

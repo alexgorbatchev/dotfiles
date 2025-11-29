@@ -24,6 +24,7 @@ The `install('curl-script', params)` function accepts:
 {
   url: 'https://example.com/install.sh',  // Required
   shell: 'bash' | 'sh',                   // Required
+  args?: string[] | ((ctx) => string[] | Promise<string[]>), // Optional
   env?: { KEY: 'value' },                 // Optional
   hooks?: {                               // Optional
     beforeInstall?: async (ctx) => void,
@@ -36,6 +37,10 @@ The `install('curl-script', params)` function accepts:
 
 - **`url`**: URL of the installation script
 - **`shell`**: Shell to use for execution (`'bash'` or `'sh'`)
+- **`args`**: Arguments to pass to the script. Can be:
+  - Static array: `['--arg1', '--arg2']`
+  - Sync function: `(ctx) => ['--install-dir', ctx.projectConfig.paths.binariesDir]`
+  - Async function: `async (ctx) => { ... return ['--arg1']; }`
 - **`env`**: Environment variables to set during installation
 
 ## Examples
@@ -53,6 +58,45 @@ export default defineTool((install, ctx) =>
     .bin('bun')
 );
 ```
+
+### With Script Arguments (Static)
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://fnm.vercel.app/install',
+    shell: 'bash',
+    args: ['--skip-shell', '--install-dir', '$LOCAL_BIN'],
+  })
+    .bin('fnm')
+);
+```
+
+**Note:** The example above has been updated to use `args` instead of `env.INSTALL_ARGS`. Arguments are now passed directly to the script.
+
+### Custom Installation Directory
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install, ctx) =>
+  install('curl-script', {
+    url: 'https://fnm.vercel.app/install',
+    shell: 'bash',
+    args: (argsCtx) => [
+      '--skip-shell',
+      '--install-dir',
+      argsCtx.projectConfig.paths.binariesDir,
+    ],
+  })
+    .bin('fnm')
+);
+```
+
+The args context provides:
+- `projectConfig` - Full project configuration
+- `scriptPath` - Path where script was downloaded
+- `installDir` - Installation directory for the tool
 
 ### With Environment Variables
 

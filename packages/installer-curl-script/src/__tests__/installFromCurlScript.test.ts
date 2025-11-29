@@ -6,6 +6,7 @@ import type { HookExecutor } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { installFromCurlScript } from '../installFromCurlScript';
 import type { CurlScriptToolConfig } from '../schemas';
+import type { ICurlScriptArgsContext } from '../types';
 
 // Mock Bun $
 const mockQuiet = mock(() => Promise.resolve());
@@ -37,6 +38,17 @@ describe('installFromCurlScript', () => {
     context = {
       installDir: '/install/dir',
       version: '1.0.0',
+      projectConfig: {
+        paths: {
+          binariesDir: '/path/to/binaries',
+          homeDir: '/home/user',
+          dotfilesDir: '/home/user/.dotfiles',
+          targetDir: '/home/user/.local/bin',
+          generatedDir: '/home/user/.dotfiles/.generated',
+          toolConfigsDir: '/home/user/.dotfiles/tools',
+          shellScriptsDir: '/home/user/.dotfiles/.generated/shell-scripts',
+        },
+      },
     } as unknown as InstallContext;
 
     mockShell.mockClear();
@@ -77,7 +89,7 @@ describe('installFromCurlScript', () => {
     const call = calls[0];
     if (!call) throw new Error('Expected call');
     const [strings, scriptPath, args] = call;
-    
+
     if (!strings || !strings[0]) throw new Error('Expected strings');
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
@@ -113,10 +125,88 @@ describe('installFromCurlScript', () => {
     const call = calls[0];
     if (!call) throw new Error('Expected call');
     const [strings, scriptPath, args] = call;
-    
+
     if (!strings || !strings[0]) throw new Error('Expected strings');
     expect(strings[0]).toContain('sh');
     expect(scriptPath).toContain('test-tool-install.sh');
     expect(args).toEqual([]);
+  });
+
+  it('should execute script with args from function when provided', async () => {
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+        args: (ctx: ICurlScriptArgsContext) => ['--install-dir', ctx.projectConfig.paths.binariesDir, '--skip-shell'],
+      },
+    };
+
+    await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFs,
+      mockDownloader,
+      mockHookExecutor,
+      logger
+    );
+
+    expect(mockShell).toHaveBeenCalled();
+    const calls = mockShell.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    expect(calls.length).toBe(1);
+    const call = calls[0];
+    if (!call) throw new Error('Expected call');
+    const [strings, scriptPath, args] = call;
+
+    if (!strings || !strings[0]) throw new Error('Expected strings');
+    expect(strings[0]).toContain('bash');
+    expect(scriptPath).toContain('test-tool-install.sh');
+    expect(args).toEqual(['--install-dir', context.projectConfig.paths.binariesDir, '--skip-shell']);
+  });
+
+  it('should execute script with args from async function when provided', async () => {
+    const toolConfig: CurlScriptToolConfig = {
+      name: 'test-tool',
+      version: '1.0.0',
+      binaries: ['tool'],
+      installationMethod: 'curl-script',
+      installParams: {
+        url: 'https://example.com/install.sh',
+        shell: 'bash',
+        args: async (ctx: ICurlScriptArgsContext) => {
+          // Simulate async operation
+          await Promise.resolve();
+          return ['--install-dir', ctx.projectConfig.paths.binariesDir, '--skip-shell'];
+        },
+      },
+    };
+
+    await installFromCurlScript(
+      'test-tool',
+      toolConfig,
+      context,
+      undefined,
+      mockFs,
+      mockDownloader,
+      mockHookExecutor,
+      logger
+    );
+
+    expect(mockShell).toHaveBeenCalled();
+    const calls = mockShell.mock.calls as unknown as [TemplateStringsArray, string, string[]][];
+    expect(calls.length).toBe(1);
+    const call = calls[0];
+    if (!call) throw new Error('Expected call');
+    const [strings, scriptPath, args] = call;
+
+    if (!strings || !strings[0]) throw new Error('Expected strings');
+    expect(strings[0]).toContain('bash');
+    expect(scriptPath).toContain('test-tool-install.sh');
+    expect(args).toEqual(['--install-dir', context.projectConfig.paths.binariesDir, '--skip-shell']);
   });
 });

@@ -1,5 +1,5 @@
-import { $, type ShellExpression } from 'bun';
 import type { $extended } from '@dotfiles/core';
+import type { $, ShellExpression } from 'bun';
 
 /**
  * Creates a configured shell instance that automatically applies the provided environment variables

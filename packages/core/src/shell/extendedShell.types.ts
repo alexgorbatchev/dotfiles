@@ -1,4 +1,4 @@
-import { $ } from 'bun';
+import type { $ } from 'bun';
 
 declare const extendedShellBrand: unique symbol;
 

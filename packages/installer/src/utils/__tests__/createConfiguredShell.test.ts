@@ -19,16 +19,16 @@ describe('createConfiguredShell', () => {
     const env = {
       TEST_OVERRIDE: 'new-value',
     };
-    
+
     // Set in process.env temporarily
     process.env['TEST_OVERRIDE'] = 'old-value';
-    
+
     try {
-        const shell = createConfiguredShell($, env);
-        const output = await shell`echo $TEST_OVERRIDE`.text();
-        expect(output.trim()).toBe('new-value');
+      const shell = createConfiguredShell($, env);
+      const output = await shell`echo $TEST_OVERRIDE`.text();
+      expect(output.trim()).toBe('new-value');
     } finally {
-        delete process.env['TEST_OVERRIDE'];
+      delete process.env['TEST_OVERRIDE'];
     }
   });
 
