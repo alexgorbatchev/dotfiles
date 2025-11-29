@@ -83,6 +83,29 @@ export default defineConfig(async () => {
 });
 ```
 
+### Context-Aware Configuration
+
+The configuration factory receives a context object containing `configFileDir` and `systemInfo`. This is useful for resolving paths relative to the configuration file or adapting to the system environment.
+
+```typescript
+import { defineConfig } from '@gitea/dotfiles';
+
+export default defineConfig(({ configFileDir, systemInfo }) => ({
+  paths: {
+    // Resolve paths relative to the config file location
+    generatedDir: `${configFileDir}/.generated`,
+    toolConfigsDir: `${configFileDir}/tools`,
+  },
+  // Use system info for conditional logic
+  features: {
+    catalog: {
+      generate: systemInfo.platform !== 'win32',
+      filePath: `${configFileDir}/CATALOG.md`,
+    },
+  },
+}));
+```
+
 ### Mixed Configuration
 
 Combine multiple configuration sources:

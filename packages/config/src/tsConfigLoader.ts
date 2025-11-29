@@ -1,8 +1,10 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { ISystemInfo, ProjectConfig, ProjectConfigPartial } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
+import type { ConfigContext } from './defineConfig';
 import { messages } from './log-messages';
 import { createProjectConfigFromObject } from './projectConfigLoader';
 
@@ -49,15 +51,23 @@ export async function loadTsConfig(
       exitCli(1);
     }
 
+    let configOrFactory = module.default;
+
+    if (typeof configOrFactory === 'function') {
+      const configFileDir = path.dirname(userConfigPath);
+      const ctx: ConfigContext = { configFileDir, systemInfo };
+      configOrFactory = configOrFactory(ctx);
+    }
+
     // Handle Promise from defineConfig (which wraps sync/async config functions)
-    if (module.default instanceof Promise) {
-      userConfig = await module.default;
-    } else if (typeof module.default === 'object') {
+    if (configOrFactory instanceof Promise) {
+      userConfig = await configOrFactory;
+    } else if (typeof configOrFactory === 'object') {
       // Handle direct object export
-      userConfig = module.default as ProjectConfigPartial;
+      userConfig = configOrFactory as ProjectConfigPartial;
     } else {
       logger.error(
-        messages.configurationParseError(userConfigPath, 'TypeScript', 'default export must be an object or Promise')
+        messages.configurationParseError(userConfigPath, 'TypeScript', 'default export must be an object, function or Promise')
       );
       exitCli(1);
     }

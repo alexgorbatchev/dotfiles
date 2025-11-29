@@ -123,6 +123,13 @@ export default defineConfig(() => ({
     generatedDir: '${configFileDir}/.generated',
   },
 }));
+
+// ... context-aware factories
+export default defineConfig(({ configFileDir, systemInfo }) => ({
+  paths: {
+    generatedDir: `${configFileDir}/.generated`,
+  },
+}));
 ```
 
 ## Configuration File Structure

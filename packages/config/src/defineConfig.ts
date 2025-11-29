@@ -1,14 +1,28 @@
-import type { ProjectConfigPartial } from '@dotfiles/core';
+import type { ISystemInfo, ProjectConfigPartial } from '@dotfiles/core';
+
+/**
+ * Context passed to the configuration factory function.
+ */
+export interface ConfigContext {
+  /**
+   * The directory containing the configuration file.
+   */
+  configFileDir: string;
+  /**
+   * Information about the current system (platform, architecture, etc.).
+   */
+  systemInfo: ISystemInfo;
+}
+
+export type ConfigFactory = (ctx: ConfigContext) => Promise<ProjectConfigPartial> | ProjectConfigPartial;
 
 /**
  * Wraps a configuration factory so `.ts` config files stay fully typed.
  *
  * The factory can be synchronous or asynchronous and should return a {@link ProjectConfigPartial}.
- * The wrapper executes the factory immediately and normalises the result to a promise so the
- * loader has a consistent async contract.
  *
- * @param configFn - Configuration factory executed exactly once when the file is imported.
- * @returns Promise that resolves with the user supplied configuration fragment.
+ * @param configFn - Configuration factory.
+ * @returns The configuration factory function.
  *
  * @example Asynchronous factory
  * ```typescript
@@ -29,12 +43,6 @@ import type { ProjectConfigPartial } from '@dotfiles/core';
  * }));
  * ```
  */
-export function defineConfig(
-  configFn: () => Promise<ProjectConfigPartial> | ProjectConfigPartial
-): Promise<ProjectConfigPartial> {
-  const results = configFn();
-  if (results instanceof Promise) {
-    return results;
-  }
-  return Promise.resolve(results);
+export function defineConfig(configFn: ConfigFactory): ConfigFactory {
+  return configFn;
 }
