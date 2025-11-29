@@ -15,6 +15,7 @@ export const curlScriptToolConfigSchema = baseToolConfigWithPlatformsSchema.exte
   binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).min(1),
 });
 
+// TODO use prettytypedeep
 type PrettyTypeDeep<TValue> = TValue extends (...arguments_: unknown[]) => unknown
   ? TValue
   : TValue extends readonly unknown[]

@@ -6,7 +6,7 @@ export default defineConfig(() => ({
   paths: {
     generatedDir: '${configFileDir}/.generated',
     homeDir: '${paths.generatedDir}/user-home',
-    targetDir: '${paths.generatedDir}',
+    targetDir: '${paths.generatedDir}/bin',
     toolConfigsDir: '${configFileDir}/tools',
   },
   features: {
