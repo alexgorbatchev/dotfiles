@@ -51,7 +51,15 @@ const currentVersions: Record<string, string> = {};
  * @returns A Response object with the binary file content and appropriate headers.
  */
 function createBinaryDownloadResponse(filename: string): Response {
-  const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', filename);
+  // Determine which tool directory based on filename
+  let toolDir = '';
+  if (filename.startsWith('github-release-tool')) {
+    toolDir = 'tools/github-release-tool';
+  } else if (filename.startsWith('cargo-quickinstall-tool')) {
+    toolDir = 'tools/cargo-quickinstall-tool';
+  }
+
+  const mockBinaryPath = path.join(import.meta.dir, '__tests__', 'fixtures', toolDir, filename);
   return new Response(Bun.file(mockBinaryPath), {
     headers: {
       'Content-Disposition': `attachment; filename=${filename}`,
@@ -143,7 +151,14 @@ export function withMockServer(): void {
 
         // Mock install script for cmd-based completion tests
         '/mock-install-for-cmd-completion-test.sh': () => {
-          const scriptPath = path.join(import.meta.dir, '__tests__', 'fixtures', 'mock-install-for-cmd-completion-test.sh');
+          const scriptPath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'curl-script--cmd-completion-test',
+            'mock-install-for-cmd-completion-test.sh'
+          );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
           });

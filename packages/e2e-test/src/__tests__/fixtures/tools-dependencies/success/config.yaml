@@ -1,0 +1,28 @@
+paths:
+  generatedDir: "{configFileDir}/.generated"
+  homeDir: "{paths.generatedDir}/user-home"
+  targetDir: "{paths.generatedDir}/user-bin"
+  toolConfigsDir: "{configFileDir}"
+
+github:
+  host: http://localhost:8765
+  cache:
+    enabled: false
+
+cargo:
+  cratesIo:
+    host: http://localhost:8765
+    cache:
+      enabled: false
+  githubRaw:
+    host: http://localhost:8765
+    cache:
+      enabled: false
+  githubRelease:
+    host: http://localhost:8765
+    cache:
+      enabled: false
+
+downloader:
+  cache:
+    enabled: false
