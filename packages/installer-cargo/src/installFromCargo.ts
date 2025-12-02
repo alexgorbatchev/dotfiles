@@ -32,7 +32,7 @@ export async function installFromCargo(
   githubHost: string
 ): Promise<CargoInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromCargo' });
-  logger.debug(messages.installing(toolName), toolConfig['installParams']);
+  logger.debug(messages.installing(toolName));
 
   if (!toolConfig['installParams']) {
     return {

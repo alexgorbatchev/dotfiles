@@ -1,7 +1,7 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
 
 export const messages = {
-  installing: (toolName: string) => createSafeLogMessage(`Installing from cargo: toolName=${toolName}`),
+  installing: (toolName: string) => createSafeLogMessage(`Installing from cargo: ${toolName}`),
   foundVersion: (crateName: string, version: string) =>
     createSafeLogMessage(`Found crate ${crateName} version ${version}`),
   downloadingAsset: (assetName: string, url: string) =>
