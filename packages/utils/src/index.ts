@@ -7,6 +7,7 @@ export * from './expandToolConfigPath';
 export * from './formatPermissions';
 export * from './generateTimestamp';
 export * from './generateToolTypes';
+export * from './getAllFilesRecursively';
 export * from './getBuiltPackageName';
 export * from './getCliBinPath';
 export * from './normalizeVersion';

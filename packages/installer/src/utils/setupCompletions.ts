@@ -3,6 +3,7 @@ import type { InstallContext, ShellCompletionConfig, ShellType, ToolConfig } fro
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
+import { getAllFilesRecursively } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
 import { messages } from './log-messages';
 
@@ -126,7 +127,7 @@ async function resolveSourcePath(
 ): Promise<string> {
   // If source contains glob patterns, resolve using minimatch
   if (source.includes('*') || source.includes('?') || source.includes('[')) {
-    const allFiles = await getAllFiles(fs, extractDir);
+    const allFiles = await getAllFilesRecursively(fs, extractDir, extractDir);
     const matched = allFiles.find((file) => minimatch(file, source));
     if (matched) {
       return path.join(extractDir, matched);
@@ -145,25 +146,4 @@ async function resolveSourcePath(
   }
 
   return sourcePath;
-}
-
-async function getAllFiles(fs: IFileSystem, directory: string, baseDir?: string): Promise<string[]> {
-  const base = baseDir ?? directory;
-  const results: string[] = [];
-  const entries = await fs.readdir(directory);
-
-  for (const entry of entries) {
-    const fullPath = path.join(directory, entry);
-    const stats = await fs.stat(fullPath);
-
-    if (stats.isDirectory()) {
-      const subFiles = await getAllFiles(fs, fullPath, base);
-      results.push(...subFiles);
-    } else {
-      const relativePath = path.relative(base, fullPath);
-      results.push(relativePath);
-    }
-  }
-
-  return results;
 }

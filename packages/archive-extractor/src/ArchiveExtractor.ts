@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { getAllFilesRecursively } from '@dotfiles/utils';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import { messages } from './log-messages';
 
@@ -266,28 +267,56 @@ export class ArchiveExtractor implements IArchiveExtractor {
     // Ensure target directory exists
     await this.fs.ensureDir(targetDir);
 
-    // Get the list of files before extraction
-    const filesBefore: string[] = await this.fs.readdir(targetDir).catch(() => []);
+    // Create a temporary subdirectory for extraction to avoid including the archive file itself
+    const randomSuffix = Math.floor(Math.random() * 10000);
+    const tempExtractDir = join(targetDir, `.extract-temp-${randomSuffix}`);
+    await this.fs.ensureDir(tempExtractDir);
 
-    // Extract directly to target directory
-    await this.extractArchiveByFormat(format, archivePath, targetDir);
+    try {
+      // Extract to temporary directory
+      await this.extractArchiveByFormat(format, archivePath, tempExtractDir);
 
-    // Get the list of files after extraction
-    const filesAfter = await this.fs.readdir(targetDir);
+      // Get all files from the temp directory
+      const extractedFiles = await getAllFilesRecursively(this.fs, tempExtractDir);
 
-    // Find the newly extracted files (files that weren't there before)
-    const extractedFiles = filesAfter.filter((file) => !filesBefore.includes(file));
+      // Move files from temp directory to target directory
+      for (const filePath of extractedFiles) {
+        const relativePath = filePath.substring(tempExtractDir.length + 1);
+        const targetPath = join(targetDir, relativePath);
+        const targetDirPath = join(targetPath, '..');
+        
+        await this.fs.ensureDir(targetDirPath);
+        await this.fs.rename(filePath, targetPath);
+      }
 
-    const result: IExtractResult = {
-      extractedFiles,
-      executables: [],
-    };
+      // Remove the temporary directory
+      await this.fs.rm(tempExtractDir, { recursive: true, force: true });
 
-    if (detectExecutables) {
-      result.executables = await this.detectAndSetExecutables(targetDir, extractedFiles);
+      // Update file paths to reflect final location
+      const finalFiles = extractedFiles.map((filePath) => {
+        const relativePath = filePath.substring(tempExtractDir.length + 1);
+        return join(targetDir, relativePath);
+      });
+
+      const result: IExtractResult = {
+        extractedFiles: finalFiles,
+        executables: [],
+      };
+
+      if (detectExecutables) {
+        result.executables = await this.detectAndSetExecutables(targetDir, finalFiles);
+      }
+
+      return result;
+    } catch (error) {
+      // Clean up temp directory on error
+      try {
+        await this.fs.rm(tempExtractDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+      throw error;
     }
-
-    return result;
   }
 
   /**
@@ -297,9 +326,9 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * common script extensions (.sh, .py, .pl, .rb). It checks if the file already has the
    * owner execute bit set, and if not, adds it.
    *
-   * @param baseDir - The base directory containing the extracted files.
-   * @param files - Array of file names to check.
-   * @returns Array of file names that were identified as executables.
+   * @param baseDir - The base directory containing the extracted files (unused, kept for compatibility).
+   * @param files - Array of absolute file paths to check.
+   * @returns Array of absolute file paths that were identified as executables.
    */
   private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'detectAndSetExecutables' });
@@ -308,21 +337,20 @@ export class ArchiveExtractor implements IArchiveExtractor {
     // For `zx`, we'd need to ensure `file` command is available or use Node.js based checks.
     // For now, let's assume a simple extension check or common binary names.
     // A more robust solution would use `await $`file -b ${filePath}`;` and parse output.
-    for (const file of files) {
-      const filePath = join(baseDir, file);
+    for (const filePath of files) {
       try {
         const stat = await this.fs.stat(filePath);
         if (stat.isFile()) {
           // Heuristic: files without extensions or common script extensions
           // This is very basic and platform-dependent.
-          const ext = extname(file);
+          const ext = extname(filePath);
           if (ext === '' || ['.sh', '.py', '.pl', '.rb'].includes(ext)) {
             // Check if it's already executable (owner execute bit)
             if (!(stat.mode & 0o100)) {
               logger.debug(messages.executableFlagApplied(filePath));
               await this.fs.chmod(filePath, stat.mode | 0o100); // Add owner execute
             }
-            executables.push(file);
+            executables.push(filePath);
           }
         }
       } catch (error) {

@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { IBinaryConfig, InstallContext, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { getAllFilesRecursively } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
 import { createBinarySymlink } from './createBinarySymlinks';
 import { messages } from './log-messages';
@@ -176,28 +177,6 @@ async function formatDirectoryEntry(
 }
 
 /**
- * Recursively collect all file paths in a directory
- */
-async function getAllFiles(fs: IFileSystem, dirPath: string, basePath = dirPath): Promise<string[]> {
-  const files: string[] = [];
-  const entries = await fs.readdir(dirPath);
-
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry);
-    const stats = await fs.stat(fullPath);
-
-    if (stats.isDirectory()) {
-      const subFiles = await getAllFiles(fs, fullPath, basePath);
-      files.push(...subFiles);
-    } else {
-      files.push(path.relative(basePath, fullPath));
-    }
-  }
-
-  return files;
-}
-
-/**
  * Check if a file is executable
  */
 async function isExecutable(fs: IFileSystem, filePath: string): Promise<boolean> {
@@ -219,7 +198,7 @@ async function findBinaryUsingPattern(
   const logger = parentLogger.getSubLogger({ name: 'findBinaryUsingPattern' });
   logger.debug(messages.binarySetupService.searchingWithPattern(pattern, extractDir));
 
-  const allFiles = await getAllFiles(fs, extractDir);
+  const allFiles = await getAllFilesRecursively(fs, extractDir, extractDir);
   const matchedFiles = allFiles.filter((file) => minimatch(file, pattern));
 
   if (matchedFiles.length === 0) {
