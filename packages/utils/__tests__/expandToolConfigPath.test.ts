@@ -75,8 +75,7 @@ describe('expandToolConfigPath', () => {
   it('should expand variables from yaml config paths', () => {
     const result = expandToolConfigPath(
       toolConfigPath,
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-      '${paths.homeDir}/.config/lazygit/config.yml',
+      '{paths.homeDir}/.config/lazygit/config.yml',
       mockProjectConfig,
       mockSystemInfo
     );
@@ -87,8 +86,7 @@ describe('expandToolConfigPath', () => {
   it('should expand nested variables', () => {
     const result = expandToolConfigPath(
       toolConfigPath,
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-      '${paths.dotfilesDir}/configs/lazygit/config.yml',
+      '{paths.dotfilesDir}/configs/lazygit/config.yml',
       mockProjectConfig,
       mockSystemInfo
     );
@@ -99,8 +97,7 @@ describe('expandToolConfigPath', () => {
   it('should handle combination of variables and relative paths', () => {
     const result = expandToolConfigPath(
       toolConfigPath,
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-      '${paths.binariesDir}/lazygit/lazygit',
+      '{paths.binariesDir}/lazygit/lazygit',
       mockProjectConfig,
       mockSystemInfo
     );
@@ -112,8 +109,7 @@ describe('expandToolConfigPath', () => {
     // Test with dotfilesDir which should be an absolute path
     const result = expandToolConfigPath(
       toolConfigPath,
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-      '${paths.dotfilesDir}/some/relative/path.yml',
+      '{paths.dotfilesDir}/some/relative/path.yml',
       mockProjectConfig,
       mockSystemInfo
     );
@@ -125,8 +121,7 @@ describe('expandToolConfigPath', () => {
     // Use homeDir which is already a ~-expanded path
     const result = expandToolConfigPath(
       toolConfigPath,
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-      '${paths.homeDir}/.config/lazygit/config.yml',
+      '{paths.homeDir}/.config/lazygit/config.yml',
       mockProjectConfig,
       mockSystemInfo
     );
@@ -137,15 +132,13 @@ describe('expandToolConfigPath', () => {
   it('should leave unknown variables unchanged', () => {
     const result = expandToolConfigPath(
       toolConfigPath,
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-      '${unknownVariable}/config.yml',
+      '{unknownVariable}/config.yml',
       mockProjectConfig,
       mockSystemInfo
     );
 
     // Should resolve relative to config file since variable expansion failed
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Test string for variable expansion
-    expect(result).toBe('/Users/testuser/.dotfiles/configs/tools/${unknownVariable}/config.yml');
+    expect(result).toBe('/Users/testuser/.dotfiles/configs/tools/{unknownVariable}/config.yml');
   });
 
   it('should handle complex nested relative paths', () => {

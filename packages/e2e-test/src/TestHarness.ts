@@ -138,6 +138,9 @@ export class TestHarness {
       .quiet()
       .nothrow();
 
+    console.log('Command stdout:', result.stdout.toString());
+    console.log('Command stderr:', result.stderr.toString());
+
     const commandResult: ICommandResult = {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),

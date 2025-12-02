@@ -60,7 +60,7 @@ export function expandToolConfigPath(
  * Supports syntax like ${paths.homeDir}, ${paths.dotfilesDir}, etc.
  */
 function expandVariables(inputPath: string, projectConfig: IConfigWithPaths): string {
-  return inputPath.replace(/\${([^}]+)}/g, (match, varName) => {
+  return inputPath.replace(/(?<!\$)\{([a-zA-Z0-9_.]+)\}/g, (match, varName) => {
     if (varName.includes('.')) {
       const parts = varName.split('.');
       let value: unknown = projectConfig;

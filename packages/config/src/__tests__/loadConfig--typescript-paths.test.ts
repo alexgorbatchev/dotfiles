@@ -50,10 +50,10 @@ describe('loadConfig - TypeScript path substitution', () => {
     const tsContent = `
       export default {
         paths: {
-          generatedDir: '\${configFileDir}/.generated',
-          homeDir: '\${paths.generatedDir}/user-home',
-          targetDir: '\${paths.generatedDir}/user-bin',
-          toolConfigsDir: '\${configFileDir}/tools',
+          generatedDir: '{configFileDir}/.generated',
+          homeDir: '{paths.generatedDir}/user-home',
+          targetDir: '{paths.generatedDir}/user-bin',
+          toolConfigsDir: '{configFileDir}/tools',
         },
       };
     `;
@@ -92,10 +92,10 @@ describe('loadConfig - TypeScript path substitution', () => {
     const tsContent = `
       export default {
         paths: {
-          dotfilesDir: '\${configFileDir}/dotfiles',
-          generatedDir: '\${paths.dotfilesDir}/.generated',
-          targetDir: '\${paths.generatedDir}/bin',
-          shellScriptsDir: '\${paths.generatedDir}/shell-scripts',
+          dotfilesDir: '{configFileDir}/dotfiles',
+          generatedDir: '{paths.dotfilesDir}/.generated',
+          targetDir: '{paths.generatedDir}/bin',
+          shellScriptsDir: '{paths.generatedDir}/shell-scripts',
         },
       };
     `;
@@ -137,10 +137,10 @@ describe('loadConfig - TypeScript path substitution', () => {
       
       export default defineConfig(() => ({
         paths: {
-          generatedDir: '\${configFileDir}/.generated',
-          homeDir: '\${paths.generatedDir}/user-home',
-          targetDir: '\${paths.generatedDir}/user-bin',
-          toolConfigsDir: '\${configFileDir}/tools',
+          generatedDir: '{configFileDir}/.generated',
+          homeDir: '{paths.generatedDir}/user-home',
+          targetDir: '{paths.generatedDir}/user-bin',
+          toolConfigsDir: '{configFileDir}/tools',
         },
       }));
     `;

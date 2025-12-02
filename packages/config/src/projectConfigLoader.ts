@@ -198,13 +198,14 @@ function replaceConfigTokens(
   finalEnv: Record<string, string | undefined>,
   fullConfig: Record<string, unknown>
 ): string {
-  return configStr.replace(/\${([^}]+)}/g, (match, varName) => {
+  return configStr.replace(/(?<!\$)\{([a-zA-Z0-9_.]+)\}/g, (match, varName) => {
     if (varName.includes('.')) {
       const resolvedValue = resolveNestedConfigValue(varName, fullConfig);
       return resolvedValue !== null ? resolvedValue : match;
     }
 
-    return finalEnv[varName] !== undefined ? finalEnv[varName] : match;
+    const envValue = finalEnv[varName];
+    return envValue !== undefined ? envValue : match;
   });
 }
 

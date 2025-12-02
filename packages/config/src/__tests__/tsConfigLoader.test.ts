@@ -165,8 +165,8 @@ describe('tsConfigLoader', () => {
       const configContent = `
         export default {
           paths: {
-            generatedDir: '\${configFileDir}/.generated',
-            toolConfigsDir: '\${configFileDir}/tools',
+            generatedDir: '{configFileDir}/.generated',
+            toolConfigsDir: '{configFileDir}/tools',
           },
         };
       `;

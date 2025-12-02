@@ -123,48 +123,48 @@ const pathsConfigSchema = z
   .object({
     /**
      * The user's home directory.
-     * @default `${HOME}` (resolved from the environment variable)
+     * @default `{HOME}` (resolved from the environment variable)
      */
-    homeDir: z.string().default(`\${HOME}`),
+    homeDir: z.string().default(`{HOME}`),
 
     /**
      * The root directory of the user's dotfiles repository.
      * It is strongly recommended to set this value.
-     * @default `${configFileDir}` (the directory containing the config file)
+     * @default `{configFileDir}` (the directory containing the config file)
      */
-    dotfilesDir: z.string().default(`\${configFileDir}`),
+    dotfilesDir: z.string().default(`{configFileDir}`),
 
     /**
      * The directory where executable shims for tools will be placed. This
      * directory should be in the system's `PATH`.
-     * @default `${paths.generatedDir}/bin-default`
+     * @default `{paths.generatedDir}/bin-default`
      */
-    targetDir: z.string().default(`\${paths.generatedDir}/bin-default`),
+    targetDir: z.string().default(`{paths.generatedDir}/bin-default`),
 
     /**
      * The directory where all generated files (e.g., binaries, shell scripts)
      * will be stored.
-     * @default `${paths.dotfilesDir}/.generated`
+     * @default `{paths.dotfilesDir}/.generated`
      */
-    generatedDir: z.string().default(`\${paths.dotfilesDir}/.generated`),
+    generatedDir: z.string().default(`{paths.dotfilesDir}/.generated`),
 
     /**
      * The directory containing `*.tool.ts` tool configuration files.
-     * @default `${paths.dotfilesDir}/tools`
+     * @default `{paths.dotfilesDir}/tools`
      */
-    toolConfigsDir: z.string().default(`\${paths.dotfilesDir}/tools`),
+    toolConfigsDir: z.string().default(`{paths.dotfilesDir}/tools`),
 
     /**
      * The directory where generated shell initialization scripts are stored.
-     * @default `${paths.generatedDir}/shell-scripts`
+     * @default `{paths.generatedDir}/shell-scripts`
      */
-    shellScriptsDir: z.string().default(`\${paths.generatedDir}/shell-scripts`),
+    shellScriptsDir: z.string().default(`{paths.generatedDir}/shell-scripts`),
 
     /**
      * The directory where downloaded tool binaries and archives are stored.
-     * @default `${paths.generatedDir}/binaries`
+     * @default `{paths.generatedDir}/binaries`
      */
-    binariesDir: z.string().default(`\${paths.generatedDir}/binaries`),
+    binariesDir: z.string().default(`{paths.generatedDir}/binaries`),
   })
   .strict();
 
@@ -318,12 +318,12 @@ const featuresConfigSchema = z
         /**
          * The path where the catalog file will be generated. Supports variable
          * expansion.
-         * @default `${paths.dotfilesDir}/CATALOG.md`
+         * @default `{paths.dotfilesDir}/CATALOG.md`
          */
-        filePath: z.string().default(`\${paths.dotfilesDir}/CATALOG.md`),
+        filePath: z.string().default(`{paths.dotfilesDir}/CATALOG.md`),
       })
       .strict()
-      .default({ generate: true, filePath: `\${paths.dotfilesDir}/CATALOG.md` }),
+      .default({ generate: true, filePath: `{paths.dotfilesDir}/CATALOG.md` }),
     /**
      * Configuration for shell initialization.
      * Controls where the shell initialization scripts are sourced.
