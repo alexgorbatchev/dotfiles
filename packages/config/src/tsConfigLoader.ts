@@ -67,7 +67,11 @@ export async function loadTsConfig(
       userConfig = configOrFactory as ProjectConfigPartial;
     } else {
       logger.error(
-        messages.configurationParseError(userConfigPath, 'TypeScript', 'default export must be an object, function or Promise')
+        messages.configurationParseError(
+          userConfigPath,
+          'TypeScript',
+          'default export must be an object, function or Promise'
+        )
       );
       exitCli(1);
     }

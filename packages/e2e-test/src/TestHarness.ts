@@ -138,9 +138,6 @@ export class TestHarness {
       .quiet()
       .nothrow();
 
-    console.log('Command stdout:', result.stdout.toString());
-    console.log('Command stderr:', result.stderr.toString());
-
     const commandResult: ICommandResult = {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
@@ -254,6 +251,31 @@ export class TestHarness {
   getShellScriptPath(shellType: 'zsh' | 'bash' | 'powershell'): string {
     const extension = shellType === 'powershell' ? 'ps1' : shellType;
     return path.join(this.shellScriptsDir, `main.${extension}`);
+  }
+
+  /**
+   * Gets the full path to a completion file for a tool.
+   *
+   * @param toolName - The name of the tool.
+   * @param shellType - The type of shell (zsh, bash, or powershell).
+   * @returns The full path to the completion file.
+   */
+  getCompletionPath(toolName: string, shellType: 'zsh' | 'bash' | 'powershell'): string {
+    const completionsDir = path.join(this.shellScriptsDir, shellType, 'completions');
+    const prefix = shellType === 'zsh' ? '_' : '';
+    const extension = shellType === 'bash' ? '.bash' : '';
+    return path.join(completionsDir, `${prefix}${toolName}${extension}`);
+  }
+
+  /**
+   * Verifies that a file exists at the specified path.
+   *
+   * @param filePath - The path to the file to verify.
+   * @returns A Promise that resolves when the file is verified to exist.
+   * @throws AssertionError if the file does not exist.
+   */
+  async verifyFile(filePath: string): Promise<void> {
+    expect(await this.fileExists(filePath)).toBe(true);
   }
 
   /**

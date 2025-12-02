@@ -140,6 +140,14 @@ export function withMockServer(): void {
 
         // GitHub binary downloads - dynamic org, repo, version and filename
         '/:org/:repo/releases/download/:version/:filename': (req) => createBinaryDownloadResponse(req.params.filename),
+
+        // Mock install script for cmd-based completion tests
+        '/mock-install-for-cmd-completion-test.sh': () => {
+          const scriptPath = path.join(import.meta.dir, '__tests__', 'fixtures', 'mock-install-for-cmd-completion-test.sh');
+          return new Response(Bun.file(scriptPath), {
+            headers: { 'Content-Type': 'application/x-sh' },
+          });
+        },
       },
       fetch() {
         return new Response('Not Found', { status: 404 });

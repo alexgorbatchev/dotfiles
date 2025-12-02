@@ -13,6 +13,8 @@ import { messages } from './log-messages';
 import type { IShellStorage, ShellTypeKey } from './types';
 
 interface ICompletionOptions {
+  source?: string;
+  cmd?: string;
   name?: string;
   targetDir?: string;
 }
@@ -103,7 +105,9 @@ export class ShellConfigurator implements IShellConfigurator {
       return completionConfig;
     }
 
-    const completionConfig: ShellCompletionConfig = this.createCompletionConfigFromOptions(completion.source, {
+    const completionConfig: ShellCompletionConfig = this.createCompletionConfigFromOptions({
+      source: completion.source,
+      cmd: completion.cmd,
       name: completion.name,
       targetDir: completion.targetDir,
     });
@@ -122,15 +126,26 @@ export class ShellConfigurator implements IShellConfigurator {
   }
 
   /**
-   * Creates a completion configuration from a source path and additional options.
+   * Creates a completion configuration from options that can include source, cmd, or both.
    */
-  private createCompletionConfigFromOptions(sourcePath: string, options: ICompletionOptions): ShellCompletionConfig {
-    const normalizedSource = this.normalizeCompletionSource(sourcePath);
+  private createCompletionConfigFromOptions(options: ICompletionOptions): ShellCompletionConfig {
     const completionConfig: ShellCompletionConfig = {
-      source: normalizedSource,
+      ...(options.source ? { source: this.normalizeCompletionSource(options.source) } : {}),
+      ...(options.cmd ? { cmd: options.cmd } : {}),
       ...(options.name ? { name: options.name } : {}),
       ...(options.targetDir ? { targetDir: options.targetDir } : {}),
     };
+
+    if (!completionConfig.source && !completionConfig.cmd) {
+      const message = messages.configurationFieldInvalid(
+        'shell completion config',
+        'completions',
+        'either source or cmd must be provided'
+      );
+      this.logger.error(message);
+      throw new Error(message);
+    }
+
     return completionConfig;
   }
 

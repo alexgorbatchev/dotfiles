@@ -10,7 +10,7 @@ import type { ICargoClient } from '@dotfiles/installer-cargo';
 import type { IGitHubApiClient } from '@dotfiles/installer-github';
 import type { IFileRegistry } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
-import type { IShellInitGenerator } from '@dotfiles/shell-init-generator';
+import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import type { IVersionChecker } from '@dotfiles/version-checker';
@@ -32,6 +32,7 @@ export interface IServices {
   shimGenerator: IShimGenerator;
   shellInitGenerator: IShellInitGenerator;
   symlinkGenerator: ISymlinkGenerator;
+  completionGenerator: ICompletionGenerator;
   generatorOrchestrator: IGeneratorOrchestrator;
   readmeService: IReadmeService;
   installer: IInstaller;

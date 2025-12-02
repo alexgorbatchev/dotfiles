@@ -21,7 +21,7 @@ import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/l
 import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
-import { ShellInitGenerator } from '@dotfiles/shell-init-generator';
+import { CompletionCommandExecutor, CompletionGenerator, ShellInitGenerator } from '@dotfiles/shell-init-generator';
 import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
@@ -275,14 +275,18 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, projectConfig);
   const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, projectConfig, systemInfo);
+  const completionCommandExecutor = new CompletionCommandExecutor(parentLogger);
+  const completionGenerator = new CompletionGenerator(parentLogger, fs, completionCommandExecutor);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     parentLogger,
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
+    completionGenerator,
     fs,
-    systemInfo
+    systemInfo,
+    projectConfig
   );
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, fs);
@@ -360,6 +364,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
+    completionGenerator,
     generatorOrchestrator,
     installer,
     archiveExtractor,

@@ -1,9 +1,17 @@
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
+import path from 'node:path';
+import type { ProjectConfig } from '@dotfiles/config';
+import type { ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import type { IGenerateShellInitOptions, IShellInitGenerator } from '@dotfiles/shell-init-generator';
+import type {
+  ICompletionGenerationContext,
+  ICompletionGenerator,
+  IGenerateShellInitOptions,
+  IShellInitGenerator,
+} from '@dotfiles/shell-init-generator';
 import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import { resolvePlatformConfig } from '@dotfiles/utils';
 import type { IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
@@ -21,8 +29,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly shimGenerator: IShimGenerator;
   private readonly shellInitGenerator: IShellInitGenerator;
   private readonly symlinkGenerator: ISymlinkGenerator;
+  private readonly completionGenerator: ICompletionGenerator;
   private readonly fs: IFileSystem;
   private readonly systemInfo: ISystemInfo;
+  private readonly projectConfig: ProjectConfig;
 
   /**
    * Creates a new GeneratorOrchestrator instance.
@@ -31,16 +41,20 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * @param shimGenerator - The shim generator service.
    * @param shellInitGenerator - The shell initialization generator service.
    * @param symlinkGenerator - The symlink generator service.
+   * @param completionGenerator - The completion generator service.
    * @param fs - The file system interface for file operations.
    * @param systemInfo - System information for platform-specific operations.
+   * @param projectConfig - Project configuration containing paths and settings.
    */
   constructor(
     parentLogger: TsLogger,
     shimGenerator: IShimGenerator,
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
+    completionGenerator: ICompletionGenerator,
     fs: IFileSystem,
-    systemInfo: ISystemInfo
+    systemInfo: ISystemInfo,
+    projectConfig: ProjectConfig
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
     const logger = this.logger.getSubLogger({ name: 'constructor' });
@@ -48,8 +62,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.shimGenerator = shimGenerator;
     this.shellInitGenerator = shellInitGenerator;
     this.symlinkGenerator = symlinkGenerator;
+    this.completionGenerator = completionGenerator;
     this.fs = fs;
     this.systemInfo = systemInfo;
+    this.projectConfig = projectConfig;
   }
 
   /**
@@ -95,5 +111,41 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
 
     logger.debug(messages.generateAll.completed(fileSystemName));
+  }
+
+  /**
+   * @inheritdoc IGeneratorOrchestrator.generateCompletionsForTool
+   */
+  async generateCompletionsForTool(toolName: string, toolConfig: ToolConfig): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'generateCompletionsForTool' });
+    const resolvedConfig = resolvePlatformConfig(toolConfig, this.systemInfo);
+    const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
+
+    for (const shellType of shellTypes) {
+      const shellConfig = resolvedConfig.shellConfigs?.[shellType];
+      const completionConfig = shellConfig?.completions;
+
+      if (completionConfig?.cmd || completionConfig?.source) {
+        try {
+          const installDir = path.join(this.projectConfig.paths.binariesDir, toolName);
+
+          const context: ICompletionGenerationContext = {
+            homeDir: this.projectConfig.paths.homeDir,
+            shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
+            toolInstallDir: installDir,
+            toolName,
+          };
+
+          await this.completionGenerator.generateAndWriteCompletionFile(
+            completionConfig,
+            toolName,
+            shellType,
+            context
+          );
+        } catch (error: unknown) {
+          logger.debug(messages.generateAll.completionGenerationFailed(toolName, shellType), error);
+        }
+      }
+    }
   }
 }

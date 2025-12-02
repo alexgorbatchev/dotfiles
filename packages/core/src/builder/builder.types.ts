@@ -16,12 +16,75 @@ import type {
 import type { AlwaysScript, OnceScript } from '../shell';
 import type { IInstallParamsRegistry, ToolConfig } from '../types';
 
+/**
+ * Configuration options for shell completions in tool definitions.
+ *
+ * Specify how completion files should be handled for a tool. Completions can come from
+ * static files bundled in the tool's archive or be generated dynamically by running a command.
+ *
+ * @example
+ * // Static completion from archive
+ * shell.completions('completions/_tool.zsh')
+ *
+ * @example
+ * // Dynamic completion generation
+ * shell.completions({ cmd: 'tool completion zsh' })
+ *
+ * @example
+ * // With custom name and location
+ * shell.completions({
+ *   source: 'shell/_tool',
+ *   name: '_mytool',
+ *   targetDir: `${ctx.homeDir}/.zsh/completions`
+ * })
+ */
 export interface IShellCompletionConfigOptions {
-  source: string;
+  /**
+   * Path to a static completion file within the tool's extracted archive.
+   * The path is relative to the archive root and resolved automatically during installation.
+   *
+   * Either `source` or `cmd` must be provided, but not both.
+   *
+   * @example 'completions/_tool.zsh'
+   * @example '*\/complete/_rg' // Glob pattern to match versioned directories
+   */
+  source?: string;
+
+  /**
+   * Command to run to generate completion content dynamically.
+   * The command executes in the tool's installation directory during shell script generation.
+   * The tool must be installed before this command can run successfully.
+   *
+   * Either `source` or `cmd` must be provided, but not both.
+   *
+   * @example 'tool completion zsh'
+   * @example 'fnm completions --shell zsh'
+   */
+  cmd?: string;
+
+  /**
+   * Custom filename for the completion file after installation.
+   * Defaults to shell-specific naming conventions (e.g., `_toolname` for zsh, `toolname.bash` for bash).
+   *
+   * @example '_mytool'
+   * @example 'custom-completion.zsh'
+   */
   name?: string;
+
+  /**
+   * Absolute path where the completion file should be installed.
+   * Use context variables to construct the path. Defaults to the generated shell scripts directory.
+   *
+   * @example `${ctx.homeDir}/.zsh/completions`
+   * @example `${ctx.shellScriptsDir}/custom/completions`
+   */
   targetDir?: string;
 }
 
+/**
+ * Input type for configuring shell completions.
+ * Accepts either a simple string path (interpreted as `source`) or a full configuration object.
+ */
 export type ShellCompletionConfigInput = string | IShellCompletionConfigOptions;
 
 /**

@@ -37,3 +37,6 @@ tool-types.d.ts
 tmp
 .generated
 
+# helper files
+.github/helpers
+

@@ -15,7 +15,12 @@ import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
 import { shell as bunShell } from './shell';
-import type { CurlScriptArgs, CurlScriptInstallResult, ICurlScriptArgsContext, ICurlScriptInstallMetadata } from './types';
+import type {
+  CurlScriptArgs,
+  CurlScriptInstallResult,
+  ICurlScriptArgsContext,
+  ICurlScriptInstallMetadata,
+} from './types';
 
 /**
  * Resolves script arguments from static array or dynamic function
@@ -70,7 +75,7 @@ async function handleBinaryInstallation(
       await fs.copyFile(sourcePath, finalBinaryPath);
       await fs.chmod(finalBinaryPath, 0o755);
     } else {
-      logger.warn(messages.binaryNotFound(binaryName, `/usr/local/bin, ${context.installDir}`));
+      logger.warn(messages.binaryNotFound(binaryName, `${context.installDir}, /usr/local/bin`));
     }
   }
 }

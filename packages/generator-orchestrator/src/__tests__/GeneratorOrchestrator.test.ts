@@ -6,7 +6,7 @@ import { always } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { IShellInitGenerator } from '@dotfiles/shell-init-generator';
+import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
@@ -16,6 +16,7 @@ describe('GeneratorOrchestrator', () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
+  let mockCompletionGenerator: ICompletionGenerator;
   let mockFileSystem: IFileSystem;
   let mockProjectConfig: ProjectConfig;
   let orchestrator: GeneratorOrchestrator;
@@ -44,6 +45,24 @@ describe('GeneratorOrchestrator', () => {
     mockSymlinkGenerator = {
       generate: mock(async () => Promise.resolve([] as SymlinkOperationResult[])),
     };
+    mockCompletionGenerator = {
+      generateCompletionFile: mock(async () =>
+        Promise.resolve({
+          content: '# completion',
+          filename: '_tool',
+          targetPath: '/path/_tool',
+          generatedBy: 'command' as const,
+        })
+      ),
+      generateAndWriteCompletionFile: mock(async () =>
+        Promise.resolve({
+          content: '# completion',
+          filename: '_tool',
+          targetPath: '/path/_tool',
+          generatedBy: 'command' as const,
+        })
+      ),
+    };
 
     const { fs, spies } = await createMemFileSystem({});
     mockFileSystem = fs;
@@ -69,8 +88,10 @@ describe('GeneratorOrchestrator', () => {
       mockShimGenerator,
       mockShellInitGenerator,
       mockSymlinkGenerator,
+      mockCompletionGenerator,
       fs,
-      systemInfo
+      systemInfo,
+      mockProjectConfig
     );
   });
 

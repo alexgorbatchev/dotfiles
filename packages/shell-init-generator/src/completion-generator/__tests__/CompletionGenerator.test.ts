@@ -1,34 +1,39 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { ShellCompletionConfig } from '@dotfiles/core';
-import { createTsLogger } from '@dotfiles/logger';
+import type { IMemFileSystemReturn } from '@dotfiles/file-system';
+import { createMemFileSystem } from '@dotfiles/file-system';
+import { TestLogger } from '@dotfiles/logger';
 import { CompletionGenerator } from '../CompletionGenerator';
-import type { ICompletionCommandExecutor } from '../types';
-
-class MockCompletionCommandExecutor implements ICompletionCommandExecutor {
-  async executeCompletionCommand(cmd: string): Promise<string> {
-    if (cmd === 'echo "# test completion"') {
-      return '# test completion\n';
-    }
-    if (cmd === 'echo "test"') {
-      return 'test\n';
-    }
-    return `# Mock completion for: ${cmd}\n`;
-  }
-}
+import type { ICompletionGenerationContext } from '../types';
 
 describe('CompletionGenerator', () => {
-  const logger = createTsLogger('test');
-  const mockExecutor = new MockCompletionCommandExecutor();
-  const generator = new CompletionGenerator(logger, mockExecutor);
+  let logger: TestLogger;
+  let memFs: IMemFileSystemReturn;
+  let generator: CompletionGenerator;
+  let realTempDir: string;
+
+  beforeEach(async () => {
+    logger = new TestLogger();
+    memFs = await createMemFileSystem();
+    generator = new CompletionGenerator(logger, memFs.fs);
+    realTempDir = await mkdtemp(path.join(tmpdir(), 'completion-test-'));
+  });
+
+  afterEach(async () => {
+    await rm(realTempDir, { recursive: true, force: true });
+  });
 
   test('should generate completion from command', async () => {
     const config: ShellCompletionConfig = {
       cmd: 'echo "# test completion"',
     };
 
-    const context = {
+    const context: ICompletionGenerationContext = {
       toolName: 'test-tool',
-      toolInstallDir: '/tmp/test',
+      toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
     };
@@ -44,7 +49,7 @@ describe('CompletionGenerator', () => {
   test('should validate config requires either source or cmd', async () => {
     const config: ShellCompletionConfig = {};
 
-    const context = {
+    const context: ICompletionGenerationContext = {
       toolName: 'test-tool',
       toolInstallDir: '/tmp/test',
       shellScriptsDir: '/tmp/shell-scripts',
@@ -61,9 +66,9 @@ describe('CompletionGenerator', () => {
       cmd: 'echo "test"',
     };
 
-    const context = {
+    const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: '/tmp/test',
+      toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
     };
@@ -84,9 +89,9 @@ describe('CompletionGenerator', () => {
       name: 'custom-completion',
     };
 
-    const context = {
+    const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: '/tmp/test',
+      toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
     };
@@ -101,14 +106,59 @@ describe('CompletionGenerator', () => {
       targetDir: '/custom/completions',
     };
 
-    const context = {
+    const context: ICompletionGenerationContext = {
       toolName: 'my-tool',
-      toolInstallDir: '/tmp/test',
+      toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
     };
 
     const result = await generator.generateCompletionFile(config, 'my-tool', 'zsh', context);
     expect(result.targetPath).toBe('/custom/completions/_my-tool');
+  });
+
+  test('generateAndWriteCompletionFile should generate completion and write to file system', async () => {
+    const config: ShellCompletionConfig = {
+      cmd: 'echo "test completion"',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'my-tool',
+      toolInstallDir: realTempDir,
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    await generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context);
+
+    const expectedPath = '/tmp/shell-scripts/zsh/completions/_my-tool';
+    const fileExists = await memFs.fs.exists(expectedPath);
+    expect(fileExists).toBe(true);
+
+    const fileContent = await memFs.fs.readFile(expectedPath);
+    expect(fileContent).toBe('test completion\n');
+  });
+
+  test('generateAndWriteCompletionFile should write to custom target directory', async () => {
+    const config: ShellCompletionConfig = {
+      cmd: 'echo "test completion"',
+      targetDir: '/custom/dir',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'my-tool',
+      toolInstallDir: realTempDir,
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const result = await generator.generateAndWriteCompletionFile(config, 'my-tool', 'bash', context);
+
+    expect(result.targetPath).toBe('/custom/dir/my-tool.bash');
+    const fileExists = await memFs.fs.exists('/custom/dir/my-tool.bash');
+    expect(fileExists).toBe(true);
+
+    const fileContent = await memFs.fs.readFile('/custom/dir/my-tool.bash');
+    expect(fileContent).toBe('test completion\n');
   });
 });

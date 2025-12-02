@@ -19,4 +19,14 @@ export interface IGeneratorOrchestrator {
    * @returns A promise that resolves when all operations are complete.
    */
   generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void>;
+
+  /**
+   * Generates shell completion files for a specific tool after installation.
+   * This should be called after a tool has been successfully installed.
+   *
+   * @param toolName - The name of the tool to generate completions for.
+   * @param toolConfig - The tool configuration containing completion settings.
+   * @returns A promise that resolves when completion generation is complete.
+   */
+  generateCompletionsForTool(toolName: string, toolConfig: ToolConfig): Promise<void>;
 }

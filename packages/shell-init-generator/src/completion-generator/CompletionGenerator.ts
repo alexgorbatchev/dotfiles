@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
+import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
 import { messages } from './log-messages';
@@ -13,9 +14,11 @@ import type {
 export class CompletionGenerator implements ICompletionGenerator {
   private readonly logger: TsLogger;
   private readonly commandExecutor: ICompletionCommandExecutor;
+  private readonly fs: IFileSystem;
 
-  constructor(parentLogger: TsLogger, commandExecutor?: ICompletionCommandExecutor) {
+  constructor(parentLogger: TsLogger, fs: IFileSystem, commandExecutor?: ICompletionCommandExecutor) {
     this.logger = parentLogger.getSubLogger({ name: 'CompletionGenerator' });
+    this.fs = fs;
     this.commandExecutor = commandExecutor || new CompletionCommandExecutor(this.logger);
   }
 
@@ -34,6 +37,25 @@ export class CompletionGenerator implements ICompletionGenerator {
     } else {
       throw new Error(`Invalid completion config for ${toolName}: either 'cmd' or 'source' must be provided`);
     }
+  }
+
+  /**
+   * Generates and writes a completion file in one operation.
+   * This is a convenience method that combines generation and file writing.
+   */
+  async generateAndWriteCompletionFile(
+    config: ShellCompletionConfig,
+    toolName: string,
+    shellType: ShellType,
+    context: ICompletionGenerationContext
+  ): Promise<IGeneratedCompletion> {
+    const result = await this.generateCompletionFile(config, toolName, shellType, context);
+
+    // Write the completion file
+    await this.fs.ensureDir(path.dirname(result.targetPath));
+    await this.fs.writeFile(result.targetPath, result.content);
+
+    return result;
   }
 
   private async generateFromCommand(
@@ -77,6 +99,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     const sourcePath = path.join(context.toolInstallDir, config.source);
 
     try {
+      // TODO don't think real fs supposed to be used here
       const fs = await import('node:fs/promises');
       const content = await fs.readFile(sourcePath, 'utf-8');
 

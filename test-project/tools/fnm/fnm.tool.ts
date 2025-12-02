@@ -1,18 +1,14 @@
 import { defineTool } from '../../../packages/cli';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('curl-script', {
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
-    args: ctx => ['--skip-shell', '--install-dir', ctx.installDir],
+    args: (ctx) => ['--skip-shell', '--install-dir', ctx.installDir, '--force-no-brew'],
   })
     .bin('fnm')
-    .hook('after-install', async ({ $,  }) => {
-      // Generate completions
-      await $`fnm completions --shell zsh > ${ctx.toolDir}/_fnm`;
-    })
     .zsh((shell) =>
-      shell.completions('_fnm').always(/* zsh */ `
+      shell.completions({ cmd: 'fnm completions --shell zsh' }).always(/* zsh */ `
           # Initialize fnm with auto-use on cd
           eval "$(fnm env --use-on-cd)"
         `)

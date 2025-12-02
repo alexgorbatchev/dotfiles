@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import { createMemFileSystem } from '@dotfiles/file-system';
-import { createTsLogger } from '@dotfiles/logger';
+import { TestLogger } from '@dotfiles/logger';
 import { createAllBinarySymlinks, createBinarySymlink } from '../createBinarySymlinks';
 
 describe('createBinarySymlinks', () => {
   describe('createBinarySymlink', () => {
     it('should create a symlink for a binary', async () => {
       const { fs } = await createMemFileSystem();
-      const logger = createTsLogger('test');
+      const logger = new TestLogger();
       const binariesDir = '/app/binaries';
       const toolName = 'test-tool';
       const binaryName = 'test-binary';
@@ -40,7 +40,7 @@ describe('createBinarySymlinks', () => {
   describe('createAllBinarySymlinks', () => {
     it('should create symlinks for multiple binaries', async () => {
       const { fs } = await createMemFileSystem();
-      const logger = createTsLogger('test');
+      const logger = new TestLogger();
       const binariesDir = '/app/binaries';
       const toolName = 'multi-tool';
       const binaries = ['tool1', 'tool2', 'tool3'];
@@ -68,7 +68,7 @@ describe('createBinarySymlinks', () => {
 
     it('should handle binaries in root directory', async () => {
       const { fs } = await createMemFileSystem();
-      const logger = createTsLogger('test');
+      const logger = new TestLogger();
       const binariesDir = '/app/binaries';
       const toolName = 'simple-tool';
       const binaries = ['simple'];

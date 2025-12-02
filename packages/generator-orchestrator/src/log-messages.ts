@@ -26,6 +26,12 @@ export const messages = {
     shellGenerate: () => createSafeLogMessage('Generating shell initialization files with resolved options'),
     shellInitComplete: (primaryPath: string) =>
       createSafeLogMessage(`Shell initialization generation complete; primary path: ${primaryPath}`),
+    completionGenerated: (filename: string, toolName: string, shellType: string) =>
+      createSafeLogMessage(`Generated completion ${filename} for ${toolName} (${shellType})`),
+    completionGenerationFailed: (toolName: string, shellType: string) =>
+      createSafeLogMessage(`Failed to generate completion for ${toolName} (${shellType})`),
+    completionSkippedNotInstalled: (toolName: string, shellType: string) =>
+      createSafeLogMessage(`Skipping completion generation for ${toolName} (${shellType}) - tool not installed yet`),
     symlinkGenerationComplete: (resultCount: number) =>
       createSafeLogMessage(`Symlink generation completed with ${resultCount} operations recorded`),
     completed: (context?: string) =>

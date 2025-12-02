@@ -82,7 +82,7 @@ export function registerInstallCommand(
         ...program.opts(),
       };
       const services = await servicesFactory();
-      const { projectConfig, fs, installer, configService } = services;
+      const { projectConfig, fs, installer, configService, generatorOrchestrator } = services;
 
       let shouldExitWithCode: number | null = null;
 
@@ -111,6 +111,11 @@ export function registerInstallCommand(
             verbose: combinedOptions.verbose,
             shimMode: combinedOptions.shimMode,
           });
+
+          // Generate completions after successful installation
+          if (result.success) {
+            await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig);
+          }
 
           shouldExitWithCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
         }

@@ -1,13 +1,12 @@
-/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: config */
-
 import { defineConfig } from '../packages/cli';
 
 export default defineConfig(({ configFileDir }) => ({
   paths: {
     generatedDir: `${configFileDir}/.generated`,
     homeDir: '{paths.generatedDir}/user-home',
-    targetDir: '{paths.generatedDir}/bin',
+    targetDir: '{paths.generatedDir}/user-bin',
     toolConfigsDir: `${configFileDir}/tools`,
+    binariesDir: '{paths.generatedDir}/binaries',
   },
   features: {
     catalog: {

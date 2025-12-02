@@ -27,7 +27,7 @@ export async function withInstallErrorHandling<T extends InstallResult>(
   try {
     return await operation();
   } catch (error) {
-    logger.error(messages.outcome.installFailed(methodName, toolName), error);
+    logger.error(messages.outcome.installFailed(methodName, toolName));
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),

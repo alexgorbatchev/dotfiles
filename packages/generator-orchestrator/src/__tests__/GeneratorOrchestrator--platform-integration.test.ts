@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
+import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
 import { always, Platform } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import type { IShellInitGenerationResult, IShellInitGenerator } from '@dotfiles/shell-init-generator';
+import type {
+  ICompletionGenerator,
+  IShellInitGenerationResult,
+  IShellInitGenerator,
+} from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
 
 // Helper function to generate platform-specific content
@@ -53,6 +58,8 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
   let mockShimGenerator: IShimGenerator;
   let mockShellInitGenerator: IShellInitGenerator;
   let mockSymlinkGenerator: ISymlinkGenerator;
+  let mockCompletionGenerator: ICompletionGenerator;
+  let mockProjectConfig: ProjectConfig;
   let macosSystemInfo: ISystemInfo;
   let linuxSystemInfo: ISystemInfo;
   let testDirs: ITestDirectories;
@@ -110,6 +117,34 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         return [mockResult];
       },
     };
+
+    mockCompletionGenerator = {
+      generateCompletionFile: async () =>
+        Promise.resolve({
+          content: '# completion',
+          filename: '_tool',
+          targetPath: '/path/_tool',
+          generatedBy: 'command' as const,
+        }),
+      generateAndWriteCompletionFile: async () =>
+        Promise.resolve({
+          content: '# completion',
+          filename: '_tool',
+          targetPath: '/path/_tool',
+          generatedBy: 'command' as const,
+        }),
+    };
+
+    mockProjectConfig = await createMockProjectConfig({
+      config: {
+        paths: testDirs.paths,
+      },
+      filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+      fileSystem: mockFileSystem,
+      logger,
+      systemInfo: macosSystemInfo,
+      env: {},
+    });
   });
 
   describe('systemInfo integration', () => {
@@ -119,8 +154,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCompletionGenerator,
         mockFileSystem,
-        macosSystemInfo // macOS system info
+        macosSystemInfo, // macOS system info
+        mockProjectConfig
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -171,8 +208,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCompletionGenerator,
         mockFileSystem,
-        linuxSystemInfo // Linux system info
+        linuxSystemInfo, // Linux system info
+        mockProjectConfig
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -228,8 +267,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCompletionGenerator,
         mockFileSystem,
-        macosSystemInfo
+        linuxSystemInfo,
+        mockProjectConfig
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -252,8 +293,8 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
 
       // Should still work even with no platform configs
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: darwin');
-      expect(shellContent).toContain('# Arch: arm64');
+      expect(shellContent).toContain('# Platform: linux');
+      expect(shellContent).toContain('# Arch: x64');
       // No platform-specific content expected since there are no platform configs
     });
   });
@@ -265,8 +306,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShimGenerator,
         mockShellInitGenerator,
         mockSymlinkGenerator,
+        mockCompletionGenerator,
         mockFileSystem,
-        macosSystemInfo
+        macosSystemInfo,
+        mockProjectConfig
       );
 
       const toolConfigs: Record<string, ToolConfig> = {

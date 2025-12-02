@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
+import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
@@ -21,6 +22,7 @@ describe('installCommand', () => {
   let testLogger: TestLogger;
   let mockServices: IServices;
   let mockConfigService: MockedInterface<IConfigService>;
+  let mockGeneratorOrchestrator: IGeneratorOrchestrator;
 
   const toolAConfig: ToolConfig = {
     name: 'toolA',
@@ -63,9 +65,15 @@ describe('installCommand', () => {
     // Set up mocks
     mockConfigService = createMockConfigService();
 
+    mockGeneratorOrchestrator = {
+      generateAll: mock(async () => {}),
+      generateCompletionsForTool: mock(async () => {}),
+    };
+
     registerInstallCommand(testLogger, program, async () => ({
       ...mockServices,
       configService: mockConfigService,
+      generatorOrchestrator: mockGeneratorOrchestrator,
     }));
   });
 

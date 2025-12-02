@@ -28,9 +28,11 @@ export interface IBaseToolContext {
    */
   toolName: string;
 
+  // TODO rename to installDir to match other contexts
   /**
-   * The absolute path to the installation directory for the current tool.
-   * This is equivalent to calling `getToolDir(toolName)`.
+   * The absolute path to the directory where the tool is being installed.
+   * This is the versioned directory and is equivalent to calling `getToolDir(toolName)`.
+   * (`${projectConfig.paths.binariesDir}/<toolName>/<version>`)
    */
   toolDir: string;
 
