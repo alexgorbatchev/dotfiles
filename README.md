@@ -48,6 +48,9 @@ bun run cli.ts update
 
 # View logs of file operations
 bun run cli.ts log
+
+# Display tree of installed tool files
+bun run cli.ts files <toolName>
 ```
 
 ### Configure with TypeScript

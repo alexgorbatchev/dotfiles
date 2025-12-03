@@ -6,6 +6,7 @@ export * from './createProgram';
 export { createInstallFunction, defineTool } from './defineToolWithPlugins';
 export * from './detectConflictsCommand';
 export * from './featuresCommand';
+export * from './filesCommand';
 export * from './generateCommand';
 export * from './installCommand';
 export * from './log-messages';
