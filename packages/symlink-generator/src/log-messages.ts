@@ -24,5 +24,11 @@ export const messages = {
       createSafeLogMessage(`Failed to create directory ${directoryPath}`),
     symlinkFailed: (source: string, target: string) =>
       createSafeLogMessage(`Failed to create symlink ${source} → ${target}`),
+    symlinkAlreadyExists: (symlinkPath: string, target: string) =>
+      createSafeLogMessage(`Symlink already exists and is valid: ${symlinkPath} -> ${target}`),
+    creatingSymlink: (symlinkPath: string, targetPath: string) =>
+      createSafeLogMessage(`Creating symlink: ${symlinkPath} -> ${targetPath}`),
+    symlinkCreated: (symlinkPath: string, targetPath: string) =>
+      createSafeLogMessage(`Successfully created symlink: ${symlinkPath} -> ${targetPath}`),
   } satisfies SafeLogMessageMap,
 } as const;

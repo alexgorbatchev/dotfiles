@@ -17,6 +17,7 @@ import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger, type TsLogger } from '@dotfiles/logger';
+import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
   createMock$,
   createMockProjectConfig,
@@ -32,6 +33,44 @@ import type { HookExecutor } from '../utils/HookExecutor';
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
 export const MOCK_TOOL_REPO = 'owner/repo';
+
+export function createMockSymlinkGenerator(fs: IFileSystem): ISymlinkGenerator {
+  return {
+    generate: mock(async () => []),
+    createBinarySymlink: mock(async (sourcePath: string, targetPath: string) => {
+      // Check if symlink already exists and is valid
+      try {
+        const stats = await fs.lstat(targetPath);
+        if (stats.isSymbolicLink()) {
+          const currentTarget = await fs.readlink(targetPath);
+          const resolvedTarget = path.isAbsolute(currentTarget)
+            ? currentTarget
+            : path.resolve(path.dirname(targetPath), currentTarget);
+
+          if (resolvedTarget === path.resolve(sourcePath)) {
+            const targetExists = await fs.exists(resolvedTarget);
+            if (targetExists) {
+              return; // Symlink already exists and is valid
+            }
+          }
+        }
+        // Remove invalid symlink or non-symlink file
+        await fs.rm(targetPath, { force: true });
+      } catch {
+        // Target doesn't exist, proceed with creation
+      }
+
+      // Verify source exists
+      const sourceExists = await fs.exists(sourcePath);
+      if (!sourceExists) {
+        throw new Error(`Cannot create symlink: binary does not exist at ${sourcePath}`);
+      }
+
+      // Create the symlink in the mock filesystem
+      await fs.symlink(sourcePath, targetPath);
+    }),
+  };
+}
 
 export function createMockCargoClient() {
   return {
@@ -326,14 +365,13 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
         });
       }
 
-      // Create the binary file so Installer can symlink it
-      await fs.ensureDir(path.dirname(mockToolBinaryPath));
-      await fs.writeFile(mockToolBinaryPath, 'mock binary content');
-      await fs.chmod(mockToolBinaryPath, 0o755);
+      // Return the path to the binary in the extract directory
+      // Installer will create the symlink from this to the binaries directory
+      const actualBinaryPath = path.join(extractDir, toolName);
 
       return {
         success: true,
-        binaryPaths: [mockToolBinaryPath],
+        binaryPaths: [actualBinaryPath],
         version: '1.0.0',
         originalTag: 'v1.0.0',
         metadata: {
@@ -354,6 +392,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const { Installer } = await import('../Installer.js');
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
   const mockSystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir };
+  const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
   const installer = new Installer(
     logger,
     fs,
@@ -361,6 +400,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     mockToolInstallationRegistry,
     mockSystemInfo,
     pluginRegistry,
+    mockSymlinkGenerator,
     createMock$() as unknown as $extended
   );
 

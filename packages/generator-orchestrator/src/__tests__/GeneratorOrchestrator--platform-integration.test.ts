@@ -116,6 +116,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         };
         return [mockResult];
       },
+      createBinarySymlink: async () => {},
     };
 
     mockCompletionGenerator = {

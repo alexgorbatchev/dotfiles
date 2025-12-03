@@ -333,6 +333,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     toolInstallationRegistry,
     finalSystemInfo,
     pluginRegistry,
+    symlinkGenerator,
     $
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);

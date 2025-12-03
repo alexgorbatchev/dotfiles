@@ -488,4 +488,216 @@ describe('SymlinkGenerator', () => {
       },
     ]);
   });
+
+  describe('createBinarySymlink', () => {
+    it('should create a symlink when source exists and target does not', async () => {
+      const sourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create source binary
+      await mockFs.fs.ensureDir(path.dirname(sourcePath));
+      await mockFs.fs.writeFile(sourcePath, '#!/bin/bash\necho "tool"');
+      await mockFs.fs.chmod(sourcePath, 0o755);
+
+      // Create symlink
+      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+
+      // Verify symlink was created
+      const targetExists = await mockFs.fs.exists(targetPath);
+      expect(targetExists).toBe(true);
+
+      const stats = await mockFs.fs.lstat(targetPath);
+      expect(stats.isSymbolicLink()).toBe(true);
+
+      const linkTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);
+      expect(resolvedTarget).toBe(path.resolve(sourcePath));
+    });
+
+    it('should skip creation if symlink already exists and is valid', async () => {
+      const sourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create source binary
+      await mockFs.fs.ensureDir(path.dirname(sourcePath));
+      await mockFs.fs.writeFile(sourcePath, '#!/bin/bash\necho "tool"');
+      await mockFs.fs.chmod(sourcePath, 0o755);
+
+      // Create initial symlink
+      await mockFs.fs.ensureDir(path.dirname(targetPath));
+      await mockFs.fs.symlink(sourcePath, targetPath);
+
+      // Call createBinarySymlink - should detect existing valid symlink
+      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+
+      // Verify symlink still exists and wasn't recreated
+      const statsAfter = await mockFs.fs.lstat(targetPath);
+      expect(statsAfter.isSymbolicLink()).toBe(true);
+      
+      // Verify it still points to the correct target
+      const linkTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);
+      expect(resolvedTarget).toBe(path.resolve(sourcePath));
+    });
+
+    it('should replace symlink if it points to wrong target', async () => {
+      const oldSourcePath = path.join(testDirs.paths.binariesDir, 'tool', '0.9.0', 'bin', 'tool');
+      const newSourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create both source binaries
+      await mockFs.fs.ensureDir(path.dirname(oldSourcePath));
+      await mockFs.fs.writeFile(oldSourcePath, '#!/bin/bash\necho "old"');
+      await mockFs.fs.chmod(oldSourcePath, 0o755);
+
+      await mockFs.fs.ensureDir(path.dirname(newSourcePath));
+      await mockFs.fs.writeFile(newSourcePath, '#!/bin/bash\necho "new"');
+      await mockFs.fs.chmod(newSourcePath, 0o755);
+
+      // Create symlink to old version
+      await mockFs.fs.ensureDir(path.dirname(targetPath));
+      await mockFs.fs.symlink(oldSourcePath, targetPath);
+
+      // Verify initial symlink points to old version
+      const initialTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedInitial = path.resolve(path.dirname(targetPath), initialTarget);
+      expect(resolvedInitial).toBe(path.resolve(oldSourcePath));
+
+      // Update symlink to new version
+      await symlinkGenerator.createBinarySymlink(newSourcePath, targetPath);
+
+      // Verify symlink now points to new version
+      const linkTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);
+      expect(resolvedTarget).toBe(path.resolve(newSourcePath));
+    });
+
+    it('should replace regular file with symlink', async () => {
+      const sourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create source binary
+      await mockFs.fs.ensureDir(path.dirname(sourcePath));
+      await mockFs.fs.writeFile(sourcePath, '#!/bin/bash\necho "tool"');
+      await mockFs.fs.chmod(sourcePath, 0o755);
+
+      // Create regular file at target location
+      await mockFs.fs.ensureDir(path.dirname(targetPath));
+      await mockFs.fs.writeFile(targetPath, 'old file content');
+
+      // Create symlink - should replace the regular file
+      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+
+      // Verify target is now a symlink
+      const stats = await mockFs.fs.lstat(targetPath);
+      expect(stats.isSymbolicLink()).toBe(true);
+
+      const linkTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);
+      expect(resolvedTarget).toBe(path.resolve(sourcePath));
+    });
+
+    it('should throw error if source binary does not exist', async () => {
+      const sourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'nonexistent');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Don't create source binary
+
+      // Attempt to create symlink - should fail
+      expect(symlinkGenerator.createBinarySymlink(sourcePath, targetPath)).rejects.toThrow(
+        `Cannot create symlink: binary does not exist at ${sourcePath}`
+      );
+    });
+
+    it('should remove invalid symlink (pointing to non-existent target)', async () => {
+      const oldSourcePath = path.join(testDirs.paths.binariesDir, 'tool', '0.9.0', 'bin', 'tool');
+      const newSourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create old source binary first, create symlink, then delete it to simulate cleanup
+      await mockFs.fs.ensureDir(path.dirname(oldSourcePath));
+      await mockFs.fs.writeFile(oldSourcePath, '#!/bin/bash\necho "old"');
+      await mockFs.fs.chmod(oldSourcePath, 0o755);
+
+      // Create symlink to old version
+      await mockFs.fs.ensureDir(path.dirname(targetPath));
+      await mockFs.fs.symlink(oldSourcePath, targetPath);
+
+      // Verify initial symlink
+      const initialTarget = await mockFs.fs.readlink(targetPath);
+      expect(path.resolve(path.dirname(targetPath), initialTarget)).toBe(path.resolve(oldSourcePath));
+
+      // Delete the old source binary (simulating version cleanup)
+      await mockFs.fs.rm(oldSourcePath);
+
+      // Create new source binary
+      await mockFs.fs.ensureDir(path.dirname(newSourcePath));
+      await mockFs.fs.writeFile(newSourcePath, '#!/bin/bash\necho "new"');
+      await mockFs.fs.chmod(newSourcePath, 0o755);
+
+      // Create symlink to new version - should remove invalid old symlink and create new one
+      await symlinkGenerator.createBinarySymlink(newSourcePath, targetPath);
+
+      // Verify symlink now points to new version
+      const linkTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);
+      expect(resolvedTarget).toBe(path.resolve(newSourcePath));
+
+      // Verify the new target exists
+      const stats = await mockFs.fs.stat(resolvedTarget);
+      expect(stats.isFile()).toBe(true);
+    });
+
+    it('should handle relative symlink paths correctly', async () => {
+      const sourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create source binary
+      await mockFs.fs.ensureDir(path.dirname(sourcePath));
+      await mockFs.fs.writeFile(sourcePath, '#!/bin/bash\necho "tool"');
+      await mockFs.fs.chmod(sourcePath, 0o755);
+
+      // Create symlink
+      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+
+      // Verify symlink can be read and resolved correctly
+      const linkTarget = await mockFs.fs.readlink(targetPath);
+      const resolvedTarget = path.isAbsolute(linkTarget)
+        ? linkTarget
+        : path.resolve(path.dirname(targetPath), linkTarget);
+
+      expect(await mockFs.fs.exists(resolvedTarget)).toBe(true);
+
+      // Read the content through the symlink
+      const content = await mockFs.fs.readFile(targetPath, 'utf-8');
+      expect(content).toBe('#!/bin/bash\necho "tool"');
+    });
+
+    it('should verify symlink points to correct target after creation', async () => {
+      const sourcePath = path.join(testDirs.paths.binariesDir, 'tool', '1.0.0', 'bin', 'tool');
+      const targetPath = path.join(testDirs.paths.binariesDir, 'tool', 'tool');
+
+      // Create source binary
+      await mockFs.fs.ensureDir(path.dirname(sourcePath));
+      await mockFs.fs.writeFile(sourcePath, '#!/bin/bash\necho "tool"');
+      await mockFs.fs.chmod(sourcePath, 0o755);
+
+      // Mock readlink to return wrong target to simulate verification failure
+      const originalReadlink = mockFs.fs.readlink.bind(mockFs.fs);
+      let readlinkCallCount = 0;
+      mockFs.spies.readlink.mockImplementation(async (linkPath: string) => {
+        readlinkCallCount++;
+        // Return wrong target on verification (second call)
+        if (readlinkCallCount === 2) {
+          return '/wrong/path';
+        }
+        return originalReadlink(linkPath);
+      });
+
+      // Attempt to create symlink - should fail verification
+      expect(symlinkGenerator.createBinarySymlink(sourcePath, targetPath)).rejects.toThrow(
+        /Symlink verification failed/
+      );
+    });
+  });
 });

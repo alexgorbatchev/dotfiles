@@ -44,6 +44,7 @@ describe('GeneratorOrchestrator', () => {
     };
     mockSymlinkGenerator = {
       generate: mock(async () => Promise.resolve([] as SymlinkOperationResult[])),
+      createBinarySymlink: mock(async () => {}),
     };
     mockCompletionGenerator = {
       generateCompletionFile: mock(async () =>

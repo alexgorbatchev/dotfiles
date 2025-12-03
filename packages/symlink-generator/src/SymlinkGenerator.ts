@@ -38,6 +38,63 @@ export class SymlinkGenerator implements ISymlinkGenerator {
   }
 
   /**
+   * @inheritdoc ISymlinkGenerator.createBinarySymlink
+   */
+  async createBinarySymlink(sourcePath: string, targetPath: string): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'createBinarySymlink' });
+
+    // Check if symlink already exists and is valid
+    try {
+      const targetStat = await this.fs.lstat(targetPath);
+      if (targetStat.isSymbolicLink()) {
+        const currentTarget = await this.fs.readlink(targetPath);
+        const resolvedCurrentTarget = path.resolve(path.dirname(targetPath), currentTarget);
+        const resolvedSourcePath = path.resolve(sourcePath);
+
+        if (resolvedCurrentTarget === resolvedSourcePath) {
+          // Symlink already exists and points to correct target
+          const targetExists = await this.fs.exists(resolvedCurrentTarget);
+          if (targetExists) {
+            logger.debug(messages.filesystem.symlinkAlreadyExists(targetPath, resolvedCurrentTarget));
+            return;
+          }
+        }
+
+        // Symlink exists but points to wrong target, remove it
+        await this.fs.rm(targetPath, { force: true });
+      } else {
+        // Target exists but is not a symlink, remove it
+        await this.fs.rm(targetPath, { force: true });
+      }
+    } catch {
+      // Target doesn't exist, proceed with creation
+    }
+
+    // Validate source binary exists
+    const sourceExists = await this.fs.exists(sourcePath);
+    if (!sourceExists) {
+      throw new Error(`Cannot create symlink: binary does not exist at ${sourcePath}`);
+    }
+
+    // Create symlink
+    logger.debug(messages.filesystem.creatingSymlink(targetPath, sourcePath));
+    await this.fs.symlink(sourcePath, targetPath);
+
+    // Verify symlink was created successfully
+    const verifyTarget = await this.fs.readlink(targetPath);
+    const resolvedVerifyTarget = path.resolve(path.dirname(targetPath), verifyTarget);
+    const resolvedSourcePath = path.resolve(sourcePath);
+
+    if (resolvedVerifyTarget !== resolvedSourcePath) {
+      throw new Error(
+        `Symlink verification failed: ${targetPath} points to ${resolvedVerifyTarget}, expected ${resolvedSourcePath}`
+      );
+    }
+
+    logger.debug(messages.filesystem.symlinkCreated(targetPath, sourcePath));
+  }
+
+  /**
    * @inheritdoc ISymlinkGenerator.generate
    */
   async generate(

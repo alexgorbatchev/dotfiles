@@ -66,4 +66,12 @@ export interface ISymlinkGenerator {
     toolConfigs: Record<string, ToolConfig>,
     options?: IGenerateSymlinksOptions
   ): Promise<SymlinkOperationResult[]>;
+
+  /**
+   * Creates a single binary symlink with validation.
+   * @param sourcePath The absolute path to the source binary.
+   * @param targetPath The absolute path where the symlink will be created.
+   * @returns A promise that resolves when the symlink is created or validated.
+   */
+  createBinarySymlink(sourcePath: string, targetPath: string): Promise<void>;
 }

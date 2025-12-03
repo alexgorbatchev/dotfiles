@@ -96,22 +96,38 @@ describe('Installer - install (orchestrator)', () => {
       },
     });
 
-    const installSpy = spyOn(setup.pluginRegistry, 'install').mockResolvedValue({
-      success: true,
-      binaryPaths: [setup.mockToolBinaryPath],
-      version: '1.0.0',
-      originalTag: 'v1.0.0',
-      metadata: {
-        method: 'github-release',
-        releaseUrl: 'https://github.com/test/repo/releases/tag/v1.0.0',
-        publishedAt: '2024-01-01T00:00:00Z',
-        releaseName: 'Release v1.0.0',
-        downloadUrl: 'https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz',
-        assetName: 'test-asset.tar.gz',
-      },
-    });
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
+      async (_name: string, _config: any, context: any) => {
+        // Create the binary in a temporary location (mimicking what a real plugin does)
+        // Use context.installDir if available, otherwise create a temporary path
+        const installDir: string =
+          context.installDir || path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'temp');
+        const binaryPath = path.join(installDir, MOCK_TOOL_NAME);
+        await setup.fs.ensureDir(path.dirname(binaryPath));
+        await setup.fs.writeFile(binaryPath, 'mock binary content');
+        await setup.fs.chmod(binaryPath, 0o755);
 
-    await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+        return {
+          success: true,
+          binaryPaths: [binaryPath],
+          version: '1.0.0',
+          originalTag: 'v1.0.0',
+          metadata: {
+            method: 'github-release',
+            releaseUrl: 'https://github.com/test/repo/releases/tag/v1.0.0',
+            publishedAt: '2024-01-01T00:00:00Z',
+            releaseName: 'Release v1.0.0',
+            downloadUrl: 'https://github.com/test/repo/releases/download/v1.0.0/asset.tar.gz',
+            assetName: 'test-asset.tar.gz',
+          },
+        };
+      }
+    );
+
+    const result = await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
+    if (!result.success) {
+      throw new Error(`Installation failed: ${result.error}`);
+    }
 
     expect(beforeInstallHook).toHaveBeenCalledTimes(1);
     expect(afterInstallHook).toHaveBeenCalledTimes(1);

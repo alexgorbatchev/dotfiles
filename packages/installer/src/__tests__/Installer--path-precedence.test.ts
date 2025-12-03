@@ -6,6 +6,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { $ } from 'bun';
 import { z } from 'zod';
 import { Installer } from '../Installer';
@@ -102,8 +103,18 @@ describe('Installer - Path Precedence (Real FS)', () => {
     } as any;
 
     const systemInfo = { platform: 'darwin', arch: 'arm64' } as any;
+    const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
 
-    const installer = new Installer(logger, fileSystem, projectConfig, toolRegistry, systemInfo, registry, $);
+    const installer = new Installer(
+      logger,
+      fileSystem,
+      projectConfig,
+      toolRegistry,
+      systemInfo,
+      registry,
+      symlinkGenerator,
+      $
+    );
 
     // 4. Run Install with Modified PATH
     // We add the shim dir to the PATH to simulate the scenario where the shim exists in the system PATH

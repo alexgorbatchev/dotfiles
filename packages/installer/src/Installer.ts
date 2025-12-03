@@ -13,6 +13,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
+import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { createConfiguredShell, HookExecutor, messages } from './utils';
@@ -77,6 +78,7 @@ export class Installer implements IInstaller {
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
+  private readonly symlinkGenerator: ISymlinkGenerator;
   private readonly $: typeof import('bun').$;
   private currentToolConfig?: ToolConfig;
 
@@ -87,6 +89,7 @@ export class Installer implements IInstaller {
     toolInstallationRegistry: IToolInstallationRegistry,
     systemInfo: ISystemInfo,
     registry: InstallerPluginRegistry,
+    symlinkGenerator: ISymlinkGenerator,
     $shell: typeof import('bun').$
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
@@ -96,6 +99,7 @@ export class Installer implements IInstaller {
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
     this.registry = registry;
+    this.symlinkGenerator = symlinkGenerator;
     this.$ = $shell;
 
     // Register event handler for installation events to execute hooks
@@ -546,8 +550,18 @@ export class Installer implements IInstaller {
       // Create symlinks to the actual binaries for all tools
       // This ensures that shims always point to a stable location in the tool directory
       // regardless of whether the tool is versioned (timestamped) or externally managed
+      // Filter out paths that don't exist - these may have been handled by setupBinariesFromArchive
       if (result.success && result.binaryPaths) {
-        await this.createBinarySymlinks(toolName, result.binaryPaths, toolFs, logger);
+        const existingPaths: string[] = [];
+        for (const binaryPath of result.binaryPaths) {
+          const exists = await toolFs.exists(binaryPath);
+          if (exists) {
+            existingPaths.push(binaryPath);
+          }
+        }
+        if (existingPaths.length > 0) {
+          await this.createBinarySymlinks(toolName, existingPaths, toolFs, logger);
+        }
       }
 
       // If installation failed, clean up the empty installation directory (skip for externally managed)
@@ -575,12 +589,12 @@ export class Installer implements IInstaller {
 
       return result;
     } catch (error) {
-      logger.error(messages.outcome.installFailed('install', toolName), error);
       const errorResult: InstallResult = {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         installationMethod: resolvedToolConfig.installationMethod,
       };
+      logger.error(messages.outcome.installFailed('install', toolName),errorResult.error);
       return errorResult;
     }
   }
@@ -633,34 +647,17 @@ export class Installer implements IInstaller {
     // Ensure tool directory exists
     await fs.ensureDir(toolDir);
 
-    // Create symlink for each binary
+    // Create symlink for each binary using SymlinkGenerator
     for (const binaryPath of binaryPaths) {
       const binaryName = path.basename(binaryPath);
       const symlinkPath = path.join(toolDir, binaryName);
 
-      // Verify the target binary exists
-      if (!(await fs.exists(binaryPath))) {
+      try {
+        await this.symlinkGenerator.createBinarySymlink(binaryPath, symlinkPath);
+      } catch (error) {
         logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
-        throw new Error(`Cannot create symlink: binary does not exist at ${binaryPath}`);
+        throw error;
       }
-
-      // Remove existing symlink if it exists
-      if (await fs.exists(symlinkPath)) {
-        logger.debug(messages.lifecycle.removingExistingSymlink(symlinkPath));
-        await fs.rm(symlinkPath, { force: true });
-      }
-
-      // Create symlink pointing to the binary
-      logger.debug(messages.lifecycle.creatingExternalSymlink(symlinkPath, binaryPath));
-      await fs.symlink(binaryPath, symlinkPath);
-
-      // Verify symlink was created
-      if (!(await fs.exists(symlinkPath))) {
-        logger.error(messages.lifecycle.symlinkVerificationFailed(symlinkPath));
-        throw new Error(`Symlink creation failed: ${symlinkPath}`);
-      }
-
-      logger.debug(messages.lifecycle.externalSymlinkCreated(symlinkPath, binaryPath));
     }
   }
 
