@@ -3,9 +3,11 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { $ } from 'bun';
 import { z } from 'zod';
@@ -97,12 +99,17 @@ describe('Installer - Path Precedence (Real FS)', () => {
     });
 
     // Mock ToolInstallationRegistry
-    const toolRegistry = {
+    const toolRegistry: IToolInstallationRegistry = {
       getToolInstallation: async () => null,
       recordToolInstallation: async () => {},
-    } as any;
+      getAllToolInstallations: async () => [],
+      updateToolInstallation: async () => {},
+      removeToolInstallation: async () => {},
+      isToolInstalled: async () => false,
+      close: async () => {},
+    };
 
-    const systemInfo = { platform: 'darwin', arch: 'arm64' } as any;
+    const systemInfo: ISystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: tempDir };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
 
     const installer = new Installer(
@@ -125,9 +132,9 @@ describe('Installer - Path Precedence (Real FS)', () => {
       const result = await installer.install(toolName, {
         name: toolName,
         version: '1.0.0',
-        installationMethod: 'mock' as any,
+        installationMethod: 'mock',
         installParams: {},
-      });
+      } as unknown as ToolConfig);
 
       if (!result.success) {
         console.error('Install failed:', result.error);
@@ -135,7 +142,9 @@ describe('Installer - Path Precedence (Real FS)', () => {
 
       expect(result.success).toBe(true);
       // Verify that the output came from the real binary, not the shim
-      expect((result as any).metadata.output).toBe('REAL_BINARY');
+      if (result.success) {
+        expect((result.metadata as { output?: string }).output).toBe('REAL_BINARY');
+      }
     } finally {
       process.env['PATH'] = originalPath;
     }

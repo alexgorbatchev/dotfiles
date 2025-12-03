@@ -249,7 +249,7 @@ describe('MemFileSystem', () => {
       expect(await fileSystem.exists(linkPath)).toBe(false);
 
       // Should not throw with force option
-      await expect(fileSystem.rm(linkPath, { force: true })).resolves.toBeUndefined();
+      expect(fileSystem.rm(linkPath, { force: true })).resolves.toBeUndefined();
     });
 
     it('should remove broken symlink (pointing to non-existent target)', async () => {

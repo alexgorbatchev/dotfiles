@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { Architecture, Platform } from '@dotfiles/core';
+import { TestHarness } from '../../TestHarness';
 
 /**
  * Defines test scenarios for dependency resolution and ordering.
@@ -15,12 +16,7 @@ import type { Architecture, Platform } from '@dotfiles/core';
  * @param platform - The platform to test.
  * @param architecture - The architecture to test.
  */
-export function dependencyScenarios(
-  baseTestDir: string,
-  platform: Platform,
-  architecture: Architecture,
-  TestHarness: any
-): void {
+export function dependencyScenarios(baseTestDir: string, platform: Platform, architecture: Architecture): void {
   describe('dependency resolution', () => {
     it('generates successfully when dependencies are satisfied', async () => {
       const harness = new TestHarness({

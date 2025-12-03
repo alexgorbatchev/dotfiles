@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
+import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Environment Setup', () => {
@@ -14,7 +15,7 @@ describe('Installer - Environment Setup', () => {
     const toolConfig: ToolConfig = {
       name: toolName,
       version: '1.0.0',
-      installationMethod: 'mock-method' as any,
+      installationMethod: 'mock-method',
       installParams: {},
     } as unknown as ToolConfig;
 
@@ -26,10 +27,10 @@ describe('Installer - Environment Setup', () => {
       installDir = context.installDir;
       return {
         success: true,
-        binaryPaths: [],
+        binaryPaths: ['/fake/path'],
         version: '1.0.0',
-        metadata: {},
-      } as any;
+        metadata: { method: 'manual', manualInstall: true },
+      } as IManualInstallSuccess;
     });
 
     const originalPath = process.env['PATH'];

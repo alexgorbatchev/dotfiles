@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
+import type { InstallContext, PlatformConfigEntry, ToolConfig } from '@dotfiles/core';
 import { Platform } from '@dotfiles/core';
 import {
   createGithubReleaseToolConfig,
@@ -97,7 +97,7 @@ describe('Installer - install (orchestrator)', () => {
     });
 
     const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
-      async (_name: string, _config: any, context: any) => {
+      async (_name: string, _config: unknown, context: InstallContext) => {
         // Create the binary in a temporary location (mimicking what a real plugin does)
         // Use context.installDir if available, otherwise create a temporary path
         const installDir: string =

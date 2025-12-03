@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
+import type { IFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { Installer } from '../Installer';
 import { createInstallerTestSetup } from './installer-test-helpers';
@@ -42,6 +43,7 @@ describe('Installer - Enhanced Hooks', () => {
       if (!result.success) {
         throw new Error(`Hook test failed: ${result.error}`);
       }
+
       expect(result.success).toBe(true);
       expect(beforeInstallHook).toHaveBeenCalledTimes(1);
     });
@@ -75,8 +77,16 @@ describe('Installer - Enhanced Hooks', () => {
 
     it('should handle beforeInstall hook timeout', async () => {
       const beforeInstallHook = mock(async () => {
-        // Simulate a slow hook
+        // This hook will be intercepted by our spy
         await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      // Spy on the hookExecutor to simulate timeout
+      const executeSpy = spyOn(installer.hookExecutor, 'executeHook').mockResolvedValue({
+        success: false,
+        error: 'Hook before-install timed out after 50ms',
+        skipped: true,
+        durationMs: 50,
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -92,23 +102,13 @@ describe('Installer - Enhanced Hooks', () => {
         },
       };
 
-      // Testing private hookExecutor property - legitimate test access to internal implementation
-      // biome-ignore lint/suspicious/noExplicitAny: Testing private property access
-      const hookExecutorSpy = spyOn((installer as any)['hookExecutor'], 'executeHook').mockResolvedValue({
-        success: false,
-        error: 'Hook timed out after 50ms',
-        durationMs: 50,
-        skipped: false,
-      });
-
       const result = await installer.install(mockToolName, toolConfig);
 
-      expect(result.success).toBe(false);
       assert(!result.success);
       expect(result.error).toContain('beforeInstall hook failed');
       expect(result.error).toContain('timed out');
-
-      hookExecutorSpy.mockRestore();
+      
+      executeSpy.mockRestore();
     });
   });
 
@@ -371,7 +371,7 @@ describe('Installer - Enhanced Hooks', () => {
 
   describe('hook context filesystem operations', () => {
     it('should allow hooks to perform filesystem operations that are tracked', async () => {
-      let capturedFileSystem: unknown | undefined;
+      let capturedFileSystem: IFileSystem | undefined;
 
       const afterExtractHook = mock(async (context) => {
         capturedFileSystem = context.fileSystem;
@@ -398,12 +398,9 @@ describe('Installer - Enhanced Hooks', () => {
 
       expect(result.success).toBe(true);
       expect(capturedFileSystem).toBeDefined();
-      // biome-ignore lint/suspicious/noExplicitAny: Test helper needs dynamic access
-      expect((capturedFileSystem as any).ensureDir).toHaveBeenCalledWith('/test');
-      // biome-ignore lint/suspicious/noExplicitAny: Test helper needs dynamic access
-      expect((capturedFileSystem as any).writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
-      // biome-ignore lint/suspicious/noExplicitAny: Test helper needs dynamic access
-      expect((capturedFileSystem as any).chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
+      expect(capturedFileSystem!.ensureDir).toHaveBeenCalledWith('/test');
+      expect(capturedFileSystem!.writeFile).toHaveBeenCalledWith('/test/hook-file.txt', 'hook content');
+      expect(capturedFileSystem!.chmod).toHaveBeenCalledWith('/test/hook-file.txt', 0o755);
     });
   });
 });

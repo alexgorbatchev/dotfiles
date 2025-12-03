@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
+import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - Recursion Guard Edge Cases', () => {
@@ -17,7 +18,7 @@ describe('Installer - Recursion Guard Edge Cases', () => {
     const toolConfig: ToolConfig = {
       name: toolName,
       version: '1.0.0',
-      installationMethod: 'mock-method' as any,
+      installationMethod: 'mock-method',
       installParams: {},
     } as unknown as ToolConfig;
 
@@ -27,10 +28,10 @@ describe('Installer - Recursion Guard Edge Cases', () => {
       envVarDuringInstall = process.env[envVarName];
       return {
         success: true,
-        binaryPaths: [],
+        binaryPaths: ['/fake/path'],
         version: '1.0.0',
-        metadata: {},
-      } as any;
+        metadata: { method: 'manual', manualInstall: true },
+      } as IManualInstallSuccess;
     });
 
     await setup.installer.install(toolName, toolConfig);

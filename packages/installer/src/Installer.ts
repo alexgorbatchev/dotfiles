@@ -74,7 +74,7 @@ export class Installer implements IInstaller {
   private readonly logger: TsLogger;
   private readonly fs: IFileSystem;
   private readonly projectConfig: ProjectConfig;
-  private readonly hookExecutor: HookExecutor;
+  public readonly hookExecutor: HookExecutor;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;

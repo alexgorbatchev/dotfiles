@@ -48,7 +48,7 @@ describe('E2E: Dotfiles CLI', () => {
 
       filesScenarios(harness);
       conflictScenarios(harness);
-      dependencyScenarios(import.meta.dir, config.platform, config.architecture, TestHarness);
+      dependencyScenarios(import.meta.dir, config.platform, config.architecture);
     });
   }
 
