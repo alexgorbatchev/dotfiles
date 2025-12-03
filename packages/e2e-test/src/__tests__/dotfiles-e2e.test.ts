@@ -1,6 +1,6 @@
 import { describe } from 'bun:test';
 import { Architecture, Platform } from '@dotfiles/core';
-import { conflictScenarios, generateScenarios, installScenarios, updateScenarios } from '../scenarios';
+import { conflictScenarios, filesScenarios, generateScenarios, installScenarios, updateScenarios } from '../scenarios';
 import { TestHarness } from '../TestHarness';
 import { withMockServer } from '../withMockServer';
 
@@ -9,7 +9,6 @@ const platformConfigs = [
   { platform: Platform.Linux, architecture: Architecture.X86_64, name: 'Linux x86_64' },
 ];
 
-// TODO all e2e should be integrated here as scenarios
 describe('E2E: dotfiles CLI', () => {
   withMockServer();
 
@@ -27,6 +26,8 @@ describe('E2E: dotfiles CLI', () => {
       });
 
       installScenarios(harness);
+
+      filesScenarios(harness);
 
       conflictScenarios(harness);
     });

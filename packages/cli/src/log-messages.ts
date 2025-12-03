@@ -104,4 +104,9 @@ export const messages = {
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
   updatesCommandCompleted: () => createSafeLogMessage('Check-updates command completed'),
   toolTypesGenerated: (path: string) => createSafeLogMessage(`Generated tool types: ${path}`),
+  toolNotInstalled: (toolName: string) => createSafeLogMessage(`Tool "${toolName}" is not installed`),
+  installPathNotFound: (path: string) => createSafeLogMessage(`Installation path not found: ${path}`),
+  filesCommandShowingTree: (path: string) => createSafeLogMessage(path),
+  filesCommandEmptyDirectory: () => createSafeLogMessage('(empty directory)'),
+  filesCommandTree: (treeOutput: string) => createSafeLogMessage(treeOutput),
 } satisfies SafeLogMessageMap;
