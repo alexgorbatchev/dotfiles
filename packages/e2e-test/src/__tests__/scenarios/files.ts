@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-import type { TestHarness } from '../TestHarness';
+import type { TestHarness } from '../../TestHarness';
 
 export function filesScenarios(harness: TestHarness): void {
   describe('files command', () => {

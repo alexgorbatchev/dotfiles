@@ -208,18 +208,18 @@ describe('MemFileSystem', () => {
     it('should remove a symlink with rm', async () => {
       const target = '/test.txt';
       const linkPath = '/test-symlink';
-      
+
       // Create symlink
       await fileSystem.symlink(target, linkPath);
       expect(await fileSystem.exists(linkPath)).toBe(true);
-      
+
       const stats = await fileSystem.lstat(linkPath);
       expect(stats.isSymbolicLink()).toBe(true);
-      
+
       // Remove symlink with rm
       await fileSystem.rm(linkPath);
       expect(await fileSystem.exists(linkPath)).toBe(false);
-      
+
       // Verify target file still exists
       expect(await fileSystem.exists(target)).toBe(true);
     });
@@ -228,15 +228,15 @@ describe('MemFileSystem', () => {
       const oldTarget = '/test.txt';
       const newTarget = '/data/file1.txt';
       const linkPath = '/replaceable-link';
-      
+
       // Create initial symlink
       await fileSystem.symlink(oldTarget, linkPath);
       const initialLink = await fileSystem.readlink(linkPath);
       expect(initialLink).toBe(oldTarget);
-      
+
       // Remove old symlink
       await fileSystem.rm(linkPath, { force: true });
-      
+
       // Create new symlink to different target
       await fileSystem.symlink(newTarget, linkPath);
       const newLink = await fileSystem.readlink(linkPath);
@@ -245,9 +245,9 @@ describe('MemFileSystem', () => {
 
     it('should handle rm with force option on non-existent symlink', async () => {
       const linkPath = '/non-existent-link';
-      
+
       expect(await fileSystem.exists(linkPath)).toBe(false);
-      
+
       // Should not throw with force option
       await expect(fileSystem.rm(linkPath, { force: true })).resolves.toBeUndefined();
     });
@@ -255,23 +255,23 @@ describe('MemFileSystem', () => {
     it('should remove broken symlink (pointing to non-existent target)', async () => {
       const target = '/will-be-deleted.txt';
       const linkPath = '/broken-link';
-      
+
       // Create target and symlink
       await fileSystem.writeFile(target, 'content');
       await fileSystem.symlink(target, linkPath);
-      
+
       // Verify symlink works
       const stats = await fileSystem.lstat(linkPath);
       expect(stats.isSymbolicLink()).toBe(true);
-      
+
       // Delete the target to make symlink broken
       await fileSystem.rm(target);
       expect(await fileSystem.exists(target)).toBe(false);
-      
+
       // Symlink path still exists (as a link) even though target is gone
       const brokenStats = await fileSystem.lstat(linkPath);
       expect(brokenStats.isSymbolicLink()).toBe(true);
-      
+
       // Remove the broken symlink
       await fileSystem.rm(linkPath);
       const linkStillExists = await fileSystem.exists(linkPath);

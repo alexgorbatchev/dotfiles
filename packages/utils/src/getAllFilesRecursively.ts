@@ -9,11 +9,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
  * @param baseDir - The base directory for calculating relative paths (defaults to dirPath)
  * @returns Array of file paths (absolute if baseDir is not provided, relative to baseDir otherwise)
  */
-export async function getAllFilesRecursively(
-  fs: IFileSystem,
-  dirPath: string,
-  baseDir?: string
-): Promise<string[]> {
+export async function getAllFilesRecursively(fs: IFileSystem, dirPath: string, baseDir?: string): Promise<string[]> {
   const files: string[] = [];
   const base = baseDir ?? dirPath;
   const entries = await fs.readdir(dirPath);

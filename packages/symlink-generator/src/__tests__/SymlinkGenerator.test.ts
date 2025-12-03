@@ -533,7 +533,7 @@ describe('SymlinkGenerator', () => {
       // Verify symlink still exists and wasn't recreated
       const statsAfter = await mockFs.fs.lstat(targetPath);
       expect(statsAfter.isSymbolicLink()).toBe(true);
-      
+
       // Verify it still points to the correct target
       const linkTarget = await mockFs.fs.readlink(targetPath);
       const resolvedTarget = path.resolve(path.dirname(targetPath), linkTarget);

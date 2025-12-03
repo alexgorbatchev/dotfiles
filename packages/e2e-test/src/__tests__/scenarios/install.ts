@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { TestHarness } from '../../TestHarness';
 
@@ -18,6 +18,11 @@ export function installScenarios(harness: TestHarness): void {
   const symlinkPath = path.join(binariesDir, 'github-release-tool');
 
   describe('install command', () => {
+    beforeAll(async () => {
+      // Clean up binaries directory to ensure fresh install
+      await harness.cleanBinaries();
+    });
+
     it('should install github-release-tool and verify binary is downloaded before shim is called', async () => {
       // Verify the binary symlink does NOT exist before install
       expect(await harness.fileExists(symlinkPath)).toBe(false);

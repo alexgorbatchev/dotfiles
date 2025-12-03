@@ -114,6 +114,17 @@ export class TestHarness {
   }
 
   /**
+   * Cleans up only the binaries directory while keeping other generated files.
+   *
+   * @returns A Promise that resolves when the cleanup is complete.
+   */
+  async cleanBinaries(): Promise<void> {
+    const binariesDir = path.join(this.generatedDir, 'binaries');
+    const registryDb = path.join(this.generatedDir, 'registry.db');
+    await $`rm -rf ${binariesDir} ${registryDb}`.cwd(this.testDir).quiet().nothrow();
+  }
+
+  /**
    * Executes a dotfiles CLI command with the configured platform and architecture flags.
    *
    * If cleanBeforeRun is enabled, this method will clean the .generated directory before

@@ -49,10 +49,15 @@ describe('filesCommand', () => {
       printedOutput.push(message);
     };
 
-    registerFilesCommand(testLogger, program, async () => ({
-      ...mockServices,
-      configService: mockConfigService,
-    }), mockPrint);
+    registerFilesCommand(
+      testLogger,
+      program,
+      async () => ({
+        ...mockServices,
+        configService: mockConfigService,
+      }),
+      mockPrint
+    );
   });
 
   afterEach(() => {
@@ -129,9 +134,7 @@ describe('filesCommand', () => {
     >;
     mockGetToolInstallation.mockResolvedValue(null);
 
-    expect(program.parseAsync(['files', 'test-tool'], { from: 'user' })).rejects.toThrow(
-      'MOCK_EXIT_CLI_CALLED_WITH_1'
-    );
+    expect(program.parseAsync(['files', 'test-tool'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
     // Should log error about no installed version
     testLogger.expect(['ERROR'], ['registerFilesCommand'], [/not installed/i]);

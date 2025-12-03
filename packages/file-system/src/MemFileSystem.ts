@@ -123,7 +123,7 @@ export class MemFileSystem implements IFileSystem {
     // memfs.promises.rm handles both files and directories.
     // The `force` option in memfs.promises.rm will suppress ENOENT errors.
     // The `recursive` option is needed for directories.
-    
+
     // WORKAROUND: memfs has a bug where rm() doesn't properly remove symlinks before creating new ones.
     // Check if the target is a symlink and use unlink() instead.
     try {
@@ -139,7 +139,7 @@ export class MemFileSystem implements IFileSystem {
       }
       // If lstat fails for another reason, fall through to regular rm() which will handle it
     }
-    
+
     try {
       await this.vol.promises.rm(path, options);
     } catch (e: unknown) {

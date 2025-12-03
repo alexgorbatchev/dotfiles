@@ -13,11 +13,7 @@ interface ITreeNode {
 
 type PrintFunction = (message: string) => void;
 
-async function buildTreeFromDirectory(
-  logger: TsLogger,
-  fs: IFileSystem,
-  dirPath: string
-): Promise<ITreeNode[]> {
+async function buildTreeFromDirectory(logger: TsLogger, fs: IFileSystem, dirPath: string): Promise<ITreeNode[]> {
   const nodes: ITreeNode[] = [];
 
   try {

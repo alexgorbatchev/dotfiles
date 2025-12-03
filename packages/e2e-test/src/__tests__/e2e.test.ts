@@ -9,6 +9,7 @@ import {
   completionScenarios,
   conflictScenarios,
   dependencyScenarios,
+  filesScenarios,
   generateScenarios,
   installScenarios,
   typeSafetyScenarios,
@@ -45,6 +46,7 @@ describe('E2E: Dotfiles CLI', () => {
         installScenarios(harness);
       });
 
+      filesScenarios(harness);
       conflictScenarios(harness);
       dependencyScenarios(import.meta.dir, config.platform, config.architecture, TestHarness);
     });

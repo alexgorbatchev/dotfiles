@@ -136,12 +136,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
             toolName,
           };
 
-          await this.completionGenerator.generateAndWriteCompletionFile(
-            completionConfig,
-            toolName,
-            shellType,
-            context
-          );
+          await this.completionGenerator.generateAndWriteCompletionFile(completionConfig, toolName, shellType, context);
         } catch {
           logger.warn(messages.generateAll.completionGenerationFailed(toolName, shellType));
         }

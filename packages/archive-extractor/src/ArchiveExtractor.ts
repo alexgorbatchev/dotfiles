@@ -284,7 +284,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
         const relativePath = filePath.substring(tempExtractDir.length + 1);
         const targetPath = join(targetDir, relativePath);
         const targetDirPath = join(targetPath, '..');
-        
+
         await this.fs.ensureDir(targetDirPath);
         await this.fs.rename(filePath, targetPath);
       }
@@ -304,7 +304,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       };
 
       if (detectExecutables) {
-        result.executables = await this.detectAndSetExecutables(targetDir, finalFiles);
+        result.executables = await this.detectAndSetExecutables(finalFiles);
       }
 
       return result;
@@ -330,7 +330,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
    * @param files - Array of absolute file paths to check.
    * @returns Array of absolute file paths that were identified as executables.
    */
-  private async detectAndSetExecutables(baseDir: string, files: string[]): Promise<string[]> {
+  private async detectAndSetExecutables(files: string[]): Promise<string[]> {
     const logger = this.logger.getSubLogger({ name: 'detectAndSetExecutables' });
     const executables: string[] = [];
     // This is a simplified check. `file` command is more robust.

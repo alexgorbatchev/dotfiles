@@ -594,7 +594,7 @@ export class Installer implements IInstaller {
         error: error instanceof Error ? error.message : String(error),
         installationMethod: resolvedToolConfig.installationMethod,
       };
-      logger.error(messages.outcome.installFailed('install', toolName),errorResult.error);
+      logger.error(messages.outcome.installFailed('install', toolName), errorResult.error);
       return errorResult;
     }
   }
