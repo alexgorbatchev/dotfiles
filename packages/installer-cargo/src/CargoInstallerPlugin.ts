@@ -10,7 +10,7 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import { normalizeVersion } from '@dotfiles/utils';
+import { stripVersionPrefix } from '@dotfiles/utils';
 import type { ICargoClient } from './cargo-client';
 import { installFromCargo } from './installFromCargo';
 import { messages } from './log-messages';
@@ -160,8 +160,8 @@ export class CargoInstallerPlugin
         return null;
       }
 
-      // Normalize and return the version
-      const normalizedVersion: string = normalizeVersion(latestVersion);
+      // Strip v prefix and return the version
+      const normalizedVersion: string = stripVersionPrefix(latestVersion);
       subLogger.debug(messages.versionResolutionResolved(toolName, normalizedVersion));
       return normalizedVersion;
     } catch (error) {

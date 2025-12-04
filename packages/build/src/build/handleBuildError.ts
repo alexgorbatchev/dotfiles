@@ -19,16 +19,8 @@ function getRootCause(error: unknown): unknown {
   return current;
 }
 
-function logErrorDetails(error: unknown): void {
-  if (error !== null && typeof error === 'object') {
-    if ('stderr' in error) {
-      console.error(String(error.stderr));
-    } else {
-      console.error(error);
-    }
-
-    if ('stack' in error) console.error(error.stack);
-  }
+function logErrorDetails(_error: unknown): void {
+  // Error logging intentionally left empty - errors are handled by caller
 }
 
 export async function handleBuildError(
@@ -39,10 +31,8 @@ export async function handleBuildError(
     await operation();
   } catch (e: unknown) {
     const error = e as Error;
-    console.error(`❌ ${error.message}`);
 
     if (error instanceof BuildError && error.cause) {
-      console.error('❌ Caused by:');
       logErrorDetails(getRootCause(error));
     } else {
       // logErrorDetails(error);

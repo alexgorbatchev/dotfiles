@@ -12,6 +12,7 @@ import {
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
+import { detectVersionViaCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
 import { shell as bunShell } from './shell';
@@ -172,6 +173,16 @@ export async function installFromCurlScript(
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    let detectedVersion: string | undefined;
+    const mainBinaryPath = binaryPaths[0];
+    if (mainBinaryPath) {
+      detectedVersion = await detectVersionViaCli({
+        binaryPath: mainBinaryPath,
+        args: params.versionArgs,
+        regex: params.versionRegex,
+      });
+    }
+
     const metadata: ICurlScriptInstallMetadata = {
       method: 'curl-script',
       scriptUrl: url,
@@ -182,7 +193,7 @@ export async function installFromCurlScript(
       success: true,
       binaryPaths,
       metadata,
-      version: toolConfig.version !== 'latest' ? toolConfig.version : undefined,
+      version: detectedVersion || (toolConfig.version !== 'latest' ? toolConfig.version : undefined),
     };
   };
 

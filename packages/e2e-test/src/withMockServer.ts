@@ -164,14 +164,14 @@ export function withMockServer(): void {
           });
         },
 
-        // Mock install script for version detection tests
-        '/mock-install-version-detection-with-args.sh': () => {
+        // Mock install script for version detection tests (curl-script with args)
+        '/mock-install-version-detection-curl-script-with-args.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
             '__tests__',
             'fixtures',
             'tools',
-            'version-detection--with-args',
+            'version-detection--curl-script--with-args',
             'mock-install.sh'
           );
           return new Response(Bun.file(scriptPath), {
@@ -179,30 +179,15 @@ export function withMockServer(): void {
           });
         },
 
-        // Mock install script for version detection tests (default args)
-        '/mock-install-version-detection-default-args.sh': () => {
+        // Mock install script for version detection tests (curl-script default args)
+        '/mock-install-version-detection-curl-script-default-args.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
             '__tests__',
             'fixtures',
             'tools',
-            'version-detection--default-args',
+            'version-detection--curl-script--default-args',
             'mock-install.sh'
-          );
-          return new Response(Bun.file(scriptPath), {
-            headers: { 'Content-Type': 'application/x-sh' },
-          });
-        },
-
-        // Mock install script for version detection tests
-        '/mock-install-version-detection-test.sh': () => {
-          const scriptPath = path.join(
-            import.meta.dir,
-            '__tests__',
-            'fixtures',
-            'tools',
-            'version-detection-test',
-            'mock-install-version-detection-test.sh'
           );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
@@ -210,17 +195,47 @@ export function withMockServer(): void {
         },
 
         // Mock install script for version detection tests (no parseable version)
-        '/mock-install-version-detection-no-version.sh': () => {
+        '/mock-install-version-detection-curl-script-no-version.sh': () => {
           const scriptPath = path.join(
             import.meta.dir,
             '__tests__',
             'fixtures',
             'tools',
-            'version-detection--no-version',
-            'mock-install.sh'
+            'version-detection--curl-script--no-version',
+            'mock-install-version-detection-curl-script-no-version.sh'
           );
           return new Response(Bun.file(scriptPath), {
             headers: { 'Content-Type': 'application/x-sh' },
+          });
+        },
+
+        // Mock tarball for version detection tests (curl-tar with args)
+        '/mock-install-version-detection-curl-tar-with-args.tar.gz': () => {
+          const filePath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'version-detection--curl-tar--with-args',
+            'mock-install-version-detection-curl-tar-with-args.tar.gz'
+          );
+          return new Response(Bun.file(filePath), {
+            headers: { 'Content-Type': 'application/gzip' },
+          });
+        },
+
+        // Mock tarball for version detection tests (curl-tar default args)
+        '/mock-install-version-detection-curl-tar-default-args.tar.gz': () => {
+          const filePath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'version-detection--curl-tar--default-args',
+            'mock-install-version-detection-curl-tar-default-args.tar.gz'
+          );
+          return new Response(Bun.file(filePath), {
+            headers: { 'Content-Type': 'application/gzip' },
           });
         },
       },

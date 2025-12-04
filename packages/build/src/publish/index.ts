@@ -46,8 +46,6 @@ async function checkDistExists(): Promise<void> {
   if (!fs.existsSync(packageJsonPath)) {
     throw new Error('package.json not found in .dist directory');
   }
-
-  console.log('✓ Build output found in .dist directory');
 }
 
 /**
@@ -57,9 +55,7 @@ async function checkDistExists(): Promise<void> {
  * Requires prior authentication with npm (via `npm login`).
  */
 async function publishToNpm(): Promise<void> {
-  console.log('📤 Publishing to npm registry...');
   await executeCommand(['npm', 'publish'], { cwd: distDir });
-  console.log('✅ Package published successfully!');
 }
 
 /**
@@ -77,27 +73,16 @@ async function publishToNpm(): Promise<void> {
  * @throws {Error} If build output is missing or npm publish fails.
  */
 export async function publish(): Promise<void> {
-  console.log('🚀 Starting publish process...');
+  // Step 1: Check that build exists
+  await checkDistExists();
 
-  try {
-    // Step 1: Check that build exists
-    await checkDistExists();
-
-    // Step 2: Publish to npm
-    await publishToNpm();
-
-    console.log('✅ Publish completed successfully!');
-    console.log('🌐 The package is now available on the npm registry');
-  } catch (error) {
-    console.error('❌ Publish failed:', error);
-    throw error;
-  }
+  // Step 2: Publish to npm
+  await publishToNpm();
 }
 
 // Only run if executed directly
 if (import.meta.main) {
-  publish().catch((error) => {
-    console.error('❌ Publish process failed:', error);
+  publish().catch((_error) => {
     process.exit(1);
   });
 }

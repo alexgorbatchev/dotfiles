@@ -21,6 +21,10 @@ export const curlScriptInstallParamsSchema = baseInstallParamsSchema.extend({
   shell: z.enum(['bash', 'sh']),
   /** Arguments to pass to the script - can be static array or function returning array. */
   args: z.any().optional(),
+  /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
+  versionArgs: z.array(z.string()).optional(),
+  /** Regex to extract version from output. */
+  versionRegex: z.string().optional(),
 });
 
 /**
@@ -33,4 +37,6 @@ export type CurlScriptInstallParams = Omit<BaseInstallParams, 'args'> & {
   url: string;
   shell: 'bash' | 'sh';
   args?: CurlScriptArgs;
+  versionArgs?: string[];
+  versionRegex?: string;
 };

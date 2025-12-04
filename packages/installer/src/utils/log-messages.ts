@@ -53,6 +53,8 @@ export const messages = {
     hookExecution: (hookName: string) => createSafeLogMessage(`install: Running ${hookName} hook`),
     directoryCreated: (installDir: string) =>
       createSafeLogMessage(`install: Created installation directory: ${installDir}`),
+    directoryRenamed: (oldPath: string, newPath: string) =>
+      createSafeLogMessage(`install: Renamed installation directory from ${oldPath} to ${newPath}`),
     cleaningFailedInstallDir: (installDir: string) =>
       createSafeLogMessage(`install: Cleaning up failed installation directory: ${installDir}`),
     versionResolved: (version: string) => createSafeLogMessage(`install: Resolved version: ${version}`),

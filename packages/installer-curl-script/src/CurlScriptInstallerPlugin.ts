@@ -87,6 +87,7 @@ export class CurlScriptInstallerPlugin
       success: true,
       binaryPaths: result.binaryPaths,
       metadata: result.metadata,
+      version: result.version,
     };
 
     return installResult;

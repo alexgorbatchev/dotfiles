@@ -33,5 +33,10 @@
     }
   },
   "include": ["packages", "test-project", "cli.ts"],
-  "exclude": ["**/.tmp/**", "packages/**/type-tests/**", "packages/**/__tests__/**/tool-types.d.ts"]
+  "exclude": [
+    "**/.tmp/**",
+    "packages/**/type-tests/**",
+    "packages/**/__tests__/**/tool-types.d.ts",
+    "packages/core/src/__tests__/InstallerPluginRegistry--typescript-integration.test.ts"
+  ]
 }

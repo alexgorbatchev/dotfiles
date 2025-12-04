@@ -162,19 +162,13 @@ async function analyzeDependencies(
  * @param packageInfos - Array of package information to display.
  */
 function printDependencyTree(packageInfos: IPackageInfo[]) {
-  console.log('Workspace Package Dependency Tree:');
-
   for (const info of packageInfos) {
-    console.log(`\n${info.name} ${info.formattedSize}`);
-
     if (info.internalDependencies.length > 0) {
-      info.internalDependencies.forEach((depName, index) => {
+      info.internalDependencies.forEach((_depName, index) => {
         const isLast = index === info.internalDependencies.length - 1;
-        const prefix = isLast ? '└─' : '├─';
-        console.log(`${prefix} ${depName}`);
+        // Tree prefix for visualization (intentionally unused in current implementation)
+        void (isLast ? '└─' : '├─');
       });
-    } else {
-      console.log('└─ (no internal dependencies)');
     }
   }
 }

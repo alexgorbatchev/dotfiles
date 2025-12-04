@@ -14,7 +14,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import { createToolFileSystem } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import { normalizeVersion } from '@dotfiles/utils';
+import { stripVersionPrefix } from '@dotfiles/utils';
 import type { IGitHubApiClient } from './github-client';
 import { fetchGitHubRelease, installFromGitHubRelease } from './installFromGitHubRelease';
 import { messages } from './log-messages';
@@ -146,8 +146,8 @@ export class GitHubReleaseInstallerPlugin
         return null;
       }
 
-      // Normalize and return the version from the release tag
-      const normalizedVersion: string = normalizeVersion(releaseResult.data.tag_name);
+      // Strip v prefix and return the version from the release tag
+      const normalizedVersion: string = stripVersionPrefix(releaseResult.data.tag_name);
       logger.debug(messages.versionResolutionResolved(toolName, normalizedVersion));
       return normalizedVersion;
     } catch (error) {
