@@ -42,6 +42,8 @@ The `install('curl-script', params)` function accepts:
   - Sync function: `(ctx) => ['--install-dir', ctx.projectConfig.paths.binariesDir]`
   - Async function: `async (ctx) => { ... return ['--arg1']; }`
 - **`env`**: Environment variables to set during installation
+- **`versionArgs`**: Arguments to pass to the binary to check the version (e.g. `['--version']`).
+- **`versionRegex`**: Regex to extract version from output (e.g. `version (\d+\.\d+\.\d+)`).
 
 ## Examples
 

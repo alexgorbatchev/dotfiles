@@ -107,7 +107,7 @@ describe('Installer - Enhanced Hooks', () => {
       assert(!result.success);
       expect(result.error).toContain('beforeInstall hook failed');
       expect(result.error).toContain('timed out');
-      
+
       executeSpy.mockRestore();
     });
   });

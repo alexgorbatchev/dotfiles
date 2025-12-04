@@ -335,15 +335,13 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'recordInstallation' });
-    if (!result.success || !('version' in result)) {
+    if (!result.success) {
       return;
     }
 
     try {
-      const version = result.version;
-      if (!version) {
-        return;
-      }
+      // Use detected version if available, otherwise fall back to timestamp
+      const version: string = 'version' in result && result.version ? result.version : context.timestamp;
 
       // Extract configured version from tool config
       const installParams: unknown = resolvedToolConfig.installParams;
@@ -547,13 +545,47 @@ export class Installer implements IInstaller {
       // Add the resolved installation method to the result
       result.installationMethod = resolvedToolConfig.installationMethod;
 
+      // If we have a detected version and the install directory is a timestamp,
+      // rename the directory to the version
+      const detectedVersion = result.success && 'version' in result ? result.version : undefined;
+      const shouldRename =
+        !isExternallyManaged &&
+        result.success &&
+        !!detectedVersion &&
+        versionOrTimestamp === timestamp &&
+        detectedVersion !== timestamp;
+
+      if (shouldRename && detectedVersion) {
+        const newInstallDir = path.join(binariesDir, toolName, detectedVersion);
+        if (await toolFs.exists(newInstallDir)) {
+          // If version directory already exists, remove it first (or maybe we should have skipped?)
+          // But since we are here, we probably want to overwrite or use it.
+          // For safety, let's remove the timestamp dir and use the existing version dir
+          // if it seems valid. But simpler is to remove existing and rename new.
+          await toolFs.rm(newInstallDir, { recursive: true, force: true });
+        }
+
+        await toolFs.rename(installDir, newInstallDir);
+        logger.debug(messages.lifecycle.directoryRenamed(installDir, newInstallDir));
+
+        // Update context and result with new path
+        context.installDir = newInstallDir;
+        // Update binary paths to point to new location
+        if (result.success && 'binaryPaths' in result && result.binaryPaths) {
+          result.binaryPaths = result.binaryPaths.map((p: string) =>
+            p.startsWith(installDir) ? p.replace(installDir, newInstallDir) : p
+          );
+        }
+      }
+
       // Create symlinks to the actual binaries for all tools
       // This ensures that shims always point to a stable location in the tool directory
       // regardless of whether the tool is versioned (timestamped) or externally managed
       // Filter out paths that don't exist - these may have been handled by setupBinariesFromArchive
-      if (result.success && result.binaryPaths) {
+      const binaryPaths = result.success && 'binaryPaths' in result ? result.binaryPaths : undefined;
+      if (result.success && binaryPaths) {
         const existingPaths: string[] = [];
-        for (const binaryPath of result.binaryPaths) {
+        for (const binaryPath of binaryPaths) {
           const exists = await toolFs.exists(binaryPath);
           if (exists) {
             existingPaths.push(binaryPath);

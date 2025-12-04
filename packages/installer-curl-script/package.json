@@ -12,6 +12,7 @@
     "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

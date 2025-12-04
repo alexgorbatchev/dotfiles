@@ -19,6 +19,10 @@ export const brewInstallParamsSchema = baseInstallParamsSchema.extend({
    * Example: `homebrew/core` or `['user/custom-tap', 'another/tap']`.
    */
   tap: z.union([z.string(), z.array(z.string())]).optional(),
+  /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
+  versionArgs: z.array(z.string()).optional(),
+  /** Regex to extract version from output. */
+  versionRegex: z.string().optional(),
 });
 
 /**

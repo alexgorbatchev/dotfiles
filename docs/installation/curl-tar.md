@@ -37,6 +37,8 @@ The `install('curl-tar', params)` function accepts:
 - **`url`**: Direct URL to the tarball to download
 - **`extractPath`**: Path to the binary within the extracted archive (optional)
 - **`stripComponents`**: Number of directory levels to strip during extraction (optional)
+- **`versionArgs`**: Arguments to pass to the binary to check the version (e.g. `['--version']`).
+- **`versionRegex`**: Regex to extract version from output (e.g. `version (\d+\.\d+\.\d+)`).
 
 ## Examples
 

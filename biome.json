@@ -69,7 +69,8 @@
       },
       "suspicious": {
         "noExplicitAny": "error",
-        "noArrayIndexKey": "warn"
+        "noArrayIndexKey": "warn",
+        "noConsole": "error"
       }
     }
   },

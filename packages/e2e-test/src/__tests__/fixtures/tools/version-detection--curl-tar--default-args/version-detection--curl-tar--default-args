@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "version-detection--curl-tar--default-args 4.5.6"
+else
+  echo "Hello from version-detection--curl-tar--default-args"
+fi

@@ -8,6 +8,7 @@ Common utility functions used across the dotfiles tool installer system. Provide
 - **Permission Formatting**: Convert numeric permissions to readable strings
 - **String Utilities**: Template string dedenting and formatting
 - **Version Normalization**: Standardize version strings
+- **Version Detection**: Detect tool versions via CLI execution
 - **Platform Configuration**: Resolve platform-specific tool configurations
 - **CLI Utilities**: Get CLI binary path and exit with proper codes
 - **Timestamp Generation**: Generate ISO timestamps for file operations
@@ -114,14 +115,55 @@ const script = dedentTemplate`
 
 #### `normalizeVersion(version: string): string`
 
-Normalizes version strings by removing `v` prefix and ensuring consistent format.
+Normalizes version strings by making them safe for file paths (replaces unsafe characters).
 
 ```typescript
 import { normalizeVersion } from '@dotfiles/utils';
 
-normalizeVersion('v1.2.3'); // Returns: '1.2.3'
+normalizeVersion('v1.2.3'); // Returns: 'v1.2.3'
 normalizeVersion('1.2.3');   // Returns: '1.2.3'
+normalizeVersion('1.2.3/beta'); // Returns: '1.2.3-beta'
 ```
+
+#### `stripVersionPrefix(version: string): string`
+
+Strips the `v` or `V` prefix from version strings.
+
+```typescript
+import { stripVersionPrefix } from '@dotfiles/utils';
+
+stripVersionPrefix('v1.2.3'); // Returns: '1.2.3'
+stripVersionPrefix('V1.2.3'); // Returns: '1.2.3'
+stripVersionPrefix('1.2.3');  // Returns: '1.2.3'
+```
+
+#### `detectVersionViaCli(options: DetectVersionOptions): Promise<string | undefined>`
+
+Detects the version of a tool by running it with `--version` (or custom args) and parsing the output.
+
+```typescript
+import { detectVersionViaCli } from '@dotfiles/utils';
+
+// Using default --version args and semver regex
+const version = await detectVersionViaCli({
+  binaryPath: '/usr/local/bin/rg',
+});
+// Returns: '14.1.0' (parsed from output)
+
+// Using custom args and regex
+const customVersion = await detectVersionViaCli({
+  binaryPath: '/usr/local/bin/mytool',
+  args: ['-v'],
+  regex: /version[:\s]+(\d+\.\d+\.\d+)/i,
+});
+```
+
+**Options:**
+- `binaryPath` (required): Path to the binary to run
+- `args` (optional): Arguments to pass to the binary (default: `['--version']`)
+- `regex` (optional): Custom regex to extract version from output (first capture group is used)
+- `env` (optional): Environment variables to set when running the binary
+- `shellExecutor` (optional): Shell executor for testing
 
 ### Platform Configuration
 

@@ -79,14 +79,15 @@ describe('Hook Integration Tests', () => {
         throw new Error(`Installation failed: ${result.error}`);
       }
 
-      // Find the actual timestamped directory
+      // Find the version directory (version is resolved from tag_name: '1.0.0')
       const toolDir = `${setup.testDirs.paths.binariesDir}/example-tool`;
       const toolDirContents = await setup.fs.readdir(toolDir);
-      const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
-      expect(timestampDir).toBeDefined();
+      // Version directory should be '1.0.0' from the resolved tag_name
+      const versionDir = toolDirContents.find((name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      expect(versionDir).toBeDefined();
 
       // Verify hook created the expected files and directories
-      const configDir = path.join(toolDir, timestampDir!, 'config');
+      const configDir = path.join(toolDir, versionDir!, 'config');
       const configFile = path.join(configDir, 'default.yaml');
 
       // Verify config directory was created
@@ -96,7 +97,7 @@ describe('Hook Integration Tests', () => {
       expect(await setup.fs.exists(configFile)).toBe(true);
       const configContent = await setup.fs.readFile(configFile, 'utf-8');
       expect(configContent).toContain('Default configuration for example-tool');
-      expect(configContent).toContain(`install_dir: ${path.join(toolDir, timestampDir!)}`);
+      expect(configContent).toContain(`install_dir: ${path.join(toolDir, versionDir!)}`);;
     });
 
     it('should handle post-extraction binary organization hook', async () => {
@@ -179,7 +180,7 @@ describe('Hook Integration Tests', () => {
       }
       expect(result.success).toBe(true);
 
-      // Find the actual timestamped directory
+      // Find the version directory (version is resolved from tag_name: '1.0.0')
       const toolDir = `${setup.testDirs.paths.binariesDir}/multi-binary-tool`;
 
       // Debug: Check if tool directory exists
@@ -190,15 +191,16 @@ describe('Hook Integration Tests', () => {
 
       const toolDirContents = await setup.fs.readdir(toolDir);
 
-      const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
-      if (!timestampDir) {
-        throw new Error(`No timestamp directory found in: ${toolDirContents}`);
+      // Version directory should be '1.0.0' from the resolved tag_name
+      const versionDir = toolDirContents.find((name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      if (!versionDir) {
+        throw new Error(`No version directory found in: ${toolDirContents}`);
       }
 
       // Verify hook created the expected directory structure
-      const timestampedPath = `${toolDir}/${timestampDir}`;
-      const binDir = path.join(timestampedPath, 'bin');
-      const docsDir = path.join(timestampedPath, 'docs');
+      const versionedPath = `${toolDir}/${versionDir}`;
+      const binDir = path.join(versionedPath, 'bin');
+      const docsDir = path.join(versionedPath, 'docs');
       const mainToolBinary = path.join(binDir, 'main-tool');
       const helperToolBinary = path.join(binDir, 'helper-tool');
 
@@ -287,14 +289,15 @@ describe('Hook Integration Tests', () => {
 
       expect(result.success).toBe(true);
 
-      // Find the actual timestamped directory
+      // Find the version directory (version is resolved from tag_name: '1.0.0')
       const toolDir = `${setup.testDirs.paths.binariesDir}/source-tool`;
       const toolDirContents = await setup.fs.readdir(toolDir);
-      const timestampDir = toolDirContents.find((name) => name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
-      expect(timestampDir).toBeDefined();
+      // Version directory should be '1.0.0' from the resolved tag_name
+      const versionDir = toolDirContents.find((name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      expect(versionDir).toBeDefined();
 
       // Verify hook performed the expected build operations
-      const libDir = path.join(toolDir, timestampDir!, 'lib');
+      const libDir = path.join(toolDir, versionDir!, 'lib');
       const libFile = path.join(libDir, 'libsource-tool.so');
 
       // Verify library directory was created

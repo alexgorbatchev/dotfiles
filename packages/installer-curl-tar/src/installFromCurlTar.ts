@@ -14,9 +14,13 @@ import {
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
+import { detectVersionViaCli } from '@dotfiles/utils';
+import { $ } from 'bun';
 import { messages } from './log-messages';
 import type { CurlTarToolConfig } from './schemas';
 import type { CurlTarInstallResult, ICurlTarInstallMetadata } from './types';
+
+type ShellExecutor = typeof $;
 
 /**
  * Installs a tool from a tarball accessible via URL.
@@ -40,6 +44,7 @@ import type { CurlTarInstallResult, ICurlTarInstallMetadata } from './types';
  * @param archiveExtractor - The archive extractor for unpacking.
  * @param hookExecutor - The hook executor for running lifecycle hooks.
  * @param parentLogger - The parent logger for creating sub-loggers.
+ * @param shellExecutor - The shell executor function (defaults to Bun's $ operator).
  * @returns A promise that resolves to the installation result.
  */
 export async function installFromCurlTar(
@@ -51,7 +56,8 @@ export async function installFromCurlTar(
   downloader: IDownloader,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
-  parentLogger: TsLogger
+  parentLogger: TsLogger,
+  shellExecutor: ShellExecutor = $
 ): Promise<CurlTarInstallResult> {
   const toolFs = createToolFileSystem(fs, toolName);
   const logger = parentLogger.getSubLogger({ name: 'installFromCurlTar' });
@@ -135,6 +141,17 @@ export async function installFromCurlTar(
     // Return paths to all binaries
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
 
+    let detectedVersion: string | undefined;
+    const mainBinaryPath = binaryPaths[0];
+    if (mainBinaryPath) {
+      detectedVersion = await detectVersionViaCli({
+        binaryPath: mainBinaryPath,
+        args: params.versionArgs,
+        regex: params.versionRegex,
+        shellExecutor,
+      });
+    }
+
     const metadata: ICurlTarInstallMetadata = {
       method: 'curl-tar',
       downloadUrl: url,
@@ -145,6 +162,7 @@ export async function installFromCurlTar(
       success: true,
       binaryPaths,
       metadata,
+      version: detectedVersion || (toolConfig.version !== 'latest' ? toolConfig.version : undefined),
     };
   };
 

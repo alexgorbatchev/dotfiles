@@ -1,7 +1,7 @@
 import type { IInstallOptions, InstallContext } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import { normalizeVersion } from '@dotfiles/utils';
+import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
 import { $ } from 'bun';
 import { z } from 'zod';
 import { messages } from './log-messages';
@@ -64,9 +64,25 @@ export async function installFromBrew(
   const operation = async (): Promise<BrewInstallResult> => {
     await executeBrewInstall(formula, isCask, tap, options?.force, logger, shellExecutor);
 
-    const version: string | null = await getBrewVersion(formula, logger, shellExecutor);
     const formulaPrefix: string = await getBrewPrefix(formula, logger, shellExecutor);
     const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, `${formulaPrefix}/bin`);
+
+    let version: string | undefined;
+
+    if (params.versionArgs && params.versionRegex) {
+      const mainBinaryPath = Object.values(binaryPaths)[0];
+      if (!mainBinaryPath) {
+        throw new Error(`No binary found to detect version for ${toolName}`);
+      }
+      version = await detectVersionViaCli({
+        binaryPath: mainBinaryPath,
+        args: params.versionArgs,
+        regex: params.versionRegex,
+        shellExecutor,
+      });
+    } else {
+      version = await getBrewVersion(formula, logger, shellExecutor) ?? undefined;
+    }
 
     const metadata: IBrewInstallMetadata = {
       method: 'brew',

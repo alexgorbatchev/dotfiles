@@ -1,6 +1,7 @@
 export * from './contractHomePath';
 export * from './dedentString';
 export * from './dedentTemplate';
+export * from './detectVersionViaCli';
 export * from './exitCli';
 export * from './expandHomePath';
 export * from './expandToolConfigPath';
@@ -12,3 +13,4 @@ export * from './getBuiltPackageName';
 export * from './getCliBinPath';
 export * from './normalizeVersion';
 export * from './resolvePlatformConfig';
+export * from './stripVersionPrefix';

@@ -15,6 +15,10 @@ import { z } from 'zod';
 export const curlTarInstallParamsSchema = baseInstallParamsSchema.extend({
   /** The URL of the tarball to download. */
   url: z.string().url(),
+  /** Arguments to pass to the binary to check the version (e.g. ['--version']). */
+  versionArgs: z.array(z.string()).optional(),
+  /** Regex to extract version from output. */
+  versionRegex: z.string().optional(),
 });
 
 /**

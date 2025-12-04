@@ -37,6 +37,8 @@ The `install('brew', params)` function accepts:
 - **`formula`**: Homebrew formula or cask name
 - **`cask`**: Set to `true` to install as a cask
 - **`tap`**: Required tap(s) to add before installing
+- **`versionArgs`**: Arguments to pass to the binary to check the version (e.g. `['--version']`).
+- **`versionRegex`**: Regex to extract version from output (e.g. `version (\d+\.\d+\.\d+)`).
 
 ## Examples
 
