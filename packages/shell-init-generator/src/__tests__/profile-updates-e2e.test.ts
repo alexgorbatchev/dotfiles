@@ -165,7 +165,7 @@ describe('Profile Updates E2E Tests', () => {
 
       // Execute: Generate shell scripts with profile updates for all shell types
       const options: IGenerateShellInitOptions = {
-        shellTypes: ['zsh', 'bash', 'powershell'] as ShellType[],
+        shellTypes: ['zsh', 'bash', 'powershell'],
         updateProfileFiles: true,
       };
 

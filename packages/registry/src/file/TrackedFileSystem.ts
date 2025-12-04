@@ -154,13 +154,7 @@ export class TrackedFileSystem implements IFileSystem {
     const stats = await this.getFileStats(filePath);
 
     // Record the operation
-    await this.registry.recordOperation({
-      toolName: this.context.toolName,
-      operationType: 'writeFile',
-      filePath: path.resolve(filePath),
-      fileType: this.context.fileType,
-      operationId: this.context.operationId,
-      metadata: this.context.metadata,
+    await this.recordOperation('writeFile', filePath, {
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
     });
@@ -187,14 +181,8 @@ export class TrackedFileSystem implements IFileSystem {
     const stats = await this.getFileStats(dest);
 
     // Record the operation
-    await this.registry.recordOperation({
-      toolName: this.context.toolName,
-      operationType: 'cp',
-      filePath: path.resolve(dest),
-      targetPath: path.resolve(src),
-      fileType: this.context.fileType,
-      operationId: this.context.operationId,
-      metadata: this.context.metadata,
+    await this.recordOperation('cp', dest, {
+      targetPath: src,
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
     });
@@ -216,14 +204,8 @@ export class TrackedFileSystem implements IFileSystem {
     const stats = await this.getFileStats(newPath);
 
     // Record the rename operation
-    await this.registry.recordOperation({
-      toolName: this.context.toolName,
-      operationType: 'rename',
-      filePath: path.resolve(newPath),
-      targetPath: path.resolve(oldPath),
-      fileType: this.context.fileType,
-      operationId: this.context.operationId,
-      metadata: this.context.metadata,
+    await this.recordOperation('rename', newPath, {
+      targetPath: oldPath,
       sizeBytes: stats?.sizeBytes,
       permissions: stats?.permissions,
     });
@@ -242,15 +224,7 @@ export class TrackedFileSystem implements IFileSystem {
     await this.fs.symlink(target, linkPath, type);
 
     // Record the operation using context fileType (e.g., 'completion', 'symlink', 'binary')
-    await this.registry.recordOperation({
-      toolName: this.context.toolName,
-      operationType: 'symlink',
-      filePath: path.resolve(linkPath),
-      targetPath: path.resolve(target),
-      fileType: this.context.fileType,
-      operationId: this.context.operationId,
-      metadata: this.context.metadata,
-    });
+    await this.recordOperation('symlink', linkPath, { targetPath: target });
 
     this.logInfo(
       messages.symlinkCreated(
@@ -296,15 +270,7 @@ export class TrackedFileSystem implements IFileSystem {
     const stats = await this.getFileStats(filePath);
 
     // Record as chmod operation
-    await this.registry.recordOperation({
-      toolName: this.context.toolName,
-      operationType: 'chmod',
-      filePath: path.resolve(filePath),
-      fileType: this.context.fileType,
-      operationId: this.context.operationId,
-      metadata: this.context.metadata,
-      permissions: stats?.permissions,
-    });
+    await this.recordOperation('chmod', filePath, { permissions: stats?.permissions });
 
     this.logInfo(
       messages.permissionsChanged(
@@ -344,14 +310,7 @@ export class TrackedFileSystem implements IFileSystem {
 
     // Only track if directory was actually created
     if (!existed) {
-      await this.registry.recordOperation({
-        toolName: this.context.toolName,
-        operationType: 'mkdir',
-        filePath: path.resolve(dirPath),
-        fileType: this.context.fileType,
-        operationId: this.context.operationId,
-        metadata: this.context.metadata,
-      });
+      await this.recordOperation('mkdir', dirPath);
 
       this.logInfo(
         messages.directoryCreated(this.context.toolName, contractHomePath(this.projectConfig.paths.homeDir, dirPath))
@@ -385,14 +344,7 @@ export class TrackedFileSystem implements IFileSystem {
 
     // Only track if directory was actually created
     if (!existed) {
-      await this.registry.recordOperation({
-        toolName: this.context.toolName,
-        operationType: 'mkdir',
-        filePath: path.resolve(dirPath),
-        fileType: this.context.fileType,
-        operationId: this.context.operationId,
-        metadata: this.context.metadata,
-      });
+      await this.recordOperation('mkdir', dirPath);
 
       this.logInfo(
         messages.directoryCreated(this.context.toolName, contractHomePath(this.projectConfig.paths.homeDir, dirPath))
@@ -416,17 +368,35 @@ export class TrackedFileSystem implements IFileSystem {
   }
 
   /**
-   * Tracks deletion of a single file.
+   * Helper method to record a file operation with common context fields.
    */
-  private async trackFileDeletion(filePath: string): Promise<void> {
+  private async recordOperation(
+    operationType: IFileOperation['operationType'],
+    filePath: string,
+    options?: {
+      targetPath?: string;
+      sizeBytes?: number;
+      permissions?: number;
+    }
+  ): Promise<void> {
     await this.registry.recordOperation({
       toolName: this.context.toolName,
-      operationType: 'rm',
+      operationType,
       filePath: path.resolve(filePath),
       fileType: this.context.fileType,
       operationId: this.context.operationId,
       metadata: this.context.metadata,
+      targetPath: options?.targetPath ? path.resolve(options.targetPath) : undefined,
+      sizeBytes: options?.sizeBytes,
+      permissions: options?.permissions,
     });
+  }
+
+  /**
+   * Tracks deletion of a single file.
+   */
+  private async trackFileDeletion(filePath: string): Promise<void> {
+    await this.recordOperation('rm', filePath);
   }
 
   /**
