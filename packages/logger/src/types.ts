@@ -1,3 +1,7 @@
+import type { ILogObj } from 'tslog';
+import type { LogLevelValue } from './LogLevel';
+import type { SafeLogger } from './SafeLogger';
+
 /**
  * A branded string type that represents a message that is safe for logging.
  *
@@ -27,3 +31,25 @@ export type SafeLogMessage = string & {
  */
 // biome-ignore lint/suspicious/noExplicitAny: Template functions need varying parameter types
 export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessage>;
+
+/**
+ * A type alias for a {@link SafeLogger} instance with a default log object type.
+ * @public
+ */
+export type TsLogger = SafeLogger<ILogObj>;
+
+/**
+ * Configuration options for creating a logger instance.
+ * @public
+ */
+export interface ILoggerConfig {
+  /**
+   * The name of the logger, which will be included in log messages.
+   */
+  name: string;
+  /**
+   * The minimum log level to be processed.
+   * @default LogLevel.DEFAULT
+   */
+  level?: LogLevelValue;
+}
