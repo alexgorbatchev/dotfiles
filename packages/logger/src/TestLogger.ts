@@ -1,8 +1,7 @@
 import { expect as bunExpect } from 'bun:test';
 import * as util from 'node:util';
-import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
-import type { ZodError } from 'zod';
-import { formatZodErrors } from './formatZodErrors';
+import type { ILogObj, ILogObjMeta, ISettingsParam } from 'tslog';
+import { type ISafeLoggerSettings, SafeLogger } from './SafeLogger';
 
 /**
  * Defines the log levels available for filtering in `TestLogger`.
@@ -12,11 +11,26 @@ import { formatZodErrors } from './formatZodErrors';
 export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
 /**
+ * Extended settings for TestLogger that adds context support.
+ * @public
+ */
+export interface ITestLoggerSettings<LogObj> extends ISettingsParam<LogObj> {
+  /**
+   * A context string to prepend to log messages as `[context]`.
+   * Multiple contexts from parent loggers are chained together.
+   */
+  context?: string;
+}
+
+/**
  * An extended logger for testing purposes that captures log messages in memory.
  *
  * `TestLogger` allows you to make assertions about logs that were emitted
  * during a test, providing methods to filter and match log messages against
  * expected values.
+ *
+ * Supports context strings that are prepended to log messages as `[context]`.
+ * Multiple contexts from parent loggers are chained together (e.g., `[Parent][Child]`).
  *
  * @example
  * ```typescript
@@ -32,7 +46,7 @@ export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' |
  *
  * @public
  */
-export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
+export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
   /**
    * An array containing all log objects captured by this logger instance.
    * @public
@@ -43,18 +57,22 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
    * Constructs a new `TestLogger` instance.
    * @param settings - Optional `tslog` settings to configure the logger.
    * @param logs - An optional array to use for storing logs.
+   * @param parentContexts - An optional array of parent context strings.
    *
    * @internal
    */
-  constructor(settings?: ISettingsParam<LogObj>, logs: ILogObjMeta[] = []) {
-    super({
-      ...settings,
-      hideLogPositionForProduction: false,
-      attachedTransports: [(obj) => logs.push(obj)],
-      overwrite: {
-        transportFormatted: (_logMetaMarkup, _logArgs, _logErrors, _settings) => {},
+  constructor(settings?: ITestLoggerSettings<LogObj>, logs: ILogObjMeta[] = [], parentContexts: string[] = []) {
+    super(
+      {
+        ...settings,
+        hideLogPositionForProduction: false,
+        attachedTransports: [(obj) => logs.push(obj)],
+        overwrite: {
+          transportFormatted: (_logMetaMarkup, _logArgs, _logErrors, _settings) => {},
+        },
       },
-    });
+      parentContexts
+    );
     this.logs = logs;
   }
 
@@ -67,7 +85,7 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
    * @param settings - Optional `tslog` settings to override the parent's settings.
    * @returns A new `TestLogger` instance.
    */
-  override getSubLogger(settings?: ISettingsParam<LogObj>): TestLogger<LogObj> {
+  override getSubLogger(settings?: ISafeLoggerSettings<LogObj>): TestLogger<LogObj> {
     const parentNames = [...(this.settings.parentNames ?? [])];
     if (this.settings.name) {
       parentNames.push(this.settings.name);
@@ -79,20 +97,10 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
         ...settings,
         parentNames,
       },
-      this.logs
+      this.logs,
+      this.contexts
     );
     return subLogger;
-  }
-
-  /**
-   * Logs Zod validation errors in a readable format using the `error` log level.
-   * @param error - The `ZodError` object to log.
-   */
-  zodErrors(error: ZodError): void {
-    const messages = formatZodErrors(error);
-    for (const message of messages) {
-      this.error(message as string & LogObj);
-    }
   }
 
   private getLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] {

@@ -3,5 +3,6 @@ export * from './createTsLogger';
 export * from './formatZodErrors';
 export * from './getLogLevelFromFlags';
 export * from './LogLevel';
+export * from './SafeLogger';
 export * from './TestLogger';
 export * from './types';
