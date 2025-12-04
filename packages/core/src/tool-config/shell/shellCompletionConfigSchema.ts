@@ -31,7 +31,18 @@ export const shellCompletionConfigSchema = z
      */
     cmd: z.string().min(1).optional(),
     /**
+     * Optional binary name for the completion file.
+     * When provided, shell-specific naming conventions are applied (e.g., `_bin` for Zsh, `bin.bash` for Bash).
+     * Use this when the tool filename differs from the binary name.
+     *
+     * @example
+     * // For a tool file named 'curl-script--fnm.tool.ts' with binary 'fnm'
+     * bin: 'fnm'  // Results in '_fnm' for zsh, 'fnm.bash' for bash
+     */
+    bin: z.string().optional(),
+    /**
      * Optional custom name for the installed completion script file.
+     * Overrides both the default naming and the `bin` option.
      * If not provided, defaults to shell-specific naming (e.g., `_toolName` for Zsh).
      *
      * @example

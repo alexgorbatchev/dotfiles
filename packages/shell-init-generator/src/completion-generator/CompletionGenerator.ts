@@ -88,7 +88,7 @@ export class CompletionGenerator implements ICompletionGenerator {
       context.toolInstallDir
     );
 
-    const filename = this.generateCompletionFilename(config.name, toolName, shellType);
+    const filename = this.generateCompletionFilename(config, toolName, shellType);
     const targetPath = this.resolveTargetPath(config.targetDir, shellType, context);
 
     return {
@@ -116,7 +116,7 @@ export class CompletionGenerator implements ICompletionGenerator {
       throw new Error(`Completion source file not found: ${sourcePath}`);
     }
 
-    const filename = this.generateCompletionFilename(config.name, toolName, shellType);
+    const filename = this.generateCompletionFilename(config, toolName, shellType);
     const targetPath = this.resolveTargetPath(config.targetDir, shellType, context);
 
     return {
@@ -158,20 +158,30 @@ export class CompletionGenerator implements ICompletionGenerator {
     return sourcePath;
   }
 
-  private generateCompletionFilename(customName: string | undefined, toolName: string, shellType: ShellType): string {
-    if (customName) {
-      return customName;
+  /**
+   * Generates the completion filename based on config and shell type.
+   *
+   * Priority order:
+   * 1. config.name - explicit full filename override
+   * 2. config.bin - binary name with shell-specific naming applied
+   * 3. toolName - fallback to tool name with shell-specific naming
+   */
+  private generateCompletionFilename(config: ShellCompletionConfig, toolName: string, shellType: ShellType): string {
+    if (config.name) {
+      return config.name;
     }
+
+    const baseName = config.bin ?? toolName;
 
     switch (shellType) {
       case 'zsh':
-        return `_${toolName}`;
+        return `_${baseName}`;
       case 'bash':
-        return `${toolName}.bash`;
+        return `${baseName}.bash`;
       case 'powershell':
-        return `${toolName}.ps1`;
+        return `${baseName}.ps1`;
       default:
-        return `${toolName}.${shellType}`;
+        return `${baseName}.${shellType}`;
     }
   }
 

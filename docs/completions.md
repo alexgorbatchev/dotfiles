@@ -20,6 +20,7 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 {
   source?: string,     // Path to completion file relative to extracted archive
   cmd?: string,        // Command to execute to generate completion content
+  bin?: string,        // Binary name for completion filename (when different from tool name)
   name?: string,       // Optional custom name for installed completion file
   targetDir?: string   // Optional custom installation directory (absolute path)
 }
@@ -41,7 +42,12 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
   - Example: `'my-tool completion zsh'` executes the tool's completion command
   - Example: `'kubectl completion bash'` generates Kubernetes completions
   - The command is executed in the tool's installation directory
-- **`name`**: Optional custom name for the installed completion file (defaults to `_<toolname>` for zsh)
+- **`bin`**: Binary name used for completion filename (defaults to tool name if not specified)
+  - Example: `bin: 'fnm'` results in `_fnm` for zsh, `fnm.bash` for bash
+  - Use this when the tool filename differs from the binary name (e.g., `curl-script--fnm.tool.ts` defines binary `fnm`)
+  - Shell-specific naming conventions are applied automatically
+- **`name`**: Optional custom name for the installed completion file (overrides `bin` and default naming)
+  - Example: `name: '_my-custom-name'` results in exactly `_my-custom-name`
 - **`targetDir`**: Optional custom installation directory using **absolute paths** with context variables
   - Example: `targetDir: \`\${ctx.homeDir}/.zsh/completions\``
   - If not specified, defaults to the shell-specific completion directory in your generated files
@@ -110,6 +116,22 @@ Use `cmd` when the tool can generate completions dynamically at installation tim
 .zsh((shell) => shell.completions({
   source: 'autocomplete/complete.zsh',
   name: '_my-tool'
+}));
+```
+
+### Binary Name Different from Tool Name
+
+When your tool file is named differently from the binary (e.g., `curl-script--fnm.tool.ts` for binary `fnm`):
+
+```typescript
+// The tool file is curl-script--fnm.tool.ts, but the binary is 'fnm'
+.zsh((shell) => shell.completions({ 
+  cmd: 'fnm completions --shell zsh',
+  bin: 'fnm'  // Results in '_fnm' instead of '_curl-script--fnm'
+}))
+.bash((shell) => shell.completions({ 
+  cmd: 'fnm completions --shell bash',
+  bin: 'fnm'  // Results in 'fnm.bash'
 }));
 ```
 

@@ -63,7 +63,17 @@ export interface IShellCompletionConfigOptions {
   cmd?: string;
 
   /**
+   * Binary name for the completion file.
+   * When provided, shell-specific naming conventions are applied (e.g., `_bin` for zsh, `bin.bash` for bash).
+   * Use this when the tool filename differs from the binary name.
+   *
+   * @example 'fnm'  // Results in '_fnm' for zsh, 'fnm.bash' for bash
+   */
+  bin?: string;
+
+  /**
    * Custom filename for the completion file after installation.
+   * Overrides both the default naming and the `bin` option.
    * Defaults to shell-specific naming conventions (e.g., `_toolname` for zsh, `toolname.bash` for bash).
    *
    * @example '_mytool'

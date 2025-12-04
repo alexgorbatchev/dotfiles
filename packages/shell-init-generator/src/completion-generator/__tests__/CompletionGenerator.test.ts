@@ -232,8 +232,81 @@ describe('CompletionGenerator', () => {
       homeDir: '/tmp/home',
     };
 
-    await expect(generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context)).rejects.toThrow(
+    expect(generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context)).rejects.toThrow(
       'Completion source file not found'
     );
+  });
+
+  test('should use bin for filename when provided and different from toolName', async () => {
+    const config: ShellCompletionConfig = {
+      cmd: 'echo "test completion"',
+      bin: 'fnm',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'curl-script--fnm',
+      toolInstallDir: realTempDir,
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const result = await generator.generateCompletionFile(config, 'curl-script--fnm', 'zsh', context);
+
+    expect(result.filename).toBe('_fnm');
+    expect(result.targetPath).toContain('completions/_fnm');
+  });
+
+  test('should use bin for bash and powershell filenames', async () => {
+    const config: ShellCompletionConfig = {
+      cmd: 'echo "test"',
+      bin: 'fd',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'github--fd',
+      toolInstallDir: realTempDir,
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const bashResult = await generator.generateCompletionFile(config, 'github--fd', 'bash', context);
+    expect(bashResult.filename).toBe('fd.bash');
+
+    const psResult = await generator.generateCompletionFile(config, 'github--fd', 'powershell', context);
+    expect(psResult.filename).toBe('fd.ps1');
+  });
+
+  test('should fallback to toolName when bin is not provided', async () => {
+    const config: ShellCompletionConfig = {
+      cmd: 'echo "test"',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'ripgrep',
+      toolInstallDir: realTempDir,
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const result = await generator.generateCompletionFile(config, 'ripgrep', 'zsh', context);
+    expect(result.filename).toBe('_ripgrep');
+  });
+
+  test('should prefer name over bin when both are provided', async () => {
+    const config: ShellCompletionConfig = {
+      cmd: 'echo "test"',
+      bin: 'fnm',
+      name: '_custom-name',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'curl-script--fnm',
+      toolInstallDir: realTempDir,
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const result = await generator.generateCompletionFile(config, 'curl-script--fnm', 'zsh', context);
+    expect(result.filename).toBe('_custom-name');
   });
 });
