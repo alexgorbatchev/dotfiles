@@ -6,11 +6,14 @@ import type { IFileSystem } from '@dotfiles/file-system';
  *
  * @param fs - The file system interface to use
  * @param dirPath - The directory to scan
- * @param baseDir - The base directory for calculating relative paths (defaults to dirPath)
+ * @param baseDir - The base directory for calculating relative paths. If provided, returns relative paths.
+ *                  If not provided (undefined), returns absolute paths.
  * @returns Array of file paths (absolute if baseDir is not provided, relative to baseDir otherwise)
  */
 export async function getAllFilesRecursively(fs: IFileSystem, dirPath: string, baseDir?: string): Promise<string[]> {
   const files: string[] = [];
+  // Track whether caller wants relative paths (baseDir was explicitly provided)
+  const wantsRelativePaths = baseDir !== undefined;
   const base = baseDir ?? dirPath;
   const entries = await fs.readdir(dirPath);
 
@@ -19,11 +22,12 @@ export async function getAllFilesRecursively(fs: IFileSystem, dirPath: string, b
     const stats = await fs.stat(fullPath);
 
     if (stats.isDirectory()) {
-      const subFiles = await getAllFilesRecursively(fs, fullPath, base);
+      // Always pass base to recursive calls, but preserve the "wants relative" intent
+      const subFiles = await getAllFilesRecursively(fs, fullPath, wantsRelativePaths ? base : undefined);
       files.push(...subFiles);
     } else {
-      // Return absolute paths if no baseDir, relative paths otherwise
-      const resultPath = baseDir ? path.relative(base, fullPath) : fullPath;
+      // Return relative paths only if caller explicitly requested them
+      const resultPath = wantsRelativePaths ? path.relative(base, fullPath) : fullPath;
       files.push(resultPath);
     }
   }
