@@ -1,4 +1,4 @@
-import { defineTool } from '../../packages/cli';
+import { defineTool } from '@dotfiles/cli';
 
 export default defineTool((install, _ctx) =>
   install('github-release', { repo: 'BurntSushi/ripgrep' })

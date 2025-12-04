@@ -1,4 +1,4 @@
-import { defineTool } from '../../../packages/cli';
+import { defineTool } from '@dotfiles/cli';
 
 export default defineTool((install) =>
   install('curl-script', {
@@ -8,7 +8,10 @@ export default defineTool((install) =>
   })
     .bin('fnm')
     .zsh((shell) =>
-      shell.completions({ cmd: 'fnm completions --shell zsh' }).always(/* zsh */ `
+      shell
+        //
+        .completions({ cmd: 'fnm completions --shell zsh' })
+        .always(/* zsh */ `
           # Initialize fnm with auto-use on cd
           eval "$(fnm env --use-on-cd)"
         `)
