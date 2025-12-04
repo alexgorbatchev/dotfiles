@@ -12,4 +12,7 @@ export const messages = {
     createSafeLogMessage(`Completion command failed for "${toolName}" [${command}] exit ${exitCode}: ${stderr}`),
   commandExecutionCompleted: (toolName: string, shellType: ShellType) =>
     createSafeLogMessage(`Completion command succeeded for "${toolName}" (shell: ${shellType})`),
+  symlinkCreated: (sourcePath: string, targetPath: string) =>
+    createSafeLogMessage(`Symlinked completion: ${sourcePath} -> ${targetPath}`),
+  sourceNotFound: (sourcePath: string) => createSafeLogMessage(`Completion source file not found: ${sourcePath}`),
 } satisfies SafeLogMessageMap;

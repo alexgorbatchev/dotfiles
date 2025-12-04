@@ -2,6 +2,8 @@ import path from 'node:path';
 import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import { getAllFilesRecursively } from '@dotfiles/utils';
+import { minimatch } from 'minimatch';
 import { CompletionCommandExecutor } from './CompletionCommandExecutor';
 import { messages } from './log-messages';
 import type {
@@ -41,7 +43,8 @@ export class CompletionGenerator implements ICompletionGenerator {
 
   /**
    * Generates and writes a completion file in one operation.
-   * This is a convenience method that combines generation and file writing.
+   * For command-based completions, writes the generated content to a file.
+   * For source-based completions, creates a symlink to the source file.
    */
   async generateAndWriteCompletionFile(
     config: ShellCompletionConfig,
@@ -51,9 +54,19 @@ export class CompletionGenerator implements ICompletionGenerator {
   ): Promise<IGeneratedCompletion> {
     const result = await this.generateCompletionFile(config, toolName, shellType, context);
 
-    // Write the completion file
     await this.fs.ensureDir(path.dirname(result.targetPath));
-    await this.fs.writeFile(result.targetPath, result.content);
+
+    if (result.generatedBy === 'source' && result.sourcePath) {
+      // For source-based completions, create a symlink
+      if (await this.fs.exists(result.targetPath)) {
+        await this.fs.rm(result.targetPath);
+      }
+      await this.fs.symlink(result.sourcePath, result.targetPath);
+      this.logger.debug(messages.symlinkCreated(result.sourcePath, result.targetPath));
+    } else {
+      // For command-based completions, write the content
+      await this.fs.writeFile(result.targetPath, result.content);
+    }
 
     return result;
   }
@@ -96,27 +109,53 @@ export class CompletionGenerator implements ICompletionGenerator {
       throw new Error(`Source not provided for ${toolName}`);
     }
 
-    const sourcePath = path.join(context.toolInstallDir, config.source);
+    const sourcePath = await this.resolveSourcePath(context.toolInstallDir, config.source, context.configFilePath);
 
-    try {
-      // TODO don't think real fs supposed to be used here
-      const fs = await import('node:fs/promises');
-      const content = await fs.readFile(sourcePath, 'utf-8');
-
-      const filename = this.generateCompletionFilename(config.name, toolName, shellType);
-      const targetPath = this.resolveTargetPath(config.targetDir, shellType, context);
-
-      return {
-        content,
-        filename,
-        targetPath: path.join(targetPath, filename),
-        generatedBy: 'source',
-      };
-    } catch (error: unknown) {
-      throw new Error(
-        `Failed to read completion source file for ${toolName}: ${sourcePath}\n${error instanceof Error ? error.message : String(error)}`
-      );
+    if (!(await this.fs.exists(sourcePath))) {
+      this.logger.warn(messages.sourceNotFound(sourcePath));
+      throw new Error(`Completion source file not found: ${sourcePath}`);
     }
+
+    const filename = this.generateCompletionFilename(config.name, toolName, shellType);
+    const targetPath = this.resolveTargetPath(config.targetDir, shellType, context);
+
+    return {
+      content: '', // No content needed for symlink-based completions
+      filename,
+      targetPath: path.join(targetPath, filename),
+      generatedBy: 'source',
+      sourcePath,
+    };
+  }
+
+  /**
+   * Resolves the source path for a completion file.
+   *
+   * Supports glob patterns (*, ?, []) for flexible file matching.
+   * Falls back to config file directory if not found in install directory.
+   */
+  private async resolveSourcePath(installDir: string, source: string, configFilePath?: string): Promise<string> {
+    // If source contains glob patterns, resolve using minimatch
+    if (source.includes('*') || source.includes('?') || source.includes('[')) {
+      const allFiles = await getAllFilesRecursively(this.fs, installDir, installDir);
+      const matched = allFiles.find((file) => minimatch(file, source));
+      if (matched) {
+        return path.join(installDir, matched);
+      }
+    }
+
+    let sourcePath = path.join(installDir, source);
+
+    // If not found in installDir, try relative to config file
+    if (!(await this.fs.exists(sourcePath)) && configFilePath) {
+      const configDir = path.dirname(configFilePath);
+      const localPath = path.resolve(configDir, source);
+      if (await this.fs.exists(localPath)) {
+        sourcePath = localPath;
+      }
+    }
+
+    return sourcePath;
   }
 
   private generateCompletionFilename(customName: string | undefined, toolName: string, shellType: ShellType): string {

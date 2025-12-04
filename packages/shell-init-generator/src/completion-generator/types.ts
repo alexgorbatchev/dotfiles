@@ -5,13 +5,18 @@ export interface ICompletionGenerationContext {
   toolInstallDir: string;
   shellScriptsDir: string;
   homeDir: string;
+  /** Optional path to the tool's config file, used for resolving relative source paths */
+  configFilePath?: string;
 }
 
 export interface IGeneratedCompletion {
+  /** Content of completion file (only set for command-based completions) */
   content: string;
   filename: string;
   targetPath: string;
   generatedBy: 'command' | 'source';
+  /** Source path for symlink (only set for source-based completions) */
+  sourcePath?: string;
 }
 
 export interface ICompletionCommandExecutor {

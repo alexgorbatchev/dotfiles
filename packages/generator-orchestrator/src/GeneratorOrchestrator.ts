@@ -125,6 +125,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       const shellConfig = resolvedConfig.shellConfigs?.[shellType];
       const completionConfig = shellConfig?.completions;
 
+      // Handle both command-based and source-based completions
       if (completionConfig?.cmd || completionConfig?.source) {
         try {
           const installDir = path.join(this.projectConfig.paths.binariesDir, toolName);
@@ -134,6 +135,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
             shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
             toolInstallDir: installDir,
             toolName,
+            configFilePath: toolConfig.configFilePath,
           };
 
           await this.completionGenerator.generateAndWriteCompletionFile(completionConfig, toolName, shellType, context);

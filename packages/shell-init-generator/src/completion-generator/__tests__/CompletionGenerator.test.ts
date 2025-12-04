@@ -161,4 +161,79 @@ describe('CompletionGenerator', () => {
     const fileContent = await memFs.fs.readFile('/custom/dir/my-tool.bash');
     expect(fileContent).toBe('test completion\n');
   });
+
+  test('generateAndWriteCompletionFile should create symlink for source-based completions', async () => {
+    // Create source completion file in the install directory
+    const sourceDir = '/install/tool/completions';
+    const sourcePath = `${sourceDir}/_my-tool`;
+    await memFs.fs.ensureDir(sourceDir);
+    await memFs.fs.writeFile(sourcePath, '# completion content');
+
+    const config: ShellCompletionConfig = {
+      source: 'completions/_my-tool',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'my-tool',
+      toolInstallDir: '/install/tool',
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const result = await generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context);
+
+    expect(result.generatedBy).toBe('source');
+    expect(result.sourcePath).toBe(sourcePath);
+
+    // Verify symlink was created (not a regular file)
+    const targetPath = '/tmp/shell-scripts/zsh/completions/_my-tool';
+    const linkTarget = await memFs.fs.readlink(targetPath);
+    expect(linkTarget).toBe(sourcePath);
+  });
+
+  test('generateAndWriteCompletionFile should resolve glob patterns for source completions', async () => {
+    // Create source completion file with version in path
+    const sourceDir = '/install/tool/ripgrep-1.0.0/complete';
+    const sourcePath = `${sourceDir}/_rg`;
+    await memFs.fs.ensureDir(sourceDir);
+    await memFs.fs.writeFile(sourcePath, '# rg completion');
+
+    const config: ShellCompletionConfig = {
+      source: '**/complete/_rg',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'rg',
+      toolInstallDir: '/install/tool',
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    const result = await generator.generateAndWriteCompletionFile(config, 'rg', 'zsh', context);
+
+    expect(result.generatedBy).toBe('source');
+    expect(result.sourcePath).toBe(sourcePath);
+
+    // Verify symlink was created
+    const targetPath = '/tmp/shell-scripts/zsh/completions/_rg';
+    const linkTarget = await memFs.fs.readlink(targetPath);
+    expect(linkTarget).toBe(sourcePath);
+  });
+
+  test('generateAndWriteCompletionFile should throw for missing source file', async () => {
+    const config: ShellCompletionConfig = {
+      source: 'nonexistent/_completion',
+    };
+
+    const context: ICompletionGenerationContext = {
+      toolName: 'my-tool',
+      toolInstallDir: '/install/tool',
+      shellScriptsDir: '/tmp/shell-scripts',
+      homeDir: '/tmp/home',
+    };
+
+    await expect(generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context)).rejects.toThrow(
+      'Completion source file not found'
+    );
+  });
 });
