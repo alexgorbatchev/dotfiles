@@ -82,14 +82,7 @@ describe('installFromBrew', () => {
       toolConfig: toolConfig,
     } as unknown as InstallContext;
 
-    const result = await installFromBrew(
-      'test-tool',
-      toolConfig,
-      context,
-      undefined,
-      logger,
-      mockShell
-    );
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
     if (!result.success) {
       throw new Error(`Install failed: ${result.error}`);
@@ -147,14 +140,7 @@ describe('installFromBrew', () => {
     // prefix is /opt/homebrew/opt/test-tool
     // binary path will be /opt/homebrew/opt/test-tool/bin/test-tool
 
-    const result = await installFromBrew(
-      'test-tool',
-      toolConfig,
-      context,
-      undefined,
-      logger,
-      mockShell
-    );
+    const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
     if (!result.success) {
       throw new Error(`Install failed: ${result.error}`);

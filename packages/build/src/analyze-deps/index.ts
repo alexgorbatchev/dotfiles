@@ -189,4 +189,5 @@ async function main() {
   printDependencyTree(packageInfos);
 }
 
+// biome-ignore lint/suspicious/noConsole: build script
 main().catch(console.error);

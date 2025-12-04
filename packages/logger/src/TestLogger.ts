@@ -4,13 +4,12 @@ import { type ILogObj, type ILogObjMeta, type ISettingsParam, Logger } from 'tsl
 import type { ZodError } from 'zod';
 import { formatZodErrors } from './formatZodErrors';
 
-export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
-
 /**
  * Defines the log levels available for filtering in `TestLogger`.
  * The `'*'` level can be used to match all log levels.
  * @public
  */
+export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
 /**
  * An extended logger for testing purposes that captures log messages in memory.
@@ -164,6 +163,7 @@ export class TestLogger<LogObj = ILogObj> extends Logger<LogObj> {
     const logs = this.getLogs(levels, path, matcher);
     for (const log of logs) {
       const { _meta, ...rest } = log;
+      // biome-ignore lint/suspicious/noConsole: needed for debugging
       console.log(JSON.stringify(rest));
     }
   }

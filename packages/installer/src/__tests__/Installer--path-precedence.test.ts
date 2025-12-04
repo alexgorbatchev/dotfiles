@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -136,15 +137,10 @@ describe('Installer - Path Precedence (Real FS)', () => {
         installParams: {},
       } as unknown as ToolConfig);
 
-      if (!result.success) {
-        console.error('Install failed:', result.error);
-      }
+      assert.ok(result.success);
 
-      expect(result.success).toBe(true);
       // Verify that the output came from the real binary, not the shim
-      if (result.success) {
-        expect((result.metadata as { output?: string }).output).toBe('REAL_BINARY');
-      }
+      expect((result.metadata as { output?: string }).output).toBe('REAL_BINARY');
     } finally {
       process.env['PATH'] = originalPath;
     }

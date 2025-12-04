@@ -23,6 +23,8 @@
  *   bun run build
  */
 
+/** biome-ignore-all lint/suspicious/noConsole: build script */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { $ } from 'bun';

@@ -81,7 +81,7 @@ export async function installFromBrew(
         shellExecutor,
       });
     } else {
-      version = await getBrewVersion(formula, logger, shellExecutor) ?? undefined;
+      version = (await getBrewVersion(formula, logger, shellExecutor)) ?? undefined;
     }
 
     const metadata: IBrewInstallMetadata = {

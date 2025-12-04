@@ -150,6 +150,7 @@ export function registerFilesCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
   servicesFactory: () => Promise<IServices>,
+  // biome-ignore lint/suspicious/noConsole: default print function
   print: PrintFunction = console.log
 ): void {
   const logger = parentLogger.getSubLogger({ name: 'registerFilesCommand' });

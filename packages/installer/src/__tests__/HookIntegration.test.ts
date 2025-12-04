@@ -83,7 +83,9 @@ describe('Hook Integration Tests', () => {
       const toolDir = `${setup.testDirs.paths.binariesDir}/example-tool`;
       const toolDirContents = await setup.fs.readdir(toolDir);
       // Version directory should be '1.0.0' from the resolved tag_name
-      const versionDir = toolDirContents.find((name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      const versionDir = toolDirContents.find(
+        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/)
+      );
       expect(versionDir).toBeDefined();
 
       // Verify hook created the expected files and directories
@@ -97,7 +99,7 @@ describe('Hook Integration Tests', () => {
       expect(await setup.fs.exists(configFile)).toBe(true);
       const configContent = await setup.fs.readFile(configFile, 'utf-8');
       expect(configContent).toContain('Default configuration for example-tool');
-      expect(configContent).toContain(`install_dir: ${path.join(toolDir, versionDir!)}`);;
+      expect(configContent).toContain(`install_dir: ${path.join(toolDir, versionDir!)}`);
     });
 
     it('should handle post-extraction binary organization hook', async () => {
@@ -192,7 +194,9 @@ describe('Hook Integration Tests', () => {
       const toolDirContents = await setup.fs.readdir(toolDir);
 
       // Version directory should be '1.0.0' from the resolved tag_name
-      const versionDir = toolDirContents.find((name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      const versionDir = toolDirContents.find(
+        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/)
+      );
       if (!versionDir) {
         throw new Error(`No version directory found in: ${toolDirContents}`);
       }
@@ -293,7 +297,9 @@ describe('Hook Integration Tests', () => {
       const toolDir = `${setup.testDirs.paths.binariesDir}/source-tool`;
       const toolDirContents = await setup.fs.readdir(toolDir);
       // Version directory should be '1.0.0' from the resolved tag_name
-      const versionDir = toolDirContents.find((name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/));
+      const versionDir = toolDirContents.find(
+        (name) => name === '1.0.0' || name.match(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$/)
+      );
       expect(versionDir).toBeDefined();
 
       // Verify hook performed the expected build operations
