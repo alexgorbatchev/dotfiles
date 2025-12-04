@@ -163,6 +163,66 @@ export function withMockServer(): void {
             headers: { 'Content-Type': 'application/x-sh' },
           });
         },
+
+        // Mock install script for version detection tests
+        '/mock-install-version-detection-with-args.sh': () => {
+          const scriptPath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'version-detection--with-args',
+            'mock-install.sh'
+          );
+          return new Response(Bun.file(scriptPath), {
+            headers: { 'Content-Type': 'application/x-sh' },
+          });
+        },
+
+        // Mock install script for version detection tests (default args)
+        '/mock-install-version-detection-default-args.sh': () => {
+          const scriptPath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'version-detection--default-args',
+            'mock-install.sh'
+          );
+          return new Response(Bun.file(scriptPath), {
+            headers: { 'Content-Type': 'application/x-sh' },
+          });
+        },
+
+        // Mock install script for version detection tests
+        '/mock-install-version-detection-test.sh': () => {
+          const scriptPath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'version-detection-test',
+            'mock-install-version-detection-test.sh'
+          );
+          return new Response(Bun.file(scriptPath), {
+            headers: { 'Content-Type': 'application/x-sh' },
+          });
+        },
+
+        // Mock install script for version detection tests (no parseable version)
+        '/mock-install-version-detection-no-version.sh': () => {
+          const scriptPath = path.join(
+            import.meta.dir,
+            '__tests__',
+            'fixtures',
+            'tools',
+            'version-detection--no-version',
+            'mock-install.sh'
+          );
+          return new Response(Bun.file(scriptPath), {
+            headers: { 'Content-Type': 'application/x-sh' },
+          });
+        },
       },
       fetch() {
         return new Response('Not Found', { status: 404 });

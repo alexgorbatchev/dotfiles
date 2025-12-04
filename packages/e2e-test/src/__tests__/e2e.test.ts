@@ -14,6 +14,7 @@ import {
   installScenarios,
   typeSafetyScenarios,
   updateScenarios,
+  versionDetectionScenarios,
 } from '../helpers';
 import { TestHarness } from '../TestHarness';
 import { withMockServer } from '../withMockServer';
@@ -44,6 +45,7 @@ describe('E2E: Dotfiles CLI', () => {
         updateScenarios(harness);
         completionScenarios(harness);
         installScenarios(harness);
+        versionDetectionScenarios(harness);
       });
 
       filesScenarios(harness);
