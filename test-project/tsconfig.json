@@ -1,7 +1,7 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["./.generated/tool-types.d.ts"]
+    "types": [".generated/tool-types.d.ts"]
   },
   "include": ["tools", ".generated/tool-types.d.ts"]
 }

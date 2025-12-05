@@ -23,29 +23,45 @@ type ConfigureToolFnResult =
   | undefined
   | Promise<ToolConfig | ToolConfigBuilderContract | undefined>;
 
-type ConfigureToolFn = (install: InstallFunction, ctx: IToolConfigContext) => ConfigureToolFnResult;
-
 /**
  * Define a tool configuration with type-safe install method selection.
  *
  * The install function is provided as the first parameter, allowing you to
  * select the installer method and provide type-checked parameters upfront.
  *
- * @param fn - Configuration function receiving InstallFunction and context
+ * @param fn - Configuration callback that receives:
+ *   - `install` - Function to select installer method. Call with method name and params,
+ *     or call with no args for manual tools. Returns a fluent builder.
+ *   - `ctx` - Context with paths (toolDir, homeDir, binDir, dotfilesDir) and system info.
+ *
  * @returns Async function compatible with tool loading system
  *
  * @example
+ * ```ts
  * export default defineTool((install, ctx) =>
  *   install('github-release', { repo: 'BurntSushi/ripgrep' })
- *     .bin('rg').version('14.0.0')
+ *     .bin('rg')
+ *     .version('14.0.0')
  * );
- *
- * @example Manual tool (no installation)
- * export default defineTool((install, ctx) =>
- *   install().bin('existing-tool')
- * );
+ * ```
  */
-export function defineTool(fn: ConfigureToolFn): AsyncConfigureTool {
+export function defineTool(
+  fn: (
+    /**
+     * Function to select the installation method and provide type-checked parameters.
+     * Call with a method name and params for installers, or call with no args for manual tools.
+     * Returns a fluent builder to configure binaries, versions, hooks, and shell settings.
+     * 
+     * @inheritdoc
+     */
+    install: InstallFunction,
+    /**
+     * Context object providing access to paths, configuration, and system information.
+     * Includes toolName, toolDir, homeDir, binDir, dotfilesDir, and more.
+     */
+    ctx: IToolConfigContext
+  ) => ConfigureToolFnResult
+): AsyncConfigureTool {
   return async (
     install: InstallFunction,
     ctx: IToolConfigContext

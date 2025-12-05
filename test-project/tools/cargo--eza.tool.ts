@@ -2,7 +2,8 @@ import { defineTool } from '@dotfiles/cli';
 
 export default defineTool((install, _ctx) =>
   install('cargo', { crateName: 'eza' })
-    //
+    .bin('eza')
+    .dependsOn('fnm')
     .zsh((shell) =>
       shell
         .aliases({

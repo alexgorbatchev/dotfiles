@@ -200,13 +200,35 @@ export type HookEventName = 'before-install' | PluginEmittedHookEvent | 'after-i
  * Returned by InstallFunction after selecting installer method.
  */
 export interface IToolConfigBuilder {
+  /**
+   * Define a binary that this tool provides.
+   * @param name - The name of the binary executable
+   * @param pattern - Optional glob pattern to locate the binary within extracted archives
+   */
   bin(name: string, pattern?: string): this;
+
+  /**
+   * Set a specific version for this tool.
+   * @param version - The version string (e.g., "1.2.3", "latest")
+   */
   version(version: string): this;
+
+  /**
+   * Declare binary dependencies that must be installed before this tool.
+   *
+   * During generation, the system:
+   * 1. Builds a dependency graph mapping binaries to their provider tools
+   * 2. Validates that all dependencies exist and are unambiguous
+   * 3. Detects circular dependencies and platform mismatches
+   * 4. Topologically sorts tools so dependencies are processed first
+   *
+   * @param binaryNames - Names of binaries this tool depends on (from other tools' `.bin()` calls)
+   */
   dependsOn(...binaryNames: KnownBinName[]): this;
+
   /**
    * Attach a hook handler to a specific lifecycle event.
    * Multiple handlers can be added by calling this method multiple times with the same event name.
-   *
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
@@ -215,33 +237,93 @@ export interface IToolConfigBuilder {
   hook(event: 'after-extract', handler: AsyncInstallHook<IExtractContext>): this;
   hook(event: 'after-install', handler: AsyncInstallHook<IAfterInstallContext>): this;
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
+
+  /**
+   * Configure zsh shell initialization for this tool.
+   * @param callback - Function that receives shell configurator to add paths, aliases, env vars
+   */
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+
+  /**
+   * Configure bash shell initialization for this tool.
+   * @param callback - Function that receives shell configurator to add paths, aliases, env vars
+   */
   bash(callback: ShellConfiguratorCallback): this;
   bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+
+  /**
+   * Configure PowerShell initialization for this tool.
+   * @param callback - Function that receives shell configurator to add paths, aliases, env vars
+   */
   powershell(callback: ShellConfiguratorCallback): this;
   powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+
+  /**
+   * Create a symbolic link from source to target.
+   * @param source - The source path (what to link from)
+   * @param target - The target path (where to create the symlink)
+   */
   symlink(source: string, target: string): this;
+
+  /**
+   * Add platform-specific configuration overrides.
+   * @param platforms - Target platform(s): 'macos', 'linux', 'windows', or array
+   * @param configure - Function to configure platform-specific settings
+   */
   platform(platforms: Platform, configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder): this;
+
+  /**
+   * Add platform and architecture-specific configuration overrides.
+   * @param platforms - Target platform(s): 'macos', 'linux', 'windows', or array
+   * @param architectures - Target architecture(s): 'x64', 'arm64', or array
+   * @param configure - Function to configure platform-specific settings
+   */
   platform(
     platforms: Platform,
     architectures: Architecture,
     configure: (install: IPlatformInstallFunction) => IPlatformConfigBuilder
   ): this;
+
+  /**
+   * Finalize and build the tool configuration.
+   * Call this as the last method in the chain.
+   * @returns The complete ToolConfig object
+   */
   build(): ToolConfig;
 }
 
 /**
  * Platform-specific configuration builder.
+ * Used within `.platform()` calls to configure platform-specific overrides.
  */
 export interface IPlatformConfigBuilder {
+  /**
+   * Define a binary that this tool provides on this platform.
+   * @param name - The name of the binary executable
+   * @param pattern - Optional glob pattern to locate the binary within extracted archives
+   */
   bin(name: string, pattern?: string): this;
+
+  /**
+   * Set a specific version for this tool on this platform.
+   * @param version - The version string (e.g., "1.2.3", "latest")
+   */
   version(version: string): this;
+
+  /**
+   * Declare binary dependencies for this platform.
+   *
+   * During generation, the system validates dependencies exist and orders tools
+   * so that dependencies are processed first.
+   *
+   * @param binaryNames - Names of binaries this tool depends on (from other tools' `.bin()` calls)
+   */
   dependsOn(...binaryNames: KnownBinName[]): this;
+
   /**
    * Attach a hook handler to a specific lifecycle event.
    * Multiple handlers can be added by calling this method multiple times with the same event name.
-   *
    * @param event - The lifecycle event name (kebab-case)
    * @param handler - The async hook function to execute
    */
@@ -250,12 +332,33 @@ export interface IPlatformConfigBuilder {
   hook(event: 'after-extract', handler: AsyncInstallHook<IExtractContext>): this;
   hook(event: 'after-install', handler: AsyncInstallHook<IAfterInstallContext>): this;
   hook(event: HookEventName, handler: AsyncInstallHook<never>): this;
+
+  /**
+   * Configure zsh shell initialization for this platform.
+   * @param callback - Function that receives shell configurator
+   */
   zsh(callback: ShellConfiguratorCallback): this;
   zsh(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+
+  /**
+   * Configure bash shell initialization for this platform.
+   * @param callback - Function that receives shell configurator
+   */
   bash(callback: ShellConfiguratorCallback): this;
   bash(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+
+  /**
+   * Configure PowerShell initialization for this platform.
+   * @param callback - Function that receives shell configurator
+   */
   powershell(callback: ShellConfiguratorCallback): this;
   powershell(callback: ShellConfiguratorAsyncCallback): Promise<this>;
+
+  /**
+   * Create a symbolic link from source to target.
+   * @param source - The source path (what to link from)
+   * @param target - The target path (where to create the symlink)
+   */
   symlink(source: string, target: string): this;
 }
 
