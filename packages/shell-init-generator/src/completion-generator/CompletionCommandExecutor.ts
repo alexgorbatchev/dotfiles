@@ -17,7 +17,7 @@ export class CompletionCommandExecutor implements ICompletionCommandExecutor {
     shellType: ShellType,
     workingDir: string
   ): Promise<string> {
-    const logger = this.logger.getSubLogger({ name: 'executeCompletionCommand' });
+    const logger = this.logger.getSubLogger({ name: 'executeCompletionCommand' }).setPrefix(toolName);
     logger.debug(messages.commandExecutionStarted(toolName, cmd, shellType));
 
     try {

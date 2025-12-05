@@ -1,4 +1,5 @@
 import type { IOperationFailure, IOperationSuccess, ToolConfig } from '@dotfiles/core';
+import type { TsLogger } from '@dotfiles/logger';
 
 /**
  * Options for generating symlinks.
@@ -71,7 +72,8 @@ export interface ISymlinkGenerator {
    * Creates a single binary symlink with validation.
    * @param sourcePath The absolute path to the source binary.
    * @param targetPath The absolute path where the symlink will be created.
+   * @param logger Optional logger to use instead of the default. Useful for tool-specific context.
    * @returns A promise that resolves when the symlink is created or validated.
    */
-  createBinarySymlink(sourcePath: string, targetPath: string): Promise<void>;
+  createBinarySymlink(sourcePath: string, targetPath: string, logger?: TsLogger): Promise<void>;
 }

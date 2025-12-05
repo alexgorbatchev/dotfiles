@@ -36,6 +36,19 @@ subLogger.debug(messages.downloading()); // Output: [myTool] Downloading...
 - **Context subloggers** (`{ context: 'toolName' }`) add a `[context]` prefix to messages without creating a new hierarchy level
 - Context is inherited by child subloggers automatically
 
+### Setting Prefix Dynamically
+
+When you need to set the prefix within a method that knows the context (e.g., `toolName`), use `setPrefix()`:
+
+```typescript
+async processForTool(toolName: string) {
+  const logger = this.logger.getSubLogger({ name: 'processForTool' }).setPrefix(toolName);
+  logger.debug(messages.processing()); // Output: [toolName] Processing...
+}
+```
+
+This is useful when the context isn't known at construction time but is available at runtime.
+
 ## Package-Specific Log Messages
 
 To ensure strong module encapsulation and maintainability, every feature package **MUST** co-locate its own log messages in a `log-messages.ts` file. This file should live directly beside the feature's primary source file(s).

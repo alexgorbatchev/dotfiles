@@ -65,6 +65,7 @@ export class CurlScriptInstallerPlugin
     context: InstallContext,
     options?: IInstallOptions
   ): Promise<InstallResult<ICurlScriptInstallMetadata>> {
+    const toolLogger = this.logger.getSubLogger({ context: toolName });
     const result = await installFromCurlScript(
       toolName,
       toolConfig,
@@ -73,7 +74,7 @@ export class CurlScriptInstallerPlugin
       this.fs,
       this.downloader,
       this.hookExecutor,
-      this.logger
+      toolLogger
     );
 
     if (!result.success) {

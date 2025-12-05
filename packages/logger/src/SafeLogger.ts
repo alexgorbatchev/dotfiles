@@ -102,4 +102,23 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
       this.error(message as SafeLogMessage);
     }
   }
+
+  /**
+   * Sets the prefix for this logger instance.
+   * The prefix is prepended to all log messages.
+   *
+   * @param context - A context string to set as the prefix (will be wrapped as `[context]`)
+   * @returns This logger instance for chaining
+   *
+   * @example
+   * ```typescript
+   * const logger = parentLogger.getSubLogger({ name: 'method' });
+   * logger.setPrefix('toolName');
+   * logger.info(messages.installing()); // Output: [toolName] Installing...
+   * ```
+   */
+  setPrefix(context: string): this {
+    this.settings.prefix = [formatContext(context)];
+    return this;
+  }
 }

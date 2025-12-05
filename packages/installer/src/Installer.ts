@@ -685,7 +685,7 @@ export class Installer implements IInstaller {
       const symlinkPath = path.join(toolDir, binaryName);
 
       try {
-        await this.symlinkGenerator.createBinarySymlink(binaryPath, symlinkPath);
+        await this.symlinkGenerator.createBinarySymlink(binaryPath, symlinkPath, logger);
       } catch (error) {
         logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
         throw error;

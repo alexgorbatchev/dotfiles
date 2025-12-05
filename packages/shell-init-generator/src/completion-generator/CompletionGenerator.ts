@@ -30,7 +30,8 @@ export class CompletionGenerator implements ICompletionGenerator {
     shellType: ShellType,
     context: ICompletionGenerationContext
   ): Promise<IGeneratedCompletion> {
-    this.logger.debug(messages.generationStarted(toolName, shellType));
+    const logger = this.logger.getSubLogger({ name: 'generateCompletionFile' }).setPrefix(toolName);
+    logger.debug(messages.generationStarted(toolName, shellType));
 
     if (config.cmd) {
       return this.generateFromCommand(config, toolName, shellType, context);
