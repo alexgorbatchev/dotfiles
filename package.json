@@ -46,7 +46,8 @@
     "find-unused": "bun packages/build/src/unused-analyzer/analyze.ts",
     "release-next": "bun run version && bun run release && bun run publish",
     "test:agent": "AGENT=1 bun test",
-    "cli": "bun run ./cli.ts"
+    "cli": "bun run ./cli.ts",
+    "check": "bun lint && bun typecheck && bun test"
   },
   "type": "module",
   "workspaces": [
