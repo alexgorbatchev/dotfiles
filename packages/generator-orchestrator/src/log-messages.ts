@@ -34,7 +34,5 @@ export const messages = {
       createSafeLogMessage(`Skipping completion generation for ${toolName} (${shellType}) - tool not installed yet`),
     symlinkGenerationComplete: (resultCount: number) =>
       createSafeLogMessage(`Symlink generation completed with ${resultCount} operations recorded`),
-    completed: (context?: string) =>
-      createSafeLogMessage(`Generator orchestration complete${context ? ` (${context})` : ''}`),
   } satisfies SafeLogMessageMap,
 } as const;

@@ -64,7 +64,7 @@ export class ShimGenerator implements IShimGenerator {
    * @inheritdoc IShimGenerator.generateForTool
    */
   async generateForTool(toolName: string, toolConfig: ToolConfig, options?: IGenerateShimsOptions): Promise<string[]> {
-    const logger = this.logger.getSubLogger({ name: 'generateForTool' });
+    const logger = this.logger.getSubLogger({ name: 'generateForTool', context: toolName });
     // Create a tool-specific TrackedFileSystem if we have a TrackedFileSystem instance
     const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
 

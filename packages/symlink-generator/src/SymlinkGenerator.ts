@@ -110,11 +110,12 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         continue;
       }
 
+      const toolLogger = logger.getSubLogger({ context: toolName });
       const toolFs = this.fs instanceof TrackedFileSystem ? this.fs.withToolName(toolName) : this.fs;
-      logger.debug(messages.generate.processingTool(toolName));
+      toolLogger.debug(messages.generate.processingTool(toolName));
 
       for (const symlinkConfig of toolConfig.symlinks) {
-        const result = await this.processSymlink(toolConfig, symlinkConfig, toolFs, options, logger);
+        const result = await this.processSymlink(toolConfig, symlinkConfig, toolFs, options, toolLogger);
         results.push(result);
       }
     }

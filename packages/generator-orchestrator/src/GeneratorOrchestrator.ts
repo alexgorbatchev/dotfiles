@@ -1,7 +1,6 @@
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type {
   ICompletionGenerationContext,
@@ -30,7 +29,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly shellInitGenerator: IShellInitGenerator;
   private readonly symlinkGenerator: ISymlinkGenerator;
   private readonly completionGenerator: ICompletionGenerator;
-  private readonly fs: IFileSystem;
   private readonly systemInfo: ISystemInfo;
   private readonly projectConfig: ProjectConfig;
 
@@ -42,7 +40,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * @param shellInitGenerator - The shell initialization generator service.
    * @param symlinkGenerator - The symlink generator service.
    * @param completionGenerator - The completion generator service.
-   * @param fs - The file system interface for file operations.
    * @param systemInfo - System information for platform-specific operations.
    * @param projectConfig - Project configuration containing paths and settings.
    */
@@ -52,7 +49,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     shellInitGenerator: IShellInitGenerator,
     symlinkGenerator: ISymlinkGenerator,
     completionGenerator: ICompletionGenerator,
-    fs: IFileSystem,
     systemInfo: ISystemInfo,
     projectConfig: ProjectConfig
   ) {
@@ -63,7 +59,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.shellInitGenerator = shellInitGenerator;
     this.symlinkGenerator = symlinkGenerator;
     this.completionGenerator = completionGenerator;
-    this.fs = fs;
     this.systemInfo = systemInfo;
     this.projectConfig = projectConfig;
   }
@@ -73,7 +68,6 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    */
   async generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
-    const fileSystemName = this.fs.constructor.name;
 
     const orderedToolConfigs: Record<string, ToolConfig> = orderToolConfigsByDependencies(
       this.logger,
@@ -109,15 +103,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     );
     const symlinkResultCount = symlinkResults?.length ?? 0;
     logger.debug(messages.generateAll.symlinkGenerationComplete(symlinkResultCount));
-
-    logger.debug(messages.generateAll.completed(fileSystemName));
   }
 
   /**
    * @inheritdoc IGeneratorOrchestrator.generateCompletionsForTool
    */
   async generateCompletionsForTool(toolName: string, toolConfig: ToolConfig): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'generateCompletionsForTool' });
+    const logger = this.logger.getSubLogger({ name: 'generateCompletionsForTool', context: toolName });
     const resolvedConfig = resolvePlatformConfig(toolConfig, this.systemInfo);
     const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
 

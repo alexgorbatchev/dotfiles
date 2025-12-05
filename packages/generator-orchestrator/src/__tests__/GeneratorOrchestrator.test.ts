@@ -90,7 +90,6 @@ describe('GeneratorOrchestrator', () => {
       mockShellInitGenerator,
       mockSymlinkGenerator,
       mockCompletionGenerator,
-      fs,
       systemInfo,
       mockProjectConfig
     );

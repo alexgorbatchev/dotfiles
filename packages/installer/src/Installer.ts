@@ -416,7 +416,7 @@ export class Installer implements IInstaller {
    */
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multiple stages require sequential checks
   async install(toolName: string, toolConfig: ToolConfig, options?: IInstallOptions): Promise<InstallResult> {
-    const logger = this.logger.getSubLogger({ name: 'install' });
+    const logger = this.logger.getSubLogger({ name: 'install', context: toolName });
 
     // Resolve platform-specific configuration
     const systemInfo = this.getSystemInfo();

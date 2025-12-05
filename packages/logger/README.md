@@ -5,10 +5,36 @@ The `@dotfiles/logger` package provides a robust, type-safe, and structured logg
 ## Core Components
 
 - **`createTsLogger`**: A factory function that creates a `tslog` logger instance, pre-configured with project-specific settings. It returns a `SafeLogger`.
-- **`SafeLogger`**: A custom logger class that extends `tslog`'s `Logger`. It enforces that all log messages are of type `SafeLogMessage`, preventing the use of raw strings.
+- **`SafeLogger`**: A custom logger class that extends `tslog`'s `Logger`. It enforces that all log messages are of type `SafeLogMessage`, preventing the use of raw strings. Supports context strings that are prepended to log messages as `[context]`.
 - **`SafeLogMessage`**: A branded string type that represents a message that is safe for logging. This is the cornerstone of the type-safe logging system.
 - **`TestLogger`**: An extension of the logger designed for testing. It captures log messages in memory, allowing assertions on logs emitted during a test run.
 - **Log Levels**: Defines standard log levels (`TRACE`, `VERBOSE`, `DEFAULT`, `QUIET`) and provides helpers like `parseLogLevel` and `getLogLevelFromFlags`.
+
+## Logger Context
+
+SafeLogger supports a `context` option that prepends a `[context]` prefix to all log messages. This is useful for adding contextual information like tool names to log output.
+
+### Creating a Logger with Context
+
+```typescript
+import { createTsLogger } from '@dotfiles/logger';
+
+const logger = createTsLogger({ name: 'MyApp' });
+
+// Create a sublogger with context - all logs will have [myTool] prefix
+const toolLogger = logger.getSubLogger({ context: 'myTool' });
+toolLogger.info(messages.installing()); // Output: [myTool] Installing tool...
+
+// Context can be combined with named subloggers
+const subLogger = toolLogger.getSubLogger({ name: 'download' });
+subLogger.debug(messages.downloading()); // Output: [myTool] Downloading...
+```
+
+### Context vs Named Subloggers
+
+- **Named subloggers** (`{ name: 'methodName' }`) create a hierarchy for log path filtering (e.g., `['MyApp', 'download']`)
+- **Context subloggers** (`{ context: 'toolName' }`) add a `[context]` prefix to messages without creating a new hierarchy level
+- Context is inherited by child subloggers automatically
 
 ## Package-Specific Log Messages
 

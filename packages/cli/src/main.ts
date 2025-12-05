@@ -236,12 +236,15 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const registryDatabase = new RegistryDatabase(parentLogger, registryPath);
   const db = registryDatabase.getConnection();
 
+  // Create system-context logger for registry operations
+  const registryLogger = parentLogger.getSubLogger({ context: 'system' });
+
   // Initialize file registry with shared database connection
-  const fileRegistry = new FileRegistry(parentLogger, db);
+  const fileRegistry = new FileRegistry(registryLogger, db);
   parentLogger.debug(messages.registryInitialized(registryPath));
 
   // Initialize tool installation registry with shared database connection
-  const toolInstallationRegistry = new ToolInstallationRegistry(parentLogger, db);
+  const toolInstallationRegistry = new ToolInstallationRegistry(registryLogger, db);
 
   // Initialize services with projectConfig
   const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
@@ -273,19 +276,21 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
     createTrackedFileSystems(parentLogger, fs, fileRegistry, projectConfig);
 
-  const shimGenerator = new ShimGenerator(parentLogger, shimTrackedFs, projectConfig);
-  const shellInitGenerator = new ShellInitGenerator(parentLogger, shellInitTrackedFs, projectConfig);
-  const symlinkGenerator = new SymlinkGenerator(parentLogger, symlinkTrackedFs, projectConfig, systemInfo);
-  const completionCommandExecutor = new CompletionCommandExecutor(parentLogger);
-  const completionGenerator = new CompletionGenerator(parentLogger, fs, completionCommandExecutor);
+  // Create system-context logger for generators that operate at system level
+  const systemLogger = parentLogger.getSubLogger({ context: 'system' });
+
+  const shimGenerator = new ShimGenerator(systemLogger, shimTrackedFs, projectConfig);
+  const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
+  const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
+  const completionCommandExecutor = new CompletionCommandExecutor(systemLogger);
+  const completionGenerator = new CompletionGenerator(systemLogger, fs, completionCommandExecutor);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
-    parentLogger,
+    systemLogger,
     shimGenerator,
     shellInitGenerator,
     symlinkGenerator,
     completionGenerator,
-    fs,
     systemInfo,
     projectConfig
   );

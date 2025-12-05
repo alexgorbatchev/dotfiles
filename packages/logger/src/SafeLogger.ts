@@ -11,8 +11,16 @@ export interface ISafeLoggerSettings<LogObj> extends ISettingsParam<LogObj> {
   /**
    * A context string to prepend to log messages as `[context]`.
    * Multiple contexts from parent loggers are chained together.
+   * Uses tslog's built-in `prefix` array internally.
    */
   context?: string;
+}
+
+/**
+ * Wraps a context string with brackets for display.
+ */
+function formatContext(context: string): string {
+  return `[${context}]`;
 }
 
 /**
@@ -24,89 +32,64 @@ export interface ISafeLoggerSettings<LogObj> extends ISettingsParam<LogObj> {
  *
  * Supports context strings that are prepended to log messages as `[context]`.
  * Multiple contexts from parent loggers are chained together (e.g., `[Parent][Child]`).
+ * Uses tslog's built-in `prefix` array internally.
  *
  * @public
  */
 export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
-  /**
-   * Array of context strings inherited from parent loggers and this logger.
-   * @internal
-   */
-  protected readonly contexts: string[];
-
-  constructor(settings?: ISafeLoggerSettings<LogObj>, parentContexts: string[] = []) {
-    super(settings);
-    const newContexts: string[] = [...parentContexts];
+  constructor(settings?: ISafeLoggerSettings<LogObj>) {
+    const existingPrefix = settings?.prefix ?? [];
+    const prefix: string[] = existingPrefix.map((p) => String(p));
     if (settings?.context) {
-      newContexts.push(settings.context);
+      prefix.push(formatContext(settings.context));
     }
-    this.contexts = newContexts;
-  }
-
-  /**
-   * Formats the context prefix for log messages.
-   * Returns empty string if no contexts are set.
-   */
-  private formatContextPrefix(): string {
-    if (this.contexts.length === 0) {
-      return '';
-    }
-    return `${this.contexts.map((ctx) => `[${ctx}]`).join('')} `;
-  }
-
-  /**
-   * Prepends context to a message if contexts are set.
-   */
-  private prependContext(message: SafeLogMessage): string {
-    const prefix = this.formatContextPrefix();
-    return prefix + (message as string);
+    super({ ...settings, prefix });
   }
 
   /** @inheritdoc */
   override trace(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.trace(this.prependContext(message), ...args);
+    return super.trace(message as string, ...args);
   }
 
   /** @inheritdoc */
   override debug(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.debug(this.prependContext(message), ...args);
+    return super.debug(message as string, ...args);
   }
 
   /** @inheritdoc */
   override info(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.info(this.prependContext(message), ...args);
+    return super.info(message as string, ...args);
   }
 
   /** @inheritdoc */
   override warn(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.warn(this.prependContext(message), ...args);
+    return super.warn(message as string, ...args);
   }
 
   /** @inheritdoc */
   override error(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.error(this.prependContext(message), ...args);
+    return super.error(message as string, ...args);
   }
 
   /** @inheritdoc */
   override fatal(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.fatal(this.prependContext(message), ...args);
+    return super.fatal(message as string, ...args);
   }
 
   /** @inheritdoc */
   override getSubLogger(settings?: ISafeLoggerSettings<LogObj>): SafeLogger<LogObj> {
     const parentNames = [...(this.settings.parentNames ?? [])];
-    if (this.settings.name) {
+    // Only add parent name to hierarchy when creating a named sublogger
+    // Context-only subloggers don't create a new hierarchy level
+    if (this.settings.name && settings?.name) {
       parentNames.push(this.settings.name);
     }
 
-    return new SafeLogger(
-      {
-        ...this.settings,
-        ...settings,
-        parentNames,
-      },
-      this.contexts
-    );
+    return new SafeLogger({
+      ...this.settings,
+      ...settings,
+      parentNames,
+    });
   }
 
   /**

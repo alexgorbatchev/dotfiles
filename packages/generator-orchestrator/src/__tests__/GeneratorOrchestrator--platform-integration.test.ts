@@ -156,7 +156,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockCompletionGenerator,
-        mockFileSystem,
         macosSystemInfo, // macOS system info
         mockProjectConfig
       );
@@ -210,7 +209,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockCompletionGenerator,
-        mockFileSystem,
         linuxSystemInfo, // Linux system info
         mockProjectConfig
       );
@@ -269,7 +267,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockCompletionGenerator,
-        mockFileSystem,
         linuxSystemInfo,
         mockProjectConfig
       );
@@ -308,7 +305,6 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockShellInitGenerator,
         mockSymlinkGenerator,
         mockCompletionGenerator,
-        mockFileSystem,
         macosSystemInfo,
         mockProjectConfig
       );

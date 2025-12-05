@@ -14,16 +14,12 @@ export const messages = {
   validationComplete: () => createSafeLogMessage('Validation complete: %d issues found, %d repaired'),
   registryClosed: () => createSafeLogMessage('Closed SQLite file registry'),
   schemaInitialized: () => createSafeLogMessage('Schema initialization complete'),
-  fileCreated: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] write ${path}`),
-  fileUpdated: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] write ${path}`),
-  fileRemoved: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] rm ${path}`),
-  fileMoved: (toolName: string, oldPath: string, newPath: string) =>
-    createSafeLogMessage(`[${toolName}] mv ${oldPath} ${newPath}`),
-  fileCopied: (toolName: string, srcPath: string, destPath: string) =>
-    createSafeLogMessage(`[${toolName}] cp ${srcPath} ${destPath}`),
-  symlinkCreated: (toolName: string, linkPath: string, targetPath: string) =>
-    createSafeLogMessage(`[${toolName}] ln -s ${targetPath} ${linkPath}`),
-  permissionsChanged: (toolName: string, path: string, mode: string) =>
-    createSafeLogMessage(`[${toolName}] chmod ${mode} ${path}`),
-  directoryCreated: (toolName: string, path: string) => createSafeLogMessage(`[${toolName}] mkdir ${path}`),
+  fileCreated: (path: string) => createSafeLogMessage(`write ${path}`),
+  fileUpdated: (path: string) => createSafeLogMessage(`write ${path}`),
+  fileRemoved: (path: string) => createSafeLogMessage(`rm ${path}`),
+  fileMoved: (oldPath: string, newPath: string) => createSafeLogMessage(`mv ${oldPath} ${newPath}`),
+  fileCopied: (srcPath: string, destPath: string) => createSafeLogMessage(`cp ${srcPath} ${destPath}`),
+  symlinkCreated: (linkPath: string, targetPath: string) => createSafeLogMessage(`ln -s ${targetPath} ${linkPath}`),
+  permissionsChanged: (path: string, mode: string) => createSafeLogMessage(`chmod ${mode} ${path}`),
+  directoryCreated: (path: string) => createSafeLogMessage(`mkdir ${path}`),
 } satisfies SafeLogMessageMap;

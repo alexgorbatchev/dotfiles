@@ -1,6 +1,6 @@
 import { expect as bunExpect } from 'bun:test';
 import * as util from 'node:util';
-import type { ILogObj, ILogObjMeta, ISettingsParam } from 'tslog';
+import type { ILogObj, ILogObjMeta } from 'tslog';
 import { type ISafeLoggerSettings, SafeLogger } from './SafeLogger';
 
 /**
@@ -9,18 +9,6 @@ import { type ISafeLoggerSettings, SafeLogger } from './SafeLogger';
  * @public
  */
 export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
-
-/**
- * Extended settings for TestLogger that adds context support.
- * @public
- */
-export interface ITestLoggerSettings<LogObj> extends ISettingsParam<LogObj> {
-  /**
-   * A context string to prepend to log messages as `[context]`.
-   * Multiple contexts from parent loggers are chained together.
-   */
-  context?: string;
-}
 
 /**
  * An extended logger for testing purposes that captures log messages in memory.
@@ -57,22 +45,18 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
    * Constructs a new `TestLogger` instance.
    * @param settings - Optional `tslog` settings to configure the logger.
    * @param logs - An optional array to use for storing logs.
-   * @param parentContexts - An optional array of parent context strings.
    *
    * @internal
    */
-  constructor(settings?: ITestLoggerSettings<LogObj>, logs: ILogObjMeta[] = [], parentContexts: string[] = []) {
-    super(
-      {
-        ...settings,
-        hideLogPositionForProduction: false,
-        attachedTransports: [(obj) => logs.push(obj)],
-        overwrite: {
-          transportFormatted: (_logMetaMarkup, _logArgs, _logErrors, _settings) => {},
-        },
+  constructor(settings?: ISafeLoggerSettings<LogObj>, logs: ILogObjMeta[] = []) {
+    super({
+      ...settings,
+      hideLogPositionForProduction: false,
+      attachedTransports: [(obj) => logs.push(obj)],
+      overwrite: {
+        transportFormatted: (_logMetaMarkup, _logArgs, _logErrors, _settings) => {},
       },
-      parentContexts
-    );
+    });
     this.logs = logs;
   }
 
@@ -87,7 +71,9 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
    */
   override getSubLogger(settings?: ISafeLoggerSettings<LogObj>): TestLogger<LogObj> {
     const parentNames = [...(this.settings.parentNames ?? [])];
-    if (this.settings.name) {
+    // Only add parent name to hierarchy when creating a named sublogger
+    // Context-only subloggers don't create a new hierarchy level
+    if (this.settings.name && settings?.name) {
       parentNames.push(this.settings.name);
     }
 
@@ -97,8 +83,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
         ...settings,
         parentNames,
       },
-      this.logs,
-      this.contexts
+      this.logs
     );
     return subLogger;
   }
