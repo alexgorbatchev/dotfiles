@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { IExtractResult, IInstallOptions, InstallContext } from '@dotfiles/core';
+import type { IExtractResult, IInstallContext, IInstallOptions } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -16,12 +16,12 @@ import { normalizeVersion } from '@dotfiles/utils';
 import type { ICargoClient } from './cargo-client';
 import { messages } from './log-messages';
 import type { CargoInstallParams, CargoToolConfig } from './schemas';
-import type { CargoInstallResult, ICargoInstallMetadata } from './types';
+import type { CargoInstallResult, HookExecutionResult, ICargoHookContext, ICargoInstallMetadata, IVersionResult } from './types';
 
 export async function installFromCargo(
   toolName: string,
   toolConfig: CargoToolConfig,
-  context: InstallContext,
+  context: IInstallContext,
   options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
@@ -58,8 +58,7 @@ export async function installFromCargo(
 
     await downloadWithProgress(downloadUrl, downloadPath, filename, downloader, options);
 
-    // TODO hookContext should have proper type
-    const hookContext = { ...context, version: versionResult.version };
+    const hookContext: ICargoHookContext = { ...context, version: versionResult.version };
     const afterDownloadResult = await executeAfterDownloadHook(
       toolConfig,
       hookExecutor,
@@ -118,12 +117,10 @@ export async function installFromCargo(
 async function executeAfterDownloadHook(
   toolConfig: CargoToolConfig,
   hookExecutor: HookExecutor,
-  // TODO should use proper type with having to add version here
-  hookContext: InstallContext & { version: string },
+  hookContext: ICargoHookContext,
   downloadPath: string,
   toolFs: IFileSystem
-): // TODO CargoInstallResult is actually never returned here?
-Promise<CargoInstallResult | { success: true }> {
+): Promise<HookExecutionResult> {
   const afterDownloadHooks = toolConfig['installParams']?.hooks?.['after-download'];
   if (!afterDownloadHooks) {
     return { success: true };
@@ -144,12 +141,10 @@ Promise<CargoInstallResult | { success: true }> {
 async function executeAfterInstallHook(
   toolConfig: CargoToolConfig,
   hookExecutor: HookExecutor,
-  // TODO should use proper type with having to add version here
-  hookContext: InstallContext & { version: string },
+  hookContext: ICargoHookContext,
   extractResult: IExtractResult,
   toolFs: IFileSystem
-): // TODO needs proper return type
-Promise<{ success: true } | { success: false; error: string }> {
+): Promise<HookExecutionResult> {
   const afterInstallHooks = toolConfig['installParams']?.hooks?.['after-install'];
   if (!afterInstallHooks) {
     return { success: true };
@@ -171,8 +166,7 @@ async function determineVersion(
   params: CargoInstallParams,
   cargoClient: ICargoClient,
   logger: TsLogger
-): // TODO needs proper return type
-Promise<{ version: string; originalTag?: string }> {
+): Promise<IVersionResult> {
   const versionSource = params.versionSource || 'cargo-toml';
 
   switch (versionSource) {
@@ -212,8 +206,7 @@ Promise<{ version: string; originalTag?: string }> {
 async function getVersionFromGitHubReleases(
   githubRepo: string,
   logger: TsLogger
-): // TODO needs proper return type
-Promise<{ version: string; originalTag?: string }> {
+): Promise<IVersionResult> {
   logger.debug(messages.queryingGitHubReleases(githubRepo));
   throw new Error('GitHub releases version source not yet implemented');
 }
@@ -222,7 +215,7 @@ async function buildDownloadUrl(
   crateName: string,
   version: string,
   params: CargoInstallParams,
-  context: InstallContext,
+  context: IInstallContext,
   githubReleaseHost: string
 ): Promise<string> {
   const binarySource = params.binarySource || 'cargo-quickinstall';
