@@ -1,6 +1,17 @@
 import type { ToolConfig } from '@dotfiles/core';
 
 /**
+ * Options for the generateAll operation.
+ */
+export interface IGenerateAllOptions {
+  /**
+   * If true, overwrite conflicting files that were not created by the generator.
+   * @default false
+   */
+  overwrite?: boolean;
+}
+
+/**
  * Interface for the Generator Orchestrator.
  * This module is responsible for coordinating the generation of all artifacts,
  * including shims, shell initialization scripts, and symlinks.
@@ -16,9 +27,10 @@ export interface IGeneratorOrchestrator {
    * All file operations are tracked in the registry database for cleanup and audit purposes.
    *
    * @param toolConfigs A record of tool configurations, where the key is the tool name.
+   * @param options Optional settings for the generation process.
    * @returns A promise that resolves when all operations are complete.
    */
-  generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void>;
+  generateAll(toolConfigs: Record<string, ToolConfig>, options?: IGenerateAllOptions): Promise<void>;
 
   /**
    * Generates shell completion files for a specific tool after installation.

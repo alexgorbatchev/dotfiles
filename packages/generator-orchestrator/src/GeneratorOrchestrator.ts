@@ -11,7 +11,7 @@ import type {
 import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { resolvePlatformConfig } from '@dotfiles/utils';
-import type { IGeneratorOrchestrator } from './IGeneratorOrchestrator';
+import type { IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
 
@@ -66,7 +66,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   /**
    * @inheritdoc IGeneratorOrchestrator.generateAll
    */
-  async generateAll(toolConfigs: Record<string, ToolConfig>): Promise<void> {
+  async generateAll(toolConfigs: Record<string, ToolConfig>, options?: IGenerateAllOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
 
     const orderedToolConfigs: Record<string, ToolConfig> = orderToolConfigsByDependencies(
@@ -79,7 +79,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     logger.debug(messages.generateAll.parsedOptions(toolConfigsCount));
 
     // 1. Generate Shims
-    const shimOptions: IGenerateShimsOptions = { overwrite: true };
+    const shimOptions: IGenerateShimsOptions = { overwrite: true, overwriteConflicts: options?.overwrite };
     logger.debug(messages.generateAll.shimGenerate());
     const generatedShimsPaths = await this.shimGenerator.generate(orderedToolConfigs, shimOptions);
     const shimCount = generatedShimsPaths?.length ?? 0;

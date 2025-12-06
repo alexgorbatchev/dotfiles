@@ -434,6 +434,38 @@ describe('ShimGenerator', () => {
       );
     });
 
+    it('should overwrite non-shim file when overwriteConflicts is true', async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
+
+      // Mock file exists but is not our shim
+      fsMocks.exists.mockResolvedValueOnce(true);
+      fsMocks.readFile.mockResolvedValueOnce('some other content');
+      fsMocks.stat.mockResolvedValueOnce({ mode: 0o100755, isFile: () => true, isDirectory: () => false } as Stats);
+
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, { overwriteConflicts: true });
+
+      expect(result).toEqual([expectedShimPath]);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+      // Behavior verified: shim was created despite conflicting file existing
+    });
+
+    it('should overwrite non-shim file when both overwrite and overwriteConflicts are true', async () => {
+      const expectedShimPath = path.join(mockConfig.paths.targetDir, toolName);
+
+      // Mock file exists but is not our shim
+      fsMocks.exists.mockResolvedValueOnce(true);
+      fsMocks.readFile.mockResolvedValueOnce('some other content');
+      fsMocks.stat.mockResolvedValueOnce({ mode: 0o100755, isFile: () => true, isDirectory: () => false } as Stats);
+
+      const result = await shimGenerator.generateForTool(toolName, toolConfig, {
+        overwrite: true,
+        overwriteConflicts: true,
+      });
+
+      expect(result).toEqual([expectedShimPath]);
+      expect(fsMocks.writeFile).toHaveBeenCalledTimes(1);
+    });
+
     it('should treat unreadable files as non-shims', async () => {
       // Mock file exists but can't be read
       fsMocks.exists.mockResolvedValueOnce(true);

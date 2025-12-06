@@ -5,10 +5,16 @@ import type { ToolConfig } from '@dotfiles/core';
  */
 export interface IGenerateShimsOptions {
   /**
-   * If true, overwrite existing shims.
+   * If true, overwrite existing shims that were created by the generator.
    * @default false
    */
   overwrite?: boolean;
+  /**
+   * If true, overwrite conflicting files that were NOT created by the generator.
+   * This is a more aggressive option that should be used with caution.
+   * @default false
+   */
+  overwriteConflicts?: boolean;
 }
 
 /**

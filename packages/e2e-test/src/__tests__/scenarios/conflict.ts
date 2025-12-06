@@ -66,8 +66,7 @@ export function conflictScenarios(harness: TestHarness): void {
       expect(fileContent).toBe(''); // Empty file we created with touch
     });
 
-    it.skip('should succeed with --overwrite flag when conflicting file exists', async () => {
-      // TODO: --overwrite flag not yet implemented in generate command
+    it('should succeed with --overwrite flag when conflicting file exists', async () => {
       // The conflicting file should still exist
       expect(await harness.fileExists(conflictingShimPath)).toBe(true);
 

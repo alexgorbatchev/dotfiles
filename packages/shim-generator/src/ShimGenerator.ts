@@ -73,6 +73,7 @@ export class ShimGenerator implements IShimGenerator {
 
     const generatedShimPaths: string[] = [];
     const overwrite = options?.overwrite ?? false;
+    const overwriteConflicts = options?.overwriteConflicts ?? false;
 
     // Get list of binaries to generate shims for
     const binaries = toolConfig.binaries && toolConfig.binaries.length > 0 ? toolConfig.binaries : [toolName]; // Fallback to toolName if no binaries specified
@@ -80,7 +81,14 @@ export class ShimGenerator implements IShimGenerator {
 
     // Generate a shim for each binary
     for (const binaryName of binaryNames) {
-      const shimPath = await this.generateShimForBinary(toolFs, toolName, toolConfig, binaryName, overwrite);
+      const shimPath = await this.generateShimForBinary(
+        toolFs,
+        toolName,
+        toolConfig,
+        binaryName,
+        overwrite,
+        overwriteConflicts
+      );
       if (shimPath) {
         generatedShimPaths.push(shimPath);
       }
@@ -96,7 +104,8 @@ export class ShimGenerator implements IShimGenerator {
    * @param toolName - The name of the tool.
    * @param _toolConfig - The tool configuration (unused currently).
    * @param binaryName - The name of the binary to generate a shim for.
-   * @param overwrite - Whether to overwrite existing shims.
+   * @param overwrite - Whether to overwrite existing shims created by the generator.
+   * @param overwriteConflicts - Whether to overwrite conflicting files not created by the generator.
    * @returns The path to the generated shim, or null if generation was skipped.
    */
   private async generateShimForBinary(
@@ -104,7 +113,8 @@ export class ShimGenerator implements IShimGenerator {
     toolName: string,
     _toolConfig: ToolConfig,
     binaryName: string,
-    overwrite: boolean
+    overwrite: boolean,
+    overwriteConflicts: boolean
   ): Promise<string | null> {
     const logger = this.logger.getSubLogger({ name: 'generateShimForBinary' });
     const shimDir = this.config.paths.targetDir;
@@ -117,12 +127,14 @@ export class ShimGenerator implements IShimGenerator {
       const isOurShim = await this.isGeneratedShim(toolFs, shimFilePath);
 
       if (!isOurShim) {
-        // Not our shim - log error and skip
-        logger.error(messages.generateShim.conflictingFile(toolName, shimFilePath));
-        return null;
-      }
-
-      if (!overwrite) {
+        if (!overwriteConflicts) {
+          // Not our shim and overwriteConflicts is false - log error and skip
+          logger.error(messages.generateShim.conflictingFile(toolName, shimFilePath));
+          return null;
+        }
+        // overwriteConflicts is true - continue to overwrite the conflicting file
+        logger.debug(messages.generateShim.overwritingConflict(shimFilePath));
+      } else if (!overwrite) {
         // It's our shim but overwrite is false - skip silently
         logger.debug(messages.generateShim.existingShim(shimFilePath));
         return null;

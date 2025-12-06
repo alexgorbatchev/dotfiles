@@ -2,11 +2,19 @@ import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, generateToolTypes } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IBaseCommandOptions, IGlobalProgram, IServices } from './types';
+import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 
-export interface IGenerateCommandOptions extends IBaseCommandOptions {
-  // No command-specific options for generate command
+/**
+ * Command-specific options for the generate command.
+ */
+export interface IGenerateCommandSpecificOptions {
+  overwrite?: boolean;
 }
+
+/**
+ * Combined options for the generate command (command-specific + global).
+ */
+export interface IGenerateCommandOptions extends IGenerateCommandSpecificOptions, IGlobalProgramOptions {}
 
 export function registerGenerateCommand(
   parentLogger: TsLogger,
@@ -17,8 +25,9 @@ export function registerGenerateCommand(
   program
     .command('generate')
     .description('Generates shims, shell init files, and symlinks based on tool configurations.')
-    .action(async () => {
-      const combinedOptions: IGenerateCommandOptions = program.opts();
+    .option('--overwrite', 'Overwrite conflicting files that were not created by the generator')
+    .action(async (options: IGenerateCommandSpecificOptions) => {
+      const combinedOptions: IGenerateCommandOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();
       const { projectConfig, fs, generatorOrchestrator, configService } = services;
 
@@ -36,7 +45,7 @@ export function registerGenerateCommand(
         await generateToolTypes(toolConfigs, toolTypesPath, fs);
         logger.debug(messages.toolTypesGenerated(toolTypesPath));
 
-        await generatorOrchestrator.generateAll(toolConfigs);
+        await generatorOrchestrator.generateAll(toolConfigs, { overwrite: combinedOptions.overwrite });
 
         logger.info(messages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (_error) {

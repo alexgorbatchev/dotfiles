@@ -115,4 +115,18 @@ describe('generateCommand', () => {
     expect(toolTypesContent).toContain("    'toolA-bin': never;");
     expect(toolTypesContent).toContain('export {};');
   });
+
+  test('should pass overwrite option to generatorOrchestrator when --overwrite flag is used', async () => {
+    await program.parseAsync(['generate', '--overwrite'], { from: 'user' });
+
+    const mockGenerateAll = mockGeneratorOrchestrator.generateAll as ReturnType<typeof mock>;
+    expect(mockGenerateAll).toHaveBeenCalledWith({ toolA: toolAConfig }, { overwrite: true });
+  });
+
+  test('should pass undefined overwrite option when --overwrite flag is not used', async () => {
+    await program.parseAsync(['generate'], { from: 'user' });
+
+    const mockGenerateAll = mockGeneratorOrchestrator.generateAll as ReturnType<typeof mock>;
+    expect(mockGenerateAll).toHaveBeenCalledWith({ toolA: toolAConfig }, { overwrite: undefined });
+  });
 });
