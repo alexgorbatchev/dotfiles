@@ -122,7 +122,6 @@ export function registerUpdateCommand(
   program
     .command('update <toolName>')
     .description('Updates a specified tool to its latest version.')
-    .option('-y, --yes', 'Automatically confirm updates', false)
     .option('--shim-mode', 'Run in shim mode with minimal output', false)
     .action(async (toolName: string, commandOptions: IUpdateCommandSpecificOptions) => {
       const combinedOptions: IUpdateCommandSpecificOptions & IGlobalProgramOptions = {

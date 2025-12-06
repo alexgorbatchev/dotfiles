@@ -28,7 +28,7 @@ export function updateScenarios(harness: TestHarness, additionalTests?: () => vo
       await fetch('http://localhost:8765/set-tool-version/repo/github-release-tool/2.0.0');
 
       // Run update command - should now get the NEW version
-      const updateResult = await harness.update('github-release-tool', ['--yes']);
+      const updateResult = await harness.update('github-release-tool');
       expect(updateResult.exitCode).toBe(0);
 
       // Verify we now have the NEWER version
@@ -40,7 +40,7 @@ export function updateScenarios(harness: TestHarness, additionalTests?: () => vo
     });
 
     it('should handle updating non-existent tool gracefully', async () => {
-      const result = await harness.update('non-existent-tool', ['--yes']);
+      const result = await harness.update('non-existent-tool');
       // Update command should fail gracefully for non-existent tools
       expect(result.exitCode).not.toBe(0);
     });

@@ -1,5 +1,5 @@
 import type {
-  AsyncInstallHook,
+  BaseInstallParams,
   IDownloadContext,
   IExtractContext,
   IOperationFailure,
@@ -15,6 +15,15 @@ import { messages } from './log-messages';
  * Result type for hook execution indicating success or failure with error message.
  */
 export type ExecuteHooksResult = IOperationSuccess | IOperationFailure;
+
+/**
+ * Extracts hooks from tool configuration's install params.
+ * Uses type assertion since all install params extend BaseInstallParams which has hooks.
+ */
+function getHooksFromConfig(toolConfig: ToolConfig): BaseInstallParams['hooks'] | undefined {
+  const installParams = toolConfig.installParams as BaseInstallParams | undefined;
+  return installParams?.hooks;
+}
 
 /**
  * Executes the afterDownload hook if defined in tool configuration.
@@ -40,8 +49,7 @@ export async function executeAfterDownloadHook(
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<ExecuteHooksResult> {
-  // TODO fix so that installParams and hooks don't need string based accessors
-  const hooks = toolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+  const hooks = getHooksFromConfig(toolConfig);
   const afterDownloadHooks = hooks?.['after-download'];
 
   if (!afterDownloadHooks) {
@@ -91,7 +99,7 @@ export async function executeAfterExtractHook(
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<ExecuteHooksResult> {
-  const hooks = toolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+  const hooks = getHooksFromConfig(toolConfig);
   const afterExtractHooks = hooks?.['after-extract'];
 
   if (!afterExtractHooks) {
