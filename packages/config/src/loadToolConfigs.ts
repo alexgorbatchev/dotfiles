@@ -30,21 +30,19 @@ function isConfigureToolFunction(
 }
 
 /**
- * Validates a tool configuration against the Zod schema.
+ * Validates a tool configuration has the required shape.
  *
- * Performs runtime validation of a tool configuration object and logs detailed error
- * information if validation fails.
- *
- * TODO: In plugin architecture, validation should use InstallerPluginRegistry.getToolConfigSchema()
- * This requires passing the registry or schema as a parameter. For now, we skip validation
- * and assume configs are valid - validation will happen at install time via the registry.
+ * Performs basic structural validation to ensure the config object has a name property.
+ * Full schema validation occurs at install time via InstallerPluginRegistry, which has
+ * access to all plugin schemas. This approach allows config loading to remain decoupled
+ * from the plugin system while still ensuring type safety through:
+ * 1. TypeScript compile-time validation via the builder pattern
+ * 2. Runtime schema validation at install time via the registry
  *
  * @param config - The configuration object to validate.
- * @returns The validated configuration object (assumes valid).
+ * @returns The validated configuration object, or null if basic validation fails.
  */
 function validateToolConfig(config: unknown): ToolConfig | null {
-  // TODO: Add runtime schema validation using InstallerPluginRegistry.getToolConfigSchema()
-  // For now, we trust the builder and TypeScript to create valid configs
   if (isToolConfig(config)) {
     return config;
   }
