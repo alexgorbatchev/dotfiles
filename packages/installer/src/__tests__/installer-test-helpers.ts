@@ -6,7 +6,7 @@ import type {
   $extended,
   IExtractResult,
   IGitHubRelease,
-  InstallContext,
+  IInstallContext,
   InstallerPluginRegistry,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -296,7 +296,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
 
   // Setup mock HookExecutor
   const mockExecuteHook = mock(async () => ({ success: true, durationMs: 100, skipped: false }));
-  const mockCreateEnhancedContext = mock((baseContext: InstallContext, fileSystem: IFileSystem, logger: TsLogger) => ({
+  const mockCreateEnhancedContext = mock((baseContext: IInstallContext, fileSystem: IFileSystem, logger: TsLogger) => ({
     ...baseContext,
     fileSystem,
     logger,
@@ -324,7 +324,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     install: async (
       toolName: string,
       _toolConfig: unknown,
-      context: InstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> }
+      context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> }
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
@@ -530,7 +530,7 @@ export function createCargoToolConfig(overrides: Partial<CargoToolConfig> = {}):
 /**
  * Creates a test context for installation
  */
-export function createTestContext(setup: IInstallerTestSetup, overrides: Partial<InstallContext> = {}): InstallContext {
+export function createTestContext(setup: IInstallerTestSetup, overrides: Partial<IInstallContext> = {}): IInstallContext {
   const getToolDir = (toolName: string): string => {
     return path.join(setup.testDirs.paths.binariesDir, toolName);
   };

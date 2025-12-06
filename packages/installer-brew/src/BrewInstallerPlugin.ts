@@ -1,7 +1,7 @@
 import type {
   IInstallerPlugin,
   IInstallOptions,
-  InstallContext,
+  IInstallContext,
   InstallResult,
   UpdateCheckResult,
 } from '@dotfiles/core';
@@ -59,7 +59,7 @@ export class BrewInstallerPlugin
   async install(
     toolName: string,
     toolConfig: BrewToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options?: IInstallOptions
   ): Promise<InstallResult<BrewPluginMetadata>> {
     const result = await installFromBrew(toolName, toolConfig, context, options, this.logger);
@@ -102,7 +102,7 @@ export class BrewInstallerPlugin
   async checkUpdate(
     toolName: string,
     toolConfig: BrewToolConfig,
-    _context: InstallContext,
+    _context: IInstallContext,
     logger: TsLogger
   ): Promise<UpdateCheckResult> {
     // TODO: Implement actual brew info check

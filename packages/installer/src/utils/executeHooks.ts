@@ -1,7 +1,7 @@
 import type {
   AsyncInstallHook,
-  DownloadContext,
-  ExtractContext,
+  IDownloadContext,
+  IExtractContext,
   IOperationFailure,
   IOperationSuccess,
   ToolConfig,
@@ -35,7 +35,7 @@ export type ExecuteHooksResult = IOperationSuccess | IOperationFailure;
  */
 export async function executeAfterDownloadHook(
   toolConfig: ToolConfig,
-  context: DownloadContext,
+  context: IDownloadContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger
@@ -86,7 +86,7 @@ export async function executeAfterDownloadHook(
  */
 export async function executeAfterExtractHook(
   toolConfig: ToolConfig,
-  context: ExtractContext,
+  context: IExtractContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger

@@ -1,4 +1,4 @@
-import type { InstallContext } from '@dotfiles/core';
+import type { IInstallContext } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { z } from 'zod';
 import type { PluginEmittedHookEvent } from './builder/builder.types';
@@ -16,7 +16,7 @@ type InstallEventHandler = (event: InstallEvent) => Promise<void>;
 export interface InstallEvent {
   type: PluginEmittedHookEvent;
   toolName: string;
-  context: InstallContext & Record<string, unknown>;
+  context: IInstallContext & Record<string, unknown>;
 }
 
 /**
@@ -170,7 +170,7 @@ export class InstallerPluginRegistry {
    */
   private async validatePlugin(
     plugin: IInstallerPlugin,
-    context: InstallContext,
+    context: IInstallContext,
     logger: TsLogger
   ): Promise<InstallResult | null> {
     if (!plugin.validate) {
@@ -212,7 +212,7 @@ export class InstallerPluginRegistry {
     method: string,
     toolName: string,
     toolConfig: unknown,
-    context: InstallContext,
+    context: IInstallContext,
     options?: IInstallOptions
   ): Promise<AggregateInstallResult> {
     const logger = this.logger.getSubLogger({ name: 'install' });

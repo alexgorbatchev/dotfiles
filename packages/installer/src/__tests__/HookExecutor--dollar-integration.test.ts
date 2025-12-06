@@ -4,7 +4,7 @@ import { realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { AfterInstallContext, ToolConfig } from '@dotfiles/core';
+import type { IAfterInstallContext, ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { $ } from 'bun';
@@ -60,7 +60,7 @@ describe('HookExecutor $ Integration', () => {
 
     let actualCwd: string | undefined;
 
-    const hookThatUsesShell = async (ctx: AfterInstallContext) => {
+    const hookThatUsesShell = async (ctx: IAfterInstallContext) => {
       // With Bun's $, hooks need to explicitly cd to the tool config directory
       const toolConfigDir = ctx.toolConfig?.configFilePath
         ? path.dirname(ctx.toolConfig.configFilePath)
@@ -106,7 +106,7 @@ describe('HookExecutor $ Integration', () => {
       toolConfig: mockToolConfig,
     };
 
-    const hookThatCreatesFile = async (ctx: AfterInstallContext) => {
+    const hookThatCreatesFile = async (ctx: IAfterInstallContext) => {
       // With Bun's $, hooks need to explicitly cd to the tool config directory
       const toolConfigDir = ctx.toolConfig?.configFilePath
         ? path.dirname(ctx.toolConfig.configFilePath)
@@ -152,7 +152,7 @@ describe('HookExecutor $ Integration', () => {
 
     let shellWorked = false;
 
-    const hookThatUsesShellFallback = async (ctx: AfterInstallContext) => {
+    const hookThatUsesShellFallback = async (ctx: IAfterInstallContext) => {
       // Should still be able to use $ even without configFilePath
       const result = await ctx.$`echo "fallback works"`.quiet();
       if (result.stdout.toString().includes('fallback works')) {

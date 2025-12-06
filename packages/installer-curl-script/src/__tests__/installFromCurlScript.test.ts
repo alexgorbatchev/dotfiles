@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import type { InstallContext } from '@dotfiles/core';
+import type { IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -22,7 +22,7 @@ describe('installFromCurlScript', () => {
   let mockFs: IFileSystem;
   let mockDownloader: IDownloader;
   let mockHookExecutor: HookExecutor;
-  let context: InstallContext;
+  let context: IInstallContext;
 
   beforeEach(() => {
     logger = new TestLogger();
@@ -49,7 +49,7 @@ describe('installFromCurlScript', () => {
           shellScriptsDir: '/home/user/.dotfiles/.generated/shell-scripts',
         },
       },
-    } as unknown as InstallContext;
+    } as unknown as IInstallContext;
 
     mockShell.mockClear();
     mockQuiet.mockClear();

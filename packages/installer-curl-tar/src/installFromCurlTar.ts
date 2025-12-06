@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { DownloadContext, ExtractContext, IExtractResult, InstallContext } from '@dotfiles/core';
+import type { IDownloadContext, IExtractContext, IExtractResult, IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
@@ -50,7 +50,7 @@ type ShellExecutor = typeof $;
 export async function installFromCurlTar(
   toolName: string,
   toolConfig: CurlTarToolConfig,
-  context: InstallContext,
+  context: IInstallContext,
   options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,
@@ -64,8 +64,8 @@ export async function installFromCurlTar(
   logger.debug(messages.installing(toolName));
 
   // Context variables for lifecycle stages
-  let postDownloadContext: DownloadContext;
-  let postExtractContext: ExtractContext | undefined;
+  let postDownloadContext: IDownloadContext;
+  let postExtractContext: IExtractContext | undefined;
 
   if (!toolConfig.installParams || !('url' in toolConfig.installParams)) {
     return {

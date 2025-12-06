@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { $extended, InstallContext } from '@dotfiles/core';
+import type { $extended, IInstallContext } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { z } from 'zod';
@@ -24,8 +24,8 @@ const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {
   return plugin;
 };
 
-const createMockContext = (): InstallContext => {
-  const context: InstallContext = {
+const createMockContext = (): IInstallContext => {
+  const context: IInstallContext = {
     toolName: 'test-tool',
     toolDir: '/tmp/test',
     homeDir: '/home/user',

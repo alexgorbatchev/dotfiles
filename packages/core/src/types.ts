@@ -1,4 +1,4 @@
-import type { InstallContext } from '@dotfiles/core';
+import type { IInstallContext } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import type { z } from 'zod';
 
@@ -268,13 +268,13 @@ export interface IInstallerPlugin<
   install(
     toolName: string,
     toolConfig: TConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options?: IInstallOptions,
     logger?: TsLogger
   ): Promise<InstallResult<TMetadata>>;
 
   /** Optional: Validate plugin can run in current environment */
-  validate?(context: InstallContext): Promise<IValidationResult>;
+  validate?(context: IInstallContext): Promise<IValidationResult>;
 
   /** Optional: Plugin initialization */
   initialize?(): Promise<void>;
@@ -289,7 +289,7 @@ export interface IInstallerPlugin<
   checkUpdate?(
     toolName: string,
     toolConfig: TConfig,
-    context: InstallContext,
+    context: IInstallContext,
     logger: TsLogger
   ): Promise<UpdateCheckResult>;
 
@@ -300,7 +300,7 @@ export interface IInstallerPlugin<
   updateTool?(
     toolName: string,
     toolConfig: TConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options: IUpdateOptions,
     logger: TsLogger
   ): Promise<UpdateResult>;
@@ -325,7 +325,7 @@ export interface IInstallerPlugin<
   resolveVersion?(
     toolName: string,
     toolConfig: TConfig,
-    context: InstallContext,
+    context: IInstallContext,
     logger: TsLogger
   ): Promise<string | null>;
 }

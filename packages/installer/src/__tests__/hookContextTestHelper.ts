@@ -1,4 +1,4 @@
-import type { $extended, InstallContext, ToolConfig } from '@dotfiles/core';
+import type { $extended, IInstallContext, ToolConfig } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$ } from '@dotfiles/testing-helpers';
@@ -10,9 +10,9 @@ import { createMock$ } from '@dotfiles/testing-helpers';
  * @returns An object containing the context and logger for test usage
  */
 export function createTestInstallHookContext(
-  overrides: Partial<InstallContext> = {},
+  overrides: Partial<IInstallContext> = {},
   testLogger?: TestLogger
-): { context: InstallContext; logger: TestLogger } {
+): { context: IInstallContext; logger: TestLogger } {
   const logger = testLogger || new TestLogger();
 
   const mockProjectConfig = {
@@ -75,7 +75,7 @@ export function createTestInstallHookContext(
     platform: [],
   };
 
-  const baseContext: InstallContext = {
+  const baseContext: IInstallContext = {
     toolName: 'test-tool',
     toolDir: '/test/binaries/test-tool',
     getToolDir: (toolName: string) => `/test/binaries/${toolName}`,

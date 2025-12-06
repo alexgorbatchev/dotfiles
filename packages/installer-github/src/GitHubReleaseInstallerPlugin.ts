@@ -3,7 +3,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import type {
   IInstallerPlugin,
   IInstallOptions,
-  InstallContext,
+  IInstallContext,
   InstallResult,
   IUpdateOptions,
   UpdateCheckResult,
@@ -93,7 +93,7 @@ export class GitHubReleaseInstallerPlugin
   async install(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options: IInstallOptions | undefined,
     logger: TsLogger
   ): Promise<InstallResult<IGitHubReleaseInstallMetadata>> {
@@ -131,7 +131,7 @@ export class GitHubReleaseInstallerPlugin
   async resolveVersion(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    _context: InstallContext,
+    _context: IInstallContext,
     logger: TsLogger
   ): Promise<string | null> {
     try {
@@ -163,7 +163,7 @@ export class GitHubReleaseInstallerPlugin
   async checkUpdate(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    _context: InstallContext,
+    _context: IInstallContext,
     logger: TsLogger
   ): Promise<UpdateCheckResult> {
     try {
@@ -225,7 +225,7 @@ export class GitHubReleaseInstallerPlugin
   async updateTool(
     toolName: string,
     toolConfig: GithubReleaseToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options: IUpdateOptions,
     logger: TsLogger
   ): Promise<UpdateResult> {
@@ -266,7 +266,7 @@ export class GitHubReleaseInstallerPlugin
       const versionedInstallDir = `${binariesDir}/${toolName}/${newVersion}`;
       await this.fs.ensureDir(versionedInstallDir);
 
-      const updatedContext: InstallContext = {
+      const updatedContext: IInstallContext = {
         ...context,
         installDir: versionedInstallDir,
       };

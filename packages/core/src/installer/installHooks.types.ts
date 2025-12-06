@@ -117,10 +117,3 @@ export interface IAfterInstallContext extends IInstallContext {
  * @returns A `Promise` that resolves when the hook's operations are complete.
  */
 export type AsyncInstallHook<T extends IInstallContext = IInstallContext> = (context: T) => Promise<void>;
-
-// Type aliases for commonly used contexts
-// TODO remove these aliases
-export type InstallContext = IInstallContext;
-export type DownloadContext = IDownloadContext;
-export type ExtractContext = IExtractContext;
-export type AfterInstallContext = IAfterInstallContext;

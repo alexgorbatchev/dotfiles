@@ -1,5 +1,5 @@
 import type { IConfigService } from '@dotfiles/config';
-import type { InstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
+import type { IInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
@@ -66,7 +66,7 @@ async function handleToolUpdate(
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
-  const context: InstallContext = {
+  const context: IInstallContext = {
     toolName,
     installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',

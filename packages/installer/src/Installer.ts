@@ -3,7 +3,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import type {
   $extended,
   AsyncInstallHook,
-  InstallContext,
+  IInstallContext,
   InstallerPluginRegistry,
   ISystemInfo,
   PluginEmittedHookEvent,
@@ -127,7 +127,7 @@ export class Installer implements IInstaller {
   private async handleInstallEvent(event: {
     type: string;
     toolName: string;
-    context: InstallContext & Record<string, unknown>;
+    context: IInstallContext & Record<string, unknown>;
   }): Promise<void> {
     if (!this.currentToolConfig) {
       return;
@@ -230,7 +230,7 @@ export class Installer implements IInstaller {
    */
   private async executeBeforeInstallHook(
     resolvedToolConfig: ToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     toolFs: IFileSystem,
     parentLogger: TsLogger
   ): Promise<InstallResult | null> {
@@ -284,7 +284,7 @@ export class Installer implements IInstaller {
    */
   private async executeAfterInstallHook(
     resolvedToolConfig: ToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     result: InstallResult,
     toolFs: IFileSystem,
     parentLogger: TsLogger
@@ -330,7 +330,7 @@ export class Installer implements IInstaller {
   private async recordInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     result: InstallResult,
     parentLogger: TsLogger
   ): Promise<void> {
@@ -389,7 +389,7 @@ export class Installer implements IInstaller {
   private async executeInstallationMethod(
     toolName: string,
     resolvedToolConfig: ToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options?: IInstallOptions,
     _logger?: TsLogger
   ): Promise<InstallResult> {
@@ -457,7 +457,7 @@ export class Installer implements IInstaller {
 
       if (!isExternallyManaged && plugin?.resolveVersion) {
         // Create minimal context for version resolution
-        const tempContext: InstallContext = this.createMinimalContext(resolvedToolConfig);
+        const tempContext: IInstallContext = this.createMinimalContext(resolvedToolConfig);
 
         try {
           const resolvedVersion: string | null = await plugin.resolveVersion(
@@ -701,8 +701,8 @@ export class Installer implements IInstaller {
    * @param toolConfig - Complete tool configuration
    * @returns Minimal context with system info
    */
-  private createMinimalContext(toolConfig: ToolConfig): InstallContext {
-    const minimalContext: InstallContext = {
+  private createMinimalContext(toolConfig: ToolConfig): IInstallContext {
+    const minimalContext: IInstallContext = {
       toolName: '',
       installDir: '',
       timestamp: '',
@@ -750,7 +750,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger,
     $shell: $extended = createConfiguredShell(this.$, process.env)
   ): {
-    context: InstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> };
+    context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> };
     logger: TsLogger;
   } {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
@@ -760,7 +760,7 @@ export class Installer implements IInstaller {
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
-    const context: InstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } = {
+    const context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } = {
       toolName,
       installDir,
       timestamp,

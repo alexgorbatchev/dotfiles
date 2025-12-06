@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { IGitHubRelease, InstallContext } from '@dotfiles/core';
+import type { IGitHubRelease, IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -104,11 +104,11 @@ describe('GitHubReleaseInstallerPlugin', () => {
 
   describe('resolveVersion', () => {
     let testLogger: TestLogger;
-    let mockContext: InstallContext;
+    let mockContext: IInstallContext;
 
     beforeEach(() => {
       testLogger = new TestLogger();
-      mockContext = {} as InstallContext;
+      mockContext = {} as IInstallContext;
     });
 
     it('should resolve version from GitHub release tag', async () => {

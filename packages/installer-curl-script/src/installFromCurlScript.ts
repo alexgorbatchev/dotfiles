@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { InstallContext } from '@dotfiles/core';
+import type { IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
@@ -30,7 +30,7 @@ async function resolveScriptArgs(
   params: {
     args?: CurlScriptArgs;
   },
-  context: InstallContext,
+  context: IInstallContext,
   scriptPath: string
 ): Promise<string[]> {
   if (!params.args) {
@@ -55,7 +55,7 @@ async function resolveScriptArgs(
 async function handleBinaryInstallation(
   toolConfig: CurlScriptToolConfig,
   toolName: string,
-  context: InstallContext,
+  context: IInstallContext,
   fs: IFileSystem,
   logger: TsLogger
 ): Promise<void> {
@@ -102,7 +102,7 @@ async function handleBinaryInstallation(
 export async function installFromCurlScript(
   toolName: string,
   toolConfig: CurlScriptToolConfig,
-  context: InstallContext,
+  context: IInstallContext,
   options: IInstallOptions | undefined,
   fs: IFileSystem,
   downloader: IDownloader,

@@ -1,4 +1,4 @@
-import type { IInstallerPlugin, IInstallOptions, InstallContext, InstallResult } from '@dotfiles/core';
+import type { IInstallerPlugin, IInstallOptions, IInstallContext, InstallResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { installManually } from './installManually';
@@ -56,7 +56,7 @@ export class ManualInstallerPlugin
   async install(
     toolName: string,
     toolConfig: ManualToolConfig,
-    context: InstallContext,
+    context: IInstallContext,
     options?: IInstallOptions
   ): Promise<InstallResult<ManualPluginMetadata>> {
     const result = await installManually(toolName, toolConfig, context, options, this.fs, this.logger);

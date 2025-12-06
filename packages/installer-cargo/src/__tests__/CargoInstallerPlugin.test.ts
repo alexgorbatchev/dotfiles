@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
-import type { InstallContext } from '@dotfiles/core';
+import type { IInstallContext } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -74,10 +74,10 @@ describe('CargoInstallerPlugin', () => {
   });
 
   describe('resolveVersion', () => {
-    let mockContext: InstallContext;
+    let mockContext: IInstallContext;
 
     beforeEach(() => {
-      mockContext = {} as InstallContext;
+      mockContext = {} as IInstallContext;
     });
 
     it('should resolve version from crates.io', async () => {

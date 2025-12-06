@@ -3,12 +3,12 @@ import { selectBestMatch } from '@dotfiles/arch';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
-  DownloadContext,
-  ExtractContext,
+  IDownloadContext,
+  IExtractContext,
   IExtractResult,
   IGitHubRelease,
   IGitHubReleaseAsset,
-  InstallContext,
+  IInstallContext,
   ISystemInfo,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
@@ -41,7 +41,7 @@ import type { GitHubReleaseInstallResult, IGitHubReleaseInstallMetadata } from '
 export async function installFromGitHubRelease(
   toolName: string,
   toolConfig: GithubReleaseToolConfig,
-  context: InstallContext,
+  context: IInstallContext,
   options: IInstallOptions | undefined,
   toolFs: IFileSystem,
   downloader: IDownloader,
@@ -179,7 +179,7 @@ export async function fetchGitHubRelease(
 async function selectAsset(
   release: IGitHubRelease,
   params: GithubReleaseInstallParams,
-  context: InstallContext,
+  context: IInstallContext,
   logger: TsLogger
 ): Promise<OperationResult<IGitHubReleaseAsset>> {
   let asset: IGitHubReleaseAsset | undefined;
@@ -226,7 +226,7 @@ function findPlatformAsset(assets: IGitHubReleaseAsset[], systemInfo: ISystemInf
 function createAssetNotFoundError(
   release: IGitHubRelease,
   params: GithubReleaseInstallParams,
-  context: InstallContext
+  context: IInstallContext
 ): string {
   const availableAssetNames = release.assets.map((a) => a.name);
   const platform = context.systemInfo.platform.toLowerCase();
@@ -318,7 +318,7 @@ function handleRelativeUrl(rawUrl: string, customHost: string | undefined, logge
 async function downloadAsset(
   downloadUrl: string,
   asset: IGitHubReleaseAsset,
-  context: InstallContext,
+  context: IInstallContext,
   downloader: IDownloader,
   options: IInstallOptions | undefined,
   logger: TsLogger
@@ -339,7 +339,7 @@ async function downloadAsset(
 
 async function executeAfterDownloadHook(
   toolConfig: GithubReleaseToolConfig,
-  postDownloadContext: DownloadContext,
+  postDownloadContext: IDownloadContext,
   hookExecutor: HookExecutor,
   fs: IFileSystem,
   logger: TsLogger
@@ -361,8 +361,8 @@ async function processAssetInstallation(
   downloadPath: string,
   toolName: string,
   toolConfig: GithubReleaseToolConfig,
-  context: InstallContext,
-  postDownloadContext: DownloadContext,
+  context: IInstallContext,
+  postDownloadContext: IDownloadContext,
   toolFs: IFileSystem,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
@@ -394,8 +394,8 @@ async function processArchiveInstallation(
   downloadPath: string,
   toolName: string,
   toolConfig: GithubReleaseToolConfig,
-  context: InstallContext,
-  postDownloadContext: DownloadContext,
+  context: IInstallContext,
+  postDownloadContext: IDownloadContext,
   toolFs: IFileSystem,
   archiveExtractor: IArchiveExtractor,
   hookExecutor: HookExecutor,
@@ -432,7 +432,7 @@ async function processArchiveInstallation(
 
 async function executeAfterExtractHook(
   toolConfig: GithubReleaseToolConfig,
-  postExtractContext: ExtractContext,
+  postExtractContext: IExtractContext,
   fs: IFileSystem,
   hookExecutor: HookExecutor,
   logger: TsLogger

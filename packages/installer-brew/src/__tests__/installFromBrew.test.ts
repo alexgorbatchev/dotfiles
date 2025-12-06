@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { InstallContext } from '@dotfiles/core';
+import type { IInstallContext } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
 import type { $ } from 'bun';
 import { installFromBrew } from '../installFromBrew';
@@ -80,7 +80,7 @@ describe('installFromBrew', () => {
       $: mockShell,
       fileSystem: {} as unknown,
       toolConfig: toolConfig,
-    } as unknown as InstallContext;
+    } as unknown as IInstallContext;
 
     const result = await installFromBrew('test-tool', toolConfig, context, undefined, logger, mockShell);
 
@@ -133,7 +133,7 @@ describe('installFromBrew', () => {
       $: mockShell,
       fileSystem: {} as unknown,
       toolConfig: toolConfig,
-    } as unknown as InstallContext;
+    } as unknown as IInstallContext;
 
     // We need to ensure getBinaryPaths returns something that points to our mock shell command
     // getBinaryPaths uses the prefix we return from brew --prefix.
