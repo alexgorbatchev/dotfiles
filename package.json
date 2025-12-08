@@ -1,6 +1,6 @@
 {
   "name": "dotfiles",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "module": "cli.ts",
   "devDependencies": {
     "@biomejs/biome": "catalog:",
