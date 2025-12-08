@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+/** biome-ignore-all lint/suspicious/noConsole: build script */
 
 /**
  * NPM Publishing Script
@@ -82,7 +83,8 @@ export async function publish(): Promise<void> {
 
 // Only run if executed directly
 if (import.meta.main) {
-  publish().catch((_error) => {
+  publish().catch((error) => {
+    console.error(error.message);
     process.exit(1);
   });
 }
