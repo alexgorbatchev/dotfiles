@@ -88,13 +88,17 @@ export class MemFileSystem implements IFileSystem {
 
   /**
    * @inheritdoc IFileSystem.exists
+   *
+   * Uses stat() instead of access() to match Node.js behavior with broken symlinks.
+   * Node.js access() fails with ENOENT for broken symlinks because it follows the symlink.
+   * memfs access() incorrectly succeeds for broken symlinks, so we use stat() which
+   * properly follows symlinks and fails if the target doesn't exist.
    */
   public async exists(path: string): Promise<boolean> {
     try {
-      await this.vol.promises.access(path);
+      await this.vol.promises.stat(path);
       return true;
-    } catch (_e) {
-      // memfs throws an error if path does not exist, similar to Node's fs.promises.access
+    } catch {
       return false;
     }
   }

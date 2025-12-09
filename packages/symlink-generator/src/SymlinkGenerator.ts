@@ -8,6 +8,75 @@ import { expandToolConfigPath } from '@dotfiles/utils';
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from './ISymlinkGenerator';
 import { messages } from './log-messages';
 
+/** Configuration for a single symlink mapping from source to target */
+interface ISymlinkConfig {
+  source: string;
+  target: string;
+}
+
+/** Options for handling existing targets during symlink creation */
+interface IOverwriteOptions {
+  overwrite: boolean;
+  backup: boolean;
+}
+
+/** Result indicating the symlink is correct */
+interface ISymlinkCheckResult {
+  isCorrect: boolean;
+}
+
+/** Result of a successful operation */
+interface IOperationSuccess {
+  failed: false;
+}
+
+/** Result of a failed operation with error message */
+interface IOperationFailure {
+  failed: true;
+  error: string;
+}
+
+/** Union type for operation results */
+type OperationResult = IOperationSuccess | IOperationFailure;
+
+/** Result when target handling determines symlink should be created */
+interface ITargetHandlingCreate {
+  shouldSkip: false;
+  status: SymlinkCreationStatus;
+}
+
+/** Result when target handling determines symlink should be skipped */
+interface ITargetHandlingSkip {
+  shouldSkip: true;
+  status: 'skipped_correct' | 'skipped_exists' | 'failed';
+  error?: string;
+}
+
+/** Union type for target handling results */
+type TargetHandlingResult = ITargetHandlingCreate | ITargetHandlingSkip;
+
+/** Status values for overwrite operations (excludes 'created') */
+type OverwriteStatus = 'updated_target' | 'backed_up';
+
+/** Result when overwrite handling succeeds */
+interface IOverwriteHandlingSuccess {
+  shouldSkip: false;
+  status: OverwriteStatus;
+}
+
+/** Result when overwrite handling fails */
+interface IOverwriteHandlingFailure {
+  shouldSkip: true;
+  status: 'failed';
+  error: string;
+}
+
+/** Union type for overwrite handling results */
+type OverwriteHandlingResult = IOverwriteHandlingSuccess | IOverwriteHandlingFailure;
+
+/** Status values for successful symlink creation operations */
+type SymlinkCreationStatus = 'created' | 'updated_target' | 'backed_up';
+
 /**
  * Service that generates symbolic links for dotfiles.
  *
@@ -159,7 +228,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    */
   private async processSymlink(
     toolConfig: ToolConfig,
-    symlinkConfig: { source: string; target: string },
+    symlinkConfig: ISymlinkConfig,
     toolFs: IFileSystem,
     options: IGenerateSymlinksOptions,
     logger: TsLogger
@@ -233,16 +302,18 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     sourceAbsPath: string,
     targetAbsPath: string,
     toolFs: IFileSystem,
-    options: { overwrite: boolean; backup: boolean },
+    options: IOverwriteOptions,
     logger: TsLogger
-  ): Promise<
-    | { shouldSkip: false; status: 'created' | 'updated_target' | 'backed_up' }
-    | { shouldSkip: true; status: 'skipped_correct' | 'skipped_exists' | 'failed'; error?: string }
-  > {
+  ): Promise<TargetHandlingResult> {
     const methodLogger = logger.getSubLogger({ name: 'handleExistingTarget' });
     const targetExists = await toolFs.exists(targetAbsPath);
 
     if (!targetExists) {
+      // Check for broken symlink - exists() returns false but the symlink file itself may exist
+      const brokenSymlinkRemoved = await this.removeBrokenSymlink(targetAbsPath, toolFs, methodLogger);
+      if (brokenSymlinkRemoved.failed) {
+        return { shouldSkip: true, status: 'failed', error: brokenSymlinkRemoved.error };
+      }
       return { shouldSkip: false, status: 'created' };
     }
 
@@ -273,7 +344,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     sourceAbsPath: string,
     targetAbsPath: string,
     toolFs: IFileSystem
-  ): Promise<{ isCorrect: boolean }> {
+  ): Promise<ISymlinkCheckResult> {
     try {
       const targetStat = await toolFs.lstat(targetAbsPath);
       if (targetStat.isSymbolicLink()) {
@@ -302,10 +373,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     toolFs: IFileSystem,
     backup: boolean,
     logger: TsLogger
-  ): Promise<
-    | { shouldSkip: false; status: 'updated_target' | 'backed_up' }
-    | { shouldSkip: true; status: 'failed'; error: string }
-  > {
+  ): Promise<OverwriteHandlingResult> {
     const methodLogger = logger.getSubLogger({ name: 'handleOverwrite' });
     let status: SymlinkOperationResult['status'] = 'updated_target';
 
@@ -337,7 +405,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     targetAbsPath: string,
     toolFs: IFileSystem,
     logger: TsLogger
-  ): Promise<{ failed: false } | { failed: true; error: string }> {
+  ): Promise<OperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'createBackup' });
     const backupPath = `${targetAbsPath}.bak`;
     try {
@@ -346,9 +414,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
       }
       await toolFs.rename(targetAbsPath, backupPath);
       return { failed: false };
-    } catch (error) {
+    } catch {
       const errorMsg = messages.filesystem.backupFailed(targetAbsPath);
-      methodLogger.error(errorMsg, error);
+      methodLogger.error(errorMsg);
       return { failed: true, error: errorMsg };
     }
   }
@@ -365,7 +433,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     targetAbsPath: string,
     toolFs: IFileSystem,
     logger: TsLogger
-  ): Promise<{ failed: false } | { failed: true; error: string }> {
+  ): Promise<OperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'deleteTarget' });
     try {
       const targetStat = await toolFs.stat(targetAbsPath);
@@ -377,10 +445,41 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         await toolFs.rm(targetAbsPath, { force: true });
       }
       return { failed: false };
-    } catch (error) {
+    } catch {
       const errorMsg = messages.filesystem.deleteFailed(targetAbsPath);
-      methodLogger.error(errorMsg, error);
+      methodLogger.error(errorMsg);
       return { failed: true, error: errorMsg };
+    }
+  }
+
+  /**
+   * Removes a broken symlink at the target path if one exists.
+   *
+   * A broken symlink is one where the symlink file exists but its target doesn't.
+   * The exists() method returns false for broken symlinks (following Node.js behavior),
+   * but the symlink file itself still exists and must be removed before creating a new one.
+   *
+   * @param targetAbsPath - The absolute path to check for a broken symlink.
+   * @param toolFs - The file system interface.
+   * @param logger - The logger instance.
+   * @returns An object indicating success or failure with error message.
+   */
+  private async removeBrokenSymlink(
+    targetAbsPath: string,
+    toolFs: IFileSystem,
+    logger: TsLogger
+  ): Promise<OperationResult> {
+    const methodLogger = logger.getSubLogger({ name: 'removeBrokenSymlink' });
+    try {
+      const stats = await toolFs.lstat(targetAbsPath);
+      if (stats.isSymbolicLink()) {
+        methodLogger.debug(messages.filesystem.removingBrokenSymlink(targetAbsPath));
+        await toolFs.rm(targetAbsPath, { force: true });
+      }
+      return { failed: false };
+    } catch {
+      // lstat failed - no file/symlink exists at this path, nothing to remove
+      return { failed: false };
     }
   }
 
@@ -398,7 +497,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
     sourceAbsPath: string,
     targetAbsPath: string,
     toolFs: IFileSystem,
-    status: 'created' | 'updated_target' | 'backed_up',
+    status: SymlinkCreationStatus,
     logger: TsLogger
   ): Promise<SymlinkOperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'createSymlink' });
@@ -406,9 +505,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
 
     try {
       await toolFs.ensureDir(targetDir);
-    } catch (error) {
+    } catch {
       const errorMsg = messages.filesystem.directoryCreateFailed(targetDir);
-      methodLogger.error(errorMsg, error);
+      methodLogger.error(errorMsg);
       const result: SymlinkOperationResult = {
         success: false,
         sourcePath: sourceAbsPath,
@@ -428,9 +527,9 @@ export class SymlinkGenerator implements ISymlinkGenerator {
         status,
       };
       return result;
-    } catch (error) {
+    } catch {
       const errorMsg = messages.filesystem.symlinkFailed(sourceAbsPath, targetAbsPath);
-      methodLogger.error(errorMsg, error);
+      methodLogger.error(errorMsg);
       const result: SymlinkOperationResult = {
         success: false,
         sourcePath: sourceAbsPath,

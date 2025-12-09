@@ -220,6 +220,45 @@ describe('SymlinkGenerator', () => {
     ]);
   });
 
+  it('should handle broken symlink at target path with overwrite and backup', async () => {
+    const sourcePath = 'src/file.txt';
+    const sourceFullPath = getSourcePath(sourcePath);
+    const targetPath = getTargetPath('.target.txt');
+
+    const toolConfigs = {
+      tool1: createToolConfig([{ source: sourcePath, target: '.target.txt' }]),
+    };
+
+    // Create source file
+    await mockFs.addFiles({ [sourceFullPath]: 'source content' });
+
+    // Create a broken symlink at the target path (points to non-existent file)
+    await mockFs.fs.ensureDir(path.dirname(targetPath));
+    await mockFs.fs.symlink('/non-existent-old-target', targetPath);
+
+    // Verify it's a broken symlink (use lstat since exists() returns false for broken symlinks)
+    const stats = await mockFs.fs.lstat(targetPath);
+    expect(stats.isSymbolicLink()).toBe(true);
+    expect(await mockFs.fs.exists(targetPath)).toBe(false); // Broken symlink - target doesn't exist
+
+    const options: IGenerateSymlinksOptions = { overwrite: true, backup: true };
+    const results = await symlinkGenerator.generate(toolConfigs, options);
+
+    // Should successfully create the new symlink
+    expect(await mockFs.fs.exists(targetPath)).toBe(true);
+    expect(await mockFs.fs.readlink(targetPath)).toBe(sourceFullPath);
+
+    // Broken symlinks are deleted, not backed up (no point backing up a broken symlink)
+    expect(results).toEqual([
+      {
+        success: true,
+        sourcePath: sourceFullPath,
+        targetPath,
+        status: 'created',
+      },
+    ]);
+  });
+
   it('should attempt symlink creation and return created status (simulating dry run with MemFS)', async () => {
     // SymlinkGenerator always attempts operations. MemFS simulates dry run by not hitting actual disk.
     const sourcePath = 'src/file.txt';
