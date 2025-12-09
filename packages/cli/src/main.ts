@@ -38,6 +38,7 @@ import { registerGenerateCommand } from './generateCommand';
 import { registerInstallCommand } from './installCommand';
 import { messages } from './log-messages';
 import { registerLogCommand } from './logCommand';
+import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
@@ -208,8 +209,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const fs = initializeFileSystem(logger, dryRun);
   const systemInfo = createSystemInfo(options, logger);
 
-  // Resolve config path to absolute (defaults to config.yaml in cwd, relative paths resolved from cwd)
-  const userConfigPath = path.resolve(process.cwd(), config.length === 0 ? 'config.yaml' : config);
+  // Resolve config path - if explicit path provided use it, otherwise search for default config files
+  const userConfigPath = await resolveConfigPath(logger, config, process.cwd());
+
+  if (!userConfigPath) {
+    logger.error(messages.configNotFound(DEFAULT_CONFIG_FILES.join(', ')));
+    process.exit(1);
+  }
 
   // For config loading, use NodeFileSystem only in dry-run mode when running the CLI directly
   const isRunningDirectly = process.env.NODE_ENV !== 'test' && !process.env['BUN_TEST'];
