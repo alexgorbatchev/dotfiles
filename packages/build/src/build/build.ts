@@ -48,6 +48,7 @@ const TEMP_SCHEMAS_BUILD_DIR_NAME = 'temp-schemas-build';
 const TEMP_SCHEMAS_BUILD_DIR = path.join(TMP_DIR, TEMP_SCHEMAS_BUILD_DIR_NAME);
 const TEMP_SCHEMAS_PACKAGE_PATH = path.join(TEMP_SCHEMAS_BUILD_DIR, 'package.json');
 const TEMP_SCHEMAS_NPMRC_PATH = path.join(TEMP_SCHEMAS_BUILD_DIR, '.npmrc');
+const OUTPUT_PACKAGES_DIR = path.join(OUTPUT_DIR, 'packages');
 
 const OUTPUT_PACKAGE_JSON_PATH = path.join(OUTPUT_DIR, 'package.json');
 const OUTPUT_NPMRC_PATH = path.join(OUTPUT_DIR, '.npmrc');
@@ -111,41 +112,63 @@ function copyFileIfExists(sourcePath: string, destinationPath: string): void {
 }
 
 /**
- * Creates symlinks from Bun's global store to a local node_modules directory.
- *
- * When Bun installs dependencies, it stores them in a global cache at
- * `node_modules/.bun/node_modules` and creates symlinks in `node_modules/`.
- * This function manually creates those symlinks for build environments where
- * Bun may not have created them automatically.
- *
- * @param nodeModulesPath - The path to the node_modules directory.
+ * Directories to exclude when copying packages.
  */
-function linkBunStoreDependencies(nodeModulesPath: string): void {
-  if (!fs.existsSync(nodeModulesPath)) {
-    return;
+const EXCLUDED_DIRS: string[] = ['node_modules', '__tests__', 'type-tests'];
+
+/**
+ * Recursively copies a directory, excluding specified directories.
+ *
+ * @param sourcePath - The source directory path.
+ * @param destinationPath - The destination directory path.
+ * @param excludeDirs - Directory names to exclude from copying.
+ */
+function copyDirectoryRecursive(sourcePath: string, destinationPath: string, excludeDirs: string[]): void {
+  fs.mkdirSync(destinationPath, { recursive: true });
+
+  const entries: fs.Dirent[] = fs.readdirSync(sourcePath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const sourceEntryPath: string = path.join(sourcePath, entry.name);
+    const destEntryPath: string = path.join(destinationPath, entry.name);
+
+    if (entry.isDirectory()) {
+      if (excludeDirs.includes(entry.name)) {
+        continue;
+      }
+      copyDirectoryRecursive(sourceEntryPath, destEntryPath, excludeDirs);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(sourceEntryPath, destEntryPath);
+    } else if (entry.isSymbolicLink()) {
+      const linkTarget: string = fs.readlinkSync(sourceEntryPath);
+      fs.symlinkSync(linkTarget, destEntryPath);
+    }
   }
+}
 
-  const bunNodeModulesPath: string = path.join(nodeModulesPath, '.bun', 'node_modules');
+/**
+ * Copies all workspace packages to the output directory.
+ *
+ * Copies each package from `packages/` to `.dist/packages/`, excluding
+ * `node_modules`, `__tests__`, and `type-tests` directories. This creates
+ * an isolated copy that can be used as a workspace without affecting
+ * the original packages' node_modules.
+ */
+function copyPackagesToOutputDir(): void {
+  console.log('📦 Copying packages to build directory...');
+  fs.mkdirSync(OUTPUT_PACKAGES_DIR, { recursive: true });
 
-  if (!fs.existsSync(bunNodeModulesPath)) {
-    return;
-  }
+  const packages: fs.Dirent[] = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
 
-  const directoryEntries: fs.Dirent[] = fs.readdirSync(bunNodeModulesPath, { withFileTypes: true });
-
-  for (const entry of directoryEntries) {
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) {
+  for (const entry of packages) {
+    if (!entry.isDirectory()) {
       continue;
     }
 
-    const sourcePath: string = path.join(bunNodeModulesPath, entry.name);
-    const destinationPath: string = path.join(nodeModulesPath, entry.name);
+    const sourcePackagePath: string = path.join(PACKAGES_DIR, entry.name);
+    const destPackagePath: string = path.join(OUTPUT_PACKAGES_DIR, entry.name);
 
-    if (fs.existsSync(destinationPath)) {
-      continue;
-    }
-
-    fs.symlinkSync(sourcePath, destinationPath, 'dir');
+    copyDirectoryRecursive(sourcePackagePath, destPackagePath, EXCLUDED_DIRS);
   }
 }
 
@@ -274,20 +297,20 @@ async function setupTsdTestsProject(): Promise<void> {
 }
 
 /**
- * Restores workspace dependencies using `bun install`.
+ * Ensures workspace dependencies are installed.
  *
- * Ensures the Bun cache directory exists and runs a fresh `bun install`
- * at the repository root to restore all workspace dependencies.
+ * Runs `bun install` at the repository root to ensure all dependencies
+ * are available before the build starts.
  *
  * @throws {BuildError} If dependency installation fails.
  */
-async function restoreWorkspaceDependencies(): Promise<void> {
+async function ensureWorkspaceDependencies(): Promise<void> {
   ensureBunCacheDirectory();
-  console.log('🔄 Restoring workspace dependencies...');
+  console.log('🔄 Ensuring workspace dependencies...');
   try {
     await $`bun install`.quiet();
   } catch (error) {
-    throw new BuildError('Workspace dependency restoration failed', error);
+    throw new BuildError('Workspace dependency installation failed', error);
   }
 }
 
@@ -295,8 +318,7 @@ async function restoreWorkspaceDependencies(): Promise<void> {
  * Installs dependencies in the output directory with Bun caching.
  *
  * Runs `bun install` in the `.dist` directory using the workspace's shared
- * Bun cache to speed up installation. After installation, links dependencies
- * from Bun's global store.
+ * Bun cache to speed up installation.
  *
  * @throws {BuildError} If dependency installation fails.
  */
@@ -304,7 +326,6 @@ async function installDependenciesInOutputDir(): Promise<void> {
   ensureBunCacheDirectory();
   try {
     await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
-    linkBunStoreDependencies(path.join(OUTPUT_DIR, 'node_modules'));
   } catch (error) {
     throw new BuildError('Temporary dependency installation failed', error);
   }
@@ -337,25 +358,22 @@ async function getDependencyVersions(): Promise<IDependencyVersions> {
   const pmLsResult = await $`bun pm ls --all`.quiet();
   const pmLsOutput = pmLsResult.stdout.toString();
 
-  const zodMatch = pmLsOutput.match(/zod@(\d+\.\d+\.\d+)/);
-  const bunTypesMatch = pmLsOutput.match(/@types\/bun@(\d+\.\d+\.\d+)/);
-  const nodeTypesMatch = pmLsOutput.match(/@types\/node@(\d+\.\d+\.\d+)/);
-  if (!zodMatch || !bunTypesMatch || !nodeTypesMatch) {
-    throw new BuildError('Could not find zod, @types/bun, or @types/node versions in bun pm ls output');
-  }
-
-  const zodVersion = zodMatch[1];
-  const bunTypesVersion = bunTypesMatch[1];
-  const nodeTypesVersion = nodeTypesMatch[1];
-
-  if (!zodVersion || !bunTypesVersion || !nodeTypesVersion) {
-    throw new BuildError('Could not extract version numbers from dependency output');
+  function extractVersion(pattern: RegExp, name: string): string {
+    const match = pmLsOutput.match(pattern);
+    if (!match) {
+      throw new BuildError(`Could not find ${name} version in bun pm ls output`);
+    }
+    const version = match[1];
+    if (!version) {
+      throw new BuildError(`Could not extract ${name} version number`);
+    }
+    return version;
   }
 
   const versions: IDependencyVersions = {
-    zod: zodVersion,
-    bunTypes: bunTypesVersion,
-    nodeTypes: nodeTypesVersion,
+    zod: extractVersion(/zod@(\d+\.\d+\.\d+)/, 'zod'),
+    bunTypes: extractVersion(/@types\/bun@(\d+\.\d+\.\d+)/, '@types/bun'),
+    nodeTypes: extractVersion(/@types\/node@(\d+\.\d+\.\d+)/, '@types/node'),
   };
 
   return versions;
@@ -475,7 +493,7 @@ async function createTempSchemasPackage(dependencyVersions: IDependencyVersions)
   const tempRootPackageJson = {
     name: 'temp-root',
     private: true,
-    workspaces: [TEMP_SCHEMAS_BUILD_DIR, `${ROOT_DIR}/packages/*`],
+    workspaces: [TEMP_SCHEMAS_BUILD_DIR, `${OUTPUT_PACKAGES_DIR}/*`],
     catalog: getPackageJson().catalog,
     catalogs: getPackageJson().catalogs,
   };
@@ -506,6 +524,10 @@ async function createTempSchemasPackage(dependencyVersions: IDependencyVersions)
 async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promise<void> {
   await createTempTsConfig();
   await $`bun tsgo --project ${BUILD_TSCONFIG_PATH}`.quiet();
+
+  // Copy packages to .dist/packages/ to create an isolated workspace
+  // This prevents bun from creating symlinks in the original packages' node_modules
+  copyPackagesToOutputDir();
 
   await createTempSchemasPackage(dependencyVersions);
 
@@ -582,6 +604,19 @@ async function runTypeTests(): Promise<void> {
   console.log('✅ @dotfiles/core config types validated with tsd');
 }
 
+/**
+ * Cleans up the schema build artifacts from the output directory.
+ *
+ * Removes the copied packages directory and node_modules that were only
+ * needed for schema type generation. This must be called after schema
+ * generation but before tsd tests to prevent tsd from processing
+ * unnecessary files.
+ */
+function cleanupSchemaBuildArtifacts(): void {
+  fs.rmSync(OUTPUT_PACKAGES_DIR, { recursive: true, force: true });
+  fs.rmSync(path.join(OUTPUT_DIR, 'node_modules'), { recursive: true, force: true });
+}
+
 async function cleanupTempFiles(): Promise<void> {
   const filesToCleanup: string[] = [
     TEMP_SCHEMAS_BUILD_DIR,
@@ -613,6 +648,7 @@ async function generateSchemaTypes(dependencyVersions: IDependencyVersions): Pro
   try {
     await buildSchemaTypes(dependencyVersions);
     checkProjectConfigTypeSignature();
+    cleanupSchemaBuildArtifacts();
   } catch (error) {
     throw new BuildError('Schema type generation failed', error);
   }
@@ -726,6 +762,7 @@ async function printBuildSummary(): Promise<void> {
  */
 await handleBuildError(
   async () => {
+    await ensureWorkspaceDependencies();
     await cleanPreviousBuild();
 
     const dependencyVersions = await getDependencyVersions();
@@ -743,7 +780,6 @@ await handleBuildError(
     await printBuildSummary();
   },
   async () => {
-    await restoreWorkspaceDependencies();
     await cleanupTempFiles();
   }
 );
