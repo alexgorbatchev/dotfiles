@@ -112,4 +112,10 @@ export const messages = {
   filesCommandShowingTree: (path: string) => createSafeLogMessage(path),
   filesCommandEmptyDirectory: () => createSafeLogMessage('(empty directory)'),
   filesCommandTree: (treeOutput: string) => createSafeLogMessage(treeOutput),
+  docsSymlinkExists: (symlinkPath: string) => createSafeLogMessage(`Symlink already exists: ${symlinkPath}`),
+  docsSymlinkDryRun: (symlinkPath: string, targetPath: string) =>
+    createSafeLogMessage(`Would create symlink: ${symlinkPath} -> ${targetPath}`),
+  docsSymlinkCreated: (symlinkPath: string, targetPath: string) =>
+    createSafeLogMessage(`Created symlink: ${symlinkPath} -> ${targetPath}`),
+  docsSymlinkFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to create symlink: ${symlinkPath}`),
 } satisfies SafeLogMessageMap;

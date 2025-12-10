@@ -68,6 +68,8 @@ const TSD_TESTS_NPMRC_PATH = path.join(TSD_TESTS_DIR, '.npmrc');
 const TSD_TESTS_NODE_MODULES_PATH = path.join(TSD_TESTS_DIR, 'node_modules');
 const TSD_TESTS_GITEA_NAMESPACE_PATH = path.join(TSD_TESTS_NODE_MODULES_PATH, '@gitea');
 const TSD_TESTS_GITEA_SYMLINK_PATH = path.join(TSD_TESTS_GITEA_NAMESPACE_PATH, 'dotfiles');
+const DOCS_DIR = path.join(ROOT_DIR, 'docs');
+const OUTPUT_DOCS_DIR = path.join(OUTPUT_DIR, 'docs');
 
 /**
  * Version information for key dependencies required by the build.
@@ -169,6 +171,18 @@ function copyPackagesToOutputDir(): void {
     const destPackagePath: string = path.join(OUTPUT_PACKAGES_DIR, entry.name);
 
     copyDirectoryRecursive(sourcePackagePath, destPackagePath, EXCLUDED_DIRS);
+  }
+}
+
+/**
+ * Copies the docs folder to the output directory.
+ *
+ * This ensures documentation is included in the published npm package.
+ */
+function copyDocsToOutputDir(): void {
+  console.log('📚 Copying docs to build directory...');
+  if (fs.existsSync(DOCS_DIR)) {
+    copyDirectoryRecursive(DOCS_DIR, OUTPUT_DOCS_DIR, []);
   }
 }
 
@@ -323,6 +337,7 @@ async function ensureWorkspaceDependencies(): Promise<void> {
  * @throws {BuildError} If dependency installation fails.
  */
 async function installDependenciesInOutputDir(): Promise<void> {
+  console.log('📥 Installing dependencies in output directory...');
   ensureBunCacheDirectory();
   try {
     await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
@@ -683,6 +698,7 @@ async function generatePackageJson(dependencyVersions: IDependencyVersions): Pro
         },
       },
     },
+    files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'docs'],
     dependencies: {
       zod: dependencyVersions.zod,
       '@types/bun': dependencyVersions.bunTypes,
@@ -770,6 +786,7 @@ await handleBuildError(
     await buildCli();
     await generateSchemaTypes(dependencyVersions);
     await generatePackageJson(dependencyVersions);
+    copyDocsToOutputDir();
 
     generateToolTypes({}, path.join(OUTPUT_DIR, 'tool-types.d.ts'));
 

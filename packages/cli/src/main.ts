@@ -32,6 +32,7 @@ import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
 import { createProgram } from './createProgram';
 import { registerDetectConflictsCommand } from './detectConflictsCommand';
+import { registerDocsCommand } from './docsCommand';
 import { registerFeaturesCommand } from './featuresCommand';
 import { registerFilesCommand } from './filesCommand';
 import { registerGenerateCommand } from './generateCommand';
@@ -402,6 +403,7 @@ export function registerAllCommands(
   registerDetectConflictsCommand(logger, program, servicesFactory);
   registerLogCommand(logger, program, servicesFactory);
   registerFilesCommand(logger, program, servicesFactory);
+  registerDocsCommand(logger, program, servicesFactory);
 }
 
 export async function main(argv: string[]) {

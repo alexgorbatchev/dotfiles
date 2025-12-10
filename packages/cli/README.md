@@ -155,6 +155,31 @@ Conflicts found:
     - Shim: ~/.dotfiles/bin/rg
 ```
 
+### `docs <path>`
+
+Create a symlink called `dotfiles` in the specified directory pointing to the project's docs folder.
+
+```bash
+# Create docs symlink in current directory
+dotfiles docs .
+
+# Create docs symlink in specific directory
+dotfiles docs ~/notes
+
+# Preview without creating (dry run)
+dotfiles docs ~/notes --dry-run
+```
+
+**Output:**
+```
+Created symlink: ~/notes/dotfiles -> /path/to/dotfiles-tool-installer/docs
+```
+
+If the symlink already exists:
+```
+Symlink already exists: ~/notes/dotfiles
+```
+
 ### `log`
 
 Manage tracked generated files.

@@ -1,6 +1,7 @@
 export * from './checkUpdatesCommand';
 export * from './cleanupCommand';
 export * from './createProgram';
+export * from './docsCommand';
 // Export defineTool with plugins pre-loaded for type safety
 // biome-ignore lint/plugin: Named exports required for selective API exposure
 export { createInstallFunction, defineTool } from './defineToolWithPlugins';

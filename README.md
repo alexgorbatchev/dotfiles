@@ -51,6 +51,9 @@ bun run cli.ts log
 
 # Display tree of installed tool files
 bun run cli.ts files <toolName>
+
+# Create docs symlink in a directory
+bun run cli.ts docs <path>
 ```
 
 ### Configure with TypeScript
