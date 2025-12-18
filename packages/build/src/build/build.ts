@@ -39,6 +39,8 @@ const PACKAGES_DIR = path.join(ROOT_DIR, 'packages');
 const TMP_DIR = path.join(ROOT_DIR, '.tmp');
 const OUTPUT_DIR = path.join(ROOT_DIR, '.dist');
 const CLI_OUTPUT_FILE = path.join(OUTPUT_DIR, 'cli.js');
+const MAX_CLI_BUNDLE_SIZE_KB = 100;
+const MAX_CLI_BUNDLE_SIZE_BYTES = MAX_CLI_BUNDLE_SIZE_KB * 1024;
 const ENTRY_POINT = path.resolve(PACKAGES_DIR, 'cli/src/main.ts');
 const NPMRC_PATH = path.join(ROOT_DIR, '.npmrc');
 const BUNFIG_PATH = path.join(ROOT_DIR, 'bunfig.toml');
@@ -470,6 +472,7 @@ async function buildCli(): Promise<Bun.BuildOutput> {
     target: 'bun',
     format: 'esm',
     splitting: false,
+    packages: 'external',
     define: {
       'import.meta.main': 'true',
     },
@@ -486,6 +489,18 @@ async function buildCli(): Promise<Bun.BuildOutput> {
 
   // Make cli.js executable
   fs.chmodSync(CLI_OUTPUT_FILE, 0o755);
+
+  const cliStats = fs.statSync(CLI_OUTPUT_FILE);
+  if (!cliStats.isFile()) {
+    throw new BuildError('cli.js output is missing');
+  }
+
+  if (cliStats.size > MAX_CLI_BUNDLE_SIZE_BYTES) {
+    const sizeKb: number = Math.ceil(cliStats.size / 1024);
+    throw new BuildError(
+      `cli.js file is too large (${sizeKb} kb), external dependencies are most likely being bundled`
+    );
+  }
 
   return result;
 }
@@ -599,7 +614,25 @@ async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promis
   // This ensures all module augmentations are loaded
   const schemaExportsPath = path.join(TEMP_SCHEMAS_BUILD_DIR, 'schema-exports.d.ts');
 
-  await $`bunx dts-bundle-generator --project ${BUILD_TSCONFIG_PATH} --out-file ${OUTPUT_SCHEMAS_D_TS_PATH} --no-check --export-referenced-types --external-imports=@dotfiles/core --external-imports=zod --external-imports=bun --external-inlines=@dotfiles/config --external-inlines=@dotfiles/logger --external-inlines=@dotfiles/installer-brew --external-inlines=@dotfiles/installer-cargo --external-inlines=@dotfiles/installer-curl-script --external-inlines=@dotfiles/installer-curl-tar --external-inlines=@dotfiles/installer-github --external-inlines=@dotfiles/installer-manual -- ${schemaExportsPath}`.quiet();
+  await $`
+    bunx dts-bundle-generator \
+      --project ${BUILD_TSCONFIG_PATH} \
+      --out-file ${OUTPUT_SCHEMAS_D_TS_PATH} \
+      --no-check \
+      --export-referenced-types \
+      --external-imports=@dotfiles/core \
+      --external-imports=zod \
+      --external-imports=bun \
+      --external-inlines=@dotfiles/config \
+      --external-inlines=@dotfiles/logger \
+      --external-inlines=@dotfiles/installer-brew \
+      --external-inlines=@dotfiles/installer-cargo \
+      --external-inlines=@dotfiles/installer-curl-script \
+      --external-inlines=@dotfiles/installer-curl-tar \
+      --external-inlines=@dotfiles/installer-github \
+      --external-inlines=@dotfiles/installer-manual \
+      -- ${schemaExportsPath}
+  `.quiet();
 
   console.log('✅ Successfully created schemas.d.ts with dts-bundle-generator');
 }
@@ -797,6 +830,16 @@ async function printBuildSummary(): Promise<void> {
   console.log(`📁 Output directory: ${OUTPUT_DIR}`);
   console.log('🗂️  Generated files:');
 
+  function computeFileSizeKb(fileSizeBytes: number): number {
+    if (fileSizeBytes === 0) {
+      return 0;
+    }
+
+    const fileSizeKb: number = fileSizeBytes / 1024;
+    const roundedKb: number = Math.ceil(fileSizeKb);
+    return roundedKb;
+  }
+
   // Read all files from the output directory
   const files = fs.readdirSync(OUTPUT_DIR);
 
@@ -806,7 +849,8 @@ async function printBuildSummary(): Promise<void> {
     const stats = fs.statSync(filePath);
 
     if (stats.isFile()) {
-      console.log(`   - ${relativePath}`);
+      const kb = computeFileSizeKb(stats.size);
+      console.log(`   - ${relativePath} (${kb} KB)`);
     }
   }
 }

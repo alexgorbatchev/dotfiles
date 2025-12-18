@@ -44,17 +44,17 @@ export async function handleBuildError(
   try {
     await operation();
   } catch (error: unknown) {
-    const rootCause: unknown = getRootCause(error);
-
     if (error instanceof BuildError) {
       console.error('Build failed');
       console.error(`Reason: ${error.message}`);
+      process.exitCode = 1;
+      return;
     } else {
+      const rootCause: unknown = getRootCause(error);
       console.error('Build failed unexpectedly');
+      logErrorDetails(rootCause);
+      process.exitCode = 1;
     }
-
-    logErrorDetails(rootCause);
-    process.exitCode = 1;
   } finally {
     if (finallyCallback) {
       await finallyCallback();

@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Build Script Entry
  *

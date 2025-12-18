@@ -37,9 +37,9 @@ describe('handleBuildError', () => {
     });
 
     expect(process.exitCode).toBe(1);
+    expect(loggedMessages).toHaveLength(2);
     expect(loggedMessages[0]).toContain('Build failed');
     expect(loggedMessages[1]).toContain('Schema generation failed');
-    expect(loggedMessages[2]).toContain('schema failure');
   });
 
   test('logs unexpected errors and sets exit code', async () => {
