@@ -18,7 +18,7 @@ describe('HookExecutor', () => {
 
   beforeEach(async () => {
     logger = new TestLogger();
-    hookExecutor = new HookExecutor(logger);
+    hookExecutor = new HookExecutor(logger, (): void => {});
     memFs = await createMemFileSystem();
 
     // Create a proper TrackedFileSystem mock that will pass instanceof check

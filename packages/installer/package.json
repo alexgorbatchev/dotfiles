@@ -8,6 +8,7 @@
     "./clients/github": "./src/clients/github/index.ts"
   },
   "dependencies": {
+    "@babel/code-frame": "^7.27.1",
     "@dotfiles/arch": "workspace:*",
     "@dotfiles/archive-extractor": "workspace:*",
     "@dotfiles/config": "workspace:*",
@@ -32,6 +33,7 @@
     "@dotfiles/installer-manual": "workspace:*",
     "@dotfiles/testing-helpers": "workspace:*",
     "@dotfiles/registry-database": "workspace:*",
+    "@types/babel__code-frame": "^7.0.6",
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@types/semver": "^7.5.8",

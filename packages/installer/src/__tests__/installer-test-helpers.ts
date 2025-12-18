@@ -16,7 +16,7 @@ import type { CargoToolConfig } from '@dotfiles/installer-cargo';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
-import { TestLogger, type TsLogger } from '@dotfiles/logger';
+import { TestLogger } from '@dotfiles/logger';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
   createMock$,
@@ -28,7 +28,7 @@ import type { ILogObj } from 'tslog';
 import { z } from 'zod';
 import type { Installer } from '../Installer';
 import type { InstallResult } from '../types';
-import type { HookExecutor } from '../utils/HookExecutor';
+import { HookExecutor } from '../utils/HookExecutor';
 
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
@@ -223,6 +223,7 @@ export interface IInstallerTestSetup {
  */
 export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const logger = new TestLogger();
+  const hookExecutor = new HookExecutor(logger, (): void => {});
   const { fs, spies } = await createMemFileSystem();
   const testDirs = await createTestDirectories(logger, fs, { testName: 'installer-tests' });
 
@@ -294,21 +295,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     env: {},
   });
 
-  // Setup mock HookExecutor
-  const mockExecuteHook = mock(async () => ({ success: true, durationMs: 100, skipped: false }));
-  const mockCreateEnhancedContext = mock((baseContext: IInstallContext, fileSystem: IFileSystem, logger: TsLogger) => ({
-    ...baseContext,
-    fileSystem,
-    logger,
-    $: createMock$() as unknown as $extended,
-  }));
-  const mockHookExecutor = {
-    executeHook: mockExecuteHook,
-    createEnhancedContext: mockCreateEnhancedContext,
-    logger: new TestLogger(),
-    defaultTimeoutMs: 60000,
-    executeHooks: mock(async () => [{ success: true, durationMs: 100, skipped: false }]),
-  } as unknown as HookExecutor;
+  // HookExecutor is real, but output is suppressed via injected writer.
 
   // Create real plugin registry and register a mock plugin
   const { InstallerPluginRegistry } = await import('@dotfiles/core');
@@ -401,7 +388,8 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     mockSystemInfo,
     pluginRegistry,
     mockSymlinkGenerator,
-    createMock$() as unknown as $extended
+    createMock$() as unknown as $extended,
+    hookExecutor
   );
 
   return {
@@ -425,7 +413,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       getReleaseByTag: mockGetReleaseByTag,
       extract: mockExtract,
       archiveExtractor: mockArchiveExtractor,
-      hookExecutor: mockHookExecutor,
+      hookExecutor,
       cargoClient: mockCargoClient,
     },
   };

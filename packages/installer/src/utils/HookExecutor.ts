@@ -1,8 +1,25 @@
-import type { AsyncInstallHook, IAfterInstallContext, IOperationFailure, IOperationSuccess } from '@dotfiles/core';
+import path from 'node:path';
+import type { $extended, IAfterInstallContext, IOperationFailure, IOperationSuccess } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
+import type { ShellExpression } from 'bun';
 import { messages } from './log-messages';
+import { writeHookErrorDetails } from './writeHookErrorDetails';
+
+export type HookHandler = (context: IAfterInstallContext) => Promise<void>;
+
+function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
+  const configuredShell: $extended = Object.assign(
+    (strings: TemplateStringsArray, ...expressions: ShellExpression[]) => {
+      const shellPromise = $shell(strings, ...expressions).cwd(cwdPath);
+      return shellPromise;
+    },
+    $shell
+  );
+
+  return configuredShell;
+}
 
 /**
  * Configuration options for controlling hook execution behavior.
@@ -40,7 +57,7 @@ export interface IHookDefinition {
   /** Name of the hook */
   name: string;
   /** Hook function to execute */
-  hook: AsyncInstallHook<never>;
+  hook: HookHandler;
   /** Optional execution options */
   options?: IHookExecutionOptions;
 }
@@ -57,12 +74,16 @@ export interface IHookDefinition {
  * - Enhanced context creation with file system and shell access
  * - Sequential execution of multiple hooks
  */
+type WriteOutput = (chunk: string) => void;
+
 export class HookExecutor {
   private readonly logger: TsLogger;
   private readonly defaultTimeoutMs = 60000; // 1 minute default
+  private readonly writeOutput: WriteOutput;
 
-  constructor(parentLogger: TsLogger) {
+  constructor(parentLogger: TsLogger, writeOutput: WriteOutput) {
     this.logger = parentLogger.getSubLogger({ name: 'HookExecutor' });
+    this.writeOutput = writeOutput;
   }
 
   /**
@@ -82,22 +103,23 @@ export class HookExecutor {
    */
   async executeHook(
     hookName: string,
-    hook: AsyncInstallHook<never>,
+    hook: HookHandler,
     enhancedContext: IAfterInstallContext,
     options: IHookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
-    const { timeoutMs = this.defaultTimeoutMs, continueOnError = false } = options;
+    const timeoutMs: number = options.timeoutMs ?? this.defaultTimeoutMs;
+    const continueOnError: boolean = options.continueOnError ?? false;
     const startTime = Date.now();
 
     methodLogger.debug(messages.hookExecutor.executingHook(hookName, timeoutMs));
 
     try {
       // Create a promise that resolves when the hook completes
-      const hookPromise = hook(enhancedContext as never);
+      const hookPromise = hook(enhancedContext);
 
       // Create a timeout promise
-      const timeoutPromise = new Promise<never>((_, reject) => {
+      const timeoutPromise: Promise<never> = new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error(messages.hookExecutor.timeoutExceeded(hookName, timeoutMs)));
         }, timeoutMs);
@@ -106,7 +128,7 @@ export class HookExecutor {
       // Race the hook against the timeout
       await Promise.race([hookPromise, timeoutPromise]);
 
-      const durationMs = Date.now() - startTime;
+      const durationMs: number = Date.now() - startTime;
       methodLogger.debug(messages.hookExecutor.hookCompleted(hookName, durationMs));
 
       const result: HookExecutionResult = {
@@ -116,9 +138,18 @@ export class HookExecutor {
       };
       return result;
     } catch (error) {
-      const durationMs = Date.now() - startTime;
+      const durationMs: number = Date.now() - startTime;
 
-      methodLogger.error(messages.outcome.installFailed(`${hookName} hook`, enhancedContext.toolName), error);
+      methodLogger.error(messages.outcome.installFailed(`${hookName} hook`, enhancedContext.toolName));
+
+      await writeHookErrorDetails({
+        fileSystem: enhancedContext.fileSystem,
+        logger: methodLogger,
+        hookName,
+        toolName: enhancedContext.toolName,
+        error,
+        writeOutput: this.writeOutput,
+      });
 
       if (continueOnError) {
         methodLogger.debug(messages.hookExecutor.continuingDespiteFailure(hookName));
@@ -160,14 +191,19 @@ export class HookExecutor {
    */
   createEnhancedContext(baseContext: IAfterInstallContext, fileSystem: IFileSystem): IAfterInstallContext {
     // Create a tool-specific TrackedFileSystem if we have one
-    const enhancedFileSystem =
+    const enhancedFileSystem: IFileSystem =
       fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
 
-    // With Bun's $, we provide the shell operator directly
-    // Hooks can use `cd` commands if they need to change directories
-    // The cwd is available via toolConfig.configFilePath if needed
+    const toolConfigFilePath: string | undefined = baseContext.toolConfig?.configFilePath;
+    const toolConfigDirPath: string | undefined = toolConfigFilePath ? path.dirname(toolConfigFilePath) : undefined;
+
+    const shellWithDefaultCwd: $extended = toolConfigDirPath
+      ? createToolConfigCwdShell(baseContext.$, toolConfigDirPath)
+      : baseContext.$;
+
     const result: IAfterInstallContext = {
       ...baseContext,
+      $: shellWithDefaultCwd,
       fileSystem: enhancedFileSystem,
     };
     return result;
@@ -188,7 +224,11 @@ export class HookExecutor {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 
-    for (const { name, hook, options } of hooks) {
+    for (const hookDefinition of hooks) {
+      const name: string = hookDefinition.name;
+      const hook: HookHandler = hookDefinition.hook;
+      const options: IHookExecutionOptions | undefined = hookDefinition.options;
+
       const result = await this.executeHook(name, hook, enhancedContext, options);
       results.push(result);
 

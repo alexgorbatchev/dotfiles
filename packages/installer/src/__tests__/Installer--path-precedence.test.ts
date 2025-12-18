@@ -13,6 +13,7 @@ import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { $ } from 'bun';
 import { z } from 'zod';
 import { Installer } from '../Installer';
+import { HookExecutor } from '../utils/HookExecutor';
 
 describe('Installer - Path Precedence (Real FS)', () => {
   let tempDir: string;
@@ -112,6 +113,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
 
     const systemInfo: ISystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: tempDir };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
+    const hookExecutor = new HookExecutor(logger, (): void => {});
 
     const installer = new Installer(
       logger,
@@ -121,7 +123,8 @@ describe('Installer - Path Precedence (Real FS)', () => {
       systemInfo,
       registry,
       symlinkGenerator,
-      $
+      $,
+      hookExecutor
     );
 
     // 4. Run Install with Modified PATH

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import * as fs from 'node:fs';
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -9,7 +8,7 @@ import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-s
 import { TestLogger } from '@dotfiles/logger';
 import { $ } from 'bun';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
-import { HookExecutor } from '../utils/HookExecutor';
+import { HookExecutor, type HookHandler } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 
 describe('HookExecutor $ Integration', () => {
@@ -21,7 +20,7 @@ describe('HookExecutor $ Integration', () => {
 
   beforeEach(async () => {
     logger = new TestLogger();
-    hookExecutor = new HookExecutor(logger);
+    hookExecutor = new HookExecutor(logger, (): void => {});
     memFs = await createMemFileSystem();
 
     // Create a temporary directory for integration tests
@@ -34,9 +33,7 @@ describe('HookExecutor $ Integration', () => {
 
   afterEach(async () => {
     // Clean up temp directory
-    if (tempDir) {
-      await rm(tempDir, { recursive: true, force: true });
-    }
+    await rm(tempDir, { recursive: true, force: true });
   });
 
   it('should execute shell commands with correct working directory', async () => {
@@ -53,26 +50,20 @@ describe('HookExecutor $ Integration', () => {
       $: createConfiguredShell($, process.env),
     });
 
-    const contextWithToolConfig = {
+    const contextWithToolConfig: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
     };
 
     let actualCwd: string | undefined;
 
-    const hookThatUsesShell = async (ctx: IAfterInstallContext) => {
-      // With Bun's $, hooks need to explicitly cd to the tool config directory
-      const toolConfigDir = ctx.toolConfig?.configFilePath
-        ? path.dirname(ctx.toolConfig.configFilePath)
-        : process.cwd();
-
-      // Use $ with cd to work in the tool config directory
-      const result = await ctx.$`cd ${toolConfigDir} && pwd`.quiet();
+    const hookThatUsesShell: HookHandler = async (ctx) => {
+      // Hooks run with the tool config directory as the default cwd.
+      const result = await ctx.$`pwd`.quiet();
       actualCwd = result.stdout.toString().trim();
 
       // Verify we can access files relative to the tool config directory
-      const configExists =
-        await ctx.$`cd ${toolConfigDir} && test -f ./test-tool.tool.ts && echo "exists" || echo "missing"`.quiet();
+      const configExists = await ctx.$`test -f ./test-tool.tool.ts && echo "exists" || echo "missing"`.quiet();
       expect(configExists.stdout.toString().trim()).toBe('exists');
     };
 
@@ -101,22 +92,17 @@ describe('HookExecutor $ Integration', () => {
       $: createConfiguredShell($, process.env),
     });
 
-    const contextWithToolConfig = {
+    const contextWithToolConfig: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
     };
 
-    const hookThatCreatesFile = async (ctx: IAfterInstallContext) => {
-      // With Bun's $, hooks need to explicitly cd to the tool config directory
-      const toolConfigDir = ctx.toolConfig?.configFilePath
-        ? path.dirname(ctx.toolConfig.configFilePath)
-        : process.cwd();
-
+    const hookThatCreatesFile: HookHandler = async (ctx) => {
       // Create a file relative to the tool config directory using $
-      await ctx.$`cd ${toolConfigDir} && echo "test content" > ./created-by-hook.txt`.quiet();
+      await ctx.$`echo "test content" > ./created-by-hook.txt`.quiet();
 
       // Verify the file was created
-      const result = await ctx.$`cd ${toolConfigDir} && cat ./created-by-hook.txt`.quiet();
+      const result = await ctx.$`cat ./created-by-hook.txt`.quiet();
       expect(result.stdout.toString().trim()).toBe('test content');
     };
 
@@ -126,7 +112,7 @@ describe('HookExecutor $ Integration', () => {
 
     // Verify the file exists in the expected location
     const createdFilePath = path.join(tempDir, 'created-by-hook.txt');
-    expect(fs.existsSync(createdFilePath)).toBe(true);
+    expect(existsSync(createdFilePath)).toBe(true);
   });
 
   it('should handle fallback $ when configFilePath is missing', async () => {
@@ -145,25 +131,20 @@ describe('HookExecutor $ Integration', () => {
       $: createConfiguredShell($, process.env),
     });
 
-    const contextWithoutConfigPath = {
+    const contextWithoutConfigPath: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfigWithoutPath,
     };
 
-    let shellWorked = false;
-
-    const hookThatUsesShellFallback = async (ctx: IAfterInstallContext) => {
+    const hookThatUsesShellFallback: HookHandler = async (ctx) => {
       // Should still be able to use $ even without configFilePath
       const result = await ctx.$`echo "fallback works"`.quiet();
-      if (result.stdout.toString().includes('fallback works')) {
-        shellWorked = true;
-      }
+      expect(result.stdout.toString()).toContain('fallback works');
     };
 
     const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs);
 
-    await hookExecutor.executeHook('afterInstall', hookThatUsesShellFallback, enhancedContext);
-
-    expect(shellWorked).toBe(true);
+    const hookResult = await hookExecutor.executeHook('afterInstall', hookThatUsesShellFallback, enhancedContext);
+    expect(hookResult.success).toBe(true);
   });
 });

@@ -234,6 +234,7 @@
       "name": "@dotfiles/installer",
       "version": "1.0.0",
       "dependencies": {
+        "@babel/code-frame": "^7.27.1",
         "@dotfiles/arch": "workspace:*",
         "@dotfiles/archive-extractor": "workspace:*",
         "@dotfiles/config": "workspace:*",
@@ -259,6 +260,7 @@
         "@dotfiles/registry-database": "workspace:*",
         "@dotfiles/testing-helpers": "workspace:*",
         "@rageltd/bun-test-utils": "catalog:testing",
+        "@types/babel__code-frame": "^7.0.6",
         "@types/bun": "catalog:system",
         "@types/node": "catalog:system",
         "@types/semver": "^7.5.8",
@@ -700,9 +702,11 @@
 
     "@tsd/typescript": ["@tsd/typescript@5.9.3", "https://registry.npmjs.org/@tsd/typescript/-/typescript-5.9.3.tgz", {}, "sha512-JSSdNiS0wgd8GHhBwnMAI18Y8XPhLVN+dNelPfZCXFhy9Lb3NbnFyp9JKxxr54jSUkEJPk3cidvCoHducSaRMQ=="],
 
+    "@types/babel__code-frame": ["@types/babel__code-frame@7.0.6", "https://registry.npmjs.org/@types/babel__code-frame/-/babel__code-frame-7.0.6.tgz", {}, "sha512-Anitqkl3+KrzcW2k77lRlg/GfLZLWXBuNgbEcIOU6M92yw42vsd3xV/Z/yAHEj8m+KUjL6bWOVOFqX8PFPJ4LA=="],
+
     "@types/body-parser": ["@types/body-parser@1.19.6", "https://registry.npmjs.org/@types/body-parser/-/body-parser-1.19.6.tgz", { "dependencies": { "@types/connect": "*", "@types/node": "*" } }, "sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g=="],
 
-    "@types/bun": ["@types/bun@1.3.3", "https://registry.npmjs.org/@types/bun/-/bun-1.3.3.tgz", { "dependencies": { "bun-types": "1.3.3" } }, "sha512-ogrKbJ2X5N0kWLLFKeytG0eHDleBYtngtlbu9cyBKFtNL3cnpDZkNdQj8flVf6WTZUX5ulI9AY1oa7ljhSrp+g=="],
+    "@types/bun": ["@types/bun@1.3.4", "https://registry.npmjs.org/@types/bun/-/bun-1.3.4.tgz", { "dependencies": { "bun-types": "1.3.4" } }, "sha512-EEPTKXHP+zKGPkhRLv+HI0UEX8/o+65hqARxLy8Ov5rIxMBPNTjeZww00CIihrIQGEQBYg+0roO5qOnS/7boGA=="],
 
     "@types/cli-progress": ["@types/cli-progress@3.11.6", "https://registry.npmjs.org/@types/cli-progress/-/cli-progress-3.11.6.tgz", { "dependencies": { "@types/node": "*" } }, "sha512-cE3+jb9WRlu+uOSAugewNpITJDt1VF8dHOopPO4IABFc3SXYL5WE/+PTz/FCdZRRfIujiWW3n3aMbv1eIGVRWA=="],
 
@@ -778,7 +782,7 @@
 
     "braces": ["braces@3.0.3", "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz", { "dependencies": { "fill-range": "^7.1.1" } }, "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA=="],
 
-    "bun-types": ["bun-types@1.3.3", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.3.tgz", { "dependencies": { "@types/node": "*" } }, "sha512-z3Xwlg7j2l9JY27x5Qn3Wlyos8YAp0kKRlrePAOjgjMGS5IG6E7Jnlx736vH9UVI4wUICwwhC9anYL++XeOgTQ=="],
+    "bun-types": ["bun-types@1.3.4", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.4.tgz", { "dependencies": { "@types/node": "*" } }, "sha512-5ua817+BZPZOlNaRgGBpZJOSAQ9RQ17pkwPD0yR7CfJg+r8DgIILByFifDTa+IPDDxzf5VNhtNlcKqFzDgJvlQ=="],
 
     "bytes": ["bytes@3.1.2", "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
 
@@ -1170,8 +1174,6 @@
 
     "@dotfiles/cli/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
 
-    "@dotfiles/core/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
-
     "@dotfiles/e2e-test/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
 
     "@dotfiles/features/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
@@ -1181,8 +1183,6 @@
     "@dotfiles/shim-generator/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
 
     "@dotfiles/symlink-generator/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
-
-    "@dotfiles/testing-helpers/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
 
     "@dotfiles/version-checker/@types/bun": ["@types/bun@1.3.2", "https://registry.npmjs.org/@types/bun/-/bun-1.3.2.tgz", { "dependencies": { "bun-types": "1.3.2" } }, "sha512-t15P7k5UIgHKkxwnMNkJbWlh/617rkDGEdSsDbu+qNHTaz9SKf7aC8fiIlUdD5RPpH6GEkP0cK7WlvmrEBRtWg=="],
 
@@ -1216,8 +1216,6 @@
 
     "@dotfiles/cli/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
 
-    "@dotfiles/core/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
-
     "@dotfiles/e2e-test/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
 
     "@dotfiles/features/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
@@ -1227,8 +1225,6 @@
     "@dotfiles/shim-generator/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
 
     "@dotfiles/symlink-generator/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
-
-    "@dotfiles/testing-helpers/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
 
     "@dotfiles/version-checker/@types/bun/bun-types": ["bun-types@1.3.2", "https://registry.npmjs.org/bun-types/-/bun-types-1.3.2.tgz", { "dependencies": { "@types/node": "*" }, "peerDependencies": { "@types/react": "^19" } }, "sha512-i/Gln4tbzKNuxP70OWhJRZz1MRfvqExowP7U6JKoI8cntFrtxg7RJK3jvz7wQW54UuvNC8tbKHHri5fy74FVqg=="],
 

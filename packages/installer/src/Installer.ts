@@ -16,7 +16,7 @@ import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
-import { createConfiguredShell, HookExecutor, messages } from './utils';
+import { createConfiguredShell, type HookExecutor, messages } from './utils';
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -90,12 +90,13 @@ export class Installer implements IInstaller {
     systemInfo: ISystemInfo,
     registry: InstallerPluginRegistry,
     symlinkGenerator: ISymlinkGenerator,
-    $shell: typeof import('bun').$
+    $shell: typeof import('bun').$,
+    hookExecutor: HookExecutor
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
     this.projectConfig = projectConfig;
-    this.hookExecutor = new HookExecutor(parentLogger);
+    this.hookExecutor = hookExecutor;
     this.toolInstallationRegistry = toolInstallationRegistry;
     this.systemInfo = systemInfo;
     this.registry = registry;

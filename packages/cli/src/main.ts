@@ -308,7 +308,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const pluginRegistry = new InstallerPluginRegistry(parentLogger);
 
   // Initialize hook executor for plugins
-  const hookExecutor = new HookExecutor(parentLogger);
+  const hookExecutor = new HookExecutor(parentLogger, (chunk: string): void => {
+    process.stdout.write(chunk);
+  });
 
   // Register all installer plugins
   pluginRegistry.register(
@@ -347,7 +349,8 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     finalSystemInfo,
     pluginRegistry,
     symlinkGenerator,
-    $
+    $,
+    hookExecutor
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);
   const configService = new ConfigService();

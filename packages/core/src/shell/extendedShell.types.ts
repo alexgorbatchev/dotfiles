@@ -10,10 +10,12 @@ declare const extendedShellBrand: unique symbol;
  * - Intercepts `.env()` to *merge* additional variables with the base environment (instead of
  *   replacing it). This preserves critical variables like `PATH` and recursion guards.
  *
- * **What it does NOT do**
- * - It does not set or override the working directory. Unless the caller explicitly uses
- *   `.cwd(...)` or performs a `cd ... && ...` in the command, the working directory is inherited
- *   from the running process (`process.cwd()`).
+ * **Working directory behavior (hooks)**
+ * - When provided on a hook context, commands run with the directory containing the tool's
+ *   `.tool.ts` file as the default working directory (when `toolConfig.configFilePath` is available).
+ * - Hooks can still override this per command via `.cwd(...)` or by using `cd ... && ...`.
+ * - If `toolConfig.configFilePath` is not available, the working directory is inherited from the
+ *   running process (`process.cwd()`).
  *
  * **Where you get it**
  * - This type is provided on the install lifecycle hook context as `ctx.$` (e.g. `before-install`,
