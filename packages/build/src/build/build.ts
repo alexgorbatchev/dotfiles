@@ -336,9 +336,7 @@ async function installDependenciesInOutputDir(): Promise<void> {
   console.log('📥 Installing dependencies in output directory...');
   ensureBunCacheDirectory();
   try {
-    const installResult = await $`cd ${OUTPUT_DIR} && bun install`
-      .quiet()
-      .throws(false);
+    const installResult = await $`cd ${OUTPUT_DIR} && bun install`.quiet().throws(false);
 
     if (installResult.exitCode !== 0) {
       await logShellFailureOutput('bun install', installResult);

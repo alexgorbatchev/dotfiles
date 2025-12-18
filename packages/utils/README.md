@@ -7,6 +7,7 @@ Common utility functions used across the dotfiles tool installer system. Provide
 - **Path Utilities**: Contract/expand home directory paths and resolve tool config paths
 - **Permission Formatting**: Convert numeric permissions to readable strings
 - **String Utilities**: Template string dedenting and formatting
+- **File Editing**: Regex-based file replacements (including async replacement callbacks)
 - **Version Normalization**: Standardize version strings
 - **Version Detection**: Detect tool versions via CLI execution
 - **Platform Configuration**: Resolve platform-specific tool configurations
@@ -109,6 +110,35 @@ const script = dedentTemplate`
   echo "World"
 `;
 // Returns properly dedented script
+```
+
+### File Editing
+
+#### `replaceInFile(options: IReplaceInFileOptions): Promise<void>`
+
+Performs a regex-based replacement within a file.
+
+- Supports processing the whole file (`mode: 'file'`) or line-by-line (`mode: 'line'`) while preserving original EOLs.
+- Always replaces all matches (global replacement), even if `from` does not include the `g` flag.
+- Supports `to` as either a string or a (a)sync callback.
+- Does not write the file when the resulting content is unchanged.
+
+```typescript
+import type { IFileSystem } from '@dotfiles/file-system';
+import { replaceInFile } from '@dotfiles/utils';
+
+declare const fileSystem: IFileSystem;
+
+await replaceInFile({
+  // Optional. Pass a memfs/Node fs implementation explicitly if needed.
+  fileSystem,
+  filePath: '/tmp/input.txt',
+  mode: 'line',
+  from: /foo/,
+  to: async (match: string): Promise<string> => {
+    return match.toUpperCase();
+  },
+});
 ```
 
 ### Version Utilities

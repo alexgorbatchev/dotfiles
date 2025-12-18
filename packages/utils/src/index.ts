@@ -12,5 +12,6 @@ export * from './getAllFilesRecursively';
 export * from './getBuiltPackageName';
 export * from './getCliBinPath';
 export * from './normalizeVersion';
+export * from './replaceInFile';
 export * from './resolvePlatformConfig';
 export * from './stripVersionPrefix';

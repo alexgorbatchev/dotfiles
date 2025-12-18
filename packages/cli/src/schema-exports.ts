@@ -8,6 +8,7 @@
 
 export { Architecture, Platform, type ProjectConfig, defineConfig } from '@dotfiles/config';
 export { always, once } from '@dotfiles/core';
+export { replaceInFile } from '@dotfiles/utils';
 
 // Re-export the defineTool function with all plugin augmentations loaded
 export { defineTool } from './defineToolWithPlugins';
