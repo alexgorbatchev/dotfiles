@@ -10,20 +10,12 @@ declare const extendedShellBrand: unique symbol;
  * - Intercepts `.env()` to *merge* additional variables with the base environment (instead of
  *   replacing it). This preserves critical variables like `PATH` and recursion guards.
  *
- * **Working directory behavior (hooks)**
- * - When provided on a hook context, commands run with the directory containing the tool's
- *   `.tool.ts` file as the default working directory (when `toolConfig.configFilePath` is available).
+ * **Working directory behavior (install hooks)**
+ * - In install lifecycle hooks for a tool (defined in a `.tool.ts` file), commands run with the
+ *   directory containing that `.tool.ts` file as the default working directory.
+ * - This applies to: `before-install`, `after-download`, `after-extract`, `after-install`.
  * - Hooks can still override this per command via `.cwd(...)` or by using `cd ... && ...`.
- * - If `toolConfig.configFilePath` is not available, the working directory is inherited from the
- *   running process (`process.cwd()`).
- *
- * **Where you get it**
- * - This type is provided on the install lifecycle hook context as `ctx.$` (e.g. `before-install`,
- *   `after-download`, `after-extract`, `after-install`).
- * - It is not available during `.tool.ts` configuration loading (tool config evaluation uses an
- *   `IToolConfigContext`, which intentionally has no shell executor).
- *
- * This is a *type brand* over Bun's `$` to ensure hook/plugin contexts receive the configured
- * shell variant.
+ * - If the tool does not originate from a `.tool.ts` file (rare), the working directory is inherited
+ *   from the running process (`process.cwd()`).
  */
 export type $extended = typeof $ & { readonly [extendedShellBrand]: true };
