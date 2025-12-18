@@ -1,0 +1,31 @@
+/** biome-ignore-all lint/suspicious/noConsole: build script */
+
+import { $ } from 'bun';
+import { BuildError } from '../handleBuildError';
+import { setupTsdTestsProject } from '../helpers/setupTsdTestsProject';
+import type { IBuildContext } from '../types';
+
+/**
+ * Runs type-level validation of the generated declarations using tsd.
+ */
+export async function runTypeTests(context: IBuildContext): Promise<void> {
+  console.log('🔍 Running tsd type tests...');
+
+  try {
+    await setupTsdTestsProject(context);
+
+    const tsdResult = await $`bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
+      .throws(false)
+      .cwd(context.paths.tsdTestsDir);
+
+    if (tsdResult.exitCode !== 0) {
+      throw new BuildError('Schema type validation failed');
+    }
+
+    console.log('✅ tsd type tests passed');
+  } catch (error) {
+    throw new BuildError('Schema type validation failed', error);
+  }
+
+  console.log('✅ @dotfiles/core config types validated with tsd');
+}
