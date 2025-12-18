@@ -1,9 +1,9 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
+  IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
-  IInstallContext,
   InstallResult,
   IUpdateOptions,
   UpdateCheckResult,

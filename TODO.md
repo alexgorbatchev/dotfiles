@@ -4,4 +4,3 @@
 - [x] Update `detectVersionViaCli` to throw error on regex failure
 - [x] Update `Installer` to rename timestamped directories to versioned directories
 - [x] Simplify `normalizeVersion` to only ensure path safety
-

@@ -3,7 +3,26 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { ICleanupCommandSpecificOptions, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+import type {
+  ICleanupCommandSpecificOptions,
+  ICommandCompletionMeta,
+  IGlobalProgram,
+  IGlobalProgramOptions,
+  IServices,
+} from './types';
+
+/**
+ * Completion metadata for the cleanup command.
+ */
+export const CLEANUP_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'cleanup',
+  description: 'Clean up generated files and registry entries',
+  options: [
+    { flag: '--tool', description: 'Cleanup files for specific tool', hasArg: true, argPlaceholder: '<name>' },
+    { flag: '--type', description: 'Cleanup files of specific type', hasArg: true, argPlaceholder: '<type>' },
+    { flag: '--all', description: 'Cleanup all tracked files' },
+  ],
+};
 
 async function cleanupAllTrackedFiles(
   logger: TsLogger,

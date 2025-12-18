@@ -401,11 +401,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    * @param logger - The logger instance.
    * @returns An object indicating success or failure with error message.
    */
-  private async createBackup(
-    targetAbsPath: string,
-    toolFs: IFileSystem,
-    logger: TsLogger
-  ): Promise<OperationResult> {
+  private async createBackup(targetAbsPath: string, toolFs: IFileSystem, logger: TsLogger): Promise<OperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'createBackup' });
     const backupPath = `${targetAbsPath}.bak`;
     try {
@@ -429,11 +425,7 @@ export class SymlinkGenerator implements ISymlinkGenerator {
    * @param logger - The logger instance.
    * @returns An object indicating success or failure with error message.
    */
-  private async deleteTarget(
-    targetAbsPath: string,
-    toolFs: IFileSystem,
-    logger: TsLogger
-  ): Promise<OperationResult> {
+  private async deleteTarget(targetAbsPath: string, toolFs: IFileSystem, logger: TsLogger): Promise<OperationResult> {
     const methodLogger = logger.getSubLogger({ name: 'deleteTarget' });
     try {
       const targetStat = await toolFs.stat(targetAbsPath);

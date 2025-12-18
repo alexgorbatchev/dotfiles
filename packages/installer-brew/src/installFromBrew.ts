@@ -1,4 +1,4 @@
-import type { IInstallOptions, IInstallContext } from '@dotfiles/core';
+import type { IInstallContext, IInstallOptions } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';

@@ -1,7 +1,25 @@
 import { ARCH_VALUES, OS_VALUES } from '@dotfiles/config';
 import { LOG_LEVEL_NAMES } from '@dotfiles/logger';
 import { Command } from 'commander';
-import type { IGlobalProgram } from './types';
+import type { ICommandCompletionMeta, IGlobalProgram } from './types';
+
+/**
+ * Completion metadata for global CLI options.
+ * These apply to all commands.
+ */
+export const GLOBAL_OPTIONS_COMPLETION: ICommandCompletionMeta = {
+  name: 'dotfiles',
+  description: 'Dotfiles management CLI',
+  options: [
+    { flag: '--config', description: 'Path to configuration file', hasArg: true, argPlaceholder: '<path>' },
+    { flag: '--dry-run', description: 'Simulate operations without changes' },
+    { flag: '--log', description: 'Set log level', hasArg: true, argPlaceholder: '<level>' },
+    { flag: '--verbose', description: 'Enable detailed debug messages' },
+    { flag: '--quiet', description: 'Suppress informational output' },
+    { flag: '--platform', description: 'Override detected platform', hasArg: true, argPlaceholder: '<platform>' },
+    { flag: '--arch', description: 'Override detected architecture', hasArg: true, argPlaceholder: '<arch>' },
+  ],
+};
 
 /**
  * Creates and configures the main Commander.js program with global options.

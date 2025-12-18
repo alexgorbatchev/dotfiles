@@ -4,7 +4,29 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IFileOperation, IFileRegistry } from '@dotfiles/registry/file';
 import { contractHomePath, ExitCode, exitCli, formatPermissions } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IGlobalProgram, IGlobalProgramOptions, ILogCommandSpecificOptions, IServices } from './types';
+import type {
+  ICommandCompletionMeta,
+  IGlobalProgram,
+  IGlobalProgramOptions,
+  ILogCommandSpecificOptions,
+  IServices,
+} from './types';
+
+/**
+ * Completion metadata for the log command.
+ */
+export const LOG_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'log',
+  description: 'Show file operation history',
+  hasPositionalArg: true,
+  positionalArgDescription: 'tool name (optional)',
+  positionalArgType: 'tool',
+  options: [
+    { flag: '--type', description: 'Filter by file type', hasArg: true, argPlaceholder: '<type>' },
+    { flag: '--status', description: 'Show current file states' },
+    { flag: '--since', description: 'Show operations since date', hasArg: true, argPlaceholder: '<date>' },
+  ],
+};
 
 function buildOperationsFilter(
   options: ILogCommandSpecificOptions & IGlobalProgramOptions,

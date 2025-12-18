@@ -7,7 +7,18 @@ import { ExitCode, exitCli } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { $ } from 'bun';
 import { messages } from './log-messages';
-import type { IGlobalProgram, IServices } from './types';
+import type { ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
+
+/**
+ * Completion metadata for the check-updates command.
+ */
+export const CHECK_UPDATES_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'check-updates',
+  description: 'Check for available tool updates',
+  hasPositionalArg: true,
+  positionalArgDescription: 'tool name (optional, checks all if omitted)',
+  positionalArgType: 'tool',
+};
 
 async function loadToolConfigs(
   logger: TsLogger,

@@ -1,4 +1,10 @@
-import type { IInstallContext, InstallResultFailure, InstallResultSuccess, IOperationFailure, IOperationSuccess } from '@dotfiles/core';
+import type {
+  IInstallContext,
+  InstallResultFailure,
+  InstallResultSuccess,
+  IOperationFailure,
+  IOperationSuccess,
+} from '@dotfiles/core';
 import type { IToolInstallationDetails } from '@dotfiles/registry';
 
 export interface ICargoInstallMetadata extends Partial<IToolInstallationDetails> {

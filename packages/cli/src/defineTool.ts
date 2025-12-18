@@ -51,7 +51,7 @@ export function defineTool(
      * Function to select the installation method and provide type-checked parameters.
      * Call with a method name and params for installers, or call with no args for manual tools.
      * Returns a fluent builder to configure binaries, versions, hooks, and shell settings.
-     * 
+     *
      * @inheritdoc
      */
     install: InstallFunction,

@@ -1,7 +1,21 @@
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IBaseCommandOptions, IGlobalProgram, IServices } from './types';
+import type { IBaseCommandOptions, ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
+
+/**
+ * Completion metadata for the features command.
+ */
+export const FEATURES_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'features',
+  description: 'Manage features and generate artifacts',
+  subcommands: [
+    {
+      name: 'catalog',
+      description: 'Generate catalog of available features',
+    },
+  ],
+};
 
 export interface IFeaturesCommandOptions extends IBaseCommandOptions {
   // No command-specific options for features command

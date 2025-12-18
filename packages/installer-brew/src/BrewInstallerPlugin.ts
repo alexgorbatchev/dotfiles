@@ -1,7 +1,7 @@
 import type {
+  IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
-  IInstallContext,
   InstallResult,
   UpdateCheckResult,
 } from '@dotfiles/core';

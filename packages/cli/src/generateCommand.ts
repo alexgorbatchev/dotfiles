@@ -1,8 +1,17 @@
 import path from 'node:path';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli, generateToolTypes } from '@dotfiles/utils';
+import { generateZshCompletion } from './generateZshCompletion';
 import { messages } from './log-messages';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+
+// Re-export the completion metadata for external use
+export * from './generateCommandCompletion';
+
+/**
+ * The binary name for the dotfiles CLI.
+ */
+const DOTFILES_CLI_BINARY_NAME = 'dotfiles';
 
 /**
  * Command-specific options for the generate command.
@@ -15,6 +24,22 @@ export interface IGenerateCommandSpecificOptions {
  * Combined options for the generate command (command-specific + global).
  */
 export interface IGenerateCommandOptions extends IGenerateCommandSpecificOptions, IGlobalProgramOptions {}
+
+/**
+ * Generates the CLI completion file for zsh.
+ */
+async function generateCliCompletions(logger: TsLogger, services: IServices, toolNames: string[]): Promise<void> {
+  const subLogger = logger.getSubLogger({ name: 'generateCliCompletions' });
+  const { projectConfig, fs } = services;
+
+  const completionContent = generateZshCompletion(DOTFILES_CLI_BINARY_NAME, toolNames);
+  const completionDir = path.join(projectConfig.paths.shellScriptsDir, 'zsh', 'completions');
+  const completionPath = path.join(completionDir, `_${DOTFILES_CLI_BINARY_NAME}`);
+
+  await fs.ensureDir(completionDir);
+  await fs.writeFile(completionPath, completionContent);
+  subLogger.debug(messages.cliCompletionGenerated(completionPath));
+}
 
 export function registerGenerateCommand(
   parentLogger: TsLogger,
@@ -46,6 +71,10 @@ export function registerGenerateCommand(
         logger.debug(messages.toolTypesGenerated(toolTypesPath));
 
         await generatorOrchestrator.generateAll(toolConfigs, { overwrite: combinedOptions.overwrite });
+
+        // Generate CLI completions after tool completions
+        const toolNames = Object.keys(toolConfigs).sort((a, b) => a.localeCompare(b));
+        await generateCliCompletions(logger, services, toolNames);
 
         logger.info(messages.commandCompleted(Boolean(combinedOptions.dryRun)));
       } catch (_error) {

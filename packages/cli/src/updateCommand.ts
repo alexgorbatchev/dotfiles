@@ -6,7 +6,25 @@ import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { $ } from 'bun';
 import { messages } from './log-messages';
-import type { IGlobalProgram, IGlobalProgramOptions, IServices, IUpdateCommandSpecificOptions } from './types';
+import type {
+  ICommandCompletionMeta,
+  IGlobalProgram,
+  IGlobalProgramOptions,
+  IServices,
+  IUpdateCommandSpecificOptions,
+} from './types';
+
+/**
+ * Completion metadata for the update command.
+ */
+export const UPDATE_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'update',
+  description: 'Update an installed tool to latest version',
+  hasPositionalArg: true,
+  positionalArgDescription: 'tool name to update',
+  positionalArgType: 'tool',
+  options: [{ flag: '--shim-mode', description: 'Optimized output for shim usage' }],
+};
 
 async function loadToolConfigSafely(
   logger: TsLogger,

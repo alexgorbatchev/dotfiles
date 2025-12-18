@@ -30,7 +30,6 @@ export const messages = {
       createSafeLogMessage(`Creating symlink: ${symlinkPath} -> ${targetPath}`),
     symlinkCreated: (symlinkPath: string, targetPath: string) =>
       createSafeLogMessage(`Successfully created symlink: ${symlinkPath} -> ${targetPath}`),
-    removingBrokenSymlink: (symlinkPath: string) =>
-      createSafeLogMessage(`Removing broken symlink: ${symlinkPath}`),
+    removingBrokenSymlink: (symlinkPath: string) => createSafeLogMessage(`Removing broken symlink: ${symlinkPath}`),
   } satisfies SafeLogMessageMap,
 } as const;

@@ -3,7 +3,23 @@ import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli, getCliBinPath } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+
+/**
+ * Completion metadata for the docs command.
+ */
+export const DOCS_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'docs',
+  description: 'Create symlink to documentation',
+  options: [
+    {
+      flag: '--target-path',
+      description: 'Target directory for docs symlink',
+      hasArg: true,
+      argPlaceholder: '<path>',
+    },
+  ],
+};
 
 /**
  * Command-specific options for docs command
@@ -25,11 +41,7 @@ function getDocsPath(): string {
   return path.join(scriptDir, 'docs');
 }
 
-async function createDocsSymlink(
-  parentLogger: TsLogger,
-  targetPath: string,
-  dryRun: boolean
-): Promise<ExitCode> {
+async function createDocsSymlink(parentLogger: TsLogger, targetPath: string, dryRun: boolean): Promise<ExitCode> {
   const logger = parentLogger.getSubLogger({ name: 'createDocsSymlink' });
 
   // Use real filesystem for checking paths since docs source is always on disk

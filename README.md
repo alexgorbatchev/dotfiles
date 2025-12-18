@@ -27,7 +27,7 @@ This project replaces that fragile, manual system with a declarative, programmat
 ## How It Works
 
 1.  **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
-2.  **Generate**: You run `bun run cli.ts generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
+2.  **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
 3.  **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous.
 4.  **Source**: Your `.zshrc` or `.bash_profile` sources one line, and all your tools, aliases, and functions become available everywhere.
 
@@ -35,26 +35,33 @@ This project replaces that fragile, manual system with a declarative, programmat
 
 ```bash
 # Initialize configuration for the first time
-bun run cli.ts init
+dotfiles init
 
 # Install a tool defined in a .tool.ts file
-bun run cli.ts install fzf
+dotfiles install fzf
 
 # Generate shims and shell configuration files
-bun run cli.ts generate
+dotfiles generate
 
 # Update all tools to their latest versions
-bun run cli.ts update
+dotfiles update
 
 # View logs of file operations
-bun run cli.ts log
+dotfiles log
 
 # Display tree of installed tool files
-bun run cli.ts files <toolName>
+dotfiles files <toolName>
 
 # Create docs symlink in a directory
-bun run cli.ts docs <path>
+dotfiles docs <path>
 ```
+
+### CLI Command Completions
+
+- `dotfiles generate` writes a zsh completion script to `${generatedDir}/shell-scripts/zsh/completions/_dotfiles`.
+- Reload completions with `autoload -U compinit && compinit` (or restart your shell) after generating.
+- Commands that accept a tool argument (e.g., `install`, `update`, `check-updates`, `files`, `log`) now suggest every configured tool name directly in completion menus, so you can pick a target without memorizing identifiers.
+- See [docs/completions.md](docs/completions.md) for shell-specific integration details.
 
 ### Configure with TypeScript
 

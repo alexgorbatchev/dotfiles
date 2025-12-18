@@ -10,6 +10,7 @@ The CLI package serves as the main entry point for all dotfiles operations. It o
 
 - **Tool Installation**: Install individual tools or all configured tools
 - **Configuration Generation**: Generate shell init scripts, shims, and symlinks
+- **Shell Completions**: Auto-generated zsh completions for CLI commands
 - **Update Management**: Check for and install tool updates
 - **Conflict Detection**: Identify conflicts between installed tools and system binaries
 - **File Tracking**: Track and manage all generated files
@@ -320,6 +321,43 @@ dotfiles cleanup --dry-run
 dotfiles cleanup
 ```
 
+## Shell Completions
+
+The CLI automatically generates zsh completions for all commands and options when you run `dotfiles generate`.
+
+### Setup
+
+Completions are generated to `<generatedDir>/shell-scripts/zsh/completions/_dotfiles` and are automatically loaded if your shell is configured to use the generated shell scripts.
+
+To manually reload completions:
+
+```bash
+# Reload zsh completions
+autoload -U compinit && compinit
+```
+
+### Usage
+
+After setup, you can use tab completion with the `dotfiles` command:
+
+```bash
+dotfiles <TAB>           # Shows available commands
+dotfiles install <TAB>   # Shows install command options
+dotfiles --<TAB>         # Shows global options
+
+# Tool names are suggested for commands like install, update, files, log, and check-updates
+dotfiles install <TAB>   # Shows configured tool names
+```
+
+### Supported Features
+
+- All CLI commands (install, generate, cleanup, etc.)
+- Command-specific options (--force, --overwrite, etc.)
+- Global options (--config, --dry-run, --log, --verbose, etc.)
+- Subcommands (features catalog)
+- Positional arguments with descriptions
+- Tool name suggestions sourced from the current configuration
+
 ## API
 
 ### `createProgram(dependencies: CLIDependencies): Command`
@@ -507,7 +545,6 @@ process.on('SIGINT', async () => {
 Potential improvements:
 - Interactive mode for tool selection
 - Plugin system for custom commands
-- Shell completion generation
 - Configuration wizard
 - Backup and restore functionality
 - Tool group management

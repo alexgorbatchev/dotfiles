@@ -1,4 +1,4 @@
-import type { IInstallerPlugin, IInstallOptions, IInstallContext, InstallResult } from '@dotfiles/core';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';

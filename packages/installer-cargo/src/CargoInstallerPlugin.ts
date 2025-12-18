@@ -1,8 +1,8 @@
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type {
+  IInstallContext,
   IInstallerPlugin,
   IInstallOptions,
-  IInstallContext,
   InstallResult,
   UpdateCheckResult,
 } from '@dotfiles/core';

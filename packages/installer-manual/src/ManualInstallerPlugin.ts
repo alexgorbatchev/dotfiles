@@ -1,4 +1,4 @@
-import type { IInstallerPlugin, IInstallOptions, IInstallContext, InstallResult } from '@dotfiles/core';
+import type { IInstallContext, IInstallerPlugin, IInstallOptions, InstallResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { installManually } from './installManually';

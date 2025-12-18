@@ -16,7 +16,13 @@ import { normalizeVersion } from '@dotfiles/utils';
 import type { ICargoClient } from './cargo-client';
 import { messages } from './log-messages';
 import type { CargoInstallParams, CargoToolConfig } from './schemas';
-import type { CargoInstallResult, HookExecutionResult, ICargoHookContext, ICargoInstallMetadata, IVersionResult } from './types';
+import type {
+  CargoInstallResult,
+  HookExecutionResult,
+  ICargoHookContext,
+  ICargoInstallMetadata,
+  IVersionResult,
+} from './types';
 
 export async function installFromCargo(
   toolName: string,
@@ -203,10 +209,7 @@ async function determineVersion(
   }
 }
 
-async function getVersionFromGitHubReleases(
-  githubRepo: string,
-  logger: TsLogger
-): Promise<IVersionResult> {
+async function getVersionFromGitHubReleases(githubRepo: string, logger: TsLogger): Promise<IVersionResult> {
   logger.debug(messages.queryingGitHubReleases(githubRepo));
   throw new Error('GitHub releases version source not yet implemented');
 }

@@ -5,7 +5,28 @@ import type { InstallResult } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IGlobalProgram, IGlobalProgramOptions, InstallCommandSpecificOptions, IServices } from './types';
+import type {
+  ICommandCompletionMeta,
+  IGlobalProgram,
+  IGlobalProgramOptions,
+  InstallCommandSpecificOptions,
+  IServices,
+} from './types';
+
+/**
+ * Completion metadata for the install command.
+ */
+export const INSTALL_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'install',
+  description: 'Install a tool if not already installed',
+  hasPositionalArg: true,
+  positionalArgDescription: 'tool name to install',
+  positionalArgType: 'tool',
+  options: [
+    { flag: '--force', description: 'Force installation even if already installed' },
+    { flag: '--shim-mode', description: 'Optimized output for shim usage' },
+  ],
+};
 
 async function loadToolConfigSafely(
   logger: TsLogger,

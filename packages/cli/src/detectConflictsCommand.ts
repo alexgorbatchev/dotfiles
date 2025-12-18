@@ -5,7 +5,15 @@ import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+import type { ICommandCompletionMeta, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+
+/**
+ * Completion metadata for the detect-conflicts command.
+ */
+export const DETECT_CONFLICTS_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'detect-conflicts',
+  description: 'Detect file conflicts before generating',
+};
 
 async function loadToolConfigs(
   logger: TsLogger,

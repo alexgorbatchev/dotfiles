@@ -362,6 +362,42 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+## CLI Completions
+
+The `dotfiles` CLI automatically generates its own shell completions when you run `dotfiles generate`. These completions provide tab-completion for all CLI commands, subcommands, and options.
+
+### Generated Location
+
+CLI completions are generated to:
+```
+<generatedDir>/shell-scripts/zsh/completions/_dotfiles
+```
+
+### Automatic Updates
+
+CLI completions are regenerated automatically whenever you run `dotfiles generate`. This ensures completions stay in sync with the CLI's available commands and options.
+
+### Tool Name Suggestions
+
+Commands that accept a tool name (like `install`, `update`, `check-updates`, `files`, and `log`) include the names of every configured tool in their completions. The list is rebuilt each time `dotfiles generate` runs, so it always reflects the current registry.
+
+### Usage
+
+After running `dotfiles generate`, start a new shell session or reload your completions:
+
+```bash
+# Reload zsh completions
+autoload -U compinit && compinit
+```
+
+Then use tab completion with the `dotfiles` command:
+
+```bash
+dotfiles <TAB>           # Shows available commands
+dotfiles install <TAB>   # Shows install command options
+dotfiles --<TAB>         # Shows global options
+```
+
 ## Next Steps
 
 - [Shell Integration](./shell-integration.md) - Configure shell environments and aliases

@@ -118,4 +118,5 @@ export const messages = {
   docsSymlinkCreated: (symlinkPath: string, targetPath: string) =>
     createSafeLogMessage(`Created symlink: ${symlinkPath} -> ${targetPath}`),
   docsSymlinkFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to create symlink: ${symlinkPath}`),
+  cliCompletionGenerated: (path: string) => createSafeLogMessage(`CLI completion generated: ${path}`),
 } satisfies SafeLogMessageMap;

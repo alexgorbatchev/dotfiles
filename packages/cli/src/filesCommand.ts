@@ -3,7 +3,24 @@ import type { TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
-import type { IFilesCommandSpecificOptions, IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
+import type {
+  ICommandCompletionMeta,
+  IFilesCommandSpecificOptions,
+  IGlobalProgram,
+  IGlobalProgramOptions,
+  IServices,
+} from './types';
+
+/**
+ * Completion metadata for the files command.
+ */
+export const FILES_COMMAND_COMPLETION: ICommandCompletionMeta = {
+  name: 'files',
+  description: 'Show generated files structure',
+  hasPositionalArg: true,
+  positionalArgDescription: 'tool name (optional)',
+  positionalArgType: 'tool',
+};
 
 interface ITreeNode {
   name: string;
