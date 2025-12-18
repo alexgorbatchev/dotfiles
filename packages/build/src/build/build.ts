@@ -58,7 +58,6 @@ const OUTPUT_SCHEMAS_D_TS_PATH = path.join(OUTPUT_DIR, 'schemas.d.ts');
 const SCHEMA_CHECK_TSCONFIG_PATH = path.join(OUTPUT_DIR, 'tsconfig--schemas-check.json');
 const ROOT_NODE_MODULES_PATH = path.join(ROOT_DIR, 'node_modules');
 const ROOT_BUN_CACHE_PATH = path.join(ROOT_NODE_MODULES_PATH, '.bun');
-const BUN_INSTALL_CACHE_ENV = `BUN_INSTALL_CACHE=${ROOT_BUN_CACHE_PATH}`;
 const TYPE_TESTS_DIR_NAME = 'type-tests';
 const TSD_TEST_FILE_EXTENSION = '.test-d.ts';
 const TSD_TESTS_DIR = path.join(TMP_DIR, 'tsd-tests');
@@ -329,10 +328,7 @@ async function ensureWorkspaceDependencies(): Promise<void> {
 }
 
 /**
- * Installs dependencies in the output directory with Bun caching.
- *
- * Runs `bun install` in the `.dist` directory using the workspace's shared
- * Bun cache to speed up installation.
+ * Installs dependencies in the output directory.
  *
  * @throws {BuildError} If dependency installation fails.
  */
@@ -340,10 +336,61 @@ async function installDependenciesInOutputDir(): Promise<void> {
   console.log('📥 Installing dependencies in output directory...');
   ensureBunCacheDirectory();
   try {
-    await $`cd ${OUTPUT_DIR} && ${BUN_INSTALL_CACHE_ENV} bun install`.quiet();
+    const installResult = await $`cd ${OUTPUT_DIR} && bun install`
+      .quiet()
+      .throws(false);
+
+    if (installResult.exitCode !== 0) {
+      await logShellFailureOutput('bun install', installResult);
+      throw new BuildError('Temporary dependency installation failed');
+    }
   } catch (error) {
     throw new BuildError('Temporary dependency installation failed', error);
   }
+}
+
+async function logShellFailureOutput(context: string, result: Awaited<ReturnType<typeof $>>): Promise<void> {
+  console.error(`${context} exited with code ${result.exitCode ?? 'unknown'}`);
+  const stdoutText = await readShellOutput(result.stdout);
+  if (stdoutText.length > 0) {
+    console.error(`${context} stdout:`);
+    console.error(stdoutText);
+  }
+
+  const stderrText = await readShellOutput(result.stderr);
+  if (stderrText.length > 0) {
+    console.error(`${context} stderr:`);
+    console.error(stderrText);
+  }
+}
+
+interface IReadonlyTextBlob {
+  text: () => Promise<string>;
+}
+
+async function readShellOutput(output: unknown): Promise<string> {
+  if (typeof output === 'string') {
+    return output.trim();
+  }
+
+  if (output instanceof Uint8Array) {
+    const decodedOutput = new TextDecoder().decode(output);
+    return decodedOutput.trim();
+  }
+
+  if (output && typeof output === 'object') {
+    const candidate = output as IReadonlyTextBlob;
+    if (typeof candidate.text === 'function') {
+      const text = await candidate.text.call(output);
+      return text.trim();
+    }
+  }
+
+  if (output === undefined || output === null) {
+    return '';
+  }
+
+  return String(output).trim();
 }
 
 /**
@@ -554,7 +601,7 @@ async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promis
   // This ensures all module augmentations are loaded
   const schemaExportsPath = path.join(TEMP_SCHEMAS_BUILD_DIR, 'schema-exports.d.ts');
 
-  await $`bunx dts-bundle-generator --project ${BUILD_TSCONFIG_PATH} --out-file ${OUTPUT_SCHEMAS_D_TS_PATH} --no-check --export-referenced-types --external-imports=@dotfiles/core --external-imports=zod --external-inlines=@dotfiles/config --external-inlines=@dotfiles/logger --external-inlines=@dotfiles/installer-brew --external-inlines=@dotfiles/installer-cargo --external-inlines=@dotfiles/installer-curl-script --external-inlines=@dotfiles/installer-curl-tar --external-inlines=@dotfiles/installer-github --external-inlines=@dotfiles/installer-manual -- ${schemaExportsPath}`.quiet();
+  await $`bunx dts-bundle-generator --project ${BUILD_TSCONFIG_PATH} --out-file ${OUTPUT_SCHEMAS_D_TS_PATH} --no-check --export-referenced-types --external-imports=@dotfiles/core --external-imports=zod --external-imports=bun --external-inlines=@dotfiles/config --external-inlines=@dotfiles/logger --external-inlines=@dotfiles/installer-brew --external-inlines=@dotfiles/installer-cargo --external-inlines=@dotfiles/installer-curl-script --external-inlines=@dotfiles/installer-curl-tar --external-inlines=@dotfiles/installer-github --external-inlines=@dotfiles/installer-manual -- ${schemaExportsPath}`.quiet();
 
   console.log('✅ Successfully created schemas.d.ts with dts-bundle-generator');
 }
@@ -610,7 +657,13 @@ async function runTypeTests(): Promise<void> {
   console.log('🔍 Running tsd type tests...');
   try {
     await setupTsdTestsProject();
-    await $`cd ${TSD_TESTS_DIR} && bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`.quiet();
+    const tsdResult = await $`cd ${TSD_TESTS_DIR} && bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
+      .quiet()
+      .throws(false);
+    if (tsdResult.exitCode !== 0) {
+      await logShellFailureOutput('tsd type tests', tsdResult);
+      throw new BuildError('Schema type validation failed');
+    }
     console.log('✅ tsd type tests passed');
   } catch (error) {
     throw new BuildError('Schema type validation failed', error);
