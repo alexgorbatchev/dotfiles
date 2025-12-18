@@ -31,6 +31,12 @@ import { $ } from 'bun';
 import { extractTypeAliasSignature } from '../extractTypeAliasSignature';
 import { getPackageJson } from '../getPackageJson';
 import { getRepoRoot } from '../path-utils';
+import {
+  getExternalRuntimeDependenciesFromBundle,
+  printBundledModuleAnalysis,
+  printExternalModuleAnalysis,
+  shouldExternalizeNonDotfilesBareImport,
+} from './bundle-helpers';
 import { generateToolTypes } from './generateToolTypes';
 import { BuildError, handleBuildError } from './handleBuildError';
 
@@ -39,7 +45,8 @@ const PACKAGES_DIR = path.join(ROOT_DIR, 'packages');
 const TMP_DIR = path.join(ROOT_DIR, '.tmp');
 const OUTPUT_DIR = path.join(ROOT_DIR, '.dist');
 const CLI_OUTPUT_FILE = path.join(OUTPUT_DIR, 'cli.js');
-const MAX_CLI_BUNDLE_SIZE_KB = 100;
+const CLI_OUTPUT_SOURCE_MAP_FILE = path.join(OUTPUT_DIR, 'cli.js.map');
+const MAX_CLI_BUNDLE_SIZE_KB = 300;
 const MAX_CLI_BUNDLE_SIZE_BYTES = MAX_CLI_BUNDLE_SIZE_KB * 1024;
 const ENTRY_POINT = path.resolve(PACKAGES_DIR, 'cli/src/main.ts');
 const NPMRC_PATH = path.join(ROOT_DIR, '.npmrc');
@@ -323,7 +330,7 @@ async function ensureWorkspaceDependencies(): Promise<void> {
   ensureBunCacheDirectory();
   console.log('🔄 Ensuring workspace dependencies...');
   try {
-    await $`bun install`.quiet();
+    await $`bun install`;
   } catch (error) {
     throw new BuildError('Workspace dependency installation failed', error);
   }
@@ -338,59 +345,14 @@ async function installDependenciesInOutputDir(): Promise<void> {
   console.log('📥 Installing dependencies in output directory...');
   ensureBunCacheDirectory();
   try {
-    const installResult = await $`cd ${OUTPUT_DIR} && bun install`.quiet().throws(false);
+    const installResult = await $`cd ${OUTPUT_DIR} && bun install`.throws(false);
 
     if (installResult.exitCode !== 0) {
-      await logShellFailureOutput('bun install', installResult);
       throw new BuildError('Temporary dependency installation failed');
     }
   } catch (error) {
     throw new BuildError('Temporary dependency installation failed', error);
   }
-}
-
-async function logShellFailureOutput(context: string, result: Awaited<ReturnType<typeof $>>): Promise<void> {
-  console.error(`${context} exited with code ${result.exitCode ?? 'unknown'}`);
-  const stdoutText = await readShellOutput(result.stdout);
-  if (stdoutText.length > 0) {
-    console.error(`${context} stdout:`);
-    console.error(stdoutText);
-  }
-
-  const stderrText = await readShellOutput(result.stderr);
-  if (stderrText.length > 0) {
-    console.error(`${context} stderr:`);
-    console.error(stderrText);
-  }
-}
-
-interface IReadonlyTextBlob {
-  text: () => Promise<string>;
-}
-
-async function readShellOutput(output: unknown): Promise<string> {
-  if (typeof output === 'string') {
-    return output.trim();
-  }
-
-  if (output instanceof Uint8Array) {
-    const decodedOutput = new TextDecoder().decode(output);
-    return decodedOutput.trim();
-  }
-
-  if (output && typeof output === 'object') {
-    const candidate = output as IReadonlyTextBlob;
-    if (typeof candidate.text === 'function') {
-      const text = await candidate.text.call(output);
-      return text.trim();
-    }
-  }
-
-  if (output === undefined || output === null) {
-    return '';
-  }
-
-  return String(output).trim();
 }
 
 /**
@@ -406,39 +368,53 @@ async function cleanPreviousBuild(): Promise<void> {
   }
 }
 
-/**
- * Retrieves version numbers for key dependencies from the workspace.
- *
- * Runs `bun pm ls` to get installed package versions and extracts version
- * numbers for `zod`, `@types/bun`, and `typescript`. These versions are used
- * to ensure the built package includes compatible dependencies.
- *
- * @returns Version information for required dependencies.
- * @throws {BuildError} If any required dependency version cannot be determined.
- */
-async function getDependencyVersions(): Promise<IDependencyVersions> {
-  const pmLsResult = await $`bun pm ls --all`.quiet();
-  const pmLsOutput = pmLsResult.stdout.toString();
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  function extractVersion(pattern: RegExp, name: string): string {
-    const match = pmLsOutput.match(pattern);
-    if (!match) {
-      throw new BuildError(`Could not find ${name} version in bun pm ls output`);
-    }
-    const version = match[1];
+async function getInstalledPackageVersions(packageNames: string[]): Promise<Record<string, string>> {
+  const pmLsResult = await $`bun pm ls --all`.quiet();
+  const pmLsOutput: string = pmLsResult.stdout.toString();
+
+  const uniquePackageNames: string[] = Array.from(new Set(packageNames)).sort((a, b) => a.localeCompare(b));
+  const versionsByName: Record<string, string> = {};
+
+  for (const packageName of uniquePackageNames) {
+    const escapedPackageName: string = escapeRegExp(packageName);
+    const pattern: RegExp = new RegExp(`${escapedPackageName}@([^\\s]+)`);
+    const match: RegExpMatchArray | null = pmLsOutput.match(pattern);
+    const version: string | undefined = match?.[1];
+
     if (!version) {
-      throw new BuildError(`Could not extract ${name} version number`);
+      throw new BuildError(`Could not find ${packageName} version in bun pm ls output`);
     }
-    return version;
+
+    versionsByName[packageName] = version;
   }
 
-  const versions: IDependencyVersions = {
-    zod: extractVersion(/zod@(\d+\.\d+\.\d+)/, 'zod'),
-    bunTypes: extractVersion(/@types\/bun@(\d+\.\d+\.\d+)/, '@types/bun'),
-    nodeTypes: extractVersion(/@types\/node@(\d+\.\d+\.\d+)/, '@types/node'),
-  };
+  return versionsByName;
+}
 
-  return versions;
+function pickPackageVersions(packageNames: string[], versionsByName: Record<string, string>): Record<string, string> {
+  const selected: Record<string, string> = {};
+
+  for (const packageName of packageNames) {
+    const version: string | undefined = versionsByName[packageName];
+    if (!version) {
+      throw new BuildError(`Missing version for ${packageName}`);
+    }
+    selected[packageName] = version;
+  }
+
+  return selected;
+}
+
+function getRequiredPackageVersion(packageName: string, versionsByName: Record<string, string>): string {
+  const version: string | undefined = versionsByName[packageName];
+  if (!version) {
+    throw new BuildError(`Missing version for ${packageName}`);
+  }
+  return version;
 }
 
 /**
@@ -463,6 +439,25 @@ async function buildCli(): Promise<Bun.BuildOutput> {
   console.log(`📍 Entry: ${ENTRY_POINT}`);
   console.log(`📦 Output: ${CLI_OUTPUT_FILE}`);
 
+  const externalizeNonDotfilesPackagesPlugin: Bun.BunPlugin = {
+    name: 'externalize-non-dotfiles-packages',
+    setup(build: Bun.PluginBuilder) {
+      build.onResolve({ filter: /.*/ }, (args: Bun.OnResolveArgs) => {
+        const specifier: string = args.path;
+
+        if (!shouldExternalizeNonDotfilesBareImport(specifier)) {
+          return;
+        }
+
+        const resolveResult: Bun.OnResolveResult = {
+          path: specifier,
+          external: true,
+        };
+        return resolveResult;
+      });
+    },
+  };
+
   const result = await Bun.build({
     entrypoints: [ENTRY_POINT],
     outdir: OUTPUT_DIR,
@@ -472,7 +467,7 @@ async function buildCli(): Promise<Bun.BuildOutput> {
     target: 'bun',
     format: 'esm',
     splitting: false,
-    packages: 'external',
+    plugins: [externalizeNonDotfilesPackagesPlugin],
     define: {
       'import.meta.main': 'true',
     },
@@ -495,14 +490,24 @@ async function buildCli(): Promise<Bun.BuildOutput> {
     throw new BuildError('cli.js output is missing');
   }
 
-  if (cliStats.size > MAX_CLI_BUNDLE_SIZE_BYTES) {
-    const sizeKb: number = Math.ceil(cliStats.size / 1024);
-    throw new BuildError(
-      `cli.js file is too large (${sizeKb} kb), external dependencies are most likely being bundled`
-    );
-  }
+  await printBundledModuleAnalysis(CLI_OUTPUT_SOURCE_MAP_FILE);
+  await printExternalModuleAnalysis(CLI_OUTPUT_FILE);
 
   return result;
+}
+
+function enforceCliBundleSizeLimit(): void {
+  const cliStats = fs.statSync(CLI_OUTPUT_FILE);
+  if (!cliStats.isFile()) {
+    throw new BuildError('cli.js output is missing');
+  }
+
+  if (cliStats.size <= MAX_CLI_BUNDLE_SIZE_BYTES) {
+    return;
+  }
+
+  const sizeKb: number = Math.ceil(cliStats.size / 1024);
+  throw new BuildError(`cli.js file is too large (${sizeKb} kb), external dependencies are most likely being bundled`);
 }
 
 /**
@@ -518,7 +523,7 @@ async function buildCli(): Promise<Bun.BuildOutput> {
  * for the tool configuration schemas.
  */
 async function createTempTsConfig(): Promise<void> {
-  const tempTsConfig = {
+  const tempTsConfig: Record<string, unknown> = {
     extends: `${ROOT_DIR}/tsconfig.json`,
     compilerOptions: {
       noEmit: false,
@@ -552,7 +557,7 @@ async function createTempTsConfig(): Promise<void> {
  * @param dependencyVersions - Version information for required dependencies.
  */
 async function createTempSchemasPackage(dependencyVersions: IDependencyVersions): Promise<void> {
-  const tempPackageJson = {
+  const tempPackageJson: Record<string, unknown> = {
     name: 'temp-schemas',
     version: '0.0.0',
     type: 'module',
@@ -565,7 +570,7 @@ async function createTempSchemasPackage(dependencyVersions: IDependencyVersions)
     },
   };
 
-  const tempRootPackageJson = {
+  const tempRootPackageJson: Record<string, unknown> = {
     name: 'temp-root',
     private: true,
     workspaces: [TEMP_SCHEMAS_BUILD_DIR, `${OUTPUT_PACKAGES_DIR}/*`],
@@ -598,7 +603,7 @@ async function createTempSchemasPackage(dependencyVersions: IDependencyVersions)
  */
 async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promise<void> {
   await createTempTsConfig();
-  await $`bun tsgo --project ${BUILD_TSCONFIG_PATH}`.quiet();
+  await $`bun tsgo --project ${BUILD_TSCONFIG_PATH}`;
 
   // Copy packages to .dist/packages/ to create an isolated workspace
   // This prevents bun from creating symlinks in the original packages' node_modules
@@ -616,6 +621,7 @@ async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promis
 
   await $`
     bunx dts-bundle-generator \
+      --silent \
       --project ${BUILD_TSCONFIG_PATH} \
       --out-file ${OUTPUT_SCHEMAS_D_TS_PATH} \
       --no-check \
@@ -632,7 +638,7 @@ async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promis
       --external-inlines=@dotfiles/installer-github \
       --external-inlines=@dotfiles/installer-manual \
       -- ${schemaExportsPath}
-  `.quiet();
+  `;
 
   console.log('✅ Successfully created schemas.d.ts with dts-bundle-generator');
 }
@@ -647,7 +653,7 @@ async function buildSchemaTypes(dependencyVersions: IDependencyVersions): Promis
  * @throws {BuildError} If the ProjectConfig type is invalid or missing required properties.
  */
 function checkProjectConfigTypeSignature(): void {
-  const schemaTsconfig = {
+  const schemaTsconfig: Record<string, unknown> = {
     compilerOptions: {
       target: 'ES2022',
       module: 'ESNext',
@@ -688,11 +694,10 @@ async function runTypeTests(): Promise<void> {
   console.log('🔍 Running tsd type tests...');
   try {
     await setupTsdTestsProject();
-    const tsdResult = await $`cd ${TSD_TESTS_DIR} && bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
-      .quiet()
-      .throws(false);
+    const tsdResult = await $`cd ${TSD_TESTS_DIR} && bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`.throws(
+      false
+    );
     if (tsdResult.exitCode !== 0) {
-      await logShellFailureOutput('tsd type tests', tsdResult);
       throw new BuildError('Schema type validation failed');
     }
     console.log('✅ tsd type tests passed');
@@ -765,8 +770,17 @@ async function generateSchemaTypes(dependencyVersions: IDependencyVersions): Pro
  *
  * @param dependencyVersions - Version information for runtime dependencies.
  */
-async function generatePackageJson(dependencyVersions: IDependencyVersions): Promise<void> {
-  const packageJson = {
+async function generatePackageJson(
+  dependencyVersions: IDependencyVersions,
+  runtimeDependencies: Record<string, string>
+): Promise<void> {
+  const dependencies: Record<string, string> = {
+    ...runtimeDependencies,
+    '@types/bun': dependencyVersions.bunTypes,
+    '@types/node': dependencyVersions.nodeTypes,
+  };
+
+  const packageJson: Record<string, unknown> = {
     name: '@gitea/dotfiles',
     version: getPackageJson().version,
     type: 'module',
@@ -783,11 +797,7 @@ async function generatePackageJson(dependencyVersions: IDependencyVersions): Pro
       },
     },
     files: ['cli.js', 'cli.js.map', 'schemas.d.ts', 'tool-types.d.ts', 'docs'],
-    dependencies: {
-      zod: dependencyVersions.zod,
-      '@types/bun': dependencyVersions.bunTypes,
-      '@types/node': dependencyVersions.nodeTypes,
-    },
+    dependencies,
   };
 
   fs.writeFileSync(OUTPUT_PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2));
@@ -806,7 +816,7 @@ async function generatePackageJson(dependencyVersions: IDependencyVersions): Pro
 async function testBuiltCli(): Promise<void> {
   console.log('🧪 Testing built CLI...');
 
-  const testResult = await $`bun ${CLI_OUTPUT_FILE} --version`.quiet();
+  const testResult = await $`bun ${CLI_OUTPUT_FILE} --version`.quiet().throws(false);
 
   if (testResult.exitCode === 0) {
     console.log(`✅ CLI test passed - version: ${testResult.stdout.toString().trim()}`);
@@ -876,11 +886,26 @@ await handleBuildError(
     await ensureWorkspaceDependencies();
     await cleanPreviousBuild();
 
-    const dependencyVersions = await getDependencyVersions();
-
     await buildCli();
+
+    const externalRuntimeDependencies: string[] = await getExternalRuntimeDependenciesFromBundle(CLI_OUTPUT_FILE);
+    const allPackageNamesToResolve: string[] = [...externalRuntimeDependencies, 'zod', '@types/bun', '@types/node'];
+    const allResolvedVersions: Record<string, string> = await getInstalledPackageVersions(allPackageNamesToResolve);
+
+    const runtimeDependencyVersions: Record<string, string> = pickPackageVersions(
+      externalRuntimeDependencies,
+      allResolvedVersions
+    );
+
+    const dependencyVersions: IDependencyVersions = {
+      zod: getRequiredPackageVersion('zod', allResolvedVersions),
+      bunTypes: getRequiredPackageVersion('@types/bun', allResolvedVersions),
+      nodeTypes: getRequiredPackageVersion('@types/node', allResolvedVersions),
+    };
+
     await generateSchemaTypes(dependencyVersions);
-    await generatePackageJson(dependencyVersions);
+    await generatePackageJson(dependencyVersions, runtimeDependencyVersions);
+    enforceCliBundleSizeLimit();
     copyDocsToOutputDir();
 
     generateToolTypes({}, path.join(OUTPUT_DIR, 'tool-types.d.ts'));
