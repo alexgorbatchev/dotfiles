@@ -17,7 +17,7 @@ import { CurlScriptInstallerPlugin } from '@dotfiles/installer-curl-script';
 import { CurlTarInstallerPlugin } from '@dotfiles/installer-curl-tar';
 import { GitHubApiClient, GitHubReleaseInstallerPlugin } from '@dotfiles/installer-github';
 import { ManualInstallerPlugin } from '@dotfiles/installer-manual';
-import { createTsLogger, getLogLevelFromFlags, type TsLogger } from '@dotfiles/logger';
+import { createTsLogger, getLogLevelFromFlags, type LogLevelValue, type TsLogger } from '@dotfiles/logger';
 import { FileRegistry, type IFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import { ToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { RegistryDatabase } from '@dotfiles/registry-database';
@@ -409,6 +409,16 @@ export function registerAllCommands(
   registerDocsCommand(logger, program, servicesFactory);
 }
 
+function hasFlag(argv: string[], flag: string): boolean {
+  return argv.includes(flag);
+}
+
+export function resolveLogLevel(argv: string[], options: IGlobalProgramOptions): LogLevelValue {
+  const isShimMode = hasFlag(argv, '--shim-mode');
+  const quiet = options.quiet || isShimMode;
+  return getLogLevelFromFlags(options.log, quiet, options.verbose);
+}
+
 export async function main(argv: string[]) {
   const program = createProgram();
 
@@ -417,7 +427,7 @@ export async function main(argv: string[]) {
   const options: IGlobalProgramOptions = program.opts();
 
   // Create logger with appropriate level based on CLI flags
-  const logLevel = getLogLevelFromFlags(options.log, options.quiet, options.verbose);
+  const logLevel = resolveLogLevel(argv, options);
   const rootLogger = createTsLogger({ name: 'cli', level: logLevel });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
