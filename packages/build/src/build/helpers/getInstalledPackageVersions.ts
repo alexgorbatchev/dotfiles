@@ -15,7 +15,7 @@ export async function getInstalledPackageVersions(packageNames: string[]): Promi
 
   for (const packageName of uniquePackageNames) {
     const escapedPackageName: string = escapeRegExp(packageName);
-    const pattern: RegExp = new RegExp(`${escapedPackageName}@([^\\s]+)`);
+    const pattern: RegExp = new RegExp(`(?:^|\\s)${escapedPackageName}@([^\\s]+)`, 'm');
     const match: RegExpMatchArray | null = pmLsOutput.match(pattern);
     const version: string | undefined = match?.[1];
 

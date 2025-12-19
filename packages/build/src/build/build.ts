@@ -16,6 +16,7 @@ import {
   resolveRuntimeDependencies,
   runTypeTests,
   testBuiltCli,
+  verifyDistCheckInstall,
 } from './steps';
 import type { IBuildContext, IResolvedRuntimeDependencies } from './types';
 
@@ -33,6 +34,8 @@ async function runBuild(context: IBuildContext): Promise<void> {
     runtimeDependencies.dependencyVersions,
     runtimeDependencies.runtimeDependencyVersions
   );
+
+  await verifyDistCheckInstall(context);
 
   enforceCliBundleSizeLimit(context);
   copyDocs(context);

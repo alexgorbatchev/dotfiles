@@ -7,6 +7,7 @@ export * from './copyFileIfExists';
 export * from './copyPackagesToOutputDir';
 export * from './copyTypeTestFiles';
 export * from './createBuildContext';
+export * from './createDistCheckPackageJson';
 export * from './createTempSchemasPackage';
 export * from './createTempTsConfig';
 export * from './createTsdTestsEntryPoint';
