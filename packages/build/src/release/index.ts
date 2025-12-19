@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+/** biome-ignore-all lint/suspicious/noConsole: build script */
+
 /**
  * Release Preparation Script
  *
@@ -53,11 +55,14 @@ async function showDistContents(): Promise<void> {
     return;
   }
 
+  console.log('📦 .dist contents:');
   const files = fs.readdirSync(distDir);
   for (const file of files.sort()) {
     const filePath = path.join(distDir, file);
     const stats = fs.statSync(filePath);
     if (stats.isFile()) {
+      const sizeKb: number = Math.ceil(stats.size / 1024);
+      console.log(`  - ${file} (${sizeKb} KB)`);
     }
   }
 }
@@ -85,7 +90,8 @@ export async function release(): Promise<void> {
 
 // Only run if executed directly
 if (import.meta.main) {
-  release().catch((_error) => {
+  release().catch((error) => {
+    console.error(error);
     process.exit(1);
   });
 }

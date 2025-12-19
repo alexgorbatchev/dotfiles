@@ -12,6 +12,16 @@ interface IExecuteCommandOptions {
   expectToFail?: boolean;
 }
 
+function truncateCommandOutput(output: string, maxChars: number): string {
+  if (output.length <= maxChars) {
+    return output;
+  }
+
+  const truncated: string = output.slice(0, maxChars);
+  const result: string = `${truncated}\n... (truncated)`;
+  return result;
+}
+
 /**
  * Executes a shell command using Bun's `$` operator.
  *
@@ -30,7 +40,22 @@ export async function executeCommand(args: string[], opts: IExecuteCommandOption
   const result = await $`${args}`.cwd(cwd).env(mergedEnv).quiet().nothrow();
 
   if (result.exitCode !== 0) {
-    throw new Error(`Command failed: ${command}`);
+    const stdout: string = result.stdout.toString().trim();
+    const stderr: string = result.stderr.toString().trim();
+
+    const maxChars: number = 12_000;
+    const detailsParts: string[] = [];
+
+    if (stderr.length > 0) {
+      detailsParts.push(`stderr:\n${truncateCommandOutput(stderr, maxChars)}`);
+    }
+
+    if (stdout.length > 0) {
+      detailsParts.push(`stdout:\n${truncateCommandOutput(stdout, maxChars)}`);
+    }
+
+    const details: string = detailsParts.length > 0 ? `\n\n${detailsParts.join('\n\n')}` : '';
+    throw new Error(`Command failed (exit code ${result.exitCode}): ${command}${details}`);
   }
 }
 

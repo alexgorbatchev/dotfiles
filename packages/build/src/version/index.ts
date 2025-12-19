@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+/** biome-ignore-all lint/suspicious/noConsole: build script */
+
 /**
  * Version Management Script
  *
@@ -31,6 +33,12 @@ cdToRepoRoot();
 const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, 'package.json');
 
+interface IVersionParts {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
 /**
  * Parses a semantic version string into its components.
  *
@@ -38,7 +46,7 @@ const packageJsonPath = path.join(rootDir, 'package.json');
  * @returns An object containing major, minor, and patch version numbers.
  * @throws {Error} If the version format is invalid.
  */
-function parseVersion(version: string): { major: number; minor: number; patch: number } {
+function parseVersion(version: string): IVersionParts {
   const parts = version.split('.');
   if (parts.length !== 3) {
     throw new Error(`Invalid version format: ${version}`);
@@ -52,7 +60,8 @@ function parseVersion(version: string): { major: number; minor: number; patch: n
     throw new Error(`Invalid version format: ${version}`);
   }
 
-  return { major, minor, patch };
+  const result: IVersionParts = { major, minor, patch };
+  return result;
 }
 
 /**
@@ -63,7 +72,8 @@ function parseVersion(version: string): { major: number; minor: number; patch: n
  * @returns The new version string after bumping.
  */
 function bumpVersion(currentVersion: string, bumpType: 'major' | 'minor' | 'patch'): string {
-  const { major, minor, patch } = parseVersion(currentVersion);
+  const versionParts: IVersionParts = parseVersion(currentVersion);
+  const { major, minor, patch } = versionParts;
 
   switch (bumpType) {
     case 'major':
@@ -141,7 +151,8 @@ async function version(): Promise<void> {
 }
 
 if (import.meta.main) {
-  version().catch((_error) => {
+  version().catch((error) => {
+    console.error(error);
     process.exit(1);
   });
 }

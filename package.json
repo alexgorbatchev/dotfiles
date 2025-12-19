@@ -4,7 +4,6 @@
   "module": "cli.ts",
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@types/react": "catalog:system",
     "@typescript/native-preview": "catalog:typescript",
     "lefthook": "^2.0.1",
     "tsd": "^0.33.0"
@@ -19,7 +18,6 @@
     "system": {
       "@types/bun": "^1.3.0",
       "@types/node": "^24.9.1",
-      "@types/react": "^19.2.7",
       "@types/semver": "^7.5.8"
     },
     "testing": {
