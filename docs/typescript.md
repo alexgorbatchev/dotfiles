@@ -292,10 +292,19 @@ interface IShellConfig {
 }
 
 interface IShellCompletionConfig {
-  source: string;
+  /** Path to completion file relative to extracted archive root */
+  source?: string;
+  /** Command to execute to generate completion content */
+  cmd?: string;
+  /** Binary name used for completion filename (when different from tool name) */
+  bin?: string;
+  /** Optional custom completion filename (overrides bin and defaults) */
   name?: string;
+  /** Optional custom installation directory (absolute path) */
   targetDir?: string;
 }
+
+// Note: Either `source` OR `cmd` must be provided, but not both.
 ```
 
 ### Installation Method Types

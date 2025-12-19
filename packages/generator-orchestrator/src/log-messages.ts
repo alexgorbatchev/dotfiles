@@ -28,6 +28,8 @@ export const messages = {
       createSafeLogMessage(`Shell initialization generation complete; primary path: ${primaryPath}`),
     completionGenerated: (filename: string, toolName: string, shellType: string) =>
       createSafeLogMessage(`Generated completion ${filename} for ${toolName} (${shellType})`),
+    completionGeneratedAtPath: (completionPath: string) =>
+      createSafeLogMessage(`Generated completion at ${completionPath}`),
     completionGenerationFailed: (toolName: string, shellType: string) =>
       createSafeLogMessage(`Failed to generate completion for ${toolName} (${shellType})`),
     completionSkippedNotInstalled: (toolName: string, shellType: string) =>

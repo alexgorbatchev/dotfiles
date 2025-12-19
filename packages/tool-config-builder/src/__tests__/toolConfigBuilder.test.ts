@@ -199,6 +199,23 @@ describe('IToolConfigBuilder', () => {
     expect(config.symlinks).toEqual([{ source: 'config.yml', target: '~/.config/tool/config.yml' }]);
   });
 
+  test('completions preserves the configured bin option', () => {
+    const builder = new IToolConfigBuilder(logger, 'curl-script--fnm');
+
+    builder.zsh((shell) =>
+      shell.completions({
+        cmd: 'fnm completions --shell zsh',
+        bin: 'fnm',
+      })
+    );
+
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.completions).toEqual({
+      cmd: 'fnm completions --shell zsh',
+      bin: 'fnm',
+    });
+  });
+
   test('build method returns ManualToolConfig if binaries are specified but no installation method', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');

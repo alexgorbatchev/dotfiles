@@ -15,6 +15,7 @@ import type { IShellStorage, ShellTypeKey } from './types';
 interface ICompletionOptions {
   source?: string;
   cmd?: string;
+  bin?: string;
   name?: string;
   targetDir?: string;
 }
@@ -108,6 +109,7 @@ export class ShellConfigurator implements IShellConfigurator {
     const completionConfig: ShellCompletionConfig = this.createCompletionConfigFromOptions({
       source: completion.source,
       cmd: completion.cmd,
+      bin: completion.bin,
       name: completion.name,
       targetDir: completion.targetDir,
     });
@@ -132,6 +134,7 @@ export class ShellConfigurator implements IShellConfigurator {
     const completionConfig: ShellCompletionConfig = {
       ...(options.source ? { source: this.normalizeCompletionSource(options.source) } : {}),
       ...(options.cmd ? { cmd: options.cmd } : {}),
+      ...(options.bin ? { bin: options.bin } : {}),
       ...(options.name ? { name: options.name } : {}),
       ...(options.targetDir ? { targetDir: options.targetDir } : {}),
     };

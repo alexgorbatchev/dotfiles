@@ -130,7 +130,14 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
             configFilePath: toolConfig.configFilePath,
           };
 
-          await this.completionGenerator.generateAndWriteCompletionFile(completionConfig, toolName, shellType, context);
+          const completionResult = await this.completionGenerator.generateAndWriteCompletionFile(
+            completionConfig,
+            toolName,
+            shellType,
+            context
+          );
+
+          logger.info(messages.generateAll.completionGeneratedAtPath(completionResult.targetPath));
         } catch {
           logger.warn(messages.generateAll.completionGenerationFailed(toolName, shellType));
         }

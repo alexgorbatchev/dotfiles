@@ -316,6 +316,41 @@ describe('GeneratorOrchestrator', () => {
           backup: true,
         });
       });
+
+      describe('generateCompletionsForTool', () => {
+        it('should log an INFO message with the generated completion file path', async () => {
+          const toolName = 'curl-script--fnm';
+          const expectedCompletionPath = '/path/_tool';
+
+          (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mockResolvedValue({
+            content: '# completion',
+            filename: '_tool',
+            targetPath: expectedCompletionPath,
+            generatedBy: 'command',
+          });
+
+          const toolConfig: ToolConfig = {
+            name: toolName,
+            binaries: ['fnm'],
+            version: '1.0.0',
+            installationMethod: 'manual',
+            installParams: {},
+            shellConfigs: {
+              zsh: {
+                scripts: [always`export FNM=1`],
+                completions: {
+                  cmd: 'fnm completions --shell zsh',
+                  bin: 'fnm',
+                },
+              },
+            },
+          };
+
+          await orchestrator.generateCompletionsForTool(toolName, toolConfig);
+
+          logger.expect(['INFO'], ['GeneratorOrchestrator', 'generateCompletionsForTool'], [expectedCompletionPath]);
+        });
+      });
     });
 
     // The test 'should correctly infer symlink paths even if targetDir is not home'
