@@ -751,6 +751,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger,
     $shell: $extended = createConfiguredShell(this.$, process.env)
   ): {
+    // [TODO] needs actual type instead of & {}
     context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> };
     logger: TsLogger;
   } {
@@ -761,6 +762,7 @@ export class Installer implements IInstaller {
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
+    // [TODO] should use createToolConfigContext
     const context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } = {
       toolName,
       installDir,

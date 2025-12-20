@@ -134,7 +134,7 @@ function processDirectExport(
  * @param currentToolName - The name of the tool currently being configured.
  * @returns A fully populated IToolConfigContext for the tool.
  */
-function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): IToolConfigContext {
+export function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): IToolConfigContext {
   const getToolDir = (toolName: string): string => {
     return path.join(projectConfig.paths.binariesDir, toolName);
   };
@@ -149,6 +149,8 @@ function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: 
     dotfilesDir: projectConfig.paths.dotfilesDir,
     generatedDir: projectConfig.paths.generatedDir,
     projectConfig,
+
+    // [TODO] should use systemInfo from main.ts, not process
     systemInfo: {
       platform: process.platform,
       arch: process.arch,

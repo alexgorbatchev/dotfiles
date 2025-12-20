@@ -5,30 +5,7 @@ import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { createInstallFunction, IToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
-
-// Helper function to create IToolConfigContext (extracted from loadToolConfigs.ts)
-function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): IToolConfigContext {
-  const getToolDir = (toolName: string): string => {
-    return path.join(projectConfig.paths.binariesDir, toolName);
-  };
-
-  return {
-    toolName: currentToolName,
-    toolDir: getToolDir(currentToolName),
-    getToolDir,
-    homeDir: projectConfig.paths.homeDir,
-    binDir: projectConfig.paths.targetDir,
-    shellScriptsDir: projectConfig.paths.shellScriptsDir,
-    dotfilesDir: projectConfig.paths.dotfilesDir,
-    generatedDir: projectConfig.paths.generatedDir,
-    projectConfig: projectConfig,
-    systemInfo: {
-      platform: 'linux',
-      arch: 'x64',
-      homeDir: projectConfig.paths.homeDir,
-    },
-  };
-}
+import { createToolConfigContext } from '../loadToolConfigs';
 
 describe('IToolConfigContext', () => {
   let logger: TestLogger;
