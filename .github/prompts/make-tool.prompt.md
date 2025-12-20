@@ -89,7 +89,7 @@ install('github-release', { repo: 'owner/tool' })
 // 1. Extracts archives to ${ctx.toolDir}/version/
 // 2. Preserves complete archive structure
 // 3. Uses pattern {,*/}binary-name to locate executables
-// 4. Creates shims in ${ctx.binDir}/ that execute from original location
+// 4. Creates shims in ${ctx.projectConfig.paths.targetDir}/ that execute from original location
 ```
 
 **Archive Structure Handling**: The default pattern `{,*/}binary-name` automatically handles:
@@ -125,7 +125,7 @@ install('github-release', { repo: 'owner/tool' })
     
     // Environment variables (structured object)
     environment: {
-      'TOOL_CONFIG': `${ctx.homeDir}/.config/tool`,
+      'TOOL_CONFIG': `${ctx.projectConfig.paths.homeDir}/.config/tool`,
       'TOOL_LOG_LEVEL': 'info'
     },
     
@@ -147,7 +147,7 @@ install('github-release', { repo: 'owner/tool' })
     shellInit: [
       // Expensive operations (run once after install/update)
       once/* zsh */`
-        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+        tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
       `,
       
       // Fast runtime setup (runs every shell startup)
@@ -185,14 +185,14 @@ Set up symbolic links for configuration files if the tool uses them.
 
 **Path Resolution Rules**:
 - **Source paths** starting with `./`: Relative to tool configuration directory (where `.tool.ts` is located)
-- **Target paths**: Must be absolute (use `${ctx.homeDir}`, etc.)
+- **Target paths**: Must be absolute (use `${ctx.projectConfig.paths.homeDir}`, etc.)
 
 ```typescript
 // Link configuration files
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
-  .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-  .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
+  .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+  .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`)
 
 // Directory structure example:
 // configs/my-tool/
@@ -292,7 +292,7 @@ install('github-release', { repo: 'owner/tool' })
       await $`tool init --data-dir ${dataDir}`;
       
       // Generate completions
-      await $`tool completion zsh > ${ctx.generatedDir}/completions/_tool`;
+      await $`tool completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_tool`;
       
       logger.info('Post-install setup completed');
     }
@@ -502,7 +502,7 @@ export default defineTool((install, ctx) =>
     binaryPath: './scripts/deploy.sh',  // Relative to .tool.ts
   })
     .bin('deploy')
-    .symlink('./deploy.config.yaml', `${ctx.homeDir}/.config/deploy/config.yaml`)
+    .symlink('./deploy.config.yaml', `${ctx.projectConfig.paths.homeDir}/.config/deploy/config.yaml`)
     .zsh({
       aliases: {
         'dp': 'deploy',
@@ -510,7 +510,7 @@ export default defineTool((install, ctx) =>
         'deploy-staging': 'deploy --env staging',
       },
       environment: {
-        'DEPLOY_CONFIG': `${ctx.homeDir}/.config/deploy/config.yaml`,
+        'DEPLOY_CONFIG': `${ctx.projectConfig.paths.homeDir}/.config/deploy/config.yaml`,
       },
       shellInit: [
         always/* zsh */`
@@ -535,8 +535,8 @@ import { defineTool } from '@gitea/dotfiles';
  */
 export default defineTool((install, ctx) =>
   install('manual', {})  // No binaryPath = configuration only
-    .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
-    .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
+    .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+    .symlink('./gitignore_global', `${ctx.projectConfig.paths.homeDir}/.gitignore_global`)
     .zsh({
       aliases: {
         'g': 'git',
@@ -572,7 +572,7 @@ Before finalizing your configuration, verify:
 - [ ] **Script-based config** is used only for complex functions and logic
 - [ ] **`once` scripts** contain expensive operations (completions generation, cache building)
 - [ ] **`always` scripts** contain only fast runtime setup
-- [ ] **Context variables** (`${ctx.homeDir}`, etc.) are used for all paths
+- [ ] **Context variables** (`${ctx.projectConfig.paths.homeDir}`, etc.) are used for all paths
 
 **File Management:**
 - [ ] **Symlink source paths** use `./` for relative paths to tool config directory

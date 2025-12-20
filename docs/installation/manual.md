@@ -122,11 +122,11 @@ export default defineTool((install, ctx) =>
           'mt-status': 'my-tool status',
         })
         .environment({
-          MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`,
+          MY_TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/my-tool`,
         })
         .completions('./completions/_my-tool')
     )
-    .symlink('./config/my-tool.conf', `${ctx.homeDir}/.config/my-tool/config`)
+    .symlink('./config/my-tool.conf', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config`)
 );
 ```
 

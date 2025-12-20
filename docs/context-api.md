@@ -85,7 +85,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.once(/* zsh */`
         # Generate completions to the proper directory
-        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+        tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
       `)
     )
 );
@@ -93,7 +93,7 @@ export default defineTool((install, ctx) =>
 
 ### Path Properties
 
-### `ctx.homeDir`
+### `ctx.projectConfig.paths.homeDir`
 User's home directory from the YAML configuration.
 
 **Usage:**
@@ -104,11 +104,11 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     // Symlink configuration files
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
     // Set environment variables
     .zsh((shell) =>
       shell.environment({
-        TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
+        TOOL_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
       })
     )
 );
@@ -175,7 +175,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### `ctx.generatedDir`
+### `ctx.projectConfig.paths.generatedDir`
 Directory for generated files (completions, caches, etc.).
 
 **Usage:**
@@ -188,14 +188,14 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.once(/* zsh */`
         # Generate completions once
-        mkdir -p "${ctx.generatedDir}/completions"
-        tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+        mkdir -p "${ctx.projectConfig.paths.generatedDir}/completions"
+        tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
       `)
     )
 );
 ```
 
-### `ctx.binDir`
+### `ctx.projectConfig.paths.targetDir`
 Directory where tool shims are generated.
 
 **Usage:**
@@ -204,22 +204,22 @@ c.hooks({
   afterInstall: async ({ fileSystem }) => {
     // Custom shim creation (rarely needed)
     await fileSystem.writeFile(
-      `${ctx.binDir}/custom-tool-wrapper`,
+      `${ctx.projectConfig.paths.targetDir}/custom-tool-wrapper`,
       '#!/bin/bash\nexec tool --wrapper-mode "$@"'
     );
   }
 })
 ```
 
-### `ctx.dotfilesDir`
+### `ctx.projectConfig.paths.dotfilesDir`
 Root dotfiles directory.
 
 **Usage:**
 ```typescript
-c.symlink('./themes/', `${ctx.dotfilesDir}/.config/tool/themes`)
+c.symlink('./themes/', `${ctx.projectConfig.paths.dotfilesDir}/.config/tool/themes`)
 ```
 
-### `ctx.shellScriptsDir`
+### `ctx.projectConfig.paths.shellScriptsDir`
 Directory for generated shell scripts.
 
 **Usage:**
@@ -246,7 +246,7 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 );
 
 // ❌ Incorrect - hardcoded path
@@ -269,7 +269,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.environment({
         TOOL_HOME: `${ctx.toolDir}`,
-        TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
+        TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool`
       })
     )
 );

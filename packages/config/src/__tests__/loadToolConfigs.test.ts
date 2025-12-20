@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import type { AsyncConfigureTool, InstallFunction, IToolConfigContext, ProjectConfig } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
@@ -34,11 +35,10 @@ describe('IToolConfigContext', () => {
       const context = createToolConfigContext(mockProjectConfig, 'test-tool');
 
       expect(context.toolDir).toBe(path.join(mockProjectConfig.paths.binariesDir, 'test-tool'));
-      expect(context.homeDir).toBe(mockProjectConfig.paths.homeDir);
-      expect(context.binDir).toBe(mockProjectConfig.paths.targetDir);
-      expect(context.shellScriptsDir).toBe(mockProjectConfig.paths.shellScriptsDir);
-      expect(context.dotfilesDir).toBe(mockProjectConfig.paths.dotfilesDir);
-      expect(context.generatedDir).toBe(mockProjectConfig.paths.generatedDir);
+      expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
+      expect(context.projectConfig.paths.shellScriptsDir).toBe(mockProjectConfig.paths.shellScriptsDir);
+      expect(context.projectConfig.paths.dotfilesDir).toBe(mockProjectConfig.paths.dotfilesDir);
+      expect(context.projectConfig.paths.generatedDir).toBe(mockProjectConfig.paths.generatedDir);
       expect(typeof context.getToolDir).toBe('function');
     });
 
@@ -63,8 +63,8 @@ describe('IToolConfigContext', () => {
           .zsh((shell) =>
             shell.always(/* zsh */ `
            export TOOL_DIR="${ctx.toolDir}"
-           export HOME_DIR="${ctx.homeDir}"
-           export GENERATED_DIR="${ctx.generatedDir}"
+           export HOME_DIR="${ctx.projectConfig.paths.homeDir}"
+           export GENERATED_DIR="${ctx.projectConfig.paths.generatedDir}"
            
            # Source tool-specific files
            if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
@@ -77,12 +77,9 @@ describe('IToolConfigContext', () => {
       const install = createInstallFunction(logger, 'shell-tool');
       const result = await configureToolFn(install, context);
 
-      if (!result) {
-        throw new Error('Result should not be undefined');
-      }
-
-      // Result can be either a ToolConfig or a IToolConfigBuilder
-      const toolConfig = 'build' in result ? result.build() : result;
+      assert(result);
+      assert(result instanceof ToolConfigBuilderImpl);
+      const toolConfig = result.build();
 
       expect(toolConfig).toBeDefined();
       expect(toolConfig.name).toBe('shell-tool');
@@ -115,9 +112,8 @@ describe('IToolConfigContext', () => {
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'dependent-tool'), context);
-      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected IToolConfigBuilder result');
-      }
+      assert(result);
+      assert(result instanceof ToolConfigBuilderImpl);
       const toolConfig = result.build();
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
@@ -141,16 +137,15 @@ describe('IToolConfigContext', () => {
             shell.always(/* zsh */ `
            # Generate completions to the proper directory
            if command -v completion-tool >/dev/null 2>&1; then
-             completion-tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_completion-tool"
+             completion-tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_completion-tool"
            fi
          `)
           );
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'completion-tool'), context);
-      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected IToolConfigBuilder result');
-      }
+      assert(result);
+      assert(result instanceof ToolConfigBuilderImpl);
       const toolConfig = result.build();
 
       expect(toolConfig.shellConfigs?.zsh?.scripts).toBeDefined();
@@ -184,9 +179,9 @@ describe('IToolConfigContext', () => {
 
       const context = createToolConfigContext(customProjectConfig, 'custom-path-tool');
 
-      expect(context.homeDir).toBe(customProjectConfig.paths.homeDir);
-      expect(context.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
-      expect(context.generatedDir).toBe(customProjectConfig.paths.generatedDir);
+      expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
+      expect(context.projectConfig.paths.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
+      expect(context.projectConfig.paths.generatedDir).toBe(customProjectConfig.paths.generatedDir);
       expect(context.toolDir).toBe(path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool'));
       expect(context.getToolDir('another-tool')).toBe(path.join(customProjectConfig.paths.binariesDir, 'another-tool'));
     });
@@ -215,9 +210,8 @@ describe('IToolConfigContext', () => {
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'fzf-like'), context);
-      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected IToolConfigBuilder result');
-      }
+      assert(result);
+      assert(result instanceof ToolConfigBuilderImpl);
       const toolConfig = result.build();
 
       expect(toolConfig.installationMethod).toBe('github-release');
@@ -243,16 +237,15 @@ describe('IToolConfigContext', () => {
            
            # Generate completions
            if command -v atuin-like >/dev/null 2>&1; then
-             atuin-like gen-completions --shell zsh > "${ctx.generatedDir}/completions/_atuin-like" 2>/dev/null || true
+             atuin-like gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_atuin-like" 2>/dev/null || true
            fi
          `)
           );
       };
 
       const result = await configureToolFn(createInstallFunction(logger, 'atuin-like'), context);
-      if (!result || !(result instanceof ToolConfigBuilderImpl)) {
-        throw new Error('Expected IToolConfigBuilder result');
-      }
+      assert(result);
+      assert(result instanceof ToolConfigBuilderImpl);
       const toolConfig = result.build();
 
       expect(toolConfig.symlinks).toBeDefined();

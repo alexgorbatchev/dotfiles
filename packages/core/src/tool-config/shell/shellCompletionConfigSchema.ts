@@ -51,12 +51,12 @@ export const shellCompletionConfigSchema = z
     name: z.string().optional(),
     /**
      * Optional custom directory where the completion script should be installed.
-     * Must be an absolute path. Use context variables like `ctx.homeDir` when configuring.
+     * Must be an absolute path. Use config values like `ctx.projectConfig.paths.homeDir` when configuring.
      * If not provided, defaults to the shell-specific completion directory in generated files.
      *
      * @example
-     * targetDir: `${ctx.homeDir}/.zsh/completions`
-     * targetDir: `${ctx.generatedDir}/custom/completions`
+     * targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`
+     * targetDir: `${ctx.projectConfig.paths.generatedDir}/custom/completions`
      */
     targetDir: z.string().optional(),
   })

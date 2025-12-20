@@ -90,11 +90,13 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
     // We need to update the mock to return the installation after the first call.
     setup.mockToolInstallationRegistry.getToolInstallation.mockImplementation(async () => {
       return {
+        id: 1,
         toolName: MOCK_TOOL_NAME,
         version: 'latest', // or whatever was recorded
         installPath: '/path/to/install',
         timestamp: '2024-01-01',
-        binaryPaths: [],
+        binaryPaths: ['/path/to/install/test-tool'],
+        installedAt: new Date(),
       };
     });
 

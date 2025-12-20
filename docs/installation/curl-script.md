@@ -127,7 +127,7 @@ export default defineTool((install, ctx) =>
     url: 'https://get.docker.com',
     shell: 'sh',
     env: {
-      INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
+      INSTALL_DIR: `${ctx.projectConfig.paths.homeDir}/.local/bin`,
       SKIP_SYSTEMD: 'true',
     },
   })

@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { $extended, IInstallContext } from '@dotfiles/core';
+import assert from 'node:assert';
+import path from 'node:path';
+import type { IInstallContext, ISystemInfo, ToolConfig } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
+import { createConfiguredShell } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
+import { createMock$, createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { z } from 'zod';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
 import type { IInstallerPlugin, IInstallOptions, InstallResult, IValidationResult } from '../types';
@@ -17,31 +21,50 @@ const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {
       installParams: z.object({ param: z.string() }),
     }),
     async install(): Promise<InstallResult> {
-      return { success: true, metadata: { method } };
+      const result: InstallResult = { success: true, metadata: { method } };
+      return result;
     },
     ...options,
   };
   return plugin;
 };
 
-const createMockContext = (): IInstallContext => {
-  const context: IInstallContext = {
-    toolName: 'test-tool',
-    toolDir: '/tmp/test',
-    homeDir: '/home/user',
-    binDir: '/tmp/test/bin',
-    shellScriptsDir: '/tmp/test/shell',
-    dotfilesDir: '/home/user/dotfiles',
-    generatedDir: '/tmp/test/generated',
-    installDir: '/tmp/test',
-    timestamp: '2025-01-01-00-00-00',
-    getToolDir: (toolName: string) => `/tmp/${toolName}`,
-    projectConfig: {} as never,
-    systemInfo: {} as never,
-    toolConfig: {} as never,
-    $: (() => {}) as unknown as $extended,
-    fileSystem: new MemFileSystem({}),
+const createMockContext = async (logger: TestLogger): Promise<IInstallContext> => {
+  const fileSystem = new MemFileSystem({});
+  const testDirs = await createTestDirectories(logger, fileSystem, { testName: 'InstallerPluginRegistry' });
+
+  const systemInfo: ISystemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
+
+  const projectConfig = await createMockProjectConfig({
+    config: { paths: testDirs.paths },
+    filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
+    fileSystem,
+    logger,
+    systemInfo,
+    env: {},
+  });
+
+  const toolConfig: ToolConfig = {
+    name: 'test-tool',
+    version: 'latest',
+    installationMethod: 'manual',
+    installParams: { binaryPath: 'bin/test-tool' },
   };
+
+  const getToolDir = (toolName: string): string => path.join(projectConfig.paths.binariesDir, toolName);
+  const context: IInstallContext = {
+    toolName: toolConfig.name,
+    toolDir: getToolDir(toolConfig.name),
+    getToolDir,
+    projectConfig,
+    systemInfo,
+    toolConfig,
+    installDir: path.join(projectConfig.paths.binariesDir, toolConfig.name),
+    timestamp: '2025-01-01-00-00-00',
+    $: createConfiguredShell(createMock$(), {}),
+    fileSystem,
+  };
+
   return context;
 };
 
@@ -279,13 +302,14 @@ describe('InstallerPluginRegistry', () => {
       const plugin = createMockPlugin('test-method', {
         async install(): Promise<InstallResult> {
           installCalled = true;
-          return { success: true, metadata: { method: 'test-method' } };
+          const result: InstallResult = { success: true, metadata: { method: 'test-method' } };
+          return result;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       const result = await registry.install('test-method', 'test-tool', {}, context);
 
       expect(installCalled).toBe(true);
@@ -293,13 +317,12 @@ describe('InstallerPluginRegistry', () => {
     });
 
     test('returns error if plugin not found', async () => {
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       const result = await registry.install('nonexistent', 'test-tool', {}, context);
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain('No plugin registered for installation method: nonexistent');
-      }
+      assert(!result.success);
+      expect(result.error).toContain('No plugin registered for installation method: nonexistent');
     });
 
     test('validates plugin before installation if validate method provided', async () => {
@@ -307,13 +330,14 @@ describe('InstallerPluginRegistry', () => {
       const plugin = createMockPlugin('test-method', {
         async validate(): Promise<IValidationResult> {
           validateCalled = true;
-          return { valid: true };
+          const validationResult: IValidationResult = { valid: true };
+          return validationResult;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       await registry.install('test-method', 'test-tool', {}, context);
 
       expect(validateCalled).toBe(true);
@@ -322,37 +346,38 @@ describe('InstallerPluginRegistry', () => {
     test('returns error if validation fails', async () => {
       const plugin = createMockPlugin('test-method', {
         async validate(): Promise<IValidationResult> {
-          return {
+          const validationResult: IValidationResult = {
             valid: false,
             errors: ['Validation error 1', 'Validation error 2'],
           };
+          return validationResult;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       const result = await registry.install('test-method', 'test-tool', {}, context);
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain('Validation error 1, Validation error 2');
-      }
+      assert(!result.success);
+      expect(result.error).toContain('Validation error 1, Validation error 2');
     });
 
     test('logs validation warnings', async () => {
       const plugin = createMockPlugin('test-method', {
         async validate(): Promise<IValidationResult> {
-          return {
+          const validationResult: IValidationResult = {
             valid: true,
             warnings: ['Warning 1', 'Warning 2'],
           };
+          return validationResult;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       await registry.install('test-method', 'test-tool', {}, context);
 
       logger.expect(
@@ -368,13 +393,14 @@ describe('InstallerPluginRegistry', () => {
         staticValidation: true,
         async validate(): Promise<IValidationResult> {
           validateCallCount++;
-          return { valid: true };
+          const validationResult: IValidationResult = { valid: true };
+          return validationResult;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       await registry.install('test-method', 'test-tool', {}, context);
       await registry.install('test-method', 'test-tool', {}, context);
       await registry.install('test-method', 'test-tool', {}, context);
@@ -388,13 +414,14 @@ describe('InstallerPluginRegistry', () => {
         staticValidation: false,
         async validate(): Promise<IValidationResult> {
           validateCallCount++;
-          return { valid: true };
+          const validationResult: IValidationResult = { valid: true };
+          return validationResult;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       await registry.install('test-method', 'test-tool', {}, context);
       await registry.install('test-method', 'test-tool', {}, context);
       await registry.install('test-method', 'test-tool', {}, context);
@@ -409,13 +436,14 @@ describe('InstallerPluginRegistry', () => {
       const plugin = createMockPlugin('test-method', {
         async install(toolName, toolConfig, context, opts, subLogger): Promise<InstallResult> {
           receivedParams = [toolName, toolConfig, context, opts, subLogger];
-          return { success: true, metadata: { method: 'test-method' } };
+          const result: InstallResult = { success: true, metadata: { method: 'test-method' } };
+          return result;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       await registry.install('test-method', 'test-tool', { config: 'value' }, context, options);
 
       expect(receivedParams[0]).toBe('test-tool');
@@ -429,7 +457,7 @@ describe('InstallerPluginRegistry', () => {
       const plugin = createMockPlugin('test-method');
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
       await registry.install('test-method', 'test-tool', {}, context);
 
       logger.expect(
@@ -447,13 +475,14 @@ describe('InstallerPluginRegistry', () => {
         staticValidation: true,
         async validate(): Promise<IValidationResult> {
           validateCallCount++;
-          return { valid: true };
+          const validationResult: IValidationResult = { valid: true };
+          return validationResult;
         },
       });
 
       await registry.register(plugin);
 
-      const context = createMockContext();
+      const context = await createMockContext(logger);
 
       await registry.install('test-method', 'test-tool', {}, context);
       expect(validateCallCount).toBe(1);

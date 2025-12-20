@@ -13,22 +13,22 @@ Understanding how paths are resolved is crucial for correctly configuring your t
 |--------|-----------|-----------------|---------|
 | **symlink()** | `source` starting with `./` | Relative to tool configuration directory | `'./config.toml'` → `configs/fzf/config.toml` |
 | **symlink()** | `source` absolute path | Used as-is | `'/etc/global.conf'` → `/etc/global.conf` |
-| **symlink()** | `target` | Must be absolute (use context) | `${ctx.homeDir}/.config/tool/config.toml` |
+| **symlink()** | `target` | Must be absolute (use context) | `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml` |
 | **completions()** | `source` | Relative to extracted archive root | `'shell/completion.zsh'` → inside downloaded archive |
-| **completions()** | `targetDir` | Must be absolute (optional) | `${ctx.homeDir}/.zsh/completions` |
+| **completions()** | `targetDir` | Must be absolute (optional) | `${ctx.projectConfig.paths.homeDir}/.zsh/completions` |
 | **install('github-release')** | `binaryPath` | Relative to extracted archive root | `'bin/tool'` → locates binary inside downloaded archive |
-| **install('manual')** | `binaryPath` | Must be absolute path | `'/usr/local/bin/tool'` or `${ctx.homeDir}/bin/tool` |
+| **install('manual')** | `binaryPath` | Must be absolute path | `'/usr/local/bin/tool'` or `${ctx.projectConfig.paths.homeDir}/bin/tool` |
 
 ## Context Variables for Paths
 
 Always use ToolConfigContext variables for dynamic paths:
 
-- `${ctx.homeDir}` → User's home directory  
+- `${ctx.projectConfig.paths.homeDir}` → User's home directory  
 - `${ctx.toolDir}` → Tool's base installation directory (contains version subdirectories)
-- `${ctx.dotfilesDir}` → Root dotfiles directory
-- `${ctx.generatedDir}` → Generated files directory
-- `${ctx.binDir}` → Generated shims directory (where tool shims are created)
-- `${ctx.shellScriptsDir}` → Generated shell scripts directory
+- `${ctx.projectConfig.paths.dotfilesDir}` → Root dotfiles directory
+- `${ctx.projectConfig.paths.generatedDir}` → Generated files directory
+- `${ctx.projectConfig.paths.targetDir}` → Generated shims directory (where tool shims are created)
+- `${ctx.projectConfig.paths.shellScriptsDir}` → Generated shell scripts directory
 - `${ctx.getToolDir('other-tool')}` → Another tool's base directory
 
 ## Path Resolution Benefits
@@ -53,7 +53,7 @@ For referencing files within the current tool version, you'll typically need to 
 // ✅ Correct symlink usage
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
     .zsh((shell) => shell.completions('shell/completion.zsh'))
 );
 
@@ -111,7 +111,7 @@ export default defineTool((install, ctx) =>
 For optimal tool management, the system uses a versioned directory structure that preserves archive integrity:
 
 ```
-${ctx.generatedDir}/binaries/
+${ctx.projectConfig.paths.generatedDir}/binaries/
 └── tool-name/
     └── version/                 # e.g., "1.2.3" or "latest"  
         ├── bin/                 # Extracted archive contents (preserved)
@@ -126,14 +126,14 @@ ${ctx.generatedDir}/binaries/
 - **Archive Integrity**: Tools can access their dependencies (shared libs, configs, assets)
 - **Version Management**: Easy to switch between versions or rollback
 - **Immutable Installs**: Once extracted, archives remain untouched
-- **Shim-Based Execution**: Shims in `${ctx.binDir}` point to actual binaries
+- **Shim-Based Execution**: Shims in `${ctx.projectConfig.paths.targetDir}` point to actual binaries
 
 ### How It Works
 
 1. Archives are extracted to `${ctx.toolDir}/version/` 
 2. Archive structure is preserved completely
 3. `binaryPath` identifies which file is the main executable
-4. Shims are generated in `${ctx.binDir}/` that execute the binary from its original location
+4. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` that execute the binary from its original location
 5. No files are moved or copied from the extraction location
 
 ## Path Resolution Examples
@@ -152,8 +152,8 @@ ${ctx.generatedDir}/binaries/
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/my-tool' })
     .bin('my-tool')
-    .symlink('./config.toml', `${ctx.homeDir}/.config/my-tool/config.toml`)
-    .symlink('./themes/', `${ctx.homeDir}/.config/my-tool/themes`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`)
+    .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/themes`)
 );
 
 // Results in:
@@ -180,8 +180,8 @@ export default defineTool((install, ctx) =>
 );
 
 // Completions are copied from:
-// extracted-archive/completions/_tool.zsh -> ${ctx.generatedDir}/completions/_tool
-// extracted-archive/completions/tool.bash -> ${ctx.generatedDir}/completions/tool.bash
+// extracted-archive/completions/_tool.zsh -> ${ctx.projectConfig.paths.generatedDir}/completions/_tool
+// extracted-archive/completions/tool.bash -> ${ctx.projectConfig.paths.generatedDir}/completions/tool.bash
 ```
 
 ### Binary Path Resolution
@@ -202,7 +202,7 @@ export default defineTool((install, ctx) =>
     .bin('my-tool')
 );
 
-// Shim created at: ${ctx.binDir}/my-tool
+// Shim created at: ${ctx.projectConfig.paths.targetDir}/my-tool
 // Shim executes: ${ctx.toolDir}/latest/bin/my-tool
 ```
 
@@ -214,13 +214,13 @@ export default defineTool((install, ctx) =>
 // ✅ Correct - works on all platforms
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 );
 
 // ❌ Incorrect - Windows-specific paths in forward slashes
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
-    .symlink('.\\config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)  // Wrong
+    .symlink('.\\config.toml', `${ctx.projectConfig.paths.homeDir}\\.config\\tool\\config.toml`)  // Wrong
 );
 ```
 
@@ -233,7 +233,7 @@ export default defineTool((install, ctx) =>
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 );
 ```
 
@@ -245,9 +245,9 @@ export default defineTool((install, ctx) =>
 c.hooks({
   beforeInstall: async ({ logger }) => {
     logger.info(`Tool directory: ${ctx.toolDir}`);
-    logger.info(`Home directory: ${ctx.homeDir}`);
-    logger.info(`Generated directory: ${ctx.generatedDir}`);
-    logger.info(`Bin directory: ${ctx.binDir}`);
+    logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
+    logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
+    logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);
   }
 })
 ```
@@ -260,15 +260,15 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .hook('before-install', async ({ logger }) => {
       logger.info(`Tool directory: ${ctx.toolDir}`);
-      logger.info(`Home directory: ${ctx.homeDir}`);
-      logger.info(`Generated directory: ${ctx.generatedDir}`);
-      logger.info(`Bin directory: ${ctx.binDir}`);
+      logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
+      logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
+      logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);
     })
     .hook('after-install', async ({ fileSystem, logger }) => {
       const configExists = await fileSystem.exists('./config.toml');
       logger.info(`Config file exists: ${configExists}`);
       
-      const symlinkTarget = `${ctx.homeDir}/.config/tool/config.toml`;
+      const symlinkTarget = `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`;
       const symlinkExists = await fileSystem.exists(symlinkTarget);
       logger.info(`Symlink created: ${symlinkExists}`);
     })

@@ -4,6 +4,7 @@ import type {
   $extended,
   AsyncInstallHook,
   IInstallContext,
+  InstallEvent,
   InstallerPluginRegistry,
   ISystemInfo,
   PluginEmittedHookEvent,
@@ -17,6 +18,76 @@ import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import { generateTimestamp, resolvePlatformConfig } from '@dotfiles/utils';
 import type { IInstaller, IInstallOptions, InstallResult } from './types';
 import { createConfiguredShell, type HookExecutor, messages } from './utils';
+
+type UnknownRecord = Record<string, unknown>;
+
+type InstallHooks = Record<string, AsyncInstallHook[]>;
+
+type EmitEvent = (type: PluginEmittedHookEvent, data: UnknownRecord) => Promise<void>;
+
+type InstallContextWithEmitter = IInstallContext & { emitEvent?: EmitEvent };
+
+interface ICreateBaseInstallContextResult {
+  context: InstallContextWithEmitter;
+  logger: TsLogger;
+}
+
+function isUnknownRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAsyncInstallHookArray(value: unknown): value is AsyncInstallHook[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'function');
+}
+
+function getInstallHooksFromToolConfig(toolConfig: unknown): InstallHooks | undefined {
+  if (!isUnknownRecord(toolConfig)) {
+    return undefined;
+  }
+
+  const installParams: unknown = toolConfig['installParams'];
+  if (!isUnknownRecord(installParams)) {
+    return undefined;
+  }
+
+  const hooks: unknown = installParams['hooks'];
+  if (!isUnknownRecord(hooks)) {
+    return undefined;
+  }
+
+  const hookEntries: [string, unknown][] = Object.entries(hooks);
+  if (hookEntries.length === 0) {
+    return undefined;
+  }
+
+  const normalizedHooks: InstallHooks = {};
+  for (const [hookName, maybeHookArray] of hookEntries) {
+    if (!isAsyncInstallHookArray(maybeHookArray)) {
+      return undefined;
+    }
+    normalizedHooks[hookName] = maybeHookArray;
+  }
+
+  return normalizedHooks;
+}
+
+function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
+  const empty: UnknownRecord = {};
+  if (!result.success) {
+    return empty;
+  }
+
+  if (!('metadata' in result)) {
+    return empty;
+  }
+
+  const metadata: unknown = result.metadata;
+  if (!isUnknownRecord(metadata)) {
+    return empty;
+  }
+
+  return metadata;
+}
 
 /**
  * Orchestrates the tool installation process by delegating to plugin-based installation methods
@@ -125,16 +196,12 @@ export class Installer implements IInstaller {
    * @param event - Installation event containing type, tool name, and context
    * @throws Error if hook execution fails
    */
-  private async handleInstallEvent(event: {
-    type: string;
-    toolName: string;
-    context: IInstallContext & Record<string, unknown>;
-  }): Promise<void> {
+  private async handleInstallEvent(event: InstallEvent): Promise<void> {
     if (!this.currentToolConfig) {
       return;
     }
 
-    const hooks = this.currentToolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+    const hooks = getInstallHooksFromToolConfig(this.currentToolConfig);
     if (!hooks) {
       return;
     }
@@ -145,7 +212,7 @@ export class Installer implements IInstaller {
     }
 
     // Create enhanced context with fileSystem from event
-    const toolFs = (event.context['fileSystem'] as typeof this.fs) || this.fs;
+    const toolFs = event.context.fileSystem;
     const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs);
 
     // Execute all hooks in sequence
@@ -236,7 +303,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<InstallResult | null> {
     const logger = parentLogger.getSubLogger({ name: 'executeBeforeInstallHook' });
-    const hooks = resolvedToolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+    const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
     const beforeInstallHooks = hooks?.['before-install'];
 
     if (!beforeInstallHooks) {
@@ -291,7 +358,7 @@ export class Installer implements IInstaller {
     parentLogger: TsLogger
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'executeAfterInstallHook' });
-    const hooks = resolvedToolConfig['installParams']?.['hooks'] as Record<string, AsyncInstallHook[]> | undefined;
+    const hooks = getInstallHooksFromToolConfig(resolvedToolConfig);
     const afterInstallHooks = hooks?.['after-install'];
 
     if (!afterInstallHooks) {
@@ -367,7 +434,7 @@ export class Installer implements IInstaller {
         binaryPaths: result.binaryPaths,
         configuredVersion,
         originalTag,
-        ...(result.metadata as unknown as Record<string, unknown>),
+        ...getPluginMetadataRecord(result),
       });
       logger.debug(messages.outcome.installSuccess(toolName, version, 'registry-recorded'));
     } catch (error) {
@@ -394,16 +461,14 @@ export class Installer implements IInstaller {
     options?: IInstallOptions,
     _logger?: TsLogger
   ): Promise<InstallResult> {
-    const result = await this.registry.install(
+    const result: InstallResult = await this.registry.install(
       resolvedToolConfig.installationMethod,
       toolName,
       resolvedToolConfig,
       context,
       options
     );
-    // The registry returns InstallResult<unknown>, but we know each plugin
-    // returns a specific result type from the InstallResult union
-    return result as InstallResult;
+    return result;
   }
 
   /**
@@ -463,7 +528,7 @@ export class Installer implements IInstaller {
         try {
           const resolvedVersion: string | null = await plugin.resolveVersion(
             toolName,
-            resolvedToolConfig as never,
+            resolvedToolConfig,
             tempContext,
             logger
           );
@@ -712,11 +777,6 @@ export class Installer implements IInstaller {
       projectConfig: this.projectConfig,
       toolDir: '',
       getToolDir: () => '',
-      homeDir: this.projectConfig.paths.homeDir,
-      binDir: this.projectConfig.paths.targetDir,
-      shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
-      dotfilesDir: this.projectConfig.paths.dotfilesDir,
-      generatedDir: this.projectConfig.paths.generatedDir,
       $: createConfiguredShell(this.$, process.env),
       fileSystem: this.fs,
     };
@@ -729,7 +789,7 @@ export class Installer implements IInstaller {
    *
    * The context provides plugins with:
    * - Tool identification (toolName)
-   * - Directory paths (installDir, toolDir, binDir, etc.)
+   * - Directory paths (installDir, toolDir, etc.)
    * - System information (platform, arch)
    * - Application configuration
    * - Logger instance
@@ -750,11 +810,7 @@ export class Installer implements IInstaller {
     toolConfig: ToolConfig,
     parentLogger: TsLogger,
     $shell: $extended = createConfiguredShell(this.$, process.env)
-  ): {
-    // [TODO] needs actual type instead of & {}
-    context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> };
-    logger: TsLogger;
-  } {
+  ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
     const getToolDir = (name: string): string => {
       return path.join(this.projectConfig.paths.binariesDir, name);
@@ -762,8 +818,7 @@ export class Installer implements IInstaller {
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
-    // [TODO] should use createToolConfigContext
-    const context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> } = {
+    const context: InstallContextWithEmitter = {
       toolName,
       installDir,
       timestamp,
@@ -773,17 +828,12 @@ export class Installer implements IInstaller {
       // IBaseToolContext properties
       toolDir: getToolDir(toolName),
       getToolDir,
-      homeDir: this.projectConfig.paths.homeDir,
-      binDir: this.projectConfig.paths.targetDir,
-      shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
-      dotfilesDir: this.projectConfig.paths.dotfilesDir,
-      generatedDir: this.projectConfig.paths.generatedDir,
       $: $shell,
       fileSystem: this.fs,
       // Event emitter for plugins to trigger hooks
-      emitEvent: async (type: string, data: Record<string, unknown>) => {
+      emitEvent: async (type: PluginEmittedHookEvent, data: UnknownRecord) => {
         await this.registry.emitEvent({
-          type: type as PluginEmittedHookEvent,
+          type,
           toolName,
           context: {
             ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger, $shell).context,
@@ -793,7 +843,12 @@ export class Installer implements IInstaller {
         });
       },
     };
-    return { context, logger: contextLogger };
+
+    const result: ICreateBaseInstallContextResult = {
+      context,
+      logger: contextLogger,
+    };
+    return result;
   }
 
   /**

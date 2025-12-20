@@ -8,15 +8,17 @@ import type {
   IGitHubRelease,
   IInstallContext,
   InstallerPluginRegistry,
+  ISystemInfo,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
-import type { CargoToolConfig } from '@dotfiles/installer-cargo';
+import type { CargoToolConfig, ICargoClient } from '@dotfiles/installer-cargo';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
 import { TestLogger } from '@dotfiles/logger';
+import type { IToolInstallationDetails, IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
   createMock$,
@@ -28,14 +30,55 @@ import type { ILogObj } from 'tslog';
 import { z } from 'zod';
 import type { Installer } from '../Installer';
 import type { InstallResult } from '../types';
+import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor } from '../utils/HookExecutor';
+
+interface IInstallEventEmitter {
+  emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void>;
+}
+
+type IInstallContextWithEmitter = IInstallContext & IInstallEventEmitter;
+
+interface IDownloadOptions {
+  destinationPath?: string;
+}
+
+interface IExtractOptions {
+  targetDir?: string;
+}
+
+type RecordToolInstallationMock = ReturnType<typeof mock<(installation: IToolInstallationDetails) => Promise<void>>>;
+
+type GetToolInstallationMock = ReturnType<typeof mock<(toolName: string) => Promise<IToolInstallationRecord | null>>>;
+
+type GetAllToolInstallationsMock = ReturnType<typeof mock<() => Promise<IToolInstallationRecord[]>>>;
+
+type UpdateToolInstallationMock = ReturnType<
+  typeof mock<(toolName: string, updates: Partial<IToolInstallationRecord>) => Promise<void>>
+>;
+
+type RemoveToolInstallationMock = ReturnType<typeof mock<(toolName: string) => Promise<void>>>;
+
+type IsToolInstalledMock = ReturnType<typeof mock<(toolName: string, version?: string) => Promise<boolean>>>;
+
+type CloseToolInstallationRegistryMock = ReturnType<typeof mock<() => Promise<void>>>;
+
+export interface IToolInstallationRegistryMock extends IToolInstallationRegistry {
+  recordToolInstallation: RecordToolInstallationMock;
+  getToolInstallation: GetToolInstallationMock;
+  getAllToolInstallations: GetAllToolInstallationsMock;
+  updateToolInstallation: UpdateToolInstallationMock;
+  removeToolInstallation: RemoveToolInstallationMock;
+  isToolInstalled: IsToolInstalledMock;
+  close: CloseToolInstallationRegistryMock;
+}
 
 // Common test data
 export const MOCK_TOOL_NAME = 'test-tool';
 export const MOCK_TOOL_REPO = 'owner/repo';
 
 export function createMockSymlinkGenerator(fs: IFileSystem): ISymlinkGenerator {
-  return {
+  const result: ISymlinkGenerator = {
     generate: mock(async () => []),
     createBinarySymlink: mock(async (sourcePath: string, targetPath: string) => {
       // Check if symlink already exists and is valid
@@ -70,27 +113,33 @@ export function createMockSymlinkGenerator(fs: IFileSystem): ISymlinkGenerator {
       await fs.symlink(sourcePath, targetPath);
     }),
   };
+
+  return result;
 }
 
-export function createMockCargoClient() {
-  return {
+export function createMockCargoClient(): ICargoClient {
+  const result: ICargoClient = {
     getCrateMetadata: mock(),
     buildCargoTomlUrl: mock(),
     getCargoTomlPackage: mock(),
     getLatestVersion: mock(),
   };
+
+  return result;
 }
 
-export function createMockToolInstallationRegistry() {
-  return {
-    recordToolInstallation: mock(async () => {}),
-    getToolInstallation: mock(),
-    getAllToolInstallations: mock(async () => []),
-    updateToolInstallation: mock(async () => {}),
-    removeToolInstallation: mock(async () => {}),
-    isToolInstalled: mock(async () => false),
-    close: mock(async () => {}),
+export function createMockToolInstallationRegistry(): IToolInstallationRegistryMock {
+  const result: IToolInstallationRegistryMock = {
+    recordToolInstallation: mock(async (): Promise<void> => {}),
+    getToolInstallation: mock(async (): Promise<IToolInstallationRecord | null> => null),
+    getAllToolInstallations: mock(async (): Promise<IToolInstallationRecord[]> => []),
+    updateToolInstallation: mock(async (): Promise<void> => {}),
+    removeToolInstallation: mock(async (): Promise<void> => {}),
+    isToolInstalled: mock(async (): Promise<boolean> => false),
+    close: mock(async (): Promise<void> => {}),
   };
+
+  return result;
 }
 export const MOCK_TOOL_VERSION = '1.0.0';
 
@@ -195,10 +244,10 @@ export interface IInstallerTestSetup {
   fs: IFileSystem;
   mockDownloader: IDownloader;
   mockGitHubApiClient: IGitHubApiClient;
-  mockCargoClient: ReturnType<typeof createMockCargoClient>;
+  mockCargoClient: ICargoClient;
   mockArchiveExtractor: IArchiveExtractor;
   mockProjectConfig: ProjectConfig;
-  mockToolInstallationRegistry: ReturnType<typeof createMockToolInstallationRegistry>;
+  mockToolInstallationRegistry: IToolInstallationRegistryMock;
   pluginRegistry: InstallerPluginRegistry;
   installer: Installer;
   fileSystemMocks: Awaited<ReturnType<typeof createMemFileSystem>>['spies'];
@@ -214,7 +263,7 @@ export interface IInstallerTestSetup {
     extract: ReturnType<typeof mock>;
     archiveExtractor: IArchiveExtractor;
     hookExecutor: HookExecutor;
-    cargoClient: ReturnType<typeof createMockCargoClient>;
+    cargoClient: ICargoClient;
   };
 }
 
@@ -230,7 +279,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const mockToolBinaryPath = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
   // Setup mock downloader
-  const mockDownload = mock(async (_url: string, options?: { destinationPath?: string }) => {
+  const mockDownload = mock(async (_url: string, options?: IDownloadOptions) => {
     // Create the file in the mock filesystem if destinationPath is provided
     if (options?.destinationPath) {
       await fs.ensureDir(path.dirname(options.destinationPath));
@@ -259,7 +308,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const mockCargoClient = createMockCargoClient();
 
   // Setup mock ArchiveExtractor
-  const mockExtract = mock(async (_archivePath: string, options?: { targetDir?: string }): Promise<IExtractResult> => {
+  const mockExtract = mock(async (_archivePath: string, options?: IExtractOptions): Promise<IExtractResult> => {
     // Create the extracted files in the target directory
     if (options?.targetDir) {
       await fs.ensureDir(options.targetDir);
@@ -279,7 +328,10 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   });
   const mockArchiveExtractor: IArchiveExtractor = {
     extract: mockExtract,
-    detectFormat: mock(async () => 'tar.gz' as const),
+    detectFormat: mock(async () => {
+      const result: 'tar.gz' = 'tar.gz';
+      return result;
+    }),
     isSupported: mock(() => true),
   };
 
@@ -301,17 +353,19 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const { InstallerPluginRegistry } = await import('@dotfiles/core');
   const pluginRegistry = new InstallerPluginRegistry(logger);
 
+  const emptySchema: z.ZodTypeAny = z.object({});
+
   // Register a mock plugin that emits events
   await pluginRegistry.register({
     method: 'github-release',
     displayName: 'GitHub Release (Mock)',
     version: '1.0.0',
-    toolConfigSchema: z.object({}) as z.ZodTypeAny,
-    paramsSchema: z.object({}) as z.ZodTypeAny,
+    toolConfigSchema: emptySchema,
+    paramsSchema: emptySchema,
     install: async (
       toolName: string,
       _toolConfig: unknown,
-      context: IInstallContext & { emitEvent?: (type: string, data: Record<string, unknown>) => Promise<void> }
+      context: IInstallContextWithEmitter
     ): Promise<InstallResult> => {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
@@ -356,7 +410,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       // Installer will create the symlink from this to the binaries directory
       const actualBinaryPath = path.join(extractDir, toolName);
 
-      return {
+      const result: InstallResult = {
         success: true,
         binaryPaths: [actualBinaryPath],
         version: '1.0.0',
@@ -370,6 +424,8 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
           assetName: 'test-asset.tar.gz',
         },
       };
+
+      return result;
     },
   });
 
@@ -378,8 +434,9 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   // Create installer instance - import here to avoid circular dependency
   const { Installer } = await import('../Installer.js');
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
-  const mockSystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir };
+  const mockSystemInfo: ISystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir };
   const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
+  const shell = createConfiguredShell(createMock$(), process.env);
   const installer = new Installer(
     logger,
     fs,
@@ -388,11 +445,11 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     mockSystemInfo,
     pluginRegistry,
     mockSymlinkGenerator,
-    createMock$() as unknown as $extended,
+    shell,
     hookExecutor
   );
 
-  return {
+  const result: IInstallerTestSetup = {
     logger,
     fs,
     mockDownloader,
@@ -417,6 +474,8 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       cargoClient: mockCargoClient,
     },
   };
+
+  return result;
 }
 
 /**
@@ -526,7 +585,9 @@ export function createTestContext(
     return path.join(setup.testDirs.paths.binariesDir, toolName);
   };
 
-  return {
+  const shell: $extended = createConfiguredShell(createMock$(), process.env);
+
+  const result: IInstallContext = {
     toolName: MOCK_TOOL_NAME,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
     timestamp: '2024-08-13-16-45-23',
@@ -536,15 +597,12 @@ export function createTestContext(
     // IBaseToolContext properties
     toolDir: getToolDir(MOCK_TOOL_NAME),
     getToolDir,
-    homeDir: setup.mockProjectConfig.paths.homeDir,
-    binDir: setup.mockProjectConfig.paths.targetDir,
-    shellScriptsDir: setup.mockProjectConfig.paths.shellScriptsDir,
-    dotfilesDir: setup.mockProjectConfig.paths.dotfilesDir,
-    generatedDir: setup.mockProjectConfig.paths.generatedDir,
-    $: createMock$() as unknown as $extended,
+    $: shell,
     fileSystem: setup.fs,
     ...overrides,
   };
+
+  return result;
 }
 
 /**

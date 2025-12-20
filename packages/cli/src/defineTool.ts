@@ -32,7 +32,7 @@ type ConfigureToolFnResult =
  * @param fn - Configuration callback that receives:
  *   - `install` - Function to select installer method. Call with method name and params,
  *     or call with no args for manual tools. Returns a fluent builder.
- *   - `ctx` - Context with paths (toolDir, homeDir, binDir, dotfilesDir) and system info.
+ *   - `ctx` - Context with tool/config info (toolName, toolDir, getToolDir, projectConfig, systemInfo).
  *
  * @returns Async function compatible with tool loading system
  *
@@ -57,7 +57,7 @@ export function defineTool(
     install: InstallFunction,
     /**
      * Context object providing access to paths, configuration, and system information.
-     * Includes toolName, toolDir, homeDir, binDir, dotfilesDir, and more.
+     * Use `ctx.projectConfig.paths.*` for configured directory paths.
      */
     ctx: IToolConfigContext
   ) => ConfigureToolFnResult

@@ -35,7 +35,7 @@ import type { IInstallParamsRegistry, ToolConfig } from '../types';
  * shell.completions({
  *   source: 'shell/_tool',
  *   name: '_mytool',
- *   targetDir: `${ctx.homeDir}/.zsh/completions`
+ *   targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`
  * })
  */
 export interface IShellCompletionConfigOptions {
@@ -85,8 +85,8 @@ export interface IShellCompletionConfigOptions {
    * Absolute path where the completion file should be installed.
    * Use context variables to construct the path. Defaults to the generated shell scripts directory.
    *
-   * @example `${ctx.homeDir}/.zsh/completions`
-   * @example `${ctx.shellScriptsDir}/custom/completions`
+   * @example `${ctx.projectConfig.paths.homeDir}/.zsh/completions`
+   * @example `${ctx.projectConfig.paths.shellScriptsDir}/custom/completions`
    */
   targetDir?: string;
 }
@@ -144,7 +144,7 @@ export interface IShellConfigurator {
    * // With custom target directory
    * shell.completions({
    *   source: 'completions/_tool.zsh',  // Relative to extracted archive (no ctx needed)
-   *   targetDir: `${ctx.homeDir}/.zsh/completions`  // Absolute path using context
+   *   targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`  // Absolute path using context
    * })
    *
    * // Dynamic completion generation

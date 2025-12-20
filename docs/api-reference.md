@@ -182,12 +182,13 @@ c.hook('after-install', async (context) => {
 
 ### Path Properties
 
-- `homeDir: string` - User's home directory
 - `toolDir: string` - Current tool's installation directory
-- `binDir: string` - Generated binaries directory
-- `shellScriptsDir: string` - Generated shell scripts directory
-- `dotfilesDir: string` - Root dotfiles directory
-- `generatedDir: string` - Generated files directory
+- `projectConfig.paths.homeDir: string` - User's home directory
+- `projectConfig.paths.dotfilesDir: string` - Root dotfiles directory
+- `projectConfig.paths.generatedDir: string` - Generated files directory
+- `projectConfig.paths.shellScriptsDir: string` - Generated shell scripts directory
+- `projectConfig.paths.targetDir: string` - Executable shims directory (should be in PATH)
+- `projectConfig.paths.binariesDir: string` - Tool binaries directory (versioned installs)
 
 ### Methods
 
@@ -379,7 +380,7 @@ export default defineTool((install, ctx) =>
       await $`tool init`;
       logger.info('Tool initialized');
     })
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
     .zsh((shell) =>
       shell
         .completions('completions/_tool')

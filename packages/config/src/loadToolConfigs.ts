@@ -143,11 +143,6 @@ export function createToolConfigContext(projectConfig: ProjectConfig, currentToo
     toolName: currentToolName,
     toolDir: getToolDir(currentToolName),
     getToolDir,
-    homeDir: projectConfig.paths.homeDir,
-    binDir: projectConfig.paths.targetDir,
-    shellScriptsDir: projectConfig.paths.shellScriptsDir,
-    dotfilesDir: projectConfig.paths.dotfilesDir,
-    generatedDir: projectConfig.paths.generatedDir,
     projectConfig,
 
     // [TODO] should use systemInfo from main.ts, not process

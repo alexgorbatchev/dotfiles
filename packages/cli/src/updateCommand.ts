@@ -93,11 +93,6 @@ async function handleToolUpdate(
     projectConfig: projectConfig,
     toolDir: getToolDir(toolName),
     getToolDir,
-    homeDir: projectConfig.paths.homeDir,
-    binDir: projectConfig.paths.targetDir,
-    shellScriptsDir: projectConfig.paths.shellScriptsDir,
-    dotfilesDir: projectConfig.paths.dotfilesDir,
-    generatedDir: projectConfig.paths.generatedDir,
     $: createConfiguredShell($, process.env),
     fileSystem: fs,
   };

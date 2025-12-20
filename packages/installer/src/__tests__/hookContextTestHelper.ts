@@ -1,7 +1,14 @@
-import type { $extended, IInstallContext, ToolConfig } from '@dotfiles/core';
+import type { IInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
+import { projectConfigSchema } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$ } from '@dotfiles/testing-helpers';
+import { createConfiguredShell } from '../utils/createConfiguredShell';
+
+interface ICreateTestInstallHookContextResult {
+  context: IInstallContext;
+  logger: TestLogger;
+}
 
 /**
  * Helper function to create a proper InstallContext for tests.
@@ -12,12 +19,13 @@ import { createMock$ } from '@dotfiles/testing-helpers';
 export function createTestInstallHookContext(
   overrides: Partial<IInstallContext> = {},
   testLogger?: TestLogger
-): { context: IInstallContext; logger: TestLogger } {
+): ICreateTestInstallHookContextResult {
   const logger = testLogger || new TestLogger();
 
-  const mockProjectConfig = {
-    configFilePath: '/home/user/.dotfiles/config.yaml',
-    configFileDir: '/home/user/.dotfiles',
+  const mockProjectConfigFilePath = '/home/user/.dotfiles/config.yaml';
+  const mockProjectConfigFileDir = '/home/user/.dotfiles';
+
+  const parsedConfig = projectConfigSchema.parse({
     paths: {
       homeDir: '/home/user',
       dotfilesDir: '/home/user/.dotfiles',
@@ -27,63 +35,27 @@ export function createTestInstallHookContext(
       shellScriptsDir: '/home/user/.dotfiles/.generated/shell-scripts',
       binariesDir: '/home/user/.dotfiles/.generated/binaries',
     },
-    system: { sudoPrompt: 'Password:' },
-    logging: { level: 'info' as const, debug: 'false' },
-    updates: { checkOnRun: true, checkInterval: 86400 },
-    completions: { enabled: true },
-    hooks: { enabled: true },
-    github: {
-      token: '',
-      host: 'api.github.com',
-      userAgent: 'test-agent',
-      cache: { enabled: true, ttl: 3600 },
-    },
-    cargo: {
-      cratesIo: {
-        host: 'https://crates.io',
-        cache: { enabled: true, ttl: 3600 },
-        token: '',
-        userAgent: 'dotfiles-generator',
-      },
-      githubRaw: {
-        host: 'https://raw.githubusercontent.com',
-        cache: { enabled: true, ttl: 3600 },
-        token: '',
-        userAgent: 'dotfiles-generator',
-      },
-      githubRelease: {
-        host: 'https://github.com',
-        cache: { enabled: true, ttl: 3600 },
-        token: '',
-        userAgent: 'dotfiles-generator',
-      },
-      userAgent: 'test-agent',
-    },
-    downloader: {
-      timeout: 30000,
-      retryCount: 3,
-      retryDelay: 1000,
-      cache: { enabled: true, ttl: 3600 },
-    },
-    features: {
-      catalog: {
-        generate: true,
-        filePath: `\${paths.dotfilesDir}`,
-      },
-    },
-    userConfigPath: '/home/user/.dotfiles/config.yaml',
-    platform: [],
+  });
+
+  const mockProjectConfig: ProjectConfig = {
+    ...parsedConfig,
+    configFilePath: mockProjectConfigFilePath,
+    configFileDir: mockProjectConfigFileDir,
   };
+
+  const toolConfig: ToolConfig = {
+    name: 'test-tool',
+    version: 'latest',
+    installationMethod: 'manual',
+    installParams: { binaryPath: 'bin/test-tool' },
+  };
+
+  const configuredShell = createConfiguredShell(createMock$(), {});
 
   const baseContext: IInstallContext = {
     toolName: 'test-tool',
     toolDir: '/test/binaries/test-tool',
     getToolDir: (toolName: string) => `/test/binaries/${toolName}`,
-    homeDir: mockProjectConfig.paths.homeDir,
-    binDir: mockProjectConfig.paths.binariesDir,
-    shellScriptsDir: mockProjectConfig.paths.shellScriptsDir,
-    dotfilesDir: mockProjectConfig.paths.dotfilesDir,
-    generatedDir: mockProjectConfig.paths.generatedDir,
     projectConfig: mockProjectConfig,
 
     // InstallContext specific properties
@@ -93,17 +65,17 @@ export function createTestInstallHookContext(
       arch: 'x64',
       homeDir: '/home/user',
     },
-    $: createMock$() as unknown as $extended,
-    toolConfig: {} as ToolConfig,
+    $: configuredShell,
+    toolConfig,
     timestamp: '2025-01-01-00-00-00',
     fileSystem: new MemFileSystem({}),
   };
 
-  return {
-    context: {
-      ...baseContext,
-      ...overrides,
-    },
-    logger,
+  const context: IInstallContext = {
+    ...baseContext,
+    ...overrides,
   };
+
+  const result: ICreateTestInstallHookContextResult = { context, logger };
+  return result;
 }

@@ -192,7 +192,7 @@ export default defineTool((install, ctx) =>
         .zsh((shell) =>
           shell
             .environment({
-              TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
+              TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`
             })
             .aliases({
               t: 'tool',
@@ -202,7 +202,7 @@ export default defineTool((install, ctx) =>
         .bash((shell) =>
           shell
             .environment({
-              TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
+              TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`
             })
             .aliases({
               t: 'tool',
@@ -215,7 +215,7 @@ export default defineTool((install, ctx) =>
         .powershell((shell) =>
           shell
             .environment({
-              TOOL_CONFIG: `${ctx.homeDir}\\.config\\tool\\config.toml`
+              TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}\\.config\\tool\\config.toml`
             })
             .aliases({
               t: 'tool',

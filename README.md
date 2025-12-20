@@ -105,12 +105,12 @@ export default defineTool((install, ctx) =>
     // 2. Declare required binaries that must exist before this tool runs
     .dependsOn('pcre2')
     // 3. Create symlinks for configuration files
-    .symlink('./ripgreprc', `${ctx.homeDir}/.ripgreprc`)
+    .symlink('./ripgreprc', `${ctx.projectConfig.paths.homeDir}/.ripgreprc`)
     // 4. Configure shell-specific integration (aliases, functions, env vars)
     .zsh((shell) =>
       shell
         .environment({
-          RIPGREP_CONFIG_PATH: `${ctx.homeDir}/.ripgreprc`,
+          RIPGREP_CONFIG_PATH: `${ctx.projectConfig.paths.homeDir}/.ripgreprc`,
         })
         .aliases({
           rgi: 'rg -i', // Case-insensitive search alias

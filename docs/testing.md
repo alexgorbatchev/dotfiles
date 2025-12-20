@@ -107,13 +107,13 @@ Check that shims work and binaries are accessible:
 
 ```bash
 # Check if shim was created
-ls -la ${ctx.generatedDir}/usr-local-bin/your-tool
+ls -la ${ctx.projectConfig.paths.generatedDir}/usr-local-bin/your-tool
 
 # Test binary execution
 your-tool --version
 
 # Check PATH includes bin directory
-echo $PATH | grep -o ${ctx.generatedDir}/usr-local-bin
+echo $PATH | grep -o ${ctx.projectConfig.paths.generatedDir}/usr-local-bin
 ```
 
 ### 4. Shell Integration
@@ -122,7 +122,7 @@ Test aliases, functions, and environment variables:
 
 ```bash
 # Source shell scripts manually
-source ${ctx.generatedDir}/shell-scripts/main.zsh
+source ${ctx.projectConfig.paths.generatedDir}/shell-scripts/main.zsh
 
 # Test aliases
 alias | grep your-tool
@@ -175,7 +175,7 @@ dotfiles install your-tool
 dotfiles generate --tool your-tool
 
 # Test just the shell integration
-source ${ctx.generatedDir}/shell-scripts/main.zsh
+source ${ctx.projectConfig.paths.generatedDir}/shell-scripts/main.zsh
 ```
 
 ### Automated Testing
@@ -254,13 +254,13 @@ Inspect generated files to verify correctness:
 
 ```bash
 # View generated shell scripts
-cat ${ctx.generatedDir}/shell-scripts/main.zsh
+cat ${ctx.projectConfig.paths.generatedDir}/shell-scripts/main.zsh
 
 # Check shim contents  
-cat ${ctx.generatedDir}/usr-local-bin/your-tool
+cat ${ctx.projectConfig.paths.generatedDir}/usr-local-bin/your-tool
 
 # View tool installation directory
-ls -la ${ctx.generatedDir}/binaries/your-tool/
+ls -la ${ctx.projectConfig.paths.generatedDir}/binaries/your-tool/
 ```
 
 ### Validate Configuration Syntax
@@ -282,7 +282,7 @@ dotfiles generate --tool your-tool --dry-run
 dotfiles install your-github-tool
 
 # Verify correct asset was downloaded
-ls -la ${ctx.generatedDir}/binaries/your-github-tool/
+ls -la ${ctx.projectConfig.paths.generatedDir}/binaries/your-github-tool/
 
 # Test binary works
 your-github-tool --version
@@ -298,7 +298,7 @@ dotfiles install your-brew-tool
 brew list | grep your-brew-tool
 
 # Test shim points to Homebrew binary
-readlink ${ctx.generatedDir}/usr-local-bin/your-brew-tool
+readlink ${ctx.projectConfig.paths.generatedDir}/usr-local-bin/your-brew-tool
 ```
 
 ### 3. Cross-Platform Tool

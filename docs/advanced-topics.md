@@ -315,14 +315,14 @@ export default defineTool((install, ctx) =>
       shell
         .once(`
           # Generate completions once
-          if [[ ! -f "${ctx.generatedDir}/completions/_tool" ]]; then
-            tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+          if [[ ! -f "${ctx.projectConfig.paths.generatedDir}/completions/_tool" ]]; then
+            tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
           fi
         `)
         .always(`
           # Load completions dynamically
-          if [[ -f "${ctx.generatedDir}/completions/_tool" ]]; then
-            source "${ctx.generatedDir}/completions/_tool"
+          if [[ -f "${ctx.projectConfig.paths.generatedDir}/completions/_tool" ]]; then
+            source "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
           fi
         `)
     )
@@ -344,9 +344,9 @@ export default defineTool((install, ctx) =>
           if [[ -f ./.tool-config ]]; then
             # Project-specific configuration
             tool --config ./.tool-config "$@"
-          elif [[ -f "${ctx.homeDir}/.config/tool/config.toml" ]]; then
+          elif [[ -f "${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml" ]]; then
             # User configuration
-            tool --config "${ctx.homeDir}/.config/tool/config.toml" "$@"
+            tool --config "${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml" "$@"
           else
             # Default behavior
             tool "$@"
@@ -469,12 +469,12 @@ export default defineTool((install, ctx) =>
       shell
         .once(`
           # Build cache once
-          tool build-cache --output "${ctx.generatedDir}/cache/tool-cache"
+          tool build-cache --output "${ctx.projectConfig.paths.generatedDir}/cache/tool-cache"
         `)
         .always(`
           # Use cached data
-          if [[ -f "${ctx.generatedDir}/cache/tool-cache" ]]; then
-            export TOOL_CACHE_FILE="${ctx.generatedDir}/cache/tool-cache"
+          if [[ -f "${ctx.projectConfig.paths.generatedDir}/cache/tool-cache" ]]; then
+            export TOOL_CACHE_FILE="${ctx.projectConfig.paths.generatedDir}/cache/tool-cache"
           fi
         `)
     )

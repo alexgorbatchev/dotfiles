@@ -33,12 +33,12 @@ export default defineTool((install, ctx) =>
   })
     .bin('tool-name')
     .dependsOn('shared-runtime')
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
     .zsh((shell) =>
       shell
         .completions('completions/_tool.zsh')
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.homeDir}/.tool`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.tool`,
         })
         .aliases({
           t: 'tool-name',

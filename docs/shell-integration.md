@@ -72,7 +72,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .powershell((shell) =>
       shell
-        .environment({ TOOL_HOME: `${ctx.homeDir}\\.tool` })
+        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.homeDir}\\.tool` })
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/tool.ps1')
         .always(`
@@ -105,7 +105,7 @@ Use the configurator for concise, cross-shell friendly declarations:
 ```typescript
 c.zsh((shell) =>
   shell.environment({
-    TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+    TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
     TOOL_DEBUG: 'true',
     TOOL_MODE: 'production'
   })
@@ -138,7 +138,7 @@ export default defineTool((install, ctx) =>
       shell
         .once(`
           # Expensive operations (run only once after installation)
-          tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+          tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
         `)
         .always(`
           # Fast runtime setup (runs every shell startup)
@@ -189,7 +189,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.once(`
         # Expensive operations
-        tool gen-completions --shell zsh > "${ctx.generatedDir}/completions/_tool"
+        tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
         tool build-cache
       `)
     )
@@ -210,7 +210,7 @@ export default defineTool((install, ctx) =>
       shell
         .environment({
           TOOL_CONFIG_DIR: `${ctx.toolDir}`,
-          TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
+          TOOL_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
         })
         .source('shell/key-bindings.zsh')
         .always(`

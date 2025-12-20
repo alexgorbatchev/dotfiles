@@ -242,7 +242,7 @@ export default defineTool((install, ctx) =>
 ```typescript
 // ❌ Wrong - ctx properties are not functions
 export default defineTool((install, ctx) => {
-  const homeDir = ctx.homeDir();
+  const homeDir = ctx.projectConfig.paths.homeDir();
   return install('github-release', { repo: 'owner/tool' })
     .bin('tool');
 });
@@ -252,7 +252,7 @@ export default defineTool((install, ctx) => {
 ```typescript
 // ✅ Correct - ctx properties are values
 export default defineTool((install, ctx) => {
-  const homeDir = ctx.homeDir;
+  const homeDir = ctx.projectConfig.paths.homeDir;
   return install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .environment({ HOME: homeDir });

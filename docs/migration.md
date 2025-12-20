@@ -143,7 +143,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
           TOOL_DEBUG: 'true'
         })
         .aliases({
@@ -165,10 +165,10 @@ Replace hardcoded paths with context variables:
 
 | Old Path | New Path |
 |----------|----------|
-| `$HOME` or `~/` | `${ctx.homeDir}` |
-| `$DOTFILES` | `${ctx.dotfilesDir}` |
+| `$HOME` or `~/` | `${ctx.projectConfig.paths.homeDir}` |
+| `$DOTFILES` | `${ctx.projectConfig.paths.dotfilesDir}` |
 | Tool-specific dirs | `${ctx.toolDir}` |
-| Generated content | `${ctx.generatedDir}` |
+| Generated content | `${ctx.projectConfig.paths.generatedDir}` |
 
 **Before:**
 ```bash
@@ -183,7 +183,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_HOME: `${ctx.homeDir}/.local/share/tool`
+          TOOL_HOME: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
         })
         .always(`
           if [[ -f "${ctx.toolDir}/init.zsh" ]]; then
@@ -200,14 +200,14 @@ Convert file copying to symbolic links:
 
 **Before:**
 ```bash
-ln -sf ${ctx.dotfilesDir}/configs/tool/config.toml ~/.config/tool/config.toml
+ln -sf ${ctx.projectConfig.paths.dotfilesDir}/configs/tool/config.toml ~/.config/tool/config.toml
 ```
 
 **After:**
 ```typescript
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 );
 ```
 
@@ -218,7 +218,7 @@ Convert completion setup:
 **Before:**
 ```bash
 # In init.zsh
-fpath=(${ctx.dotfilesDir}/completions $fpath)
+fpath=(${ctx.projectConfig.paths.dotfilesDir}/completions $fpath)
 autoload -U compinit && compinit
 ```
 
@@ -295,7 +295,7 @@ export default defineTool((install, ctx) =>
       shell
         // Extract simple environment variables to declarative config
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
           TOOL_DEBUG: 'true',
           TOOL_MODE: 'production'
         })
@@ -315,8 +315,8 @@ export default defineTool((install, ctx) =>
           }
           
           # Keep conditional logic in scripts
-          if [[ -f "${ctx.homeDir}/.tool-extra" ]]; then
-            source "${ctx.homeDir}/.tool-extra"
+          if [[ -f "${ctx.projectConfig.paths.homeDir}/.tool-extra" ]]; then
+            source "${ctx.projectConfig.paths.homeDir}/.tool-extra"
           fi
         `)
     )

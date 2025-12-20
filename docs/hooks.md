@@ -358,7 +358,7 @@ export default defineTool((install, ctx) =>
     url: 'https://example.com/install.sh',
     shell: 'bash',
     env: {
-      INSTALL_DIR: `${ctx.homeDir}/.local/bin`,
+      INSTALL_DIR: `${ctx.projectConfig.paths.homeDir}/.local/bin`,
       ENABLE_FEATURE: 'true',
       API_KEY: process.env.TOOL_API_KEY || 'default',
     },
@@ -396,7 +396,7 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .symlink('./config.yml', path.join(ctx.homeDir, '.config', 'custom-tool', 'config.yml'))
+    .symlink('./config.yml', path.join(ctx.projectConfig.paths.homeDir, '.config', 'custom-tool', 'config.yml'))
     .hook('before-install', async ({ logger }) => {
       logger.info('Starting custom-tool installation...');
     })
@@ -416,13 +416,13 @@ export default defineTool((install, ctx) =>
       await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
       
       // Set up completion
-      await $`${path.join(installDir, toolName)} completion zsh > ${ctx.generatedDir}/completions/_${toolName}`;
+      await $`${path.join(installDir, toolName)} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
       
       logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh((shell) =>
       shell
-        .environment({ CUSTOM_TOOL_DATA: path.join(ctx.homeDir, '.local/share', 'custom-tool') })
+        .environment({ CUSTOM_TOOL_DATA: path.join(ctx.projectConfig.paths.homeDir, '.local/share', 'custom-tool') })
         .aliases({ ct: 'custom-tool' })
     )
 );

@@ -16,8 +16,8 @@ c.symlink(source: string, target: string)
   - Example: `'./config.toml'` looks for `config.toml` next to your `.tool.ts` file
   - Example: `'./themes/'` looks for `themes/` directory next to your `.tool.ts` file
 - **`target`**: **Absolute path** where symlink should be created
-  - Must be absolute path (use `${ctx.homeDir}/...`, `${ctx.dotfilesDir}/...`, etc.)
-  - Example: `${ctx.homeDir}/.config/tool/config.toml`
+  - Must be absolute path (use `${ctx.projectConfig.paths.homeDir}/...`, `${ctx.projectConfig.paths.dotfilesDir}/...`, etc.)
+  - Example: `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`
 
 ## Path Resolution Rules
 
@@ -31,22 +31,22 @@ c.symlink(source: string, target: string)
 ### Basic Configuration File
 
 ```typescript
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 ```
 
 ### Multiple Configuration Files
 
 ```typescript
 c
-  .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-  .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
-  .symlink('./scripts/helper.sh', `${ctx.homeDir}/bin/tool-helper`)
+  .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+  .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`)
+  .symlink('./scripts/helper.sh', `${ctx.projectConfig.paths.homeDir}/bin/tool-helper`)
 ```
 
 ### Absolute Paths
 
 ```typescript
-c.symlink('/etc/tool/global.conf', `${ctx.homeDir}/.config/tool/global.conf`)
+c.symlink('/etc/tool/global.conf', `${ctx.projectConfig.paths.homeDir}/.config/tool/global.conf`)
 ```
 
 ## Directory Structure Example
@@ -65,9 +65,9 @@ configs/my-tool/
 ```typescript
 // In my-tool.tool.ts
 c
-  .symlink('./config.toml', `${ctx.homeDir}/.config/my-tool/config.toml`)
-  .symlink('./themes/', `${ctx.homeDir}/.config/my-tool/themes`)
-  .symlink('./scripts/helper.sh', `${ctx.homeDir}/bin/my-tool-helper`)
+  .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`)
+  .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/themes`)
+  .symlink('./scripts/helper.sh', `${ctx.projectConfig.paths.homeDir}/bin/my-tool-helper`)
 ```
 
 ## Complete Example
@@ -81,15 +81,15 @@ export default defineTool((install, ctx) =>
     .version('latest')
     
     // Link configuration files
-    .symlink('./config.yml', `${ctx.homeDir}/.config/my-tool/config.yml`)
-    .symlink('./themes/', `${ctx.homeDir}/.config/my-tool/themes`)
-    .symlink('./scripts/', `${ctx.homeDir}/.local/share/my-tool/scripts`)
+    .symlink('./config.yml', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.yml`)
+    .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/themes`)
+    .symlink('./scripts/', `${ctx.projectConfig.paths.homeDir}/.local/share/my-tool/scripts`)
     
     // Shell integration
     .zsh((shell) =>
       shell
         .environment({
-          MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool/config.yml`
+          MY_TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.yml`
         })
         .aliases({
           mt: 'my-tool'
@@ -106,8 +106,8 @@ Link tool configuration files to their expected locations:
 
 ```typescript
 c
-  .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
-  .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
+  .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+  .symlink('./gitignore_global', `${ctx.projectConfig.paths.homeDir}/.gitignore_global`)
 ```
 
 ### Theme and Asset Directories
@@ -116,8 +116,8 @@ Link entire directories of themes or assets:
 
 ```typescript
 c
-  .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
-  .symlink('./fonts/', `${ctx.homeDir}/.local/share/fonts/tool-fonts`)
+  .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`)
+  .symlink('./fonts/', `${ctx.projectConfig.paths.homeDir}/.local/share/fonts/tool-fonts`)
 ```
 
 ### Script and Binary Links
@@ -126,8 +126,8 @@ Create convenient links to scripts or additional binaries:
 
 ```typescript
 c
-  .symlink('./scripts/tool-helper.sh', `${ctx.homeDir}/bin/tool-helper`)
-  .symlink('./bin/tool-dev', `${ctx.homeDir}/.local/bin/tool-dev`)
+  .symlink('./scripts/tool-helper.sh', `${ctx.projectConfig.paths.homeDir}/bin/tool-helper`)
+  .symlink('./bin/tool-dev', `${ctx.projectConfig.paths.homeDir}/.local/bin/tool-dev`)
 ```
 
 ### Cross-Platform Considerations
@@ -136,7 +136,7 @@ Use context variables to ensure cross-platform compatibility:
 
 ```typescript
 // ✅ Correct - uses context variables
-c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
+c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 
 // ❌ Incorrect - hardcoded paths
 c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
@@ -181,7 +181,7 @@ ls -ld ~/.config/tool-name
 c.hook('after-install', async ({ logger, toolConfig, ctx }) => {
   logger.warn('Tool config directory:', toolConfig.configDir);
   logger.warn('Source path:', './config.toml');
-  logger.warn('Target path:', `${ctx.homeDir}/.config/tool/config.toml`);
+  logger.warn('Target path:', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`);
 });
 
 **Check relative paths:**
@@ -198,7 +198,7 @@ c.hook('after-install', async ({ logger, toolConfig, ctx }) => {
 ## Best Practices
 
 1. **Use relative paths for sources**: Keep source paths relative to the tool configuration directory
-2. **Use context variables for targets**: Always use `${ctx.homeDir}`, `${ctx.dotfilesDir}`, etc.
+2. **Use context variables for targets**: Always use `${ctx.projectConfig.paths.homeDir}`, `${ctx.projectConfig.paths.dotfilesDir}`, etc.
 3. **Organize configuration files**: Keep related configs in subdirectories
 4. **Document symlinks**: Comment complex symlink setups
 5. **Test across platforms**: Ensure symlinks work on target operating systems
@@ -215,14 +215,14 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     
     // Symlink configuration files
-    .symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)
-    .symlink('./themes/', `${ctx.homeDir}/.config/tool/themes`)
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+    .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`)
     
     // Reference symlinked config in shell integration
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_CONFIG: `${ctx.homeDir}/.config/tool/config.toml`
+          TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`
         })
         .always(`
           # Tool will automatically find config at symlinked location

@@ -99,12 +99,12 @@ export default defineTool((install, ctx) =>
       shell
         .completions('completions/_tool')
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
           TOOL_LOG_LEVEL: 'info'
         })
         .aliases({ t: 'tool', ts: 'tool status' })
         .once(/* zsh */`
-          tool completions zsh > "${ctx.generatedDir}/completions/_tool"
+          tool completions zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
         `)
     )
     
@@ -113,7 +113,7 @@ export default defineTool((install, ctx) =>
       shell
         .completions('completions/tool.bash')
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.homeDir}/.config/tool`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
           TOOL_LOG_LEVEL: 'info'
         })
         .aliases({ t: 'tool', ts: 'tool status' })
@@ -122,7 +122,7 @@ export default defineTool((install, ctx) =>
       shell
         .completions('completions/tool.ps1')
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.homeDir}\\.config\\tool`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}\\.config\\tool`,
           TOOL_LOG_LEVEL: 'info'
         })
         .aliases({ t: 'tool', ts: 'tool status' })
@@ -140,7 +140,7 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
     .version('latest')
-    .symlink('./config.yml', `${ctx.homeDir}/.config/custom-tool/config.yml`)
+    .symlink('./config.yml', `${ctx.projectConfig.paths.homeDir}/.config/custom-tool/config.yml`)
     .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
       const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
       await fileSystem.ensureDir(dataDir);
@@ -149,7 +149,7 @@ export default defineTool((install, ctx) =>
     })
     .zsh((shell) =>
       shell
-        .environment({ CUSTOM_TOOL_DATA: `${ctx.homeDir}/.local/share/custom-tool` })
+        .environment({ CUSTOM_TOOL_DATA: `${ctx.projectConfig.paths.homeDir}/.local/share/custom-tool` })
         .aliases({ ct: 'custom-tool', lg: 'custom-tool' })
     )
 );
@@ -236,7 +236,7 @@ export default defineTool((install, ctx) =>
     binaryPath: './scripts/deploy.sh',
   })
     .bin('deploy')
-    .symlink('./deploy.config.yaml', `${ctx.homeDir}/.config/deploy/config.yaml`)
+    .symlink('./deploy.config.yaml', `${ctx.projectConfig.paths.homeDir}/.config/deploy/config.yaml`)
     .zsh((shell) =>
       shell
         .aliases({
@@ -245,7 +245,7 @@ export default defineTool((install, ctx) =>
           'deploy-staging': 'deploy --env staging',
         })
         .environment({
-          DEPLOY_CONFIG: `${ctx.homeDir}/.config/deploy/config.yaml`
+          DEPLOY_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/deploy/config.yaml`
         })
         .always(/* zsh */`
           # Deploy tool helpers
@@ -262,8 +262,8 @@ import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('manual', {})
-    .symlink('./gitconfig', `${ctx.homeDir}/.gitconfig`)
-    .symlink('./gitignore_global', `${ctx.homeDir}/.gitignore_global`)
+    .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+    .symlink('./gitignore_global', `${ctx.projectConfig.paths.homeDir}/.gitignore_global`)
     .zsh((shell) =>
       shell
         .aliases({

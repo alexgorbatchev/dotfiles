@@ -49,7 +49,7 @@ Each shell's completion configuration uses a `ShellCompletionConfig` object:
 - **`name`**: Optional custom name for the installed completion file (overrides `bin` and default naming)
   - Example: `name: '_my-custom-name'` results in exactly `_my-custom-name`
 - **`targetDir`**: Optional custom installation directory using **absolute paths** with context variables
-  - Example: `targetDir: \`\${ctx.homeDir}/.zsh/completions\``
+  - Example: `targetDir: \`\${ctx.projectConfig.paths.homeDir}/.zsh/completions\``
   - If not specified, defaults to the shell-specific completion directory in your generated files
 
 ## Completion Methods
@@ -142,7 +142,7 @@ Specify where completion files should be installed using context variables for a
 ```typescript
 .zsh((shell) => shell.completions({
   source: 'completions/tool.zsh',  // Relative to extracted archive
-  targetDir: `${ctx.homeDir}/.zsh/completions`  // Absolute path using context
+  targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`  // Absolute path using context
 }))
 ```
 
@@ -157,7 +157,7 @@ Some tools can generate their own completions. Use shell initialization scripts 
   shell.once(/* zsh */`
     # Generate completions once after installation
     if command -v tool >/dev/null 2>&1; then
-      tool completion zsh > "${ctx.generatedDir}/completions/_tool"
+      tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
     fi
   `)
 );
@@ -237,15 +237,15 @@ When you specify `targetDir`, use context variables to create absolute paths:
 ```typescript
 .zsh((shell) => shell.completions({
   source: 'completions/_tool.zsh',           // Automatic - relative to extracted archive
-  targetDir: `${ctx.homeDir}/.zsh/completions`  // Manual - absolute path with context
+  targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`  // Manual - absolute path with context
 }))
 ```
 
 **Available context variables for targetDir:**
-- `ctx.homeDir` - User's home directory
-- `ctx.generatedDir` - Generated files directory
-- `ctx.shellScriptsDir` - Shell scripts directory
-- `ctx.dotfilesDir` - Dotfiles root directory
+- `ctx.projectConfig.paths.homeDir` - User's home directory
+- `ctx.projectConfig.paths.generatedDir` - Generated files directory
+- `ctx.projectConfig.paths.shellScriptsDir` - Shell scripts directory
+- `ctx.projectConfig.paths.dotfilesDir` - Dotfiles root directory
 
 If `targetDir` is not specified, completions are installed to the default shell-specific directory in your generated files.
 
@@ -314,7 +314,7 @@ If `targetDir` is not specified, completions are installed to the default shell-
   shell.once(/* zsh */`
     # Add error checking for completion generation
     if command -v tool >/dev/null 2>&1; then
-      if tool completion zsh > "${ctx.generatedDir}/completions/_tool" 2>/dev/null; then
+      if tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool" 2>/dev/null; then
         echo "Generated completions for tool"
       else
         echo "Failed to generate completions for tool"
@@ -349,7 +349,7 @@ export default defineTool((install, ctx) =>
           mt: 'my-tool'
         })
         .environment({
-          MY_TOOL_CONFIG: `${ctx.homeDir}/.config/my-tool`
+          MY_TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/my-tool`
         })
     )
     .bash((shell) =>

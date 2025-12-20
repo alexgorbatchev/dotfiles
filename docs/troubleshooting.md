@@ -18,13 +18,13 @@ Common issues and solutions when working with `.tool.ts` configurations.
 
 ```bash
 # Check if shim exists
-ls -la ${ctx.binDir}/tool-name
+ls -la ${ctx.projectConfig.paths.targetDir}/tool-name
 
 # Check PATH includes bin directory
-echo $PATH | grep -o ${ctx.binDir}
+echo $PATH | grep -o ${ctx.projectConfig.paths.targetDir}
 
 # Test shim directly
-${ctx.binDir}/tool-name --version
+${ctx.projectConfig.paths.targetDir}/tool-name --version
 ```
 
 ### Installation fails
@@ -112,13 +112,13 @@ dotfiles generate --config path/to/config.yaml
 
 ```bash
 # Check generated shell scripts
-cat ${ctx.shellScriptsDir}/main.zsh
+cat ${ctx.projectConfig.paths.shellScriptsDir}/main.zsh
 
 # Test shell script syntax
-zsh -n ${ctx.shellScriptsDir}/main.zsh
+zsh -n ${ctx.projectConfig.paths.shellScriptsDir}/main.zsh
 
 # Source manually to test
-source ${ctx.shellScriptsDir}/main.zsh
+source ${ctx.projectConfig.paths.shellScriptsDir}/main.zsh
 ```
 
 ### Environment variables not available
@@ -142,7 +142,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.environment({
         TOOL_HOME: `${ctx.toolDir}`,
-        TOOL_CONFIG: `${ctx.homeDir}/.config/tool`
+        TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool`
       })
     )
 );
@@ -202,13 +202,13 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .symlink('./config.toml', path.join(ctx.homeDir, '.config', 'tool', 'config.toml'))
+    .symlink('./config.toml', path.join(ctx.projectConfig.paths.homeDir, '.config', 'tool', 'config.toml'))
 );
 
 // ❌ Platform-specific paths
 // Don't do:
-// c.symlink('./config.toml', `${ctx.homeDir}\\.config\\tool\\config.toml`)  // Windows only
-// c.symlink('./config.toml', `${ctx.homeDir}/.config/tool/config.toml`)  // Unix only
+// c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}\\.config\\tool\\config.toml`)  // Windows only
+// c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)  // Unix only
 ```
 
 ## Completion Issues
@@ -226,11 +226,11 @@ export default defineTool((install, ctx) =>
 
 ```bash
 # Check completion file exists
-ls -la ${ctx.generatedDir}/completions/_tool
+ls -la ${ctx.projectConfig.paths.generatedDir}/completions/_tool
 
 # Test completion loading manually
 autoload -U compinit && compinit
-source ${ctx.generatedDir}/completions/_tool
+source ${ctx.projectConfig.paths.generatedDir}/completions/_tool
 ```
 
 ### Completion generation fails
@@ -254,7 +254,7 @@ export default defineTool((install, ctx) =>
       shell.once(`
         # Add error checking
         if command -v tool >/dev/null 2>&1; then
-          tool completion zsh > "${ctx.generatedDir}/completions/_tool" || echo "Completion generation failed"
+          tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool" || echo "Completion generation failed"
         fi
       `)
     )
@@ -282,7 +282,7 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .symlink('./config.toml', path.join(ctx.homeDir, '.config', 'tool', 'config.toml'))
+    .symlink('./config.toml', path.join(ctx.projectConfig.paths.homeDir, '.config', 'tool', 'config.toml'))
 );
 
 // ❌ Incorrect hardcoded paths
@@ -361,10 +361,10 @@ export default defineTool((install, ctx) =>
 
 ```bash
 # View generated shell scripts
-cat ${ctx.generatedDir}/shell-scripts/main.zsh
+cat ${ctx.projectConfig.paths.shellScriptsDir}/main.zsh
 
 # Check shim contents  
-cat ${ctx.generatedDir}/bin/tool-name
+cat ${ctx.projectConfig.paths.targetDir}/tool-name
 
 # View tool installation directory
 ls -la ${ctx.toolDir}/
@@ -426,7 +426,7 @@ export default defineTool((install, ctx) =>
         .once(`
           # Expensive operations run only once
           tool build-cache
-          tool gen-completions zsh > "${ctx.generatedDir}/completions/_tool"
+          tool gen-completions zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
         `)
         .always(`
           # Fast operations only

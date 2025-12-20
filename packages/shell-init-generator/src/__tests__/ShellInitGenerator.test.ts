@@ -218,8 +218,6 @@ describe('ShellInitGenerator', () => {
     expect(content).toContain('source /opt/toolB/init.sh');
   });
 
-
-
   it('should set up Zsh completions correctly', async () => {
     const toolConfigs: Record<string, ToolConfig> = {
       toolA: {
