@@ -523,7 +523,7 @@ export class Installer implements IInstaller {
 
       if (!isExternallyManaged && plugin?.resolveVersion) {
         // Create minimal context for version resolution
-        const tempContext: IInstallContext = this.createMinimalContext(resolvedToolConfig);
+        const tempContext: IInstallContext = this.createMinimalContext(toolName, resolvedToolConfig);
 
         try {
           const resolvedVersion: string | null = await plugin.resolveVersion(
@@ -764,12 +764,20 @@ export class Installer implements IInstaller {
    * This lightweight context contains only system information needed
    * to resolve versions before installation directories are created.
    *
+   * Note: `toolDir` is derived from `toolConfig.configFilePath` when available.
+   *
+   * @param toolName - Tool name
    * @param toolConfig - Complete tool configuration
    * @returns Minimal context with system info
    */
-  private createMinimalContext(toolConfig: ToolConfig): IInstallContext {
+  private createMinimalContext(toolName: string, toolConfig: ToolConfig): IInstallContext {
+    const toolDir: string = toolConfig.configFilePath
+      ? path.dirname(toolConfig.configFilePath)
+      : this.projectConfig.paths.toolConfigsDir;
+
     const minimalContext: IInstallContext = {
-      toolName: '',
+      toolName,
+      toolDir,
       installDir: '',
       timestamp: '',
       systemInfo: this.getSystemInfo(),
@@ -810,10 +818,15 @@ export class Installer implements IInstaller {
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
 
+    const toolDir: string = toolConfig.configFilePath
+      ? path.dirname(toolConfig.configFilePath)
+      : this.projectConfig.paths.toolConfigsDir;
+
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
     const context: InstallContextWithEmitter = {
       toolName,
+      toolDir,
       installDir,
       timestamp,
       systemInfo: this.getSystemInfo(),

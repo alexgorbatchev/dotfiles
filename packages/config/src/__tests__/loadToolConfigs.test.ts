@@ -32,16 +32,19 @@ describe('IToolConfigContext', () => {
 
   describe('Context creation and path resolution', () => {
     it('should create context with correct paths from projectConfig', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'test-tool');
+      const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'test-tool', 'test-tool.tool.ts');
+      const context = createToolConfigContext(mockProjectConfig, 'test-tool', toolConfigFilePath);
 
       expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.shellScriptsDir).toBe(mockProjectConfig.paths.shellScriptsDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(mockProjectConfig.paths.dotfilesDir);
       expect(context.projectConfig.paths.generatedDir).toBe(mockProjectConfig.paths.generatedDir);
+      expect(context.toolDir).toBe(path.dirname(toolConfigFilePath));
     });
 
     it('should work correctly with IToolConfigBuilder and context', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'shell-tool');
+      const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'shell-tool', 'shell-tool.tool.ts');
+      const context = createToolConfigContext(mockProjectConfig, 'shell-tool', toolConfigFilePath);
 
       // Test that context can be used in a tool configuration function
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -79,7 +82,12 @@ describe('IToolConfigContext', () => {
     });
 
     it('should handle tool dependencies by composing paths from projectConfig', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'dependent-tool');
+      const toolConfigFilePath = path.join(
+        mockProjectConfig.paths.toolConfigsDir,
+        'dependent-tool',
+        'dependent-tool.tool.ts'
+      );
+      const context = createToolConfigContext(mockProjectConfig, 'dependent-tool', toolConfigFilePath);
 
       // Test a tool that references other tools
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -117,7 +125,12 @@ describe('IToolConfigContext', () => {
     });
 
     it('should handle tools that generate completions to the correct directory', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'completion-tool');
+      const toolConfigFilePath = path.join(
+        mockProjectConfig.paths.toolConfigsDir,
+        'completion-tool',
+        'completion-tool.tool.ts'
+      );
+      const context = createToolConfigContext(mockProjectConfig, 'completion-tool', toolConfigFilePath);
 
       // Test a tool that generates completions
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -168,7 +181,12 @@ describe('IToolConfigContext', () => {
         env: {},
       });
 
-      const context = createToolConfigContext(customProjectConfig, 'custom-path-tool');
+      const toolConfigFilePath = path.join(
+        customProjectConfig.paths.toolConfigsDir,
+        'custom-path-tool',
+        'custom-path-tool.tool.ts'
+      );
+      const context = createToolConfigContext(customProjectConfig, 'custom-path-tool', toolConfigFilePath);
 
       expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
@@ -176,12 +194,14 @@ describe('IToolConfigContext', () => {
       expect(path.join(context.projectConfig.paths.binariesDir, context.toolName)).toBe(
         path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool')
       );
+      expect(context.toolDir).toBe(path.dirname(toolConfigFilePath));
     });
   });
 
   describe('Real-world tool patterns', () => {
     it('should work with fzf-like tool pattern', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'fzf-like');
+      const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'fzf-like', 'fzf-like.tool.ts');
+      const context = createToolConfigContext(mockProjectConfig, 'fzf-like', toolConfigFilePath);
 
       // Test fzf-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -216,7 +236,8 @@ describe('IToolConfigContext', () => {
     });
 
     it('should work with atuin-like tool pattern', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'atuin-like');
+      const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'atuin-like', 'atuin-like.tool.ts');
+      const context = createToolConfigContext(mockProjectConfig, 'atuin-like', toolConfigFilePath);
 
       // Test atuin-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {

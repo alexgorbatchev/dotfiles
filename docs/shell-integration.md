@@ -209,7 +209,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
+          TOOL_CONFIG_DIR: ctx.toolDir,
           TOOL_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
         })
         .source('shell/key-bindings.zsh')

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
 import type { IInstallContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -71,9 +72,13 @@ function createInstallContext(
   fs: IFileSystem
 ): IInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+  const toolDir: string = config.configFilePath
+    ? path.dirname(config.configFilePath)
+    : projectConfig.paths.toolConfigsDir;
 
   const context: IInstallContext = {
     toolName: config.name,
+    toolDir,
     installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',
     systemInfo,

@@ -582,9 +582,11 @@ export function createTestContext(
   overrides: Partial<IInstallContext> = {}
 ): IInstallContext {
   const shell: $extended = createConfiguredShell(createMock$(), process.env);
+  const toolDir = path.join(setup.mockProjectConfig.paths.toolConfigsDir, MOCK_TOOL_NAME);
 
   const result: IInstallContext = {
     toolName: MOCK_TOOL_NAME,
+    toolDir,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
     timestamp: '2024-08-13-16-45-23',
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },

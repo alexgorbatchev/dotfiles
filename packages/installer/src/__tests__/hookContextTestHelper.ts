@@ -50,10 +50,13 @@ export function createTestInstallHookContext(
     installParams: { binaryPath: 'bin/test-tool' },
   };
 
+  toolConfig.configFilePath = '/home/user/.dotfiles/configs/tools/test-tool/test-tool.tool.ts';
+
   const configuredShell = createConfiguredShell(createMock$(), {});
 
   const baseContext: IInstallContext = {
     toolName: 'test-tool',
+    toolDir: '/home/user/.dotfiles/configs/tools/test-tool',
     projectConfig: mockProjectConfig,
 
     // InstallContext specific properties

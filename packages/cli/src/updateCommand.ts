@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { IConfigService } from '@dotfiles/config';
 import type { IInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -82,9 +83,13 @@ async function handleToolUpdate(
 
   // Create context for plugin
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+  const toolDir: string = toolConfig.configFilePath
+    ? path.dirname(toolConfig.configFilePath)
+    : projectConfig.paths.toolConfigsDir;
 
   const context: IInstallContext = {
     toolName,
+    toolDir,
     installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',
     systemInfo,

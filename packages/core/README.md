@@ -107,21 +107,19 @@ type InstallResult<TMetadata> =
 ### Context Types
 
 ```typescript
-interface IBaseInstallContext {
-  homeDir: string;
-  workingDir: string;
-  binDir: string;
-  cacheDir: string;
-  configDir: string;
-  logsDir: string;
-  toolsDir: string;
-  databasePath: string;
+interface IBaseToolContext {
+  projectConfig: ProjectConfig;
+  systemInfo: ISystemInfo;
+  toolName: string;
+  toolDir: string;
 }
 
-interface IBaseToolContext extends BaseInstallContext {
-  toolName: string;
+interface IToolConfigContext extends IBaseToolContext {}
+
+interface IInstallContext extends IBaseToolContext {
+  toolConfig: ToolConfig;
   installDir: string;
-  tempDir: string;
+  timestamp: string;
 }
 ```
 

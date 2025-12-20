@@ -9,6 +9,9 @@ interface IToolConfigContext {
   /** Tool name being configured */
   toolName: string;
 
+  /** Absolute path to the directory containing the tool's `.tool.ts` file */
+  toolDir: string;
+
   /** Full project configuration (including paths) */
   projectConfig: ProjectConfig;
 
@@ -19,7 +22,7 @@ interface IToolConfigContext {
 
 ## Usage Examples
 
-### Accessing Current Tool Directory
+### Accessing Tool Configuration Directory
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
@@ -30,12 +33,12 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`
+          TOOL_CONFIG_DIR: ctx.toolDir
         })
         .always(/* zsh */`
           # Source tool-specific files
-          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh"
+          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.toolDir}/shell/key-bindings.zsh"
           fi
         `)
     )
@@ -52,7 +55,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.always(/* zsh */`
-        # Reference another tool's directory
+        # Reference another tool's installation directory
         FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
         if [[ -d "$FZF_DIR" ]]; then
           export FZF_BASE="$FZF_DIR"
@@ -80,6 +83,11 @@ export default defineTool((install, ctx) =>
 ```
 
 ### Path Properties
+
+### Tool configuration directory (`ctx.toolDir`)
+Absolute directory that contains the current tool's `.tool.ts` file.
+
+Use this for referencing files that live next to the tool config (for example `./config.toml` or `./shell/*.zsh`).
 
 ### `ctx.projectConfig.paths.homeDir`
 User's home directory from the YAML configuration.

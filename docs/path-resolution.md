@@ -24,6 +24,7 @@ Understanding how paths are resolved is crucial for correctly configuring your t
 Always use ToolConfigContext variables for dynamic paths:
 
 - `${ctx.projectConfig.paths.homeDir}` → User's home directory  
+- `${ctx.toolDir}` → Tool configuration directory (directory containing the `.tool.ts` file)
 - `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` → Tool's base installation directory (contains version subdirectories)
 - `${ctx.projectConfig.paths.dotfilesDir}` → Root dotfiles directory
 - `${ctx.projectConfig.paths.generatedDir}` → Generated files directory
@@ -72,8 +73,9 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.always(`
-        if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh" ]]; then
-          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh"
+        TOOL_CONFIG_DIR="${ctx.toolDir}"
+        if [[ -f "$TOOL_CONFIG_DIR/shell/key-bindings.zsh" ]]; then
+          source "$TOOL_CONFIG_DIR/shell/key-bindings.zsh"
         fi
       `)
     )
@@ -244,7 +246,8 @@ export default defineTool((install, ctx) =>
 ```typescript
 c.hooks({
   beforeInstall: async ({ logger }) => {
-    logger.info(`Tool directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
+    logger.info(`Tool config directory: ${ctx.toolDir}`);
+    logger.info(`Tool installation directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
     logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
     logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
     logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);
@@ -259,7 +262,8 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .hook('before-install', async ({ logger }) => {
-      logger.info(`Tool directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
+      logger.info(`Tool config directory: ${ctx.toolDir}`);
+      logger.info(`Tool installation directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
       logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
       logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
       logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);

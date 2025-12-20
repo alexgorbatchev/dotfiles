@@ -46,12 +46,16 @@ describe('HookExecutor - error reporting', () => {
       },
     };
 
+    const toolConfigFilePath = path.join(process.cwd(), `${toolName}.tool.ts`);
+    toolConfig.configFilePath = toolConfigFilePath;
+
     const configuredShell = createConfiguredShell($, process.env);
 
     const baseContext: IAfterInstallContext = {
       projectConfig,
       systemInfo,
       toolName,
+      toolDir: path.dirname(toolConfigFilePath),
       toolConfig,
       installDir: path.join(testDirs.paths.binariesDir, toolName, 'install'),
       timestamp: '2025-12-18-00-00-00',

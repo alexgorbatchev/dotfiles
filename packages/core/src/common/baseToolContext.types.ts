@@ -27,4 +27,24 @@ export interface IBaseToolContext {
    * The name of the tool currently being processed.
    */
   toolName: string;
+
+  /**
+   * Absolute path to the directory containing the tool's `.tool.ts` file.
+   *
+   * This is the **tool configuration directory**. It is the reference point for all
+   * relative paths in `.tool.ts` files (for example `./config.toml`, `./themes/`, etc.).
+   *
+   * This value is derived from the path to the `.tool.ts` file itself.
+   *
+   * @example
+   * If your tool config is located at:
+   * `"${projectConfig.paths.toolConfigsDir}/fzf/fzf.tool.ts"`
+   * then:
+   * `toolDir === "${projectConfig.paths.toolConfigsDir}/fzf"`
+   *
+   * @example
+   * Use `toolDir` to reference a file next to the tool config:
+   * `"${toolDir}/shell/key-bindings.zsh"`
+   */
+  toolDir: string;
 }

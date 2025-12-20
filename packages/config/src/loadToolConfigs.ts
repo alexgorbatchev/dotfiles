@@ -71,7 +71,7 @@ async function processFunctionExport(
   filePath: string,
   projectConfig: ProjectConfig
 ): Promise<ToolConfig | null> {
-  const context = createToolConfigContext(projectConfig, toolName);
+  const context = createToolConfigContext(projectConfig, toolName, filePath);
   const install = createInstallFunction(logger, toolName, context);
   const result = await configureToolFn(install, context);
 
@@ -134,9 +134,16 @@ function processDirectExport(
  * @param currentToolName - The name of the tool currently being configured.
  * @returns A fully populated IToolConfigContext for the tool.
  */
-export function createToolConfigContext(projectConfig: ProjectConfig, currentToolName: string): IToolConfigContext {
+export function createToolConfigContext(
+  projectConfig: ProjectConfig,
+  currentToolName: string,
+  toolConfigFilePath: string
+): IToolConfigContext {
+  const toolDir = path.dirname(toolConfigFilePath);
+
   const context: IToolConfigContext = {
     toolName: currentToolName,
+    toolDir,
     projectConfig,
 
     // [TODO] should use systemInfo from main.ts, not process
