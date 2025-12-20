@@ -208,7 +208,8 @@ export class ShellConfigurator implements IShellConfigurator {
       throw new Error(message);
     }
 
-    const joinedPath = path.join(this.context.toolDir, trimmedPath);
+    const toolBinariesDir = path.join(this.context.projectConfig.paths.binariesDir, this.context.toolName);
+    const joinedPath = path.join(toolBinariesDir, trimmedPath);
     const normalizedPath = this.normalizePath(joinedPath);
     return normalizedPath;
   }

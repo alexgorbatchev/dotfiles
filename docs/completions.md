@@ -281,8 +281,8 @@ If `targetDir` is not specified, completions are installed to the default shell-
 
 3. **Path relative to wrong location**: Remember `source` is relative to the extracted archive root, not your config file
    ```typescript
-   // ❌ Wrong - trying to use context variable for source
-   .zsh((shell) => shell.completions(`${ctx.toolDir}/completions/_tool`))
+  // ❌ Wrong - trying to use an absolute/context-based path for source
+  .zsh((shell) => shell.completions(`${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/completions/_tool`))
    
    // ✅ Correct - path relative to extracted archive
    .zsh((shell) => shell.completions('completions/_tool'))

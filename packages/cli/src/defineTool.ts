@@ -32,7 +32,7 @@ type ConfigureToolFnResult =
  * @param fn - Configuration callback that receives:
  *   - `install` - Function to select installer method. Call with method name and params,
  *     or call with no args for manual tools. Returns a fluent builder.
- *   - `ctx` - Context with tool/config info (toolName, toolDir, getToolDir, projectConfig, systemInfo).
+ *   - `ctx` - Context with tool/config info (toolName, projectConfig, systemInfo).
  *
  * @returns Async function compatible with tool loading system
  *

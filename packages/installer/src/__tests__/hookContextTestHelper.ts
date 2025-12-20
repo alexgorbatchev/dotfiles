@@ -54,8 +54,6 @@ export function createTestInstallHookContext(
 
   const baseContext: IInstallContext = {
     toolName: 'test-tool',
-    toolDir: '/test/binaries/test-tool',
-    getToolDir: (toolName: string) => `/test/binaries/${toolName}`,
     projectConfig: mockProjectConfig,
 
     // InstallContext specific properties

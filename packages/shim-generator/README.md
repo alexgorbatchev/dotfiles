@@ -269,7 +269,7 @@ await shimGenerator.generateForTool('fzf');
 ### Validate Binary Exists
 ```typescript
 // Check binary exists before creating shim
-const binaryPath = path.join(toolDir, 'bin', binaryName);
+const binaryPath = path.join(toolInstallDir, 'bin', binaryName);
 const exists = await fileSystem.exists(binaryPath);
 
 if (!exists) {

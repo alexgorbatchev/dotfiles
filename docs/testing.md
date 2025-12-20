@@ -192,8 +192,8 @@ import { defineTool } from '@gitea/dotfiles';
 describe('Your Tool Configuration', () => {
   it('should have valid configuration', async () => {
     const mockContext = {
-      homeDir: '/home/test',
-      toolDir: '/tools/your-tool',
+      toolName: 'your-tool',
+      projectConfig: { paths: { binariesDir: '/tools', homeDir: '/home/test' } },
       // ... other context properties
     };
     

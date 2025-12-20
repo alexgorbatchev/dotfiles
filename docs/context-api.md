@@ -6,26 +6,14 @@ The `ToolConfigContext` provides access to configuration paths and directories f
 
 ```typescript
 interface IToolConfigContext {
-  /** Current tool's installation directory (should contain version subdirectories) */
-  toolDir: string;
-  
-  /** Get the installation directory for any tool */
-  getToolDir(toolName: string): string;
-  
-  /** User's home directory (from projectConfig.paths.homeDir) */
-  homeDir: string;
-  
-  /** Generated binaries directory (from projectConfig.paths.binariesDir) */
-  binDir: string;
-  
-  /** Generated shell scripts directory (from projectConfig.paths.shellScriptsDir) */
-  shellScriptsDir: string;
-  
-  /** Root dotfiles directory (from projectConfig.paths.dotfilesDir) */
-  dotfilesDir: string;
-  
-  /** Generated files directory (from projectConfig.paths.generatedDir) */
-  generatedDir: string;
+  /** Tool name being configured */
+  toolName: string;
+
+  /** Full project configuration (including paths) */
+  projectConfig: ProjectConfig;
+
+  /** System info (platform/arch/homeDir) */
+  systemInfo: SystemInfo;
 }
 ```
 
@@ -42,12 +30,12 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.toolDir}`
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`
         })
         .always(/* zsh */`
           # Source tool-specific files
-          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.toolDir}/shell/key-bindings.zsh"
+          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh"
           fi
         `)
     )
@@ -65,7 +53,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.always(/* zsh */`
         # Reference another tool's directory
-        FZF_DIR="${ctx.getToolDir('fzf')}"
+        FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
         if [[ -d "$FZF_DIR" ]]; then
           export FZF_BASE="$FZF_DIR"
         fi
@@ -114,12 +102,12 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### `ctx.toolDir`
+### Tool binaries directory
 Current tool's base installation directory. Contains version subdirectories.
 
 **Structure:**
 ```
-${ctx.toolDir}/
+${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 ├── latest/          # Current version installation
 │   ├── bin/
 │   ├── lib/
@@ -139,20 +127,20 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_HOME: `${ctx.toolDir}`
+          TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`
         })
         .always(/* zsh */`
           # Access tool assets
-          if [[ -f "${ctx.toolDir}/latest/share/themes/default.toml" ]]; then
-            export TOOL_THEME="${ctx.toolDir}/latest/share/themes/default.toml"
+          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/share/themes/default.toml" ]]; then
+            export TOOL_THEME="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/share/themes/default.toml"
           fi
         `)
     )
 );
 ```
 
-### `ctx.getToolDir(toolName)`
-Get the installation directory for any other tool.
+### Referencing other tools
+To reference another tool's base directory, join `projectConfig.paths.binariesDir` with the other tool's name.
 
 **Usage:**
 ```typescript
@@ -164,8 +152,8 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.always(/* zsh */`
         # Integration with other tools
-        NVIM_DIR="${ctx.getToolDir('nvim')}"
-        FZF_DIR="${ctx.getToolDir('fzf')}"
+        NVIM_DIR="${ctx.projectConfig.paths.binariesDir}/nvim"
+        FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
         
         if [[ -d "$FZF_DIR" && -d "$NVIM_DIR" ]]; then
           export FZF_NVIM_INTEGRATION=true
@@ -268,7 +256,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.environment({
-        TOOL_HOME: `${ctx.toolDir}`,
+        TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
         TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool`
       })
     )
@@ -298,8 +286,8 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.always(/* zsh */`
-        if [[ -f "${ctx.toolDir}/shell/init.zsh" ]]; then
-          source "${ctx.toolDir}/shell/init.zsh"
+        if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/init.zsh" ]]; then
+          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/init.zsh"
         fi
       `)
     )

@@ -24,12 +24,12 @@ Understanding how paths are resolved is crucial for correctly configuring your t
 Always use ToolConfigContext variables for dynamic paths:
 
 - `${ctx.projectConfig.paths.homeDir}` → User's home directory  
-- `${ctx.toolDir}` → Tool's base installation directory (contains version subdirectories)
+- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` → Tool's base installation directory (contains version subdirectories)
 - `${ctx.projectConfig.paths.dotfilesDir}` → Root dotfiles directory
 - `${ctx.projectConfig.paths.generatedDir}` → Generated files directory
 - `${ctx.projectConfig.paths.targetDir}` → Generated shims directory (where tool shims are created)
 - `${ctx.projectConfig.paths.shellScriptsDir}` → Generated shell scripts directory
-- `${ctx.getToolDir('other-tool')}` → Another tool's base directory
+- `${ctx.projectConfig.paths.binariesDir}/other-tool` → Another tool's base directory
 
 ## Path Resolution Benefits
 
@@ -42,8 +42,8 @@ Always use ToolConfigContext variables for dynamic paths:
 ## Tool Version Directory Structure
 
 For referencing files within the current tool version, you'll typically need to construct paths like:
-- `${ctx.toolDir}/latest/share/` for tool assets
-- `${ctx.toolDir}/latest/config/` for tool configs
+- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/share/` for tool assets
+- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/config/` for tool configs
 
 ## Common Path Patterns
 
@@ -72,8 +72,8 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.always(`
-        if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-          source "${ctx.toolDir}/shell/key-bindings.zsh"
+        if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh" ]]; then
+          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/key-bindings.zsh"
         fi
       `)
     )
@@ -100,7 +100,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell.always(`
         export TOOL_HOME="$HOME/.local/share/tool"  # Use declarative environment instead
-        source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.toolDir} instead
+        source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName} instead
       `)
     )
 );
@@ -130,7 +130,7 @@ ${ctx.projectConfig.paths.generatedDir}/binaries/
 
 ### How It Works
 
-1. Archives are extracted to `${ctx.toolDir}/version/` 
+1. Archives are extracted to `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/version/` 
 2. Archive structure is preserved completely
 3. `binaryPath` identifies which file is the main executable
 4. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` that execute the binary from its original location
@@ -203,7 +203,7 @@ export default defineTool((install, ctx) =>
 );
 
 // Shim created at: ${ctx.projectConfig.paths.targetDir}/my-tool
-// Shim executes: ${ctx.toolDir}/latest/bin/my-tool
+// Shim executes: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/bin/my-tool
 ```
 
 ## Cross-Platform Path Considerations
@@ -244,7 +244,7 @@ export default defineTool((install, ctx) =>
 ```typescript
 c.hooks({
   beforeInstall: async ({ logger }) => {
-    logger.info(`Tool directory: ${ctx.toolDir}`);
+    logger.info(`Tool directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
     logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
     logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
     logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);
@@ -259,7 +259,7 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .hook('before-install', async ({ logger }) => {
-      logger.info(`Tool directory: ${ctx.toolDir}`);
+      logger.info(`Tool directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
       logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
       logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
       logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);

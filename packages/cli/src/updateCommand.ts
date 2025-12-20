@@ -82,7 +82,6 @@ async function handleToolUpdate(
 
   // Create context for plugin
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-  const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
   const context: IInstallContext = {
     toolName,
@@ -91,8 +90,6 @@ async function handleToolUpdate(
     systemInfo,
     toolConfig,
     projectConfig: projectConfig,
-    toolDir: getToolDir(toolName),
-    getToolDir,
     $: createConfiguredShell($, process.env),
     fileSystem: fs,
   };

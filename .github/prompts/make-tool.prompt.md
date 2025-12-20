@@ -86,7 +86,7 @@ install('github-release', { repo: 'owner/tool' })
   .bin(['tool', 'tool-helper'])   // Multiple binaries
 
 // For github-release and curl-tar, the system automatically:
-// 1. Extracts archives to ${ctx.toolDir}/version/
+// 1. Extracts archives to ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/version/
 // 2. Preserves complete archive structure
 // 3. Uses pattern {,*/}binary-name to locate executables
 // 4. Creates shims in ${ctx.projectConfig.paths.targetDir}/ that execute from original location
@@ -167,7 +167,7 @@ install('github-release', { repo: 'owner/tool' })
 ```typescript
 // Apply same config to multiple shells
 const commonConfig = {
-  environment: { 'TOOL_HOME': `${ctx.toolDir}` },
+  environment: { 'TOOL_HOME': `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` },
   aliases: { 't': 'tool' }
 };
 
@@ -393,8 +393,8 @@ export default defineTool((install, ctx) =>
       shellInit: [
         always/* zsh */`
           # Source key bindings
-          if [[ -f "${ctx.toolDir}/latest/shell/key-bindings.zsh" ]]; then
-            source "${ctx.toolDir}/latest/shell/key-bindings.zsh"
+          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/shell/key-bindings.zsh" ]]; then
+            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/shell/key-bindings.zsh"
           fi
           
           # Custom function

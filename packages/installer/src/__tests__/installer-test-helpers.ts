@@ -581,10 +581,6 @@ export function createTestContext(
   setup: IInstallerTestSetup,
   overrides: Partial<IInstallContext> = {}
 ): IInstallContext {
-  const getToolDir = (toolName: string): string => {
-    return path.join(setup.testDirs.paths.binariesDir, toolName);
-  };
-
   const shell: $extended = createConfiguredShell(createMock$(), process.env);
 
   const result: IInstallContext = {
@@ -594,9 +590,6 @@ export function createTestContext(
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
     projectConfig: setup.mockProjectConfig,
-    // IBaseToolContext properties
-    toolDir: getToolDir(MOCK_TOOL_NAME),
-    getToolDir,
     $: shell,
     fileSystem: setup.fs,
     ...overrides,

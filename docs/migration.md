@@ -167,7 +167,7 @@ Replace hardcoded paths with context variables:
 |----------|----------|
 | `$HOME` or `~/` | `${ctx.projectConfig.paths.homeDir}` |
 | `$DOTFILES` | `${ctx.projectConfig.paths.dotfilesDir}` |
-| Tool-specific dirs | `${ctx.toolDir}` |
+| Tool-specific dirs | `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` |
 | Generated content | `${ctx.projectConfig.paths.generatedDir}` |
 
 **Before:**
@@ -186,8 +186,8 @@ export default defineTool((install, ctx) =>
           TOOL_HOME: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
         })
         .always(`
-          if [[ -f "${ctx.toolDir}/init.zsh" ]]; then
-            source "${ctx.toolDir}/init.zsh"
+          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/init.zsh" ]]; then
+            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/init.zsh"
           fi
         `)
     )

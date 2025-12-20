@@ -34,22 +34,10 @@ describe('IToolConfigContext', () => {
     it('should create context with correct paths from projectConfig', async () => {
       const context = createToolConfigContext(mockProjectConfig, 'test-tool');
 
-      expect(context.toolDir).toBe(path.join(mockProjectConfig.paths.binariesDir, 'test-tool'));
       expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.shellScriptsDir).toBe(mockProjectConfig.paths.shellScriptsDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(mockProjectConfig.paths.dotfilesDir);
       expect(context.projectConfig.paths.generatedDir).toBe(mockProjectConfig.paths.generatedDir);
-      expect(typeof context.getToolDir).toBe('function');
-    });
-
-    it('should provide getToolDir method that works for any tool name', async () => {
-      const context = createToolConfigContext(mockProjectConfig, 'my-tool');
-
-      expect(context.getToolDir('my-tool')).toBe(path.join(mockProjectConfig.paths.binariesDir, 'my-tool'));
-      expect(context.getToolDir('some-other-tool')).toBe(
-        path.join(mockProjectConfig.paths.binariesDir, 'some-other-tool')
-      );
-      expect(context.getToolDir('fzf')).toBe(path.join(mockProjectConfig.paths.binariesDir, 'fzf'));
     });
 
     it('should work correctly with IToolConfigBuilder and context', async () => {
@@ -57,18 +45,19 @@ describe('IToolConfigContext', () => {
 
       // Test that context can be used in a tool configuration function
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+        const toolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         return install('manual', { binaryPath: '/usr/bin/shell-tool' })
           .bin('shell-tool')
           .version('latest')
           .zsh((shell) =>
             shell.always(/* zsh */ `
-           export TOOL_DIR="${ctx.toolDir}"
+           export TOOL_BINARIES_DIR="${toolBinariesDir}"
            export HOME_DIR="${ctx.projectConfig.paths.homeDir}"
            export GENERATED_DIR="${ctx.projectConfig.paths.generatedDir}"
            
            # Source tool-specific files
-           if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-             source "${ctx.toolDir}/shell/key-bindings.zsh"
+           if [[ -f "${toolBinariesDir}/shell/key-bindings.zsh" ]]; then
+             source "${toolBinariesDir}/shell/key-bindings.zsh"
            fi
          `)
           );
@@ -89,24 +78,26 @@ describe('IToolConfigContext', () => {
       expect(String(toolConfig.shellConfigs!.zsh!.scripts![0])).toContain(mockProjectConfig.paths.generatedDir);
     });
 
-    it('should handle tool dependencies using getToolDir', async () => {
+    it('should handle tool dependencies by composing paths from projectConfig', async () => {
       const context = createToolConfigContext(mockProjectConfig, 'dependent-tool');
 
       // Test a tool that references other tools
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+        const dependentToolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
+        const fzfBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, 'fzf');
         return install('manual', { binaryPath: '/usr/bin/dependent-tool' })
           .bin('dependent-tool')
           .version('latest')
           .zsh((shell) =>
             shell.always(/* zsh */ `
            # Reference another tool's directory
-           FZF_DIR="${ctx.getToolDir('fzf')}"
+           FZF_DIR="${fzfBinariesDir}"
            if [[ -d "$FZF_DIR" ]]; then
              export FZF_BASE="$FZF_DIR"
            fi
            
            # Use current tool directory
-           export DEPENDENT_TOOL_CONFIG="${ctx.toolDir}/config.yaml"
+           export DEPENDENT_TOOL_CONFIG="${dependentToolBinariesDir}/config.yaml"
          `)
           );
       };
@@ -182,8 +173,9 @@ describe('IToolConfigContext', () => {
       expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
       expect(context.projectConfig.paths.generatedDir).toBe(customProjectConfig.paths.generatedDir);
-      expect(context.toolDir).toBe(path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool'));
-      expect(context.getToolDir('another-tool')).toBe(path.join(customProjectConfig.paths.binariesDir, 'another-tool'));
+      expect(path.join(context.projectConfig.paths.binariesDir, context.toolName)).toBe(
+        path.join(customProjectConfig.paths.binariesDir, 'custom-path-tool')
+      );
     });
   });
 
@@ -193,6 +185,7 @@ describe('IToolConfigContext', () => {
 
       // Test fzf-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+        const toolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         return install('github-release', { repo: 'owner/fzf-like' })
           .bin('fzf-like')
           .version('latest')
@@ -201,7 +194,7 @@ describe('IToolConfigContext', () => {
            export FZF_LIKE_DEFAULT_OPTS="--color=fg+:cyan"
            
            # Source key bindings
-           _fzf_like_install_dir="${ctx.toolDir}"
+           _fzf_like_install_dir="${toolBinariesDir}"
            if [ -f "$_fzf_like_install_dir/shell/key-bindings.zsh" ]; then
              source "$_fzf_like_install_dir/shell/key-bindings.zsh"
            fi
@@ -227,13 +220,14 @@ describe('IToolConfigContext', () => {
 
       // Test atuin-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
+        const toolBinariesDir = path.join(ctx.projectConfig.paths.binariesDir, ctx.toolName);
         return install('github-release', { repo: 'owner/atuin-like' })
           .bin('atuin-like')
           .version('latest')
           .symlink('./config.toml', '~/.config/atuin-like/config.toml')
           .zsh((shell) =>
             shell.always(/* zsh */ `
-           export ATUIN_LIKE_CONFIG_DIR="${ctx.toolDir}"
+           export ATUIN_LIKE_CONFIG_DIR="${toolBinariesDir}"
            
            # Generate completions
            if command -v atuin-like >/dev/null 2>&1; then

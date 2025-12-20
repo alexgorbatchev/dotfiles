@@ -131,7 +131,7 @@ export default defineTool((install, ctx) =>
       shell
         .completions('completions/_tool')
         .aliases({ t: 'tool' })
-        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
     )
 );
 ```

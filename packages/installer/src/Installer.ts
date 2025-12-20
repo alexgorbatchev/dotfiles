@@ -775,8 +775,6 @@ export class Installer implements IInstaller {
       systemInfo: this.getSystemInfo(),
       toolConfig,
       projectConfig: this.projectConfig,
-      toolDir: '',
-      getToolDir: () => '',
       $: createConfiguredShell(this.$, process.env),
       fileSystem: this.fs,
     };
@@ -789,11 +787,10 @@ export class Installer implements IInstaller {
    *
    * The context provides plugins with:
    * - Tool identification (toolName)
-   * - Directory paths (installDir, toolDir, etc.)
+   * - Directory paths (installDir, etc.)
    * - System information (platform, arch)
    * - Application configuration
    * - Logger instance
-   * - Helper functions (getToolDir)
    * - Event emitter for triggering hooks
    *
    * @param toolName - Name of the tool being installed
@@ -812,9 +809,6 @@ export class Installer implements IInstaller {
     $shell: $extended = createConfiguredShell(this.$, process.env)
   ): ICreateBaseInstallContextResult {
     const methodLogger = parentLogger.getSubLogger({ name: 'createBaseInstallContext' });
-    const getToolDir = (name: string): string => {
-      return path.join(this.projectConfig.paths.binariesDir, name);
-    };
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
@@ -825,9 +819,6 @@ export class Installer implements IInstaller {
       systemInfo: this.getSystemInfo(),
       toolConfig,
       projectConfig: this.projectConfig,
-      // IBaseToolContext properties
-      toolDir: getToolDir(toolName),
-      getToolDir,
       $: $shell,
       fileSystem: this.fs,
       // Event emitter for plugins to trigger hooks

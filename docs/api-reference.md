@@ -110,16 +110,8 @@ interface IShellConfig {
 
 ### Platform Configuration
 
-#### `.platform(platform: Platform, configure: (builder: ToolConfigBuilder) => void)`
-Defines platform-specific configuration.
-
-**Parameters:**
-- `platform`: Platform flags (bitwise)
-- `configure`: Configuration function
-
 **Returns:** `ToolConfigBuilder` (for chaining)
 
-#### `.platform(platform: Platform, arch: Architecture, configure: (builder: ToolConfigBuilder) => void)`
 Defines platform and architecture-specific configuration.
 
 **Parameters:**
@@ -127,7 +119,6 @@ Defines platform and architecture-specific configuration.
 - `arch`: Architecture flags (bitwise)
 - `configure`: Configuration function
 
-**Returns:** `ToolConfigBuilder` (for chaining)
 
 **Platform Enum:**
 ```typescript
@@ -135,7 +126,6 @@ Platform.Linux    // 1
 Platform.MacOS    // 2  
 Platform.Windows  // 4
 Platform.Unix     // Platform.Linux | Platform.MacOS (3)
-Platform.All      // Platform.Linux | Platform.MacOS | Platform.Windows (7)
 ```
 
 **Architecture Enum:**
@@ -143,7 +133,6 @@ Platform.All      // Platform.Linux | Platform.MacOS | Platform.Windows (7)
 Architecture.X86_64  // 1
 Architecture.Arm64   // 2
 Architecture.All     // Architecture.X86_64 | Architecture.Arm64 (3)
-```
 
 ### File Management
 
@@ -153,8 +142,6 @@ Creates symbolic links for configuration files.
 **Parameters:**
 - `source`: Path to source file (relative to tool config directory)
 - `target`: Absolute path where symlink should be created
-
-**Returns:** `ToolConfigBuilder` (for chaining)
 
 > **Note:** For shell completions, use shell-specific configuration methods like `.zsh((shell) => shell.completions('path/to/_tool'))`. See [Completions Guide](./completions.md) for details.
 
@@ -181,8 +168,6 @@ c.hook('after-install', async (context) => {
 ## ToolConfigContext Properties
 
 ### Path Properties
-
-- `toolDir: string` - Current tool's installation directory
 - `projectConfig.paths.homeDir: string` - User's home directory
 - `projectConfig.paths.dotfilesDir: string` - Root dotfiles directory
 - `projectConfig.paths.generatedDir: string` - Generated files directory
@@ -191,8 +176,6 @@ c.hook('after-install', async (context) => {
 - `projectConfig.paths.binariesDir: string` - Tool binaries directory (versioned installs)
 
 ### Methods
-
-- `getToolDir(toolName: string): string` - Get installation directory for any tool
 
 ## Type Definitions
 
@@ -384,7 +367,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .completions('completions/_tool')
-        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
         .aliases({ t: 'tool' })
         .always(/* zsh */`
           function tool-helper() {

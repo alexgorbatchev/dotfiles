@@ -71,7 +71,6 @@ function createInstallContext(
   fs: IFileSystem
 ): IInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-  const getToolDir = (toolName: string): string => `${projectConfig.paths.binariesDir}/${toolName}`;
 
   const context: IInstallContext = {
     toolName: config.name,
@@ -80,8 +79,6 @@ function createInstallContext(
     systemInfo,
     toolConfig: config,
     projectConfig: projectConfig,
-    toolDir: getToolDir(config.name),
-    getToolDir,
     $: createConfiguredShell($, process.env),
     fileSystem: fs,
   };

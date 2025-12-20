@@ -141,7 +141,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.environment({
-        TOOL_HOME: `${ctx.toolDir}`,
+        TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
         TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool`
       })
     )
@@ -151,7 +151,7 @@ export default defineTool((install, ctx) =>
 // Instead of:
 // c.zsh((shell) =>
 //   shell.always(`
-//     export TOOL_HOME="${ctx.toolDir}"  # Use declarative instead
+//     export TOOL_HOME="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}"  # Use declarative instead
 //   `)
 // )
 ```
@@ -367,7 +367,7 @@ cat ${ctx.projectConfig.paths.shellScriptsDir}/main.zsh
 cat ${ctx.projectConfig.paths.targetDir}/tool-name
 
 # View tool installation directory
-ls -la ${ctx.toolDir}/
+ls -la ${ctx.projectConfig.paths.binariesDir}/tool-name/
 ```
 
 ### Enable debug logging

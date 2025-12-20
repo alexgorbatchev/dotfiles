@@ -51,11 +51,8 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     installParams: { binaryPath: 'bin/test-tool' },
   };
 
-  const getToolDir = (toolName: string): string => path.join(projectConfig.paths.binariesDir, toolName);
   const context: IInstallContext = {
     toolName: toolConfig.name,
-    toolDir: getToolDir(toolConfig.name),
-    getToolDir,
     projectConfig,
     systemInfo,
     toolConfig,

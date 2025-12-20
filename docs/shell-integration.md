@@ -24,7 +24,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell
-        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/_tool')
         .always(`
@@ -48,7 +48,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .bash((shell) =>
       shell
-        .environment({ TOOL_HOME: `${ctx.toolDir}` })
+        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/tool.bash')
         .always(`
@@ -209,7 +209,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          TOOL_CONFIG_DIR: `${ctx.toolDir}`,
+          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
           TOOL_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
         })
         .source('shell/key-bindings.zsh')
@@ -217,7 +217,7 @@ export default defineTool((install, ctx) =>
           # shell.source() skips missing files silently.
           
           # Reference other tools
-          FZF_DIR="${ctx.getToolDir('fzf')}"
+          FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
           [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
         `)
     )
@@ -230,12 +230,12 @@ Define the same configuration for multiple shells:
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
-import type { IShellConfigurator } from '@gitea/dotfiles';
+import type { IShellConfigurator, IToolConfigContext } from '@gitea/dotfiles';
 
-const configureCommonShell = (shell: IShellConfigurator): IShellConfigurator =>
+const configureCommonShell = (shell: IShellConfigurator, ctx: IToolConfigContext): IShellConfigurator =>
   shell
     .environment({
-      TOOL_HOME: `${ctx.toolDir}`,
+      TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
       TOOL_DEBUG: 'false'
     })
     .aliases({
@@ -246,10 +246,10 @@ const configureCommonShell = (shell: IShellConfigurator): IShellConfigurator =>
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .zsh(configureCommonShell)
-    .bash(configureCommonShell)
+    .zsh((shell) => configureCommonShell(shell, ctx))
+    .bash((shell) => configureCommonShell(shell, ctx))
     .powershell((shell) =>
-      configureCommonShell(shell).environment({ TOOL_HOME: `${ctx.toolDir}` })
+      configureCommonShell(shell, ctx).environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
     )
 );
 ```

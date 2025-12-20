@@ -293,7 +293,7 @@ export default defineTool((install, ctx) =>
           unfunction expensive-tool-function
           
           # Load the real implementation
-          source "${ctx.toolDir}/expensive-functions.zsh"
+          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/expensive-functions.zsh"
           
           # Call the real function
           expensive-tool-function "$@"
@@ -375,11 +375,11 @@ export default defineTool((install, ctx) =>
       shell.always(`
         function tool-switch-version() {
           local version=\${1:-${defaultVersion}}
-          local tool_path="${ctx.toolDir}/\$version/bin/tool"
+          local tool_path="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/\$version/bin/tool"
           
           if [[ -f "\$tool_path" ]]; then
             export TOOL_VERSION="\$version"
-            export PATH="${ctx.toolDir}/\$version/bin:\$PATH"
+            export PATH="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/\$version/bin:\$PATH"
             echo "Switched to tool version \$version"
           else
             echo "Version \$version not found"

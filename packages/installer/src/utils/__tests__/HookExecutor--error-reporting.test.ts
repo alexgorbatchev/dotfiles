@@ -52,8 +52,6 @@ describe('HookExecutor - error reporting', () => {
       projectConfig,
       systemInfo,
       toolName,
-      toolDir: path.join(testDirs.paths.binariesDir, toolName),
-      getToolDir: (name: string) => path.join(testDirs.paths.binariesDir, name),
       toolConfig,
       installDir: path.join(testDirs.paths.binariesDir, toolName, 'install'),
       timestamp: '2025-12-18-00-00-00',
