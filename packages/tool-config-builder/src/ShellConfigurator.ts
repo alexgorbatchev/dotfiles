@@ -179,7 +179,7 @@ export class ShellConfigurator implements IShellConfigurator {
       return `. ${quotedPath}`;
     }
 
-    return `source ${quotedPath}`;
+    return `[[ -f ${quotedPath} ]] && source ${quotedPath}`;
   }
 
   /**

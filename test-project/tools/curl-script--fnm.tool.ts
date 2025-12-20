@@ -11,6 +11,7 @@ export default defineTool((install) =>
       shell
         //
         .completions({ cmd: 'fnm completions --shell zsh', bin: 'fnm' })
+        .source('/path/that/does/not/exist')
         .always(/* zsh */ `
           # Initialize fnm with auto-use on cd
           eval "$(fnm env --use-on-cd)"

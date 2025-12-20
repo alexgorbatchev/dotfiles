@@ -216,6 +216,28 @@ describe('IToolConfigBuilder', () => {
     });
   });
 
+  test('zsh source generates non-fatal conditional sourcing', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.zsh((shell) => shell.source('/path/that/does/not/exist'));
+
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.scripts).toEqual([
+      always`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`,
+    ]);
+  });
+
+  test('bash source generates non-fatal conditional sourcing', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bash((shell) => shell.source('/path/that/does/not/exist'));
+
+    const config = builder.build();
+    expect(config.shellConfigs?.bash?.scripts).toEqual([
+      always`[[ -f "/path/that/does/not/exist" ]] && source "/path/that/does/not/exist"`,
+    ]);
+  });
+
   test('build method returns ManualToolConfig if binaries are specified but no installation method', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.bin('test-bin');

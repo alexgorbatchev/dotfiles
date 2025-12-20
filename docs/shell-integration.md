@@ -212,11 +212,9 @@ export default defineTool((install, ctx) =>
           TOOL_CONFIG_DIR: `${ctx.toolDir}`,
           TOOL_DATA_DIR: `${ctx.homeDir}/.local/share/tool`
         })
+        .source('shell/key-bindings.zsh')
         .always(`
-          # Reference tool directory
-          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.toolDir}/shell/key-bindings.zsh"
-          fi
+          # shell.source() skips missing files silently.
           
           # Reference other tools
           FZF_DIR="${ctx.getToolDir('fzf')}"
