@@ -6,7 +6,7 @@ agent: agent
 ## Mission
 Create a complete, working `.tool.ts` configuration file for a CLI tool.
 
-Your job is to analyze the tool and its distribution method, then generate a configuration that follows the repository’s best practices.
+Your job is to analyze the tool and its distribution method, then generate a configuration that follows the repository's best practices and aligns with the current API.
 
 ## Input
 You will receive:
@@ -45,53 +45,64 @@ Research the tool’s runtime behavior:
 Select the most appropriate method based on your investigation. Prefer official, precompiled, and well-supported methods.
 
 - **`github-release`**: best for tools with prebuilt binaries on GitHub.
-  - Guide: [GitHub Release Installation Guide](../installation/github-release.md)
+  - Guide: [GitHub Release Installation Guide](<root>/docs/installation/github-release.md)
 
 - **`brew`**: use if the tool is officially available on Homebrew.
-  - Guide: [Homebrew Installation Guide](../installation/homebrew.md)
+  - Guide: [Homebrew Installation Guide](<root>/docs/installation/homebrew.md)
 
 - **`cargo`**: prefer for Rust tools available on crates.io.
-  - Guide: [Cargo Installation Guide](../installation/cargo.md)
+  - Guide: [Cargo Installation Guide](<root>/docs/installation/cargo.md)
 
 - **`curl-script`**: for tools with an official install script.
-  - Guide: [Curl Script Installation Guide](../installation/curl-script.md)
+  - Guide: [Curl Script Installation Guide](<root>/docs/installation/curl-script.md)
 
 - **`curl-tar`**: for direct archive downloads from a stable URL.
-  - Guide: [Curl Tar Installation Guide](../installation/curl-tar.md)
+  - Guide: [Curl Tar Installation Guide](<root>/docs/installation/curl-tar.md)
 
 - **`manual`**: for custom install logic or dotfiles-provided binaries/scripts.
-  - Guide: [Manual Installation Guide](../installation/manual.md)
+  - Guide: [Manual Installation Guide](<root>/docs/installation/manual.md)
 
 ### Step 2: Configure Binary Specification
-**Important**: `.bin()` declares which executables the tool provides. It does not describe archive layouts.
+**Important**: `.bin(name, pattern?)` declares which executables the tool provides. It generates a shim for each binary name.
 
 ```ts
+// Single binary with default pattern
 install('github-release', { repo: 'owner/tool' })
   .bin('tool');
 
+// Multiple binaries - chain .bin() calls
 install('github-release', { repo: 'owner/tool' })
-  .bin(['tool', 'tool-helper']);
+  .bin('tool')
+  .bin('tool-helper');
+
+// Custom pattern for binary location in archive
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool', '*/bin/tool');  // Pattern: {,*/}tool by default
 ```
 
-**Installation directory vs tool config directory**:
-- `ctx.toolDir` is the directory containing the current `.tool.ts` file (tool configuration directory).
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` is the tool’s base installation directory (contains version subdirectories).
+**Binary Pattern Matching (for archive-based installation methods only)**:
+- **Default Pattern**: `{,*/}name` - matches binary at root or one level deep
+- **Custom Patterns**: Use [minimatch](https://github.com/isaacs/minimatch) glob patterns with brace expansion
+  - `'*/bin/tool'` - Binary in bin subdirectory
+  - `'tool-*/bin/tool'` - Versioned directory structure
+  - `'tool'` - Exact binary at archive root
+
+**Path Variables**:
+- `ctx.toolDir` → Directory containing the `.tool.ts` file (tool configuration directory)
+- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` → Tool's base installation directory (contains version subdirectories)
 
 If you need to reference files next to the tool config, use `ctx.toolDir`.
 
-**Custom binary patterns**: only use these when the default binary discovery does not work.
-
-Reference: [Path Resolution Guide](../path-resolution.md)
+Reference: [Core Methods Reference](<root>/docs/core-methods.md#binname-string-pattern-string) and [Path Resolution Guide](<root>/docs/path-resolution.md)
 
 ### Step 3: Add Shell Integration
-Use the fluent shell configurator.
+Use the fluent shell configurator with `.zsh()`, `.bash()`, or `.powershell()` methods.
 
 ```ts
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
   .zsh((shell) =>
     shell
-      .completions('completions/_tool')
       .environment({
         TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
         TOOL_CONFIG_DIR: ctx.toolDir,
@@ -100,12 +111,42 @@ install('github-release', { repo: 'owner/tool' })
         t: 'tool',
         ts: 'tool status',
       })
+      .completions('completions/_tool')
+      .always(/* zsh */`
+        # Fast runtime setup (runs every shell startup)
+        ...
+      `)
   );
 ```
 
-Use `.once()` for expensive operations (runs after install/update) and `.always()` for fast runtime setup.
+**Script Timing**:
+- `.always(template)` - Runs every time shell starts (fast operations only)
+- `.once(template)` - Runs only once after install/update (expensive operations)
 
-Reference: [Shell Integration Guide](../shell-integration.md)
+**Shell Configurator Methods**:
+- `.environment(record)` - Set environment variables
+- `.aliases(record)` - Set command aliases
+- `.completions(path | config)` - Set command completions
+- `.always(script)` - Fast runtime setup scripts
+- `.once(script)` - Expensive one-time setup scripts
+
+**Completions Syntax**:
+```ts
+// From static file in archive
+.completions('completions/_tool')
+
+// From command output
+.completions({ cmd: 'tool completion zsh' })
+
+// With custom options
+.completions({
+  source: 'shell/completion.zsh',
+  bin: 'custom-name',  // If binary name differs from tool name
+  targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`  // Custom directory
+})
+```
+
+Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Completions Guide](<root>/docs/completions.md)
 
 ### Step 4: Configure File Management (Symlinks)
 Symlink sources starting with `./` are relative to the tool config directory (same directory as the `.tool.ts` file).
@@ -117,17 +158,48 @@ install('github-release', { repo: 'owner/tool' })
   .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`);
 ```
 
-Reference: [Symlinks Guide](../symlinks.md)
+Reference: [Symlinks Guide](<root>/docs/symlinks.md)
 
 ### Step 5: Add Platform Support
 Use `.platform()` for platform- and architecture-specific overrides.
 
-Reference: [Platform Support Guide](../platform-support.md)
+```ts
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  // macOS-specific
+  .platform(Platform.MacOS, (c) =>
+    c.install('brew', { formula: 'tool' })
+      .zsh((shell) => shell.aliases({ t: 'tool --macos-mode' }))
+  )
+  // Linux-specific
+  .platform(Platform.Linux, (c) =>
+    c.install('github-release', { repo: 'owner/tool', assetPattern: '*linux*.tar.gz' })
+  )
+  // Windows with Arm64
+  .platform(Platform.Windows, Architecture.Arm64, (c) =>
+    c.install('github-release', { repo: 'owner/tool', assetPattern: '*windows-arm64.zip' })
+  )
+```
+
+Reference: [Platform Support Guide](<root>/docs/platform-support.md)
 
 ### Step 6: Add Installation Hooks (if needed)
-Use hooks only when the fluent configuration is insufficient.
+Use hooks for custom installation logic when fluent configuration is insufficient.
 
-Reference: [Hooks Guide](../hooks.md)
+```ts
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .hook('after-install', async ({ logger, $, installDir }) => {
+    await $`${installDir}/tool init`;
+    logger.info('Tool initialized');
+  })
+```
+
+**Hook Events**: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
+
+Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
 
 ## Output Requirements
 
@@ -171,7 +243,8 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install) =>
   install('github-release', {
     repo: 'BurntSushi/ripgrep',
-  }).bin('rg')
+  })
+    .bin('rg')
 );
 ```
 
@@ -193,14 +266,14 @@ export default defineTool((install, ctx) =>
     .bin('fzf')
     .zsh((shell) =>
       shell
-        .completions('shell/completion.zsh')
         .environment({
           FZF_DEFAULT_OPTS: '--color=fg+:cyan,bg+:black,hl+:yellow',
-          FZF_CONFIG_DIR: ctx.toolDir,
         })
+        .aliases({ f: 'fzf' })
+        .completions('shell/completion.zsh')
         .always(/* zsh */`
-          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.toolDir}/shell/key-bindings.zsh"
+          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/shell/key-bindings.zsh" ]]; then
+            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/shell/key-bindings.zsh"
           fi
         `)
     )
@@ -225,23 +298,110 @@ export default defineTool((install, ctx) =>
 );
 ```
 
+### Example 4: Configuration-Only Tool
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * git - Git configuration and aliases.
+ *
+ * https://git-scm.com
+ */
+export default defineTool((install, ctx) =>
+  install('manual', {})  // No binaryPath - configuration only
+    .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+    .zsh((shell) =>
+      shell.aliases({
+        g: 'git',
+        gs: 'git status',
+        ga: 'git add',
+        gc: 'git commit',
+      })
+    )
+);
+```
+
+### Example 5: Rust Tool with Cargo
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * eza - A modern replacement for ls.
+ *
+ * https://github.com/eza-community/eza
+ */
+export default defineTool((install, ctx) =>
+  install('cargo', {
+    crateName: 'eza',
+    githubRepo: 'eza-community/eza',
+  })
+    .bin('eza')
+    .bin('exa')
+    .zsh((shell) =>
+      shell
+        .aliases({
+          ls: 'eza',
+          ll: 'eza -l',
+          tree: 'eza --tree'
+        })
+        .completions('completions/eza.zsh')
+    )
+);
+```
+
 ## Quality Checklist
 
 **Installation & binaries**
-- Installation method matches the tool’s official distribution.
-- `.bin()` names match actual executables.
+- ✅ Installation method matches the tool's official distribution
+- ✅ `.bin(name, pattern?)` declarations match actual executables
+- ✅ Binary patterns are correct for archive structures
+- ✅ Binary names are used with `.dependsOn()` for dependencies
 
 **Paths**
-- Use `ctx.toolDir` for files next to `.tool.ts`.
-- Use `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` for installed artifacts.
-- Use `${ctx.projectConfig.paths.homeDir}` for user home paths.
+- ✅ Use `ctx.toolDir` for files next to `.tool.ts` (tool configuration directory)
+- ✅ Use `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` for installed artifacts
+- ✅ Use `${ctx.projectConfig.paths.homeDir}` for user home paths
+- ✅ Use context variables for all paths (no hardcoded `$HOME` or `~`)
+- ✅ Completion `source` paths are relative to extracted archive
+- ✅ Completion `targetDir` uses absolute context paths
 
 **Shell integration**
-- Use `.once()` only for expensive operations.
-- Keep `.always()` fast.
+- ✅ Use `.once()` for expensive operations (completions generation, cache building)
+- ✅ Use `.always()` for fast runtime setup (environment, aliases, functions)
+- ✅ Shell scripts are fast and use context variables
+- ✅ Completions configured within shell blocks (`.zsh()`, `.bash()`, `.powershell()`)
+
+**Function signature**
+- ✅ Import `defineTool` from `'@gitea/dotfiles'`
+- ✅ Use `export default defineTool((install, ctx) => ...)`
+- ✅ Call `install(method, params)` first to specify installation
+- ✅ Chain additional configuration methods
 
 ## References
-- [Common Patterns](../common-patterns.md)
-- [Examples](../examples.md)
-- [API Reference](../api-reference.md)
-- [Troubleshooting](../troubleshooting.md)
+
+**Core Documentation**
+- [Core Methods Reference](<root>/docs/core-methods.md) - Detailed method reference
+- [API Reference](<root>/docs/api-reference.md) - Complete API with all parameters
+- [Getting Started](<root>/docs/getting-started.md) - Basic structure and anatomy
+
+**Configuration Guides**
+- [Common Patterns](<root>/docs/common-patterns.md) - Real-world examples
+- [Shell Integration](<root>/docs/shell-integration.md) - Shell configuration details
+- [Completions](<root>/docs/completions.md) - Command completion setup
+- [Symlinks](<root>/docs/symlinks.md) - Symbolic link management
+- [Context API](<root>/docs/context-api.md) - Path resolution and context variables
+- [Path Resolution](<root>/docs/path-resolution.md) - Path resolution rules
+
+**Installation Methods**
+- [GitHub Release Installation](<root>/docs/installation/github-release.md)
+- [Homebrew Installation](<root>/docs/installation/homebrew.md)
+- [Cargo Installation](<root>/docs/installation/cargo.md)
+- [Curl Script Installation](<root>/docs/installation/curl-script.md)
+- [Curl Tar Installation](<root>/docs/installation/curl-tar.md)
+- [Manual Installation](<root>/docs/installation/manual.md)
+
+**Other Resources**
+- [Platform Support](<root>/docs/platform-support.md) - Platform-specific configurations
+- [Hooks](<root>/docs/hooks.md) - Installation lifecycle hooks
+- [Troubleshooting](<root>/docs/troubleshooting.md) - Common issues and solutions
+
