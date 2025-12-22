@@ -93,7 +93,12 @@ describe('installCommand', () => {
       'toolA',
       mockProjectConfig.paths.toolConfigsDir,
       mockServices.fs,
-      mockProjectConfig
+      mockProjectConfig,
+      expect.objectContaining({
+        platform: 'linux',
+        arch: 'x64',
+        homeDir: mockProjectConfig.paths.homeDir,
+      })
     );
     expect(mockInstaller.install).toHaveBeenCalledWith('toolA', toolAConfig, {
       force: false,

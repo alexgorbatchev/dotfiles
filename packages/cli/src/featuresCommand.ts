@@ -27,13 +27,14 @@ async function catalogActionLogic(
   services: IServices
 ): Promise<void> {
   try {
-    const { projectConfig, fs, configService, readmeService } = services;
+    const { projectConfig, fs, configService, readmeService, systemInfo } = services;
 
     const toolConfigs = await configService.loadToolConfigs(
       logger,
       projectConfig.paths.toolConfigsDir,
       fs,
-      projectConfig
+      projectConfig,
+      systemInfo
     );
 
     await readmeService.generateCatalogFromConfigs(projectConfig.features.catalog.filePath, toolConfigs);

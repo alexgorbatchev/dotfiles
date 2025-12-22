@@ -83,7 +83,12 @@ describe('detectConflictsCommand', () => {
         expect.any(Object),
         mockProjectConfig.paths.toolConfigsDir,
         mockFs.fs.asIFileSystem,
-        mockProjectConfig
+        mockProjectConfig,
+        expect.objectContaining({
+          platform: 'linux',
+          arch: 'x64',
+          homeDir: mockProjectConfig.paths.homeDir,
+        })
       );
       logger.expect(
         ['INFO'],

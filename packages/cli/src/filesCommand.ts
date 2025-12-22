@@ -136,7 +136,7 @@ async function filesActionLogic(
   services: IServices,
   print: PrintFunction
 ): Promise<void> {
-  const { fs, projectConfig, configService, toolInstallationRegistry } = services;
+  const { fs, projectConfig, configService, toolInstallationRegistry, systemInfo } = services;
 
   try {
     const toolConfig = await configService.loadSingleToolConfig(
@@ -144,7 +144,8 @@ async function filesActionLogic(
       toolName,
       projectConfig.paths.toolConfigsDir,
       fs,
-      projectConfig
+      projectConfig,
+      systemInfo
     );
 
     if (!toolConfig) {

@@ -26,7 +26,8 @@ async function loadToolConfigs(
   configService: IConfigService,
   toolName: string | undefined,
   projectConfig: ProjectConfig,
-  fs: IFileSystem
+  fs: IFileSystem,
+  systemInfo: ISystemInfo
 ): Promise<Record<string, ToolConfig> | null> {
   let toolConfigs: Record<string, ToolConfig> = {};
   if (toolName) {
@@ -37,7 +38,8 @@ async function loadToolConfigs(
         toolName,
         projectConfig.paths.toolConfigsDir,
         fs,
-        projectConfig
+        projectConfig,
+        systemInfo
       );
       if (config) {
         toolConfigs[toolName] = config;
@@ -52,7 +54,13 @@ async function loadToolConfigs(
   } else {
     try {
       logger.debug(messages.commandCheckingUpdatesForAll());
-      toolConfigs = await configService.loadToolConfigs(logger, projectConfig.paths.toolConfigsDir, fs, projectConfig);
+      toolConfigs = await configService.loadToolConfigs(
+        logger,
+        projectConfig.paths.toolConfigsDir,
+        fs,
+        projectConfig,
+        systemInfo
+      );
       if (Object.keys(toolConfigs).length === 0) {
         logger.error(messages.toolNoConfigurationsFound(projectConfig.paths.toolConfigsDir));
         return null;
@@ -179,7 +187,8 @@ export async function checkUpdatesActionLogic(
     services.configService,
     toolName,
     services.projectConfig,
-    services.fs
+    services.fs,
+    services.systemInfo
   );
 
   if (!toolConfigs) {

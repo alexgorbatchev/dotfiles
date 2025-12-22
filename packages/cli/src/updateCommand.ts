@@ -1,5 +1,5 @@
 import type { IConfigService } from '@dotfiles/config';
-import type { ProjectConfig, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
@@ -35,10 +35,18 @@ async function loadToolConfigSafely(
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo
 ): Promise<ILoadToolConfigSafelyResult> {
   try {
-    const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig);
+    const toolConfig = await configService.loadSingleToolConfig(
+      logger,
+      toolName,
+      toolConfigsDir,
+      fs,
+      projectConfig,
+      systemInfo
+    );
 
     if (!toolConfig) {
       logger.error(messages.toolNotFound(toolName, toolConfigsDir));
@@ -130,7 +138,7 @@ export function registerUpdateCommand(
       };
 
       const services = await servicesFactory();
-      const { projectConfig, fs, configService } = services;
+      const { projectConfig, fs, configService, systemInfo } = services;
 
       try {
         const toolConfigResult = await loadToolConfigSafely(
@@ -139,7 +147,8 @@ export function registerUpdateCommand(
           toolName,
           projectConfig.paths.toolConfigsDir,
           fs,
-          projectConfig
+          projectConfig,
+          systemInfo
         );
 
         if (toolConfigResult.exitCode !== ExitCode.SUCCESS) {

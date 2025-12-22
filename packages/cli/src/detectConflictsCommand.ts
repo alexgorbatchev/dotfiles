@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
@@ -19,14 +19,16 @@ async function loadToolConfigs(
   logger: TsLogger,
   projectConfig: ProjectConfig,
   fs: IFileSystem,
-  configService: IConfigService
+  configService: IConfigService,
+  systemInfo: ISystemInfo
 ): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {
   try {
     const toolConfigsRecord = await configService.loadToolConfigs(
       logger,
       projectConfig.paths.toolConfigsDir,
       fs,
-      projectConfig
+      projectConfig,
+      systemInfo
     );
     return { toolConfigs: Object.values(toolConfigsRecord), exitCode: ExitCode.SUCCESS };
   } catch (error: unknown) {
@@ -115,10 +117,10 @@ export async function detectConflictsActionLogic(
   _options: IGlobalProgramOptions,
   services: IServices
 ): Promise<ExitCode> {
-  const { projectConfig, fs, configService } = services;
+  const { projectConfig, fs, configService, systemInfo } = services;
   const conflictMessages: string[] = [];
 
-  const toolConfigsResult = await loadToolConfigs(logger, projectConfig, fs, configService);
+  const toolConfigsResult = await loadToolConfigs(logger, projectConfig, fs, configService, systemInfo);
 
   if (toolConfigsResult.exitCode !== ExitCode.SUCCESS) {
     return toolConfigsResult.exitCode;

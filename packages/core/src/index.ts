@@ -4,6 +4,7 @@ export * from './builder';
 // Export all schema types from organized subdirectories
 export * from './common';
 export * from './config';
+export * from './context';
 export * from './InstallerPluginRegistry';
 export * from './installer';
 export * from './platformConfigSchema';

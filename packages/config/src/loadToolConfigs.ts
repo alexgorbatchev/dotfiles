@@ -2,10 +2,11 @@ import path from 'node:path';
 import type {
   AsyncConfigureTool,
   AsyncConfigureToolWithReturn,
-  IToolConfigContext,
+  ISystemInfo,
   ProjectConfig,
   ToolConfig,
 } from '@dotfiles/core';
+import { createToolConfigContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
@@ -69,9 +70,11 @@ async function processFunctionExport(
   logger: TsLogger,
   toolName: string,
   filePath: string,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo
 ): Promise<ToolConfig | null> {
-  const context = createToolConfigContext(projectConfig, toolName, filePath);
+  const toolDir = path.dirname(filePath);
+  const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir);
   const install = createInstallFunction(logger, toolName, context);
   const result = await configureToolFn(install, context);
 
@@ -125,45 +128,16 @@ function processDirectExport(
 }
 
 /**
- * Creates a {@link @dotfiles/core#IToolConfigContext} for use in tool configuration functions.
+ * Loads a `.tool.ts` file as an ES module and derives a {@link @dotfiles/core#ToolConfig}.
  *
- * The context provides access to all relevant paths and configuration data that a tool
- * might need during configuration.
- *
- * @param projectConfig - The application configuration containing all path information.
- * @param currentToolName - The name of the tool currently being configured.
- * @returns A fully populated IToolConfigContext for the tool.
+ * Supports both direct object exports and function exports.
  */
-export function createToolConfigContext(
-  projectConfig: ProjectConfig,
-  currentToolName: string,
-  toolConfigFilePath: string
-): IToolConfigContext {
-  const toolDir = path.dirname(toolConfigFilePath);
-  const currentDir = path.join(projectConfig.paths.binariesDir, currentToolName, 'current');
-
-  const context: IToolConfigContext = {
-    toolName: currentToolName,
-    toolDir,
-    currentDir,
-    projectConfig,
-
-    // systemInfo is derived from the current process environment.
-    systemInfo: {
-      platform: process.platform,
-      arch: process.arch,
-      homeDir: projectConfig.paths.homeDir,
-    },
-  };
-
-  return context;
-}
-
 async function loadToolConfigFromModule(
   logger: TsLogger,
   filePath: string,
   toolName: string,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo
 ): Promise<ToolConfig | null> {
   try {
     const moduleExports: IToolConfigModule = await import(filePath);
@@ -177,7 +151,7 @@ async function loadToolConfigFromModule(
     const exportedValue: unknown = moduleExports.default;
 
     if (isConfigureToolFunction(exportedValue)) {
-      toolConfig = await processFunctionExport(exportedValue, logger, toolName, filePath, projectConfig);
+      toolConfig = await processFunctionExport(exportedValue, logger, toolName, filePath, projectConfig, systemInfo);
     } else {
       toolConfig = processDirectExport(exportedValue, logger, filePath, toolName);
     }
@@ -279,6 +253,7 @@ export async function loadToolConfigs(
   toolConfigsDir: string,
   fs: IFileSystem,
   projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo,
   toolName?: string
 ): Promise<Record<string, ToolConfig>> {
   const logger = parentLogger.getSubLogger({ name: 'loadToolConfigs' });
@@ -308,7 +283,13 @@ export async function loadToolConfigs(
       : allToolFiles;
 
     for (const { filePath, toolName: discoveredToolName } of filesToProcess) {
-      const toolConfig = await loadToolConfigFromModule(logger, filePath, discoveredToolName, projectConfig);
+      const toolConfig = await loadToolConfigFromModule(
+        logger,
+        filePath,
+        discoveredToolName,
+        projectConfig,
+        systemInfo
+      );
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
   } catch (error) {
@@ -338,8 +319,9 @@ export async function loadSingleToolConfig(
   toolName: string,
   toolConfigsDir: string,
   fs: IFileSystem,
-  projectConfig: ProjectConfig
+  projectConfig: ProjectConfig,
+  systemInfo: ISystemInfo
 ): Promise<ToolConfig | undefined> {
-  const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, projectConfig, toolName);
+  const configs = await loadToolConfigs(parentLogger, toolConfigsDir, fs, projectConfig, systemInfo, toolName);
   return configs[toolName];
 }

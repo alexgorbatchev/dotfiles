@@ -54,7 +54,7 @@ export function registerGenerateCommand(
     .action(async (options: IGenerateCommandSpecificOptions) => {
       const combinedOptions: IGenerateCommandOptions = { ...options, ...program.opts() };
       const services = await servicesFactory();
-      const { projectConfig, fs, generatorOrchestrator, configService } = services;
+      const { projectConfig, fs, generatorOrchestrator, configService, systemInfo } = services;
 
       try {
         logger.debug(messages.toolConfigsLoading(projectConfig.paths.toolConfigsDir), fs.constructor.name);
@@ -62,7 +62,8 @@ export function registerGenerateCommand(
           logger,
           projectConfig.paths.toolConfigsDir,
           fs,
-          projectConfig
+          projectConfig,
+          systemInfo
         );
         logger.debug(messages.toolConfigsLoaded(projectConfig.paths.toolConfigsDir, Object.keys(toolConfigs).length));
 

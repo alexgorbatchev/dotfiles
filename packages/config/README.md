@@ -39,18 +39,21 @@ console.log(projectConfig.paths.binariesDir);
 console.log(projectConfig.paths.targetDir);
 ```
 
-### `loadToolConfigs(logger, toolConfigsDir, fs, projectConfig): Promise<Record<string, ToolConfig>>`
+### `loadToolConfigs(logger, toolConfigsDir, fs, projectConfig, systemInfo): Promise<Record<string, ToolConfig>>`
 
 Recursively loads all `.tool.ts` configuration files from a directory.
 
 ```typescript
 import { loadToolConfigs } from '@dotfiles/config';
 
+const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+
 const toolConfigs = await loadToolConfigs(
   logger,
   projectConfig.paths.toolConfigsDir,
   fileSystem,
-  projectConfig
+  projectConfig,
+  systemInfo
 );
 
 // Access specific tool config
@@ -61,19 +64,22 @@ if (fzfConfig) {
 }
 ```
 
-### `loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig): Promise<ToolConfig | undefined>`
+### `loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig, systemInfo): Promise<ToolConfig | undefined>`
 
 Loads configuration for a single tool by name.
 
 ```typescript
 import { loadSingleToolConfig } from '@dotfiles/config';
 
+const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+
 const fzfConfig = await loadSingleToolConfig(
   logger,
   'fzf',
   projectConfig.paths.toolConfigsDir,
   fileSystem,
-  projectConfig
+  projectConfig,
+  systemInfo
 );
 
 if (fzfConfig) {
@@ -90,12 +96,15 @@ import { ConfigService } from '@dotfiles/config';
 
 const configService = new ConfigService();
 
+const systemInfo = { platform: 'darwin', arch: 'x64', homeDir: projectConfig.paths.homeDir };
+
 const toolConfig = await configService.loadSingleToolConfig(
   logger,
   'fzf',
   toolConfigsDir,
   fileSystem,
-  projectConfig
+  projectConfig,
+  systemInfo
 );
 ```
 

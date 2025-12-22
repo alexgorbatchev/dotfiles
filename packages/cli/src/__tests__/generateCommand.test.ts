@@ -70,7 +70,12 @@ describe('generateCommand', () => {
       expect.any(Object),
       mockProjectConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,
-      mockProjectConfig
+      mockProjectConfig,
+      expect.objectContaining({
+        platform: 'linux',
+        arch: 'x64',
+        homeDir: mockProjectConfig.paths.homeDir,
+      })
     );
 
     // Should log DONE message at the end
@@ -84,7 +89,12 @@ describe('generateCommand', () => {
       expect.any(Object),
       mockProjectConfig.paths.toolConfigsDir,
       mockFs.fs.asIFileSystem,
-      mockProjectConfig
+      mockProjectConfig,
+      expect.objectContaining({
+        platform: 'linux',
+        arch: 'x64',
+        homeDir: mockProjectConfig.paths.homeDir,
+      })
     );
 
     // Should log DONE (dry run) message at the end

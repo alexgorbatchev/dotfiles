@@ -1,6 +1,7 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
+import type { ISystemInfo } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
@@ -89,6 +90,12 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
   const mockFs = await createMemFileSystem(options.memFileSystem || {});
   const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: options.testName });
 
+  const systemInfo: ISystemInfo = {
+    platform: 'linux',
+    arch: 'x64',
+    homeDir: testDirs.paths.homeDir,
+  };
+
   // Create the CLI source directory structure for __dirname resolution
   const cliSrcDir: string = path.join(__dirname, '..');
   await mockFs.fs.mkdir(cliSrcDir, { recursive: true });
@@ -100,7 +107,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
     fileSystem: mockFs.fs,
     logger,
-    systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+    systemInfo,
     env: {},
   });
 
@@ -196,6 +203,9 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
               getLatestVersion: mock(async () => '1.0.0'),
             };
             break;
+          case 'systemInfo':
+            mockServices.systemInfo = systemInfo;
+            break;
         }
       } else {
         // Use provided mock directly - bypass strict typing for test setup
@@ -210,6 +220,7 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
     ({
       projectConfig: mockProjectConfig,
       fs: mockFs.fs.asIFileSystem,
+      systemInfo,
       // Default mocks for all required services
       configService: {
         loadSingleToolConfig: mock(async () => undefined),

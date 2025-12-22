@@ -1,4 +1,4 @@
-import type { ProjectConfig, ToolConfig } from '@dotfiles/core';
+import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
@@ -24,7 +24,8 @@ export interface IConfigService {
     toolName: string,
     toolConfigsDir: string,
     fs: IFileSystem,
-    projectConfig: ProjectConfig
+    projectConfig: ProjectConfig,
+    systemInfo: ISystemInfo
   ): Promise<ToolConfig | undefined>;
 
   /**
@@ -40,6 +41,7 @@ export interface IConfigService {
     logger: TsLogger,
     toolConfigsDir: string,
     fs: IFileSystem,
-    projectConfig: ProjectConfig
+    projectConfig: ProjectConfig,
+    systemInfo: ISystemInfo
   ): Promise<Record<string, ToolConfig>>;
 }

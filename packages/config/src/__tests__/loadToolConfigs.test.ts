@@ -1,22 +1,31 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import type { AsyncConfigureTool, InstallFunction, IToolConfigContext, ProjectConfig } from '@dotfiles/core';
+import type {
+  AsyncConfigureTool,
+  InstallFunction,
+  ISystemInfo,
+  IToolConfigContext,
+  ProjectConfig,
+} from '@dotfiles/core';
+import { createToolConfigContext } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { createInstallFunction, IToolConfigBuilder as ToolConfigBuilderImpl } from '@dotfiles/tool-config-builder';
-import { createToolConfigContext } from '../loadToolConfigs';
 
 describe('IToolConfigContext', () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
+  let systemInfo: ISystemInfo;
 
   beforeEach(async () => {
     logger = new TestLogger();
 
     const mockFs = await createMemFileSystem({});
     const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'toolconfig-context-test' });
+
+    systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
@@ -25,7 +34,7 @@ describe('IToolConfigContext', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
       fileSystem: mockFs.fs,
       logger,
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+      systemInfo,
       env: {},
     });
   });
@@ -33,18 +42,31 @@ describe('IToolConfigContext', () => {
   describe('Context creation and path resolution', () => {
     it('should create context with correct paths from projectConfig', async () => {
       const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'test-tool', 'test-tool.tool.ts');
-      const context = createToolConfigContext(mockProjectConfig, 'test-tool', toolConfigFilePath);
+      const context = createToolConfigContext(
+        mockProjectConfig,
+        systemInfo,
+        'test-tool',
+        path.dirname(toolConfigFilePath)
+      );
 
       expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.shellScriptsDir).toBe(mockProjectConfig.paths.shellScriptsDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(mockProjectConfig.paths.dotfilesDir);
       expect(context.projectConfig.paths.generatedDir).toBe(mockProjectConfig.paths.generatedDir);
       expect(context.toolDir).toBe(path.dirname(toolConfigFilePath));
+
+      // systemInfo should be injectable (provided by main.ts), not derived from process.
+      expect(context.systemInfo.platform).toBe('linux');
     });
 
     it('should work correctly with IToolConfigBuilder and context', async () => {
       const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'shell-tool', 'shell-tool.tool.ts');
-      const context = createToolConfigContext(mockProjectConfig, 'shell-tool', toolConfigFilePath);
+      const context = createToolConfigContext(
+        mockProjectConfig,
+        systemInfo,
+        'shell-tool',
+        path.dirname(toolConfigFilePath)
+      );
 
       // Test that context can be used in a tool configuration function
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -87,7 +109,12 @@ describe('IToolConfigContext', () => {
         'dependent-tool',
         'dependent-tool.tool.ts'
       );
-      const context = createToolConfigContext(mockProjectConfig, 'dependent-tool', toolConfigFilePath);
+      const context = createToolConfigContext(
+        mockProjectConfig,
+        systemInfo,
+        'dependent-tool',
+        path.dirname(toolConfigFilePath)
+      );
 
       // Test a tool that references other tools
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -130,7 +157,12 @@ describe('IToolConfigContext', () => {
         'completion-tool',
         'completion-tool.tool.ts'
       );
-      const context = createToolConfigContext(mockProjectConfig, 'completion-tool', toolConfigFilePath);
+      const context = createToolConfigContext(
+        mockProjectConfig,
+        systemInfo,
+        'completion-tool',
+        path.dirname(toolConfigFilePath)
+      );
 
       // Test a tool that generates completions
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -181,12 +213,19 @@ describe('IToolConfigContext', () => {
         env: {},
       });
 
+      const customSystemInfo: ISystemInfo = { platform: 'linux', arch: 'x64', homeDir: customTestDirs.paths.homeDir };
+
       const toolConfigFilePath = path.join(
         customProjectConfig.paths.toolConfigsDir,
         'custom-path-tool',
         'custom-path-tool.tool.ts'
       );
-      const context = createToolConfigContext(customProjectConfig, 'custom-path-tool', toolConfigFilePath);
+      const context = createToolConfigContext(
+        customProjectConfig,
+        customSystemInfo,
+        'custom-path-tool',
+        path.dirname(toolConfigFilePath)
+      );
 
       expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
       expect(context.projectConfig.paths.dotfilesDir).toBe(customProjectConfig.paths.dotfilesDir);
@@ -201,7 +240,12 @@ describe('IToolConfigContext', () => {
   describe('Real-world tool patterns', () => {
     it('should work with fzf-like tool pattern', async () => {
       const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'fzf-like', 'fzf-like.tool.ts');
-      const context = createToolConfigContext(mockProjectConfig, 'fzf-like', toolConfigFilePath);
+      const context = createToolConfigContext(
+        mockProjectConfig,
+        systemInfo,
+        'fzf-like',
+        path.dirname(toolConfigFilePath)
+      );
 
       // Test fzf-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {
@@ -237,7 +281,12 @@ describe('IToolConfigContext', () => {
 
     it('should work with atuin-like tool pattern', async () => {
       const toolConfigFilePath = path.join(mockProjectConfig.paths.toolConfigsDir, 'atuin-like', 'atuin-like.tool.ts');
-      const context = createToolConfigContext(mockProjectConfig, 'atuin-like', toolConfigFilePath);
+      const context = createToolConfigContext(
+        mockProjectConfig,
+        systemInfo,
+        'atuin-like',
+        path.dirname(toolConfigFilePath)
+      );
 
       // Test atuin-like pattern with context
       const configureToolFn: AsyncConfigureTool = async (install: InstallFunction, ctx: IToolConfigContext) => {

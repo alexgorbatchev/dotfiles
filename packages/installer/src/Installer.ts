@@ -10,6 +10,7 @@ import type {
   PluginEmittedHookEvent,
   ToolConfig,
 } from '@dotfiles/core';
+import { createToolConfigContext } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -25,10 +26,12 @@ type InstallHooks = Record<string, AsyncInstallHook[]>;
 
 type EmitEvent = (type: PluginEmittedHookEvent, data: UnknownRecord) => Promise<void>;
 
-type InstallContextWithEmitter = IInstallContext & { emitEvent?: EmitEvent };
+export interface IInstallContextWithEmitter extends IInstallContext {
+  emitEvent?: EmitEvent;
+}
 
 interface ICreateBaseInstallContextResult {
-  context: InstallContextWithEmitter;
+  context: IInstallContextWithEmitter;
   logger: TsLogger;
 }
 
@@ -870,17 +873,13 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
-    const currentDir: string = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+    const baseContext = createToolConfigContext(this.projectConfig, this.getSystemInfo(), toolName, toolDir);
 
     const minimalContext: IInstallContext = {
-      toolName,
-      toolDir,
-      currentDir,
+      ...baseContext,
       installDir: '',
       timestamp: '',
-      systemInfo: this.getSystemInfo(),
       toolConfig,
-      projectConfig: this.projectConfig,
       $: createConfiguredShell(this.$, process.env),
       fileSystem: this.fs,
     };
@@ -920,19 +919,15 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
-    const currentDir: string = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+    const baseContext = createToolConfigContext(this.projectConfig, this.getSystemInfo(), toolName, toolDir);
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
-    const context: InstallContextWithEmitter = {
-      toolName,
-      toolDir,
-      currentDir,
+    const context: IInstallContextWithEmitter = {
+      ...baseContext,
       installDir,
       timestamp,
-      systemInfo: this.getSystemInfo(),
       toolConfig,
-      projectConfig: this.projectConfig,
       $: $shell,
       fileSystem: this.fs,
       // Event emitter for plugins to trigger hooks
