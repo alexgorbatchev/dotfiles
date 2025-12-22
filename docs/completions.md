@@ -150,18 +150,19 @@ Specify where completion files should be installed using context variables for a
 
 ## Generated Completions
 
-Some tools can generate their own completions. Use shell initialization scripts for this:
+Some tools can generate their own completions. Use the `cmd` parameter for this:
 
 ```typescript
 .zsh((shell) =>
-  shell.once(/* zsh */`
-    # Generate completions once after installation
-    if command -v tool >/dev/null 2>&1; then
-      tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-    fi
-  `)
+  shell.completions({ cmd: 'tool completion zsh' })
 );
 ```
+
+The system will:
+1. Execute the command after installation
+2. Capture the output
+3. Save it to the appropriate completion directory
+4. Handle any errors gracefully
 
 ## Shell-Specific Integration
 
@@ -276,8 +277,10 @@ If `targetDir` is not specified, completions are installed to the default shell-
    ```
 
 2. **Archive doesn't include completions**: Some tools don't ship completion files in their releases
-   - Solution: Use `cmd` to generate completions instead
-   - Or use `once` scripts to generate completions after installation
+   - Solution: Use `cmd` to generate completions:
+     ```typescript
+     .zsh((shell) => shell.completions({ cmd: 'tool completion zsh' }))
+     ```
 
 3. **Path relative to wrong location**: Remember `source` is relative to the extracted archive root, not your config file
    ```typescript
@@ -307,19 +310,18 @@ If `targetDir` is not specified, completions are installed to the default shell-
 
 1. **Check tool supports completion generation**: Not all tools provide completion generation
 2. **Verify command syntax**: Test the completion generation command manually
-3. **Check permissions**: Ensure the generated file is readable
+3. **Check command exit code**: The tool must successfully generate completions
 
 ```typescript
+// ✅ Correct - Use cmd parameter
+.zsh((shell) =>
+  shell.completions({ cmd: 'tool completion zsh' })
+);
+
+// ❌ Incorrect - Don't use shell scripts for completion generation
 .zsh((shell) =>
   shell.once(/* zsh */`
-    # Add error checking for completion generation
-    if command -v tool >/dev/null 2>&1; then
-      if tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool" 2>/dev/null; then
-        echo "Generated completions for tool"
-      else
-        echo "Failed to generate completions for tool"
-      fi
-    fi
+    tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
   `)
 );
 ```
