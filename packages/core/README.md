@@ -112,6 +112,7 @@ interface IBaseToolContext {
   systemInfo: ISystemInfo;
   toolName: string;
   toolDir: string;
+  currentDir: string;
 }
 
 interface IToolConfigContext extends IBaseToolContext {}

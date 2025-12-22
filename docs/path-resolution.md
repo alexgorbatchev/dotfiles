@@ -43,8 +43,8 @@ Always use ToolConfigContext variables for dynamic paths:
 ## Tool Version Directory Structure
 
 For referencing files within the current tool version, you'll typically need to construct paths like:
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/share/` for tool assets
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/config/` for tool configs
+- `${ctx.currentDir}/share/` for tool assets
+- `${ctx.currentDir}/config/` for tool configs
 
 ## Common Path Patterns
 
@@ -138,7 +138,7 @@ ${ctx.projectConfig.paths.generatedDir}/binaries/
 3. `binaryPath` identifies which file is the main executable
 4. An executable entrypoint file is created at `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/<version>/<binaryName>` by copying the resolved binary
 5. `current` is updated to point at the installed version directory
-6. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` and execute `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/<binaryName>`
+6. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` and execute `${ctx.currentDir}/<binaryName>`
 
 ## Path Resolution Examples
 
@@ -207,7 +207,7 @@ export default defineTool((install, ctx) =>
 );
 
 // Shim created at: ${ctx.projectConfig.paths.targetDir}/my-tool
-// Shim executes: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/my-tool
+// Shim executes: ${ctx.currentDir}/my-tool
 ```
 
 ## Cross-Platform Path Considerations

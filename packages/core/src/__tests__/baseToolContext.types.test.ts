@@ -12,6 +12,7 @@ const assertNoDotfilesDirInBaseToolContext: AssertKeyAbsent<IBaseToolContext, 'd
 const assertNoGeneratedDirInBaseToolContext: AssertKeyAbsent<IBaseToolContext, 'generatedDir'> = true;
 
 const assertHasToolDirInBaseToolContext: AssertKeyPresent<IBaseToolContext, 'toolDir'> = true;
+const assertHasCurrentDirInBaseToolContext: AssertKeyPresent<IBaseToolContext, 'currentDir'> = true;
 
 test('IBaseToolContext type-only assertions compile', () => {
   expect(assertNoHomeDirInBaseToolContext).toBe(true);
@@ -20,5 +21,6 @@ test('IBaseToolContext type-only assertions compile', () => {
   expect(assertNoDotfilesDirInBaseToolContext).toBe(true);
   expect(assertNoGeneratedDirInBaseToolContext).toBe(true);
   expect(assertHasToolDirInBaseToolContext).toBe(true);
+  expect(assertHasCurrentDirInBaseToolContext).toBe(true);
   expect(true).toBe(true);
 });

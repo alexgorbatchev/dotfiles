@@ -76,9 +76,12 @@ function createInstallContext(
     ? path.dirname(config.configFilePath)
     : projectConfig.paths.toolConfigsDir;
 
+  const currentDir: string = path.join(projectConfig.paths.binariesDir, config.name, 'current');
+
   const context: IInstallContext = {
     toolName: config.name,
     toolDir,
+    currentDir,
     installDir: projectConfig.paths.binariesDir,
     timestamp: timestamp || '',
     systemInfo,

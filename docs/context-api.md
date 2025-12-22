@@ -12,6 +12,12 @@ interface IToolConfigContext {
   /** Absolute path to the directory containing the tool's `.tool.ts` file */
   toolDir: string;
 
+  /**
+   * Absolute path to the tool's stable `current` directory.
+   * Note: the directory/symlink may not exist until after a successful install.
+   */
+  currentDir: string;
+
   /** Full project configuration (including paths) */
   projectConfig: ProjectConfig;
 
@@ -138,8 +144,8 @@ export default defineTool((install, ctx) =>
         })
         .always(/* zsh */`
           # Access tool assets
-          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/share/themes/default.toml" ]]; then
-            export TOOL_THEME="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/share/themes/default.toml"
+          if [[ -f "${ctx.currentDir}/share/themes/default.toml" ]]; then
+            export TOOL_THEME="${ctx.currentDir}/share/themes/default.toml"
           fi
         `)
     )
@@ -293,8 +299,8 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.always(/* zsh */`
-        if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/init.zsh" ]]; then
-          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/init.zsh"
+        if [[ -f "${ctx.currentDir}/shell/init.zsh" ]]; then
+          source "${ctx.currentDir}/shell/init.zsh"
         fi
       `)
     )

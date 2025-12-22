@@ -68,8 +68,8 @@ export default defineTool((install, ctx) =>
         .completions('shell/completion.zsh')
         .always(/* zsh */`
           # Source key bindings and create custom functions
-          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/key-bindings.zsh" ]]; then
-            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/key-bindings.zsh"
+          if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.currentDir}/shell/key-bindings.zsh"
           fi
           
           function fzf-jump-to-dir() {

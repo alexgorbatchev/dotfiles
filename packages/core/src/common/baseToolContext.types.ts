@@ -47,4 +47,18 @@ export interface IBaseToolContext {
    * `"${toolDir}/shell/key-bindings.zsh"`
    */
   toolDir: string;
+
+  /**
+   * Absolute path to the tool's stable "current" directory.
+   *
+   * This is always the path where the installer will create the `current` symlink:
+   * `"${projectConfig.paths.binariesDir}/${toolName}/current"`.
+   *
+   * Lifecycle note:
+   * - This path is always present on the context.
+   * - The directory/symlink on disk typically only exists **after a successful install**
+   *   (i.e. from post-install hooks onward).
+   * - Hooks that run before installation must not assume it exists.
+   */
+  currentDir: string;
 }

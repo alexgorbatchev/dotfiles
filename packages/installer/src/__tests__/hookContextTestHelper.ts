@@ -54,9 +54,12 @@ export function createTestInstallHookContext(
 
   const configuredShell = createConfiguredShell(createMock$(), {});
 
+  const currentDir: string = `${mockProjectConfig.paths.binariesDir}/${toolConfig.name}/current`;
+
   const baseContext: IInstallContext = {
     toolName: 'test-tool',
     toolDir: '/home/user/.dotfiles/configs/tools/test-tool',
+    currentDir,
     projectConfig: mockProjectConfig,
 
     // InstallContext specific properties

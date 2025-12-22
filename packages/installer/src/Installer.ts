@@ -870,9 +870,12 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
+    const currentDir: string = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+
     const minimalContext: IInstallContext = {
       toolName,
       toolDir,
+      currentDir,
       installDir: '',
       timestamp: '',
       systemInfo: this.getSystemInfo(),
@@ -917,11 +920,14 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
+    const currentDir: string = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
     const context: InstallContextWithEmitter = {
       toolName,
       toolDir,
+      currentDir,
       installDir,
       timestamp,
       systemInfo: this.getSystemInfo(),

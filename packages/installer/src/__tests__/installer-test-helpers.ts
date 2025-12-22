@@ -584,9 +584,12 @@ export function createTestContext(
   const shell: $extended = createConfiguredShell(createMock$(), process.env);
   const toolDir = path.join(setup.mockProjectConfig.paths.toolConfigsDir, MOCK_TOOL_NAME);
 
-  const result: IInstallContext = {
+  const baseCurrentDir: string = path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'current');
+
+  const baseContext: IInstallContext = {
     toolName: MOCK_TOOL_NAME,
     toolDir,
+    currentDir: baseCurrentDir,
     installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
     timestamp: '2024-08-13-16-45-23',
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
@@ -594,10 +597,17 @@ export function createTestContext(
     projectConfig: setup.mockProjectConfig,
     $: shell,
     fileSystem: setup.fs,
-    ...overrides,
   };
 
-  return result;
+  const currentDir: string = overrides.currentDir ?? baseContext.currentDir;
+
+  const context: IInstallContext = {
+    ...baseContext,
+    ...overrides,
+    currentDir,
+  };
+
+  return context;
 }
 
 /**

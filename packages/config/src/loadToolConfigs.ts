@@ -140,13 +140,15 @@ export function createToolConfigContext(
   toolConfigFilePath: string
 ): IToolConfigContext {
   const toolDir = path.dirname(toolConfigFilePath);
+  const currentDir = path.join(projectConfig.paths.binariesDir, currentToolName, 'current');
 
   const context: IToolConfigContext = {
     toolName: currentToolName,
     toolDir,
+    currentDir,
     projectConfig,
 
-    // [TODO] should use systemInfo from main.ts, not process
+    // systemInfo is derived from the current process environment.
     systemInfo: {
       platform: process.platform,
       arch: process.arch,

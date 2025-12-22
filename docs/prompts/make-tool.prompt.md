@@ -272,8 +272,8 @@ export default defineTool((install, ctx) =>
         .aliases({ f: 'fzf' })
         .completions('shell/completion.zsh')
         .always(/* zsh */`
-          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/key-bindings.zsh" ]]; then
-            source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/key-bindings.zsh"
+          if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
+            source "${ctx.currentDir}/shell/key-bindings.zsh"
           fi
         `)
     )
