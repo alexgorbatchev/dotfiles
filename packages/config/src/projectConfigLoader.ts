@@ -16,6 +16,58 @@ import { exitCli, expandHomePath } from '@dotfiles/utils';
 import { z } from 'zod';
 import { messages } from './log-messages';
 
+type UnknownRecord = Record<string, unknown>;
+
+const EMPTY_RECORD: UnknownRecord = {};
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isError(value: unknown): value is Error {
+  return value instanceof Error;
+}
+
+function isPlainRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function mapNodePlatformToConfigOs(platform: string): string {
+  if (platform === 'darwin') return 'macos';
+  if (platform === 'linux') return 'linux';
+  if (platform === 'win32') return 'windows';
+  return platform;
+}
+
+function mapNodeArchToConfigArch(arch: string): string {
+  if (arch === 'x64') return 'x86_64';
+  if (arch === 'arm64') return 'arm64';
+  return arch;
+}
+
+function mapConfigOsToPlatform(configOs: unknown): Platform {
+  if (!isString(configOs)) {
+    return Platform.None;
+  }
+
+  if (configOs === 'macos') return Platform.MacOS;
+  if (configOs === 'linux') return Platform.Linux;
+  if (configOs === 'windows') return Platform.Windows;
+
+  return Platform.None;
+}
+
+function mapConfigArchToArchitecture(configArch: unknown): Architecture {
+  if (!isString(configArch)) {
+    return Architecture.None;
+  }
+
+  if (configArch === 'x86_64') return Architecture.X86_64;
+  if (configArch === 'arm64') return Architecture.Arm64;
+
+  return Architecture.None;
+}
+
 /**
  * Detects the current operating system
  *
@@ -23,10 +75,7 @@ import { messages } from './log-messages';
  * @returns The detected OS as a string ('macos', 'linux', or 'windows')
  */
 function detectOS(platform: string): string {
-  if (platform === 'darwin') return 'macos';
-  if (platform === 'linux') return 'linux';
-  if (platform === 'win32') return 'windows';
-  return platform;
+  return mapNodePlatformToConfigOs(platform);
 }
 
 /**
@@ -35,9 +84,7 @@ function detectOS(platform: string): string {
  * @returns The detected architecture as a string ('x86_64' or 'arm64')
  */
 function detectArch(arch: string): string {
-  if (arch === 'x64') return 'x86_64';
-  if (arch === 'arm64') return 'arm64';
-  return arch;
+  return mapNodeArchToConfigArch(arch);
 }
 
 /**
@@ -64,27 +111,28 @@ export interface IPlatformOverride {
  * @param source - The source object to merge from.
  * @returns The merged object.
  */
-function deepMerge<T extends Record<string, unknown>>(target: T, source: Record<string, unknown>): T {
-  const output = { ...target } as Record<string, unknown>;
+function deepMerge(target: unknown, source: unknown): UnknownRecord {
+  const targetRecord = isPlainRecord(target) ? target : EMPTY_RECORD;
+  const sourceRecord = isPlainRecord(source) ? source : EMPTY_RECORD;
 
-  for (const key in source) {
-    if (source[key] === undefined) continue;
+  const output: UnknownRecord = { ...targetRecord };
 
-    if (
-      source[key] &&
-      typeof source[key] === 'object' &&
-      !Array.isArray(source[key]) &&
-      target[key] &&
-      typeof target[key] === 'object' &&
-      !Array.isArray(target[key])
-    ) {
-      output[key] = deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
-    } else {
-      output[key] = source[key];
+  for (const [key, sourceValue] of Object.entries(sourceRecord)) {
+    if (sourceValue === undefined) {
+      continue;
     }
+
+    const targetValue = output[key];
+
+    if (isPlainRecord(targetValue) && isPlainRecord(sourceValue)) {
+      output[key] = deepMerge(targetValue, sourceValue);
+      continue;
+    }
+
+    output[key] = sourceValue;
   }
 
-  return output as T;
+  return output;
 }
 
 /**
@@ -100,9 +148,9 @@ function applyPlatformOverrides(
   systemInfo: ISystemInfo
 ): Record<string, unknown> {
   const logger = parentLogger.getSubLogger({ name: 'applyPlatformOverrides' });
-  const platformOverrides = (config['platform'] as IPlatformOverride[]) || [];
+  const platformOverridesValue: unknown = config['platform'];
 
-  if (!Array.isArray(platformOverrides)) {
+  if (!Array.isArray(platformOverridesValue)) {
     return config;
   }
 
@@ -111,39 +159,44 @@ function applyPlatformOverrides(
 
   logger.debug(messages.platformOverrides(currentPlatform, currentArch));
 
-  let result: Record<string, unknown> = deepMerge({}, config);
+  let result: UnknownRecord = deepMerge(EMPTY_RECORD, config);
 
-  for (const platformOverride of platformOverrides) {
-    if (!platformOverride.match || !Array.isArray(platformOverride.match) || !platformOverride.config) {
+  for (const platformOverrideValue of platformOverridesValue) {
+    if (!isPlainRecord(platformOverrideValue)) {
       continue;
     }
 
-    const matches = platformOverride.match.some((match) => {
-      const targetPlatform = match.os
-        ? { macos: Platform.MacOS, linux: Platform.Linux, windows: Platform.Windows }[match.os] || Platform.None
-        : Platform.None;
+    const matchValue: unknown = platformOverrideValue['match'];
+    const overrideConfigValue: unknown = platformOverrideValue['config'];
 
-      const targetArch = match.arch
-        ? { x86_64: Architecture.X86_64, arm64: Architecture.Arm64 }[match.arch] || Architecture.None
-        : Architecture.None;
+    if (!Array.isArray(matchValue) || !isPlainRecord(overrideConfigValue)) {
+      continue;
+    }
 
-      const currentPlatformEnum =
-        {
-          macos: Platform.MacOS,
-          linux: Platform.Linux,
-          windows: Platform.Windows,
-        }[currentPlatform] || Platform.None;
+    const currentPlatformEnum = mapConfigOsToPlatform(currentPlatform);
+    const currentArchEnum = mapConfigArchToArchitecture(currentArch);
 
-      const currentArchEnum =
-        { x86_64: Architecture.X86_64, arm64: Architecture.Arm64 }[currentArch] || Architecture.None;
+    const matches = matchValue.some((matchEntry) => {
+      if (!isPlainRecord(matchEntry)) {
+        return false;
+      }
 
-      const osMatches = !match.os || hasPlatform(targetPlatform, currentPlatformEnum);
-      const archMatches = !match.arch || hasArchitecture(targetArch, currentArchEnum);
+      const matchOsValue: unknown = matchEntry['os'];
+      const matchArchValue: unknown = matchEntry['arch'];
+
+      const hasOsConstraint = isString(matchOsValue);
+      const hasArchConstraint = isString(matchArchValue);
+
+      const targetPlatform = mapConfigOsToPlatform(matchOsValue);
+      const targetArch = mapConfigArchToArchitecture(matchArchValue);
+
+      const osMatches = !hasOsConstraint || hasPlatform(targetPlatform, currentPlatformEnum);
+      const archMatches = !hasArchConstraint || hasArchitecture(targetArch, currentArchEnum);
       return osMatches && archMatches;
     });
 
     if (matches) {
-      result = deepMerge(result, platformOverride.config);
+      result = deepMerge(result, overrideConfigValue);
     }
   }
 
@@ -183,19 +236,23 @@ function resolveNestedConfigValue(varName: string, fullConfig: Record<string, un
   let value: unknown = fullConfig;
 
   for (const part of parts) {
-    if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
-      value = (value as Record<string, unknown>)[part];
-    } else {
+    if (!isPlainRecord(value)) {
       return null;
     }
+
+    if (!(part in value)) {
+      return null;
+    }
+
+    value = value[part];
   }
 
-  return typeof value === 'string' ? value : null;
+  return isString(value) ? value : null;
 }
 
 function replaceConfigTokens(
   configStr: string,
-  finalEnv: Record<string, string | undefined>,
+  finalEnv: Record<string, unknown>,
   fullConfig: Record<string, unknown>
 ): string {
   return configStr.replace(/(?<!\$)\{([a-zA-Z0-9_.]+)\}/g, (match, varName) => {
@@ -204,14 +261,14 @@ function replaceConfigTokens(
       return resolvedValue !== null ? resolvedValue : match;
     }
 
-    const envValue = finalEnv[varName];
-    return envValue !== undefined ? envValue : match;
+    const envValue: unknown = finalEnv[varName];
+    return isString(envValue) ? envValue : match;
   });
 }
 
 function performTokenSubstitution(
   configStr: string,
-  finalEnv: Record<string, string | undefined>,
+  finalEnv: Record<string, unknown>,
   fullConfig: Record<string, unknown>
 ): string {
   let currentConfigStr = configStr;
@@ -234,7 +291,8 @@ function performTokenSubstitution(
 function hasConfigFilePath(
   config: Record<string, unknown>
 ): config is Record<string, unknown> & { configFilePath: string } {
-  return typeof (config as ProjectConfig).configFilePath === 'string';
+  const configFilePathValue: unknown = config['configFilePath'];
+  return isString(configFilePathValue);
 }
 
 /**
@@ -258,18 +316,27 @@ function substituteTokens(
       ? path.dirname(fullConfig.configFilePath)
       : systemInfo.homeDir;
 
-  const finalEnv = deepMerge(env, { HOME: systemInfo.homeDir, configFileDir });
+  const envDefaults: UnknownRecord = { HOME: systemInfo.homeDir, configFileDir };
+  const finalEnv = deepMerge(env, envDefaults);
   const configStr = Bun.YAML.stringify(config);
   const substitutedConfigStr = performTokenSubstitution(configStr, finalEnv, fullConfig);
 
   // Parse the config string back to an object
-  const parsedConfig = Bun.YAML.parse(substitutedConfigStr) as Record<string, unknown>;
+  const parsedConfigValue: unknown = Bun.YAML.parse(substitutedConfigStr);
+  if (!isPlainRecord(parsedConfigValue)) {
+    throw new Error('Token substitution produced an invalid configuration.');
+  }
 
   // Expand home paths in the config
   const userConfigPath = hasConfigFilePath(fullConfig) ? fullConfig.configFilePath : undefined;
   const baseDir = userConfigPath ? path.dirname(userConfigPath) : systemInfo.homeDir;
 
-  return expandHomePathsInObject(parsedConfig, baseDir) as Record<string, unknown>;
+  const expandedConfigValue: unknown = expandHomePathsInObject(parsedConfigValue, baseDir);
+  if (!isPlainRecord(expandedConfigValue)) {
+    throw new Error('Home path expansion produced an invalid configuration.');
+  }
+
+  return expandedConfigValue;
 }
 
 function processConfig(
@@ -285,12 +352,13 @@ function processConfig(
 
   const mergedConfig = deepMerge(defaultConfig, userConfig);
   const configWithPlatformOverrides = applyPlatformOverrides(parentLogger, mergedConfig, systemInfo);
-  const withInjectedValues: ProjectConfig = configWithPlatformOverrides as ProjectConfig;
+  const injectedValues: UnknownRecord = {
+    configFilePath: userConfigPath,
+    configFileDir: path.dirname(userConfigPath),
+  };
 
-  withInjectedValues.configFilePath = userConfigPath;
-  withInjectedValues.configFileDir = path.dirname(userConfigPath);
-
-  const configWithTokens = substituteTokens(withInjectedValues, env, withInjectedValues, systemInfo);
+  const configWithInjectedValues = deepMerge(configWithPlatformOverrides, injectedValues);
+  const configWithTokens = substituteTokens(configWithInjectedValues, env, configWithInjectedValues, systemInfo);
   const result = projectConfigSchema.extend(privateProjectConfigFields.shape).safeParse(configWithTokens);
 
   if (!result.success) {
@@ -355,7 +423,7 @@ export async function loadProjectConfig(
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadProjectConfig' });
   const defaultConfig = await loadDefaultProjectConfigAsRecord(fileSystem);
-  let userConfig = {};
+  let userConfig: UnknownRecord = EMPTY_RECORD;
 
   if (!(await fileSystem.exists(userConfigPath))) {
     logger.error(messages.fsItemNotFound('Config file', userConfigPath));
@@ -364,10 +432,11 @@ export async function loadProjectConfig(
 
   try {
     const userConfigContent = await fileSystem.readFile(userConfigPath, 'utf-8');
-    userConfig = Bun.YAML.parse(userConfigContent) || {};
+    const parsedUserConfig: unknown = Bun.YAML.parse(userConfigContent);
+    userConfig = isPlainRecord(parsedUserConfig) ? parsedUserConfig : EMPTY_RECORD;
   } catch (error) {
     logger.error(
-      messages.configurationParseError(userConfigPath, 'YAML', error instanceof Error ? error.message : String(error))
+      messages.configurationParseError(userConfigPath, 'YAML', isError(error) ? error.message : String(error))
     );
   }
 
@@ -409,6 +478,6 @@ export async function createProjectConfigFromObject(
 ): Promise<ProjectConfig> {
   const resolvedUserConfigPath: string = options.userConfigPath;
   const defaultConfig = await loadDefaultProjectConfigAsRecord(fileSystem);
-  const userConfigClone = deepMerge({} as ProjectConfigPartial, userConfig);
+  const userConfigClone: UnknownRecord = deepMerge(EMPTY_RECORD, userConfig);
   return processConfig(parentLogger, resolvedUserConfigPath, defaultConfig, userConfigClone, systemInfo, env);
 }
