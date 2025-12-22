@@ -12,6 +12,7 @@ This file translates the **High Priority** items listed in `REVIEW-COMPLETION-SU
 
 ### T101 — Config: remove raw `node:fs` usage from `tsConfigLoader`
 
+- **Status:** Completed (2025-12-21)
 - **Branch:** `fix/config-tsConfigLoader-filesystem-abstraction`
 - **Package:** `packages/config`
 - **Issue:** `tsConfigLoader` uses `node:fs/promises` directly for its existence check even though it receives `IFileSystem`.
@@ -34,7 +35,7 @@ This file translates the **High Priority** items listed in `REVIEW-COMPLETION-SU
 
 ---
 
-### T102 ✅ — Config: consolidate platform/arch mapping logic
+### T102 — Config: consolidate platform/arch mapping logic
 
 - **Branch:** `refactor/config-platform-mapping`
 - **Package:** `packages/config`

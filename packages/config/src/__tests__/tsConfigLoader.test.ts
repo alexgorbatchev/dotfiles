@@ -52,7 +52,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       const expectedDotfilesDir = path.join(path.dirname(configPath), '.custom-dotfiles');
@@ -74,7 +74,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       const expectedDotfilesDir = path.join(path.dirname(configPath), 'object-dotfiles');
@@ -96,7 +96,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       // Custom value
@@ -124,7 +124,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       // Custom values
@@ -152,7 +152,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       expect(result.github.token).toBe('dynamic-token');
@@ -173,7 +173,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       const expectedConfigDir = path.dirname(configPath);
@@ -193,6 +193,23 @@ describe('tsConfigLoader', () => {
       );
     });
 
+    it('should use the injected filesystem for existence checks', async () => {
+      const configPath = path.join(tempDir, 'exists-only-on-disk.ts');
+      const configContent = `
+        export default {
+          paths: {
+            targetDir: '/custom/bin',
+          },
+        };
+      `;
+
+      await Bun.write(configPath, configContent);
+
+      const { fs } = await createMemFileSystem();
+
+      expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
+    });
+
     it('should exit with error if no default export', async () => {
       const configPath = path.join(tempDir, 'no-default.ts');
       const configContent = `
@@ -201,7 +218,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
 
       expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
     });
@@ -214,7 +231,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
 
       expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow(/MOCK_EXIT_CLI_CALLED_WITH_1/);
     });
@@ -229,7 +246,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
 
       expect(loadTsConfig(logger, fs, configPath, mockSystemInfo, {})).rejects.toThrow();
     });
@@ -249,7 +266,7 @@ describe('tsConfigLoader', () => {
 
       await Bun.write(configPath, configContent);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
       expect(result.configFilePath).toBeDefined();

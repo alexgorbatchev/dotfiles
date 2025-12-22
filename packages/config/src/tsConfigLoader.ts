@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { ISystemInfo, ProjectConfig, ProjectConfigPartial } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
@@ -7,6 +6,38 @@ import { exitCli } from '@dotfiles/utils';
 import type { ConfigContext } from './defineConfig';
 import { messages } from './log-messages';
 import { createProjectConfigFromObject } from './projectConfigLoader';
+
+type ModuleWithDefaultExport = {
+  default?: unknown;
+};
+
+type ConfigFactory = (ctx: ConfigContext) => unknown;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasDefaultExport(value: unknown): value is ModuleWithDefaultExport {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return 'default' in value;
+}
+
+function isConfigFactory(value: unknown): value is ConfigFactory {
+  return typeof value === 'function';
+}
+
+function isPromise(value: unknown): value is Promise<unknown> {
+  return value instanceof Promise;
+}
+
+function toProjectConfigPartial(value: Record<string, unknown>): ProjectConfigPartial {
+  const result: ProjectConfigPartial = {};
+  Object.assign(result, value);
+  return result;
+}
 
 /**
  * Loads and validates configuration from a TypeScript file.
@@ -20,10 +51,6 @@ import { createProjectConfigFromObject } from './projectConfigLoader';
  * @param systemInfo - System information for platform detection and path expansion.
  * @param env - Environment variables for token substitution.
  * @returns A promise that resolves to the fully validated and processed configuration.
- *
- * @testing
- * For unit and integration tests, create a temporary TypeScript file with the config function
- * using `createMemFileSystem` or actual file system operations.
  */
 export async function loadTsConfig(
   parentLogger: TsLogger,
@@ -34,9 +61,7 @@ export async function loadTsConfig(
 ): Promise<ProjectConfig> {
   const logger = parentLogger.getSubLogger({ name: 'loadTsConfig' });
 
-  try {
-    await fs.access(userConfigPath);
-  } catch {
+  if (!(await fileSystem.exists(userConfigPath))) {
     logger.error(messages.fsItemNotFound('Config file', userConfigPath));
     exitCli(1);
   }
@@ -44,27 +69,23 @@ export async function loadTsConfig(
   let userConfig: ProjectConfigPartial = {};
 
   try {
-    const module = await import(userConfigPath);
+    const importedModule: unknown = await import(userConfigPath);
 
-    if (!module.default) {
+    if (!hasDefaultExport(importedModule) || !importedModule.default) {
       logger.error(messages.configurationParseError(userConfigPath, 'TypeScript', 'no default export'));
       exitCli(1);
     }
 
-    let configOrFactory = module.default;
+    const configFileDir = path.dirname(userConfigPath);
+    const ctx: ConfigContext = { configFileDir, systemInfo };
 
-    if (typeof configOrFactory === 'function') {
-      const configFileDir = path.dirname(userConfigPath);
-      const ctx: ConfigContext = { configFileDir, systemInfo };
-      configOrFactory = configOrFactory(ctx);
-    }
+    const defaultExport: unknown = importedModule.default;
+    const configValue: unknown = isConfigFactory(defaultExport) ? defaultExport(ctx) : defaultExport;
 
-    // Handle Promise from defineConfig (which wraps sync/async config functions)
-    if (configOrFactory instanceof Promise) {
-      userConfig = await configOrFactory;
-    } else if (typeof configOrFactory === 'object') {
-      // Handle direct object export
-      userConfig = configOrFactory as ProjectConfigPartial;
+    const resolvedConfigValue: unknown = isPromise(configValue) ? await configValue : configValue;
+
+    if (isRecord(resolvedConfigValue)) {
+      userConfig = toProjectConfigPartial(resolvedConfigValue);
     } else {
       logger.error(
         messages.configurationParseError(

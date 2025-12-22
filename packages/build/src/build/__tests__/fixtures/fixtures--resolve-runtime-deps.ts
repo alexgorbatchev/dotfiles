@@ -2,11 +2,7 @@
  * Test fixtures for resolveRuntimeDependencies tests
  */
 
-export const FIXTURE_EXTERNAL_DEPENDENCIES: string[] = [
-  'tslog',
-  'zod',
-  'memfs',
-];
+export const FIXTURE_EXTERNAL_DEPENDENCIES: string[] = ['tslog', 'zod', 'memfs'];
 
 export const FIXTURE_INSTALLED_VERSIONS: Record<string, string> = {
   tslog: '4.8.1',

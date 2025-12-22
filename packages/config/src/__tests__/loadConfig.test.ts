@@ -93,7 +93,7 @@ describe('loadConfig', () => {
       `;
 
       await realFs.writeFile(configPath, tsContent);
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
 
       const result = await loadConfig(logger, fs, configPath, mockSystemInfo, {});
 
@@ -134,7 +134,7 @@ describe('loadConfig', () => {
       const configPath = path.join(tempDir, 'config.ts');
       await realFs.writeFile(configPath, `export default {};`);
 
-      const { fs } = await createMemFileSystem();
+      const fs = new NodeFileSystem();
       await loadConfig(logger, fs, configPath, mockSystemInfo, {});
 
       expect(logger.logs.length).toBeGreaterThan(0);

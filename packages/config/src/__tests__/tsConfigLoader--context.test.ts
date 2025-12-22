@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { ISystemInfo } from '@dotfiles/core';
-import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
+import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
 import { loadTsConfig } from '../tsConfigLoader';
@@ -48,7 +48,7 @@ describe('tsConfigLoader context', () => {
 
     await Bun.write(configPath, configContent);
 
-    const { fs } = await createMemFileSystem();
+    const fs = new NodeFileSystem();
     const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
     const expectedGeneratedDir = path.join(path.dirname(configPath), '.generated');

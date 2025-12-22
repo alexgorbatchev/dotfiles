@@ -2,7 +2,7 @@
  * Test helper for creating mock IBuildContext instances
  */
 
-import type { IBuildContext, IBuildConstants, IBuildPaths } from '../../../build/types';
+import type { IBuildConstants, IBuildContext, IBuildPaths } from '../../../build/types';
 
 interface MockBuildContextOverrides {
   paths?: Partial<IBuildPaths>;

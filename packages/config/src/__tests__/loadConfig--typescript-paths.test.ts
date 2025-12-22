@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { ISystemInfo } from '@dotfiles/core';
-import { createMemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
+import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
 import { loadConfig } from '../loadConfig';
@@ -59,9 +59,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     `;
 
     await realFs.writeFile(configPath, tsContent);
-    const { fs } = await createMemFileSystem();
-
-    const result = await loadConfig(logger, fs, configPath, mockSystemInfo, {});
+  const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
 
     const expectedConfigDir = path.dirname(configPath);
     const expectedGeneratedDir = path.join(expectedConfigDir, '.generated');
@@ -101,9 +99,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     `;
 
     await realFs.writeFile(configPath, tsContent);
-    const { fs } = await createMemFileSystem();
-
-    const result = await loadConfig(logger, fs, configPath, mockSystemInfo, {});
+  const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
 
     const expectedConfigDir = path.dirname(configPath);
     const expectedDotfilesDir = path.join(expectedConfigDir, 'dotfiles');
@@ -146,9 +142,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     `;
 
     await realFs.writeFile(configPath, tsContent);
-    const { fs } = await createMemFileSystem();
-
-    const result = await loadConfig(logger, fs, configPath, mockSystemInfo, {});
+  const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
 
     const expectedConfigDir = path.dirname(configPath);
     const expectedGeneratedDir = path.join(expectedConfigDir, '.generated');

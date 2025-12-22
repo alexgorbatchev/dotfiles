@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import path from 'node:path';
 import fs from 'node:fs';
-import { enforceCliBundleSizeLimit } from '../steps/enforceCliBundleSizeLimit';
+import path from 'node:path';
 import { BuildError } from '../handleBuildError';
+import { enforceCliBundleSizeLimit } from '../steps/enforceCliBundleSizeLimit';
 import type { IBuildContext } from '../types';
-import { createMockBuildContext } from './helpers/createMockBuildContext';
-import { setupTmpDir } from './helpers/manageTmpDir';
 import {
+  FIXTURE_LARGE_FILE_SIZE_BYTES,
   FIXTURE_MAX_SIZE_LIMIT_BYTES,
   FIXTURE_SMALL_FILE_SIZE_BYTES,
-  FIXTURE_LARGE_FILE_SIZE_BYTES,
 } from './fixtures/fixtures--bundle-size';
+import { createMockBuildContext } from './helpers/createMockBuildContext';
+import { setupTmpDir } from './helpers/manageTmpDir';
 
 const tmpHelper = setupTmpDir(__dirname);
 

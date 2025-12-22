@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
 import { generateDistPackageJson } from '../steps/generateDistPackageJson';
 import type { IBuildContext, IDependencyVersions } from '../types';
-import { createMockBuildContext } from './helpers/createMockBuildContext';
-import { setupTmpDir } from './helpers/manageTmpDir';
 import {
   FIXTURE_REQUIRED_DEPENDENCY_FIELDS,
   FIXTURE_SAMPLE_DEPENDENCY_VERSIONS,
   FIXTURE_SAMPLE_RUNTIME_DEPENDENCIES,
 } from './fixtures/fixtures--dist-package-json';
+import { createMockBuildContext } from './helpers/createMockBuildContext';
+import { setupTmpDir } from './helpers/manageTmpDir';
 
 const tmpHelper = setupTmpDir(__dirname);
 

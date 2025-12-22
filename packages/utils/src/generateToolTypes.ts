@@ -1,5 +1,6 @@
 import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
+import path from 'node:path';
 import { getBuiltPackageName } from './getBuiltPackageName';
 
 /**
@@ -85,5 +86,6 @@ export async function generateToolTypes(
   fs: IFileSystem
 ): Promise<void> {
   const content: string = generateToolTypesContent(toolConfigs);
+  await fs.ensureDir(path.dirname(outputPath));
   await fs.writeFile(outputPath, content, 'utf8');
 }
