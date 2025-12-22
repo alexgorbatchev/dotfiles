@@ -1,6 +1,4 @@
 import { createSafeLogMessage, type SafeLogMessageMap } from '@dotfiles/logger';
-
-// TODO flatten
 export const messages = {
   binarySetupService: {
     binaryNotFound: (binaryName: string, pattern: string) =>
@@ -34,19 +32,20 @@ export const messages = {
   binarySymlink: {
     targetBinaryMissing: (toolName: string, binaryName: string, targetPath: string) =>
       createSafeLogMessage(
-        `Cannot create symlink for ${toolName}/${binaryName}: target binary missing at ${targetPath}`
+        `Cannot create entrypoint for ${toolName}/${binaryName}: target binary missing at ${targetPath}`
       ),
-    removingExisting: (symlinkPath: string) => createSafeLogMessage(`Removing old symlink: ${symlinkPath}`),
-    removeExistingFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to remove old symlink ${symlinkPath}`),
+    removingExisting: (symlinkPath: string) => createSafeLogMessage(`Removing old entrypoint: ${symlinkPath}`),
+    removeExistingFailed: (symlinkPath: string) =>
+      createSafeLogMessage(`Failed to remove old entrypoint ${symlinkPath}`),
     creating: (symlinkPath: string, targetPath: string) =>
-      createSafeLogMessage(`Creating symlink: ${symlinkPath} -> ${targetPath}`),
+      createSafeLogMessage(`Creating entrypoint: ${symlinkPath} <- ${targetPath}`),
     creationFailed: (symlinkPath: string, targetPath: string) =>
-      createSafeLogMessage(`Failed to create symlink ${symlinkPath} -> ${targetPath}`),
+      createSafeLogMessage(`Failed to create entrypoint ${symlinkPath} <- ${targetPath}`),
     verificationMismatch: (symlinkPath: string, expectedTarget: string, actualTarget: string) =>
-      createSafeLogMessage(`Symlink ${symlinkPath} points to ${actualTarget}, expected ${expectedTarget}`),
-    verificationFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to verify symlink ${symlinkPath}`),
+      createSafeLogMessage(`Entrypoint ${symlinkPath} is ${actualTarget}, expected ${expectedTarget}`),
+    verificationFailed: (symlinkPath: string) => createSafeLogMessage(`Failed to verify entrypoint ${symlinkPath}`),
     createdAndVerified: (symlinkPath: string, targetPath: string) =>
-      createSafeLogMessage(`Successfully created and verified symlink: ${symlinkPath} -> ${targetPath}`),
+      createSafeLogMessage(`Successfully created and verified entrypoint: ${symlinkPath} <- ${targetPath}`),
   } satisfies SafeLogMessageMap,
   lifecycle: {
     startingInstallation: (toolName: string) => createSafeLogMessage(`Starting installation for ${toolName}`),

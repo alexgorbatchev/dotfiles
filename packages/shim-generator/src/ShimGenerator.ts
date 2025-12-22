@@ -143,8 +143,8 @@ export class ShimGenerator implements IShimGenerator {
       // It's our shim and overwrite is true - continue to overwrite
     }
 
-    // Use the new symlink-based path structure
-    const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, binaryName);
+    // Use the stable current symlink folder for execution
+    const toolBinaryPath = path.join(this.config.paths.binariesDir, toolName, 'current', binaryName);
 
     logger.debug(messages.generateShim.resolvedBinaryPath(toolName, binaryName, toolBinaryPath));
 

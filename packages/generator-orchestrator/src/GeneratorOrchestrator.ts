@@ -120,7 +120,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       // Handle both command-based and source-based completions
       if (completionConfig?.cmd || completionConfig?.source) {
         try {
-          const installDir = path.join(this.projectConfig.paths.binariesDir, toolName);
+          const installDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
 
           const context: ICompletionGenerationContext = {
             homeDir: this.projectConfig.paths.homeDir,

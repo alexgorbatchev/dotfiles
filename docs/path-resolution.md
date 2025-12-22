@@ -43,8 +43,8 @@ Always use ToolConfigContext variables for dynamic paths:
 ## Tool Version Directory Structure
 
 For referencing files within the current tool version, you'll typically need to construct paths like:
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/share/` for tool assets
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/config/` for tool configs
+- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/share/` for tool assets
+- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/config/` for tool configs
 
 ## Common Path Patterns
 
@@ -110,17 +110,18 @@ export default defineTool((install, ctx) =>
 
 ## Recommended Directory Structure
 
-For optimal tool management, the system uses a versioned directory structure that preserves archive integrity:
+For optimal tool management, the system uses versioned install directories and a stable `current` symlink:
 
 ```
 ${ctx.projectConfig.paths.generatedDir}/binaries/
 └── tool-name/
-    └── version/                 # e.g., "1.2.3" or "latest"  
-        ├── bin/                 # Extracted archive contents (preserved)
-        │   └── tool-binary
-        ├── lib/                 # Shared libraries (if any)
-        ├── share/               # Assets, docs, etc.
-        └── config/              # Default configs
+  ├── 1.2.3/                   # Versioned install directory
+  │   ├── tool                 # Entrypoint executable (copied from the extracted archive)
+  │   ├── bin/                 # Extracted archive contents (preserved)
+  │   ├── lib/                 # Shared libraries (if any)
+  │   ├── share/               # Assets, docs, etc.
+  │   └── config/              # Default configs
+  └── current -> 1.2.3         # Stable directory symlink
 ```
 
 ### Benefits of This Approach
@@ -135,8 +136,9 @@ ${ctx.projectConfig.paths.generatedDir}/binaries/
 1. Archives are extracted to `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/version/` 
 2. Archive structure is preserved completely
 3. `binaryPath` identifies which file is the main executable
-4. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` that execute the binary from its original location
-5. No files are moved or copied from the extraction location
+4. An executable entrypoint file is created at `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/<version>/<binaryName>` by copying the resolved binary
+5. `current` is updated to point at the installed version directory
+6. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` and execute `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/<binaryName>`
 
 ## Path Resolution Examples
 
@@ -205,7 +207,7 @@ export default defineTool((install, ctx) =>
 );
 
 // Shim created at: ${ctx.projectConfig.paths.targetDir}/my-tool
-// Shim executes: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/bin/my-tool
+// Shim executes: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/my-tool
 ```
 
 ## Cross-Platform Path Considerations

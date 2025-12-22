@@ -1,4 +1,4 @@
-export * from './createBinarySymlinks';
+export * from './createBinaryEntrypoint';
 export * from './createConfiguredShell';
 export * from './createToolFileSystem';
 export * from './downloadWithProgress';

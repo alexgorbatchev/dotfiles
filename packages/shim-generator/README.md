@@ -17,11 +17,13 @@ The shim-generator creates executable wrapper scripts (shims) for all installed 
 
 ## How Shims Work
 
-1. Tool binary is installed to configured binaries directory (e.g., `{config.paths.binariesDir}/{tool}/{binary}`)
-2. Shim is created at configured target directory (e.g., `{config.paths.targetDir}/{binary}`)
-3. User adds target directory to PATH
-4. Running `{binary}` executes the shim
-5. Shim forwards execution to actual binary or auto-installs if not found
+1. Tool binary is installed under the tool directory (e.g., `{config.paths.binariesDir}/{tool}/{version-or-timestamp}/...`)
+2. Installer maintains `{config.paths.binariesDir}/{tool}/current -> {version-or-timestamp}`
+3. Shim executes `{config.paths.binariesDir}/{tool}/current/{binary}`
+4. Shim is created at configured target directory (e.g., `{config.paths.targetDir}/{binary}`)
+5. User adds target directory to PATH
+6. Running `{binary}` executes the shim
+7. Shim forwards execution to actual binary or auto-installs if not found
 
 ## API
 
@@ -115,7 +117,7 @@ if (installResult.success) {
 set -euo pipefail
 
 TOOL_NAME="fzf"
-TOOL_EXECUTABLE="{config.paths.binariesDir}/fzf/fzf"
+TOOL_EXECUTABLE="{config.paths.binariesDir}/fzf/current/fzf"
 GENERATOR_CLI_EXECUTABLE="path/to/cli"
 CONFIG_PATH="path/to/config.yaml"
 
@@ -238,7 +240,7 @@ The package includes tests for:
 ### Binary Not Found
 
 ```typescript
-Error: Binary not found: {config.paths.binariesDir}/fzf/fzf
+Error: Binary not found: {config.paths.binariesDir}/fzf/current/fzf
 Tool: fzf
 Binary: fzf
 ```
@@ -269,7 +271,7 @@ await shimGenerator.generateForTool('fzf');
 ### Validate Binary Exists
 ```typescript
 // Check binary exists before creating shim
-const binaryPath = path.join(toolInstallDir, 'bin', binaryName);
+const binaryPath = path.join(config.paths.binariesDir, toolName, 'current', binaryName);
 const exists = await fileSystem.exists(binaryPath);
 
 if (!exists) {
@@ -318,7 +320,7 @@ ln -s ~/.dotfiles/tools/fzf/bin/fzf ~/.dotfiles/bin/fzf
 # Shim with custom environment
 
 export FZF_DEFAULT_OPTS="--height 40% --border"
-exec "{config.paths.binariesDir}/fzf/fzf" "$@"
+exec "{config.paths.binariesDir}/fzf/current/fzf" "$@"
 ```
 
 ### Shim with Validation
@@ -331,7 +333,7 @@ if [[ ! -f "$HOME/.fzfrc" ]]; then
   echo "Warning: ~/.fzfrc not found" >&2
 fi
 
-exec "{config.paths.binariesDir}/fzf/fzf" "$@"
+exec "{config.paths.binariesDir}/fzf/current/fzf" "$@"
 ```
 
 ### Shim with Logging
@@ -341,7 +343,7 @@ exec "{config.paths.binariesDir}/fzf/fzf" "$@"
 # Shim with execution logging
 
 echo "[$(date)] Executing fzf with args: $*" >> ~/.dotfiles/logs/fzf.log
-exec "{config.paths.binariesDir}/fzf/fzf" "$@"
+exec "{config.paths.binariesDir}/fzf/current/fzf" "$@"
 ```
 
 ## Performance Considerations

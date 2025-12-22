@@ -644,9 +644,8 @@ export class Installer implements IInstaller {
         }
       }
 
-      // Create symlinks to the actual binaries for all tools
-      // This ensures that shims always point to a stable location in the tool directory
-      // regardless of whether the tool is versioned (timestamped) or externally managed
+      // Create stable binary entrypoints for all tools.
+      // Shims always execute via toolDir/current/<binary>, so <binary> must be a direct executable file.
       // Filter out paths that don't exist - these may have been handled by setupBinariesFromArchive
       const binaryPaths = result.success && 'binaryPaths' in result ? result.binaryPaths : undefined;
       if (result.success && binaryPaths) {
@@ -658,8 +657,21 @@ export class Installer implements IInstaller {
           }
         }
         if (existingPaths.length > 0) {
-          await this.createBinarySymlinks(toolName, existingPaths, toolFs, logger);
+          await this.createBinaryEntrypoints(
+            toolName,
+            existingPaths,
+            toolFs,
+            logger,
+            context.installDir,
+            isExternallyManaged
+          );
         }
+      }
+
+      // Update current symlink after installation and any rename.
+      // This provides a stable directory for shims: {binariesDir}/{toolName}/current/...
+      if (result.success) {
+        await this.updateCurrentSymlink(toolName, toolFs, logger, context.installDir, isExternallyManaged);
       }
 
       // If installation failed, clean up the empty installation directory (skip for externally managed)
@@ -732,30 +744,113 @@ export class Installer implements IInstaller {
    * @param fs - File system instance for creating symlinks
    * @param parentLogger - Logger for diagnostic messages
    */
-  private async createBinarySymlinks(
+  private async createBinaryEntrypoints(
     toolName: string,
     binaryPaths: string[],
     fs: IFileSystem,
-    parentLogger: TsLogger
+    parentLogger: TsLogger,
+    installDir: string,
+    isExternallyManaged: boolean
   ): Promise<void> {
-    const logger = parentLogger.getSubLogger({ name: 'createBinarySymlinks' });
+    const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoints' });
     const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
     const toolDir = path.join(binariesDir, toolName);
 
     // Ensure tool directory exists
     await fs.ensureDir(toolDir);
 
-    // Create symlink for each binary using SymlinkGenerator
+    if (isExternallyManaged) {
+      const externalDir = path.join(toolDir, 'external');
+      await fs.ensureDir(externalDir);
+
+      for (const binaryPath of binaryPaths) {
+        const binaryName = path.basename(binaryPath);
+        const symlinkPath = path.join(externalDir, binaryName);
+
+        try {
+          await this.symlinkGenerator.createBinarySymlink(binaryPath, symlinkPath, logger);
+        } catch (error) {
+          logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
+          throw error;
+        }
+      }
+
+      return;
+    }
+
     for (const binaryPath of binaryPaths) {
       const binaryName = path.basename(binaryPath);
-      const symlinkPath = path.join(toolDir, binaryName);
+      const entrypointPath = path.join(installDir, binaryName);
+
+      if (binaryPath === entrypointPath) {
+        continue;
+      }
 
       try {
-        await this.symlinkGenerator.createBinarySymlink(binaryPath, symlinkPath, logger);
+        if (await fs.exists(entrypointPath)) {
+          await fs.rm(entrypointPath, { force: true });
+        }
       } catch (error) {
-        logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
+        logger.error(messages.binarySymlink.removeExistingFailed(entrypointPath), error);
         throw error;
       }
+
+      try {
+        await fs.copyFile(binaryPath, entrypointPath);
+
+        const binaryStats = await fs.stat(binaryPath);
+        const binaryMode: number = binaryStats.mode & 0o777;
+        await fs.chmod(entrypointPath, binaryMode);
+      } catch (error) {
+        logger.error(messages.binarySymlink.creationFailed(entrypointPath, binaryPath), error);
+        throw error;
+      }
+    }
+  }
+
+  private async updateCurrentSymlink(
+    toolName: string,
+    fs: IFileSystem,
+    parentLogger: TsLogger,
+    installDir: string,
+    isExternallyManaged: boolean
+  ): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'updateCurrentSymlink' });
+    const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
+    const toolDir = path.join(binariesDir, toolName);
+    const currentSymlinkPath = path.join(toolDir, 'current');
+
+    await fs.ensureDir(toolDir);
+
+    const currentTarget: string = isExternallyManaged ? 'external' : path.basename(installDir);
+
+    try {
+      if (await fs.exists(currentSymlinkPath)) {
+        await fs.rm(currentSymlinkPath, { force: true, recursive: true });
+      }
+    } catch (error) {
+      logger.error(messages.lifecycle.removingExistingSymlink(currentSymlinkPath), error);
+      throw error;
+    }
+
+    try {
+      await fs.symlink(currentTarget, currentSymlinkPath, 'dir');
+    } catch (error) {
+      logger.error(messages.lifecycle.creatingExternalSymlink(currentSymlinkPath, currentTarget), error);
+      throw error;
+    }
+
+    try {
+      const linkTarget = await fs.readlink(currentSymlinkPath);
+      if (linkTarget !== currentTarget) {
+        logger.error(messages.lifecycle.symlinkVerificationFailed(currentSymlinkPath));
+        throw new Error(
+          `Symlink verification failed: ${currentSymlinkPath} points to ${linkTarget}, expected ${currentTarget}`
+        );
+      }
+    } catch (error) {
+      logger.error(messages.lifecycle.symlinkVerificationFailed(currentSymlinkPath), error);
+      throw error;
     }
   }
 

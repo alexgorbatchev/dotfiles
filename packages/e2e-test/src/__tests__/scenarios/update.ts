@@ -25,7 +25,7 @@ export function updateScenarios(harness: TestHarness, additionalTests?: () => vo
       expect(versionBefore.trim()).toBe('1.0.0');
 
       // Set new version available in mock server
-      await fetch('http://localhost:8765/set-tool-version/repo/github-release-tool/2.0.0');
+      await fetch('http://127.0.0.1:8765/set-tool-version/repo/github-release-tool/2.0.0');
 
       // Run update command - should now get the NEW version
       const updateResult = await harness.update('github-release-tool');

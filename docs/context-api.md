@@ -116,13 +116,12 @@ Current tool's base installation directory. Contains version subdirectories.
 **Structure:**
 ```
 ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
-├── latest/          # Current version installation
+├── 1.2.3/           # Versioned install directory
+│   ├── tool         # Entrypoint executable (copied from extracted archive)
 │   ├── bin/
 │   ├── lib/
 │   └── share/
-└── v1.2.3/         # Previous version
-    ├── bin/
-    └── ...
+└── current -> 1.2.3 # Stable directory symlink
 ```
 
 **Usage:**
@@ -139,8 +138,8 @@ export default defineTool((install, ctx) =>
         })
         .always(/* zsh */`
           # Access tool assets
-          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/share/themes/default.toml" ]]; then
-            export TOOL_THEME="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/latest/share/themes/default.toml"
+          if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/share/themes/default.toml" ]]; then
+            export TOOL_THEME="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/share/themes/default.toml"
           fi
         `)
     )
@@ -294,8 +293,8 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .zsh((shell) =>
       shell.always(/* zsh */`
-        if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/init.zsh" ]]; then
-          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/shell/init.zsh"
+        if [[ -f "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/init.zsh" ]]; then
+          source "${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/current/shell/init.zsh"
         fi
       `)
     )

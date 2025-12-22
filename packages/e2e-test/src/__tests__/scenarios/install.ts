@@ -14,8 +14,9 @@ import type { TestHarness } from '../../TestHarness';
  * @param harness - The TestHarness instance to use for running tests.
  */
 export function installScenarios(harness: TestHarness): void {
-  const binariesDir = path.join(harness.generatedDir, 'binaries', 'github-release-tool');
-  const symlinkPath = path.join(binariesDir, 'github-release-tool');
+  const toolDir = path.join(harness.generatedDir, 'binaries', 'github-release-tool');
+  const currentDir = path.join(toolDir, 'current');
+  const binaryPath = path.join(currentDir, 'github-release-tool');
 
   describe('install command', () => {
     beforeAll(async () => {
@@ -25,17 +26,17 @@ export function installScenarios(harness: TestHarness): void {
 
     it('should install github-release-tool and verify binary is downloaded before shim is called', async () => {
       // Verify the binary symlink does NOT exist before install
-      expect(await harness.fileExists(symlinkPath)).toBe(false);
+      expect(await harness.fileExists(binaryPath)).toBe(false);
 
       // Run install command
       const result = await harness.install(['github-release-tool']);
       expect(result.exitCode).toBe(0);
 
       // Check symlink exists
-      expect(await harness.fileExists(symlinkPath)).toBe(true);
+      expect(await harness.fileExists(binaryPath)).toBe(true);
 
       // Verify symlink is executable
-      expect(await harness.isExecutable(symlinkPath)).toBe(true);
+      expect(await harness.isExecutable(binaryPath)).toBe(true);
 
       // Now verify the binary works by executing it
       await harness.verifyShim('github-release-tool', {

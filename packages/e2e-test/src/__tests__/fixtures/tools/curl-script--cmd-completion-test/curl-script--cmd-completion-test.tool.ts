@@ -2,7 +2,7 @@ import { defineTool } from '@dotfiles/cli';
 
 export default defineTool((install) =>
   install('curl-script', {
-    url: 'http://localhost:8765/mock-install-for-cmd-completion-test.sh',
+    url: 'http://127.0.0.1:8765/mock-install-for-cmd-completion-test.sh',
     shell: 'bash',
   })
     .bin('curl-script--cmd-completion-test')

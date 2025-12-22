@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
-import * as path from 'node:path';
+import path from 'node:path';
 import type { TestHarness } from '../../TestHarness';
 
 interface ToolInstallationRow {
@@ -20,12 +20,12 @@ function getToolInstallation(generatedDir: string, toolName: string): ToolInstal
   return row;
 }
 
-export function versionDetectionScenarios(harness: TestHarness) {
-  async function verifyVersionDetection(toolName: string, expectedVersion: string) {
+export function versionDetectionScenarios(harness: TestHarness): void {
+  async function verifyVersionDetection(toolName: string, expectedVersion: string): Promise<void> {
     const result = await harness.install([toolName], ['--log=trace']);
     expect(result.exitCode).toBe(0);
 
-    const binPath = path.join(harness.generatedDir, 'binaries', toolName, toolName);
+    const binPath = path.join(harness.generatedDir, 'binaries', toolName, 'current', toolName);
     expect(await harness.fileExists(binPath)).toBe(true);
 
     const row = getToolInstallation(harness.generatedDir, toolName);
@@ -57,7 +57,7 @@ export function versionDetectionScenarios(harness: TestHarness) {
 
       expect(result.exitCode).toBe(0);
 
-      const binPath = path.join(harness.generatedDir, 'binaries', toolName, toolName);
+      const binPath = path.join(harness.generatedDir, 'binaries', toolName, 'current', toolName);
       expect(await harness.fileExists(binPath)).toBe(true);
 
       const row = getToolInstallation(harness.generatedDir, toolName);

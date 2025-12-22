@@ -57,7 +57,7 @@ packages/installer/
 │   ├── utils/                      # Shared utilities
 │   │   ├── BinarySetupService.ts
 │   │   ├── HookExecutor.ts
-│   │   ├── createBinarySymlinks.ts
+│   │   ├── createBinaryEntrypoint.ts
 │   │   ├── createToolFileSystem.ts
 │   │   ├── downloadWithProgress.ts
 │   │   ├── executeHooks.ts
@@ -107,8 +107,8 @@ Specialized clients for external services:
 Common functionality to eliminate code duplication:
 - Download management with progress tracking
 - Hook execution framework
-- Binary setup and symlinking
-- Completion file setup and symlinking
+- Binary setup and entrypoint creation
+- Completion file setup and linking
 - Error handling wrappers
 
 ## API Clients
@@ -167,7 +167,8 @@ const packageInfo = await client.getCargoTomlPackage(
 
 // Get latest version
 const version = await client.getLatestVersion('ripgrep');
-```
+- Binary setup and entrypoint creation
+- Completion file setup and linking
 
 ## Installation Methods
 

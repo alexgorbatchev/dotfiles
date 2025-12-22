@@ -325,7 +325,18 @@ export class TestHarness {
       stdout = commandResult.stdout.trim();
 
       if (options.expectedExitCode !== undefined) {
-        expect(commandResult.exitCode).toBe(options.expectedExitCode);
+        if (commandResult.exitCode !== options.expectedExitCode) {
+          const errorMessage = [
+            `Shim execution failed: ${shimName}`,
+            `Expected exit code: ${options.expectedExitCode}`,
+            `Actual exit code: ${commandResult.exitCode}`,
+            '--- stdout ---',
+            commandResult.stdout,
+            '--- stderr ---',
+            commandResult.stderr,
+          ].join('\n');
+          throw new Error(errorMessage);
+        }
       }
 
       if (options.stdoutMatcher) {

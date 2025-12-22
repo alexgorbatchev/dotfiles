@@ -5,21 +5,21 @@ paths:
   toolConfigsDir: "{configFileDir}/tools"
 
 github:
-  host: http://localhost:8765
+  host: http://127.0.0.1:8765
   cache:
     enabled: false
 
 cargo:
   cratesIo:
-    host: http://localhost:8765
+    host: http://127.0.0.1:8765
     cache:
       enabled: false
   githubRaw:
-    host: http://localhost:8765
+    host: http://127.0.0.1:8765
     cache:
       enabled: false
   githubRelease:
-    host: http://localhost:8765
+    host: http://127.0.0.1:8765
     cache:
       enabled: false
 

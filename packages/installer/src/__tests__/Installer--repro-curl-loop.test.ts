@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import path from 'node:path';
-import type { ToolConfig } from '@dotfiles/core';
+import type { AggregateInstallResult, IInstallContext, ToolConfig } from '@dotfiles/core';
+import type { IToolInstallationRecord } from '@dotfiles/registry/tool';
 import { createInstallerTestSetup, type IInstallerTestSetup, MOCK_TOOL_NAME } from './installer-test-helpers';
 
 describe('Installer - Reproduction of curl-script loop issue', () => {
@@ -22,29 +23,31 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
       },
     };
 
-    // Mock plugin behavior for curl-script (no version returned)
-    const binaryPath = path.join(
-      setup.mockProjectConfig.paths.generatedDir,
-      'binaries',
-      MOCK_TOOL_NAME,
-      'TIMESTAMP',
-      MOCK_TOOL_NAME
+    const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
+      async (
+        _method: string,
+        _toolName: string,
+        _toolConfig: unknown,
+        context: IInstallContext
+      ): Promise<AggregateInstallResult> => {
+        const binaryPath: string = path.join(context.installDir, MOCK_TOOL_NAME);
+
+        await setup.fs.ensureDir(path.dirname(binaryPath));
+        await setup.fs.writeFile(binaryPath, 'mock binary');
+        await setup.fs.chmod(binaryPath, 0o755);
+
+        const result: AggregateInstallResult = {
+          success: true,
+          binaryPaths: [binaryPath],
+          metadata: {
+            method: 'curl-script',
+            scriptUrl: 'https://example.com/install.sh',
+            shell: 'bash',
+          },
+        };
+        return result;
+      }
     );
-
-    // Create the binary file in mock FS so createBinarySymlinks doesn't fail
-    await setup.fs.ensureDir(path.dirname(binaryPath));
-    await setup.fs.writeFile(binaryPath, 'mock binary');
-    await setup.fs.chmod(binaryPath, 0o755);
-
-    const installSpy = spyOn(setup.pluginRegistry, 'install').mockResolvedValue({
-      success: true,
-      binaryPaths: [binaryPath],
-      metadata: {
-        method: 'curl-script',
-        scriptUrl: 'https://example.com/install.sh',
-        shell: 'bash',
-      },
-    });
 
     // First installation
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
@@ -55,41 +58,17 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
       (call) => call[0].includes(MOCK_TOOL_NAME) && call[0].match(/\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/)
     );
     expect(installDirCall1).toBeDefined();
-    // const installDir1 = installDirCall1![0];
 
-    // Check that NO symlink was created at .../binaries/toolName/binaryName
-    // The symlink path would be .../binaries/toolName/binaryName
-    // The symlink target would be .../binaries/toolName/TIMESTAMP/binaryName
-    // In Installer.ts, createExternalBinarySymlinks is ONLY called if isExternallyManaged is true.
-    // curl-script is NOT externally managed.
-
-    // We can check if symlink was called.
     const symlinkCalls = setup.fileSystemMocks.symlink.mock.calls;
-    // We expect NO symlink calls for this tool in the binaries dir (except maybe inside the timestamp dir if the plugin did it, but here we mock the plugin)
-    // The issue is about the symlink in the PARENT directory (toolDir).
-
     const toolDir = path.join(setup.mockProjectConfig.paths.generatedDir, 'binaries', MOCK_TOOL_NAME);
-    const expectedSymlinkPath = path.join(toolDir, MOCK_TOOL_NAME);
+    const expectedCurrentSymlinkPath: string = path.join(toolDir, 'current');
 
-    const symlinkCall = symlinkCalls.find((call) => call[1] === expectedSymlinkPath);
-    expect(symlinkCall).toBeDefined(); // Fixed: symlink IS created now
-    expect(symlinkCall![0]).toBe(binaryPath); // Symlink points to the timestamped binary
+    const currentSymlinkCall = symlinkCalls.find((call) => call[1] === expectedCurrentSymlinkPath);
+    expect(currentSymlinkCall).toBeDefined();
+    expect(currentSymlinkCall![0]).toMatch(/\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/);
 
-    // Second installation
-    // Now that we fixed the logic, it should SKIP installation because it's already installed (even if version is unknown/latest)
-    // But wait, in the test setup, does toolInstallationRegistry know it's installed?
-    // recordInstallation is called at the end of install().
-    // So after first install, it should be recorded.
-
-    // However, our mock toolInstallationRegistry might need to be updated to reflect the record call?
-    // The default mock implementation:
-    // recordToolInstallation: mock(async () => {}),
-    // getToolInstallation: mock(),
-    // isToolInstalled: mock(async () => false),
-
-    // We need to update the mock to return the installation after the first call.
     setup.mockToolInstallationRegistry.getToolInstallation.mockImplementation(async () => {
-      return {
+      const result: IToolInstallationRecord = {
         id: 1,
         toolName: MOCK_TOOL_NAME,
         version: 'latest', // or whatever was recorded
@@ -98,6 +77,7 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
         binaryPaths: ['/path/to/install/test-tool'],
         installedAt: new Date(),
       };
+      return result;
     });
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);

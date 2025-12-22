@@ -1,11 +1,8 @@
-import path from 'node:path';
 import type { IConfigService } from '@dotfiles/config';
-import type { IInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
+import type { ProjectConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
-import { $ } from 'bun';
 import { messages } from './log-messages';
 import type {
   ICommandCompletionMeta,
@@ -14,6 +11,11 @@ import type {
   IServices,
   IUpdateCommandSpecificOptions,
 } from './types';
+
+interface ILoadToolConfigSafelyResult {
+  toolConfig: ToolConfig | null;
+  exitCode: ExitCode;
+}
 
 /**
  * Completion metadata for the update command.
@@ -34,19 +36,22 @@ async function loadToolConfigSafely(
   toolConfigsDir: string,
   fs: IFileSystem,
   projectConfig: ProjectConfig
-): Promise<{ toolConfig: ToolConfig | null; exitCode: ExitCode }> {
+): Promise<ILoadToolConfigSafelyResult> {
   try {
     const toolConfig = await configService.loadSingleToolConfig(logger, toolName, toolConfigsDir, fs, projectConfig);
 
     if (!toolConfig) {
       logger.error(messages.toolNotFound(toolName, toolConfigsDir));
-      return { toolConfig: null, exitCode: ExitCode.ERROR };
+      const result: ILoadToolConfigSafelyResult = { toolConfig: null, exitCode: ExitCode.ERROR };
+      return result;
     }
 
-    return { toolConfig, exitCode: ExitCode.SUCCESS };
+    const result: ILoadToolConfigSafelyResult = { toolConfig, exitCode: ExitCode.SUCCESS };
+    return result;
   } catch (error) {
     logger.error(messages.configLoadFailed(`tool "${toolName}"`), error);
-    return { toolConfig: null, exitCode: ExitCode.ERROR };
+    const result: ILoadToolConfigSafelyResult = { toolConfig: null, exitCode: ExitCode.ERROR };
+    return result;
   }
 }
 
@@ -57,7 +62,7 @@ async function handleToolUpdate(
   toolConfig: ToolConfig,
   shimMode: boolean
 ): Promise<void> {
-  const { pluginRegistry, systemInfo, projectConfig, fs } = services;
+  const { pluginRegistry, toolInstallationRegistry, installer } = services;
 
   const plugin = pluginRegistry.get(toolConfig.installationMethod);
 
@@ -81,50 +86,30 @@ async function handleToolUpdate(
     return;
   }
 
-  // Create context for plugin
-  const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-  const toolDir: string = toolConfig.configFilePath
-    ? path.dirname(toolConfig.configFilePath)
-    : projectConfig.paths.toolConfigsDir;
+  const existingInstallation = await toolInstallationRegistry.getToolInstallation(toolName);
+  const oldVersion = existingInstallation?.version || 'unknown';
 
-  const context: IInstallContext = {
-    toolName,
-    toolDir,
-    installDir: projectConfig.paths.binariesDir,
-    timestamp: timestamp || '',
-    systemInfo,
-    toolConfig,
-    projectConfig: projectConfig,
-    $: createConfiguredShell($, process.env),
-    fileSystem: fs,
-  };
+  const installResult = await installer.install(toolName, toolConfig, { force: true, shimMode });
 
-  const updateResult = await plugin.updateTool?.(toolName, toolConfig, context, { force: true }, logger);
-
-  if (!updateResult) {
-    logger.debug(messages.commandUnsupportedOperation('update', toolName));
-    return;
-  }
-
-  if (!updateResult.success) {
-    logger.error(messages.toolUpdateFailed(toolName, updateResult.error));
+  if (!installResult.success) {
+    logger.error(messages.toolUpdateFailed(toolName, installResult.error));
     exitCli(ExitCode.ERROR);
     return;
   }
 
-  const oldVersion = updateResult.oldVersion || toolConfig.version || 'unknown';
-  const newVersion = updateResult.newVersion || 'unknown';
-  const isUpToDate = oldVersion === newVersion;
+  const resolvedNewVersion: string =
+    'version' in installResult && typeof installResult.version === 'string' ? installResult.version : 'unknown';
+  const isUpToDate = oldVersion === resolvedNewVersion;
 
   if (shimMode) {
     if (isUpToDate) {
-      logger.info(messages.toolShimUpToDate(toolName, newVersion));
+      logger.info(messages.toolShimUpToDate(toolName, resolvedNewVersion));
     } else {
-      logger.info(messages.toolShimUpdateStarting(toolName, oldVersion, newVersion));
-      logger.info(messages.toolShimUpdateSuccess(toolName, newVersion));
+      logger.info(messages.toolShimUpdateStarting(toolName, oldVersion, resolvedNewVersion));
+      logger.info(messages.toolShimUpdateSuccess(toolName, resolvedNewVersion));
     }
   } else {
-    logger.info(messages.toolUpdated(toolName, oldVersion, newVersion));
+    logger.info(messages.toolUpdated(toolName, oldVersion, resolvedNewVersion));
   }
 }
 

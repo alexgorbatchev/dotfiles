@@ -59,7 +59,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     `;
 
     await realFs.writeFile(configPath, tsContent);
-  const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
+    const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
 
     const expectedConfigDir = path.dirname(configPath);
     const expectedGeneratedDir = path.join(expectedConfigDir, '.generated');
@@ -99,7 +99,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     `;
 
     await realFs.writeFile(configPath, tsContent);
-  const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
+    const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
 
     const expectedConfigDir = path.dirname(configPath);
     const expectedDotfilesDir = path.join(expectedConfigDir, 'dotfiles');
@@ -142,7 +142,7 @@ describe('loadConfig - TypeScript path substitution', () => {
     `;
 
     await realFs.writeFile(configPath, tsContent);
-  const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
+    const result = await loadConfig(logger, realFs, configPath, mockSystemInfo, {});
 
     const expectedConfigDir = path.dirname(configPath);
     const expectedGeneratedDir = path.join(expectedConfigDir, '.generated');

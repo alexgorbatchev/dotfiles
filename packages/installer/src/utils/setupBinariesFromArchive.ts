@@ -4,7 +4,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
 import { minimatch } from 'minimatch';
-import { createBinarySymlink } from './createBinarySymlinks';
+import { createBinaryEntrypoint } from './createBinaryEntrypoint';
 import { messages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
 
@@ -84,9 +84,9 @@ async function setupBinariesUsingPatterns(
       continue;
     }
 
-    // Create symlink for this binary
+    // Create stable entrypoint file for this binary
     const relativePath = path.relative(extractDir, binaryPath);
-    await createBinarySymlink(fs, toolName, binaryName, versionOrTimestamp, relativePath, binariesDir, logger);
+    await createBinaryEntrypoint(fs, toolName, binaryName, versionOrTimestamp, relativePath, binariesDir, logger);
     foundAnyBinary = true;
   }
 

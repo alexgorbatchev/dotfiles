@@ -1,6 +1,6 @@
+import path from 'node:path';
 import type { IBinaryConfig, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
-import path from 'node:path';
 import { getBuiltPackageName } from './getBuiltPackageName';
 
 /**

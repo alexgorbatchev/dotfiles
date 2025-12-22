@@ -19,7 +19,7 @@ const GITHUB_DEFAULTS: Record<string, Record<string, object>> = {
       name: 'v1.0.0',
       assets: ASSET_NAMES_V1.map((name) => ({
         name,
-        browser_download_url: `http://localhost:8765/repo/github-release-tool/releases/download/v1.0.0/${name}`,
+        browser_download_url: `http://127.0.0.1:8765/repo/github-release-tool/releases/download/v1.0.0/${name}`,
         content_type: 'application/gzip',
         size: 1024,
       })),
@@ -29,7 +29,7 @@ const GITHUB_DEFAULTS: Record<string, Record<string, object>> = {
       name: 'v2.0.0',
       assets: ASSET_NAMES_V2.map((name) => ({
         name,
-        browser_download_url: `http://localhost:8765/repo/github-release-tool/releases/download/v2.0.0/${name}`,
+        browser_download_url: `http://127.0.0.1:8765/repo/github-release-tool/releases/download/v2.0.0/${name}`,
         content_type: 'application/gzip',
         size: 1024,
       })),
@@ -88,6 +88,7 @@ export function withMockServer(): void {
 
     server = Bun.serve({
       port: 8765,
+      hostname: '127.0.0.1',
       routes: {
         // GitHub release API - returns version based on current setting
         '/repos/:org/:repo/releases/latest': (req) => {

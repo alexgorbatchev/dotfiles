@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
+import type { AggregateInstallResult, IInstallerPlugin } from '@dotfiles/core';
+import type { GithubReleaseToolConfig, IGitHubReleaseInstallMetadata } from '@dotfiles/installer-github';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
 describe('Installer - externally managed plugins', () => {
@@ -20,13 +21,14 @@ describe('Installer - externally managed plugins', () => {
 
     // Mock the registry.get to return a plugin with externallyManaged = true
     const originalGet = setup.pluginRegistry.get.bind(setup.pluginRegistry);
-    setup.pluginRegistry.get = ((method: string) => {
+    setup.pluginRegistry.get = ((method) => {
       const plugin = originalGet(method);
       if (method === 'github-release' && plugin) {
-        return {
+        const result: IInstallerPlugin = {
           ...plugin,
           externallyManaged: true,
         };
+        return result;
       }
       return plugin;
     }) as typeof setup.pluginRegistry.get;
@@ -36,17 +38,24 @@ describe('Installer - externally managed plugins', () => {
     setup.pluginRegistry.install = (async (method, toolName, toolConfig, context, options) => {
       // Call original install but override the result
       await originalInstall(method, toolName, toolConfig, context, options);
-      return {
+
+      const metadata: IGitHubReleaseInstallMetadata = {
+        method: 'github-release',
+        releaseUrl: 'https://example.com/releases/v1.0.0',
+        publishedAt: '2025-01-01T00:00:00Z',
+        releaseName: 'Release v1.0.0',
+      };
+      const result: AggregateInstallResult = {
         success: true,
         binaryPaths: [externalBinaryPath],
         version: '1.0.0',
-        metadata: {
-          method: 'github-release',
-        },
+        originalTag: 'v1.0.0',
+        metadata,
       };
+      return result;
     }) as typeof setup.pluginRegistry.install;
 
-    const toolConfig = {
+    const toolConfig: GithubReleaseToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
       binaries: ['test-tool'],
@@ -56,11 +65,10 @@ describe('Installer - externally managed plugins', () => {
       },
     };
 
-    // @ts-expect-error - Modified plugin registry for testing
     await setup.installer.install('test-tool', toolConfig);
 
-    // Verify symlink was created
-    const symlinkPath = `${setup.testDirs.paths.binariesDir}/test-tool/test-tool`;
+    // Verify stable entrypoint exists via {toolDir}/current/{binary}
+    const symlinkPath = `${setup.testDirs.paths.binariesDir}/test-tool/current/test-tool`;
     const symlinkExists = await setup.fs.exists(symlinkPath);
     expect(symlinkExists).toBe(true);
 
@@ -87,8 +95,8 @@ describe('Installer - externally managed plugins', () => {
 
     // Verify that ensureDir WAS called with a timestamped directory
     const ensureDirCalls = setup.fileSystemMocks.ensureDir.mock.calls;
-    const timestampedDirCalls = ensureDirCalls.filter((call: string[]) => {
-      const firstArg = call[0];
+    const timestampedDirCalls = ensureDirCalls.filter((call) => {
+      const firstArg: string | undefined = call[0];
       return firstArg?.includes('test-tool') && /\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/.test(firstArg);
     });
 

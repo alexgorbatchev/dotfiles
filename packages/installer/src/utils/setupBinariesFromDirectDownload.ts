@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { createBinarySymlink } from './createBinarySymlinks';
+import { createBinaryEntrypoint } from './createBinaryEntrypoint';
 import { messages } from './log-messages';
 import { normalizeBinaries } from './normalizeBinaries';
 
@@ -30,7 +30,7 @@ export async function setupBinariesFromDirectDownload(
   // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")
   const subdirName = path.basename(context.installDir);
 
-  await createBinarySymlink(fs, toolName, primaryBinary, subdirName, downloadFileName, binariesDir, logger);
+  await createBinaryEntrypoint(fs, toolName, primaryBinary, subdirName, downloadFileName, binariesDir, logger);
 
   if (binaryConfigs.length > 1) {
     logger.debug(messages.binarySetupService.directDownloadSingleBinary(binaryConfigs.length, primaryBinary));

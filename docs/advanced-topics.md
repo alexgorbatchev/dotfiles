@@ -364,8 +364,8 @@ export default defineTool((install, ctx) =>
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-const versions = ['v1.0.0', 'v2.0.0', 'latest'];
-const defaultVersion = process.env.TOOL_DEFAULT_VERSION || 'latest';
+const versions = ['1.0.0', '2.0.0'];
+const defaultVersion = process.env.TOOL_DEFAULT_VERSION || versions[0] || '1.0.0';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
@@ -375,11 +375,11 @@ export default defineTool((install, ctx) =>
       shell.always(`
         function tool-switch-version() {
           local version=\${1:-${defaultVersion}}
-          local tool_path="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/\$version/bin/tool"
+          local tool_path="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/\$version/tool"
           
-          if [[ -f "\$tool_path" ]]; then
+          if [[ -x "\$tool_path" ]]; then
             export TOOL_VERSION="\$version"
-            export PATH="${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/\$version/bin:\$PATH"
+            export TOOL_EXECUTABLE="\$tool_path"
             echo "Switched to tool version \$version"
           else
             echo "Version \$version not found"
