@@ -116,7 +116,7 @@ describe('Installer - Enhanced Hooks', () => {
     it('should execute afterInstall hook with enhanced context including installation result', async () => {
       const afterInstallHook = mock(async (context) => {
         expect(context.toolName).toBe(mockToolName);
-        expect(context.binaryPath).toBeDefined();
+        expect(context.binaryPaths[0]).toBeDefined();
         expect(context.version).toBe(mockToolVersion);
         expect(context.fileSystem).toBeDefined();
         expect(context.logger).toBeDefined();

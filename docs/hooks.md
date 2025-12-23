@@ -34,9 +34,9 @@ interface IHookContext {
   currentDir: string;         // Stable path (symlink) for this tool
   stagingDir?: string;        // Per-attempt directory (before-install / after-download / after-extract)
   installedDir?: string;      // Final directory (after-install only; success-only)
-  downloadPath?: string;      // Path to downloaded file (afterDownload+)
-  extractDir?: string;        // Extract directory (afterExtract+)
-  extractResult?: ExtractResult; // Extraction results (afterExtract+)
+  downloadPath?: string;      // Path to downloaded file (after-download only)
+  extractDir?: string;        // Extract directory (after-extract only)
+  extractResult?: ExtractResult; // Extraction results (after-extract only)
   systemInfo: SystemInfo;     // Platform/architecture info (platform, arch, homeDir)
   
   // Enhanced capabilities
@@ -47,8 +47,7 @@ interface IHookContext {
   $: typeof $;               // Bun's shell executor for running shell commands
   
   // Available in afterInstall hook only
-  binaryPaths?: string[];     // Paths to installed binaries (after-install only)
-  binaryPath?: string;       // Path to installed binary
+  binaryPaths: string[];      // Paths to installed binaries (after-install only); use binaryPaths[0] for the primary binary
   version?: string;          // Version of installed tool
 }
 

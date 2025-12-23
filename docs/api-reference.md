@@ -299,7 +299,6 @@ interface IHookContext {
   toolConfig: ToolConfig;
   $: ReturnType<typeof $>;
   binaryPaths?: string[];
-  binaryPath?: string;
   version?: string;
 }
 ```
@@ -310,7 +309,7 @@ This is a merged view across all hook events. Some properties are only available
 - `before-install`: `stagingDir`.
 - `after-download`: `stagingDir`, `downloadPath`.
 - `after-extract`: `stagingDir`, `downloadPath`, `extractDir`, `extractResult`.
-- `after-install` (success-only): `installedDir`, `binaryPaths` (and may also include `downloadPath`/`extract*` when applicable).
+- `after-install` (success-only): `installedDir`, `binaryPaths`.
 
 ### Shell Script Types
 

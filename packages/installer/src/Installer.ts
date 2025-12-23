@@ -341,7 +341,7 @@ export class Installer implements IInstaller {
    * Uses continueOnError option so hook failures don't stop the installation flow.
    *
    * The afterInstall hook receives enhanced context including:
-   * - binaryPath: Path to first binary if installation succeeded
+   * - binaryPaths: Paths to installed binaries if installation succeeded
    * - version: Installed version if installation succeeded
    *
    * Common uses:
@@ -700,12 +700,15 @@ export class Installer implements IInstaller {
       }
 
       if (result.success) {
+        const binaryPaths: string[] =
+          'binaryPaths' in result && Array.isArray(result.binaryPaths) ? result.binaryPaths : [];
+        const version: string | undefined = 'version' in result ? result.version : undefined;
+
         const afterInstallContext: IAfterInstallContext = {
           ...context,
           installedDir,
-          binaryPaths: 'binaryPaths' in result ? result.binaryPaths : [],
-          binaryPath: result.binaryPaths.length > 0 ? result.binaryPaths[0] : undefined,
-          version: 'version' in result ? result.version : undefined,
+          binaryPaths,
+          version,
         };
 
         await this.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);

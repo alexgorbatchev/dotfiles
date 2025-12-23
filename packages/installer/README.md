@@ -410,7 +410,7 @@ interface InstallHookContext extends BaseToolContext {
   installedDir?: string;
   extractDir?: string;
   downloadPath?: string;
-  binaryPath?: string;
+  binaryPaths?: string[];
   extractResult?: ExtractResult;
   fileSystem: IFileSystem;
   logger: TsLogger;
@@ -446,7 +446,10 @@ export default defineTool((install, ctx) =>
       );
 
       // Use the $ shell executor for running commands
-      await context.$`${context.binaryPath} --version`;
+      const primaryBinaryPath = context.binaryPaths?.[0];
+      if (primaryBinaryPath) {
+        await context.$`${primaryBinaryPath} --version`;
+      }
     })
 );
 ```

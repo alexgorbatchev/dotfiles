@@ -63,9 +63,9 @@ describe('Hook Integration Tests', () => {
                 await context.fileSystem.writeFile(configPath, configContent);
 
                 // Make the main binary executable with specific permissions
-                if (context.binaryPath) {
-                  await context.fileSystem.chmod(context.binaryPath, 0o755);
-                }
+                const primaryBinaryPath: string | undefined = context.binaryPaths[0];
+                assert(primaryBinaryPath);
+                await context.fileSystem.chmod(primaryBinaryPath, 0o755);
               },
             ],
           },

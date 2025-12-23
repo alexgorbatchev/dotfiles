@@ -10,17 +10,36 @@ import type { IExtractResult } from './archive.types';
  * This context is available in the `before-install` hook.
  */
 export interface IInstallBaseContext extends IBaseToolContext {
-  /** The full tool configuration being processed. */
+  /**
+   * The full tool configuration being processed.
+   *
+   * This is the resolved `ToolConfig` for the current tool, including any platform-specific overrides.
+   */
   toolConfig: ToolConfig;
-  /** A timestamp for the current installation (e.g., `YYYY-MM-DD-HH-MM-SS`). */
+
+  /**
+   * A timestamp for the current installation attempt.
+   *
+   * Used as a stable identifier for this run and as a fallback version label when a version
+   * cannot be resolved.
+   *
+   * @example
+   * `timestamp === "2025-12-23-09-41-12"`
+   */
   timestamp: string;
+
   /**
    * Bun's shell executor for running shell commands.
    * Use the `$` tagged template literal to execute shell commands within hooks.
    * The working directory can be changed using `cd` commands or `process.chdir()`.
+   *
+   * Note: The installer configures the shell so hooks inherit the current environment.
    */
   $: $extended;
-  /** An instance of the file system for performing file operations. */
+
+  /**
+   * An instance of the file system for performing file operations.
+   */
   fileSystem: IFileSystem;
 }
 
@@ -30,12 +49,12 @@ export interface IInstallBaseContext extends IBaseToolContext {
  */
 export interface IInstallContext extends IInstallBaseContext {
   /**
-   * UUID-based staging directory for this installation attempt.
+   * Per-attempt staging directory for this installation attempt.
    *
-   * This directory is used for transient work during installation (download/extract/build).
-   * It is unique per attempt and must not be treated as a stable location.
+   * This is a transient workspace for download/extract/build steps and may be removed or renamed
+   * after installation. Do not persist references to this directory.
    *
-   * The stable path exposed to tool configs is `currentDir` (a symlink updated after success).
+   * For successful managed installs, this directory is typically renamed to `installedDir`.
    *
    * @example
    * `stagingDir === "${projectConfig.paths.binariesDir}/${toolName}/<uuid>"`
@@ -49,7 +68,15 @@ export interface IInstallContext extends IInstallBaseContext {
  * This context is available in the `after-download` hook.
  */
 export interface IDownloadContext extends IInstallContext {
-  /** The path to the downloaded file or archive. */
+  /**
+   * The path to the downloaded file or archive.
+   *
+   * This is the on-disk artifact produced by the download step (e.g., a `.tar.gz`, `.zip`, or
+   * standalone binary) stored under the current `stagingDir`.
+   *
+   * @example
+   * `downloadPath === "${stagingDir}/downloads/tool.tar.gz"`
+   */
   downloadPath: string;
 }
 
@@ -59,9 +86,23 @@ export interface IDownloadContext extends IInstallContext {
  * This context is available in the `after-extract` hook.
  */
 export interface IExtractContext extends IDownloadContext {
-  /** The path to the directory where the archive contents were extracted. */
+  /**
+   * The path to the directory where the archive contents were extracted.
+   *
+   * This is a transient directory under `stagingDir` containing the extracted payload.
+   * Hooks commonly move binaries out of this directory into a stable layout under `stagingDir`
+   * before the installer finalizes the installation.
+   *
+   * @example
+   * `extractDir === "${stagingDir}/extracted"`
+   */
   extractDir: string;
-  /** The result of the archive extraction process. */
+
+  /**
+   * The result of the archive extraction process.
+   *
+   * Contains extraction metadata such as which files were extracted.
+   */
   extractResult: IExtractResult;
 }
 
@@ -89,19 +130,32 @@ export interface IAfterInstallContext extends IInstallBaseContext {
    */
   installedDir: string;
 
-  /** Absolute paths to installed binaries (resolved against installedDir). */
+  /**
+   * Absolute paths to installed binaries.
+   *
+   * These paths point at the *real* installed executables for this successful install.
+   * For multi-binary tools, this can include multiple entries.
+   *
+   * If you need a single “primary” binary, use `binaryPaths[0]`.
+   *
+   * @example
+   * Single binary: `binaryPaths === ["${installedDir}/rg"]`
+   *
+   * @example
+   * Multi-binary: `binaryPaths === ["${installedDir}/node", "${installedDir}/npm", "${installedDir}/npx"]`
+   */
   binaryPaths: string[];
 
-  /** The path to the downloaded file or archive. */
-  downloadPath?: string;
-  /** The path to the directory where the archive contents were extracted. */
-  extractDir?: string;
-  /** The result of the archive extraction process. */
-  extractResult?: IExtractResult;
-
-  /** The path to the installed binary. */
-  binaryPath?: string;
-  /** The version of the installed tool. */
+  /**
+   * The version of the installed tool.
+   *
+   * This is populated when the installer can determine a version (e.g., from a release tag
+   * or an installer-specific version source). For externally managed installers, or when
+   * the version cannot be resolved, this may be `undefined`.
+   *
+   * @example
+   * `version === "1.2.3"`
+   */
   version?: string;
 }
 
