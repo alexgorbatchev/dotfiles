@@ -1,3 +1,2 @@
 - after-install - toolName available, but we are are installing binaries
-- home path resolution should be consistent, maybe done via IFileSystem
 - installDir to be threaded through top level ctx 

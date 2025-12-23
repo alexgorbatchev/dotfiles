@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noConsole: testing */
 import { defineTool } from '@dotfiles/cli';
 
 export default defineTool((install) =>
@@ -5,6 +6,9 @@ export default defineTool((install) =>
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
     args: (ctx) => ['--skip-shell', '--install-dir', ctx.stagingDir, '--force-no-brew'],
+  })
+  .hook('after-install', async (ctx) => {
+    console.log(`fnm installed to ${ctx.currentDir}`);
   })
     .bin('fnm')
     .zsh((shell) =>
