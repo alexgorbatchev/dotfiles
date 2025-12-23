@@ -110,7 +110,10 @@ export class NodeFileSystem implements IFileSystem {
    * @inheritdoc IFileSystem.rmdir
    */
   public async rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
-    return this.fs.rmdir(path, options);
+    if (options?.recursive) {
+      return this.fs.rm(path, { recursive: true, force: true });
+    }
+    return this.fs.rmdir(path);
   }
 
   /**

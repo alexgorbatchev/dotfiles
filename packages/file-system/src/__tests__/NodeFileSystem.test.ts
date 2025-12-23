@@ -100,8 +100,14 @@ describe('NodeFileSystem', () => {
 
   it('should call rmdir with correct parameters', async () => {
     const dirPath = 'dir_to_remove';
+    await fileSystem.rmdir(dirPath);
+    expect(mockRmdir).toHaveBeenCalledWith(dirPath);
+  });
+
+  it('should call rm when rmdir with recursive: true', async () => {
+    const dirPath = 'dir_to_remove';
     await fileSystem.rmdir(dirPath, { recursive: true });
-    expect(mockRmdir).toHaveBeenCalledWith(dirPath, { recursive: true });
+    expect(mockRm).toHaveBeenCalledWith(dirPath, { recursive: true, force: true });
   });
 
   it('should call stat with correct parameters', async () => {
