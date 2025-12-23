@@ -13,7 +13,7 @@ Understanding how paths are resolved is crucial for correctly configuring your t
 |--------|-----------|-----------------|---------|
 | **symlink()** | `source` starting with `./` | Relative to tool configuration directory | `'./config.toml'` → `configs/fzf/config.toml` |
 | **symlink()** | `source` absolute path | Used as-is | `'/etc/global.conf'` → `/etc/global.conf` |
-| **symlink()** | `target` | Must be absolute (use context) | `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml` |
+| **symlink()** | `target` | Must resolve to an absolute path (prefer context; `~/...` supported) | `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml` |
 | **completions()** | `source` | Relative to extracted archive root | `'shell/completion.zsh'` → inside downloaded archive |
 | **completions()** | `targetDir` | Must be absolute (optional) | `${ctx.projectConfig.paths.homeDir}/.zsh/completions` |
 | **install('github-release')** | `binaryPath` | Relative to extracted archive root | `'bin/tool'` → locates binary inside downloaded archive |
@@ -21,7 +21,12 @@ Understanding how paths are resolved is crucial for correctly configuring your t
 
 ## Context Variables for Paths
 
-Always use ToolConfigContext variables for dynamic paths:
+You will see two different "context" objects:
+
+- `ctx` in `defineTool((install, ctx) => ...)` (ToolConfigContext)
+- the hook context passed to `.hook('...', async (hookCtx) => ...)`
+
+Use these for dynamic paths:
 
 - `${ctx.projectConfig.paths.homeDir}` → User's home directory  
 - `${ctx.toolDir}` → Tool configuration directory (directory containing the `.tool.ts` file)
@@ -31,6 +36,7 @@ Always use ToolConfigContext variables for dynamic paths:
 - `${ctx.projectConfig.paths.targetDir}` → Generated shims directory (where tool shims are created)
 - `${ctx.projectConfig.paths.shellScriptsDir}` → Generated shell scripts directory
 - `${ctx.projectConfig.paths.binariesDir}/other-tool` → Another tool's base directory
+- `hookCtx.installDir` (hook context only) → Tool's versioned installation directory for this run (absolute). Prefer `${ctx.currentDir}` for a stable path across versions.
 
 ## Path Resolution Benefits
 
@@ -82,15 +88,10 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Incorrect Usage
+### Discouraged / Incorrect Usage
 
 ```typescript
-// ❌ Incorrect - using hardcoded paths
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', '~/.config/tool/config.toml')  // Wrong
-);
-
+// ❌ Incorrect - hardcoded user-specific paths
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .symlink('./config.toml', '/home/user/.config/tool/config.toml')  // Wrong

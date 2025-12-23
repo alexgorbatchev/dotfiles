@@ -31,7 +31,7 @@ Each hook receives an enhanced context object with the following properties:
 interface IHookContext {
   // Basic installation info
   toolName: string;           // Name of the tool
-  installDir: string;         // Installation directory
+  installDir: string;         // Versioned installation directory for this run (absolute)
   downloadPath?: string;      // Path to downloaded file (afterDownload+)
   extractDir?: string;        // Extract directory (afterExtract+)
   extractResult?: ExtractResult; // Extraction results (afterExtract+)
@@ -48,6 +48,10 @@ interface IHookContext {
   binaryPath?: string;       // Path to installed binary
   version?: string;          // Version of installed tool
 }
+
+Notes:
+- `installDir` is the per-install directory (typically under `${projectConfig.paths.generatedDir}/binaries/<tool>/<version-or-timestamp>`).
+- Use `ctx.currentDir` (ToolConfigContext) when you need a stable location across installs/updates.
 ```
 
 ## Available APIs

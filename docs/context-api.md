@@ -241,20 +241,20 @@ Directory for generated shell scripts.
 ### Configuration File Symlinks
 
 ```typescript
-// ✅ Correct - using context for target path
+// ✅ Recommended - using ~ for home directory
 import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+    .symlink('./config.toml', '~/.config/tool/config.toml')
 );
 
-// ❌ Incorrect - hardcoded path
+// ✅ Also valid - explicit homeDir
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .symlink('./config.toml', '~/.config/tool/config.toml')
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 );
 ```
 

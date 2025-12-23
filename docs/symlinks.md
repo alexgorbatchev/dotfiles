@@ -16,7 +16,9 @@ c.symlink(source: string, target: string)
   - Example: `'./config.toml'` looks for `config.toml` next to your `.tool.ts` file
   - Example: `'./themes/'` looks for `themes/` directory next to your `.tool.ts` file
 - **`target`**: **Absolute path** where symlink should be created
-  - Must be absolute path (use `${ctx.projectConfig.paths.homeDir}/...`, `${ctx.projectConfig.paths.dotfilesDir}/...`, etc.)
+  - Must resolve to an absolute path
+  - Prefer `${ctx.projectConfig.paths.homeDir}/...`, `${ctx.projectConfig.paths.dotfilesDir}/...`, etc.
+  - `~/...` is supported and will be expanded using `ctx.projectConfig.paths.homeDir`
   - Example: `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`
 
 ## Path Resolution Rules
@@ -24,7 +26,8 @@ c.symlink(source: string, target: string)
 - **Source paths** starting with `./` → Relative to tool configuration directory (same directory as `.tool.ts` file)
 - **Source paths** without `./` but not absolute → Also relative to tool configuration directory  
 - **Source paths** starting with `/` → Absolute paths used as-is
-- **Target paths** → Must always be absolute paths using context variables
+- `~` and `~/...` → Expanded to `ctx.projectConfig.paths.homeDir`
+- **Target paths** → Prefer absolute paths using context variables
 
 ## Examples
 
@@ -135,12 +138,14 @@ c
 Use context variables to ensure cross-platform compatibility:
 
 ```typescript
-// ✅ Correct - uses context variables
+// ✅ Recommended - ~ is expanded to ctx.projectConfig.paths.homeDir
+c.symlink('./config.toml', '~/.config/tool/config.toml')
+
+// ✅ Also valid - explicit homeDir
 c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 
 // ❌ Incorrect - hardcoded paths
 c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
-c.symlink('./config.toml', '~/.config/tool/config.toml')
 ```
 
 ## Benefits

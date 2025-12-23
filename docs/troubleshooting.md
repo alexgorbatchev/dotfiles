@@ -207,8 +207,7 @@ export default defineTool((install, ctx) =>
 
 // ❌ Platform-specific paths
 // Don't do:
-// c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}\\.config\\tool\\config.toml`)  // Windows only
-// c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)  // Unix only
+// c.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}\\.config\\tool\\config.toml`)  // Avoid backslashes
 ```
 
 ## Completion Issues
@@ -287,8 +286,10 @@ export default defineTool((install, ctx) =>
 
 // ❌ Incorrect hardcoded paths
 // Don't do:
-// c.symlink('./config.toml', '~/.config/tool/config.toml')
 // c.symlink('./config.toml', '/home/user/.config/tool/config.toml')
+
+// ✅ Recommended shorthand
+// c.symlink('./config.toml', '~/.config/tool/config.toml')
 ```
 
 ## Hook Issues
