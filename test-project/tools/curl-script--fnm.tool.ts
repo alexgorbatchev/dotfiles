@@ -7,9 +7,9 @@ export default defineTool((install) =>
     shell: 'bash',
     args: (ctx) => ['--skip-shell', '--install-dir', ctx.stagingDir, '--force-no-brew'],
   })
-  .hook('after-install', async (ctx) => {
-    console.log(`fnm installed to ${ctx.currentDir}`);
-  })
+    .hook('after-install', async (ctx) => {
+      console.log(`fnm installed to ${ctx.currentDir}`);
+    })
     .bin('fnm')
     .zsh((shell) =>
       shell

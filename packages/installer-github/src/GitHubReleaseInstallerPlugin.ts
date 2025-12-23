@@ -151,7 +151,7 @@ export class GitHubReleaseInstallerPlugin
       logger.debug(messages.versionResolutionResolved(toolName, normalizedVersion));
       return normalizedVersion;
     } catch (error) {
-      logger.debug(messages.versionResolutionException(toolName, error));
+      logger.debug(messages.versionResolutionException(toolName), error);
       return null;
     }
   }

@@ -21,7 +21,6 @@ import {
   getBinaryPaths,
   setupBinariesFromArchive,
   setupBinariesFromDirectDownload,
-  messages as utilMessages,
 } from '@dotfiles/installer';
 import type {
   GithubReleaseInstallParams,
@@ -52,7 +51,7 @@ export async function installFromGitHubRelease(
   parentLogger: TsLogger
 ): Promise<GitHubReleaseInstallResult> {
   const logger = parentLogger.getSubLogger({ name: 'installFromGitHubRelease' });
-  logger.debug(utilMessages.lifecycle.startingInstallation(toolName));
+  logger.debug(messages.startingInstallation(toolName));
 
   if (!toolConfig.installParams || !('repo' in toolConfig.installParams)) {
     const result: GitHubReleaseInstallResult = {
@@ -274,8 +273,8 @@ function constructDownloadUrl(
   logger: TsLogger
 ): OperationResult<string> {
   const customHost = projectConfig.github.host;
-  const host = customHost ?? '(public GitHub)';
-  logger.debug(messages.determiningDownloadUrl(rawBrowserDownloadUrl, customHost));
+  const hasCustomHost = Boolean(customHost);
+  logger.debug(messages.determiningDownloadUrl(rawBrowserDownloadUrl, hasCustomHost));
 
   try {
     const isAbsolute = isAbsoluteUrl(rawBrowserDownloadUrl);
@@ -287,12 +286,12 @@ function constructDownloadUrl(
       return downloadUrl;
     }
 
-    logger.debug(messages.finalDownloadUrl(rawBrowserDownloadUrl, host, downloadUrl.data));
+    logger.debug(messages.finalDownloadUrl(rawBrowserDownloadUrl, downloadUrl.data, hasCustomHost));
 
     return downloadUrl;
   } catch (error) {
     logger.error(messages.invalidUrl(rawBrowserDownloadUrl));
-    logger.debug(messages.downloadUrlError(rawBrowserDownloadUrl, host), error);
+    logger.debug(messages.downloadUrlError(rawBrowserDownloadUrl, hasCustomHost), error);
     const result: OperationResult<string> = {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -437,7 +436,7 @@ async function processArchiveInstallation(
   const extractResult: IExtractResult = await archiveExtractor.extract(downloadPath, {
     targetDir: context.stagingDir,
   });
-  logger.debug(messages.archiveExtracted(), extractResult);
+  logger.debug(messages.archiveExtracted(extractResult.extractedFiles.length, extractResult.executables.length));
 
   const postExtractContext: IExtractContext = {
     ...postDownloadContext,
