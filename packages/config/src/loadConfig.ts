@@ -2,7 +2,7 @@ import type { ISystemInfo, ProjectConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { messages } from './log-messages';
-import { loadProjectConfig } from './projectConfigLoader';
+import { loadProjectConfig } from './stagedProjectConfigLoader';
 import { loadTsConfig } from './tsConfigLoader';
 
 /**

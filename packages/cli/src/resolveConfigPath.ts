@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -27,9 +28,15 @@ export async function resolveConfigPath(
 ): Promise<string | undefined> {
   const logger = parentLogger.getSubLogger({ name: 'resolveConfigPath' });
 
+  const bootstrapHomeDir: string = os.homedir();
+
   // If explicit config path provided, resolve it relative to cwd
   if (configOption.length > 0) {
-    const resolvedPath = path.resolve(cwd, configOption);
+    const expandedConfigOption: string = configOption.startsWith('~')
+      ? configOption.replace(/^~(?=$|\/|\\)/, bootstrapHomeDir)
+      : configOption;
+
+    const resolvedPath = path.resolve(cwd, expandedConfigOption);
     logger.debug(messages.configPathResolved(resolvedPath));
     return resolvedPath;
   }

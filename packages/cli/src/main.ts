@@ -8,7 +8,7 @@ import type { ISystemInfo } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
-import { type IFileSystem, MemFileSystem, NodeFileSystem } from '@dotfiles/file-system';
+import { type IFileSystem, MemFileSystem, NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { GeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import { HookExecutor, Installer } from '@dotfiles/installer';
 import { BrewInstallerPlugin } from '@dotfiles/installer-brew';
@@ -230,13 +230,16 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     homeDir: projectConfig.paths.homeDir,
   };
 
+  // Wrap filesystem to resolve tilde paths using configured home
+  const resolvedFs = new ResolvedFileSystem(fs, projectConfig.paths.homeDir);
+
   // If dry run, load tool configs into memory filesystem
   if (dryRun) {
-    await loadToolConfigsForDryRun(logger, fs, projectConfig, finalSystemInfo);
+    await loadToolConfigsForDryRun(logger, resolvedFs, projectConfig, finalSystemInfo);
   }
 
   // Initialize download cache if enabled
-  const downloadCache = initializeDownloadCache(parentLogger, fs, projectConfig);
+  const downloadCache = initializeDownloadCache(parentLogger, resolvedFs, projectConfig);
 
   // Initialize shared registry database
   const registryPath = path.join(projectConfig.paths.generatedDir, 'registry.db');
@@ -254,10 +257,10 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const toolInstallationRegistry = new ToolInstallationRegistry(registryLogger, db);
 
   // Initialize services with projectConfig
-  const downloader = new Downloader(parentLogger, fs, undefined, downloadCache);
+  const downloader = new Downloader(parentLogger, resolvedFs, undefined, downloadCache);
 
   // Initialize GitHub API cache using generic FileCache with JSON strategy
-  const githubApiCache = new FileCache(parentLogger, fs, {
+  const githubApiCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.github.cache.enabled,
     defaultTtl: projectConfig.github.cache.ttl,
     cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'github-api'),
@@ -265,13 +268,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   });
   const githubApiClient = new GitHubApiClient(parentLogger, projectConfig, downloader, githubApiCache);
 
-  const cargoCratesIoCache = new FileCache(parentLogger, fs, {
+  const cargoCratesIoCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.cratesIo.cache.enabled,
     defaultTtl: projectConfig.cargo.cratesIo.cache.ttl,
     cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'cargo', 'crates-io'),
     storageStrategy: 'json',
   });
-  const cargoGithubRawCache = new FileCache(parentLogger, fs, {
+  const cargoGithubRawCache = new FileCache(parentLogger, resolvedFs, {
     enabled: projectConfig.cargo.githubRaw.cache.enabled,
     defaultTtl: projectConfig.cargo.githubRaw.cache.ttl,
     cacheDir: path.join(projectConfig.paths.generatedDir, 'cache', 'cargo', 'github-raw'),
@@ -281,7 +284,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   // Create tracked filesystem instances for each generator
   const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
-    createTrackedFileSystems(parentLogger, fs, fileRegistry, projectConfig);
+    createTrackedFileSystems(parentLogger, resolvedFs, fileRegistry, projectConfig);
 
   // Create system-context logger for generators that operate at system level
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });
@@ -290,7 +293,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
   const completionCommandExecutor = new CompletionCommandExecutor(systemLogger);
-  const completionGenerator = new CompletionGenerator(systemLogger, fs, completionCommandExecutor);
+  const completionGenerator = new CompletionGenerator(systemLogger, resolvedFs, completionCommandExecutor);
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     systemLogger,
@@ -302,7 +305,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     projectConfig
   );
 
-  const archiveExtractor = new ArchiveExtractor(parentLogger, fs);
+  const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs);
 
   // Initialize plugin registry
   const pluginRegistry = new InstallerPluginRegistry(parentLogger);
@@ -358,7 +361,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     logger,
     downloader,
     toolInstallationRegistry,
-    fs,
+    resolvedFs,
     catalogTrackedFs,
     path.join(projectConfig.paths.generatedDir, 'cache', 'readme'),
     pluginRegistry
@@ -366,7 +369,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   return {
     projectConfig,
-    fs,
+    fs: resolvedFs,
     configService,
     readmeService,
     fileRegistry,

@@ -11,6 +11,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotfiles/utils": "workspace:*",
     "memfs": "^4.49.0"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import os from 'node:os';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { DEFAULT_CONFIG_FILES, resolveConfigPath } from '../resolveConfigPath';
@@ -17,6 +18,17 @@ describe('resolveConfigPath', () => {
   });
 
   describe('with explicit config path', () => {
+    it('expands ~/ in explicit config option using bootstrap home', async () => {
+      const homedirSpy = spyOn(os, 'homedir').mockReturnValue('/bootstrap-home');
+
+      const result = await resolveConfigPath(logger, '~/config.yaml', '/cwd');
+
+      expect(result).toBe('/bootstrap-home/config.yaml');
+      expect(homedirSpy).toHaveBeenCalledTimes(1);
+
+      homedirSpy.mockRestore();
+    });
+
     it('resolves relative path to absolute', async () => {
       const result = await resolveConfigPath(logger, 'my-config.ts', '/home/user/project');
 

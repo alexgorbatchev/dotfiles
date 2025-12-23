@@ -45,7 +45,7 @@ describe('loadConfig', () => {
 
       const result = await loadConfig(logger, fs, '/test/config.yaml', mockSystemInfo, {});
 
-      expect(result.paths.dotfilesDir).toBe('/test/yaml-dotfiles');
+      expect(result.paths.dotfilesDir).toBe('/Users/testuser/yaml-dotfiles');
       expect(result.paths.targetDir).toBe('/yaml/bin');
     });
 
@@ -63,7 +63,7 @@ describe('loadConfig', () => {
 
       const result = await loadConfig(logger, fs, '/test/config.yml', mockSystemInfo, {});
 
-      expect(result.paths.dotfilesDir).toBe('/test/yml-dotfiles');
+      expect(result.paths.dotfilesDir).toBe('/Users/testuser/yml-dotfiles');
     });
 
     it('should load TypeScript config when file has .ts extension', async () => {
@@ -97,8 +97,7 @@ describe('loadConfig', () => {
 
       const result = await loadConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      const expectedConfigDir = path.dirname(configPath);
-      expect(result.paths.dotfilesDir).toBe(path.join(expectedConfigDir, 'ts-dotfiles'));
+      expect(result.paths.dotfilesDir).toBe('/Users/testuser/ts-dotfiles');
       expect(result.paths.targetDir).toBe('/ts/bin');
     });
     it('should throw error for unsupported file extensions', async () => {

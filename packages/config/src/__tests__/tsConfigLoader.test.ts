@@ -55,8 +55,7 @@ describe('tsConfigLoader', () => {
       const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      const expectedDotfilesDir = path.join(path.dirname(configPath), '.custom-dotfiles');
-      expect(result.paths.dotfilesDir).toBe(expectedDotfilesDir);
+      expect(result.paths.dotfilesDir).toBe('/Users/testuser/.custom-dotfiles');
       expect(result.paths.targetDir).toBe('/custom/bin');
       expect(result.github.token).toBe('test-token');
     });
@@ -77,8 +76,7 @@ describe('tsConfigLoader', () => {
       const fs = new NodeFileSystem();
       const result = await loadTsConfig(logger, fs, configPath, mockSystemInfo, {});
 
-      const expectedDotfilesDir = path.join(path.dirname(configPath), 'object-dotfiles');
-      expect(result.paths.dotfilesDir).toBe(expectedDotfilesDir);
+      expect(result.paths.dotfilesDir).toBe('/Users/testuser/object-dotfiles');
       expect(result.paths.targetDir).toBe('/obj/bin');
     });
   });

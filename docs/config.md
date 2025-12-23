@@ -145,27 +145,27 @@ paths: {
   homeDir: '/home/user',
 
   // Root dotfiles directory (project root)
-  // Default: ${configFileDir} (same directory as config file)
+  // Default: {configFileDir} (same directory as config file)
   dotfilesDir: '~/.dotfiles',
 
   // Directory containing *.tool.ts configuration files
-  // Default: ${paths.dotfilesDir}/tools
+  // Default: {paths.dotfilesDir}/tools
   toolConfigsDir: '~/.dotfiles/tools',
 
   // Directory where generated files are stored
-  // Default: ${paths.dotfilesDir}/.generated
+  // Default: {paths.dotfilesDir}/.generated
   generatedDir: '~/.dotfiles/.generated',
 
   // Directory where executable shims are placed (must be in PATH)
-  // Default: ${paths.generatedDir}/bin
+  // Default: {paths.generatedDir}/bin
   targetDir: '~/.local/bin',
 
   // Directory for generated shell initialization scripts
-  // Default: ${paths.generatedDir}/shell-scripts
+  // Default: {paths.generatedDir}/shell-scripts
   shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
 
   // Directory for tool binaries
-  // Default: ${paths.generatedDir}/binaries
+  // Default: {paths.generatedDir}/binaries
   binariesDir: '~/.dotfiles/.generated/binaries',
 }
 ```
@@ -176,14 +176,14 @@ Paths support variable expansion with several special variables:
 
 ```typescript
 paths: {
-  // Use ${configFileDir} to reference the directory containing the config file
-  generatedDir: '${configFileDir}/.generated',
+  // Use {configFileDir} to reference the directory containing the config file
+  generatedDir: '{configFileDir}/.generated',
 
   // Reference other path variables
-  targetDir: '${paths.generatedDir}/bin',
+  targetDir: '{paths.generatedDir}/bin',
   
   // Use environment variables
-  dotfilesDir: '${DOTFILES_PATH}',
+  dotfilesDir: '{DOTFILES_PATH}',
   
   // Use home directory shorthand
   homeDir: '~/custom-home',
@@ -238,8 +238,8 @@ features: {
     generate: true,
 
     // Where to write the catalog file
-    // Default: ${paths.dotfilesDir}/CATALOG.md
-    filePath: '~/.dotfiles/CATALOG.md',
+    // Default: {paths.dotfilesDir}/CATALOG.md
+    filePath: '{paths.dotfilesDir}/CATALOG.md',
   },
 
   // Shell initialization configuration

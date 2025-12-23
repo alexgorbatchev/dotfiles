@@ -233,8 +233,8 @@ features:
     # (boolean, default: true)
     generate: true
     # Path where the catalog file will be generated.
-    # (string, default: ${paths.dotfilesDir}/CATALOG.md)
-    filePath: "${paths.dotfilesDir}/CATALOG.md"
+    # (string, default: {paths.dotfilesDir}/CATALOG.md)
+    filePath: "{paths.dotfilesDir}/CATALOG.md"
 
   # Configuration for shell initialization.
   # Controls where the shell initialization scripts are sourced.

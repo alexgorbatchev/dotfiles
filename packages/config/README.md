@@ -332,16 +332,16 @@ Configuration values support token substitution for environment variables and co
 
 ```yaml
 paths:
-  homeDir: ${HOME}
-  dotfilesDir: ${HOME}/.dotfiles
-  binariesDir: ${paths.dotfilesDir}/binaries
-  targetDir: ${CUSTOM_BIN_DIR:-~/.local/bin}  # With default value
+  homeDir: {HOME}
+  dotfilesDir: {HOME}/.dotfiles
+  binariesDir: {paths.dotfilesDir}/binaries
+  targetDir: {CUSTOM_BIN_DIR:-~/.local/bin}  # With default value
 ```
 
 Supported token formats:
-- `${ENV_VAR}` - Environment variable
-- `${paths.dotfilesDir}` - Reference to another config value
-- `${VAR:-default}` - Environment variable with default value
+- `{ENV_VAR}` - Environment variable
+- `{paths.dotfilesDir}` - Reference to another config value
+- `{VAR:-default}` - Environment variable with default value
 - `~` - Home directory expansion
 
 ## Tool Configuration Loading Process

@@ -5,7 +5,7 @@ import type { TsLogger } from '@dotfiles/logger';
 import { exitCli } from '@dotfiles/utils';
 import type { ConfigContext } from './defineConfig';
 import { messages } from './log-messages';
-import { createProjectConfigFromObject } from './projectConfigLoader';
+import { createProjectConfigFromObject } from './stagedProjectConfigLoader';
 
 type ModuleWithDefaultExport = {
   default?: unknown;

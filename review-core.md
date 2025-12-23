@@ -120,7 +120,7 @@ With sophisticated contravariance explanation for using `never` in collections.
 
 **Key Schema Features:**
 - Default values defined with examples
-- Variable expansion support: `${HOME}`, `${paths.dotfilesDir}`
+- Variable expansion support: `{HOME}`, `{paths.dotfilesDir}`
 - Zod strict mode (.strict()) on all schemas
 - Deep partial types for overrides
 - Private fields (configFilePath, configFileDir) added post-validation
