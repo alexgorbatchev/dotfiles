@@ -13,7 +13,7 @@ Understanding how paths are resolved is crucial for correctly configuring your t
 |--------|-----------|-----------------|---------|
 | **symlink()** | `source` starting with `./` | Relative to tool configuration directory | `'./config.toml'` → `configs/fzf/config.toml` |
 | **symlink()** | `source` absolute path | Used as-is | `'/etc/global.conf'` → `/etc/global.conf` |
-| **symlink()** | `target` | Must resolve to an absolute path (prefer context; `~/...` supported) | `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml` |
+| **symlink()** | `target` | Must resolve to an absolute path (prefer context; `~`/`~/...` supported and expanded using `ctx.projectConfig.paths.homeDir`) | `'~/.config/tool/config.toml'` |
 | **completions()** | `source` | Relative to extracted archive root | `'shell/completion.zsh'` → inside downloaded archive |
 | **completions()** | `targetDir` | Must be absolute (optional) | `${ctx.projectConfig.paths.homeDir}/.zsh/completions` |
 | **install('github-release')** | `binaryPath` | Relative to extracted archive root | `'bin/tool'` → locates binary inside downloaded archive |

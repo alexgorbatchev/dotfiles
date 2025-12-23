@@ -190,6 +190,8 @@ paths: {
 }
 ```
 
+`~` is expanded using the resolved `paths.homeDir`.
+
 #### Platform-Specific Paths
 
 Define different paths for different platforms:

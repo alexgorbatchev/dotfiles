@@ -98,16 +98,16 @@ function createHostSchema(options: {
  *
  * ### Variable Expansion
  *
- * Path variables can reference environment variables (e.g., `${HOME}`) and other
- * paths defined within this schema (e.g., `${paths.dotfilesDir}`).
+ * Path variables can reference environment variables (e.g., `{HOME}`) and other
+ * paths defined within this schema (e.g., `{paths.dotfilesDir}`).
  *
- * The resolution order is critical and follows this dependency tree:
+ * The resolution order is critical and follows this staged model:
  *
  * ```
- * ${HOME} (from environment)
- * └── homeDir
- *
- * ${configFileDir} (from config file location)
+ * 1. Bootstrap: {HOME} (from system environment)
+ * 2. Resolve: paths.homeDir using bootstrap {HOME}
+ * 3. Post-home: Remaining {TOKEN} substitution using resolved paths.homeDir
+ * 4. Tilde: ~ expansion (only in paths.* fields) using paths.homeDir
  * └── dotfilesDir
  *     ├── toolConfigsDir
  *     └── generatedDir

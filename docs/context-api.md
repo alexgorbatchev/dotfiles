@@ -241,7 +241,7 @@ Directory for generated shell scripts.
 ### Configuration File Symlinks
 
 ```typescript
-// ✅ Recommended - using ~ for home directory
+// ✅ Recommended - using ~ for home directory (expanded using ctx.projectConfig.paths.homeDir)
 import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
