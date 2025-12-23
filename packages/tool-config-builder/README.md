@@ -238,6 +238,7 @@ Defines the installation method and parameters.
 c.install('github-release', {
   repo: 'owner/repo',
   assetPattern: '*.tar.gz',
+  // Regex string form is also supported, e.g. '/^tool-.*\\.tar\\.gz$/'
 })
 
 c.install('brew', {

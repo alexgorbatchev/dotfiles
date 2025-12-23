@@ -185,7 +185,7 @@ c.hook('after-install', async (context) => {
 ```typescript
 interface IGitHubReleaseParams {
   repo: string;
-  assetPattern?: string;
+  assetPattern?: string | RegExp;
   binaryPath?: string;
   version?: string;
   includePrerelease?: boolean;
@@ -208,7 +208,7 @@ interface IAssetSelectionContext extends BaseToolContext {
   /** The tool configuration being processed */
   toolConfig: ToolConfig;
   /** Asset pattern from configuration (if provided) */
-  assetPattern?: string;
+  assetPattern?: string | RegExp;
 }
 ```
 

@@ -1,6 +1,7 @@
 import type { BaseInstallParams, IGitHubRelease, IGitHubReleaseAsset, IInstallContext } from '@dotfiles/core';
 import { baseInstallParamsSchema } from '@dotfiles/core';
 import { z } from 'zod';
+import { type AssetPattern, isValidAssetPatternString } from '../matchAssetPattern';
 
 /**
  * Context object for asset selection functions.
@@ -13,7 +14,7 @@ export interface IAssetSelectionContext extends IInstallContext {
   /** The GitHub release being processed */
   release: IGitHubRelease;
   /** Asset pattern from configuration (if provided) */
-  assetPattern?: string;
+  assetPattern?: AssetPattern;
 }
 
 /**
@@ -63,7 +64,12 @@ export const githubReleaseInstallParamsSchema = baseInstallParamsSchema.extend({
    * zinit light "sharkdp/bat"
    * ```
    */
-  assetPattern: z.string().optional(),
+  assetPattern: z
+    .union([
+      z.string().refine(isValidAssetPatternString, 'assetPattern must be a valid glob or a regex string like /.../'),
+      z.instanceof(RegExp),
+    ])
+    .optional(),
 
   /**
    * A specific version string (e.g., `v1.2.3`, `0.48.0`) or a SemVer constraint

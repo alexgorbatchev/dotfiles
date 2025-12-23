@@ -63,6 +63,7 @@ export default defineTool((install, ctx) =>
       install('github-release', {
         repo: 'owner/tool',
         assetPattern: '*unix*.tar.gz'
+        // Regex string is also supported, e.g. '/^tool-.*\\.tar\\.gz$/'
       })
     )
     .platform(Platform.Windows, (install) =>

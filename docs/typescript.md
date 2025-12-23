@@ -353,11 +353,8 @@ For optimal TypeScript support in VS Code:
 Run TypeScript compiler to check for errors:
 
 ```bash
-# Check types without emitting files
-npm run typecheck
-
-# Or use tsc directly
-npx tsc --noEmit
+# Check types
+bun typecheck
 ```
 
 ## Best Practices
@@ -396,6 +393,7 @@ export default defineTool((install, ctx) => {
   return install('github-release', {
     repo: 'owner/tool',
     assetPattern: '*.tar.gz'
+    // Regex string is also supported: '/^tool-.*\\.tar\\.gz$/'
   });
 });
 
@@ -443,6 +441,8 @@ export default defineTool((install, ctx) => {
   return install('github-release', {
     repo: 'owner/tool',
     assetPattern: '*linux*.tar.gz',
+    // TypeScript-only: you can also pass a RegExp value
+    // assetPattern: /^tool-.*\.tar\.gz$/,
     binaryPath: 'bin/tool'
   });
 });

@@ -27,7 +27,10 @@ The `install('github-release', params)` function accepts the following parameter
 
 - **repo** (required): GitHub repository in `owner/repo` format (e.g., `junegunn/fzf`)
 - **version** (optional): Specific version tag or SemVer constraint (defaults to `latest`)
-- **assetPattern** (optional): Glob pattern to match asset filenames (e.g., `*linux_amd64.tar.gz`)
+- **assetPattern** (optional): Glob or regex pattern to match asset filenames.
+  - Glob example: `*linux_amd64.tar.gz`
+  - Regex string example: `/^bun-.*\\.zip$/`
+  - TypeScript only: a real `RegExp` value (e.g. `/^bun-.*\.zip$/`)
 - **assetSelector** (optional): Custom function for advanced asset selection logic
 - **env** (optional): Environment variables for the installation process
 - **hooks** (optional): Lifecycle hooks (`beforeInstall`, `afterDownload`, `afterExtract`, `afterInstall`)
