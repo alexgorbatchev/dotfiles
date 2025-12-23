@@ -63,7 +63,7 @@ export function createTestInstallHookContext(
     projectConfig: mockProjectConfig,
 
     // InstallContext specific properties
-    installDir: '/test/install/dir',
+    stagingDir: '/test/staging/dir',
     systemInfo: {
       platform: 'darwin',
       arch: 'x64',

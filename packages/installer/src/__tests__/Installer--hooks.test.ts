@@ -22,7 +22,7 @@ describe('Installer - Enhanced Hooks', () => {
       const beforeInstallHook = mock(async (context) => {
         expect(context.toolName).toBe(mockToolName);
         expect(context.fileSystem).toBeDefined();
-        expect(context.installDir).toContain(mockToolName);
+        expect(context.stagingDir).toContain(mockToolName);
       });
 
       const toolConfig: GithubReleaseToolConfig = {
@@ -364,8 +364,8 @@ describe('Installer - Enhanced Hooks', () => {
       const result = await installer.install(mockToolName, toolConfig);
 
       expect(result.success).toBe(false);
-      // Should stop at afterDownload and not execute afterExtract, but afterInstall may still run for cleanup
-      expect(executionOrder).toEqual(['beforeInstall', 'afterDownload', 'afterInstall']);
+      // Should stop at afterDownload and not execute afterExtract or afterInstall
+      expect(executionOrder).toEqual(['beforeInstall', 'afterDownload']);
     });
   });
 

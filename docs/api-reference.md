@@ -286,7 +286,9 @@ interface IManualParams {
 ```typescript
 interface IHookContext {
   toolName: string;
-  installDir: string;
+  currentDir: string;
+  stagingDir?: string;
+  installedDir?: string;
   downloadPath?: string;
   extractDir?: string;
   extractResult?: ExtractResult;
@@ -296,10 +298,19 @@ interface IHookContext {
   projectConfig: ProjectConfig;
   toolConfig: ToolConfig;
   $: ReturnType<typeof $>;
+  binaryPaths?: string[];
   binaryPath?: string;
   version?: string;
 }
 ```
+
+This is a merged view across all hook events. Some properties are only available in specific phases:
+
+- Always available: `toolName`, `currentDir`, `systemInfo`, `fileSystem`, `logger`, `projectConfig`, `toolConfig`, `$`.
+- `before-install`: `stagingDir`.
+- `after-download`: `stagingDir`, `downloadPath`.
+- `after-extract`: `stagingDir`, `downloadPath`, `extractDir`, `extractResult`.
+- `after-install` (success-only): `installedDir`, `binaryPaths` (and may also include `downloadPath`/`extract*` when applicable).
 
 ### Shell Script Types
 
@@ -359,8 +370,8 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .version('latest')
-    .hook('after-install', async ({ logger, $ }) => {
-      await $`tool init`;
+    .hook('after-install', async ({ logger, $, installedDir }) => {
+      await $`${installedDir}/tool init`;
       logger.info('Tool initialized');
     })
     .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)

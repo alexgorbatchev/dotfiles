@@ -1,5 +1,11 @@
 import path from 'node:path';
-import type { $extended, IAfterInstallContext, IOperationFailure, IOperationSuccess } from '@dotfiles/core';
+import type {
+  $extended,
+  AsyncInstallHook,
+  IInstallBaseContext,
+  IOperationFailure,
+  IOperationSuccess,
+} from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -7,7 +13,7 @@ import type { ShellExpression } from 'bun';
 import { messages } from './log-messages';
 import { writeHookErrorDetails } from './writeHookErrorDetails';
 
-export type HookHandler = (context: IAfterInstallContext) => Promise<void>;
+export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseContext> = AsyncInstallHook<TContext>;
 
 function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
   const configuredShell: $extended = Object.assign(
@@ -53,11 +59,11 @@ export type HookExecutionResult =
  * Complete definition of a hook including the function, name, and execution options.
  * Used by `executeHooks` to run multiple hooks in sequence.
  */
-export interface IHookDefinition {
+export interface IHookDefinition<TContext extends IInstallBaseContext = IInstallBaseContext> {
   /** Name of the hook */
   name: string;
   /** Hook function to execute */
-  hook: HookHandler;
+  hook: HookHandler<TContext>;
   /** Optional execution options */
   options?: IHookExecutionOptions;
 }
@@ -101,10 +107,10 @@ export class HookExecutor {
    * @param options - Execution options (timeout, continueOnError)
    * @returns Result with success status, duration, and error details if failed
    */
-  async executeHook(
+  async executeHook<TContext extends IInstallBaseContext>(
     hookName: string,
-    hook: HookHandler,
-    enhancedContext: IAfterInstallContext,
+    hook: HookHandler<TContext>,
+    enhancedContext: TContext,
     options: IHookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
@@ -189,7 +195,10 @@ export class HookExecutor {
    * @param fileSystem - File system instance (may be TrackedFileSystem)
    * @returns Enhanced context ready for hook execution
    */
-  createEnhancedContext(baseContext: IAfterInstallContext, fileSystem: IFileSystem): IAfterInstallContext {
+  createEnhancedContext<TContext extends IInstallBaseContext>(
+    baseContext: TContext,
+    fileSystem: IFileSystem
+  ): TContext {
     // Create a tool-specific TrackedFileSystem if we have one
     const enhancedFileSystem: IFileSystem =
       fileSystem instanceof TrackedFileSystem ? fileSystem.withToolName(baseContext.toolName) : fileSystem;
@@ -201,7 +210,7 @@ export class HookExecutor {
       ? createToolConfigCwdShell(baseContext.$, toolConfigDirPath)
       : baseContext.$;
 
-    const result: IAfterInstallContext = {
+    const result: TContext = {
       ...baseContext,
       $: shellWithDefaultCwd,
       fileSystem: enhancedFileSystem,
@@ -220,13 +229,16 @@ export class HookExecutor {
    * @param enhancedContext - Enhanced context shared across all hooks
    * @returns Array of execution results for each hook
    */
-  async executeHooks(hooks: IHookDefinition[], enhancedContext: IAfterInstallContext): Promise<HookExecutionResult[]> {
+  async executeHooks<TContext extends IInstallBaseContext>(
+    hooks: IHookDefinition<TContext>[],
+    enhancedContext: TContext
+  ): Promise<HookExecutionResult[]> {
     const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 
     for (const hookDefinition of hooks) {
       const name: string = hookDefinition.name;
-      const hook: HookHandler = hookDefinition.hook;
+      const hook: HookHandler<TContext> = hookDefinition.hook;
       const options: IHookExecutionOptions | undefined = hookDefinition.options;
 
       const result = await this.executeHook(name, hook, enhancedContext, options);

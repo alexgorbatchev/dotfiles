@@ -80,7 +80,7 @@ export async function installFromCurlTar(
   const operation = async (): Promise<CurlTarInstallResult> => {
     // Download the tarball
     logger.debug(messages.downloadingTarball(url));
-    const tarballPath = path.join(context.installDir, `${toolName}.tar.gz`);
+    const tarballPath = path.join(context.stagingDir, `${toolName}.tar.gz`);
 
     await downloadWithProgress(url, tarballPath, `${toolName}.tar.gz`, downloader, options);
 
@@ -109,14 +109,14 @@ export async function installFromCurlTar(
     logger.debug(messages.extractingTarball());
 
     const extractResult: IExtractResult = await archiveExtractor.extract(tarballPath, {
-      targetDir: context.installDir,
+      targetDir: context.stagingDir,
     });
     logger.debug(messages.tarballExtracted(), extractResult);
 
     // Update context with extract directory and result
     postExtractContext = {
       ...postDownloadContext,
-      extractDir: context.installDir,
+      extractDir: context.stagingDir,
       extractResult,
     };
 
@@ -130,7 +130,7 @@ export async function installFromCurlTar(
     }
 
     // Handle all binaries from extracted archive
-    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
+    await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.stagingDir, logger);
 
     // Clean up downloaded tarball
     if (await toolFs.exists(tarballPath)) {
@@ -139,7 +139,7 @@ export async function installFromCurlTar(
     }
 
     // Return paths to all binaries
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

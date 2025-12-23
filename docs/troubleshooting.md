@@ -507,12 +507,12 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .hook('after-install', async ({ logger, $, installDir }) => {
+    .hook('after-install', async ({ logger, $, installedDir }) => {
       const pwd = await $`pwd`;
       logger.warn('Working directory:', pwd.stdout.trim());
       
       // Use absolute paths if you need to work elsewhere
-      await $`cd ${installDir} && ./binary --version`;
+      await $`cd ${installedDir} && ./binary --version`;
     })
 );
 ```

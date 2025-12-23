@@ -31,7 +31,9 @@ Each hook receives an enhanced context object with the following properties:
 interface IHookContext {
   // Basic installation info
   toolName: string;           // Name of the tool
-  installDir: string;         // Versioned installation directory for this run (absolute)
+  currentDir: string;         // Stable path (symlink) for this tool
+  stagingDir?: string;        // Per-attempt directory (before-install / after-download / after-extract)
+  installedDir?: string;      // Final directory (after-install only; success-only)
   downloadPath?: string;      // Path to downloaded file (afterDownload+)
   extractDir?: string;        // Extract directory (afterExtract+)
   extractResult?: ExtractResult; // Extraction results (afterExtract+)
@@ -45,13 +47,15 @@ interface IHookContext {
   $: typeof $;               // Bun's shell executor for running shell commands
   
   // Available in afterInstall hook only
+  binaryPaths?: string[];     // Paths to installed binaries (after-install only)
   binaryPath?: string;       // Path to installed binary
   version?: string;          // Version of installed tool
 }
 
 Notes:
-- `installDir` is the per-install directory (typically under `${projectConfig.paths.generatedDir}/binaries/<tool>/<version-or-timestamp>`).
-- Use `ctx.currentDir` (ToolConfigContext) when you need a stable location across installs/updates.
+- Use `currentDir` when you need a stable location across installs/updates.
+- Use `stagingDir` only for transient work during the install attempt.
+- Use `installedDir` in `after-install` when you need the final installation location.
 ```
 
 ## Available APIs
@@ -260,13 +264,13 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .hook('after-extract', async ({ extractDir, installDir, logger, $ }) => {
+    .hook('after-extract', async ({ extractDir, stagingDir, logger, $ }) => {
       if (extractDir) {
         logger.info('Building tool from source...');
         await $`cd ${extractDir} && make build`;
         
         const builtBinary = path.join(extractDir, 'target/release/tool');
-        const targetPath = path.join(installDir, 'tool');
+        const targetPath = path.join(stagingDir ?? '', 'tool');
         await $`mv ${builtBinary} ${targetPath}`;
         
         logger.info('Build completed successfully');
@@ -284,13 +288,13 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+    .hook('after-install', async ({ toolName, installedDir, systemInfo, fileSystem, logger, $ }) => {
       // Create configuration directory using file system API
       const configDir = path.join(systemInfo.homeDir, '.config', toolName);
       await fileSystem.mkdir(configDir, { recursive: true });
       
       // Initialize tool-specific data using shell executor
-      await $`${path.join(installDir, toolName)} init --data-dir ${configDir}`;
+      await $`${path.join(installedDir ?? '', toolName)} init --data-dir ${configDir}`;
       
       logger.info(`Initialized ${toolName} at ${configDir}`);
     })
@@ -306,7 +310,7 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .hook('after-extract', async ({ extractDir, installDir, fileSystem, logger }) => {
+    .hook('after-extract', async ({ extractDir, stagingDir, fileSystem, logger }) => {
       if (extractDir) {
         // Custom binary selection and processing
         const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
@@ -314,7 +318,7 @@ export default defineTool((install, ctx) =>
         
         if (mainBinary) {
           const sourcePath = path.join(extractDir, 'bin', mainBinary);
-          const targetPath = path.join(installDir, 'tool');
+          const targetPath = path.join(stagingDir ?? '', 'tool');
           await fileSystem.copy(sourcePath, targetPath);
           logger.info(`Selected binary: ${mainBinary}`);
         }
@@ -411,16 +415,16 @@ export default defineTool((install, ctx) =>
         await $`cd ${extractDir} && make plugins`;
       }
     })
-    .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+    .hook('after-install', async ({ toolName, installedDir, systemInfo, fileSystem, logger, $ }) => {
       // Create data directory
       const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
       await fileSystem.mkdir(dataDir, { recursive: true });
       
       // Initialize tool
-      await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
+      await $`${path.join(installedDir ?? '', toolName)} init --data-dir ${dataDir}`;
       
       // Set up completion
-      await $`${path.join(installDir, toolName)} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
+      await $`${path.join(installedDir ?? '', toolName)} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
       
       logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })

@@ -4,7 +4,7 @@ export default defineTool((install) =>
   install('curl-script', {
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
-    args: (ctx) => ['--skip-shell', '--install-dir', ctx.installDir, '--force-no-brew'],
+    args: (ctx) => ['--skip-shell', '--install-dir', ctx.stagingDir, '--force-no-brew'],
   })
     .bin('fnm')
     .zsh((shell) =>

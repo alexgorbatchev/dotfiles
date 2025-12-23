@@ -405,7 +405,9 @@ Hooks receive an enhanced context with access to:
 interface InstallHookContext extends BaseToolContext {
   toolName: string;
   version?: string;
-  installDir: string;
+  currentDir: string;
+  stagingDir?: string;
+  installedDir?: string;
   extractDir?: string;
   downloadPath?: string;
   binaryPath?: string;
@@ -431,21 +433,18 @@ export default defineTool((install, ctx) =>
   })
     .bin('bat')
     .version('latest')
-    .hook('after-extract', async (context) => {
+    .hook('after-install', async (context) => {
       // Create config directory
-      const configDir = path.join(context.installDir, 'config');
+      const configDir = path.join(context.currentDir, 'config');
       await context.fileSystem.ensureDir(configDir);
-      
+
       // Create default config
       const configPath = path.join(configDir, 'config');
       await context.fileSystem.writeFile(
-        configPath, 
+        configPath,
         `--theme="Monokai Extended"\n--style="numbers,changes,header"\n`
       );
-      
-      context.logger.debug('Configuration setup completed');
-    })
-    .hook('after-install', async (context) => {
+
       // Use the $ shell executor for running commands
       await context.$`${context.binaryPath} --version`;
     })
@@ -541,7 +540,7 @@ const toolFs = createToolFileSystem(baseFileSystem, toolName);
 
 ### Binary Path Utilities
 
-**`getBinaryPaths(binaries, toolName, installDir)`**
+**`getBinaryPaths(binaries, toolName, installedDir)`**
 
 Generates full paths for all configured binaries.
 
@@ -875,7 +874,7 @@ export async function installFromMyCustom(
 
     // 1. Download phase
     const filename = `${toolName}-download`;
-    const downloadPath = path.join(context.installDir, filename);
+    const downloadPath = path.join(context.stagingDir, filename);
 
     await downloadWithProgress(params.customUrl, downloadPath, filename, downloader, options);
 
@@ -909,7 +908,15 @@ export async function installFromMyCustom(
       return afterInstallResult;
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+    const installedDir = context.installedDir;
+    if (!installedDir) {
+      return {
+        success: false,
+        error: 'Installed directory not available',
+      };
+    }
+
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, installedDir);
 
     return {
       success: true,

@@ -32,9 +32,8 @@ Interface for archive extraction operations.
 interface IArchiveExtractor {
   extract(
     archivePath: string,
-    destinationPath: string,
-    options?: ExtractOptions
-  ): Promise<ExtractResult>;
+    options?: IExtractOptions
+  ): Promise<IExtractResult>;
 }
 ```
 
@@ -55,9 +54,7 @@ Result object returned after extraction.
 ```typescript
 interface IExtractResult {
   extractedFiles: string[];
-  extractedDir: string;
-  success: boolean;
-  error?: string;
+  executables: string[];
 }
 ```
 
@@ -75,17 +72,13 @@ const fileSystem = new FileSystem(logger);
 const extractor = new ArchiveExtractor(logger, fileSystem);
 
 // Extract a tar.gz archive
-const result = await extractor.extract(
-  '/downloads/tool-v1.0.0.tar.gz',
-  '/install/tool'
-);
+const result = await extractor.extract('/downloads/tool-v1.0.0.tar.gz', {
+  targetDir: '/install/tool'
+});
 
-if (result.success) {
-  console.log('Extracted files:', result.extractedFiles);
-  console.log('Extract directory:', result.extractedDir);
-} else {
-  console.error('Extraction failed:', result.error);
-}
+logger.info('Extraction completed');
+logger.info(`Extracted files: ${result.extractedFiles.length}`);
+logger.info(`Executables: ${result.executables.length}`);
 ```
 
 ### With Progress Tracking
@@ -97,8 +90,8 @@ const extractor = new ArchiveExtractor(logger, fileSystem);
 
 const result = await extractor.extract(
   '/downloads/large-tool.tar.gz',
-  '/install/tool',
   {
+    targetDir: '/install/tool',
     onProgress: (current, total) => {
       const percent = (current / total) * 100;
       console.log(`Extracting: ${percent.toFixed(1)}%`);
@@ -115,15 +108,9 @@ import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 const extractor = new ArchiveExtractor(logger, fileSystem);
 
 try {
-  const result = await extractor.extract(
-    '/downloads/tool.tar.gz',
-    '/install/tool'
-  );
-  
-  if (!result.success) {
-    logger.error('Extraction failed', result.error);
-    // Handle extraction failure
-  }
+  await extractor.extract('/downloads/tool.tar.gz', {
+    targetDir: '/install/tool'
+  });
 } catch (error) {
   logger.error('Unexpected error during extraction', error);
   // Handle unexpected errors
@@ -140,7 +127,9 @@ const extractor = new ArchiveExtractor(logger, fileSystem);
 
 const result = await extractor.extract(
   '/downloads/tool.tar.gz',
-  '/install/tool'
+  {
+    targetDir: '/install/tool'
+  }
 );
 
 // Find specific files in the extraction result
@@ -170,16 +159,12 @@ class Installer {
     // ... other dependencies
   ) {}
 
-  async installTool(downloadPath: string, installDir: string) {
+  async installTool(downloadPath: string, targetDir: string) {
     // Extract downloaded archive
     const extractResult = await this.archiveExtractor.extract(
       downloadPath,
-      installDir
+      { targetDir }
     );
-
-    if (!extractResult.success) {
-      throw new Error(`Failed to extract: ${extractResult.error}`);
-    }
 
     // Process extracted files
     return extractResult;
@@ -282,22 +267,19 @@ logger.error('Extraction failed', { error: extractError });
 ### Always Check Results
 ```typescript
 const result = await extractor.extract(source, dest);
-if (!result.success) {
-  // Handle failure
-  throw new Error(result.error);
-}
+// extract() throws on failure
 ```
 
 ### Use Appropriate Destinations
 ```typescript
 // Create unique destination directories to avoid conflicts
-const destDir = path.join(installDir, `tool-${version}`);
-await extractor.extract(archivePath, destDir);
+const destDir = path.join(targetDir, `tool-${version}`);
+await extractor.extract(archivePath, { targetDir: destDir });
 ```
 
 ### Clean Up After Extraction
 ```typescript
-const result = await extractor.extract(downloadPath, installDir);
+await extractor.extract(downloadPath, { targetDir });
 
 // After processing, clean up the archive
 await fileSystem.remove(downloadPath);
@@ -305,10 +287,10 @@ await fileSystem.remove(downloadPath);
 
 ### Validate Extracted Contents
 ```typescript
-const result = await extractor.extract(archivePath, installDir);
+await extractor.extract(archivePath, { targetDir });
 
 // Verify expected files exist
-const requiredBinary = path.join(result.extractedDir, 'bin', 'tool');
+const requiredBinary = path.join(targetDir, 'bin', 'tool');
 const exists = await fileSystem.exists(requiredBinary);
 
 if (!exists) {

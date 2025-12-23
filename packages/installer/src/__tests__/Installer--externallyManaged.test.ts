@@ -80,7 +80,7 @@ describe('Installer - externally managed plugins', () => {
     expect(linkTarget).toBe(externalBinaryPath);
   });
 
-  it('should create timestamped directories for non-externally-managed plugins', async () => {
+  it('should create a staging UUID directory for non-externally-managed plugins', async () => {
     const toolConfig: GithubReleaseToolConfig = {
       name: 'test-tool',
       version: '1.0.0',
@@ -93,11 +93,14 @@ describe('Installer - externally managed plugins', () => {
 
     await setup.installer.install('test-tool', toolConfig);
 
-    // Verify that ensureDir WAS called with a timestamped directory
+    // Verify that ensureDir WAS called with a per-attempt staging directory (UUID)
     const ensureDirCalls = setup.fileSystemMocks.ensureDir.mock.calls;
     const timestampedDirCalls = ensureDirCalls.filter((call) => {
       const firstArg: string | undefined = call[0];
-      return firstArg?.includes('test-tool') && /\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/.test(firstArg);
+      return Boolean(
+        firstArg?.includes('test-tool') &&
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(firstArg)
+      );
     });
 
     expect(timestampedDirCalls.length).toBeGreaterThan(0);

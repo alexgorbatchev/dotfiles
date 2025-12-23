@@ -119,7 +119,8 @@ interface IToolConfigContext extends IBaseToolContext {}
 
 interface IInstallContext extends IBaseToolContext {
   toolConfig: ToolConfig;
-  installDir: string;
+  stagingDir: string;
+  installedDir?: string;
   timestamp: string;
 }
 ```

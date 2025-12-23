@@ -68,7 +68,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     projectConfig,
     systemInfo,
     toolConfig,
-    installDir: path.join(projectConfig.paths.binariesDir, toolConfig.name),
+    stagingDir: path.join(projectConfig.paths.binariesDir, toolConfig.name, 'staging'),
     timestamp: '2025-01-01-00-00-00',
     $: createConfiguredShell(createMock$(), {}),
     fileSystem,

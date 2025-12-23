@@ -141,10 +141,10 @@ export default defineTool((install, ctx) =>
     .bin('custom-tool')
     .version('latest')
     .symlink('./config.yml', `${ctx.projectConfig.paths.homeDir}/.config/custom-tool/config.yml`)
-    .hook('after-install', async ({ toolName, installDir, systemInfo, fileSystem, logger, $ }) => {
+    .hook('after-install', async ({ toolName, installedDir, systemInfo, fileSystem, logger, $ }) => {
       const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
       await fileSystem.ensureDir(dataDir);
-      await $`${path.join(installDir, toolName)} init --data-dir ${dataDir}`;
+      await $`${path.join(installedDir ?? '', toolName)} init --data-dir ${dataDir}`;
       logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh((shell) =>

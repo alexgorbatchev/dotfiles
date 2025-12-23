@@ -26,12 +26,16 @@ describe('Installer - install (orchestrator)', () => {
 
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
-    // Check that ensureDir was called with a timestamped directory
+    // Check that ensureDir was called with a per-attempt staging directory (UUID)
     const ensureDirCalls = setup.fileSystemMocks.ensureDir.mock.calls;
-    const installDirCall = ensureDirCalls.find(
-      (call) => call[0].includes(MOCK_TOOL_NAME) && call[0].match(/\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/)
-    );
-    expect(installDirCall).toBeDefined();
+    const stagingDirCall = ensureDirCalls.find((call) => {
+      const firstArg: string | undefined = call[0];
+      return Boolean(
+        firstArg?.includes(MOCK_TOOL_NAME) &&
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(firstArg)
+      );
+    });
+    expect(stagingDirCall).toBeDefined();
   });
 
   it('should call the appropriate installation method based on installationMethod', async () => {
@@ -97,12 +101,9 @@ describe('Installer - install (orchestrator)', () => {
     });
 
     const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
-      async (_name: string, _config: unknown, context: IInstallContext) => {
+      async (_method: string, _name: string, _config: unknown, context: IInstallContext) => {
         // Create the binary in a temporary location (mimicking what a real plugin does)
-        // Use context.installDir if available, otherwise create a temporary path
-        const installDir: string =
-          context.installDir || path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'temp');
-        const binaryPath = path.join(installDir, MOCK_TOOL_NAME);
+        const binaryPath = path.join(context.stagingDir, MOCK_TOOL_NAME);
         await setup.fs.ensureDir(path.dirname(binaryPath));
         await setup.fs.writeFile(binaryPath, 'mock binary content');
         await setup.fs.chmod(binaryPath, 0o755);

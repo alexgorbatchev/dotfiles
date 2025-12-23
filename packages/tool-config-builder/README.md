@@ -168,7 +168,7 @@ export default async (c: ToolConfigBuilder): Promise<void> => {
       hooks: {
         afterExtract: async (context) => {
           // Create config directory
-          const configDir = path.join(context.installDir, 'config');
+          const configDir = path.join(context.stagingDir, 'config');
           await context.fileSystem.ensureDir(configDir);
           
           // Create default config

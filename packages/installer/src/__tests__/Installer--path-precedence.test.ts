@@ -65,12 +65,12 @@ describe('Installer - Path Precedence (Real FS)', () => {
       toolConfigSchema: z.object({}),
       install: async (_name, _config, context) => {
         // Create Real Binary in the install directory
-        const binaryPath = path.join(context.installDir, toolName);
+        const binaryPath = path.join(context.stagingDir, toolName);
         await fs.writeFile(binaryPath, `#!/bin/sh\necho "REAL_BINARY"`);
         await fs.chmod(binaryPath, 0o755);
 
         // Execute the tool using bun shell
-        // This should pick up the binary from installDir because Installer prepends it to PATH
+        // This should pick up the binary from stagingDir because Installer prepends it to PATH
         try {
           // Use the shell from context which should be configured with the correct environment
           const $ = context.$;

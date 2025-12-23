@@ -30,7 +30,7 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
         _toolConfig: unknown,
         context: IInstallContext
       ): Promise<AggregateInstallResult> => {
-        const binaryPath: string = path.join(context.installDir, MOCK_TOOL_NAME);
+        const binaryPath: string = path.join(context.stagingDir, MOCK_TOOL_NAME);
 
         await setup.fs.ensureDir(path.dirname(binaryPath));
         await setup.fs.writeFile(binaryPath, 'mock binary');
@@ -52,10 +52,12 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
     // First installation
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
-    // Check that ensureDir was called with a timestamped directory
+    // Check that ensureDir was called with a per-attempt staging directory (UUID)
     const ensureDirCalls1 = setup.fileSystemMocks.ensureDir.mock.calls;
     const installDirCall1 = ensureDirCalls1.find(
-      (call) => call[0].includes(MOCK_TOOL_NAME) && call[0].match(/\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/)
+      (call) =>
+        call[0].includes(MOCK_TOOL_NAME) &&
+        /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(call[0])
     );
     expect(installDirCall1).toBeDefined();
 

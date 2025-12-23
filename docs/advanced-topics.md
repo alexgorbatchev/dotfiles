@@ -219,12 +219,12 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .hook('after-extract', async ({ extractDir, installDir, logger, $ }) => {
-      if (extractDir) {
+    .hook('after-extract', async ({ extractDir, stagingDir, logger, $ }) => {
+      if (extractDir && stagingDir) {
         logger.info('Starting multi-stage build...');
         
         // Stage 1: Configure
-        await $`cd ${extractDir} && ./configure --prefix=${installDir}`;
+        await $`cd ${extractDir} && ./configure --prefix=${stagingDir}`;
         
         // Stage 2: Build
         await $`cd ${extractDir} && make -j$(nproc)`;

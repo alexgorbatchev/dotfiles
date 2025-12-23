@@ -88,7 +88,7 @@ export default defineTool((install, ctx) =>
     args: (argsCtx) => [
       '--skip-shell',
       '--install-dir',
-      argsCtx.projectConfig.paths.binariesDir,
+      argsCtx.stagingDir,
     ],
   })
     .bin('fnm')
@@ -98,7 +98,7 @@ export default defineTool((install, ctx) =>
 The args context provides:
 - `projectConfig` - Full project configuration
 - `scriptPath` - Path where script was downloaded
-- `installDir` - Installation directory for the tool
+- `stagingDir` - Per-attempt staging directory for the tool
 
 ### With Environment Variables
 

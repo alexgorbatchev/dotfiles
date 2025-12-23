@@ -115,7 +115,7 @@ export async function installFromGitHubRelease(
       return installResult;
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
 
     const metadata: IGitHubReleaseInstallMetadata = {
       method: 'github-release',
@@ -324,7 +324,7 @@ async function downloadAsset(
   logger: TsLogger
 ): Promise<OperationResult<{ downloadPath: string }>> {
   logger.debug(messages.downloadingAsset(downloadUrl));
-  const downloadPath = path.join(context.installDir, asset.name);
+  const downloadPath = path.join(context.stagingDir, asset.name);
 
   try {
     await downloadWithProgress(downloadUrl, downloadPath, asset.name, downloader, options);
@@ -405,13 +405,13 @@ async function processArchiveInstallation(
   logger.debug(messages.extractingArchive(asset.name));
 
   const extractResult: IExtractResult = await archiveExtractor.extract(downloadPath, {
-    targetDir: context.installDir,
+    targetDir: context.stagingDir,
   });
   logger.debug(messages.archiveExtracted(), extractResult);
 
   const postExtractContext = {
     ...postDownloadContext,
-    extractDir: context.installDir,
+    extractDir: context.stagingDir,
     extractResult,
   };
 
@@ -420,7 +420,7 @@ async function processArchiveInstallation(
     return hookResult;
   }
 
-  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.installDir, logger);
+  await setupBinariesFromArchive(toolFs, toolName, toolConfig, context, context.stagingDir, logger);
 
   if (await toolFs.exists(downloadPath)) {
     logger.debug(messages.cleaningArchive(downloadPath));

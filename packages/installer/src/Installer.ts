@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type {
   $extended,
   AsyncInstallHook,
+  IAfterInstallContext,
+  IInstallBaseContext,
   IInstallContext,
   InstallEvent,
   InstallerPluginRegistry,
@@ -22,7 +25,7 @@ import { createConfiguredShell, type HookExecutor, messages } from './utils';
 
 type UnknownRecord = Record<string, unknown>;
 
-type InstallHooks = Record<string, AsyncInstallHook[]>;
+type InstallHooks = Record<string, AsyncInstallHook<IInstallBaseContext>[]>;
 
 type EmitEvent = (type: PluginEmittedHookEvent, data: UnknownRecord) => Promise<void>;
 
@@ -39,7 +42,7 @@ function isUnknownRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isAsyncInstallHookArray(value: unknown): value is AsyncInstallHook[] {
+function isAsyncInstallHookArray(value: unknown): value is AsyncInstallHook<IInstallBaseContext>[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'function');
 }
 
@@ -355,8 +358,7 @@ export class Installer implements IInstaller {
    */
   private async executeAfterInstallHook(
     resolvedToolConfig: ToolConfig,
-    context: IInstallContext,
-    result: InstallResult,
+    context: IAfterInstallContext,
     toolFs: IFileSystem,
     parentLogger: TsLogger
   ): Promise<void> {
@@ -371,8 +373,6 @@ export class Installer implements IInstaller {
     logger.debug(messages.lifecycle.hookExecution('after-install'));
 
     const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
-    enhancedContext.binaryPath = result.success && result.binaryPaths.length > 0 ? result.binaryPaths[0] : undefined;
-    enhancedContext.version = result.success && 'version' in result ? result.version : undefined;
 
     // Execute all hooks in sequence
     for (const hook of afterInstallHooks) {
@@ -401,6 +401,7 @@ export class Installer implements IInstaller {
   private async recordInstallation(
     toolName: string,
     resolvedToolConfig: ToolConfig,
+    installedDir: string,
     context: IInstallContext,
     result: InstallResult,
     parentLogger: TsLogger
@@ -432,7 +433,7 @@ export class Installer implements IInstaller {
       await this.toolInstallationRegistry.recordToolInstallation({
         toolName,
         version,
-        installPath: context.installDir,
+        installPath: installedDir,
         timestamp: context.timestamp,
         binaryPaths: result.binaryPaths,
         configuredVersion,
@@ -520,9 +521,16 @@ export class Installer implements IInstaller {
 
       // Try to resolve version before creating installation directory
       // Fall back to timestamp if version cannot be resolved
-      const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
-      const timestamp = generateTimestamp();
+      const binariesDir: string = this.projectConfig.paths.binariesDir;
+      const toolRootDir: string = path.join(binariesDir, toolName);
+      await toolFs.ensureDir(toolRootDir);
+
+      const timestamp: string = generateTimestamp();
       let versionOrTimestamp: string = timestamp;
+
+      if (resolvedToolConfig.version && resolvedToolConfig.version !== 'latest') {
+        versionOrTimestamp = resolvedToolConfig.version;
+      }
 
       if (!isExternallyManaged && plugin?.resolveVersion) {
         // Create minimal context for version resolution
@@ -547,12 +555,13 @@ export class Installer implements IInstaller {
         }
       }
 
-      // Create installation directory with version or timestamp (skip for externally managed plugins)
-      const installDir: string = isExternallyManaged ? '' : path.join(binariesDir, toolName, versionOrTimestamp);
+      // Create staging directory for the install attempt (skip creating for externally managed plugins)
+      const stagingId: string = randomUUID();
+      const stagingDir: string = path.join(toolRootDir, stagingId);
 
       if (!isExternallyManaged) {
-        await toolFs.ensureDir(installDir);
-        logger.debug(messages.lifecycle.directoryCreated(installDir));
+        await toolFs.ensureDir(stagingDir);
+        logger.debug(messages.lifecycle.directoryCreated(stagingDir));
       }
 
       // Create context for installation hooks
@@ -563,8 +572,8 @@ export class Installer implements IInstaller {
 
       const { context, logger: contextLogger } = this.createBaseInstallContext(
         toolName,
-        installDir,
-        versionOrTimestamp,
+        stagingDir,
+        timestamp,
         resolvedToolConfig,
         logger,
         configuredShell
@@ -585,12 +594,12 @@ export class Installer implements IInstaller {
       const envVarName = `DOTFILES_INSTALLING_${toolName.toUpperCase().replace(/[^A-Z0-9_]/g, '_')}`;
       process.env[envVarName] = 'true';
 
-      // Prepend installDir to PATH to allow scripts/hooks to find the newly installed binary
+      // Prepend stagingDir to PATH to allow scripts/hooks to find the newly installed binary
       // This prevents recursion (finding the shim) and allows post-install steps to run the tool
       const originalPath = process.env['PATH'] || '';
       const pathSeparator = process.platform === 'win32' ? ';' : ':';
-      if (installDir) {
-        process.env['PATH'] = `${installDir}${pathSeparator}${originalPath}`;
+      if (!isExternallyManaged) {
+        process.env['PATH'] = `${stagingDir}${pathSeparator}${originalPath}`;
       }
 
       try {
@@ -604,7 +613,7 @@ export class Installer implements IInstaller {
         };
       } finally {
         // Restore PATH
-        if (installDir) {
+        if (!isExternallyManaged) {
           process.env['PATH'] = originalPath;
         }
         // Clean up recursion guard
@@ -614,37 +623,33 @@ export class Installer implements IInstaller {
       // Add the resolved installation method to the result
       result.installationMethod = resolvedToolConfig.installationMethod;
 
-      // If we have a detected version and the install directory is a timestamp,
-      // rename the directory to the version
-      const detectedVersion = result.success && 'version' in result ? result.version : undefined;
-      const shouldRename =
-        !isExternallyManaged &&
-        result.success &&
-        !!detectedVersion &&
-        versionOrTimestamp === timestamp &&
-        detectedVersion !== timestamp;
+      const detectedVersion: string | undefined = result.success && 'version' in result ? result.version : undefined;
+      const finalVersionOrTimestamp: string =
+        versionOrTimestamp === timestamp && detectedVersion && detectedVersion !== timestamp
+          ? detectedVersion
+          : versionOrTimestamp;
 
-      if (shouldRename && detectedVersion) {
-        const newInstallDir = path.join(binariesDir, toolName, detectedVersion);
-        if (await toolFs.exists(newInstallDir)) {
-          // If version directory already exists, remove it first (or maybe we should have skipped?)
-          // But since we are here, we probably want to overwrite or use it.
-          // For safety, let's remove the timestamp dir and use the existing version dir
-          // if it seems valid. But simpler is to remove existing and rename new.
-          await toolFs.rm(newInstallDir, { recursive: true, force: true });
+      const installedDir: string = isExternallyManaged
+        ? path.join(toolRootDir, 'external')
+        : path.join(toolRootDir, finalVersionOrTimestamp);
+
+      if (result.success && !isExternallyManaged) {
+        if (await toolFs.exists(installedDir)) {
+          await toolFs.rm(installedDir, { recursive: true, force: true });
         }
 
-        await toolFs.rename(installDir, newInstallDir);
-        logger.debug(messages.lifecycle.directoryRenamed(installDir, newInstallDir));
+        await toolFs.rename(stagingDir, installedDir);
+        logger.debug(messages.lifecycle.directoryRenamed(stagingDir, installedDir));
 
-        // Update context and result with new path
-        context.installDir = newInstallDir;
-        // Update binary paths to point to new location
         if (result.success && 'binaryPaths' in result && result.binaryPaths) {
           result.binaryPaths = result.binaryPaths.map((p: string) =>
-            p.startsWith(installDir) ? p.replace(installDir, newInstallDir) : p
+            p.startsWith(stagingDir) ? p.replace(stagingDir, installedDir) : p
           );
         }
+      }
+
+      if (result.success && isExternallyManaged) {
+        await toolFs.ensureDir(installedDir);
       }
 
       // Create stable binary entrypoints for all tools.
@@ -665,7 +670,7 @@ export class Installer implements IInstaller {
             existingPaths,
             toolFs,
             logger,
-            context.installDir,
+            installedDir,
             isExternallyManaged
           );
         }
@@ -674,16 +679,16 @@ export class Installer implements IInstaller {
       // Update current symlink after installation and any rename.
       // This provides a stable directory for shims: {binariesDir}/{toolName}/current/...
       if (result.success) {
-        await this.updateCurrentSymlink(toolName, toolFs, logger, context.installDir, isExternallyManaged);
+        await this.updateCurrentSymlink(toolName, toolFs, logger, installedDir, isExternallyManaged);
       }
 
       // If installation failed, clean up the empty installation directory (skip for externally managed)
-      if (!isExternallyManaged && !result.success && (await toolFs.exists(installDir))) {
-        logger.debug(messages.lifecycle.cleaningFailedInstallDir(installDir));
-        await toolFs.rm(installDir, { recursive: true, force: true });
+      if (!isExternallyManaged && !result.success && (await toolFs.exists(stagingDir))) {
+        logger.debug(messages.lifecycle.cleaningFailedInstallDir(stagingDir));
+        await toolFs.rm(stagingDir, { recursive: true, force: true });
 
         // Also try to remove the parent tool directory if it's now empty
-        const toolDir = path.dirname(installDir);
+        const toolDir = path.dirname(stagingDir);
         try {
           const entries = await toolFs.readdir(toolDir);
           if (entries.length === 0) {
@@ -694,11 +699,20 @@ export class Installer implements IInstaller {
         }
       }
 
-      // Run afterInstall hook if defined (runs even on failure for cleanup)
-      await this.executeAfterInstallHook(resolvedToolConfig, context, result, toolFs, contextLogger);
+      if (result.success) {
+        const afterInstallContext: IAfterInstallContext = {
+          ...context,
+          installedDir,
+          binaryPaths: 'binaryPaths' in result ? result.binaryPaths : [],
+          binaryPath: result.binaryPaths.length > 0 ? result.binaryPaths[0] : undefined,
+          version: 'version' in result ? result.version : undefined,
+        };
 
-      // Record successful installation in the registry
-      await this.recordInstallation(toolName, resolvedToolConfig, context, result, contextLogger);
+        await this.executeAfterInstallHook(resolvedToolConfig, afterInstallContext, toolFs, contextLogger);
+
+        // Record successful installation in the registry
+        await this.recordInstallation(toolName, resolvedToolConfig, installedDir, context, result, contextLogger);
+      }
 
       return result;
     } catch (error) {
@@ -752,12 +766,11 @@ export class Installer implements IInstaller {
     binaryPaths: string[],
     fs: IFileSystem,
     parentLogger: TsLogger,
-    installDir: string,
+    installedDir: string,
     isExternallyManaged: boolean
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'createBinaryEntrypoints' });
-    const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
-    const toolDir = path.join(binariesDir, toolName);
+    const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
 
     // Ensure tool directory exists
     await fs.ensureDir(toolDir);
@@ -783,7 +796,7 @@ export class Installer implements IInstaller {
 
     for (const binaryPath of binaryPaths) {
       const binaryName = path.basename(binaryPath);
-      const entrypointPath = path.join(installDir, binaryName);
+      const entrypointPath = path.join(installedDir, binaryName);
 
       if (binaryPath === entrypointPath) {
         continue;
@@ -815,17 +828,16 @@ export class Installer implements IInstaller {
     toolName: string,
     fs: IFileSystem,
     parentLogger: TsLogger,
-    installDir: string,
+    installedDir: string,
     isExternallyManaged: boolean
   ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'updateCurrentSymlink' });
-    const binariesDir = path.join(this.projectConfig.paths.generatedDir, 'binaries');
-    const toolDir = path.join(binariesDir, toolName);
+    const toolDir = path.join(this.projectConfig.paths.binariesDir, toolName);
     const currentSymlinkPath = path.join(toolDir, 'current');
 
     await fs.ensureDir(toolDir);
 
-    const currentTarget: string = isExternallyManaged ? 'external' : path.basename(installDir);
+    const currentTarget: string = isExternallyManaged ? 'external' : path.basename(installedDir);
 
     try {
       if (await fs.exists(currentSymlinkPath)) {
@@ -877,7 +889,7 @@ export class Installer implements IInstaller {
 
     const minimalContext: IInstallContext = {
       ...baseContext,
-      installDir: '',
+      stagingDir: '',
       timestamp: '',
       toolConfig,
       $: createConfiguredShell(this.$, process.env),
@@ -892,14 +904,14 @@ export class Installer implements IInstaller {
    *
    * The context provides plugins with:
    * - Tool identification (toolName)
-   * - Directory paths (installDir, etc.)
+   * - Directory paths (stagingDir, installedDir, currentDir)
    * - System information (platform, arch)
    * - Application configuration
    * - Logger instance
    * - Event emitter for triggering hooks
    *
    * @param toolName - Name of the tool being installed
-   * @param installDir - Timestamped installation directory path
+   * @param stagingDir - Per-attempt staging directory path
    * @param timestamp - Installation timestamp string
    * @param toolConfig - Tool configuration
    * @param parentLogger - Parent logger for creating context logger
@@ -907,7 +919,7 @@ export class Installer implements IInstaller {
    */
   private createBaseInstallContext(
     toolName: string,
-    installDir: string,
+    stagingDir: string,
     timestamp: string,
     toolConfig: ToolConfig,
     parentLogger: TsLogger,
@@ -925,7 +937,7 @@ export class Installer implements IInstaller {
 
     const context: IInstallContextWithEmitter = {
       ...baseContext,
-      installDir,
+      stagingDir,
       timestamp,
       toolConfig,
       $: $shell,
@@ -936,7 +948,7 @@ export class Installer implements IInstaller {
           type,
           toolName,
           context: {
-            ...this.createBaseInstallContext(toolName, installDir, timestamp, toolConfig, parentLogger, $shell).context,
+            ...this.createBaseInstallContext(toolName, stagingDir, timestamp, toolConfig, parentLogger, $shell).context,
             ...data,
             logger: contextLogger,
           },

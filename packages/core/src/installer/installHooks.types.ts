@@ -9,11 +9,9 @@ import type { IExtractResult } from './archive.types';
  * We now have the full ToolConfig and a target directory.
  * This context is available in the `before-install` hook.
  */
-export interface IInstallContext extends IBaseToolContext {
+export interface IInstallBaseContext extends IBaseToolContext {
   /** The full tool configuration being processed. */
   toolConfig: ToolConfig;
-  /** The target directory where the tool's primary binary should be installed. */
-  installDir: string;
   /** A timestamp for the current installation (e.g., `YYYY-MM-DD-HH-MM-SS`). */
   timestamp: string;
   /**
@@ -24,6 +22,25 @@ export interface IInstallContext extends IBaseToolContext {
   $: $extended;
   /** An instance of the file system for performing file operations. */
   fileSystem: IFileSystem;
+}
+
+/**
+ * Phase 1: Installation Start
+ * This context is available in the `before-install` hook.
+ */
+export interface IInstallContext extends IInstallBaseContext {
+  /**
+   * UUID-based staging directory for this installation attempt.
+   *
+   * This directory is used for transient work during installation (download/extract/build).
+   * It is unique per attempt and must not be treated as a stable location.
+   *
+   * The stable path exposed to tool configs is `currentDir` (a symlink updated after success).
+   *
+   * @example
+   * `stagingDir === "${projectConfig.paths.binariesDir}/${toolName}/<uuid>"`
+   */
+  stagingDir: string;
 }
 
 /**
@@ -50,10 +67,31 @@ export interface IExtractContext extends IDownloadContext {
 
 /**
  * Phase 4: After Install
- * Back to optionals because we don't know how we got here.
  * This context is available in the `after-install` hook.
+ *
+ * The `after-install` hook runs only when installation succeeded.
  */
-export interface IAfterInstallContext extends IInstallContext {
+export interface IAfterInstallContext extends IInstallBaseContext {
+  /**
+   * The final installation directory.
+   *
+   * For managed installers, this is versioned when a version is known.
+   * For externally managed installers (e.g., Homebrew), this is typically the tool's
+   * managed directory under the tool root (e.g., `external`).
+   *
+   * `currentDir` is repointed to this directory after a successful install.
+   *
+   * @example
+   * Managed: `installedDir === "${projectConfig.paths.binariesDir}/${toolName}/1.2.3"`
+   *
+   * @example
+   * External: `installedDir === "${projectConfig.paths.binariesDir}/${toolName}/external"`
+   */
+  installedDir: string;
+
+  /** Absolute paths to installed binaries (resolved against installedDir). */
+  binaryPaths: string[];
+
   /** The path to the downloaded file or archive. */
   downloadPath?: string;
   /** The path to the directory where the archive contents were extracted. */
@@ -116,4 +154,6 @@ export interface IAfterInstallContext extends IInstallContext {
  * @param context - The context providing details about the current installation state.
  * @returns A `Promise` that resolves when the hook's operations are complete.
  */
-export type AsyncInstallHook<T extends IInstallContext = IInstallContext> = (context: T) => Promise<void>;
+export type AsyncInstallHook<T extends IInstallBaseContext = IInstallContext> = {
+  bivarianceHack(context: T): Promise<void>;
+}['bivarianceHack'];

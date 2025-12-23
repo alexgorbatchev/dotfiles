@@ -36,7 +36,7 @@ describe('installFromCurlScript', () => {
       executeHook: mock(() => Promise.resolve({ success: true })),
     } as unknown as HookExecutor;
     context = {
-      installDir: '/install/dir',
+      stagingDir: '/install/dir',
       version: '1.0.0',
       projectConfig: {
         paths: {
@@ -141,7 +141,7 @@ describe('installFromCurlScript', () => {
       installParams: {
         url: 'https://example.com/install.sh',
         shell: 'bash',
-        args: (ctx: ICurlScriptArgsContext) => ['--install-dir', ctx.projectConfig.paths.binariesDir, '--skip-shell'],
+        args: (ctx: ICurlScriptArgsContext) => ['--install-dir', ctx.stagingDir, '--skip-shell'],
       },
     };
 
@@ -166,7 +166,7 @@ describe('installFromCurlScript', () => {
     if (!strings || !strings[0]) throw new Error('Expected strings');
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
-    expect(args).toEqual(['--install-dir', context.projectConfig.paths.binariesDir, '--skip-shell']);
+    expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);
   });
 
   it('should execute script with args from async function when provided', async () => {
@@ -181,7 +181,7 @@ describe('installFromCurlScript', () => {
         args: async (ctx: ICurlScriptArgsContext) => {
           // Simulate async operation
           await Promise.resolve();
-          return ['--install-dir', ctx.projectConfig.paths.binariesDir, '--skip-shell'];
+          return ['--install-dir', ctx.stagingDir, '--skip-shell'];
         },
       },
     };
@@ -207,6 +207,6 @@ describe('installFromCurlScript', () => {
     if (!strings || !strings[0]) throw new Error('Expected strings');
     expect(strings[0]).toContain('bash');
     expect(scriptPath).toContain('test-tool-install.sh');
-    expect(args).toEqual(['--install-dir', context.projectConfig.paths.binariesDir, '--skip-shell']);
+    expect(args).toEqual(['--install-dir', context.stagingDir, '--skip-shell']);
   });
 });

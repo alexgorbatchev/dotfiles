@@ -5,7 +5,7 @@ export default defineTool((install) => {
     url: 'http://127.0.0.1:8765/mock-install-version-detection-curl-script-no-version.sh',
     shell: 'sh',
     env: {
-      INSTALL_DIR: '{installDir}',
+      INSTALL_DIR: '{stagingDir}',
     },
   })
     .version('latest')

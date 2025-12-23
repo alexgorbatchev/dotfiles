@@ -83,7 +83,7 @@ export default defineTool((install, ctx) =>
     // Dynamic arguments with context
     args: (context) => [
       '--install-dir',
-      context.installDir,
+      context.stagingDir,
       '--platform',
       context.projectConfig.platform
     ],

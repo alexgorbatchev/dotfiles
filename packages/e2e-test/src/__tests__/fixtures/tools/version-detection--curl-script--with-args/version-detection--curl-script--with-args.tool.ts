@@ -7,7 +7,7 @@ export default defineTool((install) => {
     versionArgs: ['--version'],
     versionRegex: 'version-detection--curl-script--with-args (\\d+\\.\\d+\\.\\d+)',
     env: {
-      INSTALL_DIR: '{installDir}',
+      INSTALL_DIR: '{stagingDir}',
     },
   })
     .version('latest')

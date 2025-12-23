@@ -58,7 +58,7 @@ export async function installManually(
       }
 
       await installBinariesManually(toolConfig, toolName, context, toolFs, binaryPath, logger);
-      binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+      binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
     }
 
     const metadata: IManualInstallMetadata = {
@@ -103,7 +103,7 @@ async function installBinariesManually(
   const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
 
   for (const binaryName of binaryNames) {
-    const finalBinaryPath = path.join(context.installDir, binaryName);
+    const finalBinaryPath = path.join(context.stagingDir, binaryName);
 
     if (binaryName === toolName || binaryNames.length === 1) {
       await toolFs.ensureDir(path.dirname(finalBinaryPath));

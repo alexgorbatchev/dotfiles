@@ -60,7 +60,7 @@ export async function installFromCargo(
     logger.debug(messages.downloadingAsset(`${crateName}-${versionResult.version}`, downloadUrl));
 
     const filename = `${crateName}-${versionResult.version}.tar.gz`;
-    const downloadPath = path.join(context.installDir, filename);
+    const downloadPath = path.join(context.stagingDir, filename);
 
     await downloadWithProgress(downloadUrl, downloadPath, filename, downloader, options);
 
@@ -77,11 +77,11 @@ export async function installFromCargo(
     }
 
     const extractResult = await archiveExtractor.extract(downloadPath, {
-      targetDir: context.installDir,
+      targetDir: context.stagingDir,
     });
     logger.debug(messages.archiveExtracted(), extractResult);
 
-    await setupBinariesFromArchive(fs, toolName, toolConfig, context, context.installDir, logger);
+    await setupBinariesFromArchive(fs, toolName, toolConfig, context, context.stagingDir, logger);
 
     const afterInstallResult = await executeAfterInstallHook(
       toolConfig,
@@ -99,7 +99,7 @@ export async function installFromCargo(
       logger.debug(messages.cleaningArchive(downloadPath));
     }
 
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
 
     const metadata: ICargoInstallMetadata = {
       method: 'cargo',

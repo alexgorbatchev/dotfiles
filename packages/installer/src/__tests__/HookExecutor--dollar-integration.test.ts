@@ -53,6 +53,8 @@ describe('HookExecutor $ Integration', () => {
     const contextWithToolConfig: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
+      installedDir: baseContext.stagingDir,
+      binaryPaths: [],
     };
 
     let actualCwd: string | undefined;
@@ -88,13 +90,15 @@ describe('HookExecutor $ Integration', () => {
 
     const { context: baseContext } = createTestInstallHookContext({
       toolName: 'file-creator-tool',
-      installDir: '/test/install/dir',
+      stagingDir: '/test/staging/dir',
       $: createConfiguredShell($, process.env),
     });
 
     const contextWithToolConfig: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfig,
+      installedDir: baseContext.stagingDir,
+      binaryPaths: [],
     };
 
     const hookThatCreatesFile: HookHandler = async (ctx) => {
@@ -127,13 +131,15 @@ describe('HookExecutor $ Integration', () => {
 
     const { context: baseContext } = createTestInstallHookContext({
       toolName: 'fallback-tool',
-      installDir: '/test/install/dir',
+      stagingDir: '/test/staging/dir',
       $: createConfiguredShell($, process.env),
     });
 
     const contextWithoutConfigPath: IAfterInstallContext = {
       ...baseContext,
       toolConfig: mockToolConfigWithoutPath,
+      installedDir: baseContext.stagingDir,
+      binaryPaths: [],
     };
 
     const hookThatUsesShellFallback: HookHandler = async (ctx) => {

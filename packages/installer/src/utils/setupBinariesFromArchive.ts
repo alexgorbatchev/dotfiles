@@ -18,7 +18,7 @@ import { normalizeBinaries } from './normalizeBinaries';
  * 3. Creates symlinks in binaries directory pointing to found binaries
  * 4. Logs errors and shows directory tree if binaries not found
  *
- * The subdirectory name (version or timestamp) is extracted from context.installDir
+ * The subdirectory name (version or timestamp) is extracted from context.stagingDir
  * and used for creating the symlink structure.
  *
  * @param fs - File system interface for file operations
@@ -40,9 +40,9 @@ export async function setupBinariesFromArchive(
   const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
   const binaryConfigs = normalizeBinaries(toolConfig.binaries, toolName);
 
-  // Extract subdirectory name from context.installDir
+  // Extract subdirectory name from context.stagingDir
   // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")
-  const subdirName = path.basename(context.installDir);
+  const subdirName = path.basename(context.stagingDir);
 
   await setupBinariesUsingPatterns(fs, toolName, binaryConfigs, subdirName, extractDir, binariesDir, logger);
 }

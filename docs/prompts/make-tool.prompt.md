@@ -191,8 +191,8 @@ Use hooks for custom installation logic when fluent configuration is insufficien
 ```ts
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
-  .hook('after-install', async ({ logger, $, installDir }) => {
-    await $`${installDir}/tool init`;
+  .hook('after-install', async ({ logger, $, installedDir }) => {
+    await $`${installedDir}/tool init`;
     logger.info('Tool initialized');
   })
 ```

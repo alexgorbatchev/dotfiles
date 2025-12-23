@@ -261,20 +261,10 @@ export class GitHubReleaseInstallerPlugin
         },
       };
 
-      // Create versioned install directory: binariesDir/toolName/version
-      const binariesDir = context.installDir;
-      const versionedInstallDir = `${binariesDir}/${toolName}/${newVersion}`;
-      await this.fs.ensureDir(versionedInstallDir);
-
-      const updatedContext: IInstallContext = {
-        ...context,
-        installDir: versionedInstallDir,
-      };
-
       const installResult = await this.install(
         toolName,
         updatedConfig,
-        updatedContext,
+        context,
         { force: options.force || true },
         logger
       );

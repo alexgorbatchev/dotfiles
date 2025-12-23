@@ -370,13 +370,13 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
       // Simulate download event - this will throw if hook throws
       if (context.emitEvent) {
         await context.emitEvent('after-download', {
-          downloadPath: `${context.installDir}/${toolName}-darwin-arm64.tar.gz`,
+          downloadPath: `${context.stagingDir}/${toolName}-darwin-arm64.tar.gz`,
           fileSystem: fs,
         });
       }
 
       // Create extract directory and mock extracted files for hooks to use
-      const extractDir = `${context.installDir}/extract`;
+      const extractDir = `${context.stagingDir}/extract`;
       await fs.ensureDir(extractDir);
 
       // Create a basic 'tool' file that hooks can copy/manipulate
@@ -590,7 +590,7 @@ export function createTestContext(
     toolName: MOCK_TOOL_NAME,
     toolDir,
     currentDir: baseCurrentDir,
-    installDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME),
+    stagingDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'staging'),
     timestamp: '2024-08-13-16-45-23',
     systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),

@@ -26,9 +26,9 @@ export async function setupBinariesFromDirectDownload(
   const binariesDir = path.join(context.projectConfig.paths.generatedDir, 'binaries');
   const downloadFileName = path.basename(downloadPath);
 
-  // Extract subdirectory name from context.installDir
+  // Extract subdirectory name from context.stagingDir
   // This will be either a version (e.g., "1.0.0") or timestamp (e.g., "2025-11-04-20-53-47")
-  const subdirName = path.basename(context.installDir);
+  const subdirName = path.basename(context.stagingDir);
 
   await createBinaryEntrypoint(fs, toolName, primaryBinary, subdirName, downloadFileName, binariesDir, logger);
 

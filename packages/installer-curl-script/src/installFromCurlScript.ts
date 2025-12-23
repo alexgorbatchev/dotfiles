@@ -41,7 +41,7 @@ async function resolveScriptArgs(
     const argsContext: ICurlScriptArgsContext = {
       projectConfig: context.projectConfig,
       scriptPath,
-      installDir: context.installDir,
+      stagingDir: context.stagingDir,
     };
     return await params.args(argsContext);
   }
@@ -62,7 +62,7 @@ async function handleBinaryInstallation(
   const binaryNames = getBinaryNames(toolConfig.binaries, toolName);
 
   for (const binaryName of binaryNames) {
-    const finalBinaryPath = path.join(context.installDir, binaryName);
+    const finalBinaryPath = path.join(context.stagingDir, binaryName);
 
     if (await fs.exists(finalBinaryPath)) {
       logger.debug(messages.binaryFoundInInstallDir(finalBinaryPath));
@@ -76,7 +76,7 @@ async function handleBinaryInstallation(
       await fs.copyFile(sourcePath, finalBinaryPath);
       await fs.chmod(finalBinaryPath, 0o755);
     } else {
-      logger.warn(messages.binaryNotFound(binaryName, `${context.installDir}, /usr/local/bin`));
+      logger.warn(messages.binaryNotFound(binaryName, `${context.stagingDir}, /usr/local/bin`));
     }
   }
 }
@@ -127,7 +127,7 @@ export async function installFromCurlScript(
   const operation = async (): Promise<CurlScriptInstallResult> => {
     // Download the script
     logger.debug(messages.downloadingScript(url));
-    const scriptPath = path.join(context.installDir, `${toolName}-install.sh`);
+    const scriptPath = path.join(context.stagingDir, `${toolName}-install.sh`);
 
     await downloadWithProgress(url, scriptPath, `${toolName}-install.sh`, downloader, options);
 
@@ -159,7 +159,7 @@ export async function installFromCurlScript(
     const env = {
       ...process.env,
       ...params.env,
-      INSTALL_DIR: context.installDir,
+      INSTALL_DIR: context.stagingDir,
     };
 
     if (shell === 'bash') {
@@ -171,7 +171,7 @@ export async function installFromCurlScript(
     await handleBinaryInstallation(toolConfig, toolName, context, fs, logger);
 
     // Return paths to all binaries
-    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.installDir);
+    const binaryPaths = getBinaryPaths(toolConfig.binaries, toolName, context.stagingDir);
 
     let detectedVersion: string | undefined;
     const mainBinaryPath = binaryPaths[0];

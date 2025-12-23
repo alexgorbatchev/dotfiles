@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import type { IAfterInstallContext } from '@dotfiles/core';
+import type { IAfterInstallContext, IExtractContext } from '@dotfiles/core';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { createInstallerTestSetup, type IInstallerTestSetup, setupFileSystemMocks } from './installer-test-helpers';
 
@@ -54,12 +54,12 @@ describe('Hook Integration Tests', () => {
             'after-install': [
               async (context: IAfterInstallContext) => {
                 // Create a config directory
-                const configDir = path.join(context.installDir, 'config');
+                const configDir = path.join(context.installedDir, 'config');
                 await context.fileSystem.ensureDir(configDir);
 
                 // Create a default configuration file
                 const configPath = path.join(configDir, 'default.yaml');
-                const configContent = `# Default configuration for ${context.toolName}\\nversion: ${context.version}\\ninstall_dir: ${context.installDir}`;
+                const configContent = `# Default configuration for ${context.toolName}\nversion: ${context.version}\ninstall_dir: ${context.installedDir}`;
                 await context.fileSystem.writeFile(configPath, configContent);
 
                 // Make the main binary executable with specific permissions
@@ -137,13 +137,13 @@ describe('Hook Integration Tests', () => {
           repo: 'example/multi-binary-tool',
           hooks: {
             'after-extract': [
-              async (context: IAfterInstallContext) => {
+              async (context: IExtractContext) => {
                 if (!context.extractDir || !context.extractResult) {
                   throw new Error('No extraction results available');
                 }
 
                 // Organize binaries in a bin subdirectory
-                const binDir = path.join(context.installDir, 'bin');
+                const binDir = path.join(context.stagingDir, 'bin');
                 await context.fileSystem.ensureDir(binDir);
 
                 // Create the expected binaries from the extracted tool
@@ -160,7 +160,7 @@ describe('Hook Integration Tests', () => {
                 );
 
                 if (docFiles.length > 0) {
-                  const docDir = path.join(context.installDir, 'docs');
+                  const docDir = path.join(context.stagingDir, 'docs');
                   await context.fileSystem.ensureDir(docDir);
 
                   for (const docFile of docFiles) {
@@ -258,7 +258,7 @@ describe('Hook Integration Tests', () => {
           repo: 'example/source-tool',
           hooks: {
             'after-extract': [
-              async (context: IAfterInstallContext) => {
+              async (context: IExtractContext) => {
                 if (!context.extractDir) {
                   throw new Error('No extraction directory available');
                 }
@@ -268,7 +268,7 @@ describe('Hook Integration Tests', () => {
                 const hasMakefile = await context.fileSystem.exists(makefilePath);
 
                 if (hasMakefile) {
-                  // In a real scenario, this would run: make PREFIX=${context.installDir} install
+                  // In a real scenario, this would run: make PREFIX=${context.installedDir} install
                   // For this test, we'll simulate the process
 
                   // Create the binary in the extract directory so the binary setup service can find it
@@ -277,7 +277,7 @@ describe('Hook Integration Tests', () => {
                   await context.fileSystem.chmod(binaryPath, 0o755);
 
                   // Create additional compiled artifacts
-                  const libDir = path.join(context.installDir, 'lib');
+                  const libDir = path.join(context.stagingDir, 'lib');
                   await context.fileSystem.ensureDir(libDir);
 
                   const libPath = path.join(libDir, 'libsource-tool.so');

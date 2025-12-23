@@ -133,21 +133,21 @@ export class CompletionGenerator implements ICompletionGenerator {
    * Resolves the source path for a completion file.
    *
    * Supports glob patterns (*, ?, []) for flexible file matching.
-   * Falls back to config file directory if not found in install directory.
+   * Falls back to config file directory if not found in tool directory.
    */
-  private async resolveSourcePath(installDir: string, source: string, configFilePath?: string): Promise<string> {
+  private async resolveSourcePath(toolDirPath: string, source: string, configFilePath?: string): Promise<string> {
     // If source contains glob patterns, resolve using minimatch
     if (source.includes('*') || source.includes('?') || source.includes('[')) {
-      const allFiles = await getAllFilesRecursively(this.fs, installDir, installDir);
+      const allFiles = await getAllFilesRecursively(this.fs, toolDirPath, toolDirPath);
       const matched = allFiles.find((file) => minimatch(file, source));
       if (matched) {
-        return path.join(installDir, matched);
+        return path.join(toolDirPath, matched);
       }
     }
 
-    let sourcePath = path.join(installDir, source);
+    let sourcePath = path.join(toolDirPath, source);
 
-    // If not found in installDir, try relative to config file
+    // If not found in toolDirPath, try relative to config file
     if (!(await this.fs.exists(sourcePath)) && configFilePath) {
       const configDir = path.dirname(configFilePath);
       const localPath = path.resolve(configDir, source);

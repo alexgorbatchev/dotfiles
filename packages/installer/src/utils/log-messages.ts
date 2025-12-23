@@ -50,12 +50,12 @@ export const messages = {
   lifecycle: {
     startingInstallation: (toolName: string) => createSafeLogMessage(`Starting installation for ${toolName}`),
     hookExecution: (hookName: string) => createSafeLogMessage(`install: Running ${hookName} hook`),
-    directoryCreated: (installDir: string) =>
-      createSafeLogMessage(`install: Created installation directory: ${installDir}`),
+    directoryCreated: (directoryPath: string) =>
+      createSafeLogMessage(`install: Created installation directory: ${directoryPath}`),
     directoryRenamed: (oldPath: string, newPath: string) =>
       createSafeLogMessage(`install: Renamed installation directory from ${oldPath} to ${newPath}`),
-    cleaningFailedInstallDir: (installDir: string) =>
-      createSafeLogMessage(`install: Cleaning up failed installation directory: ${installDir}`),
+    cleaningFailedInstallDir: (directoryPath: string) =>
+      createSafeLogMessage(`install: Cleaning up failed installation directory: ${directoryPath}`),
     versionResolved: (version: string) => createSafeLogMessage(`install: Resolved version: ${version}`),
     versionFallbackToTimestamp: () =>
       createSafeLogMessage('install: Version resolution returned null, using timestamp'),

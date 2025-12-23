@@ -90,7 +90,7 @@ function createInstallContext(
     toolName: config.name,
     toolDir,
     currentDir,
-    installDir: projectConfig.paths.binariesDir,
+    stagingDir: '',
     timestamp: timestamp || '',
     systemInfo,
     toolConfig: config,

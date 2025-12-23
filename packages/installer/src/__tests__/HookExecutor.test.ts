@@ -116,7 +116,7 @@ describe('HookExecutor', () => {
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
       expect(enhancedContext.toolName).toBe(baseContext.toolName);
-      expect(enhancedContext.installDir).toBe(baseContext.installDir);
+      expect(enhancedContext.stagingDir).toBe(baseContext.stagingDir);
       expect(enhancedContext.fileSystem).toBe(memFs.fs);
       // Logger is not part of enhanced context - it's added by executeHook
       expect(enhancedContext).not.toHaveProperty('logger');

@@ -13,9 +13,9 @@ export interface ICurlScriptArgsContext {
    */
   scriptPath: string;
   /**
-   * The absolute path to the directory where the tool is being installed.
-   * This is the versioned directory.
-   * Example: `${projectConfig.paths.binariesDir}/<tool-name>/<version>`
+   * The absolute path to the directory used for this installation attempt.
+   * This is a per-attempt staging directory.
+   * Example: `${projectConfig.paths.binariesDir}/<tool-name>/<uuid>`
    */
-  installDir: string;
+  stagingDir: string;
 }

@@ -275,7 +275,7 @@ install('github-release', { repo: 'owner/tool' })
 - `$`: Bun's shell executor (cwd is tool config directory)
 - `fileSystem`: Cross-platform file operations
 - `logger`: Structured logging (use `logger.info()`, `logger.warn()`, `logger.error()`)
-- `toolName`, `installDir`, `systemInfo`: Installation metadata
+- `toolName`, `currentDir`, `systemInfo`: Installation metadata
 - `downloadPath`, `extractDir`, `extractResult`: Stage-specific paths
 
 **Common Hook Patterns**:

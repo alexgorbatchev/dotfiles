@@ -10,7 +10,7 @@ describe('Installer - Environment Setup', () => {
     setup = await createInstallerTestSetup();
   });
 
-  it('should prepend installDir to PATH during installation', async () => {
+  it('should prepend stagingDir to PATH during installation', async () => {
     const toolName = 'path-test-tool';
     const toolConfig: ToolConfig = {
       name: toolName,
@@ -20,11 +20,11 @@ describe('Installer - Environment Setup', () => {
     } as unknown as ToolConfig;
 
     let pathDuringInstall: string | undefined;
-    let installDir: string | undefined;
+    let stagingDir: string | undefined;
 
     spyOn(setup.pluginRegistry, 'install').mockImplementation(async (_method, _name, _config, context) => {
       pathDuringInstall = process.env['PATH'];
-      installDir = context.installDir;
+      stagingDir = context.stagingDir;
       return {
         success: true,
         binaryPaths: ['/fake/path'],
@@ -36,9 +36,9 @@ describe('Installer - Environment Setup', () => {
     const originalPath = process.env['PATH'];
     await setup.installer.install(toolName, toolConfig);
 
-    expect(installDir).toBeDefined();
+    expect(stagingDir).toBeDefined();
     expect(pathDuringInstall).toBeDefined();
-    expect(pathDuringInstall?.startsWith(installDir!)).toBe(true);
+    expect(pathDuringInstall?.startsWith(stagingDir!)).toBe(true);
     expect(pathDuringInstall).not.toBe(originalPath);
 
     // Verify PATH is restored
