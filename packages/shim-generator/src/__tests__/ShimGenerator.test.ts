@@ -137,13 +137,31 @@ describe('ShimGenerator', () => {
       `;
     });
 
-    it('should use toolName as binary name if toolConfig.binaries is empty and return path', async () => {
-      const configNoBinaries: ToolConfig = {
+    it('should skip shim generation for configuration-only tool configs', async () => {
+      const configOnly: ToolConfig = {
         name: toolName,
         version: '1.0.0',
         binaries: [],
         installationMethod: 'manual',
         installParams: {},
+      };
+
+      const result = await shimGenerator.generateForTool(toolName, configOnly);
+
+      expect(result).toEqual([]);
+      expect(fsMocks.writeFile).not.toHaveBeenCalled();
+      expect(fsMocks.chmod).not.toHaveBeenCalled();
+    });
+
+    it('should use toolName as binary name if toolConfig.binaries is empty and tool is not configuration-only', async () => {
+      const configNoBinaries: ToolConfig = {
+        name: toolName,
+        version: '1.0.0',
+        binaries: [],
+        installationMethod: 'manual',
+        installParams: {
+          binaryPath: `/usr/local/bin/${toolName}`,
+        },
       };
       const expectedBinaryPathFallback = path.join(
         mockConfig.paths.binariesDir,
@@ -161,13 +179,15 @@ describe('ShimGenerator', () => {
       expect(writtenContent).toContain(`TOOL_EXECUTABLE="${expectedBinaryPathFallback}"`);
     });
 
-    it('should use toolName as binary name if toolConfig.binaries is undefined', async () => {
+    it('should use toolName as binary name if toolConfig.binaries is undefined and tool is not configuration-only', async () => {
       const configUndefinedBinaries: ToolConfig = {
         name: toolName,
         version: '1.0.0',
         binaries: undefined,
         installationMethod: 'manual',
-        installParams: {},
+        installParams: {
+          binaryPath: `/usr/local/bin/${toolName}`,
+        },
       };
       const expectedBinaryPathFallback = path.join(
         mockConfig.paths.binariesDir,

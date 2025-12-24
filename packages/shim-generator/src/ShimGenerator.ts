@@ -23,6 +23,14 @@ export class ShimGenerator implements IShimGenerator {
   private readonly config: ProjectConfig;
   private readonly logger: TsLogger;
 
+  private isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
+    const isManual = toolConfig.installationMethod === 'manual';
+    const hasNoInstallParams = !toolConfig.installParams || Object.keys(toolConfig.installParams).length === 0;
+    const hasNoBinaries = !toolConfig.binaries || toolConfig.binaries.length === 0;
+    const result: boolean = isManual && hasNoInstallParams && hasNoBinaries;
+    return result;
+  }
+
   /**
    * Creates a new ShimGenerator instance.
    *
@@ -75,8 +83,12 @@ export class ShimGenerator implements IShimGenerator {
     const overwrite = options?.overwrite ?? false;
     const overwriteConflicts = options?.overwriteConflicts ?? false;
 
+    if (this.isConfigurationOnlyToolConfig(toolConfig)) {
+      return generatedShimPaths;
+    }
+
     // Get list of binaries to generate shims for
-    const binaries = toolConfig.binaries && toolConfig.binaries.length > 0 ? toolConfig.binaries : [toolName]; // Fallback to toolName if no binaries specified
+    const binaries = toolConfig.binaries && toolConfig.binaries.length > 0 ? toolConfig.binaries : [toolName];
     const binaryNames = binaries.map((binary) => (typeof binary === 'string' ? binary : binary.name));
 
     // Generate a shim for each binary

@@ -5,6 +5,6 @@ export default defineTool((install, _ctx) =>
     //
     .zsh((shell) =>
       //
-      shell.aliases({ 'foo': 'echo "This is foo tool"' })
+      shell.aliases({ foo: 'echo "This is foo tool"' })
     )
 );
