@@ -15,7 +15,7 @@ import { defineTool } from '@dotfiles/cli';
 
 // For existing system tools
 export default defineTool((install, ctx) =>
-  install()  // No method specified = manual
+  install()  // Manual-style tool config (add .bin() if you want shims)
     .bin('existing-tool')
 );
 
@@ -154,7 +154,8 @@ For custom shell scripts or binaries stored within the dotfiles repository itsel
 When no automatic installation method is available or appropriate for a particular tool.
 
 ### Configuration-Only Tools
-For tools that only require shell configuration or symlinks without binary installation.
+Configuration-only (shell-only) tools should not use the manual installer. Define them with `install()` (no args) and shell
+configuration methods (e.g. `.zsh(...)`) without calling `.bin()`.
 
 ## Limitations
 

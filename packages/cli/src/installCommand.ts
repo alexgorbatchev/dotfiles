@@ -94,6 +94,75 @@ function handleInstallationError(logger: TsLogger, error: Error, toolName: strin
   return 1;
 }
 
+function isConfigurationOnlyToolConfig(toolConfig: ToolConfig): boolean {
+  const isManual = toolConfig.installationMethod === 'manual';
+  const hasNoInstallParams = !toolConfig.installParams || Object.keys(toolConfig.installParams).length === 0;
+  const hasNoBinaries = !toolConfig.binaries || toolConfig.binaries.length === 0;
+  return isManual && hasNoInstallParams && hasNoBinaries;
+}
+
+function toError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+
+  const message = typeof value === 'string' ? value : 'Unknown error';
+  const error = new Error(message);
+  return error;
+}
+
+async function executeInstallCommandAction(
+  logger: TsLogger,
+  toolName: string,
+  combinedOptions: InstallCommandSpecificOptions & IGlobalProgramOptions,
+  services: IServices
+): Promise<number | null> {
+  const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
+
+  logger.debug(
+    messages.commandActionStarted('install', toolName),
+    projectConfig.paths.toolConfigsDir,
+    fs.constructor.name
+  );
+
+  const toolConfig = await loadToolConfigSafely(
+    logger,
+    toolName,
+    projectConfig.paths.toolConfigsDir,
+    fs,
+    projectConfig,
+    configService,
+    systemInfo
+  );
+
+  if (!toolConfig) {
+    const result: number = 1;
+    return result;
+  }
+
+  if (isConfigurationOnlyToolConfig(toolConfig)) {
+    if (!combinedOptions.shimMode) {
+      logger.info(messages.toolInstallSkippedConfigurationOnly(toolName));
+    }
+
+    const result: number | null = combinedOptions.shimMode ? 0 : null;
+    return result;
+  }
+
+  const result = await installer.install(toolName, toolConfig, {
+    force: combinedOptions.force,
+    verbose: combinedOptions.verbose,
+    shimMode: combinedOptions.shimMode,
+  });
+
+  if (result.success) {
+    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig);
+  }
+
+  const exitCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
+  return exitCode;
+}
+
 export function registerInstallCommand(
   parentLogger: TsLogger,
   program: IGlobalProgram,
@@ -111,46 +180,13 @@ export function registerInstallCommand(
         ...program.opts(),
       };
       const services = await servicesFactory();
-      const { projectConfig, fs, installer, configService, generatorOrchestrator, systemInfo } = services;
-
       let shouldExitWithCode: number | null = null;
 
       try {
-        logger.debug(
-          messages.commandActionStarted('install', toolName),
-          projectConfig.paths.toolConfigsDir,
-          fs.constructor.name
-        );
-
-        const toolConfig = await loadToolConfigSafely(
-          logger,
-          toolName,
-          projectConfig.paths.toolConfigsDir,
-          fs,
-          projectConfig,
-          configService,
-          systemInfo
-        );
-
-        if (!toolConfig) {
-          shouldExitWithCode = 1;
-        } else {
-          // Starting installation process
-          const result = await installer.install(toolName, toolConfig, {
-            force: combinedOptions.force,
-            verbose: combinedOptions.verbose,
-            shimMode: combinedOptions.shimMode,
-          });
-
-          // Generate completions after successful installation
-          if (result.success) {
-            await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig);
-          }
-
-          shouldExitWithCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);
-        }
+        shouldExitWithCode = await executeInstallCommandAction(logger, toolName, combinedOptions, services);
       } catch (error) {
-        shouldExitWithCode = handleInstallationError(logger, error as Error, toolName, combinedOptions.shimMode);
+        const finalError = toError(error);
+        shouldExitWithCode = handleInstallationError(logger, finalError, toolName, combinedOptions.shimMode);
       }
 
       if (shouldExitWithCode !== null) {

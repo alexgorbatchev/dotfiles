@@ -87,6 +87,29 @@ export default defineTool((install, ctx) => {
 - Use fluent builder methods to configure the tool
 - All configuration is done through method calls on the returned builder
 
+## Configuration-only Tools
+
+Some tools don't need to be installed by dotfiles-tool-installer. They only contribute shell configuration (aliases, env vars, scripts) and should not generate shims.
+
+Use `install()` with no arguments to define a configuration-only tool:
+
+```typescript
+import { defineTool } from '@gitea/dotfiles';
+
+export default defineTool((install) =>
+  install().zsh((shell) =>
+    shell.environment({
+      FOO: 'bar',
+    })
+  )
+);
+```
+
+Notes:
+
+- Configuration-only tools should not call `.bin()`.
+- `dotfiles install <tool>` skips these tools.
+
 ## Type Safety Features
 
 ### Method Call Validation

@@ -1,6 +1,8 @@
 # Manual Installation
 
-The `manual` method is a unified approach for installing files from your tool configuration directory or creating configuration-only tools. It can install custom scripts, pre-built binaries, or provide pure shell configuration without any binary management.
+The `manual` method installs files from your tool configuration directory (custom scripts, pre-built binaries).
+
+For a configuration-only tool that only contributes shell configuration (and does not install binaries or generate shims), use `install()` with no arguments and do not call `.bin()`.
 
 ## Basic Usage
 
@@ -42,7 +44,7 @@ The `install('manual', params)` function accepts:
 - **`binaryPath`**: **Optional.** Path to a binary file relative to the tool configuration file location
   - Must be relative path (e.g., `./bin/tool`, `../scripts/helper.sh`)
   - The file will be copied to the managed installation directory
-  - If omitted, only shell configurations and symlinks will be processed
+  - If you are not installing a binary, prefer `install()` with no arguments (configuration-only)
 
 ## Examples
 
@@ -89,20 +91,18 @@ export default defineTool((install, ctx) =>
 - Custom shell scripts included with your dotfiles
 - Pre-built binaries for specific platforms
 - Tools that need to be "installed" from your dotfiles repository
-- Configuration-only tools (shell aliases, environment setup)
 - Composite tools that combine multiple resources
 
 **Use cases:**
 - Including custom helper scripts in your dotfiles
 - Distributing pre-compiled binaries with your configuration
-- Creating tools that only provide shell configuration
 - Managing platform-specific implementations
 
 ## Important Notes
 
 - Binary paths are relative to the tool configuration file location
 - Files are copied to the managed installation directory with executable permissions
-- If `binaryPath` is omitted, the tool will only provide shell configuration and symlinks
+- Configuration-only tools use `install()` with no arguments and must not define `.bin()`
 - All files are managed within the dotfiles system's versioned storage
 
 ## Complete Example

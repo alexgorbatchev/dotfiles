@@ -109,7 +109,7 @@ export default defineTool((install, ctx) =>
 
 ## Manual Installation Guide
 
-The `manual` method is now the unified approach for both binary installation and configuration-only tools:
+The `manual` method is the unified approach for binary installation from your dotfiles directory.
 
 ### Use **Manual** for Binary Installation:
 - ✅ You have custom scripts or binaries to include with your dotfiles
@@ -129,7 +129,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Use **Manual** for Configuration Only:
+### Use `install()` for Configuration Only:
 - ✅ You only need shell configuration (aliases, environment, symlinks)
 - ✅ Tools are managed entirely outside the dotfiles system
 - ✅ You don't want any binary installation or management

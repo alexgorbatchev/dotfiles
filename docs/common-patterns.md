@@ -261,7 +261,7 @@ export default defineTool((install, ctx) =>
 import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
-  install('manual', {})
+  install()
     .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
     .symlink('./gitignore_global', `${ctx.projectConfig.paths.homeDir}/.gitignore_global`)
     .zsh((shell) =>
@@ -363,7 +363,7 @@ export default defineTool((install, ctx) =>
 ```typescript
 // For pure shell configuration without binaries
 export default defineTool((install, ctx) =>
-  install('manual', {})  // No binaryPath = configuration only
+  install()  // Configuration-only: no install params, no .bin()
     .zsh((shell) => shell.aliases({ myalias: 'mycommand' }))
 );
 ```
@@ -375,7 +375,7 @@ export default defineTool((install, ctx) =>
 | Download from GitHub | `github-release` | fzf, ripgrep, bat |
 | Package manager tools | `brew`, `cargo` | git, rust tools |
 | Custom helper scripts | `manual` | deployment scripts, wrappers |
-| Pure shell config | `manual` | aliases, environment vars |
+| Pure shell config | `install()` | aliases, environment vars |
 | Download scripts | `curl-script` | Node.js, Rust installers |
 
 ## Next Steps

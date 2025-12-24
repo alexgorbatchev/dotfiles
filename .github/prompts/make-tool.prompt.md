@@ -69,10 +69,12 @@ Based on your analysis, select the most appropriate installation method. Priorit
   - Simple archive extraction
   - See: [Curl Tar Installation Guide](../../docs/installation/curl-tar.md)
   
-- **`manual`**: For custom scripts, pre-built binaries, or configuration-only tools.
-  - **With binaryPath**: Copies binaries from your dotfiles directory to managed installation
-  - **Without binaryPath**: Configuration-only (shell integration, symlinks, no binary management)
+- **`manual`**: For custom scripts and pre-built binaries stored in your dotfiles.
+  - Copies binaries from your dotfiles directory to managed installation
   - See: [Manual Installation Guide](../../docs/installation/manual.md)
+
+- **Configuration-only**: For shell-only tools (no installation, no shims).
+  - Use `install()` with no arguments and do not call `.bin()`
 
 ### Step 2: Configure Binary Specification
 **IMPORTANT**: The `.bin()` method only declares which executables your tool provides. It does NOT specify paths inside archives.
@@ -528,15 +530,13 @@ export default defineTool((install, ctx) =>
 import { defineTool } from '@gitea/dotfiles';
 
 /**
- * git-config - Git configuration and aliases (no binary management).
- * 
- * Installation: Manual (configuration only, no binaries).
- * Features: Symlinked configs and shell aliases.
+ * git-config - Git aliases (no installation).
+ *
+ * Installation: None (configuration-only).
+ * Features: Shell aliases and environment.
  */
 export default defineTool((install, ctx) =>
-  install('manual', {})  // No binaryPath = configuration only
-    .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
-    .symlink('./gitignore_global', `${ctx.projectConfig.paths.homeDir}/.gitignore_global`)
+  install()
     .zsh({
       aliases: {
         'g': 'git',

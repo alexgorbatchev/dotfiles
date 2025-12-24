@@ -308,7 +308,7 @@ import { defineTool } from '@gitea/dotfiles';
  * https://git-scm.com
  */
 export default defineTool((install, ctx) =>
-  install('manual', {})  // No binaryPath - configuration only
+  install()  // Configuration-only: no install params, no .bin()
     .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
     .zsh((shell) =>
       shell.aliases({

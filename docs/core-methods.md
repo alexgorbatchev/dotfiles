@@ -113,7 +113,9 @@ See the [Installation Methods](./installation/README.md) section for detailed in
 - [`cargo`](./installation/cargo.md) - Install Rust tools from crates.io
 - [`curl-script`](./installation/curl-script.md) - Install via download scripts
 - [`curl-tar`](./installation/curl-tar.md) - Download and extract tarballs
-- [`manual`](./installation/manual.md) - Install from dotfiles directory or configuration-only
+- [`manual`](./installation/manual.md) - Install from dotfiles directory (custom scripts, pre-built binaries)
+
+For shell-only configuration tools (no install pipeline, no shims), use `install()` with no arguments.
 
 ## Method Chaining
 

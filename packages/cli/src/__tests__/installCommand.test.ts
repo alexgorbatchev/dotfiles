@@ -5,15 +5,19 @@ import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
+import { createInstallFunction } from '@dotfiles/tool-config-builder';
 import { registerInstallCommand } from '../installCommand';
 import { messages } from '../log-messages';
 import type { IGlobalProgram, IServices } from '../types';
 import { createCliTestSetup } from './createCliTestSetup';
 
-const createMockConfigService = (): MockedInterface<IConfigService> => ({
-  loadSingleToolConfig: mock(async () => undefined),
-  loadToolConfigs: mock(async () => ({})),
-});
+const createMockConfigService = (): MockedInterface<IConfigService> => {
+  const result: MockedInterface<IConfigService> = {
+    loadSingleToolConfig: mock(async () => undefined),
+    loadToolConfigs: mock(async () => ({})),
+  };
+  return result;
+};
 
 describe('installCommand', () => {
   let program: IGlobalProgram;
@@ -106,6 +110,20 @@ describe('installCommand', () => {
       shimMode: false,
     });
     testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'brew')]);
+  });
+
+  test('should skip installation for configuration-only tool configs', async () => {
+    const install = createInstallFunction(testLogger, 'config-tool');
+    const configOnlyToolConfig = install()
+      .zsh((shell) => shell.environment({ CONFIG_ONLY: '1' }))
+      .build();
+
+    mockConfigService.loadSingleToolConfig.mockResolvedValue(configOnlyToolConfig);
+
+    await program.parseAsync(['install', 'config-tool'], { from: 'user' });
+
+    expect(mockInstaller.install).not.toHaveBeenCalled();
+    expect(mockGeneratorOrchestrator.generateCompletionsForTool).not.toHaveBeenCalled();
   });
 
   test('should exit silently in shim mode when installation succeeds', async () => {
