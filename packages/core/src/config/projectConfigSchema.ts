@@ -38,8 +38,6 @@ function createCacheSchema(defaults?: { enabled?: boolean; ttl?: number }) {
  * A reusable Zod schema for cache configuration with default values.
  *
  * @see {@link createCacheSchema}
- *
- * @public
  */
 export const cacheConfigSchema = createCacheSchema();
 
@@ -116,8 +114,6 @@ function createHostSchema(options: {
  *
  * targetDir (independent)
  * ```
- *
- * @public
  */
 const pathsConfigSchema = z
   .object({
@@ -170,7 +166,6 @@ const pathsConfigSchema = z
 
 /**
  * A Zod schema for system-level configurations.
- * @public
  */
 const systemConfigSchema = z
   .object({
@@ -184,7 +179,6 @@ const systemConfigSchema = z
 
 /**
  * A Zod schema for logging configurations.
- * @public
  */
 const loggingConfigSchema = z
   .object({
@@ -199,7 +193,6 @@ const loggingConfigSchema = z
 
 /**
  * A Zod schema for tool update configurations.
- * @public
  */
 const updatesConfigSchema = z
   .object({
@@ -224,8 +217,6 @@ const updatesConfigSchema = z
  * caching settings for interactions with GitHub.
  *
  * @see {@link createHostSchema}
- *
- * @public
  */
 const gitHubConfigSchema = createHostSchema({
   defaultHost: 'https://api.github.com',
@@ -244,8 +235,6 @@ const cargoGithubReleaseHostSchema = createHostSchema({ defaultHost: 'https://gi
  * This schema defines settings for interacting with different services that
  * Cargo uses, such as `crates.io` and GitHub for fetching package information
  * and release assets.
- *
- * @public
  */
 const cargoConfigSchema = z
   .object({
@@ -272,7 +261,6 @@ const cargoConfigSchema = z
 
 /**
  * A Zod schema for the asset downloader configuration.
- * @public
  */
 const downloaderConfigSchema = z
   .object({
@@ -300,7 +288,6 @@ const downloaderConfigSchema = z
 
 /**
  * A Zod schema for feature-specific configurations.
- * @public
  */
 const featuresConfigSchema = z
   .object({
@@ -353,13 +340,11 @@ const featuresConfigSchema = z
 
 /**
  * An array of supported operating system identifiers.
- * @public
  */
 export const OS_VALUES = ['macos', 'linux', 'windows'] as const;
 
 /**
  * An array of supported CPU architecture identifiers.
- * @public
  */
 export const ARCH_VALUES = ['x86_64', 'arm64'] as const;
 
@@ -449,8 +434,6 @@ const platformOverrideSchema = z
  * This schema combines the base configuration with an optional array of
  * platform-specific overrides. It is used to parse and validate the entire
  * configuration file.
- *
- * @public
  */
 export const projectConfigSchema = baseProjectConfigSchemaRequired
   .extend({
@@ -465,8 +448,6 @@ export const projectConfigSchema = baseProjectConfigSchemaRequired
 
 /**
  * A TypeScript type representing the paths section of the YAML configuration.
- *
- * @public
  */
 export type ProjectConfigPaths = z.infer<typeof pathsConfigSchema>;
 
@@ -475,8 +456,6 @@ export type ProjectConfigPaths = z.infer<typeof pathsConfigSchema>;
  *
  * This is useful for functions that merge or override configuration values,
  * allowing any part of the configuration to be optionally provided.
- *
- * @public
  */
 export type ProjectConfigPartial = PartialDeep<ProjectConfig>;
 
@@ -499,7 +478,5 @@ export const privateProjectConfigFields = z.object({
  * This type is inferred from the main Zod schema and includes both the
  * user-defined configuration from `config.yaml` and the private, internally-managed
  * fields.
- *
- * @public
  */
 export type ProjectConfig = z.infer<typeof projectConfigSchema> & z.infer<typeof privateProjectConfigFields>;

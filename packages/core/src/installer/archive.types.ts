@@ -3,8 +3,6 @@
  *
  * This type is used to specify the format of an archive for extraction or to
  * indicate a detected format.
- *
- * @public
  */
 export type ArchiveFormat =
   /**
@@ -41,8 +39,6 @@ export type ArchiveFormat =
  * These options allow for customization of the extraction process, such as
  * specifying the format, stripping leading directory components, or preserving
  * permissions.
- *
- * @public
  */
 export interface IExtractOptions {
   /**
@@ -74,8 +70,6 @@ export interface IExtractOptions {
  * It includes a list of all extracted files, any files that were made
  * executable, and the root directory if the archive had a single top-level
  * directory.
- *
- * @public
  */
 export interface IExtractResult {
   /** An array of absolute paths to all files that were successfully extracted. */

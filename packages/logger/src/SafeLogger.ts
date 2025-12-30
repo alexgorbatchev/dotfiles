@@ -5,7 +5,6 @@ import type { SafeLogMessage } from './types';
 
 /**
  * Extended settings for SafeLogger that adds context support.
- * @public
  */
 export interface ISafeLoggerSettings<LogObj> extends ISettingsParam<LogObj> {
   /**
@@ -33,8 +32,6 @@ function formatContext(context: string): string {
  * Supports context strings that are prepended to log messages as `[context]`.
  * Multiple contexts from parent loggers are chained together (e.g., `[Parent][Child]`).
  * Uses tslog's built-in `prefix` array internally.
- *
- * @public
  */
 export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
   constructor(settings?: ISafeLoggerSettings<LogObj>) {

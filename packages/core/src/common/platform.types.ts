@@ -11,8 +11,6 @@ import { z } from 'zod';
  *   // Supported on Linux
  * }
  * ```
- *
- * @public
  */
 export enum Platform {
   /** Represents no specific platform. */
@@ -39,8 +37,6 @@ export enum Platform {
  *   // Supported on ARM64
  * }
  * ```
- *
- * @public
  */
 export enum Architecture {
   /** Represents no specific architecture. */
@@ -57,8 +53,6 @@ export enum Architecture {
  * A Zod schema for validating `Platform` enum values.
  *
  * Ensures that a given number is a valid bitmask composed of `Platform` enum members.
- *
- * @public
  */
 export const platformSchema = z
   .number()
@@ -81,8 +75,6 @@ export const platformSchema = z
  * A Zod schema for validating `Architecture` enum values.
  *
  * Ensures that a given number is a valid bitmask composed of `Architecture` enum members.
- *
- * @public
  */
 export const architectureSchema = z
   .number()
@@ -107,8 +99,6 @@ export const architectureSchema = z
  * @param targetPlatforms - A bitmask representing the set of allowed platforms.
  * @param platform - The platform to check for inclusion.
  * @returns `true` if the `platform` is included in `targetPlatforms`, otherwise `false`.
- *
- * @public
  */
 export function hasPlatform(targetPlatforms: Platform, platform: Platform): boolean {
   if (platform === Platform.None) {
@@ -123,8 +113,6 @@ export function hasPlatform(targetPlatforms: Platform, platform: Platform): bool
  * @param targetArchitectures - A bitmask representing the set of allowed architectures.
  * @param architecture - The architecture to check for inclusion.
  * @returns `true` if the `architecture` is included in `targetArchitectures`, otherwise `false`.
- *
- * @public
  */
 export function hasArchitecture(targetArchitectures: Architecture, architecture: Architecture): boolean {
   if (architecture === Architecture.None) {

@@ -29,8 +29,6 @@ type FsPromises = typeof fsPromises;
  *
  * @see {@link IFileSystem}
  * @see {@link MemFileSystem}
- *
- * @public
  */
 export class NodeFileSystem implements IFileSystem {
   private readonly fs: FsPromises;

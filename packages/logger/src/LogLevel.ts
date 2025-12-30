@@ -15,8 +15,6 @@
  *
  * const logLevel = LogLevel.VERBOSE;
  * ```
- *
- * @public
  */
 export const LogLevel = {
   TRACE: 0,
@@ -27,20 +25,17 @@ export const LogLevel = {
 
 /**
  * Represents the numeric value of a log level.
- * @public
  */
 export type LogLevelValue = (typeof LogLevel)[keyof typeof LogLevel];
 
 /**
  * Defines the valid string representations of log levels, typically used for
  * parsing command-line arguments or configuration values.
- * @public
  */
 export const LOG_LEVEL_NAMES = ['trace', 'verbose', 'default', 'quiet'] as const;
 
 /**
  * A type representing the string name of a log level.
- * @public
  */
 export type LogLevelName = (typeof LOG_LEVEL_NAMES)[number];
 
@@ -53,8 +48,6 @@ export type LogLevelName = (typeof LOG_LEVEL_NAMES)[number];
  *
  * const logLevel = LOG_LEVEL_MAP['verbose']; // 1
  * ```
- *
- * @public
  */
 export const LOG_LEVEL_MAP: Record<LogLevelName, LogLevelValue> = {
   trace: LogLevel.TRACE,
@@ -79,8 +72,6 @@ export const LOG_LEVEL_MAP: Record<LogLevelName, LogLevelValue> = {
  *
  * const logLevel = parseLogLevel('VERBOSE'); // 1
  * ```
- *
- * @public
  */
 export function parseLogLevel(levelName: string): LogLevelValue {
   const normalizedName = levelName.toLowerCase() as LogLevelName;

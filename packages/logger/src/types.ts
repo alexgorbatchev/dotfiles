@@ -15,8 +15,6 @@ import type { SafeLogger } from './SafeLogger';
  *
  * @see {@link createSafeLogMessage}
  * @see {@link isSafeLogMessage}
- *
- * @public
  */
 export type SafeLogMessage = string & {
   readonly __brand: 'SafeLogMessage';
@@ -26,21 +24,17 @@ export type SafeLogMessage = string & {
  * A type representing a map of functions that generate {@link SafeLogMessage}s.
  *
  * This is typically used to define a collection of log message templates.
- *
- * @public
  */
 // biome-ignore lint/suspicious/noExplicitAny: Template functions need varying parameter types
 export type SafeLogMessageMap = Record<string, (...args: any[]) => SafeLogMessage>;
 
 /**
  * A type alias for a {@link SafeLogger} instance with a default log object type.
- * @public
  */
 export type TsLogger = SafeLogger<ILogObj>;
 
 /**
  * Configuration options for creating a logger instance.
- * @public
  */
 export interface ILoggerConfig {
   /**
