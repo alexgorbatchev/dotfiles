@@ -27,8 +27,6 @@ import type { IArchitectureRegex } from './types';
  * @param assetName - The name of the release asset to check (e.g., `mytool-linux-amd64.tar.gz`).
  * @param architectureRegex - An object containing the regex patterns for system and CPU.
  * @returns `true` if the asset name matches both the system and CPU patterns, otherwise `false`.
- *
- * @public
  */
 export function matchesArchitecture(assetName: string, architectureRegex: IArchitectureRegex): boolean {
   const lowerAssetName = assetName.toLowerCase();

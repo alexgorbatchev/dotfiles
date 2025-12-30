@@ -29,8 +29,6 @@ import { LogLevel, type LogLevelValue, parseLogLevel } from './LogLevel';
  *
  * @see {@link LogLevel}
  * @see {@link parseLogLevel}
- *
- * @public
  */
 export function getLogLevelFromFlags(log: string, quiet: boolean, verbose: boolean): LogLevelValue {
   // Handle alias flags first

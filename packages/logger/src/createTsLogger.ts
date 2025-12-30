@@ -20,8 +20,6 @@ import type { ILoggerConfig, TsLogger } from './types';
  * const logger = createTsLogger('my-app');
  * logger.info(messages.info.appStarted());
  * ```
- *
- * @public
  */
 export function createTsLogger(name: string): TsLogger;
 /**
@@ -42,8 +40,6 @@ export function createTsLogger(name: string): TsLogger;
  * const logger = createTsLogger({ name: 'my-app', level: LogLevel.VERBOSE });
  * logger.debug(messages.debug.configLoaded({ config: { setting: 'value' } }));
  * ```
- *
- * @public
  */
 export function createTsLogger(config: ILoggerConfig): TsLogger;
 export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {

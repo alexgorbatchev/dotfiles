@@ -6,7 +6,6 @@ import { type ISafeLoggerSettings, SafeLogger } from './SafeLogger';
 /**
  * Defines the log levels available for filtering in `TestLogger`.
  * The `'*'` level can be used to match all log levels.
- * @public
  */
 export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
 
@@ -31,13 +30,10 @@ export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' |
  * ```
  *
  * @see {@link https://tslog.js.org}
- *
- * @public
  */
 export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
   /**
    * An array containing all log objects captured by this logger instance.
-   * @public
    */
   public readonly logs: ILogObjMeta[] = [];
 

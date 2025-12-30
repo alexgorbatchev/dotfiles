@@ -14,8 +14,6 @@ import type { IArchitecturePatterns } from './types';
  * @returns An object containing arrays of patterns for the system, CPU, and variants.
  *
  * @see {@link https://github.com/zdharma-continuum/zinit/blob/master/zinit-install.zsh} for the original implementation.
- *
- * @public
  */
 export function getArchitecturePatterns(systemInfo: ISystemInfo): IArchitecturePatterns {
   const patterns: IArchitecturePatterns = {

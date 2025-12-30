@@ -5,8 +5,6 @@
  *
  * These patterns help in identifying compatible binaries or installers for the
  * current system and are based on Zinit's architecture detection logic.
- *
- * @public
  */
 export interface IArchitecturePatterns {
   /**
@@ -44,8 +42,6 @@ export interface IArchitecturePatterns {
  *
  * These regex patterns are used to robustly match against asset names or other
  * strings to determine architecture compatibility.
- *
- * @public
  */
 export interface IArchitectureRegex {
   /**

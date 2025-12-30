@@ -6,7 +6,6 @@
  * that do not need to be repeated on every shell startup.
  *
  * @see {@link once}
- * @public
  */
 export type OnceScript = string & { readonly __brand: 'once' };
 
@@ -19,14 +18,12 @@ export type OnceScript = string & { readonly __brand: 'once' };
  * function correctly in a new shell session.
  *
  * @see {@link always}
- * @public
  */
 export type AlwaysScript = string & { readonly __brand: 'always' };
 
 /**
  * A union type representing any kind of shell script, whether it runs once or
  * on every shell startup.
- * @public
  */
 export type ShellScript = OnceScript | AlwaysScript;
 
@@ -48,7 +45,6 @@ export type ShellScript = OnceScript | AlwaysScript;
  *   tool gen-completions --shell zsh > "$DOTFILES/.generated/completions/_tool"
  * `
  * ```
- * @public
  */
 export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceScript {
   const content = String.raw(strings, ...values);
@@ -77,7 +73,6 @@ export function once(strings: TemplateStringsArray, ...values: unknown[]): OnceS
  *   eval "$(tool init zsh)"
  * `
  * ```
- * @public
  */
 export function always(strings: TemplateStringsArray, ...values: unknown[]): AlwaysScript {
   const content = String.raw(strings, ...values);
@@ -92,7 +87,6 @@ export function always(strings: TemplateStringsArray, ...values: unknown[]): Alw
  *
  * @param script - The script to check.
  * @returns `true` if the script is a `OnceScript`, otherwise `false`.
- * @public
  */
 export function isOnceScript(script: ShellScript): script is OnceScript {
   return (script as OnceScript).__brand === 'once';
@@ -103,7 +97,6 @@ export function isOnceScript(script: ShellScript): script is OnceScript {
  *
  * @param script - The script to check.
  * @returns `true` if the script is an `AlwaysScript`, otherwise `false`.
- * @public
  */
 export function isAlwaysScript(script: ShellScript): script is AlwaysScript {
   return (script as AlwaysScript).__brand === 'always';
@@ -114,7 +107,6 @@ export function isAlwaysScript(script: ShellScript): script is AlwaysScript {
  *
  * @param script - The {@link ShellScript} to unwrap.
  * @returns The raw string content of the script.
- * @public
  */
 export function getScriptContent(script: ShellScript): string {
   return script as string;

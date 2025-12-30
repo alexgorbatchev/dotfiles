@@ -6,8 +6,6 @@
  * being blocked.
  *
  * @see https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
- *
- * @public
  */
 export interface IGitHubRateLimit {
   /** The maximum number of requests allowed in the current rate limit window. */
@@ -30,8 +28,6 @@ export interface IGitHubRateLimit {
  * release assets.
  *
  * @see https://docs.github.com/en/rest/releases/assets#get-a-release-asset
- *
- * @public
  */
 export interface IGitHubReleaseAsset {
   /** The name of the asset file (e.g., `mytool-linux-amd64.tar.gz`). */
@@ -58,8 +54,6 @@ export interface IGitHubReleaseAsset {
  * This structure is based on the GitHub API response for a single release.
  *
  * @see https://docs.github.com/en/rest/releases/releases#get-a-release
- *
- * @public
  */
 export interface IGitHubRelease {
   /** The unique identifier for the release. */

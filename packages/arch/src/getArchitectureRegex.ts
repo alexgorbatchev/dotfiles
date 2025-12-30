@@ -13,8 +13,6 @@ import type { IArchitectureRegex } from './types';
  *
  * @param systemInfo - An object containing system information, such as OS and CPU architecture.
  * @returns An object containing combined regex patterns for asset matching.
- *
- * @public
  */
 export function getArchitectureRegex(systemInfo: ISystemInfo): IArchitectureRegex {
   const patterns = getArchitecturePatterns(systemInfo);

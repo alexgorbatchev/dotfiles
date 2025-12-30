@@ -24,8 +24,6 @@ import type { SafeLogMessage } from './types';
  *
  * @see {@link SafeLogMessage}
  * @see {@link isSafeLogMessage}
- *
- * @public
  */
 export function createSafeLogMessage(message: string): SafeLogMessage {
   return message as SafeLogMessage;
