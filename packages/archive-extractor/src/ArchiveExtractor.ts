@@ -1,31 +1,12 @@
-import { exec as execCallback } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { basename, extname, join } from 'node:path';
-import { promisify } from 'node:util';
 import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
+import { $ } from 'bun';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import { messages } from './log-messages';
-
-/**
- * Error interface from child_process.exec with optional code, stdout, and stderr properties.
- */
-interface IExecError extends Error {
-  code?: number;
-  stdout?: string;
-  stderr?: string;
-}
-
-/**
- * Augmented error interface that includes captured stdout/stderr and the original error.
- */
-interface IAugmentedExecError extends Error {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  originalError: IExecError;
-}
 
 /**
  * Implements archive extraction using system commands.
@@ -51,37 +32,6 @@ export class ArchiveExtractor implements IArchiveExtractor {
   constructor(parentLogger: TsLogger, fileSystem: IFileSystem) {
     this.fs = fileSystem;
     this.logger = parentLogger.getSubLogger({ name: 'ArchiveExtractor' });
-  }
-
-  // Promisify exec for use with async/await
-  private promisedExec = promisify(execCallback);
-
-  /**
-   * Executes a shell command using child_process.exec.
-   *
-   * @param command - The command string to execute.
-   * @returns A promise that resolves with stdout, stderr, and exit code.
-   * @throws {IAugmentedExecError} An error augmented with stdout, stderr, and exitCode if the command fails.
-   */
-  private async executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-    const logger = this.logger.getSubLogger({ name: 'executeShellCommand' });
-    try {
-      logger.debug(messages.shellCommandStarted(command));
-      const { stdout, stderr } = await this.promisedExec(command);
-      return { stdout, stderr, exitCode: 0 };
-    } catch (error: unknown) {
-      const execError = error as IExecError;
-      // Augment the error object with stdio and exit code
-      const augmentedError: IAugmentedExecError = new Error(
-        `Command failed with exit code ${execError.code || 'unknown'}: ${command}\nStderr: ${execError.stderr?.trim() || 'N/A'}\nStdout: ${execError.stdout?.trim() || 'N/A'}\n${execError.message}`
-      ) as IAugmentedExecError;
-      augmentedError.stdout = execError.stdout || '';
-      augmentedError.stderr = execError.stderr || '';
-      augmentedError.exitCode = typeof execError.code === 'number' ? execError.code : 1;
-      augmentedError.originalError = execError; // Keep original error if needed
-      logger.debug(messages.shellCommandFailed(command, augmentedError.exitCode), augmentedError);
-      throw augmentedError;
-    }
   }
 
   /**
@@ -132,10 +82,10 @@ export class ArchiveExtractor implements IArchiveExtractor {
 
   private async detectFormatUsingFileCommand(filePath: string, logger: TsLogger): Promise<ArchiveFormat | null> {
     try {
-      // Basic single quoting for shell safety.
-      const safeFilePath = `'${filePath.replace(/'/g, "'\\''")}'`;
-      const { stdout } = await this.executeShellCommand(`file -b --mime-type ${safeFilePath}`);
-      const output = stdout.trim();
+      const commandName = 'file';
+      logger.debug(messages.shellCommandStarted(commandName));
+      const result = await $`file -b --mime-type ${filePath}`.quiet();
+      const output = (await result.text()).trim();
 
       return this.detectFormatByMimeType(output);
     } catch (error) {
@@ -181,35 +131,19 @@ export class ArchiveExtractor implements IArchiveExtractor {
     return supportedFormats.includes(format);
   }
 
-  /**
-   * Builds the appropriate tar command for the given archive format.
-   *
-   * @param archivePath - Path to the tar archive file.
-   * @param tempExtractDir - Directory where files will be extracted.
-   * @param format - The tar format (tar, tar.gz, tar.bz2, or tar.xz).
-   * @returns The complete tar command string.
-   * @throws {Error} If the format is not a supported tar variant.
-   */
-  private buildTarCommand(archivePath: string, tempExtractDir: string, format: string): string {
-    let flag: string;
+  private getTarFlagForFormat(format: ArchiveFormat): string {
     switch (format) {
       case 'tar.gz':
-        flag = '-xzf';
-        break;
+        return '-xzf';
       case 'tar.bz2':
-        flag = '-xjf';
-        break;
+        return '-xjf';
       case 'tar.xz':
-        flag = '-xJf';
-        break;
+        return '-xJf';
       case 'tar':
-        flag = '-xf';
-        break;
+        return '-xf';
       default:
         throw new Error(`Unsupported tar format: ${format}`);
     }
-
-    return `tar ${flag} '${archivePath}' -C '${tempExtractDir}'`;
   }
 
   /**
@@ -231,13 +165,16 @@ export class ArchiveExtractor implements IArchiveExtractor {
       case 'tar.bz2':
       case 'tar.xz':
       case 'tar': {
-        const command = this.buildTarCommand(archivePath, tempExtractDir, format);
-        await this.executeShellCommand(command);
+        const tarFlag = this.getTarFlagForFormat(format);
+        const commandName = 'tar';
+        this.logger.debug(messages.shellCommandStarted(commandName));
+        await $`tar ${tarFlag} ${archivePath} -C ${tempExtractDir}`.quiet();
         break;
       }
       case 'zip': {
-        const command = `unzip -qo '${archivePath}' -d '${tempExtractDir}'`;
-        await this.executeShellCommand(command);
+        const commandName = 'unzip';
+        this.logger.debug(messages.shellCommandStarted(commandName));
+        await $`unzip -qo ${archivePath} -d ${tempExtractDir}`.quiet();
         break;
       }
       default:
@@ -268,8 +205,8 @@ export class ArchiveExtractor implements IArchiveExtractor {
     await this.fs.ensureDir(targetDir);
 
     // Create a temporary subdirectory for extraction to avoid including the archive file itself
-    const randomSuffix = Math.floor(Math.random() * 10000);
-    const tempExtractDir = join(targetDir, `.extract-temp-${randomSuffix}`);
+    const extractId = randomUUID();
+    const tempExtractDir = join(targetDir, `.extract-temp-${extractId}`);
     await this.fs.ensureDir(tempExtractDir);
 
     try {

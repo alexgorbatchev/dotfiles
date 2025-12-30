@@ -39,6 +39,8 @@ This file translates findings from `review-CRITICAL.md` into independent tasks d
 - `bun test packages/archive-extractor/src/__tests__/ArchiveExtractor.test.ts` passes.
 - `bun typecheck`, `bun lint`, `bun fix`, and `bun test` pass.
 
+**Status:** ✅ Completed on 2025-12-29
+
 ---
 
 ### T002 — Deduplicate `cleanupTempFiles` in build package ✅ COMPLETED
@@ -117,7 +119,7 @@ This file translates findings from `review-CRITICAL.md` into independent tasks d
 
 ## Suggested Merge Order (should be conflict-free in any order)
 
-1. T001 (archive-extractor hardening) — **PENDING**
+1. T001 (archive-extractor hardening) — ✅ **COMPLETED**
 2. T002 (build dedup) — ✅ **MERGED**
 3. T003–T005 (build tests) — ✅ **COMPLETED** (ready for merge)
 
