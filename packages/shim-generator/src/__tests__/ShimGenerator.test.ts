@@ -1,9 +1,13 @@
-import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import { createMemFileSystem, type FileSystemSpies, type Stats } from '@dotfiles/file-system';
+import { createMemFileSystem, type FileSystemSpies, type IFileSystem, type Stats } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
+import { RegistryDatabase } from '@dotfiles/registry-database';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { ShimGenerator } from '../ShimGenerator';
 
@@ -12,12 +16,14 @@ import '@dotfiles/testing-helpers';
 describe('ShimGenerator', () => {
   let mockConfig: ProjectConfig;
   let shimGenerator: ShimGenerator;
+  let fileSystem: IFileSystem;
   let fsMocks: FileSystemSpies;
   let logger: TestLogger;
   let testDirs: ITestDirectories;
 
   beforeEach(async () => {
     const { fs, spies } = await createMemFileSystem({});
+    fileSystem = fs;
     fsMocks = spies;
     logger = new TestLogger();
 
@@ -574,6 +580,61 @@ describe('ShimGenerator', () => {
       // Should include --shim-mode flag for suppressed logging
       expect(writtenContent).toContain('update --shim-mode --config');
       expect(writtenContent).toContain('install --shim-mode --config');
+    });
+  });
+
+  describe('tracking attribution', () => {
+    let registry: FileRegistry;
+    let registryDatabase: RegistryDatabase;
+    let dbPath: string;
+
+    beforeEach(async () => {
+      dbPath = path.join('/tmp', `test-shim-generator-${randomUUID()}.db`);
+      registryDatabase = new RegistryDatabase(logger, dbPath);
+      registry = new FileRegistry(logger, registryDatabase.getConnection());
+    });
+
+    afterEach(async () => {
+      await registry.close();
+      registryDatabase.close();
+      try {
+        await unlink(dbPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+
+    it('should record targetDir creation under system, not tool', async () => {
+      const toolName = 'curl-script--fnm';
+      const toolConfig: ToolConfig = {
+        name: toolName,
+        binaries: ['fnm'],
+        version: '1.0.0',
+        installationMethod: 'manual',
+        installParams: {
+          binaryPath: '/usr/local/bin/fnm',
+        },
+      };
+
+      const systemContext = TrackedFileSystem.createContext('system', 'shim');
+      const trackedFs = new TrackedFileSystem(logger, fileSystem, registry, systemContext, mockConfig);
+      const trackedGenerator = new ShimGenerator(logger, trackedFs, mockConfig);
+
+      await fileSystem.rmdir(mockConfig.paths.targetDir, { recursive: true }).catch(() => undefined);
+
+      await trackedGenerator.generateForTool(toolName, toolConfig, { overwrite: true, overwriteConflicts: true });
+
+      const operations = await registry.getOperations();
+
+      const expectedTargetDirPath: string = path.resolve(mockConfig.paths.targetDir);
+
+      const mkdirOperation = operations.find(
+        (operation) => operation.operationType === 'mkdir' && operation.filePath === expectedTargetDirPath
+      );
+      expect(mkdirOperation?.toolName).toBe('system');
+
+      const writeOperation = operations.find((operation) => operation.operationType === 'writeFile');
+      expect(writeOperation?.toolName).toBe(toolName);
     });
   });
 });
