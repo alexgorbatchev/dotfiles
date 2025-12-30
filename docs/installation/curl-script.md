@@ -1,6 +1,6 @@
 # Curl Script Installation
 
-The `curl-script` method downloads and executes installation scripts.
+Downloads and executes shell installation scripts.
 
 ## Basic Usage
 
@@ -18,54 +18,18 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-The `install('curl-script', params)` function accepts:
-
-```typescript
-{
-  url: 'https://example.com/install.sh',  // Required
-  shell: 'bash' | 'sh',                   // Required
-  args?: string[] | ((ctx) => string[] | Promise<string[]>), // Optional
-  env?: { KEY: 'value' },                 // Optional
-  hooks?: {                               // Optional
-    beforeInstall?: async (ctx) => void,
-    afterDownload?: async (ctx) => void,
-  }
-}
-```
-
-### Parameters
-
-- **`url`**: URL of the installation script
-- **`shell`**: Shell to use for execution (`'bash'` or `'sh'`)
-- **`args`**: Arguments to pass to the script. Can be:
-  - Static array: `['--arg1', '--arg2']`
-  - Sync function: `(ctx) => ['--install-dir', ctx.projectConfig.paths.binariesDir]`
-  - Async function: `async (ctx) => { ... return ['--arg1']; }`
-- **`env`**: Environment variables to set during installation
-- **`versionArgs`**: Arguments to pass to the binary to check the version (e.g. `['--version']`).
-- **`versionRegex`**: Regex to extract version from output (e.g. `version (\d+\.\d+\.\d+)`).
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | URL of the installation script |
+| `shell` | `'bash' \| 'sh'` | Yes | Shell interpreter to use |
+| `args` | `string[] \| (ctx) => string[]` | No | Arguments to pass to the script |
+| `env` | `Record<string, string>` | No | Environment variables for execution |
 
 ## Examples
 
-### Simple Script Installation
+### With Static Arguments
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('curl-script', {
-    url: 'https://bun.sh/install',
-    shell: 'bash',
-  })
-    .bin('bun')
-);
-```
-
-### With Script Arguments (Static)
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('curl-script', {
     url: 'https://fnm.vercel.app/install',
@@ -76,104 +40,47 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-**Note:** The example above has been updated to use `args` instead of `env.INSTALL_ARGS`. Arguments are now passed directly to the script.
+### With Dynamic Arguments
 
-### Custom Installation Directory
-import { defineTool } from '@gitea/dotfiles';
-
+```typescript
 export default defineTool((install, ctx) =>
   install('curl-script', {
     url: 'https://fnm.vercel.app/install',
     shell: 'bash',
-    args: (argsCtx) => [
-      '--skip-shell',
-      '--install-dir',
-      argsCtx.stagingDir,
-    ],
+    args: (argsCtx) => ['--install-dir', argsCtx.stagingDir],
   })
     .bin('fnm')
 );
 ```
 
-The args context provides:
-- `projectConfig` - Full project configuration
-- `scriptPath` - Path where script was downloaded
-- `stagingDir` - Per-attempt staging directory for the tool
+The `args` context provides: `projectConfig`, `scriptPath`, `stagingDir`.
 
 ### With Environment Variables
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('curl-script', {
-    url: 'https://fnm.vercel.app/install',
-    shell: 'bash',
-    env: {
-      INSTALL_ARGS: '--skip-shell --install-dir $LOCAL_BIN',
-    },
+    url: 'https://fly.io/install.sh',
+    shell: 'sh',
+    env: { INSTALL_DIR: '$HOME/.local/bin' },
   })
-    .bin('fnm')
+    .bin('fly')
 );
 ```
 
-### Custom Installation Directory
+### With Hooks
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('curl-script', {
-    url: 'https://get.docker.com',
-    shell: 'sh',
-    env: {
-      INSTALL_DIR: `${ctx.projectConfig.paths.homeDir}/.local/bin`,
-      SKIP_SYSTEMD: 'true',
-    },
+    url: 'https://example.com/install.sh',
+    shell: 'bash',
   })
-    .bin('docker')
+    .bin('tool')
+    .hook('after-download', async (ctx) => {
+      // Verify script before execution
+    })
 );
 ```
 
-## Security Considerations
-
-**Important**: Curl scripts execute arbitrary code from the internet. Only use trusted sources.
-
-**Best practices:**
-- Verify the script source and reputation
-- Review the script contents when possible
-- Use HTTPS URLs only
-- Consider alternatives like GitHub releases when available
-
-## When to Use Curl Scripts
-
-**Best for:**
-- Official installation scripts from trusted projects
-- Tools with complex installation requirements
-- When other methods are not available
-
-**Avoid when:**
-- GitHub releases are available
-- Package manager installation is possible
-- The script source is untrusted
-
-## Troubleshooting
-
-**Script fails to execute:**
-- Check that the URL is accessible
-- Verify the shell type (bash vs sh)
-- Review environment variables
-
-**Permission issues:**
-- Ensure the script has appropriate permissions
-- Check if sudo is required (not recommended)
-
-**Network issues:**
-- Verify internet connectivity
-- Check for proxy or firewall restrictions
-
-## Next Steps
-
-- [GitHub Release Installation](./github-release.md) - Safer alternative when available
-- [Manual Installation](./manual.md) - For pre-installed tools
-- [Hooks](../hooks.md) - Custom post-installation setup
+**Security Note**: Curl scripts execute arbitrary code. Only use trusted sources with HTTPS URLs.

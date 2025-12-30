@@ -1,105 +1,75 @@
 # Getting Started
 
-This guide covers the basic structure and anatomy of `.tool.ts` configuration files.
+This guide covers how to create `.tool.ts` configuration files for your CLI tools.
 
 ## Prerequisites
 
-Before creating tool configurations, you need to set up your project configuration. See [Project Configuration](./config.md) for setup instructions for your main `config.ts` or `config.yaml` file.
+Set up your project configuration first. See [Project Configuration](./config.md) for instructions.
 
-## Basic Configuration Anatomy
+## File Structure
 
-### Minimal Configuration
+Tool configurations are placed in your `toolConfigsDir` (default: `~/.dotfiles/tools`):
+
+```
+tools/
+├── fzf.tool.ts
+├── ripgrep.tool.ts
+└── dev/
+    ├── node.tool.ts
+    └── rust.tool.ts
+```
+
+Files must be named `{tool-name}.tool.ts` and export a default using `defineTool`.
+
+## Minimal Configuration
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', {
-    repo: 'owner/repository',
+    repo: 'junegunn/fzf',
   })
-    .bin('tool-name')
-    .dependsOn('pcre2')
+    .bin('fzf')
 );
 ```
 
-### Complete Configuration Template
+## Complete Example
 
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
 export default defineTool((install, ctx) =>
   install('github-release', {
-    repo: 'owner/repository',
+    repo: 'BurntSushi/ripgrep',
   })
-    .bin('tool-name')
-    .dependsOn('shared-runtime')
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+    .bin('rg')
+    .dependsOn('pcre2')
+    .symlink('./ripgreprc', '~/.ripgreprc')
     .zsh((shell) =>
       shell
-        .completions('completions/_tool.zsh')
-        .environment({
-          TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.tool`,
-        })
-        .aliases({
-          t: 'tool-name',
-        })
-        .always(/* zsh */`
-          # Functions
-          function tool-helper() {
-            tool-name --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-          }
-        `)
+        .environment({ RIPGREP_CONFIG_PATH: '~/.ripgreprc' })
+        .aliases({ rgi: 'rg -i' })
     )
-    .bash((shell) => shell.completions('completions/tool.bash'))
 );
 ```
 
-### Declaring Dependencies
+## Available Methods
 
-Use `.dependsOn('binary-name')` to ensure prerequisite binaries are available before your tool runs. Each dependency should reference the shim name exposed by another tool configuration (or an existing system binary). The generator enforces that:
+After calling `install()`, these methods are available:
 
-- Every dependency is provided by exactly one tool
-- Dependencies do not form cycles
-- Providers are available for the current platform/architecture
-
-If any of these checks fail, the CLI stops with actionable error messages.
-
-**Type-safe autocomplete:** After running `generate`, a `tool-types.d.ts` file is created in your `generatedDir` with all available binary names. Add this file to your `tsconfig.json` to get autocomplete for dependency names. See [TypeScript Requirements](./typescript.md#auto-generated-type-definitions) for setup instructions.
-
-## TypeScript Requirements
-
-### Import Statement
-
-Import the `defineTool` function from `@gitea/dotfiles`:
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-```
-
-### Function Signature
-
-The default export must use the `defineTool` helper:
-
-```typescript
-export default defineTool((install, ctx) =>
-  install('method', { /* params */ })
-    .bin('tool-name')
-    .dependsOn('shared-helper')
-    // ... additional configuration
-);
-```
-
-### Type Safety
-
-- All method calls are type-checked
-- Invalid installation parameters will cause compilation errors
-- Platform and Architecture values are validated
-- Completion configurations are validated
-- ToolConfigContext provides typed access to all configured paths
-- Builder methods return the builder instance for proper chaining
+| Method | Purpose |
+|--------|---------|
+| `.bin(name)` | Define binary name(s) to expose |
+| `.version(v)` | Set version (`'latest'` or specific) |
+| `.dependsOn(bin)` | Declare binary dependencies |
+| `.symlink(src, dest)` | Create config file symlinks |
+| `.hook(event, fn)` | Lifecycle hooks ([details](./hooks.md)) |
+| `.zsh(fn)` / `.bash(fn)` | Shell-specific configuration |
+| `.platform(p, fn)` | Platform-specific overrides |
 
 ## Next Steps
 
-- [Core Methods](./core-methods.md) - Learn about the essential configuration methods
-- [Context API](./context-api.md) - Understand the ToolConfigContext for dynamic paths
-- [Installation Methods](./installation/README.md) - Explore different installation options
+- [Installation Methods](./installation/README.md) - Choose how to install your tool
+- [Shell Integration](./shell-integration.md) - Aliases, functions, environment variables
+- [Context API](./context-api.md) - Dynamic paths using `ctx`

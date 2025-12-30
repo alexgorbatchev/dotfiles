@@ -1,14 +1,8 @@
 # Project Configuration
 
-The project configuration file defines the core settings for your dotfiles system, including directory paths, tool discovery locations, and optional features. This is separate from individual tool configurations (defined with `defineTool`).
+The project configuration file defines paths, features, and API settings for your dotfiles system.
 
-## Configuration File Formats
-
-You can define your project configuration in one of two formats:
-
-### TypeScript Format (.config.ts)
-
-Recommended for dynamic configuration and full type safety:
+## Basic Configuration
 
 ```typescript
 import { defineConfig } from '@gitea/dotfiles';
@@ -20,213 +14,50 @@ export default defineConfig(() => ({
     generatedDir: '~/.dotfiles/.generated',
     targetDir: '~/.local/bin',
   },
-  features: {
-    catalog: {
-      generate: true,
-      filePath: '~/.dotfiles/CATALOG.md',
-    },
-  },
 }));
 ```
 
-### YAML Format (config.yaml)
+## defineConfig Options
 
-For simpler, declarative configuration:
-
-```yaml
-paths:
-  dotfilesDir: ~/.dotfiles
-  toolConfigsDir: ~/.dotfiles/tools
-  generatedDir: ~/.dotfiles/.generated
-  targetDir: ~/.local/bin
-
-features:
-  catalog:
-    generate: true
-    filePath: ~/.dotfiles/CATALOG.md
-```
-
-## defineConfig Helper
-
-The `defineConfig` function provides type safety and support for both synchronous and asynchronous configuration.
-
-### Synchronous Configuration
+### Async Configuration
 
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
-
-export default defineConfig(() => ({
-  paths: {
-    dotfilesDir: '~/.dotfiles',
-    targetDir: '~/.local/bin',
-  },
-}));
-```
-
-### Asynchronous Configuration
-
-```typescript
-import { defineConfig } from '@gitea/dotfiles';
-
 export default defineConfig(async () => {
   const token = await loadTokenFromVault();
-  
   return {
-    paths: {
-      dotfilesDir: '~/.dotfiles',
-      targetDir: '~/.local/bin',
-    },
-    github: {
-      token,
-    },
+    paths: { dotfilesDir: '~/.dotfiles' },
+    github: { token },
   };
 });
 ```
 
 ### Context-Aware Configuration
 
-The configuration factory receives a context object containing `configFileDir` and `systemInfo`. This is useful for resolving paths relative to the configuration file or adapting to the system environment.
-
 ```typescript
-import { defineConfig } from '@gitea/dotfiles';
-
 export default defineConfig(({ configFileDir, systemInfo }) => ({
   paths: {
-    // Resolve paths relative to the config file location
     generatedDir: `${configFileDir}/.generated`,
-    toolConfigsDir: `${configFileDir}/tools`,
-  },
-  // Use system info for conditional logic
-  features: {
-    catalog: {
-      generate: systemInfo.platform !== 'win32',
-      filePath: `${configFileDir}/CATALOG.md`,
-    },
   },
 }));
 ```
 
-### Mixed Configuration
+## Configuration Reference
 
-Combine multiple configuration sources:
-
-```typescript
-import { defineConfig } from '@gitea/dotfiles';
-import * as fs from 'node:fs/promises';
-
-export default defineConfig(async () => {
-  const envToken = process.env.GITHUB_TOKEN;
-  const configToken = await fs
-    .readFile('~/.github-token', 'utf-8')
-    .catch(() => undefined);
-
-  return {
-    paths: {
-      dotfilesDir: process.env.DOTFILES_DIR || '~/.dotfiles',
-      targetDir: process.env.TARGET_DIR || '~/.local/bin',
-    },
-    github: {
-      token: envToken || configToken,
-    },
-  };
-});
-```
-
-## Configuration Sections
-
-### Paths
-
-Controls where tools and generated files are located.
+### paths
 
 ```typescript
 paths: {
-  // User's home directory
-  // Default: auto-detected from system
-  homeDir: '/home/user',
-
-  // Root dotfiles directory (project root)
-  // Default: {configFileDir} (same directory as config file)
-  dotfilesDir: '~/.dotfiles',
-
-  // Directory containing *.tool.ts configuration files
-  // Default: {paths.dotfilesDir}/tools
-  toolConfigsDir: '~/.dotfiles/tools',
-
-  // Directory where generated files are stored
-  // Default: {paths.dotfilesDir}/.generated
-  generatedDir: '~/.dotfiles/.generated',
-
-  // Directory where executable shims are placed (must be in PATH)
-  // Default: {paths.generatedDir}/bin
-  targetDir: '~/.local/bin',
-
-  // Directory for generated shell initialization scripts
-  // Default: {paths.generatedDir}/shell-scripts
+  homeDir: '~',                                    // User's home directory
+  dotfilesDir: '~/.dotfiles',                      // Root dotfiles directory
+  toolConfigsDir: '~/.dotfiles/tools',             // Directory with *.tool.ts files
+  generatedDir: '~/.dotfiles/.generated',          // Generated files directory
+  targetDir: '/usr/local/bin',                     // Shim directory (must be in PATH)
   shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
-
-  // Directory for tool binaries
-  // Default: {paths.generatedDir}/binaries
   binariesDir: '~/.dotfiles/.generated/binaries',
 }
 ```
 
-#### Variable Expansion
-
-Paths support variable expansion with several special variables:
-
-```typescript
-paths: {
-  // Use {configFileDir} to reference the directory containing the config file
-  generatedDir: '{configFileDir}/.generated',
-
-  // Reference other path variables
-  targetDir: '{paths.generatedDir}/bin',
-  
-  // Use environment variables
-  dotfilesDir: '{DOTFILES_PATH}',
-  
-  // Use home directory shorthand
-  homeDir: '~/custom-home',
-}
-```
-
-`~` is expanded using the resolved `paths.homeDir`.
-
-#### Platform-Specific Paths
-
-Define different paths for different platforms:
-
-```typescript
-export default defineConfig(() => ({
-  paths: {
-    dotfilesDir: '~/.dotfiles',
-    targetDir: '~/.local/bin',
-  },
-  // Platform-specific overrides
-  platform: [
-    {
-      match: [{ platform: 'windows' }],
-      config: {
-        paths: {
-          targetDir: 'C:\\Users\\user\\AppData\\Local\\bin',
-        },
-      },
-    },
-    {
-      match: [{ platform: 'darwin', arch: 'arm64' }],
-      config: {
-        paths: {
-          targetDir: '/opt/homebrew/bin',
-        },
-      },
-    },
-  ],
-}));
-```
-
-### Features
-
-Optional features that can be enabled or configured.
+### features
 
 #### Catalog
 
@@ -235,290 +66,95 @@ Auto-generates a markdown file listing all managed tools:
 ```typescript
 features: {
   catalog: {
-    // Enable catalog generation
-    // Default: true
-    generate: true,
-
-    // Where to write the catalog file
-    // Default: {paths.dotfilesDir}/CATALOG.md
-    filePath: '{paths.dotfilesDir}/CATALOG.md',
-  },
-
-  // Shell initialization configuration
-  // Controls where the shell initialization scripts are sourced
-  shellInstall: {
-    // Path to zsh configuration file
-    // If not provided, zsh initialization is skipped
-    zsh: '~/.zshrc',
-
-    // Path to bash configuration file
-    // If not provided, bash initialization is skipped
-    bash: '~/.bashrc',
-
-    // Path to powershell configuration file
-    // If not provided, powershell initialization is skipped
-    powershell: '~/.config/powershell/profile.ps1',
+    generate: true,                                // Enable catalog generation
+    filePath: '~/.dotfiles/CATALOG.md',            // Output location
   },
 }
 ```
 
-The generated catalog includes:
-- Tool names and descriptions
-- Installation methods
-- Configuration status
-- Available binaries per tool
+The generated catalog includes tool names, installation methods, and available binaries.
 
-### GitHub
+#### Shell Installation
 
-Configuration for GitHub API access (required for GitHub releases):
+Automatically adds sourcing to your shell configuration:
+
+```typescript
+features: {
+  shellInstall: {
+    zsh: '~/.zshrc',                               // Path to zsh config
+    bash: '~/.bashrc',                             // Path to bash config  
+    powershell: '~/.config/powershell/profile.ps1', // Path to PowerShell config
+  },
+}
+```
+
+If a shell path is not provided, initialization for that shell is skipped.
+
+### github
 
 ```typescript
 github: {
-  // GitHub API host
-  // Default: https://api.github.com
   host: 'https://api.github.com',
-
-  // GitHub token for API access (optional, but recommended for rate limits)
-  token: process.env.GITHUB_TOKEN,
-
-  // Custom user-agent string
-  // Default: dotfiles-installer/version
-  userAgent: 'MyApp/1.0',
-
-  // API response caching
+  token: process.env.GITHUB_TOKEN,                 // Recommended for rate limits
+  userAgent: 'dotfiles-generator',
   cache: {
     enabled: true,
-    ttl: 3600, // seconds
+    ttl: 86400000,                                 // 24 hours in ms
   },
 }
 ```
 
-### Cargo
-
-Configuration for Rust Crates.io registry:
-
-```typescript
-cargo: {
-  cratesIo: {
-    host: 'https://crates.io',
-    token: process.env.CARGO_TOKEN,
-    userAgent: 'MyApp/1.0',
-    cache: {
-      enabled: true,
-      ttl: 3600,
-    },
-  },
-  // For GitHub-hosted Rust binaries
-  githubRaw: {
-    host: 'https://raw.githubusercontent.com',
-    cache: {
-      enabled: true,
-      ttl: 3600,
-    },
-  },
-}
-```
-
-### System
-
-System-level configuration:
+### system
 
 ```typescript
 system: {
-  // Prompt text for sudo operations
-  // Default: '[sudo] password for user: '
-  sudoPrompt: '[sudo] password: ',
+  sudoPrompt: 'Please enter your password to continue:',
 }
 ```
 
-### Logging
-
-Logging configuration:
-
-```typescript
-logging: {
-  // Debug output directory (optional)
-  debug: '~/.dotfiles/.debug',
-}
-```
-
-### Updates
-
-Automatic update checking:
+### updates
 
 ```typescript
 updates: {
-  // Check for tool updates on each run
-  // Default: false
-  checkOnRun: false,
-
-  // How often to check for updates (seconds)
-  // Default: 604800 (7 days)
-  checkInterval: 604800,
+  checkOnRun: true,                                // Check for updates on each run
+  checkInterval: 86400,                            // Seconds between checks (24 hours)
 }
 ```
 
-### Downloader
-
-Configuration for file downloads:
+## Platform Overrides
 
 ```typescript
-downloader: {
-  // Connection retry configuration
-  retryAttempts: 3,
-  retryDelay: 1000, // milliseconds
-
-  // Download caching
-  cache: {
-    enabled: true,
-    ttl: 2592000, // 30 days in seconds
+export default defineConfig(() => ({
+  paths: {
+    targetDir: '~/.local/bin',
   },
-}
+  platform: [
+    {
+      match: [{ platform: 'darwin', arch: 'arm64' }],
+      config: {
+        paths: { targetDir: '/opt/homebrew/bin' },
+      },
+    },
+  ],
+}));
 ```
 
-## Complete Example
+## CLI Usage
 
-Here's a complete configuration with multiple sections:
-
-```typescript
-import { defineConfig } from '@gitea/dotfiles';
-
-export default defineConfig(async () => {
-  const githubToken = process.env.GITHUB_TOKEN;
-
-  return {
-    paths: {
-      dotfilesDir: '~/.dotfiles',
-      toolConfigsDir: '~/.dotfiles/tools',
-      generatedDir: '~/.dotfiles/.generated',
-      targetDir: '~/.local/bin',
-      shellScriptsDir: '~/.dotfiles/.generated/shell-scripts',
-    },
-
-    features: {
-      catalog: {
-        generate: true,
-        filePath: '~/.dotfiles/CATALOG.md',
-      },
-      shellInstall: {
-        zsh: '~/.zshrc',
-        bash: '~/.bashrc',
-      },
-    },
-
-    github: {
-      host: 'https://api.github.com',
-      token: githubToken,
-      cache: {
-        enabled: true,
-        ttl: 3600,
-      },
-    },
-
-    system: {
-      sudoPrompt: '[sudo] password: ',
-    },
-
-    updates: {
-      checkOnRun: false,
-      checkInterval: 604800,
-    },
-
-    downloader: {
-      retryAttempts: 3,
-      cache: {
-        enabled: true,
-        ttl: 2592000,
-      },
-    },
-
-    // Platform-specific overrides
-    platform: [
-      {
-        match: [{ platform: 'windows' }],
-        config: {
-          paths: {
-            targetDir: 'C:\\Users\\user\\AppData\\Local\\bin',
-          },
-        },
-      },
-      {
-        match: [{ platform: 'darwin' }],
-        config: {
-          paths: {
-            targetDir: '/usr/local/bin',
-          },
-        },
-      },
-    ],
-  };
-});
+```bash
+dotfiles --config ~/.dotfiles/config.ts install
+dotfiles install  # Uses config.ts in current directory
 ```
 
 ## Directory Structure
 
-Your dotfiles project should have this structure:
-
 ```
 ~/.dotfiles/
-├── config.ts                 # Project configuration
-├── tools/                    # Tool definitions
-│   ├── fzf.tool.ts
-│   ├── ripgrep.tool.ts
-│   └── neovim.tool.ts
-├── CATALOG.md               # Auto-generated tool catalog
-└── .generated/              # Generated files (not version controlled)
-    ├── bin/                 # Tool shims
-    ├── shell-scripts/       # Shell initialization scripts
-    └── binaries/            # Downloaded tool binaries
+├── config.ts              # Project configuration
+├── tools/                 # Tool definitions (*.tool.ts)
+├── CATALOG.md            # Auto-generated
+└── .generated/           # Not version controlled
+    ├── bin/              # Shims
+    ├── shell-scripts/    # Shell init scripts
+    └── binaries/         # Downloaded binaries
 ```
-
-## Loading Configuration
-
-When running the CLI, you can specify your config file:
-
-```bash
-# Use TypeScript config (recommended)
-dotfiles --config ~/.dotfiles/config.ts install
-
-# Use YAML config
-dotfiles --config ~/.dotfiles/config.yaml install
-
-# Default: looks for config.ts or config.yaml in current directory
-dotfiles install
-```
-
-## Programmatic Usage
-
-Load configuration in your code:
-
-```typescript
-import { loadConfig } from '@gitea/dotfiles';
-import { createRealFileSystem } from '@dotfiles/file-system';
-import { createLogger } from '@dotfiles/logger';
-
-const config = await loadConfig(
-  createLogger(),
-  createRealFileSystem(),
-  './config.ts',
-  { platform: 'linux', arch: 'x64', homeDir: '/home/user' },
-  process.env
-);
-
-console.log(config.paths.targetDir);
-console.log(config.github.token);
-```
-
-## Best Practices
-
-1. **Version Control**: Keep your `config.ts` in version control
-2. **Secrets**: Use environment variables for sensitive values (tokens, passwords)
-3. **Documentation**: Add comments explaining custom configuration
-4. **Flexibility**: Use path variables to make config portable across machines
-5. **Testing**: Test your configuration with different platforms if needed
-
-## Next Steps
-
-- [Getting Started](./getting-started.md) - Set up your first configuration
-- [Tool Configuration](./getting-started.md#tool-configuration) - Create tool configurations
-- [Context API](./context-api.md) - Use configuration paths in tools

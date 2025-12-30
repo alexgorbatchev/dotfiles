@@ -1,6 +1,6 @@
 # Cargo Installation
 
-The `cargo` method installs Rust tools from crates.io or GitHub repositories using cargo-quickinstall for faster binary downloads.
+Installs Rust tools from crates.io using pre-compiled binaries via cargo-quickinstall or GitHub releases.
 
 ## Basic Usage
 
@@ -17,81 +17,30 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-The `install('cargo', params)` function accepts:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `crateName` | `string` | Yes | Name of the Rust crate |
+| `binarySource` | `'cargo-quickinstall' \| 'github-releases'` | No | Binary download source (default: `cargo-quickinstall`) |
+| `versionSource` | `'cargo-toml' \| 'crates-io' \| 'github-releases'` | No | Version detection source (default: `cargo-toml`) |
+| `githubRepo` | `string` | No | GitHub repo in `owner/repo` format |
+| `assetPattern` | `string` | No | Pattern for GitHub release assets |
+| `cargoTomlUrl` | `string` | No | Custom Cargo.toml URL |
+| `customBinaries` | `string[]` | No | Custom binary names if different from crate |
 
-```typescript
-{
-  crateName: 'tool-name',                    // Required
-  binarySource?: 'cargo-quickinstall' | 'github-releases', // Optional
-  versionSource?: 'cargo-toml' | 'crates-io' | 'github-releases', // Optional
-  githubRepo?: 'owner/repository',          // Optional
-  cargoTomlUrl?: 'https://raw.githubusercontent.com/...', // Optional
-  assetPattern?: 'pattern-with-placeholders', // Optional
-  customBinaries?: ['binary1', 'binary2'],  // Optional
-  allowSourceFallback?: boolean,            // Optional
-  env?: { KEY: 'value' },                   // Optional
-  hooks?: {                                 // Optional
-    beforeInstall?: async (ctx) => void,
-    afterDownload?: async (ctx) => void,
-    afterInstall?: async (ctx) => void,
-  }
-}
-```
+### Asset Pattern Placeholders
 
-### Parameters
-
-- **`crateName`** (required): Name of the Rust crate to install
-- **`binarySource`**: Source for downloading pre-compiled binaries
-  - `'cargo-quickinstall'`: Downloads from cargo-quickinstall for faster installation (default)
-  - `'github-releases'`: Downloads from GitHub releases
-- **`githubRepo`**: GitHub repository in "owner/repo" format (required for some version sources)
-- **`assetPattern`**: Pattern for selecting GitHub release assets with placeholders:
-  - `{version}`: Replaced with the determined version
-  - `{platform}`: Replaced with the current platform
-  - `{arch}`: Replaced with the current architecture
-  - `{crateName}`: Replaced with the crate name
-- **`versionSource`**: How to determine the latest version
-  - `'cargo-toml'`: Parse version from the project's Cargo.toml file (default)
-  - `'crates-io'`: Query crates.io API for the latest version
-  - `'github-releases'`: Use GitHub releases API
-- **`cargoTomlUrl`**: Custom URL to the Cargo.toml file (optional, auto-generated if not provided)
-- **`customBinaries`**: Array of custom binary names if different from crate name
-- **`allowSourceFallback`**: Whether to fallback to source compilation if binary not available
+| Placeholder | Description |
+|-------------|-------------|
+| `{version}` | Resolved version |
+| `{platform}` | Current platform |
+| `{arch}` | Current architecture |
+| `{crateName}` | Crate name |
 
 ## Examples
 
-### Simple Cargo Installation
+### From GitHub Releases
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'ripgrep',
-  })
-    .bin('rg')
-);
-```
-
-### With Custom GitHub Repository
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'eza',
-    githubRepo: 'eza-community/eza',
-  })
-    .bin('eza')
-);
-```
-
-### Using GitHub Releases as Binary Source
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('cargo', {
     crateName: 'bat',
@@ -106,8 +55,6 @@ export default defineTool((install, ctx) =>
 ### Custom Binary Names
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('cargo', {
     crateName: 'fd-find',
@@ -117,84 +64,25 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### With Source Fallback
+### With Hooks
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('cargo', {
-    crateName: 'custom-tool',
-    allowSourceFallback: true,
+    crateName: 'tool',
   })
-    .bin('custom-tool')
+    .bin('tool')
+    .hook('after-install', async (ctx) => {
+      // Post-installation setup
+    })
 );
 ```
 
-### Custom Cargo.toml URL
+## Platform Mapping
 
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('cargo', {
-    crateName: 'custom-tool',
-    githubRepo: 'user/custom-tool',
-    cargoTomlUrl: 'https://raw.githubusercontent.com/user/custom-tool/main/Cargo.toml',
-  })
-    .bin('custom-tool')
-);
-```
-
-## Version Resolution
-
-The cargo installer uses a dedicated `CargoClient` with robust TOML parsing and Zod schema validation to extract version information from multiple sources. This ensures reliable version detection and provides clear error messages if the TOML structure is invalid.
-
-### Version Sources
-
-- **`cargo-toml`**: Parses version from the project's Cargo.toml file (most reliable)
-- **`crates-io`**: Queries crates.io API for the latest published version
-- **`github-releases`**: Uses GitHub releases API for version information
-
-## Binary Sources
-
-The installer supports multiple binary sources:
-
-- **`cargo-quickinstall`**: Pre-compiled binaries for faster installation (default)
-- **`github-releases`**: Downloads from GitHub release assets with custom patterns
-
-## Platform Support
-
-The cargo installer automatically maps system architectures to Rust target triples:
-- `darwin` + `arm64` → `aarch64-apple-darwin`
-- `darwin` + `x64` → `x86_64-apple-darwin`  
-- `linux` + `x64` → `x86_64-unknown-linux-gnu`
-- `linux` + `arm64` → `aarch64-unknown-linux-gnu`
-
-## Advantages
-
-- **Fast Installation**: Uses pre-compiled binaries from cargo-quickinstall or GitHub releases
-- **Reliable Parsing**: Dedicated CargoClient with proper TOML parsing instead of regex
-- **Version Flexibility**: Multiple sources for version detection (Cargo.toml, crates.io, GitHub)
-- **Cross-Platform**: Automatic target triple mapping for Rust platforms
-- **Flexible Binary Sources**: Support for both cargo-quickinstall and GitHub releases
-- **Custom Binary Handling**: Support for crates with non-standard binary names
-- **Asset Pattern Matching**: Flexible pattern matching for GitHub release assets
-
-## When to Use Cargo
-
-**Best for:**
-- Rust command-line tools
-- Tools available on crates.io
-- When you want fast installation without compilation
-
-**Consider alternatives when:**
-- Tool is not written in Rust
-- Pre-compiled binaries are not available
-- You need the absolute latest version immediately
-
-## Next Steps
-
-- [GitHub Release Installation](./github-release.md) - Alternative for non-Rust tools
-- [Manual Installation](./manual.md) - For tools you compile yourself
-- [Shell Integration](../shell-integration.md) - Configure shell environment
+| System | Architecture | Rust Target Triple |
+|--------|--------------|-------------------|
+| macOS | arm64 | `aarch64-apple-darwin` |
+| macOS | x64 | `x86_64-apple-darwin` |
+| Linux | x64 | `x86_64-unknown-linux-gnu` |
+| Linux | arm64 | `aarch64-unknown-linux-gnu` |

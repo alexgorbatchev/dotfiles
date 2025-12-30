@@ -1,314 +1,88 @@
 # Context API
 
-The `ToolConfigContext` provides access to configuration paths and directories for tool configuration. This context is automatically passed to your tool configuration function and provides type-safe access to all configuration paths from the YAML config.
+The `ctx` parameter in `defineTool` provides access to tool and project information.
 
-## Interface
+## Properties
 
-```typescript
-interface IToolConfigContext {
-  /** Tool name being configured */
-  toolName: string;
+| Property | Description |
+|----------|-------------|
+| `ctx.toolName` | Name of the tool being configured |
+| `ctx.toolDir` | Directory containing the `.tool.ts` file |
+| `ctx.currentDir` | Tool's stable `current` directory (after install) |
+| `ctx.projectConfig` | Full project configuration |
+| `ctx.systemInfo` | Platform, architecture, and home directory |
 
-  /** Absolute path to the directory containing the tool's `.tool.ts` file */
-  toolDir: string;
+### Path Properties via projectConfig
 
-  /**
-   * Absolute path to the tool's stable `current` directory.
-   * Note: the directory/symlink may not exist until after a successful install.
-   */
-  currentDir: string;
+| Path | Description |
+|------|-------------|
+| `ctx.projectConfig.paths.homeDir` | User's home directory |
+| `ctx.projectConfig.paths.dotfilesDir` | Root dotfiles directory |
+| `ctx.projectConfig.paths.binariesDir` | Tool binaries directory |
+| `ctx.projectConfig.paths.generatedDir` | Generated files directory |
+| `ctx.projectConfig.paths.targetDir` | Shim directory |
+| `ctx.projectConfig.paths.shellScriptsDir` | Shell scripts directory |
 
-  /** Full project configuration (including paths) */
-  projectConfig: ProjectConfig;
+## Examples
 
-  /** System info (platform/arch/homeDir) */
-  systemInfo: SystemInfo;
-}
-```
-
-## Usage Examples
-
-### Accessing Tool Configuration Directory
+### Referencing Files Next to Tool Config
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell
-        .environment({
-          TOOL_CONFIG_DIR: ctx.toolDir
-        })
-        .always(/* zsh */`
-          # Source tool-specific files
-          if [[ -f "${ctx.toolDir}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.toolDir}/shell/key-bindings.zsh"
-          fi
-        `)
-    )
-);
-```
-
-### Accessing Other Tool Directories
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
       shell.always(/* zsh */`
-        # Reference another tool's installation directory
-        FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
-        if [[ -d "$FZF_DIR" ]]; then
-          export FZF_BASE="$FZF_DIR"
-        fi
+        source "${ctx.toolDir}/shell/key-bindings.zsh"
       `)
     )
 );
 ```
 
-### Using Generated Directories
+### Setting Environment Variables
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.once(/* zsh */`
-        # Generate completions to the proper directory
-        tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-      `)
-    )
-);
-```
-
-### Path Properties
-
-### Tool configuration directory (`ctx.toolDir`)
-Absolute directory that contains the current tool's `.tool.ts` file.
-
-Use this for referencing files that live next to the tool config (for example `./config.toml` or `./shell/*.zsh`).
-
-### `ctx.projectConfig.paths.homeDir`
-User's home directory from the YAML configuration.
-
-**Usage:**
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    // Symlink configuration files
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-    // Set environment variables
-    .zsh((shell) =>
-      shell.environment({
-        TOOL_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
-      })
-    )
-);
-```
-
-### Tool binaries directory
-Current tool's base installation directory. Contains version subdirectories.
-
-**Structure:**
-```
-${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
-├── 1.2.3/           # Versioned install directory
-│   ├── tool         # Entrypoint executable (copied from extracted archive)
-│   ├── bin/
-│   ├── lib/
-│   └── share/
-└── current -> 1.2.3 # Stable directory symlink
-```
-
-**Usage:**
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell
-        .environment({
-          TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`
-        })
-        .always(/* zsh */`
-          # Access tool assets
-          if [[ -f "${ctx.currentDir}/share/themes/default.toml" ]]; then
-            export TOOL_THEME="${ctx.currentDir}/share/themes/default.toml"
-          fi
-        `)
-    )
-);
-```
-
-### Referencing other tools
-To reference another tool's base directory, join `projectConfig.paths.binariesDir` with the other tool's name.
-
-**Usage:**
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.always(/* zsh */`
-        # Integration with other tools
-        NVIM_DIR="${ctx.projectConfig.paths.binariesDir}/nvim"
-        FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
-        
-        if [[ -d "$FZF_DIR" && -d "$NVIM_DIR" ]]; then
-          export FZF_NVIM_INTEGRATION=true
-        fi
-      `)
-    )
-);
-```
-
-### `ctx.projectConfig.paths.generatedDir`
-Directory for generated files (completions, caches, etc.).
-
-**Usage:**
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.once(/* zsh */`
-        # Generate completions once
-        mkdir -p "${ctx.projectConfig.paths.generatedDir}/completions"
-        tool completion zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-      `)
-    )
-);
-```
-
-### `ctx.projectConfig.paths.targetDir`
-Directory where tool shims are generated.
-
-**Usage:**
-```typescript
-c.hooks({
-  afterInstall: async ({ fileSystem }) => {
-    // Custom shim creation (rarely needed)
-    await fileSystem.writeFile(
-      `${ctx.projectConfig.paths.targetDir}/custom-tool-wrapper`,
-      '#!/bin/bash\nexec tool --wrapper-mode "$@"'
-    );
-  }
-})
-```
-
-### `ctx.projectConfig.paths.dotfilesDir`
-Root dotfiles directory.
-
-**Usage:**
-```typescript
-c.symlink('./themes/', `${ctx.projectConfig.paths.dotfilesDir}/.config/tool/themes`)
-```
-
-### `ctx.projectConfig.paths.shellScriptsDir`
-Directory for generated shell scripts.
-
-**Usage:**
-```typescript
-// Rarely used directly - shell scripts are generated automatically
-```
-
-## Path Resolution Benefits
-
-- **Type Safety**: All paths are validated at compile time
-- **Configuration Source**: Paths come from YAML config as single source of truth
-- **No Hard-coding**: Eliminates hardcoded `$DOTFILES` or similar references
-- **Flexibility**: Easy access to any configured directory
-- **Consistency**: Same path resolution across all tools
-
-## Common Patterns
-
-### Configuration File Symlinks
-
-```typescript
-// ✅ Recommended - using ~ for home directory (expanded using ctx.projectConfig.paths.homeDir)
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .symlink('./config.toml', '~/.config/tool/config.toml')
-);
-
-// ✅ Also valid - explicit homeDir
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-);
-```
-
-### Environment Variables
-
-```typescript
-// ✅ Correct - using context variables
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
       shell.environment({
         TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
-        TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool`
-      })
-    )
-);
-
-// ❌ Incorrect - hardcoded paths
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.environment({
-        TOOL_HOME: '$DOTFILES/.generated/binaries/tool',
-        TOOL_CONFIG: '$HOME/.config/tool'
       })
     )
 );
 ```
 
-### Shell Script Paths
+### Using currentDir for Installed Assets
 
 ```typescript
-// ✅ Correct - using context in shell scripts
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
       shell.always(/* zsh */`
-        if [[ -f "${ctx.currentDir}/shell/init.zsh" ]]; then
-          source "${ctx.currentDir}/shell/init.zsh"
-        fi
+        export TOOL_THEME="${ctx.currentDir}/share/themes/default.toml"
       `)
     )
 );
 ```
 
-## Next Steps
+### Symlinks with Home Directory
 
-- [Path Resolution](./path-resolution.md) - Detailed path resolution rules
-- [Shell Integration](./shell-integration.md) - Using context in shell configuration
-- [Symbolic Links](./symlinks.md) - File linking with context paths
+```typescript
+// Using ~ shorthand (recommended)
+.symlink('./config.toml', '~/.config/tool/config.toml')
+
+// Or explicit homeDir
+.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+```
+
+## Directory Structure
+
+```
+${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
+├── 1.2.3/              # Versioned install directory
+│   ├── tool            # Binary
+│   └── share/          # Assets
+└── current -> 1.2.3    # Stable symlink (ctx.currentDir)
+```

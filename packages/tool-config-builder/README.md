@@ -159,26 +159,26 @@ c.bin('system-tool')
 ### With Hooks
 
 ```typescript
+import path from 'path';
+
 export default async (c: ToolConfigBuilder): Promise<void> => {
   c.bin('bat')
     .version('latest')
     .install('github-release', {
       repo: 'sharkdp/bat',
       assetPattern: '*linux*amd64*.tar.gz',
-      hooks: {
-        afterExtract: async (context) => {
-          // Create config directory
-          const configDir = path.join(context.stagingDir, 'config');
-          await context.fileSystem.ensureDir(configDir);
-          
-          // Create default config
-          const configPath = path.join(configDir, 'config');
-          await context.fileSystem.writeFile(
-            configPath,
-            '--theme="Monokai Extended"\n--style="numbers,changes,header"\n'
-          );
-        },
-      },
+    })
+    .hook('after-extract', async (context) => {
+      // Create config directory
+      const configDir = path.join(context.stagingDir, 'config');
+      await context.fileSystem.mkdir(configDir, { recursive: true });
+      
+      // Create default config
+      const configPath = path.join(configDir, 'config');
+      await context.fileSystem.writeFile(
+        configPath,
+        '--theme="Monokai Extended"\n--style="numbers,changes,header"\n'
+      );
     });
 };
 ```
@@ -451,12 +451,10 @@ c.install('github-release', {
 ```typescript
 c.install('github-release', {
   repo: 'owner/repo',
-  hooks: {
-    afterInstall: async (context) => {
-      // Post-installation setup
-    },
-  },
-});
+})
+  .hook('after-install', async (context) => {
+    // Post-installation setup
+  });
 ```
 
 ## Common Patterns

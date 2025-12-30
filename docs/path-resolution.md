@@ -1,298 +1,113 @@
 # Path Resolution
 
-Understanding how paths are resolved is crucial for correctly configuring your tools. Different methods have different path resolution rules.
+How paths are resolved in tool configurations.
 
-## Tool Configuration Directory
+## Path Types by Method
 
-- **Location**: The directory containing your `.tool.ts` file
-- **Example**: If your configuration is at `configs/fzf/fzf.tool.ts`, then the tool directory is `configs/fzf/`
+| Method | Path | Resolution |
+|--------|------|------------|
+| `.symlink(src, dest)` | `src` with `./` | Relative to tool config directory |
+| `.symlink(src, dest)` | `dest` | Absolute path (`~` expanded) |
+| `.completions(path)` | `path` | Relative to extracted archive |
+| `binaryPath` | github/cargo | Relative to extracted archive |
+| `binaryPath` | manual | Absolute path |
 
-## Path Resolution Rules by Method
-
-| Method | Path Type | Resolution Rule | Example |
-|--------|-----------|-----------------|---------|
-| **symlink()** | `source` starting with `./` | Relative to tool configuration directory | `'./config.toml'` → `configs/fzf/config.toml` |
-| **symlink()** | `source` absolute path | Used as-is | `'/etc/global.conf'` → `/etc/global.conf` |
-| **symlink()** | `target` | Must resolve to an absolute path (prefer context; `~`/`~/...` supported and expanded using `ctx.projectConfig.paths.homeDir`) | `'~/.config/tool/config.toml'` |
-| **completions()** | `source` | Relative to extracted archive root | `'shell/completion.zsh'` → inside downloaded archive |
-| **completions()** | `targetDir` | Must be absolute (optional) | `${ctx.projectConfig.paths.homeDir}/.zsh/completions` |
-| **install('github-release')** | `binaryPath` | Relative to extracted archive root | `'bin/tool'` → locates binary inside downloaded archive |
-| **install('manual')** | `binaryPath` | Must be absolute path | `'/usr/local/bin/tool'` or `${ctx.projectConfig.paths.homeDir}/bin/tool` |
-
-## Context Variables for Paths
-
-You will see two different "context" objects:
-
-- `ctx` in `defineTool((install, ctx) => ...)` (ToolConfigContext)
-- the hook context passed to `.hook('...', async (hookCtx) => ...)`
-
-Use these for dynamic paths:
-
-- `${ctx.projectConfig.paths.homeDir}` → User's home directory  
-- `${ctx.toolDir}` → Tool configuration directory (directory containing the `.tool.ts` file)
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` → Tool's base installation directory (contains version subdirectories)
-- `${ctx.projectConfig.paths.dotfilesDir}` → Root dotfiles directory
-- `${ctx.projectConfig.paths.generatedDir}` → Generated files directory
-- `${ctx.projectConfig.paths.targetDir}` → Generated shims directory (where tool shims are created)
-- `${ctx.projectConfig.paths.shellScriptsDir}` → Generated shell scripts directory
-- `${ctx.projectConfig.paths.binariesDir}/other-tool` → Another tool's base directory
-- `hookCtx.installDir` (hook context only) → Tool's versioned installation directory for this run (absolute). Prefer `${ctx.currentDir}` for a stable path across versions.
-
-## Path Resolution Benefits
-
-- **Type Safety**: All paths are validated at compile time
-- **Configuration Source**: Paths come from YAML config as single source of truth
-- **No Hard-coding**: Eliminates hardcoded `$DOTFILES` or similar references
-- **Flexibility**: Easy access to any configured directory
-- **Consistency**: Same path resolution across all tools
-
-## Tool Version Directory Structure
-
-For referencing files within the current tool version, you'll typically need to construct paths like:
-- `${ctx.currentDir}/share/` for tool assets
-- `${ctx.currentDir}/config/` for tool configs
-
-## Common Path Patterns
-
-### Correct Usage
+## Context Path Variables
 
 ```typescript
-// ✅ Correct symlink usage
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-    .zsh((shell) => shell.completions('shell/completion.zsh'))
-);
-
-// ✅ Correct install usage with binary path
-export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'owner/tool',
-    binaryPath: 'bin/tool',           // Binary location inside archive
-  })
     .bin('tool')
+    // ctx.toolDir - directory containing .tool.ts
+    // ctx.currentDir - stable symlink to installed version
+    // ctx.projectConfig.paths.homeDir - user home
+    // ctx.projectConfig.paths.dotfilesDir - dotfiles root
+    // ctx.projectConfig.paths.generatedDir - generated files
+    // ctx.projectConfig.paths.targetDir - shims directory
+    // ctx.projectConfig.paths.binariesDir - tool installations
 );
+```
 
-// ✅ Correct shell script paths
+## Examples
+
+### Symlinks
+
+```typescript
+// Tool at: tools/my-tool/my-tool.tool.ts
+// Files: tools/my-tool/config.toml, tools/my-tool/themes/
+
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+    .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`)
+);
+```
+
+### Completions from Archive
+
+```typescript
+// Archive contains: completions/_tool.zsh
+
+export default defineTool((install) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) => shell.completions('completions/_tool.zsh'))
+);
+```
+
+### Shell Scripts
+
+```typescript
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
       shell.always(`
-        TOOL_CONFIG_DIR="${ctx.toolDir}"
-        if [[ -f "$TOOL_CONFIG_DIR/shell/key-bindings.zsh" ]]; then
-          source "$TOOL_CONFIG_DIR/shell/key-bindings.zsh"
+        if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
+          source "${ctx.currentDir}/shell/key-bindings.zsh"
         fi
       `)
     )
 );
 ```
 
-### Discouraged / Incorrect Usage
+## Directory Structure
+
+```
+binaries/tool-name/
+├── 1.2.3/           # Versioned install
+│   ├── tool         # Binary
+│   ├── lib/         # Dependencies
+│   └── share/       # Assets
+└── current -> 1.2.3 # Stable symlink
+```
+
+- Archives extracted to `binaries/tool-name/version/`
+- `current` symlink updated after install
+- Shims in `targetDir` execute `${ctx.currentDir}/binary`
+
+## Common Mistakes
 
 ```typescript
-// ❌ Incorrect - hardcoded user-specific paths
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', '/home/user/.config/tool/config.toml')  // Wrong
-);
+// ❌ Hardcoded paths
+.symlink('./config', '/home/user/.config/tool')
 
-// ❌ Incorrect - hardcoded environment variables in shell scripts
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .zsh((shell) =>
-      shell.always(`
-        export TOOL_HOME="$HOME/.local/share/tool"  # Use declarative environment instead
-        source "$DOTFILES/.config/tool/init.zsh"    # Use ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName} instead
-      `)
-    )
-);
+// ✅ Use context
+.symlink('./config', `${ctx.projectConfig.paths.homeDir}/.config/tool`)
+
+// ❌ Shell variable references
+.always(`source $DOTFILES/init.zsh`)
+
+// ✅ Use context
+.always(`source "${ctx.currentDir}/init.zsh"`)
 ```
 
-## Recommended Directory Structure
+## Cross-Platform
 
-For optimal tool management, the system uses versioned install directories and a stable `current` symlink:
-
-```
-${ctx.projectConfig.paths.generatedDir}/binaries/
-└── tool-name/
-  ├── 1.2.3/                   # Versioned install directory
-  │   ├── tool                 # Entrypoint executable (copied from the extracted archive)
-  │   ├── bin/                 # Extracted archive contents (preserved)
-  │   ├── lib/                 # Shared libraries (if any)
-  │   ├── share/               # Assets, docs, etc.
-  │   └── config/              # Default configs
-  └── current -> 1.2.3         # Stable directory symlink
-```
-
-### Benefits of This Approach
-
-- **Archive Integrity**: Tools can access their dependencies (shared libs, configs, assets)
-- **Version Management**: Easy to switch between versions or rollback
-- **Immutable Installs**: Once extracted, archives remain untouched
-- **Shim-Based Execution**: Shims in `${ctx.projectConfig.paths.targetDir}` point to actual binaries
-
-### How It Works
-
-1. Archives are extracted to `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/version/` 
-2. Archive structure is preserved completely
-3. `binaryPath` identifies which file is the main executable
-4. An executable entrypoint file is created at `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/<version>/<binaryName>` by copying the resolved binary
-5. `current` is updated to point at the installed version directory
-6. Shims are generated in `${ctx.projectConfig.paths.targetDir}/` and execute `${ctx.currentDir}/<binaryName>`
-
-## Path Resolution Examples
-
-### Symlink Path Resolution
+Always use forward slashes - context variables handle platform differences:
 
 ```typescript
-// Tool configuration at: configs/my-tool/my-tool.tool.ts
-// Files in same directory:
-// ├── my-tool.tool.ts
-// ├── config.toml
-// └── themes/
-//     ├── dark.toml
-//     └── light.toml
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/my-tool' })
-    .bin('my-tool')
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`)
-    .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/themes`)
-);
-
-// Results in:
-// ~/.config/my-tool/config.toml -> configs/my-tool/config.toml
-// ~/.config/my-tool/themes -> configs/my-tool/themes/
+// Works on all platforms
+.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 ```
-
-### Completion Path Resolution
-
-```typescript
-// After extracting archive with structure:
-// extracted-archive/
-// ├── bin/
-// │   └── tool
-// └── completions/
-//     ├── _tool.zsh
-//     └── tool.bash
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) => shell.completions('completions/_tool.zsh'))
-    .bash((shell) => shell.completions('completions/tool.bash'))
-);
-
-// Completions are copied from:
-// extracted-archive/completions/_tool.zsh -> ${ctx.projectConfig.paths.generatedDir}/completions/_tool
-// extracted-archive/completions/tool.bash -> ${ctx.projectConfig.paths.generatedDir}/completions/tool.bash
-```
-
-### Binary Path Resolution
-
-```typescript
-// Archive structure:
-// extracted-archive/
-// ├── bin/
-// │   └── my-tool
-// ├── lib/
-// └── share/
-
-export default defineTool((install, ctx) =>
-  install('github-release', {
-    repo: 'owner/my-tool',
-    binaryPath: 'bin/my-tool'  // Points to extracted-archive/bin/my-tool
-  })
-    .bin('my-tool')
-);
-
-// Shim created at: ${ctx.projectConfig.paths.targetDir}/my-tool
-// Shim executes: ${ctx.currentDir}/my-tool
-```
-
-## Cross-Platform Path Considerations
-
-### Use Forward Slashes
-
-```typescript
-// ✅ Correct - works on all platforms
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-);
-
-// ❌ Incorrect - Windows-specific paths in forward slashes
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .symlink('.\\config.toml', `${ctx.projectConfig.paths.homeDir}\\.config\\tool\\config.toml`)  // Wrong
-);
-```
-
-### Context Variables Handle Platform Differences
-
-```typescript
-// Context variables automatically handle platform differences:
-// Linux/macOS: /home/user/.config/tool/config.toml
-// Windows: C:\Users\user\.config\tool\config.toml
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-);
-```
-
-## Debugging Path Issues
-
-### Check Path Resolution
-
-```typescript
-c.hooks({
-  beforeInstall: async ({ logger }) => {
-    logger.info(`Tool config directory: ${ctx.toolDir}`);
-    logger.info(`Tool installation directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
-    logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
-    logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
-    logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);
-  }
-})
-```
-
-### Verify File Existence
-
-```typescript
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .hook('before-install', async ({ logger }) => {
-      logger.info(`Tool config directory: ${ctx.toolDir}`);
-      logger.info(`Tool installation directory: ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`);
-      logger.info(`Home directory: ${ctx.projectConfig.paths.homeDir}`);
-      logger.info(`Generated directory: ${ctx.projectConfig.paths.generatedDir}`);
-      logger.info(`Bin directory: ${ctx.projectConfig.paths.targetDir}`);
-    })
-    .hook('after-install', async ({ fileSystem, logger }) => {
-      const configExists = await fileSystem.exists('./config.toml');
-      logger.info(`Config file exists: ${configExists}`);
-      
-      const symlinkTarget = `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`;
-      const symlinkExists = await fileSystem.exists(symlinkTarget);
-      logger.info(`Symlink created: ${symlinkExists}`);
-    })
-);
-```
-
-## Best Practices
-
-1. **Always use context variables** for dynamic paths
-2. **Use relative paths** for files next to your `.tool.ts` file
-3. **Use absolute paths** for symlink targets
-4. **Test path resolution** on different platforms
-5. **Document complex path setups** in comments
-6. **Avoid hardcoded paths** like `$HOME`, `$DOTFILES`, etc.
-
-## Next Steps
-
-- [Context API](./context-api.md) - Learn about ToolConfigContext properties
-- [Symbolic Links](./symlinks.md) - Understand symlink path resolution
-- [Shell Integration](./shell-integration.md) - Use paths in shell scripts

@@ -1,395 +1,151 @@
 # API Reference
 
-Complete reference for all methods available in the ToolConfigBuilder API.
+Reference for the public API available in `@gitea/dotfiles`.
 
-## ToolConfigBuilder Methods
+## Exports
 
-### Core Configuration
-
-#### `.bin(names: string | string[])`
-Defines the executable binaries this tool provides.
-
-**Parameters:**
-- `names`: Single binary name or array of binary names
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-**Example:**
 ```typescript
-c.bin('tool')
-c.bin(['tool', 'tool-helper'])
+import { 
+  defineTool,      // Create tool configurations
+  defineConfig,    // Create project configuration
+  Platform,        // Platform enum for cross-platform configs
+  Architecture,    // Architecture enum
+  replaceInFile,   // Utility for file modifications
+  dedentString,    // Utility for template strings
+  dedentTemplate,  // Tagged template for dedenting
+} from '@gitea/dotfiles';
 ```
 
-#### `.dependsOn(...binaryNames: string[])`
-Declares binaries that must be available before this tool runs.
+## defineTool
 
-**Parameters:**
-- `binaryNames`: One or more binary names provided by other tools (or the system)
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-**Example:**
-```typescript
-c.dependsOn('node');
-c.dependsOn('node', 'pnpm');
-```
-
-If a dependency is missing, ambiguous, cyclical, or unavailable on the selected platform, the CLI fails with explicit diagnostics.
-
-#### `.version(version: string)`
-Specifies the desired tool version.
-
-**Parameters:**
-- `version`: Version string, SemVer constraint, or 'latest'
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-**Example:**
-```typescript
-c.version('latest')
-c.version('v1.2.3')
-c.version('^2.0.0')
-```
-
-### Installation Methods
-
-#### `.install(method: InstallMethod, params: InstallParams)`
-Configures how the tool should be installed.
-
-**Parameters:**
-- `method`: Installation method type
-- `params`: Method-specific parameters
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-**Available Methods:**
-- `'github-release'` - Install from GitHub releases
-- `'brew'` - Install via Homebrew
-- `'cargo'` - Install Rust tools from crates.io
-- `'curl-script'` - Install via download scripts
-- `'curl-tar'` - Download and extract tarballs
-- `'manual'` - Configure existing tools
-
-See [Installation Methods](./installation/README.md) for detailed parameters.
-
-### Shell Integration
-
-#### `.zsh(config: ShellConfig)`
-Configures Zsh-specific properties.
-
-**Parameters:**
-- `config`: Shell configuration object
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-#### `.bash(config: ShellConfig)`
-Configures Bash-specific properties.
-
-**Parameters:**
-- `config`: Shell configuration object
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-#### `.powershell(config: ShellConfig)`
-Configures PowerShell-specific properties.
-
-**Parameters:**
-- `config`: Shell configuration object
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-**ShellConfig Interface:**
-```typescript
-interface IShellConfig {
-  completions?: ShellCompletionConfig;
-  shellInit?: ShellScript[];
-  aliases?: Record<string, string>;
-  environment?: Record<string, string>;
-}
-```
-
-### Platform Configuration
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-Defines platform and architecture-specific configuration.
-
-**Parameters:**
-- `platform`: Platform flags (bitwise)
-- `arch`: Architecture flags (bitwise)
-- `configure`: Configuration function
-
-
-**Platform Enum:**
-```typescript
-Platform.Linux    // 1
-Platform.MacOS    // 2  
-Platform.Windows  // 4
-Platform.Unix     // Platform.Linux | Platform.MacOS (3)
-```
-
-**Architecture Enum:**
-```typescript
-Architecture.X86_64  // 1
-Architecture.Arm64   // 2
-Architecture.All     // Architecture.X86_64 | Architecture.Arm64 (3)
-
-### File Management
-
-#### `.symlink(source: string, target: string)`
-Creates symbolic links for configuration files.
-
-**Parameters:**
-- `source`: Path to source file (relative to tool config directory)
-- `target`: Absolute path where symlink should be created
-
-> **Note:** For shell completions, use shell-specific configuration methods like `.zsh((shell) => shell.completions('path/to/_tool'))`. See [Completions Guide](./completions.md) for details.
-
-### Advanced Features
-
-#### `.hook(event: string, handler: HookHandler)`
-Configures installation hooks for custom logic.
-
-**Parameters:**
-- `event`: Hook event name (`'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`)
-- `handler`: Async function that receives HookContext
-
-**Returns:** `ToolConfigBuilder` (for chaining)
-
-**Example:**
-```typescript
-c.hook('after-install', async (context) => {
-  const { logger, $ } = context;
-  await $`tool init`;
-  logger.info('Tool initialized');
-});
-```
-
-## ToolConfigContext Properties
-
-### Path Properties
-- `projectConfig.paths.homeDir: string` - User's home directory
-- `projectConfig.paths.dotfilesDir: string` - Root dotfiles directory
-- `projectConfig.paths.generatedDir: string` - Generated files directory
-- `projectConfig.paths.shellScriptsDir: string` - Generated shell scripts directory
-- `projectConfig.paths.targetDir: string` - Executable shims directory (should be in PATH)
-- `projectConfig.paths.binariesDir: string` - Tool binaries directory (versioned installs)
-
-### Methods
-
-## Type Definitions
-
-### Installation Method Parameters
-
-#### GitHubReleaseParams
-```typescript
-interface IGitHubReleaseParams {
-  repo: string;
-  assetPattern?: string | RegExp;
-  binaryPath?: string;
-  version?: string;
-  includePrerelease?: boolean;
-  stripComponents?: number;
-  assetSelector?: AssetSelector;
-}
-```
-
-**AssetSelector Function:**
-```typescript
-type AssetSelector = (context: AssetSelectionContext) => GitHubReleaseAsset | undefined;
-
-interface IAssetSelectionContext extends BaseToolContext {
-  /** Available release assets to choose from */
-  assets: GitHubReleaseAsset[];
-  /** System information for platform/architecture matching */
-  systemInfo: SystemInfo;
-  /** The GitHub release being processed */
-  release: GitHubRelease;
-  /** The tool configuration being processed */
-  toolConfig: ToolConfig;
-  /** Asset pattern from configuration (if provided) */
-  assetPattern?: string | RegExp;
-}
-```
-
-**AssetSelector Example:**
-```typescript
-assetSelector: (context) => {
-  const { assets, systemInfo, logger, release } = context;
-  
-  logger.debug('Selecting asset for release:', release.tag_name);
-  
-  // Custom selection logic with access to full context
-  const osMap = { 'darwin': 'macos', 'linux': 'linux', 'win32': 'windows' };
-  const archMap = { 'x64': 'amd64', 'arm64': 'arm64' };
-  
-  const osKey = osMap[systemInfo.platform];
-  const archKey = archMap[systemInfo.arch];
-  
-  const selectedAsset = assets.find(asset => 
-    asset.name.toLowerCase().includes(osKey) &&
-    asset.name.toLowerCase().includes(archKey) &&
-    asset.name.endsWith('.tar.gz')
-  );
-  
-  if (selectedAsset) {
-    logger.debug('Selected asset:', selectedAsset.name);
-  } else {
-    logger.warn('No matching asset found for', osKey, archKey);
-  }
-  
-  return selectedAsset;
-}
-```
-
-#### BrewParams
-```typescript
-interface IBrewParams {
-  formula?: string;
-  cask?: boolean;
-  tap?: string | string[];
-}
-```
-
-#### CargoInstallParams
-```typescript
-interface ICargoInstallParams {
-  crateName: string;
-  binarySource?: 'cargo-quickinstall' | 'github-releases';
-  githubRepo?: string;
-  assetPattern?: string;
-  versionSource?: 'cargo-toml' | 'crates-io' | 'github-releases';
-  cargoTomlUrl?: string;
-  customBinaries?: string[];
-  allowSourceFallback?: boolean;
-}
-```
-
-#### CurlScriptParams
-```typescript
-interface ICurlScriptParams {
-  url: string;
-  shell: 'bash' | 'sh';
-  env?: Record<string, string>;
-}
-```
-
-#### ManualParams
-```typescript
-interface IManualParams {
-  binaryPath: string;
-}
-```
-
-### Hook Context
+Creates a tool configuration.
 
 ```typescript
-interface IHookContext {
-  toolName: string;
-  currentDir: string;
-  stagingDir?: string;
-  installedDir?: string;
-  downloadPath?: string;
-  extractDir?: string;
-  extractResult?: ExtractResult;
-  systemInfo: SystemInfo;
-  fileSystem: IFileSystem;
-  logger: TsLogger;
-  projectConfig: ProjectConfig;
-  toolConfig: ToolConfig;
-  $: ReturnType<typeof $>;
-  binaryPaths?: string[];
-  version?: string;
-}
-```
-
-This is a merged view across all hook events. Some properties are only available in specific phases:
-
-- Always available: `toolName`, `currentDir`, `systemInfo`, `fileSystem`, `logger`, `projectConfig`, `toolConfig`, `$`.
-- `before-install`: `stagingDir`.
-- `after-download`: `stagingDir`, `downloadPath`.
-- `after-extract`: `stagingDir`, `downloadPath`, `extractDir`, `extractResult`.
-- `after-install` (success-only): `installedDir`, `binaryPaths`.
-
-### Shell Script Types
-
-```typescript
-type ShellScript = AlwaysScript | OnceScript;
-
-// Branded types for script timing
-type AlwaysScript = string & { __brand: 'always' };
-type OnceScript = string & { __brand: 'once' };
-
-// Helper functions
-function always(template: TemplateStringsArray, ...values: any[]): AlwaysScript;
-function once(template: TemplateStringsArray, ...values: any[]): OnceScript;
-```
-
-## Usage Patterns
-
-### Basic Tool Configuration
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .version('latest')
-    .zsh((shell) => shell.aliases({ t: 'tool' }))
 );
 ```
 
-### Cross-Platform Configuration
+### Parameters
+
+- `install(method, params)` - Function to select installation method
+- `ctx` - Context object with `projectConfig`, `toolName`, `systemInfo`
+
+### Builder Methods
+
+| Method | Description |
+|--------|-------------|
+| `.bin(name)` | Define binary name(s) to expose |
+| `.version(v)` | Set version (`'latest'` or specific) |
+| `.dependsOn(...bins)` | Declare binary dependencies |
+| `.symlink(src, dest)` | Create config file symlink |
+| `.hook(event, fn)` | Lifecycle hooks ([details](./hooks.md)) |
+| `.zsh(fn)` | Zsh shell configuration |
+| `.bash(fn)` | Bash shell configuration |
+| `.powershell(fn)` | PowerShell configuration |
+| `.platform(p, fn)` | Platform-specific overrides |
+
+### Shell Configuration
+
+The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
+
+```typescript
+.zsh((shell) =>
+  shell
+    .completions('completions/_tool')
+    .environment({ VAR: 'value' })
+    .aliases({ t: 'tool' })
+    .always(/* zsh */`
+      function my-func() { tool "$@"; }
+    `)
+)
+```
+
+| Shell Method | Description |
+|--------------|-------------|
+| `.completions(path)` | Path to completion file |
+| `.environment(obj)` | Environment variables |
+| `.aliases(obj)` | Shell aliases |
+| `.always(script)` | Script run on every shell init |
+| `.once(script)` | Script run once after install |
+
+## defineConfig
+
+Creates project configuration. See [Project Configuration](./config.md).
+
+```typescript
+export default defineConfig(() => ({
+  paths: { dotfilesDir: '~/.dotfiles' },
+}));
+```
+
+## Platform
+
+Enum for platform-specific configurations.
 
 ```typescript
 import { defineTool, Platform } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .version('latest')
-    
-    .platform(Platform.MacOS, (c) => {
-      c.install('brew', { formula: 'tool' });
-    })
-    
-    .platform(Platform.Linux, (c) => {
-      c.install('github-release', { repo: 'owner/tool' });
-    })
-);
-```
-
-### Complex Configuration with Hooks
-
-```typescript
-import { defineTool, always } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .version('latest')
-    .hook('after-install', async ({ logger, $, installedDir }) => {
-      await $`${installedDir}/tool init`;
-      logger.info('Tool initialized');
-    })
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-    .zsh((shell) =>
-      shell
-        .completions('completions/_tool')
-        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
-        .aliases({ t: 'tool' })
-        .always(/* zsh */`
-          function tool-helper() {
-            tool --config "$TOOL_HOME/config.toml" "$@"
-          }
-        `)
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
     )
 );
 ```
 
-## Next Steps
+| Value | Description |
+|-------|-------------|
+| `Platform.Linux` | Linux systems |
+| `Platform.MacOS` | macOS (alias: `Platform.Darwin`) |
+| `Platform.Windows` | Windows systems |
 
-- [Getting Started](./getting-started.md) - Learn the basics
-- [Common Patterns](./common-patterns.md) - See real-world examples
-- [TypeScript Requirements](./typescript.md) - Understand type safety
+## Architecture
+
+Enum for architecture-specific configurations.
+
+| Value | Description |
+|-------|-------------|
+| `Architecture.X86_64` | Intel/AMD 64-bit |
+| `Architecture.Arm64` | ARM 64-bit (Apple Silicon, etc.) |
+
+## Utilities
+
+### replaceInFile
+
+Replace text in files during hooks.
+
+```typescript
+import { replaceInFile } from '@gitea/dotfiles';
+
+.hook('after-extract', async (ctx) => {
+  await replaceInFile(ctx.fileSystem, 'path/to/file', 'old', 'new');
+})
+```
+
+### dedentTemplate
+
+Tagged template for removing indentation from multi-line strings.
+
+```typescript
+import { dedentTemplate } from '@gitea/dotfiles';
+
+const script = dedentTemplate`
+  if [[ -n "$VAR" ]]; then
+    echo "Hello"
+  fi
+`;
+```
+
+## Installation Method Parameters
+
+See [Installation Methods](./installation/README.md) for detailed parameters for each method:
+
+- `github-release` - [GitHub Releases](./installation/github-release.md)
+- `brew` - [Homebrew](./installation/homebrew.md)
+- `cargo` - [Cargo](./installation/cargo.md)
+- `curl-script` - [Curl Scripts](./installation/curl-script.md)
+- `curl-tar` - [Curl Tar](./installation/curl-tar.md)
+- `manual` - [Manual](./installation/manual.md)

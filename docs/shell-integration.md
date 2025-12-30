@@ -1,30 +1,38 @@
 # Shell Integration
 
-The shell integration system provides powerful ways to configure shell environments, aliases, functions, and initialization scripts across different shells.
-
-## Overview
-
-The shell integration system supports:
-- **Declarative Configuration**: Structured objects for environment variables and aliases
-- **Script-Based Configuration**: Custom shell functions and complex logic
-- **Cross-Shell Support**: Zsh, Bash, and PowerShell
-- **Performance Optimization**: Always vs once script execution timing
+Configure shell environments, aliases, completions, and functions.
 
 ## Shell Methods
 
-### `.zsh(callback: ShellConfiguratorCallback)`
+| Method | Shell |
+|--------|-------|
+| `.zsh(callback)` | Zsh |
+| `.bash(callback)` | Bash |
+| `.powershell(callback)` | PowerShell |
 
-Configures Zsh-specific behaviour through a fluent configurator.
+## Configurator Methods
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+.zsh((shell) =>
+  shell
+    .environment({ VAR: 'value' })      // Environment variables
+    .aliases({ t: 'tool' })             // Shell aliases
+    .completions('completions/_tool')   // Completion file path
+    .source('shell/init.zsh')           // Source a file (skips if missing)
+    .always(`function helper() {...}`)  // Run every shell startup
+    .once(`tool gen-completions`)       // Run once after install
+)
+```
 
+## Basic Example
+
+```typescript
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
       shell
-        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
+        .environment({ TOOL_HOME: ctx.currentDir })
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/_tool')
         .always(`
@@ -36,250 +44,71 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### `.bash(callback: ShellConfiguratorCallback)`
+## Script Timing
 
-Configures Bash using the same chainable API.
+### `.always()` - Every Shell Startup
+
+For fast operations only:
 
 ```typescript
-import { defineTool } from '@gitea/dotfiles';
+.zsh((shell) =>
+  shell.always(`
+    function quick-helper() { tool "$@"; }
+  `)
+)
+```
+
+### `.once()` - After Installation
+
+For expensive operations:
+
+```typescript
+.zsh((shell) =>
+  shell.once(`
+    tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
+  `)
+)
+```
+
+## Cross-Shell Configuration
+
+Share configuration across shells:
+
+```typescript
+const configureShell = (shell, ctx) =>
+  shell
+    .environment({ TOOL_HOME: ctx.currentDir })
+    .aliases({ t: 'tool' });
 
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .bash((shell) =>
-      shell
-        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
-        .aliases({ t: 'tool', ts: 'tool status' })
-        .completions('completions/tool.bash')
-        .always(`
-          function tool-helper() {
-            tool --config "$TOOL_HOME/config.toml" "$@"
-          }
-        `)
-    )
+    .zsh((shell) => configureShell(shell, ctx))
+    .bash((shell) => configureShell(shell, ctx))
 );
 ```
 
-### `.powershell(callback: ShellConfiguratorCallback)`
+## Path References
 
-Configures PowerShell-specific behaviour while keeping the fluent style.
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .powershell((shell) =>
-      shell
-        .environment({ TOOL_HOME: `${ctx.projectConfig.paths.homeDir}\\.tool` })
-        .aliases({ t: 'tool', ts: 'tool status' })
-        .completions('completions/tool.ps1')
-        .always(`
-          function tool-helper {
-            tool --config "$env:TOOL_HOME\config.toml" @args
-          }
-        `)
-    )
-);
-```
-
-## Configuration Object
+Always use context variables:
 
 ```typescript
-interface IShellConfig {
-  completions?: ShellCompletionConfig;  // Shell completions
-  shellInit?: ShellScript[];           // Shell initialization scripts
-  aliases?: Record<string, string>;    // Shell aliases (alias name -> command)
-  environment?: Record<string, string>; // Environment variables (var name -> value)
-}
-```
-
-## Declarative vs Script-Based Configuration
-
-### Declarative Configuration
-
-Use the configurator for concise, cross-shell friendly declarations:
-
-**Environment Variables:**
-```typescript
-c.zsh((shell) =>
-  shell.environment({
-    TOOL_CONFIG_DIR: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
-    TOOL_DEBUG: 'true',
-    TOOL_MODE: 'production'
-  })
-);
-```
-
-**Aliases:**
-```typescript
-c.zsh((shell) =>
-  shell.aliases({
-    t: 'tool',
-    tl: 'tool list',
-    ts: 'tool status --verbose',
-    tc: 'tool config edit'
-  })
-);
-```
-
-### Script-Based Configuration
-
-Use shell scripts for complex functions and logic:
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell
-        .once(`
-          # Expensive operations (run only once after installation)
-          tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-        `)
-        .always(`
-          # Fast runtime setup (runs every shell startup)
-          function tool-helper() {
-            tool --config "$TOOL_CONFIG_DIR/config.toml" "$@"
-          }
-          
-          # Key bindings
-          bindkey '^T' tool-fuzzy-search
-        `)
-    )
-);
-```
-
-## Script Execution Timing
-
-### Always Scripts
-
-Run every time the shell starts (traditional behavior):
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.always(`
-        # Fast operations only
-        function quick-helper() {
-          tool "$@"
-        }
-      `)
-    )
-);
-```
-
-### Once Scripts
-
-Run only once after tool installation or updates (for expensive operations):
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell.once(`
-        # Expensive operations
-        tool gen-completions --shell zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-        tool build-cache
-      `)
-    )
-);
-```
-
-## Path Usage in Shell Scripts
-
-Always use ToolConfigContext variables for paths:
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) =>
-      shell
-        .environment({
-          TOOL_CONFIG_DIR: ctx.toolDir,
-          TOOL_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
-        })
-        .source('shell/key-bindings.zsh')
-        .always(`
-          # shell.source() skips missing files silently.
-          
-          # Reference other tools
-          FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
-          [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
-        `)
-    )
-);
-```
-
-## Cross-Shell Compatibility
-
-Define the same configuration for multiple shells:
-
-```typescript
-import { defineTool } from '@gitea/dotfiles';
-import type { IShellConfigurator, IToolConfigContext } from '@gitea/dotfiles';
-
-const configureCommonShell = (shell: IShellConfigurator, ctx: IToolConfigContext): IShellConfigurator =>
+.zsh((shell) =>
   shell
     .environment({
-      TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
-      TOOL_DEBUG: 'false'
+      TOOL_CONFIG: ctx.toolDir,                              // Tool config directory
+      TOOL_DATA: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`,
     })
-    .aliases({
-      t: 'tool',
-      ts: 'tool status'
-    });
-
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
-    .bin('tool')
-    .zsh((shell) => configureCommonShell(shell, ctx))
-    .bash((shell) => configureCommonShell(shell, ctx))
-    .powershell((shell) =>
-      configureCommonShell(shell, ctx).environment({ TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` })
-    )
-);
+    .always(`
+      FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
+      [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
+    `)
+)
 ```
-
-## Benefits
-
-**Declarative Configuration:**
-- Clean, structured definition
-- Automatic shell-specific syntax generation
-- Type safety and validation
-- Cross-shell compatibility
-- Performance optimized
-
-**Script-Based Configuration:**
-- Complex shell functions
-- Conditional logic
-- Advanced shell features
-- Shell-specific optimizations
 
 ## Best Practices
 
-- ✅ Use declarative config for simple environment variables and aliases
-- ✅ Use script-based config for complex functions and logic
-- ✅ Use `once` scripts for expensive operations
-- ✅ Use `always` scripts for fast runtime setup
-- ✅ Use context variables for all paths
-- ✅ Test across target shells
-
-## Next Steps
-
-- [Completions](./completions.md) - Set up command completions
-- [Context API](./context-api.md) - Learn about path resolution
-- [Common Patterns](./common-patterns.md) - See real-world examples
+- Use declarative methods (`.environment()`, `.aliases()`) for simple config
+- Use `.always()` for fast runtime setup only
+- Use `.once()` for expensive operations (completion generation, cache building)
+- Use context variables for all paths - never hardcode
