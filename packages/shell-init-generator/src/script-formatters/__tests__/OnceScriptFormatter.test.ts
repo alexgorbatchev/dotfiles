@@ -15,7 +15,7 @@ describe('OnceScriptFormatter', () => {
   });
 
   describe('bash shell', () => {
-    it('should generate properly formatted once script with function wrapping', () => {
+    it('should generate properly formatted once script with subshell wrapping', () => {
       const script = once`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
@@ -28,13 +28,11 @@ describe('OnceScriptFormatter', () => {
       expect(result.outputPath).toBe(path.join(shellScriptsDir, '.once', 'test-tool-0.bash'));
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
-        __dotfiles_test-tool-0_once() {
+        (
           echo "Setting up tool..."
           export TOOL_PATH="/usr/local/bin/tool"
           echo "Tool setup complete"
-        }
-        __dotfiles_test-tool-0_once
-        unset -f __dotfiles_test-tool-0_once
+        )
         rm "/test/shell-scripts/.once/test-tool-0.bash"
       `;
     });
@@ -45,7 +43,6 @@ describe('OnceScriptFormatter', () => {
           echo "Found bashrc"
           source ~/.bashrc
         fi
-        
         for file in ~/.config/*; do
           echo "Processing: $file"
         done
@@ -55,25 +52,22 @@ describe('OnceScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
-        __dotfiles_complex-tool-1_once() {
+        (
           if [ -f ~/.bashrc ]; then
             echo "Found bashrc"
             source ~/.bashrc
           fi
-          
           for file in ~/.config/*; do
             echo "Processing: $file"
           done
-        }
-        __dotfiles_complex-tool-1_once
-        unset -f __dotfiles_complex-tool-1_once
+        )
         rm "/test/shell-scripts/.once/complex-tool-1.bash"
       `;
     });
   });
 
   describe('zsh shell', () => {
-    it('should generate properly formatted once script with function wrapping', () => {
+    it('should generate properly formatted once script with subshell wrapping', () => {
       const script = once`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
@@ -86,13 +80,11 @@ describe('OnceScriptFormatter', () => {
       expect(result.outputPath).toBe(path.join(shellScriptsDir, '.once', 'test-tool-0.zsh'));
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
-        __dotfiles_test-tool-0_once() {
+        (
           echo "Setting up tool..."
           export TOOL_PATH="/usr/local/bin/tool"
           echo "Tool setup complete"
-        }
-        __dotfiles_test-tool-0_once
-        unset -f __dotfiles_test-tool-0_once
+        )
         rm "/test/shell-scripts/.once/test-tool-0.zsh"
       `;
     });
@@ -103,7 +95,6 @@ describe('OnceScriptFormatter', () => {
           echo "Found bashrc"
           source ~/.bashrc
         fi
-        
         for file in ~/.config/*; do
           echo "Processing: $file"
         done
@@ -113,25 +104,22 @@ describe('OnceScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
-        __dotfiles_complex-tool-1_once() {
+        (
           if [ -f ~/.bashrc ]; then
             echo "Found bashrc"
             source ~/.bashrc
           fi
-          
           for file in ~/.config/*; do
             echo "Processing: $file"
           done
-        }
-        __dotfiles_complex-tool-1_once
-        unset -f __dotfiles_complex-tool-1_once
+        )
         rm "/test/shell-scripts/.once/complex-tool-1.zsh"
       `;
     });
   });
 
   describe('powershell shell', () => {
-    it('should generate properly formatted once script with function wrapping', () => {
+    it('should generate properly formatted once script with try-finally wrapping', () => {
       const script = once`
         Write-Host "Setting up tool..."
         $env:TOOL_PATH = "/usr/local/bin/tool"
@@ -144,13 +132,11 @@ describe('OnceScriptFormatter', () => {
       expect(result.outputPath).toBe(path.join(shellScriptsDir, '.once', 'test-tool-0.ps1'));
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
-        function __dotfiles_test-tool-0_once {
+        try {
           Write-Host "Setting up tool..."
           $env:TOOL_PATH = "/usr/local/bin/tool"
           Write-Host "Tool setup complete"
-        }
-        __dotfiles_test-tool-0_once
-        Remove-Item Function:__dotfiles_test-tool-0_once
+        } finally {}
         Remove-Item "/test/shell-scripts/.once/test-tool-0.ps1"
       `;
     });
@@ -161,7 +147,6 @@ describe('OnceScriptFormatter', () => {
           Write-Host "Found bashrc"
           . ~/.bashrc
         }
-        
         Get-ChildItem ~/.config/* | ForEach-Object {
           Write-Host "Processing: $_"
         }
@@ -171,34 +156,27 @@ describe('OnceScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
-        function __dotfiles_complex-tool-1_once {
+        try {
           if (Test-Path ~/.bashrc) {
             Write-Host "Found bashrc"
             . ~/.bashrc
           }
-          
           Get-ChildItem ~/.config/* | ForEach-Object {
             Write-Host "Processing: $_"
           }
-        }
-        __dotfiles_complex-tool-1_once
-        Remove-Item Function:__dotfiles_complex-tool-1_once
+        } finally {}
         Remove-Item "/test/shell-scripts/.once/complex-tool-1.ps1"
       `;
     });
   });
 
   describe('general functionality', () => {
-    it('should generate unique function names based on tool name and index', () => {
+    it('should generate unique output paths based on tool name and index', () => {
       const script = once`echo "test"`;
 
       const result1 = formatter.format(script, 'my-tool', 'bash', 0);
       const result2 = formatter.format(script, 'my-tool', 'bash', 1);
       const result3 = formatter.format(script, 'other-tool', 'bash', 0);
-
-      expect(result1.content).toContain('__dotfiles_my-tool-0_once');
-      expect(result2.content).toContain('__dotfiles_my-tool-1_once');
-      expect(result3.content).toContain('__dotfiles_other-tool-0_once');
 
       expect(result1.outputPath).toBe(path.join(shellScriptsDir, '.once', 'my-tool-0.bash'));
       expect(result2.outputPath).toBe(path.join(shellScriptsDir, '.once', 'my-tool-1.bash'));
@@ -210,8 +188,8 @@ describe('OnceScriptFormatter', () => {
 
       const result = formatter.format(script, 'empty-tool', 'bash');
 
-      expect(result.content).toContain('__dotfiles_empty-tool-0_once');
-      expect(result.content).toContain('unset -f');
+      expect(result.content).toContain('(');
+      expect(result.content).toContain(')');
       expect(result.content).toContain('rm');
       expect(result.requiresExecution).toBe(true);
     });
