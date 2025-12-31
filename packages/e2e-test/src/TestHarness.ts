@@ -447,7 +447,7 @@ export class TestHarness {
    * Verifies that an always script block exists for a tool in the shell initialization file.
    *
    * Always scripts are executed every time the shell is initialized. This method checks that
-   * the script function is defined with the expected content.
+   * the script is wrapped in a subshell (bash/zsh) or try-finally block (PowerShell).
    *
    * @param toolName - The name of the tool that defines the always script.
    * @param contentMatcher - Expected content string or a function to validate the script content.
@@ -455,30 +455,31 @@ export class TestHarness {
    * @returns A Promise that resolves when verification is complete.
    */
   async verifyAlwaysScript(
-    toolName: string,
+    _toolName: string,
     contentMatcher: string | ((content: string) => boolean),
     shellType: 'zsh' | 'bash' | 'powershell' = 'zsh'
   ): Promise<void> {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    // Look for the always script function
-    const alwaysRegex = new RegExp(`__dotfiles_${toolName}_always\\(\\) \\{([\\s\\S]*?)\\}`, 'm');
-    const match = content.match(alwaysRegex);
+    // Look for subshell blocks (bash/zsh) or try-finally blocks (PowerShell)
+    // The toolName parameter is kept for API compatibility but is no longer used
+    // since we now use subshells instead of named functions
+    const alwaysRegex =
+      shellType === 'powershell'
+        ? /try\s*\{([\s\S]*?)\}\s*finally\s*\{\}/gm
+        : /\(([\s\S]*?)\)/gm;
 
-    expect(match).not.toBeNull();
+    const matches = Array.from(content.matchAll(alwaysRegex));
+    const isMatch = matches.some((match) => {
+      const scriptContent = match[1]?.trim() ?? '';
+      if (typeof contentMatcher === 'function') {
+        return contentMatcher(scriptContent);
+      }
+      return scriptContent.includes(contentMatcher);
+    });
 
-    if (!match || !match[1]) {
-      return;
-    }
-
-    const scriptContent: string = match[1].trim();
-
-    if (typeof contentMatcher === 'function') {
-      expect(contentMatcher(scriptContent)).toBe(true);
-    } else {
-      expect(scriptContent).toContain(contentMatcher);
-    }
+    expect(isMatch).toBe(true);
   }
 
   /**

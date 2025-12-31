@@ -6,7 +6,8 @@ import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatte
 
 /**
  * Formatter for once scripts - generates individual executable files in .once/ directory
- * that self-delete after execution
+ * that self-delete after execution. Uses subshells (bash/zsh) or try-finally blocks (PowerShell)
+ * to prevent variable pollution in the parent shell.
  */
 export class OnceScriptFormatter implements IScriptFormatter {
   private readonly shellScriptsDir: string;
@@ -61,19 +62,15 @@ export class OnceScriptFormatter implements IScriptFormatter {
   }
 
   private generateZshScript(scriptContent: string, outputPath: string): string {
-    const functionName = `__dotfiles_${path.basename(outputPath, '.zsh')}_once`;
     return dedentTemplate(
       `
       # Generated once script - will self-delete after execution
-      {functionName}() {
+      (
         {scriptContent}
-      }
-      {functionName}
-      unset -f {functionName}
+      )
       rm "{outputPath}"
     `,
       {
-        functionName,
         scriptContent,
         outputPath,
       }
@@ -81,19 +78,15 @@ export class OnceScriptFormatter implements IScriptFormatter {
   }
 
   private generateBashScript(scriptContent: string, outputPath: string): string {
-    const functionName = `__dotfiles_${path.basename(outputPath, '.bash')}_once`;
     return dedentTemplate(
       `
       # Generated once script - will self-delete after execution
-      {functionName}() {
+      (
         {scriptContent}
-      }
-      {functionName}
-      unset -f {functionName}
+      )
       rm "{outputPath}"
     `,
       {
-        functionName,
         scriptContent,
         outputPath,
       }
@@ -101,19 +94,15 @@ export class OnceScriptFormatter implements IScriptFormatter {
   }
 
   private generatePowerShellScript(scriptContent: string, outputPath: string): string {
-    const functionName = `__dotfiles_${path.basename(outputPath, '.ps1')}_once`;
     return dedentTemplate(
       `
       # Generated once script - will self-delete after execution
-      function {functionName} {
+      try {
         {scriptContent}
-      }
-      {functionName}
-      Remove-Item Function:{functionName}
+      } finally {}
       Remove-Item "{outputPath}"
     `,
       {
-        functionName,
         scriptContent,
         outputPath,
       }
