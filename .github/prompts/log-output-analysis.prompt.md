@@ -10,16 +10,15 @@
   - Logs that restate prior information without adding context
 - Detect duplicate emissions:
   - The same template triggered several times for a single event
-  - Identical messages emitted back-to-back
+  - Identical or similar messages emitted back-to-back
 - Call out clutter:
-  - Starting and ending of operations
+  - Starting and ending of operations, these are not useful
   - Messages without actionable value
   - Narration of control flow
   - Restated obvious transitions
 - Highlight violations of logging rules:
-  - Logging objects directly
-  - Multi-line templates
-  - Messages that exceed the single-responsibility guidance in `packages/logger/README.md`
+  - Whole objects are logged instead of concise summaries
+  - A message spawns multiple lines 
 - Recommend precise remedies for every issue—delete, merge, or rewrite the specific templates—while keeping change scope minimal and aligned with project logging policies.
 - Do not apply any changes without explicit user approval after presenting the analysis.
 
