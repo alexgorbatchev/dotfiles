@@ -87,11 +87,13 @@ install('github-release', { repo: 'owner/tool' })
   - `'tool-*/bin/tool'` - Versioned directory structure
   - `'tool'` - Exact binary at archive root
 
-**Path Variables**:
-- `ctx.toolDir` → Directory containing the `.tool.ts` file (tool configuration directory)
-- `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` → Tool's base installation directory (contains version subdirectories)
-
-If you need to reference files next to the tool config, use `ctx.toolDir`.
+**Key Context Variables** (used throughout configuration):
+- `ctx.toolDir` → Directory containing the `.tool.ts` file (for files next to tool config)
+- `ctx.currentDir` → Tool's stable `current` symlink directory (for installed assets after install)
+- `ctx.toolName` → Name of the tool being configured
+- `ctx.projectConfig.paths.homeDir` → User's home directory
+- `ctx.projectConfig.paths.binariesDir` → Tool binaries directory
+- `ctx.projectConfig.paths.generatedDir` → Generated files directory
 
 Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
 
@@ -104,7 +106,7 @@ install('github-release', { repo: 'owner/tool' })
   .zsh((shell) =>
     shell
       .environment({
-        TOOL_HOME: `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}`,
+        TOOL_HOME: ctx.currentDir,
         TOOL_CONFIG_DIR: ctx.toolDir,
       })
       .aliases({
@@ -112,6 +114,7 @@ install('github-release', { repo: 'owner/tool' })
         ts: 'tool status',
       })
       .completions('completions/_tool')
+      .source('shell/init.zsh')  // Source a file (skips if missing)
       .always(/* zsh */`
         # Fast runtime setup (runs every shell startup)
         ...
@@ -127,6 +130,7 @@ install('github-release', { repo: 'owner/tool' })
 - `.environment(record)` - Set environment variables
 - `.aliases(record)` - Set command aliases
 - `.completions(path | config)` - Set command completions
+- `.source(path)` - Source a file (skips if missing)
 - `.always(script)` - Fast runtime setup scripts
 - `.once(script)` - Expensive one-time setup scripts
 
@@ -142,7 +146,7 @@ install('github-release', { repo: 'owner/tool' })
 .completions({
   source: 'shell/completion.zsh',
   bin: 'custom-name',  // If binary name differs from tool name
-  targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`  // Custom directory
+  targetDir: `${ctx.projectConfig.paths.generatedDir}/completions`  // Custom directory
 })
 ```
 
@@ -161,26 +165,33 @@ install('github-release', { repo: 'owner/tool' })
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
 
 ### Step 5: Add Platform Support
-Use `.platform()` for platform- and architecture-specific overrides.
+Use `.platform()` for platform- and architecture-specific overrides. The callback receives an `install` function for that specific platform.
 
 ```ts
 import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
 
-install('github-release', { repo: 'owner/tool' })
-  .bin('tool')
-  // macOS-specific
-  .platform(Platform.MacOS, (c) =>
-    c.install('brew', { formula: 'tool' })
-      .zsh((shell) => shell.aliases({ t: 'tool --macos-mode' }))
-  )
-  // Linux-specific
-  .platform(Platform.Linux, (c) =>
-    c.install('github-release', { repo: 'owner/tool', assetPattern: '*linux*.tar.gz' })
-  )
-  // Windows with Arm64
-  .platform(Platform.Windows, Architecture.Arm64, (c) =>
-    c.install('github-release', { repo: 'owner/tool', assetPattern: '*windows-arm64.zip' })
-  )
+export default defineTool((install) =>
+  install()
+    .bin('tool')
+    // macOS-specific installation
+    .platform(Platform.MacOS, (install) =>
+      install('brew', { formula: 'tool' })
+    )
+    // Linux-specific installation
+    .platform(Platform.Linux, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*linux*.tar.gz',
+      })
+    )
+    // Windows with Arm64
+    .platform(Platform.Windows, Architecture.Arm64, (install) =>
+      install('github-release', {
+        repo: 'owner/tool',
+        assetPattern: '*windows-arm64.zip',
+      })
+    )
+);
 ```
 
 Reference: [Platform Support Guide](<root>/docs/platform-support.md)
@@ -222,7 +233,6 @@ Your configuration MUST include:
 ### Documentation Comments
 Include a brief JSDoc comment explaining:
 - What the tool does.
-- Key features (if notable).
 - Platform notes (if applicable).
 - The tool’s home URL as the very last line.
 
@@ -255,11 +265,9 @@ import { defineTool } from '@gitea/dotfiles';
 /**
  * fzf - Command-line fuzzy finder.
  *
- * Features: key bindings, completions, and custom functions.
- *
  * https://github.com/junegunn/fzf
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', {
     repo: 'junegunn/fzf',
   })
@@ -271,11 +279,7 @@ export default defineTool((install, ctx) =>
         })
         .aliases({ f: 'fzf' })
         .completions('shell/completion.zsh')
-        .always(/* zsh */`
-          if [[ -f "${ctx.currentDir}/shell/key-bindings.zsh" ]]; then
-            source "${ctx.currentDir}/shell/key-bindings.zsh"
-          fi
-        `)
+        .source('shell/key-bindings.zsh')
     )
 );
 ```
@@ -330,21 +334,49 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://github.com/eza-community/eza
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('cargo', {
     crateName: 'eza',
     githubRepo: 'eza-community/eza',
   })
     .bin('eza')
-    .bin('exa')
     .zsh((shell) =>
       shell
         .aliases({
           ls: 'eza',
           ll: 'eza -l',
+          la: 'eza -la',
           tree: 'eza --tree'
         })
         .completions('completions/eza.zsh')
+    )
+);
+```
+
+### Example 6: Tool with Dynamic Shell Functions
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * zoxide - A smarter cd command with frecency tracking.
+ *
+ * https://github.com/ajeetdsouza/zoxide
+ */
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'ajeetdsouza/zoxide',
+  })
+    .bin('zoxide')
+    .zsh((shell) =>
+      shell
+        .environment({
+          _ZO_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/zoxide`,
+        })
+        .completions({ cmd: 'zoxide completions zsh' })
+        .always(/* zsh */`
+          # Initialize zoxide with cd replacement
+          eval "$(zoxide init zsh --cmd cd)"
+        `)
     )
 );
 ```
@@ -355,40 +387,40 @@ export default defineTool((install, ctx) =>
 - ✅ Installation method matches the tool's official distribution
 - ✅ `.bin(name, pattern?)` declarations match actual executables
 - ✅ Binary patterns are correct for archive structures
-- ✅ Binary names are used with `.dependsOn()` for dependencies
+- ✅ `.dependsOn()` uses binary names (not tool names) from other tools' `.bin()` declarations
 
 **Paths**
 - ✅ Use `ctx.toolDir` for files next to `.tool.ts` (tool configuration directory)
-- ✅ Use `${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}` for installed artifacts
-- ✅ Use `${ctx.projectConfig.paths.homeDir}` for user home paths
-- ✅ Use context variables for all paths (no hardcoded `$HOME` or `~`)
+- ✅ Use `ctx.currentDir` for installed assets (stable symlink to versioned directory)
+- ✅ For symlink targets: use `~` or `${ctx.projectConfig.paths.homeDir}`
+- ✅ For shell scripts/environment: use context variables (no `~`)
 - ✅ Completion `source` paths are relative to extracted archive
-- ✅ Completion `targetDir` uses absolute context paths
+- ✅ Never use hardcoded absolute paths like `/home/user/...`
 
 **Shell integration**
-- ✅ Use `.once()` for expensive operations (completions generation, cache building)
+- ✅ Use `.completions({ cmd: '...' })` for dynamic completions (not `.once()`)
+- ✅ Use `.once()` only for expensive one-time setup (cache building, initialization)
 - ✅ Use `.always()` for fast runtime setup (environment, aliases, functions)
 - ✅ Shell scripts are fast and use context variables
 - ✅ Completions configured within shell blocks (`.zsh()`, `.bash()`, `.powershell()`)
 
 **Function signature**
 - ✅ Import `defineTool` from `'@gitea/dotfiles'`
-- ✅ Use `export default defineTool((install, ctx) => ...)`
+- ✅ Use `export default defineTool((install, ctx) => ...)` - omit `ctx` if not used
 - ✅ Call `install(method, params)` first to specify installation
 - ✅ Chain additional configuration methods
 
 ## References
 
 **Core Documentation**
-- [Core Methods Reference](<root>/docs/core-methods.md) - Detailed method reference
 - [API Reference](<root>/docs/api-reference.md) - Complete API with all parameters
 - [Getting Started](<root>/docs/getting-started.md) - Basic structure and anatomy
+- [Context API](<root>/docs/context-api.md) - Path resolution and context variables
 
 **Configuration Guides**
 - [Common Patterns](<root>/docs/common-patterns.md) - Real-world examples
 - [Shell Integration](<root>/docs/shell-integration.md) - Shell configuration, symlinks
 - [Completions](<root>/docs/completions.md) - Command completion setup
-- [Context API](<root>/docs/context-api.md) - Path resolution and context variables
 
 **Installation Methods**
 - [GitHub Release Installation](<root>/docs/installation/github-release.md)
