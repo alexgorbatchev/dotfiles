@@ -45,9 +45,8 @@ export default defineTool((install, ctx) =>
 
 ### Configuration Features
 
-- [Shell Integration](./shell-integration.md) - Aliases, functions, and environment variables
+- [Shell Integration](./shell-integration.md) - Aliases, functions, environment variables, and symlinks
 - [Completions](./completions.md) - Setting up command completions
-- [Symbolic Links](./symlinks.md) - Managing configuration file symlinks
 - [Platform Support](./platform-support.md) - Cross-platform configuration
 
 ### Advanced Topics

@@ -67,16 +67,6 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Symlinks with Home Directory
-
-```typescript
-// Using ~ shorthand (recommended)
-.symlink('./config.toml', '~/.config/tool/config.toml')
-
-// Or explicit homeDir
-.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-```
-
 ## Directory Structure
 
 ```
@@ -85,4 +75,43 @@ ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 │   ├── tool            # Binary
 │   └── share/          # Assets
 └── current -> 1.2.3    # Stable symlink (ctx.currentDir)
+```
+
+- Archives extracted to `binaries/tool-name/version/`
+- `current` symlink updated after install
+- Shims in `targetDir` execute `${ctx.currentDir}/binary`
+
+## Path Resolution by Method
+
+| Method | Path | Resolution |
+|--------|------|------------|
+| `.symlink(src, dest)` | `src` with `./` | Relative to tool config directory |
+| `.symlink(src, dest)` | `dest` | Absolute path (`~` expanded) |
+| `.completions(path)` | `path` | Relative to extracted archive |
+| `binaryPath` | github/cargo | Relative to extracted archive |
+| `binaryPath` | manual | Absolute path |
+
+## Common Mistakes
+
+```typescript
+// ❌ Hardcoded paths
+.symlink('./config', '/home/user/.config/tool')
+
+// ✅ Use context
+.symlink('./config', `${ctx.projectConfig.paths.homeDir}/.config/tool`)
+
+// ❌ Shell variable references
+.always(`source $DOTFILES/init.zsh`)
+
+// ✅ Use context
+.always(`source "${ctx.currentDir}/init.zsh"`)
+```
+
+## Cross-Platform
+
+Always use forward slashes - context variables handle platform differences:
+
+```typescript
+// Works on all platforms
+.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
 ```

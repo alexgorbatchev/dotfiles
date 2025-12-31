@@ -93,7 +93,7 @@ install('github-release', { repo: 'owner/tool' })
 
 If you need to reference files next to the tool config, use `ctx.toolDir`.
 
-Reference: [Core Methods Reference](<root>/docs/core-methods.md#binname-string-pattern-string) and [Path Resolution Guide](<root>/docs/path-resolution.md)
+Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
 
 ### Step 3: Add Shell Integration
 Use the fluent shell configurator with `.zsh()`, `.bash()`, or `.powershell()` methods.
@@ -158,7 +158,7 @@ install('github-release', { repo: 'owner/tool' })
   .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`);
 ```
 
-Reference: [Symlinks Guide](<root>/docs/symlinks.md)
+Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
 
 ### Step 5: Add Platform Support
 Use `.platform()` for platform- and architecture-specific overrides.
@@ -386,11 +386,9 @@ export default defineTool((install, ctx) =>
 
 **Configuration Guides**
 - [Common Patterns](<root>/docs/common-patterns.md) - Real-world examples
-- [Shell Integration](<root>/docs/shell-integration.md) - Shell configuration details
+- [Shell Integration](<root>/docs/shell-integration.md) - Shell configuration, symlinks
 - [Completions](<root>/docs/completions.md) - Command completion setup
-- [Symlinks](<root>/docs/symlinks.md) - Symbolic link management
 - [Context API](<root>/docs/context-api.md) - Path resolution and context variables
-- [Path Resolution](<root>/docs/path-resolution.md) - Path resolution rules
 
 **Installation Methods**
 - [GitHub Release Installation](<root>/docs/installation/github-release.md)

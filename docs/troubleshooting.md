@@ -62,20 +62,30 @@ The installer has built-in recursion guards. If you see this, check that your in
 - Always await `$` commands
 - Handle errors with try/catch
 
-## Verification Commands
+## Testing & Verification
+
+### Type Checking
 
 ```bash
-# Check generated files for a tool
-dotfiles files tool-name
-
-# View shim contents
-cat ~/.generated/usr-local-bin/tool-name
-
-# Test binary
-tool-name --version
+bun typecheck
 ```
+
+### Installation Commands
+
+```bash
+dotfiles install tool-name           # Install
+dotfiles install tool-name --force   # Force reinstall
+dotfiles install tool-name --log=trace  # Debug logging
+dotfiles files tool-name             # List generated files
+dotfiles check-updates               # Check all for updates
+```
+
+### Verification Steps
+
+1. **Binary works**: `tool-name --version`
+2. **Shim created**: `ls -la ~/.generated/usr-local-bin/tool-name`
+3. **Shell integration**: Source shell scripts and test aliases/environment
 
 ## Next Steps
 
-- [Testing](./testing.md) - Validation approaches
 - [Common Patterns](./common-patterns.md) - Working examples

@@ -74,5 +74,4 @@ autoload -U compinit && compinit
 
 ## Next Steps
 
-- [Shell Integration](./shell-integration.md) - Configure shell environments
-- [Symbolic Links](./symlinks.md) - Link configuration files
+- [Shell Integration](./shell-integration.md) - Configure shell environments and symlinks

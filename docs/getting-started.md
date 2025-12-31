@@ -73,3 +73,57 @@ After calling `install()`, these methods are available:
 - [Installation Methods](./installation/README.md) - Choose how to install your tool
 - [Shell Integration](./shell-integration.md) - Aliases, functions, environment variables
 - [Context API](./context-api.md) - Dynamic paths using `ctx`
+
+## TypeScript Setup
+
+### Imports
+
+```typescript
+import { defineTool, Platform, Architecture } from '@gitea/dotfiles';
+```
+
+| Export | Description |
+|--------|-------------|
+| `defineTool` | Factory function to create tool configurations |
+| `Platform` | Enum: `Darwin`, `Linux`, `Windows`, `MacOS` |
+| `Architecture` | Enum: `X86_64`, `Arm64` |
+
+### Configuration-Only Tools
+
+Tools that only contribute shell configuration (no binary installation):
+
+```typescript
+export default defineTool((install) =>
+  install().zsh((shell) =>
+    shell.environment({ FOO: 'bar' })
+  )
+);
+```
+
+### Auto-Generated Types
+
+Running `dotfiles generate` creates `.generated/tool-types.d.ts` with type-safe `dependsOn()` autocomplete for all your tool binaries.
+
+Add to your `tsconfig.json`:
+
+```json
+{
+  "include": [
+    "tools/**/*.tool.ts",
+    ".generated/tool-types.d.ts"
+  ]
+}
+```
+
+### Common Type Errors
+
+```typescript
+// ❌ Missing required parameter
+install('github-release', {})  // Error: 'repo' is required
+
+// ❌ Invalid parameter for method
+install('brew', { repo: 'owner/tool' })  // Error: 'repo' not valid for brew
+
+// ❌ String instead of enum
+.platform('macos', ...)  // Error: use Platform.MacOS
+```
