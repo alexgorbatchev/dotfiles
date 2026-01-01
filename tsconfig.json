@@ -25,18 +25,11 @@
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitAny": true,
-
-    // Path mappings for test-project
-    "paths": {
-      "@gitea/dotfiles": ["./packages/cli/src/index.ts"],
-      "@dotfiles/core": ["./packages/core/src/index.ts"]
-    }
   },
   "include": ["packages", "test-project", "cli.ts"],
   "exclude": [
     "**/.tmp/**",
     "packages/**/type-tests/**",
     "packages/**/__tests__/**/tool-types.d.ts",
-    "packages/core/src/__tests__/InstallerPluginRegistry--typescript-integration.test.ts"
   ]
 }
