@@ -144,6 +144,14 @@ install('github-release', { repo: 'owner/tool' })
 // From command output
 .completions({ cmd: 'tool completion zsh' })
 
+// From URL
+.completions({ url: 'https://raw.githubusercontent.com/owner/repo/main/_tool' })
+
+// With version in URL (callback receives ctx.version after install)
+.completions((ctx) => ({
+  url: `https://raw.githubusercontent.com/owner/repo/${ctx.version}/_tool`,
+}))
+
 // With custom options
 .completions({
   source: 'shell/completion.zsh',

@@ -6,6 +6,7 @@ import type {
   InstallerPluginRegistry,
   InstallMethod,
   IPlatformInstallFunction,
+  IShellConfiguratorContext,
   IToolConfigContext,
   Platform,
   PlatformConfig,
@@ -227,7 +228,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       const hasFunctions = Object.keys(config.functions).length > 0;
       const hasCompletions = config.completions !== undefined;
 
-      if (hasScripts || hasAliases || hasEnvironment || hasFunctions || hasCompletions) {
+      const hasAnyShellConfig = hasScripts || hasAliases || hasEnvironment || hasFunctions || hasCompletions;
+
+      if (hasAnyShellConfig) {
         result[shellType] = {
           ...(hasScripts && { scripts: config.scripts }),
           ...(hasAliases && { aliases: config.aliases }),
@@ -650,7 +653,12 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   ): this | Promise<this> {
     const storage: IShellStorage = this.internalShellConfigs[shellType];
     const configurator = new ShellConfigurator(storage, shellType, this.context, this.logger, this.toolName);
-    const callbackResult = callback(configurator);
+
+    // Build a context for the callback with version undefined (not available at build time)
+    // Users can use {{version}} syntax for deferred interpolation at completion generation time
+    const callbackContext: IShellConfiguratorContext = this.buildShellConfiguratorContext();
+
+    const callbackResult = callback(configurator, callbackContext);
 
     if (this.isPromise(callbackResult)) {
       const next: Promise<this> = callbackResult.then(() => this);
@@ -658,6 +666,18 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
     }
 
     return this;
+  }
+
+  /**
+   * Builds a context object for shell configurator callbacks.
+   * At build time, version is undefined.
+   * For other context properties, use the outer ctx from defineTool.
+   */
+  private buildShellConfiguratorContext(): IShellConfiguratorContext {
+    const ctx: IShellConfiguratorContext = {
+      version: undefined,
+    };
+    return ctx;
   }
 
   private isPromise(value: unknown): value is Promise<unknown> {

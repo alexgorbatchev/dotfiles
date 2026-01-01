@@ -193,7 +193,7 @@ describe('IToolConfigBuilder', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.zsh((shell) =>
       shell.functions({
-        'valid_name': 'echo valid',
+        valid_name: 'echo valid',
         '123invalid': 'echo starts with number',
         'has space': 'echo has space',
         'valid-name': 'echo valid with hyphen',
@@ -204,16 +204,20 @@ describe('IToolConfigBuilder', () => {
 
     // Only valid names should be kept
     expect(config.shellConfigs?.zsh?.functions).toEqual({
-      'valid_name': 'echo valid',
+      valid_name: 'echo valid',
       'valid-name': 'echo valid with hyphen',
     });
 
     // Errors should be logged for invalid names
-    logger.expect(['ERROR'], ['IToolConfigBuilder', 'ShellConfigurator'], [
-      /Invalid function name: "123invalid"/,
-      /Invalid function name: "has space"/,
-      /Invalid function name: "func;injection"/,
-    ]);
+    logger.expect(
+      ['ERROR'],
+      ['IToolConfigBuilder', 'ShellConfigurator'],
+      [
+        /Invalid function name: "123invalid"/,
+        /Invalid function name: "has space"/,
+        /Invalid function name: "func;injection"/,
+      ]
+    );
   });
 
   test('symlink method adds symlinks correctly', () => {
@@ -250,7 +254,7 @@ describe('IToolConfigBuilder', () => {
       expect(config.installParams).toEqual({ ...installParams, hooks: { 'after-install': [mockHook] } });
     }
     expect(config.shellConfigs?.zsh?.scripts).toEqual([always`alias tt="test-tool"`]);
-    expect(config.shellConfigs?.zsh?.completions).toEqual({ source: 'completion.bash' });
+    expect(config.shellConfigs?.zsh?.completions).toBe('completion.bash');
     expect(config.symlinks).toEqual([{ source: 'config.yml', target: '~/.config/tool/config.yml' }]);
   });
 
@@ -269,6 +273,19 @@ describe('IToolConfigBuilder', () => {
       cmd: 'fnm completions --shell zsh',
       bin: 'fnm',
     });
+  });
+
+  test('completions accepts callback function for dynamic resolution', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    const completionsCallback = (ctx: { version?: string }) => ({
+      url: `https://example.com/completions/${ctx.version}/completion.zsh`,
+    });
+
+    builder.zsh((shell) => shell.completions(completionsCallback));
+
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.completions).toBe(completionsCallback);
   });
 
   test('zsh source generates non-fatal conditional sourcing', () => {

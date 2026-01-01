@@ -13,6 +13,7 @@
     "@dotfiles/shell-init-generator": "workspace:*",
     "@dotfiles/shim-generator": "workspace:*",
     "@dotfiles/symlink-generator": "workspace:*",
+    "@dotfiles/unwrap-value": "workspace:*",
     "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {

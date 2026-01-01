@@ -27,11 +27,16 @@ interface IToolConfigBuilder {
   version(version: string): this;
   install(method: InstallationMethod, params: InstallParams): this;
   platform(platform: Platform, callback: (builder: PlatformConfigBuilder) => void): this;
-  zsh(callback: (shell: IShellConfigurator) => void): this;
-  bash(callback: (shell: IShellConfigurator) => void): this;
-  powershell(callback: (shell: IShellConfigurator) => void): this;
+  zsh(callback: (shell: IShellConfigurator, ctx: IShellConfiguratorContext) => void): this;
+  bash(callback: (shell: IShellConfigurator, ctx: IShellConfiguratorContext) => void): this;
+  powershell(callback: (shell: IShellConfigurator, ctx: IShellConfiguratorContext) => void): this;
   disable(): this;
   build(): ToolConfig;
+}
+
+// Shell callback context - only has version (use outer ctx from defineTool for other properties)
+interface IShellConfiguratorContext {
+  version?: string;  // Only available after installation
 }
 ```
 

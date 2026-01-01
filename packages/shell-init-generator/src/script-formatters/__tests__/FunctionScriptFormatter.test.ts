@@ -117,17 +117,13 @@ describe('FunctionScriptFormatter', () => {
     it('should reject function names starting with a number', () => {
       const formatter = new FunctionScriptFormatter(HOME_DIR);
 
-      expect(() => formatter.format('123func', 'echo test', 'zsh')).toThrow(
-        'Invalid function name: "123func"'
-      );
+      expect(() => formatter.format('123func', 'echo test', 'zsh')).toThrow('Invalid function name: "123func"');
     });
 
     it('should reject function names with spaces', () => {
       const formatter = new FunctionScriptFormatter(HOME_DIR);
 
-      expect(() => formatter.format('my function', 'echo test', 'zsh')).toThrow(
-        'Invalid function name: "my function"'
-      );
+      expect(() => formatter.format('my function', 'echo test', 'zsh')).toThrow('Invalid function name: "my function"');
     });
 
     it('should reject function names with special characters', () => {

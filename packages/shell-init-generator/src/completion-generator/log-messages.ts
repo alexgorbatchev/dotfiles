@@ -15,4 +15,11 @@ export const messages = {
   symlinkCreated: (sourcePath: string, targetPath: string) =>
     createSafeLogMessage(`Symlinked completion: ${sourcePath} -> ${targetPath}`),
   sourceNotFound: (sourcePath: string) => createSafeLogMessage(`Completion source file not found: ${sourcePath}`),
+  downloadingCompletion: (url: string) => createSafeLogMessage(`Downloading completion from: ${url}`),
+  completionDownloaded: (filePath: string) => createSafeLogMessage(`Completion downloaded to: ${filePath}`),
+  completionAlreadyDownloaded: (filePath: string) => createSafeLogMessage(`Completion already downloaded: ${filePath}`),
+  extractingCompletionArchive: (archivePath: string) =>
+    createSafeLogMessage(`Extracting completion archive: ${archivePath}`),
+  completionArchiveExtracted: (targetDir: string) =>
+    createSafeLogMessage(`Completion archive extracted to: ${targetDir}`),
 } satisfies SafeLogMessageMap;

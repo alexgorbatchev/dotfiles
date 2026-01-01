@@ -117,6 +117,10 @@ interface IBaseToolContext {
 
 interface IToolConfigContext extends IBaseToolContext {}
 
+interface IShellConfiguratorContext {
+  version?: string;  // Only available after installation
+}
+
 interface IInstallContext extends IBaseToolContext {
   toolConfig: ToolConfig;
   stagingDir: string;

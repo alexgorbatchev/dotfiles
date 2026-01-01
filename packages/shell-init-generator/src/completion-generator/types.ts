@@ -1,11 +1,19 @@
-import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
+import type { ICompletionContext, ShellCompletionConfig, ShellType } from '@dotfiles/core';
 
-export interface ICompletionGenerationContext {
+/**
+ * Context for completion generation, extending the base completion context.
+ * Used by the completion generator when processing completions after installation.
+ */
+export interface ICompletionGenerationContext extends ICompletionContext {
+  /** Name of the tool being configured */
   toolName: string;
+  /** Absolute path to the tool's installation directory */
   toolInstallDir: string;
+  /** Absolute path to the generated shell scripts directory */
   shellScriptsDir: string;
+  /** User's home directory path */
   homeDir: string;
-  /** Optional path to the tool's config file, used for resolving relative source paths */
+  /** Absolute path to the tool's configuration file */
   configFilePath?: string;
 }
 

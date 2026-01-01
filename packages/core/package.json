@@ -15,6 +15,7 @@
     "@dotfiles/installer-github": "workspace:*",
     "@dotfiles/installer-manual": "workspace:*",
     "@dotfiles/logger": "workspace:*",
+    "@dotfiles/unwrap-value": "workspace:*",
     "type-fest": "catalog:",
     "zod": "catalog:"
   },

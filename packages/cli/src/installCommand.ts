@@ -156,7 +156,7 @@ async function executeInstallCommandAction(
   });
 
   if (result.success) {
-    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig);
+    await generatorOrchestrator.generateCompletionsForTool(toolName, toolConfig, result.version);
   }
 
   const exitCode = handleInstallationResult(logger, result, toolName, combinedOptions.shimMode);

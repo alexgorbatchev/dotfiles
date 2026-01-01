@@ -10,6 +10,12 @@ Configure shell environments, aliases, completions, and functions.
 | `.bash(callback)` | Bash |
 | `.powershell(callback)` | PowerShell |
 
+Each callback receives:
+- `shell` - Shell configurator for setting up environment, aliases, completions, etc.
+- `ctx` - Context with `version` property (only available after installation)
+
+For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), use the outer `ctx` from `defineTool`.
+
 ## Configurator Methods
 
 ```typescript
@@ -82,7 +88,7 @@ HOME environment, similar to `always()` and `once()` scripts.
 For fast inline operations. Runs in a subshell with HOME override:
 
 ```typescript
-.zsh((shell) =>
+.zsh((shell, ctx) =>
   shell.always(`
     eval "$(tool init zsh)"
   `)
@@ -94,7 +100,7 @@ For fast inline operations. Runs in a subshell with HOME override:
 For expensive operations:
 
 ```typescript
-.zsh((shell) =>
+.zsh((shell, ctx) =>
   shell.once(`
     tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
   `)
@@ -114,8 +120,8 @@ const configureShell = (shell, ctx) =>
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .zsh((shell) => configureShell(shell, ctx))
-    .bash((shell) => configureShell(shell, ctx))
+    .zsh((shell, shellCtx) => configureShell(shell, ctx))
+    .bash((shell, shellCtx) => configureShell(shell, ctx))
 );
 ```
 
@@ -124,7 +130,7 @@ export default defineTool((install, ctx) =>
 Always use context variables:
 
 ```typescript
-.zsh((shell) =>
+.zsh((shell, ctx) =>
   shell
     .environment({
       TOOL_CONFIG: ctx.toolDir,                              // Tool config directory
@@ -188,7 +194,7 @@ export default defineTool((install, ctx) =>
     .bin('my-tool')
     .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`)
     .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/themes`)
-    .zsh((shell) =>
+    .zsh((shell, shellCtx) =>
       shell.environment({
         MY_TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`,
       })

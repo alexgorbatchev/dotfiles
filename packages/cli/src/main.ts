@@ -293,7 +293,13 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const shellInitGenerator = new ShellInitGenerator(systemLogger, shellInitTrackedFs, projectConfig);
   const symlinkGenerator = new SymlinkGenerator(systemLogger, symlinkTrackedFs, projectConfig, systemInfo);
   const completionCommandExecutor = new CompletionCommandExecutor(systemLogger);
-  const completionGenerator = new CompletionGenerator(systemLogger, resolvedFs, completionCommandExecutor);
+
+  const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs);
+
+  const completionGenerator = new CompletionGenerator(systemLogger, resolvedFs, completionCommandExecutor, {
+    downloader,
+    archiveExtractor,
+  });
 
   const generatorOrchestrator = new GeneratorOrchestrator(
     systemLogger,
@@ -304,8 +310,6 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     systemInfo,
     projectConfig
   );
-
-  const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs);
 
   // Initialize plugin registry
   const pluginRegistry = new InstallerPluginRegistry(parentLogger);
