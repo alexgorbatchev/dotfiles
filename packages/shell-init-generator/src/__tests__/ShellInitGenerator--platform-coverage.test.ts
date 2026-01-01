@@ -197,8 +197,8 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       expect(result).not.toBeNull();
       const generatedContent = await mockFileSystem.readFile(result!.files.get('zsh')!);
 
-      // Should have always scripts section with both base and platform-specific
-      expect(generatedContent).toContain('Always Scripts');
+      // Should have tool-specific initializations section with both base and platform-specific
+      expect(generatedContent).toContain('Tool-Specific Initializations');
       expect(generatedContent).toContain('export BASE_VAR="base_value"');
       expect(generatedContent).toContain('export LINUX_SPECIFIC="linux_value"');
 
@@ -208,7 +208,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       expect(generatedContent).toContain('export PATH="/linux/bin:$PATH"');
       expect(generatedContent).toContain('fpath+="/linux/completions"');
 
-      // All scripts are now in the Always Scripts section
+      // All scripts are now in the Tool-Specific Initializations section
       expect(generatedContent).toContain('# Some other init code');
       expect(generatedContent).toContain('alias linux-cmd="some-command"');
     });

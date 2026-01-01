@@ -408,14 +408,14 @@ export class TestHarness {
   /**
    * Verifies that an alias is set correctly in a shell script for a tool.
    *
-   * @param toolName - The name of the tool that defines the alias.
+   * @param _toolName - The name of the tool that defines the alias (kept for API compatibility).
    * @param aliasName - The name of the alias to verify.
    * @param expectedCommand - The expected alias command, or a function to validate the actual command.
    * @param shellType - The type of shell script to check (default: 'zsh').
    * @returns A Promise that resolves when verification is complete.
    */
   async verifyAlias(
-    toolName: string,
+    _toolName: string,
     aliasName: string,
     expectedCommand: string | ((command: string) => boolean),
     shellType: 'zsh' | 'bash' | 'powershell' = 'zsh'
@@ -423,9 +423,9 @@ export class TestHarness {
     const scriptPath = this.getShellScriptPath(shellType);
     const content = await this.readFile(scriptPath);
 
-    // Look for the alias under the tool section - handle escaped quotes inside the alias value
-    const toolSectionRegex = new RegExp(`# Tool: ${toolName}[\\s\\S]*?alias ${aliasName}="((?:[^"\\\\]|\\\\.)*)"`, 'm');
-    const match = content.match(toolSectionRegex);
+    // Look for the alias in the Tool-Specific Initializations section - handle escaped quotes inside the alias value
+    const aliasRegex = new RegExp(`alias ${aliasName}="((?:[^"\\\\]|\\\\.)*)"`, 'm');
+    const match = content.match(aliasRegex);
 
     expect(match).not.toBeNull();
 

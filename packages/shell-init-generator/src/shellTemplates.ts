@@ -89,19 +89,19 @@ export function generateSectionHeader(shellType: ShellType, sectionTitle: string
 
 /**
  * Generates a tool attribution header with file path information.
+ * Uses simplified format: horizontal line, file path, horizontal line.
  * @param shellType - Type of shell for comment syntax
- * @param toolName - Name of the tool
  * @param configFilePath - Path to the tool's configuration file
  * @returns Tool header string
  */
-export function generateToolHeader(shellType: ShellType, toolName: string, configFilePath?: string): string {
+export function generateToolHeader(shellType: ShellType, configFilePath?: string): string {
   const lines = ['', headerLine(shellType, '=')];
 
   if (configFilePath) {
-    lines.push(commentLine(shellType, `Configuration from: ${configFilePath}`));
+    lines.push(commentLine(shellType, configFilePath));
   }
 
-  lines.push(commentLine(shellType, `Tool: ${toolName}`), headerLine(shellType, '='));
+  lines.push(headerLine(shellType, '='));
 
   return lines.join('\n');
 }

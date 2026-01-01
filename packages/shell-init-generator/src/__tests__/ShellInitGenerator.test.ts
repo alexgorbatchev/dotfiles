@@ -177,7 +177,7 @@ describe('ShellInitGenerator', () => {
     expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
     const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
 
-    expect(content).toContain(createSectionHeader('zsh', 'Always Scripts'));
+    expect(content).toContain(createSectionHeader('zsh', 'Tool-Specific Initializations'));
     expect(content).toContain('export TOOL_A_ENABLED=true');
     expect(content).toContain('export TOOL_B_MODE="debug"');
   });
@@ -213,7 +213,7 @@ describe('ShellInitGenerator', () => {
     expect(result?.primaryPath).toBe(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
     const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
 
-    expect(content).toContain(createSectionHeader('zsh', 'Always Scripts'));
+    expect(content).toContain(createSectionHeader('zsh', 'Tool-Specific Initializations'));
     expect(content).toContain('alias ta="toolA --extended"');
     expect(content).toContain('source /opt/toolB/init.sh');
   });
@@ -375,15 +375,15 @@ describe('ShellInitGenerator', () => {
     const content = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
 
     const pathSectionIndex = content.indexOf(createSectionHeader('zsh', 'PATH Modifications'));
-    const alwaysScriptsSectionIndex = content.indexOf(createSectionHeader('zsh', 'Always Scripts'));
+    const toolsSectionIndex = content.indexOf(createSectionHeader('zsh', 'Tool-Specific Initializations'));
     const compSectionIndex = content.indexOf(createSectionHeader('zsh', 'Shell Completions Setup'));
 
     expect(pathSectionIndex).toBeGreaterThan(-1);
-    expect(alwaysScriptsSectionIndex).toBeGreaterThan(-1);
+    expect(toolsSectionIndex).toBeGreaterThan(-1);
     expect(compSectionIndex).toBeGreaterThan(-1);
 
-    expect(pathSectionIndex).toBeLessThan(alwaysScriptsSectionIndex);
-    expect(alwaysScriptsSectionIndex).toBeLessThan(compSectionIndex);
+    expect(pathSectionIndex).toBeLessThan(toolsSectionIndex);
+    expect(toolsSectionIndex).toBeLessThan(compSectionIndex);
   });
 
   it('should deduplicate identical lines within sections', async () => {

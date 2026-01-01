@@ -523,16 +523,16 @@ describe('Profile Updates E2E Tests', () => {
       expect(zshScriptContent).toContain(`export PATH="${testDirs.paths.targetDir}:$PATH"`);
       expect(zshScriptContent).toContain('export PATH="$HOME/.cargo/bin:$PATH"');
 
-      // Check always scripts section
+      // Check tool-specific initializations section (now includes always scripts)
       expect(zshScriptContent).toContain(
-        '# =============================== Always Scripts ================================'
+        '# ======================== Tool-Specific Initializations ========================'
       );
       expect(zshScriptContent).toContain('export EDITOR="nvim"');
       expect(zshScriptContent).toContain('export VISUAL="nvim"');
       expect(zshScriptContent).toContain('export RIPGREP_CONFIG_PATH');
       expect(zshScriptContent).toContain('export BAT_THEME="ansi"');
 
-      // All scripts are now in the Always Scripts section
+      // All scripts are now in the Tool-Specific Initializations section
       expect(zshScriptContent).toContain('alias vim="nvim"');
       expect(zshScriptContent).toContain('alias vi="nvim"');
       expect(zshScriptContent).toContain('alias cat="bat"');

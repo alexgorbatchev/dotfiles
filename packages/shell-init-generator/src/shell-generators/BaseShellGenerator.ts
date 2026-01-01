@@ -110,38 +110,23 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   generateFileContent(toolContents: Map<string, IShellInitContent>): string {
     const allPathModifications: string[] = [];
     const allEnvironmentVariables: string[] = [];
-    const allToolInits: string[] = [];
     const allCompletionSetup: string[] = [];
-    const formattedAlwaysScripts: string[] = [];
     let hasOnceScripts = false;
 
     // Initialize formatters
-    const alwaysFormatter = new AlwaysScriptFormatter();
     const onceInitializer = new OnceScriptInitializer();
 
     // Add default PATH modification first
     allPathModifications.push(generateDefaultPathModification(this.shellType, this.projectConfig.paths.targetDir));
 
-    // Collect content from all tools with proper attribution
-    this.collectContentWithAttribution(
-      toolContents,
-      allPathModifications,
-      allEnvironmentVariables,
-      allToolInits,
-      allCompletionSetup
-    );
+    // Collect hoisted content from all tools
+    this.collectHoistedContent(toolContents, allPathModifications, allEnvironmentVariables, allCompletionSetup);
 
-    // Process branded scripts from all tools
-    for (const [toolName, content] of toolContents) {
-      // Format always scripts
-      for (const script of content.alwaysScripts) {
-        const formatted = alwaysFormatter.format(script, toolName, this.shellType);
-        formattedAlwaysScripts.push(formatted.content);
-      }
-
-      // Check if any tools have once scripts
+    // Check if any tools have once scripts
+    for (const [, content] of toolContents) {
       if (content.onceScripts.length > 0) {
         hasOnceScripts = true;
+        break;
       }
     }
 
@@ -169,14 +154,8 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       'environmentVariables'
     );
 
-    // Add formatted always scripts section
-    if (formattedAlwaysScripts.length > 0) {
-      fileContent += `${generateSectionHeader(this.shellType, 'Always Scripts')}\n`;
-      fileContent += `${formattedAlwaysScripts.join('\n\n')}\n\n`;
-    }
-
-    // Add tool-specific initializations section with file headers
-    fileContent += this.generateToolInitSection(allToolInits, toolContents);
+    // Add tool-specific initializations section with all tool content grouped together
+    fileContent += this.generateToolSection(toolContents);
 
     // Add shell completions setup section
     if (allCompletionSetup.length > 0) {
@@ -184,7 +163,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
       // Use string producer for shell-specific completion setup if available
       const completionSetupStrings = this.stringProducer.generateCompletionSetup
-        ? this.stringProducer.generateCompletionSetup(allCompletionSetup, allToolInits)
+        ? this.stringProducer.generateCompletionSetup(allCompletionSetup, [])
         : [...new Set(allCompletionSetup)];
 
       fileContent += `${completionSetupStrings.join('\n')}\n\n`;
@@ -222,22 +201,75 @@ export abstract class BaseShellGenerator implements IShellGenerator {
   }
 
   /**
-   * Collects content from all tools with proper attribution.
+   * Collects hoisted content from all tools (PATH, env vars, completions).
+   * Tool-specific content (toolInit, alwaysScripts) is handled in generateToolSection.
    */
-  private collectContentWithAttribution(
+  private collectHoistedContent(
     toolContents: Map<string, IShellInitContent>,
     allPathModifications: string[],
     allEnvironmentVariables: string[],
-    allToolInits: string[],
     allCompletionSetup: string[]
   ): void {
     for (const [, content] of toolContents) {
       allPathModifications.push(...content.pathModifications);
       allEnvironmentVariables.push(...content.environmentVariables);
-      allToolInits.push(...content.toolInit);
       allCompletionSetup.push(...content.completionSetup);
-      // Note: onceScripts and alwaysScripts are handled separately in generateFileContent()
     }
+  }
+
+  /**
+   * Generates the tool section with all content grouped under tool headers.
+   * Each tool gets a header followed by its always scripts and tool init content.
+   */
+  private generateToolSection(toolContents: Map<string, IShellInitContent>): string {
+    const alwaysFormatter = new AlwaysScriptFormatter();
+    let hasContent = false;
+
+    // Check if any tool has content to render
+    for (const [, content] of toolContents) {
+      if (content.toolInit.length > 0 || content.alwaysScripts.length > 0) {
+        hasContent = true;
+        break;
+      }
+    }
+
+    if (!hasContent) {
+      return '';
+    }
+
+    let section = `${generateSectionHeader(this.shellType, 'Tool-Specific Initializations')}\n`;
+
+    for (const [toolName, content] of toolContents) {
+      const hasToolContent = content.toolInit.length > 0 || content.alwaysScripts.length > 0;
+
+      if (!hasToolContent) {
+        continue;
+      }
+
+      // Add tool header
+      const toolHeader = generateToolHeader(this.shellType, content.configFilePath);
+      section += toolHeader;
+
+      // Add always scripts for this tool
+      const formattedAlwaysScripts: string[] = [];
+      for (const script of content.alwaysScripts) {
+        const formatted = alwaysFormatter.format(script, toolName, this.shellType);
+        formattedAlwaysScripts.push(formatted.content);
+      }
+
+      if (formattedAlwaysScripts.length > 0) {
+        section += `\n${formattedAlwaysScripts.join('\n\n')}`;
+      }
+
+      // Add tool init (aliases, etc.)
+      if (content.toolInit.length > 0) {
+        section += `\n${content.toolInit.join('\n')}`;
+      }
+
+      section += '\n';
+    }
+
+    return `${section}\n`;
   }
 
   /**
@@ -285,36 +317,6 @@ export abstract class BaseShellGenerator implements IShellGenerator {
         }
         section += `${item}\n`;
       }
-    }
-
-    return `${section}\n`;
-  }
-
-  /**
-   * Generates the tool-specific initialization section with file path headers.
-   */
-  private generateToolInitSection(allToolInits: string[], toolContents: Map<string, IShellInitContent>): string {
-    if (allToolInits.length === 0) return '';
-
-    let section = `${generateSectionHeader(this.shellType, 'Tool-Specific Initializations')}\n`;
-
-    // Group tool inits by tool
-    const toolGroups = new Map<string, { content: string[]; filePath?: string }>();
-
-    for (const [toolName, content] of toolContents) {
-      if (content.toolInit.length > 0) {
-        toolGroups.set(toolName, {
-          content: content.toolInit,
-          filePath: content.configFilePath,
-        });
-      }
-    }
-
-    // Generate content for each tool with proper headers
-    for (const [toolName, { content, filePath }] of toolGroups) {
-      const toolHeader = generateToolHeader(this.shellType, toolName, filePath);
-      section += `${toolHeader}\n`;
-      section += `${content.join('\n')}\n`;
     }
 
     return `${section}\n`;
