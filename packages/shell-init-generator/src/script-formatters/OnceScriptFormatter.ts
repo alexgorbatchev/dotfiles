@@ -7,13 +7,15 @@ import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatte
 /**
  * Formatter for once scripts - generates individual executable files in .once/ directory
  * that self-delete after execution. Uses subshells (bash/zsh) or try-finally blocks (PowerShell)
- * to prevent variable pollution in the parent shell.
+ * to prevent variable pollution in the parent shell. Overrides HOME to use the configured home directory.
  */
 export class OnceScriptFormatter implements IScriptFormatter {
   private readonly shellScriptsDir: string;
+  private readonly homeDir: string;
 
-  constructor(shellScriptsDir: string) {
+  constructor(shellScriptsDir: string, homeDir: string) {
     this.shellScriptsDir = shellScriptsDir;
+    this.homeDir = homeDir;
   }
 
   format(script: ShellScript, toolName: string, shellType: ShellType, scriptIndex: number = 0): IFormattedScriptOutput {
@@ -66,11 +68,13 @@ export class OnceScriptFormatter implements IScriptFormatter {
       `
       # Generated once script - will self-delete after execution
       (
+        HOME="{homeDir}"
         {scriptContent}
       )
       rm "{outputPath}"
     `,
       {
+        homeDir: this.homeDir,
         scriptContent,
         outputPath,
       }
@@ -82,11 +86,13 @@ export class OnceScriptFormatter implements IScriptFormatter {
       `
       # Generated once script - will self-delete after execution
       (
+        HOME="{homeDir}"
         {scriptContent}
       )
       rm "{outputPath}"
     `,
       {
+        homeDir: this.homeDir,
         scriptContent,
         outputPath,
       }
@@ -97,12 +103,22 @@ export class OnceScriptFormatter implements IScriptFormatter {
     return dedentTemplate(
       `
       # Generated once script - will self-delete after execution
+      $homeOrig = $env:HOME
+      $userProfileOrig = $env:USERPROFILE
       try {
+        $env:HOME = "{homeDir}"
+        $env:USERPROFILE = "{homeDir}"
         {scriptContent}
-      } finally {}
+      } finally {
+        $env:HOME = $homeOrig
+        $env:USERPROFILE = $userProfileOrig
+        Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
+        Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
+      }
       Remove-Item "{outputPath}"
     `,
       {
+        homeDir: this.homeDir,
         scriptContent,
         outputPath,
       }

@@ -8,14 +8,15 @@ import '@dotfiles/testing-helpers';
 
 describe('OnceScriptFormatter', () => {
   const shellScriptsDir = '/test/shell-scripts';
+  const homeDir = '/test/home';
   let formatter: OnceScriptFormatter;
 
   beforeEach(() => {
-    formatter = new OnceScriptFormatter(shellScriptsDir);
+    formatter = new OnceScriptFormatter(shellScriptsDir, homeDir);
   });
 
   describe('bash shell', () => {
-    it('should generate properly formatted once script with subshell wrapping', () => {
+    it('should generate properly formatted once script with subshell wrapping and HOME override', () => {
       const script = once`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
@@ -29,6 +30,7 @@ describe('OnceScriptFormatter', () => {
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
         (
+          HOME="/test/home"
           echo "Setting up tool..."
           export TOOL_PATH="/usr/local/bin/tool"
           echo "Tool setup complete"
@@ -53,6 +55,7 @@ describe('OnceScriptFormatter', () => {
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
         (
+          HOME="/test/home"
           if [ -f ~/.bashrc ]; then
             echo "Found bashrc"
             source ~/.bashrc
@@ -67,7 +70,7 @@ describe('OnceScriptFormatter', () => {
   });
 
   describe('zsh shell', () => {
-    it('should generate properly formatted once script with subshell wrapping', () => {
+    it('should generate properly formatted once script with subshell wrapping and HOME override', () => {
       const script = once`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
@@ -81,6 +84,7 @@ describe('OnceScriptFormatter', () => {
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
         (
+          HOME="/test/home"
           echo "Setting up tool..."
           export TOOL_PATH="/usr/local/bin/tool"
           echo "Tool setup complete"
@@ -105,6 +109,7 @@ describe('OnceScriptFormatter', () => {
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
         (
+          HOME="/test/home"
           if [ -f ~/.bashrc ]; then
             echo "Found bashrc"
             source ~/.bashrc
@@ -119,7 +124,7 @@ describe('OnceScriptFormatter', () => {
   });
 
   describe('powershell shell', () => {
-    it('should generate properly formatted once script with try-finally wrapping', () => {
+    it('should generate properly formatted once script with HOME override and restoration', () => {
       const script = once`
         Write-Host "Setting up tool..."
         $env:TOOL_PATH = "/usr/local/bin/tool"
@@ -132,11 +137,20 @@ describe('OnceScriptFormatter', () => {
       expect(result.outputPath).toBe(path.join(shellScriptsDir, '.once', 'test-tool-0.ps1'));
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
+        $homeOrig = $env:HOME
+        $userProfileOrig = $env:USERPROFILE
         try {
+          $env:HOME = "/test/home"
+          $env:USERPROFILE = "/test/home"
           Write-Host "Setting up tool..."
           $env:TOOL_PATH = "/usr/local/bin/tool"
           Write-Host "Tool setup complete"
-        } finally {}
+        } finally {
+          $env:HOME = $homeOrig
+          $env:USERPROFILE = $userProfileOrig
+          Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
+          Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
+        }
         Remove-Item "/test/shell-scripts/.once/test-tool-0.ps1"
       `;
     });
@@ -156,7 +170,11 @@ describe('OnceScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         # Generated once script - will self-delete after execution
+        $homeOrig = $env:HOME
+        $userProfileOrig = $env:USERPROFILE
         try {
+          $env:HOME = "/test/home"
+          $env:USERPROFILE = "/test/home"
           if (Test-Path ~/.bashrc) {
             Write-Host "Found bashrc"
             . ~/.bashrc
@@ -164,7 +182,12 @@ describe('OnceScriptFormatter', () => {
           Get-ChildItem ~/.config/* | ForEach-Object {
             Write-Host "Processing: $_"
           }
-        } finally {}
+        } finally {
+          $env:HOME = $homeOrig
+          $env:USERPROFILE = $userProfileOrig
+          Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
+          Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
+        }
         Remove-Item "/test/shell-scripts/.once/complex-tool-1.ps1"
       `;
     });

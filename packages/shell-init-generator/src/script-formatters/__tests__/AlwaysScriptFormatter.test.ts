@@ -5,14 +5,15 @@ import { AlwaysScriptFormatter } from '../AlwaysScriptFormatter';
 import '@dotfiles/testing-helpers';
 
 describe('AlwaysScriptFormatter', () => {
+  const homeDir = '/test/home';
   let formatter: AlwaysScriptFormatter;
 
   beforeEach(() => {
-    formatter = new AlwaysScriptFormatter();
+    formatter = new AlwaysScriptFormatter(homeDir);
   });
 
   describe('bash shell', () => {
-    it('should generate properly formatted always script with subshell wrapping', () => {
+    it('should generate properly formatted always script with subshell wrapping and HOME override', () => {
       const script = always`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
@@ -24,6 +25,7 @@ describe('AlwaysScriptFormatter', () => {
       expect(result.requiresExecution).toBe(false);
       expect(result.content).toMatchLooseInlineSnapshot`
         (
+          HOME="/test/home"
           echo "Setting up tool..."
           export TOOL_PATH="/usr/local/bin/tool"
           echo "Tool setup complete"
@@ -47,6 +49,7 @@ describe('AlwaysScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         (
+          HOME="/test/home"
           if [ -f ~/.bashrc ]; then
             echo "Found bashrc"
             source ~/.bashrc
@@ -61,7 +64,7 @@ describe('AlwaysScriptFormatter', () => {
   });
 
   describe('zsh shell', () => {
-    it('should generate properly formatted always script with subshell wrapping', () => {
+    it('should generate properly formatted always script with subshell wrapping and HOME override', () => {
       const script = always`
         echo "Setting up tool..."
         export TOOL_PATH="/usr/local/bin/tool"
@@ -73,6 +76,7 @@ describe('AlwaysScriptFormatter', () => {
       expect(result.requiresExecution).toBe(false);
       expect(result.content).toMatchLooseInlineSnapshot`
         (
+          HOME="/test/home"
           echo "Setting up tool..."
           export TOOL_PATH="/usr/local/bin/tool"
           echo "Tool setup complete"
@@ -96,6 +100,7 @@ describe('AlwaysScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         (
+          HOME="/test/home"
           if [ -f ~/.zshrc ]; then
             echo "Found zshrc"
             source ~/.zshrc
@@ -110,7 +115,7 @@ describe('AlwaysScriptFormatter', () => {
   });
 
   describe('powershell shell', () => {
-    it('should generate properly formatted always script with try-finally wrapping', () => {
+    it('should generate properly formatted always script with HOME override and restoration', () => {
       const script = always`
         Write-Host "Setting up tool..."
         $env:TOOL_PATH = "/usr/local/bin/tool"
@@ -121,11 +126,20 @@ describe('AlwaysScriptFormatter', () => {
 
       expect(result.requiresExecution).toBe(false);
       expect(result.content).toMatchLooseInlineSnapshot`
+        $homeOrig = $env:HOME
+        $userProfileOrig = $env:USERPROFILE
         try {
+          $env:HOME = "/test/home"
+          $env:USERPROFILE = "/test/home"
           Write-Host "Setting up tool..."
           $env:TOOL_PATH = "/usr/local/bin/tool"
           Write-Host "Tool setup complete"
-        } finally {}
+        } finally {
+          $env:HOME = $homeOrig
+          $env:USERPROFILE = $userProfileOrig
+          Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
+          Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
+        }
       `;
     });
 
@@ -144,7 +158,11 @@ describe('AlwaysScriptFormatter', () => {
       const result = formatter.format(script, 'complex-tool', 'powershell');
 
       expect(result.content).toMatchLooseInlineSnapshot`
+        $homeOrig = $env:HOME
+        $userProfileOrig = $env:USERPROFILE
         try {
+          $env:HOME = "/test/home"
+          $env:USERPROFILE = "/test/home"
           if (Test-Path ~/.bashrc) {
             Write-Host "Found bashrc"
             . ~/.bashrc
@@ -153,7 +171,12 @@ describe('AlwaysScriptFormatter', () => {
           Get-ChildItem ~/.config/* | ForEach-Object {
             Write-Host "Processing: $_"
           }
-        } finally {}
+        } finally {
+          $env:HOME = $homeOrig
+          $env:USERPROFILE = $userProfileOrig
+          Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
+          Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
+        }
       `;
     });
   });

@@ -5,9 +5,15 @@ import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatte
 
 /**
  * Formatter for always scripts - wraps them in subshells (bash/zsh) or try-finally blocks (PowerShell)
- * to prevent variable pollution in the parent shell
+ * to prevent variable pollution in the parent shell. Overrides HOME to use the configured home directory.
  */
 export class AlwaysScriptFormatter implements IScriptFormatter {
+  private readonly homeDir: string;
+
+  constructor(homeDir: string) {
+    this.homeDir = homeDir;
+  }
+
   format(script: ShellScript, _toolName: string, shellType: ShellType): IFormattedScriptOutput {
     if (!isAlwaysScript(script)) {
       throw new Error(`AlwaysScriptFormatter can only format AlwaysScript, received: ${typeof script}`);
@@ -39,21 +45,31 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
     return dedentTemplate(
       `
       (
+        HOME="{homeDir}"
         {scriptContent}
       )
       `,
-      { scriptContent: dedentString(scriptContent) }
+      { homeDir: this.homeDir, scriptContent: dedentString(scriptContent) }
     );
   }
 
   private generatePowerShellScript(scriptContent: string): string {
     return dedentTemplate(
       `
+      $homeOrig = $env:HOME
+      $userProfileOrig = $env:USERPROFILE
       try {
+        $env:HOME = "{homeDir}"
+        $env:USERPROFILE = "{homeDir}"
         {scriptContent}
-      } finally {}
+      } finally {
+        $env:HOME = $homeOrig
+        $env:USERPROFILE = $userProfileOrig
+        Remove-Variable -Name 'homeOrig' -ErrorAction SilentlyContinue
+        Remove-Variable -Name 'userProfileOrig' -ErrorAction SilentlyContinue
+      }
       `,
-      { scriptContent: dedentString(scriptContent) }
+      { homeDir: this.homeDir, scriptContent: dedentString(scriptContent) }
     );
   }
 }
