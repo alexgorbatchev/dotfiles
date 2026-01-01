@@ -1,4 +1,4 @@
-import type { ShellCompletionConfig, ShellScript } from '@dotfiles/core';
+import type { ShellCompletionConfigInput, ShellScript } from '@dotfiles/core';
 
 /**
  * Internal storage for shell configuration.
@@ -28,9 +28,10 @@ export interface IShellStorage {
   functions: Record<string, string>;
 
   /**
-   * Configuration for shell completions.
+   * Resolvable configuration for shell completions.
+   * Stored as the raw input and resolved at generation time when version is known.
    */
-  completions?: ShellCompletionConfig;
+  completions?: ShellCompletionConfigInput;
 }
 
 /**

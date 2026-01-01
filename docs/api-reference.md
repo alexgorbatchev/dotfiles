@@ -65,11 +65,19 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 
 | Shell Method | Description |
 |--------------|-------------|
-| `.completions(path)` | Path to completion file |
+| `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` |
 | `.environment(obj)` | Environment variables |
 | `.aliases(obj)` | Shell aliases |
 | `.always(script)` | Script run on every shell init |
 | `.once(script)` | Script run once after install |
+
+**Completions examples:**
+```typescript
+.completions('completions/_tool')                    // Static path
+.completions({ cmd: 'tool completion zsh' })         // Command
+.completions({ url: 'https://...' })                 // URL
+.completions((ctx) => ({ url: `.../${ctx.version}/_tool` }))  // Version-dependent URL
+```
 
 ## defineConfig
 

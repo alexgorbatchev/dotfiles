@@ -36,6 +36,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateCompletionFile(config, 'test-tool', 'zsh', context);
@@ -46,7 +47,7 @@ describe('CompletionGenerator', () => {
     expect(result.targetPath).toContain('completions/_test-tool');
   });
 
-  test('should validate config requires either source or cmd', async () => {
+  test('should validate config requires either source, cmd, or url', async () => {
     const config: ShellCompletionConfig = {};
 
     const context: ICompletionGenerationContext = {
@@ -54,10 +55,11 @@ describe('CompletionGenerator', () => {
       toolInstallDir: '/tmp/test',
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     expect(generator.generateCompletionFile(config, 'test-tool', 'zsh', context)).rejects.toThrow(
-      "either 'cmd' or 'source' must be provided"
+      "either 'cmd', 'source', or 'url' must be provided"
     );
   });
 
@@ -71,6 +73,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const zshResult = await generator.generateCompletionFile(config, 'my-tool', 'zsh', context);
@@ -94,6 +97,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateCompletionFile(config, 'my-tool', 'zsh', context);
@@ -111,6 +115,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateCompletionFile(config, 'my-tool', 'zsh', context);
@@ -127,6 +132,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     await generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context);
@@ -150,6 +156,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateAndWriteCompletionFile(config, 'my-tool', 'bash', context);
@@ -178,6 +185,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: '/install/tool',
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context);
@@ -207,6 +215,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: '/install/tool',
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateAndWriteCompletionFile(config, 'rg', 'zsh', context);
@@ -230,6 +239,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: '/install/tool',
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     expect(generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context)).rejects.toThrow(
@@ -248,6 +258,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateCompletionFile(config, 'curl-script--fnm', 'zsh', context);
@@ -267,6 +278,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const bashResult = await generator.generateCompletionFile(config, 'github--fd', 'bash', context);
@@ -286,6 +298,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateCompletionFile(config, 'ripgrep', 'zsh', context);
@@ -304,6 +317,7 @@ describe('CompletionGenerator', () => {
       toolInstallDir: realTempDir,
       shellScriptsDir: '/tmp/shell-scripts',
       homeDir: '/tmp/home',
+      version: '1.0.0',
     };
 
     const result = await generator.generateCompletionFile(config, 'curl-script--fnm', 'zsh', context);

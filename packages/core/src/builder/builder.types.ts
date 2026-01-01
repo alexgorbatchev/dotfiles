@@ -5,6 +5,7 @@
  * Plugin types are loaded via module augmentation from installer packages.
  */
 
+import type { Resolvable } from '@dotfiles/unwrap-value';
 import type { Architecture, IBaseToolContext, Platform } from '../common';
 import type {
   AsyncInstallHook,
@@ -15,6 +16,7 @@ import type {
 } from '../installer';
 import type { AlwaysScript, OnceScript } from '../shell';
 import type { IInstallParamsRegistry, ToolConfig } from '../types';
+import type { ICompletionContext } from './ICompletionContext';
 
 /**
  * Configuration options for shell completions in tool definitions.
@@ -43,7 +45,9 @@ export interface IShellCompletionConfigOptions {
    * Path to a static completion file within the tool's extracted archive.
    * The path is relative to the archive root and resolved automatically during installation.
    *
-   * Either `source` or `cmd` must be provided, but not both.
+   * When used with `url`, this is the path within the downloaded archive or the filename for direct downloads.
+   *
+   * Either `source` or `cmd` must be provided, but not both (unless using `url`).
    *
    * @example 'completions/_tool.zsh'
    * @example '*\/complete/_rg' // Glob pattern to match versioned directories
@@ -51,11 +55,27 @@ export interface IShellCompletionConfigOptions {
   source?: string;
 
   /**
+   * URL to download the completion file or archive from.
+   * The file is downloaded to the tool's binary directory during shell script generation.
+   *
+   * Must be used together with `source` to specify the path/filename after download.
+   * Cannot be combined with `cmd`.
+   *
+   * @example
+   * // Direct file download
+   * url: 'https://raw.githubusercontent.com/user/repo/main/_mycli'
+   *
+   * // Archive download (will be extracted, source points to file within)
+   * url: 'https://github.com/user/repo/releases/download/v1.0/completions.tar.gz'
+   */
+  url?: string;
+
+  /**
    * Command to run to generate completion content dynamically.
    * The command executes in the tool's installation directory during shell script generation.
    * The tool must be installed before this command can run successfully.
    *
-   * Either `source` or `cmd` must be provided, but not both.
+   * Cannot be combined with `source` or `url`.
    *
    * @example 'tool completion zsh'
    * @example 'fnm completions --shell zsh'
@@ -92,10 +112,36 @@ export interface IShellCompletionConfigOptions {
 }
 
 /**
- * Input type for configuring shell completions.
- * Accepts either a simple string path (interpreted as `source`) or a full configuration object.
+ * Static completion configuration value (string path or options object).
+ * Used when completion configuration is known at definition time.
  */
-export type ShellCompletionConfigInput = string | IShellCompletionConfigOptions;
+export type ShellCompletionConfigValue = string | IShellCompletionConfigOptions;
+
+/**
+ * Input type for configuring shell completions.
+ *
+ * Accepts either:
+ * - A static value: string path (interpreted as `source`) or configuration object
+ * - A callback: function receiving completion context, returns static value
+ *
+ * Use callbacks when completion configuration depends on runtime values like version.
+ *
+ * @example
+ * // Static string path
+ * shell.completions('completions/_tool.zsh')
+ *
+ * @example
+ * // Static configuration object
+ * shell.completions({ cmd: 'tool completion zsh' })
+ *
+ * @example
+ * // Callback for version-dependent URL
+ * shell.completions((ctx) => ({
+ *   url: `https://github.com/user/repo/releases/download/${ctx.version}/completions.tar.gz`,
+ *   source: 'completions/_tool.zsh'
+ * }))
+ */
+export type ShellCompletionConfigInput = Resolvable<ICompletionContext, ShellCompletionConfigValue>;
 
 /**
  * Install params come from plugins via IInstallParamsRegistry module augmentation.
@@ -190,6 +236,7 @@ export interface IShellConfigurator {
 
 export type ShellConfiguratorSyncResult = IShellConfigurator | undefined;
 export type ShellConfiguratorAsyncResult = Promise<ShellConfiguratorSyncResult>;
+
 export type ShellConfiguratorCallback = (shell: IShellConfigurator) => ShellConfiguratorSyncResult;
 export type ShellConfiguratorAsyncCallback = (shell: IShellConfigurator) => ShellConfiguratorAsyncResult;
 

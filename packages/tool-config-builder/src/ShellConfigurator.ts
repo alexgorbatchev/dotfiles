@@ -4,7 +4,6 @@ import type {
   IShellConfigurator,
   IToolConfigContext,
   OnceScript,
-  ShellCompletionConfig,
   ShellCompletionConfigInput,
 } from '@dotfiles/core';
 import { always, once } from '@dotfiles/core';
@@ -12,14 +11,6 @@ import type { TsLogger } from '@dotfiles/logger';
 import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
 import { messages } from './log-messages';
 import type { IShellStorage, ShellTypeKey } from './types';
-
-interface ICompletionOptions {
-  source?: string;
-  cmd?: string;
-  bin?: string;
-  name?: string;
-  targetDir?: string;
-}
 
 /**
  * Implementation of the shell configurator interface.
@@ -74,8 +65,9 @@ export class ShellConfigurator implements IShellConfigurator {
 
   /** @inheritdoc */
   public completions(completion: ShellCompletionConfigInput): IShellConfigurator {
-    const completionConfig: ShellCompletionConfig = this.createCompletionConfig(completion);
-    this.storage.completions = completionConfig;
+    // Store the raw resolvable input - resolution happens at generation time
+    // when version and other context properties are available
+    this.storage.completions = completion;
     return this;
   }
 
@@ -122,77 +114,6 @@ export class ShellConfigurator implements IShellConfigurator {
     }
 
     return result;
-  }
-
-  /**
-   * Creates a completion configuration object from the input.
-   * Handles both string paths and configuration objects.
-   */
-  private createCompletionConfig(completion: ShellCompletionConfigInput): ShellCompletionConfig {
-    if (typeof completion === 'string') {
-      const completionConfig: ShellCompletionConfig = this.createCompletionConfigFromSource(completion);
-      return completionConfig;
-    }
-
-    const completionConfig: ShellCompletionConfig = this.createCompletionConfigFromOptions({
-      source: completion.source,
-      cmd: completion.cmd,
-      bin: completion.bin,
-      name: completion.name,
-      targetDir: completion.targetDir,
-    });
-    return completionConfig;
-  }
-
-  /**
-   * Creates a completion configuration from a simple source path string.
-   */
-  private createCompletionConfigFromSource(sourcePath: string): ShellCompletionConfig {
-    const normalizedSource = this.normalizeCompletionSource(sourcePath);
-    const completionConfig: ShellCompletionConfig = {
-      source: normalizedSource,
-    };
-    return completionConfig;
-  }
-
-  /**
-   * Creates a completion configuration from options that can include source, cmd, or both.
-   */
-  private createCompletionConfigFromOptions(options: ICompletionOptions): ShellCompletionConfig {
-    const completionConfig: ShellCompletionConfig = {
-      ...(options.source ? { source: this.normalizeCompletionSource(options.source) } : {}),
-      ...(options.cmd ? { cmd: options.cmd } : {}),
-      ...(options.bin ? { bin: options.bin } : {}),
-      ...(options.name ? { name: options.name } : {}),
-      ...(options.targetDir ? { targetDir: options.targetDir } : {}),
-    };
-
-    if (!completionConfig.source && !completionConfig.cmd) {
-      const message = messages.configurationFieldInvalid(
-        'shell completion config',
-        'completions',
-        'either source or cmd must be provided'
-      );
-      this.logger.error(message);
-      throw new Error(message);
-    }
-
-    return completionConfig;
-  }
-
-  /**
-   * Validates and normalizes a completion source path.
-   * Throws if the path is empty.
-   */
-  private normalizeCompletionSource(sourcePath: string): string {
-    const trimmedPath = sourcePath.trim();
-    if (trimmedPath.length === 0) {
-      const message = messages.configurationFieldInvalid('shell completion source path', sourcePath, 'non-empty value');
-      this.logger.error(message);
-      throw new Error(message);
-    }
-
-    return trimmedPath;
   }
 
   /**

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ShellTypeConfig } from './shellTypeConfigSchema';
 import { shellTypeConfigSchema } from './shellTypeConfigSchema';
 
 export const shellConfigsSchema = z
@@ -13,6 +14,14 @@ export const shellConfigsSchema = z
   .strict();
 
 /**
- * Shell configuration organized by shell type
+ * Shell configuration organized by shell type.
+ * Manually typed to properly represent ShellCompletionConfigInput in completions.
  */
-export type ShellConfigs = z.infer<typeof shellConfigsSchema>;
+export interface ShellConfigs {
+  /** Zsh shell configuration */
+  zsh?: ShellTypeConfig;
+  /** Bash shell configuration */
+  bash?: ShellTypeConfig;
+  /** PowerShell configuration */
+  powershell?: ShellTypeConfig;
+}

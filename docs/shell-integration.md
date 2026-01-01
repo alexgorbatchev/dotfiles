@@ -10,6 +10,12 @@ Configure shell environments, aliases, completions, and functions.
 | `.bash(callback)` | Bash |
 | `.powershell(callback)` | PowerShell |
 
+Each callback receives:
+- `shell` - Shell configurator for setting up environment, aliases, completions, etc.
+- `ctx` - Context with `version` property (only available after installation)
+
+For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), use the outer `ctx` from `defineTool`.
+
 ## Configurator Methods
 
 ```typescript
@@ -94,46 +100,54 @@ For fast inline operations. Runs in a subshell with HOME override:
 For expensive operations:
 
 ```typescript
-.zsh((shell) =>
-  shell.once(`
-    tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
-  `)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell.once(`
+        tool gen-completions --zsh > "${ctx.projectConfig.paths.generatedDir}/completions/_tool"
+      `)
+    )
 )
 ```
 
 ## Cross-Shell Configuration
 
-Share configuration across shells:
+Share configuration across shells using the outer `ctx` from `defineTool`:
 
 ```typescript
-const configureShell = (shell, ctx) =>
-  shell
-    .environment({ TOOL_HOME: ctx.currentDir })
-    .aliases({ t: 'tool' });
+export default defineTool((install, ctx) => {
+  const configureShell = (shell) =>
+    shell
+      .environment({ TOOL_HOME: ctx.currentDir })
+      .aliases({ t: 'tool' });
 
-export default defineTool((install, ctx) =>
-  install('github-release', { repo: 'owner/tool' })
+  return install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .zsh((shell) => configureShell(shell, ctx))
-    .bash((shell) => configureShell(shell, ctx))
-);
+    .zsh(configureShell)
+    .bash(configureShell);
+});
 ```
 
 ## Path References
 
-Always use context variables:
+Always use context variables from the outer `ctx`:
 
 ```typescript
-.zsh((shell) =>
-  shell
-    .environment({
-      TOOL_CONFIG: ctx.toolDir,                              // Tool config directory
-      TOOL_DATA: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`,
-    })
-    .always(`
-      FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
-      [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
-    `)
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .zsh((shell) =>
+      shell
+        .environment({
+          TOOL_CONFIG: ctx.toolDir,                              // Tool config directory
+          TOOL_DATA: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`,
+        })
+        .always(`
+          FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
+          [[ -d "$FZF_DIR" ]] && export FZF_BASE="$FZF_DIR"
+        `)
+    )
 )
 ```
 

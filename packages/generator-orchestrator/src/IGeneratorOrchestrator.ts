@@ -38,7 +38,8 @@ export interface IGeneratorOrchestrator {
    *
    * @param toolName - The name of the tool to generate completions for.
    * @param toolConfig - The tool configuration containing completion settings.
+   * @param version - Optional version of the installed tool for URL/source interpolation.
    * @returns A promise that resolves when completion generation is complete.
    */
-  generateCompletionsForTool(toolName: string, toolConfig: ToolConfig): Promise<void>;
+  generateCompletionsForTool(toolName: string, toolConfig: ToolConfig, version?: string): Promise<void>;
 }

@@ -1,5 +1,7 @@
 import path from 'node:path';
-import type { ShellCompletionConfig, ShellType } from '@dotfiles/core';
+import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
+import type { ArchiveFormat, ShellCompletionConfig, ShellType } from '@dotfiles/core';
+import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
@@ -13,15 +15,31 @@ import type {
   IGeneratedCompletion,
 } from './types';
 
+const ARCHIVE_EXTENSIONS: ArchiveFormat[] = ['tar.gz', 'tar.xz', 'tar.bz2', 'zip', 'tar', 'tar.lzma', '7z'];
+
+export interface ICompletionGeneratorDependencies {
+  downloader?: IDownloader;
+  archiveExtractor?: IArchiveExtractor;
+}
+
 export class CompletionGenerator implements ICompletionGenerator {
   private readonly logger: TsLogger;
   private readonly commandExecutor: ICompletionCommandExecutor;
   private readonly fs: IFileSystem;
+  private readonly downloader?: IDownloader;
+  private readonly archiveExtractor?: IArchiveExtractor;
 
-  constructor(parentLogger: TsLogger, fs: IFileSystem, commandExecutor?: ICompletionCommandExecutor) {
+  constructor(
+    parentLogger: TsLogger,
+    fs: IFileSystem,
+    commandExecutor?: ICompletionCommandExecutor,
+    deps?: ICompletionGeneratorDependencies
+  ) {
     this.logger = parentLogger.getSubLogger({ name: 'CompletionGenerator' });
     this.fs = fs;
     this.commandExecutor = commandExecutor || new CompletionCommandExecutor(this.logger);
+    this.downloader = deps?.downloader;
+    this.archiveExtractor = deps?.archiveExtractor;
   }
 
   async generateCompletionFile(
@@ -33,13 +51,97 @@ export class CompletionGenerator implements ICompletionGenerator {
     const logger = this.logger.getSubLogger({ name: 'generateCompletionFile' }).setPrefix(toolName);
     logger.debug(messages.generationStarted(toolName, shellType));
 
+    // If URL is provided, download the completion file/archive first
+    if (config.url) {
+      await this.downloadCompletionFromUrl(config.url, context.toolInstallDir, toolName);
+    }
+
+    // Derive source from URL if not explicitly provided
+    const effectiveSource = config.source || (config.url ? this.getFilenameFromUrl(config.url) : undefined);
+
     if (config.cmd) {
       return this.generateFromCommand(config, toolName, shellType, context);
-    } else if (config.source) {
-      return this.generateFromSource(config, toolName, shellType, context);
+    } else if (effectiveSource) {
+      const effectiveConfig: ShellCompletionConfig = { ...config, source: effectiveSource };
+      return this.generateFromSource(effectiveConfig, toolName, shellType, context);
     } else {
-      throw new Error(`Invalid completion config for ${toolName}: either 'cmd' or 'source' must be provided`);
+      throw new Error(`Invalid completion config for ${toolName}: either 'cmd', 'source', or 'url' must be provided`);
     }
+  }
+
+  /**
+   * Downloads a completion file or archive from a URL.
+   * If the URL points to an archive, it will be extracted to the tool's install directory.
+   */
+  private async downloadCompletionFromUrl(url: string, toolInstallDir: string, toolName: string): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'downloadCompletionFromUrl' }).setPrefix(toolName);
+
+    if (!this.downloader) {
+      throw new Error('Downloader not provided - cannot download completion from URL');
+    }
+
+    logger.info(messages.downloadingCompletion(url));
+
+    // Ensure the tool install directory exists
+    await this.fs.ensureDir(toolInstallDir);
+
+    const filename = this.getFilenameFromUrl(url);
+    const downloadPath = path.join(toolInstallDir, filename);
+
+    // Check if already downloaded
+    if (await this.fs.exists(downloadPath)) {
+      logger.debug(messages.completionAlreadyDownloaded(downloadPath));
+      return;
+    }
+
+    await this.downloader.downloadToFile(url, downloadPath);
+    logger.debug(messages.completionDownloaded(downloadPath));
+
+    // Check if it's an archive that needs extraction
+    const archiveFormat = this.detectArchiveFormat(filename);
+    if (archiveFormat) {
+      await this.extractCompletionArchive(downloadPath, toolInstallDir, toolName);
+    }
+  }
+
+  /**
+   * Extracts a completion archive to the tool's install directory.
+   */
+  private async extractCompletionArchive(archivePath: string, toolInstallDir: string, toolName: string): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'extractCompletionArchive' }).setPrefix(toolName);
+
+    if (!this.archiveExtractor) {
+      throw new Error('Archive extractor not provided - cannot extract completion archive');
+    }
+
+    logger.debug(messages.extractingCompletionArchive(archivePath));
+    await this.archiveExtractor.extract(archivePath, {
+      targetDir: toolInstallDir,
+    });
+    logger.debug(messages.completionArchiveExtracted(toolInstallDir));
+  }
+
+  /**
+   * Extracts the filename from a URL.
+   */
+  private getFilenameFromUrl(url: string): string {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const filename = path.basename(pathname);
+    return filename || 'completion-download';
+  }
+
+  /**
+   * Detects if a filename indicates an archive format.
+   */
+  private detectArchiveFormat(filename: string): ArchiveFormat | null {
+    const lowerFilename = filename.toLowerCase();
+    for (const format of ARCHIVE_EXTENSIONS) {
+      if (lowerFilename.endsWith(`.${format}`)) {
+        return format;
+      }
+    }
+    return null;
   }
 
   /**

@@ -6,10 +6,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@dotfiles/archive-extractor": "workspace:*",
     "@dotfiles/config": "workspace:*",
+    "@dotfiles/core": "workspace:*",
+    "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/core": "workspace:*",
     "@dotfiles/utils": "workspace:*"
   },
   "devDependencies": {

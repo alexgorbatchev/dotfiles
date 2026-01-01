@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
+import assert from 'node:assert';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
@@ -349,6 +350,46 @@ describe('GeneratorOrchestrator', () => {
           await orchestrator.generateCompletionsForTool(toolName, toolConfig);
 
           logger.expect(['INFO'], ['GeneratorOrchestrator', 'generateCompletionsForTool'], [expectedCompletionPath]);
+        });
+
+        it('should resolve callback-based completions with context', async () => {
+          const toolName = 'test-tool';
+          const expectedCompletionPath = '/path/_test-tool';
+
+          (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mockResolvedValue({
+            content: '# completion',
+            filename: '_test-tool',
+            targetPath: expectedCompletionPath,
+            generatedBy: 'url',
+          });
+
+          const completionsCallback = (ctx: { version?: string }) => ({
+            url: `https://example.com/completions/${ctx.version}/completion.zsh`,
+          });
+
+          const toolConfig: ToolConfig = {
+            name: toolName,
+            binaries: ['test-tool'],
+            version: '2.5.0',
+            installationMethod: 'manual',
+            installParams: {},
+            shellConfigs: {
+              zsh: {
+                scripts: [],
+                completions: completionsCallback,
+              },
+            },
+          };
+
+          await orchestrator.generateCompletionsForTool(toolName, toolConfig);
+
+          // Verify the completion generator was called with resolved URL containing the version
+          expect(mockCompletionGenerator.generateAndWriteCompletionFile).toHaveBeenCalled();
+          const calls = (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mock.calls;
+          const firstCall = calls[0];
+          assert(firstCall);
+          // First arg is the completion config with resolved URL
+          expect(firstCall[0].url).toBe('https://example.com/completions/2.5.0/completion.zsh');
         });
       });
 

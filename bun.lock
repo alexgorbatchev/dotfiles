@@ -129,6 +129,7 @@
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/installer-manual": "workspace:*",
         "@dotfiles/logger": "workspace:*",
+        "@dotfiles/unwrap-value": "workspace:*",
         "type-fest": "catalog:",
         "zod": "catalog:",
       },
@@ -220,6 +221,7 @@
         "@dotfiles/shell-init-generator": "workspace:*",
         "@dotfiles/shim-generator": "workspace:*",
         "@dotfiles/symlink-generator": "workspace:*",
+        "@dotfiles/unwrap-value": "workspace:*",
         "@dotfiles/utils": "workspace:*",
       },
       "devDependencies": {
@@ -429,8 +431,10 @@
       "name": "@dotfiles/shell-init-generator",
       "version": "1.0.0",
       "dependencies": {
+        "@dotfiles/archive-extractor": "workspace:*",
         "@dotfiles/config": "workspace:*",
         "@dotfiles/core": "workspace:*",
+        "@dotfiles/downloader": "workspace:*",
         "@dotfiles/file-system": "workspace:*",
         "@dotfiles/logger": "workspace:*",
         "@dotfiles/utils": "workspace:*",

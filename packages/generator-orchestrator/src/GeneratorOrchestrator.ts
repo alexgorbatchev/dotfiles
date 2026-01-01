@@ -1,6 +1,14 @@
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ShellType, ToolConfig } from '@dotfiles/core';
+import type {
+  ICompletionContext,
+  ISystemInfo,
+  ShellCompletionConfig,
+  ShellCompletionConfigInput,
+  ShellCompletionConfigValue,
+  ShellType,
+  ToolConfig,
+} from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import type {
   ICompletionGenerationContext,
@@ -10,6 +18,7 @@ import type {
 } from '@dotfiles/shell-init-generator';
 import type { IGenerateShimsOptions, IShimGenerator } from '@dotfiles/shim-generator';
 import type { IGenerateSymlinksOptions, ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
+import { resolveValue } from '@dotfiles/unwrap-value';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import type { IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
@@ -118,40 +127,85 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   /**
    * @inheritdoc IGeneratorOrchestrator.generateCompletionsForTool
    */
-  async generateCompletionsForTool(toolName: string, toolConfig: ToolConfig): Promise<void> {
+  async generateCompletionsForTool(toolName: string, toolConfig: ToolConfig, version?: string): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateCompletionsForTool', context: toolName });
     const resolvedConfig = resolvePlatformConfig(toolConfig, this.systemInfo);
     const shellTypes: ShellType[] = ['zsh', 'bash', 'powershell'];
+    // Use provided version, or fall back to toolConfig.version
+    const resolvedVersion = version ?? resolvedConfig.version;
 
     for (const shellType of shellTypes) {
       const shellConfig = resolvedConfig.shellConfigs?.[shellType];
-      const completionConfig = shellConfig?.completions;
+      // Cast from unknown (Zod schema) to ShellCompletionConfigInput (runtime type)
+      const completionInput = shellConfig?.completions as ShellCompletionConfigInput | undefined;
 
-      // Handle both command-based and source-based completions
-      if (completionConfig?.cmd || completionConfig?.source) {
-        try {
-          const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
+      if (!completionInput) {
+        continue;
+      }
 
-          const context: ICompletionGenerationContext = {
-            homeDir: this.projectConfig.paths.homeDir,
-            shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
-            toolInstallDir: currentDir,
-            toolName,
-            configFilePath: toolConfig.configFilePath,
-          };
+      try {
+        const currentDir = path.join(this.projectConfig.paths.binariesDir, toolName, 'current');
 
-          const completionResult = await this.completionGenerator.generateAndWriteCompletionFile(
-            completionConfig,
-            toolName,
-            shellType,
-            context
-          );
+        // Build context for resolving completions callback (only version is exposed to user)
+        const completionContext: ICompletionContext = {
+          version: resolvedVersion,
+        };
 
-          logger.info(messages.generateAll.completionGeneratedAtPath(completionResult.targetPath));
-        } catch {
-          logger.warn(messages.generateAll.completionGenerationFailed(toolName, shellType));
+        // Resolve the completion config (handles static values and callbacks)
+        const resolvedCompletionValue: ShellCompletionConfigValue = await resolveValue(
+          completionContext,
+          completionInput
+        );
+
+        // Convert to ShellCompletionConfig format
+        const completionConfig = this.normalizeCompletionConfig(resolvedCompletionValue);
+
+        // Skip if no valid completion config after resolution
+        if (!completionConfig.cmd && !completionConfig.source && !completionConfig.url) {
+          continue;
         }
+
+        // Build full generation context with internal fields
+        const generationContext: ICompletionGenerationContext = {
+          ...completionContext,
+          homeDir: this.projectConfig.paths.homeDir,
+          shellScriptsDir: this.projectConfig.paths.shellScriptsDir,
+          toolInstallDir: currentDir,
+          toolName,
+          configFilePath: toolConfig.configFilePath,
+        };
+
+        const completionResult = await this.completionGenerator.generateAndWriteCompletionFile(
+          completionConfig,
+          toolName,
+          shellType,
+          generationContext
+        );
+
+        logger.info(messages.generateAll.completionGeneratedAtPath(completionResult.targetPath));
+      } catch {
+        logger.warn(messages.generateAll.completionGenerationFailed(toolName, shellType));
       }
     }
+  }
+
+  /**
+   * Normalizes a resolved completion config value to the internal config format.
+   */
+  private normalizeCompletionConfig(value: ShellCompletionConfigValue): ShellCompletionConfig {
+    if (typeof value === 'string') {
+      const result: ShellCompletionConfig = { source: value };
+      return result;
+    }
+
+    const result: ShellCompletionConfig = {
+      ...(value.source && { source: value.source }),
+      ...(value.url && { url: value.url }),
+      ...(value.cmd && { cmd: value.cmd }),
+      ...(value.bin && { bin: value.bin }),
+      ...(value.name && { name: value.name }),
+      ...(value.targetDir && { targetDir: value.targetDir }),
+    };
+    return result;
   }
 }

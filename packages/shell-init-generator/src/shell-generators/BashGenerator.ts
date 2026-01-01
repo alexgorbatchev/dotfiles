@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ShellCompletionConfig, ShellType, ToolConfig } from '@dotfiles/core';
+import type { ShellCompletionConfigInput, ShellType, ToolConfig } from '@dotfiles/core';
 import { BaseShellGenerator } from './BaseShellGenerator';
 import { BashStringProducer } from './BashStringProducer';
 
@@ -18,7 +18,16 @@ export class BashGenerator extends BaseShellGenerator {
 
   protected getShellConfig(
     toolConfig: ToolConfig
-  ): { completions?: ShellCompletionConfig; functions?: Record<string, string> } | undefined {
-    return toolConfig.shellConfigs?.bash;
+  ): { completions?: ShellCompletionConfigInput; functions?: Record<string, string> } | undefined {
+    const shellConfig = toolConfig.shellConfigs?.bash;
+    if (!shellConfig) {
+      return undefined;
+    }
+    // Cast completions since Zod schema uses z.unknown() but runtime type is ShellCompletionConfigInput
+    const result: { completions?: ShellCompletionConfigInput; functions?: Record<string, string> } = {
+      completions: shellConfig.completions as ShellCompletionConfigInput | undefined,
+      functions: shellConfig.functions,
+    };
+    return result;
   }
 }

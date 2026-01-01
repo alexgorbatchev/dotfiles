@@ -117,6 +117,7 @@ interface IBaseToolContext {
 
 interface IToolConfigContext extends IBaseToolContext {}
 
+
 interface IInstallContext extends IBaseToolContext {
   toolConfig: ToolConfig;
   stagingDir: string;

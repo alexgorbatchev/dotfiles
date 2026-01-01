@@ -227,7 +227,9 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       const hasFunctions = Object.keys(config.functions).length > 0;
       const hasCompletions = config.completions !== undefined;
 
-      if (hasScripts || hasAliases || hasEnvironment || hasFunctions || hasCompletions) {
+      const hasAnyShellConfig = hasScripts || hasAliases || hasEnvironment || hasFunctions || hasCompletions;
+
+      if (hasAnyShellConfig) {
         result[shellType] = {
           ...(hasScripts && { scripts: config.scripts }),
           ...(hasAliases && { aliases: config.aliases }),
@@ -650,6 +652,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   ): this | Promise<this> {
     const storage: IShellStorage = this.internalShellConfigs[shellType];
     const configurator = new ShellConfigurator(storage, shellType, this.context, this.logger, this.toolName);
+
     const callbackResult = callback(configurator);
 
     if (this.isPromise(callbackResult)) {
