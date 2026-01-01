@@ -46,15 +46,11 @@ export async function createBinaryEntrypoint(
     const targetPath = path.relative(timestampedDir, actualBinaryPath);
     logger.debug(messages.binarySymlink.creating(entrypointPath, targetPath));
 
-    await fs.copyFile(actualBinaryPath, entrypointPath);
-
-    const binaryStats = await fs.stat(actualBinaryPath);
-    const binaryMode: number = binaryStats.mode & 0o777;
-    await fs.chmod(entrypointPath, binaryMode);
+    await fs.symlink(targetPath, entrypointPath);
 
     const entrypointStats = await fs.lstat(entrypointPath);
-    if (entrypointStats.isSymbolicLink()) {
-      throw new Error('Entrypoint unexpectedly created as symlink');
+    if (!entrypointStats.isSymbolicLink()) {
+      throw new Error('Entrypoint unexpectedly created as regular file instead of symlink');
     }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
