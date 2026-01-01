@@ -58,7 +58,10 @@ export function generateUnionType(binaryNames: Set<string>): string {
   return quotedNames.join(' | ');
 }
 
-export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>): string {
+export function generateToolTypesContent(
+  toolConfigs: Record<string, ToolConfig>,
+  moduleName?: string
+): string {
   const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
   const unionType: string = generateUnionType(binaryNames);
   const sortedNames: string[] = unionType === 'string' ? [] : Array.from(binaryNames).sort();
@@ -67,7 +70,8 @@ export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>
   const registryBody: string = hasEntries
     ? `  interface IKnownBinNameRegistry {\n${registryEntries}\n  }`
     : '  interface IKnownBinNameRegistry {}';
-  const moduleBlock: string = `declare module '${getBuiltPackageName()}' {\n${registryBody}\n}`;
+  const resolvedModuleName: string = moduleName ?? getBuiltPackageName();
+  const moduleBlock: string = `declare module '${resolvedModuleName}' {\n${registryBody}\n}`;
   const contentParts: string[] = [TOOL_TYPES_HEADER, moduleBlock, 'export {};', ''];
   const content: string = contentParts.join('\n\n');
   return content;
@@ -79,13 +83,15 @@ export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>
  * @param toolConfigs - Record of loaded tool configurations
  * @param outputPath - Path where the tool-types.d.ts file should be written
  * @param fs - File system interface for writing the file
+ * @param moduleName - Optional module name to use in the declaration (defaults to @gitea/dotfiles)
  */
 export async function generateToolTypes(
   toolConfigs: Record<string, ToolConfig>,
   outputPath: string,
-  fs: IFileSystem
+  fs: IFileSystem,
+  moduleName?: string
 ): Promise<void> {
-  const content: string = generateToolTypesContent(toolConfigs);
+  const content: string = generateToolTypesContent(toolConfigs, moduleName);
   await fs.ensureDir(path.dirname(outputPath));
   await fs.writeFile(outputPath, content, 'utf8');
 }

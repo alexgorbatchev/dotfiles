@@ -2,6 +2,7 @@ import type { IBuildContext } from '../types';
 
 /**
  * Writes the tsconfig.json used by the temporary tsd tests project.
+ * Includes .generated/tool-types.d.ts to mimic actual end user setup.
  */
 export async function createTsdTestsTsConfig(context: IBuildContext): Promise<void> {
   const compilerOptions: Record<string, unknown> = {
@@ -16,7 +17,7 @@ export async function createTsdTestsTsConfig(context: IBuildContext): Promise<vo
 
   const tsConfig: Record<string, unknown> = {
     compilerOptions,
-    include: ['./**/*.d.ts'],
+    include: ['./**/*.d.ts', '.generated/tool-types.d.ts'],
   };
 
   await Bun.write(context.paths.tsdTestsConfigPath, JSON.stringify(tsConfig, null, 2));

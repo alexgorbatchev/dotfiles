@@ -47,6 +47,8 @@ export function createBuildContext(): IBuildContext {
   const tsdTestsNodeModulesPath: string = path.join(tsdTestsDir, 'node_modules');
   const tsdTestsGiteaNamespacePath: string = path.join(tsdTestsNodeModulesPath, '@gitea');
   const tsdTestsGiteaSymlinkPath: string = path.join(tsdTestsGiteaNamespacePath, 'dotfiles');
+  const tsdTestsGeneratedDir: string = path.join(tsdTestsDir, '.generated');
+  const tsdTestsToolTypesPath: string = path.join(tsdTestsGeneratedDir, 'tool-types.d.ts');
 
   const docsDir: string = path.join(rootDir, 'docs');
   const outputDocsDir: string = path.join(outputDir, 'docs');
@@ -89,6 +91,8 @@ export function createBuildContext(): IBuildContext {
     tsdTestsNodeModulesPath,
     tsdTestsGiteaNamespacePath,
     tsdTestsGiteaSymlinkPath,
+    tsdTestsGeneratedDir,
+    tsdTestsToolTypesPath,
 
     docsDir,
     outputDocsDir,

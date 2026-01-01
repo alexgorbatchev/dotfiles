@@ -40,6 +40,8 @@ export function createMockBuildContext(overrides?: MockBuildContextOverrides): I
     tsdTestsNodeModulesPath: '/root/.tmp/tsd-tests/node_modules',
     tsdTestsGiteaNamespacePath: '/root/.tmp/tsd-tests/@gitea',
     tsdTestsGiteaSymlinkPath: '/root/.tmp/tsd-tests/@gitea',
+    tsdTestsGeneratedDir: '/root/.tmp/tsd-tests/.generated',
+    tsdTestsToolTypesPath: '/root/.tmp/tsd-tests/.generated/tool-types.d.ts',
     docsDir: '/root/docs',
     outputDocsDir: '/root/.dist/docs',
   };

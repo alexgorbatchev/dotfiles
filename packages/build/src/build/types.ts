@@ -54,6 +54,8 @@ export interface IBuildPaths {
   tsdTestsNodeModulesPath: string;
   tsdTestsGiteaNamespacePath: string;
   tsdTestsGiteaSymlinkPath: string;
+  tsdTestsGeneratedDir: string;
+  tsdTestsToolTypesPath: string;
 
   docsDir: string;
   outputDocsDir: string;

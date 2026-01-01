@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { ToolConfig } from '@dotfiles/core';
 import { extractBinaryNames, generateToolTypesContent, generateUnionType } from '../generateToolTypes';
 
@@ -125,7 +125,18 @@ describe('generateToolTypes', () => {
   });
 
   describe('generateToolTypesContent', () => {
-    test('should generate complete tool-types.d.ts content', () => {
+    const originalPackageName: string | undefined = process.env.DOTFILES_BUILT_PACKAGE_NAME;
+
+    afterEach(() => {
+      if (originalPackageName === undefined) {
+        delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
+      } else {
+        process.env.DOTFILES_BUILT_PACKAGE_NAME = originalPackageName;
+      }
+    });
+
+    test('uses default @gitea/dotfiles when DOTFILES_BUILT_PACKAGE_NAME is not set', () => {
+      delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
       const toolConfigs: Record<string, ToolConfig> = {
         ripgrep: createMockToolConfig('ripgrep', ['rg']),
       };
@@ -138,7 +149,22 @@ describe('generateToolTypes', () => {
       expect(content).toContain('export {};');
     });
 
+    test('uses DOTFILES_BUILT_PACKAGE_NAME when set', () => {
+      process.env.DOTFILES_BUILT_PACKAGE_NAME = '@custom/package';
+      const toolConfigs: Record<string, ToolConfig> = {
+        ripgrep: createMockToolConfig('ripgrep', ['rg']),
+      };
+
+      const content: string = generateToolTypesContent(toolConfigs);
+
+      expect(content).toContain("declare module '@custom/package'");
+      expect(content).toContain('interface IKnownBinNameRegistry');
+      expect(content).toContain("    'rg': never;");
+      expect(content).toContain('export {};');
+    });
+
     test('should generate fallback string type for empty tool configs', () => {
+      delete process.env.DOTFILES_BUILT_PACKAGE_NAME;
       const toolConfigs: Record<string, ToolConfig> = {};
 
       const content: string = generateToolTypesContent(toolConfigs);
@@ -148,16 +174,16 @@ describe('generateToolTypes', () => {
       expect(content).toContain('export {};');
     });
 
-    test('respects configured package name from environment variable', () => {
-      process.env.DOTFILES_BUILT_PACKAGE_NAME = '@dotfiles/core';
+    test('uses custom module name when provided (overrides env var)', () => {
+      process.env.DOTFILES_BUILT_PACKAGE_NAME = '@gitea/dotfiles';
       const toolConfigs: Record<string, ToolConfig> = {
         ripgrep: createMockToolConfig('ripgrep', ['rg']),
       };
 
-      const content: string = generateToolTypesContent(toolConfigs);
+      const content: string = generateToolTypesContent(toolConfigs, '@dotfiles/core');
 
       expect(content).toContain("declare module '@dotfiles/core'");
-      expect(content).not.toContain("declare module '@dotfiles/core/builder'");
+      expect(content).not.toContain("declare module '@gitea/dotfiles'");
     });
   });
 });
