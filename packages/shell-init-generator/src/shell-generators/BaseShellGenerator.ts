@@ -180,7 +180,10 @@ export abstract class BaseShellGenerator implements IShellGenerator {
 
   getAdditionalFiles(toolContents: Map<string, IShellInitContent>): IAdditionalShellFile[] {
     const additionalFiles: IAdditionalShellFile[] = [];
-    const onceFormatter = new OnceScriptFormatter(this.projectConfig.paths.shellScriptsDir);
+    const onceFormatter = new OnceScriptFormatter(
+      this.projectConfig.paths.shellScriptsDir,
+      this.projectConfig.paths.homeDir
+    );
 
     for (const [toolName, content] of toolContents) {
       for (let i = 0; i < content.onceScripts.length; i++) {
@@ -222,7 +225,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    * Each tool gets a header followed by its always scripts and tool init content.
    */
   private generateToolSection(toolContents: Map<string, IShellInitContent>): string {
-    const alwaysFormatter = new AlwaysScriptFormatter();
+    const alwaysFormatter = new AlwaysScriptFormatter(this.projectConfig.paths.homeDir);
     let hasContent = false;
 
     // Check if any tool has content to render
