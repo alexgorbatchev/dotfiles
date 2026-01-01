@@ -1,6 +1,6 @@
 import type { ShellScript, ShellType } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript } from '@dotfiles/core';
-import { dedentString } from '@dotfiles/utils';
+import { dedentString, dedentTemplate } from '@dotfiles/utils';
 import type { IFormattedScriptOutput, IScriptFormatter } from './IScriptFormatter';
 
 /**
@@ -36,32 +36,24 @@ export class AlwaysScriptFormatter implements IScriptFormatter {
   }
 
   private generateShScript(scriptContent: string): string {
-    // Indent the script content for proper subshell formatting
-    // Don't add indentation to empty lines to avoid trailing whitespace
-    const indentedContent = scriptContent
-      .split('\n')
-      .map((line) => (line.trim() ? `  ${line}` : ''))
-      .join('\n');
-
-    return dedentString(`
+    return dedentTemplate(
+      `
       (
-      ${indentedContent}
+        {scriptContent}
       )
-    `);
+      `,
+      { scriptContent: dedentString(scriptContent) }
+    );
   }
 
   private generatePowerShellScript(scriptContent: string): string {
-    // Indent the script content for proper try-finally formatting
-    // Don't add indentation to empty lines to avoid trailing whitespace
-    const indentedContent = scriptContent
-      .split('\n')
-      .map((line) => (line.trim() ? `  ${line}` : ''))
-      .join('\n');
-
-    return dedentString(`
+    return dedentTemplate(
+      `
       try {
-      ${indentedContent}
+        {scriptContent}
       } finally {}
-    `);
+      `,
+      { scriptContent: dedentString(scriptContent) }
+    );
   }
 }

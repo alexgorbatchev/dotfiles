@@ -24,11 +24,9 @@ describe('AlwaysScriptFormatter', () => {
       expect(result.requiresExecution).toBe(false);
       expect(result.content).toMatchLooseInlineSnapshot`
         (
-
-            echo "Setting up tool..."
-            export TOOL_PATH="/usr/local/bin/tool"
-            echo "Tool setup complete"
-
+          echo "Setting up tool..."
+          export TOOL_PATH="/usr/local/bin/tool"
+          echo "Tool setup complete"
         )
       `;
     });
@@ -49,16 +47,14 @@ describe('AlwaysScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         (
-
-            if [ -f ~/.bashrc ]; then
-              echo "Found bashrc"
-              source ~/.bashrc
-            fi
-
-            for file in ~/.config/*; do
-              echo "Processing: $file"
-            done
-
+          if [ -f ~/.bashrc ]; then
+            echo "Found bashrc"
+            source ~/.bashrc
+          fi
+          
+          for file in ~/.config/*; do
+            echo "Processing: $file"
+          done
         )
       `;
     });
@@ -77,11 +73,9 @@ describe('AlwaysScriptFormatter', () => {
       expect(result.requiresExecution).toBe(false);
       expect(result.content).toMatchLooseInlineSnapshot`
         (
-
-            echo "Setting up tool..."
-            export TOOL_PATH="/usr/local/bin/tool"
-            echo "Tool setup complete"
-
+          echo "Setting up tool..."
+          export TOOL_PATH="/usr/local/bin/tool"
+          echo "Tool setup complete"
         )
       `;
     });
@@ -102,16 +96,14 @@ describe('AlwaysScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         (
-
-            if [ -f ~/.zshrc ]; then
-              echo "Found zshrc"
-              source ~/.zshrc
-            fi
-
-            for file in ~/.config/*; do
-              echo "Processing: $file"
-            done
-
+          if [ -f ~/.zshrc ]; then
+            echo "Found zshrc"
+            source ~/.zshrc
+          fi
+          
+          for file in ~/.config/*; do
+            echo "Processing: $file"
+          done
         )
       `;
     });
@@ -130,11 +122,9 @@ describe('AlwaysScriptFormatter', () => {
       expect(result.requiresExecution).toBe(false);
       expect(result.content).toMatchLooseInlineSnapshot`
         try {
-
-            Write-Host "Setting up tool..."
-            $env:TOOL_PATH = "/usr/local/bin/tool"
-            Write-Host "Tool setup complete"
-
+          Write-Host "Setting up tool..."
+          $env:TOOL_PATH = "/usr/local/bin/tool"
+          Write-Host "Tool setup complete"
         } finally {}
       `;
     });
@@ -155,16 +145,14 @@ describe('AlwaysScriptFormatter', () => {
 
       expect(result.content).toMatchLooseInlineSnapshot`
         try {
-
-            if (Test-Path ~/.bashrc) {
-              Write-Host "Found bashrc"
-              . ~/.bashrc
-            }
-
-            Get-ChildItem ~/.config/* | ForEach-Object {
-              Write-Host "Processing: $_"
-            }
-
+          if (Test-Path ~/.bashrc) {
+            Write-Host "Found bashrc"
+            . ~/.bashrc
+          }
+          
+          Get-ChildItem ~/.config/* | ForEach-Object {
+            Write-Host "Processing: $_"
+          }
         } finally {}
       `;
     });
