@@ -528,6 +528,16 @@
         "typescript": "catalog:typescript",
       },
     },
+    "packages/unwrap-value": {
+      "name": "@dotfiles/unwrap-value",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "catalog:system",
+        "@types/node": "catalog:system",
+        "@typescript/native-preview": "catalog:typescript",
+        "typescript": "catalog:typescript",
+      },
+    },
     "packages/utils": {
       "name": "@dotfiles/utils",
       "version": "0.0.0",
@@ -666,6 +676,8 @@
     "@dotfiles/testing-helpers": ["@dotfiles/testing-helpers@workspace:packages/testing-helpers"],
 
     "@dotfiles/tool-config-builder": ["@dotfiles/tool-config-builder@workspace:packages/tool-config-builder"],
+
+    "@dotfiles/unwrap-value": ["@dotfiles/unwrap-value@workspace:packages/unwrap-value"],
 
     "@dotfiles/utils": ["@dotfiles/utils@workspace:packages/utils"],
 

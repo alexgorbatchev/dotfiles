@@ -1,0 +1,19 @@
+{
+  "name": "@dotfiles/unwrap-value",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:system",
+    "@types/node": "catalog:system",
+    "typescript": "catalog:typescript",
+    "@typescript/native-preview": "catalog:typescript"
+  }
+}
