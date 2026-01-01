@@ -351,6 +351,83 @@ describe('GeneratorOrchestrator', () => {
           logger.expect(['INFO'], ['GeneratorOrchestrator', 'generateCompletionsForTool'], [expectedCompletionPath]);
         });
       });
+
+      describe('disabled tools', () => {
+        it('should skip disabled tools and log warning', async () => {
+          const enabledToolConfig: ToolConfig = {
+            name: 'enabledTool',
+            binaries: ['enabled-bin'],
+            version: '1.0',
+            installationMethod: 'manual',
+            installParams: {},
+          };
+
+          const toolConfigsWithDisabled: Record<string, ToolConfig> = {
+            enabledTool: enabledToolConfig,
+            disabledTool: {
+              name: 'disabledTool',
+              binaries: ['disabled-bin'],
+              version: '1.0',
+              disabled: true,
+              installationMethod: 'manual',
+              installParams: {},
+            },
+          };
+
+          await orchestrator.generateAll(toolConfigsWithDisabled);
+
+          // Verify only enabled tool is passed to generators
+          const expectedFilteredConfigs: Record<string, ToolConfig> = {
+            enabledTool: enabledToolConfig,
+          };
+
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
+            overwrite: true,
+          });
+          expect(mockShellInitGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
+            shellTypes: ['zsh', 'bash', 'powershell'],
+            systemInfo,
+          });
+          expect(mockSymlinkGenerator.generate).toHaveBeenCalledWith(expectedFilteredConfigs, {
+            overwrite: true,
+            backup: true,
+          });
+
+          // Verify warning was logged for disabled tool
+          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], ['disabledTool']);
+        });
+
+        it('should handle all tools disabled', async () => {
+          const allDisabledConfigs: Record<string, ToolConfig> = {
+            disabledTool1: {
+              name: 'disabledTool1',
+              binaries: ['bin1'],
+              version: '1.0',
+              disabled: true,
+              installationMethod: 'manual',
+              installParams: {},
+            },
+            disabledTool2: {
+              name: 'disabledTool2',
+              binaries: ['bin2'],
+              version: '1.0',
+              disabled: true,
+              installationMethod: 'manual',
+              installParams: {},
+            },
+          };
+
+          await orchestrator.generateAll(allDisabledConfigs);
+
+          // Verify empty configs are passed to generators
+          expect(mockShimGenerator.generate).toHaveBeenCalledWith(
+            {},
+            {
+              overwrite: true,
+            }
+          );
+        });
+      });
     });
 
     // The test 'should correctly infer symlink paths even if targetDir is not home'

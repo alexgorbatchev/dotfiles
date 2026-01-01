@@ -45,6 +45,7 @@ export default defineTool((install, ctx) =>
 | `.bash(fn)` | Bash shell configuration |
 | `.powershell(fn)` | PowerShell configuration |
 | `.platform(p, fn)` | Platform-specific overrides |
+| `.disable()` | Skip tool during generation (logs warning) |
 
 ### Shell Configuration
 

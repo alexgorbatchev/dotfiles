@@ -212,6 +212,20 @@ install('github-release', { repo: 'owner/tool' })
 
 Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
 
+### Step 7: Disable a Tool (if needed)
+Use `.disable()` to temporarily skip a tool during generation without removing its configuration. A warning will be logged when the tool is skipped.
+
+```ts
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .disable();  // Tool will be skipped with a warning
+```
+
+This is useful for:
+- Temporarily disabling a broken or unavailable tool
+- Testing configurations without installing certain tools
+- Keeping tool configurations for future use
+
 ## Output Requirements
 
 ### File Structure

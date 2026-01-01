@@ -7,6 +7,7 @@ export const messages = {
   generateAll: {
     parsedOptions: (toolConfigsCount: number) =>
       createSafeLogMessage(`Parsed ${toolConfigsCount} tool configuration entries`),
+    toolDisabled: (toolName: string) => createSafeLogMessage(`Skipping disabled tool: ${toolName}`),
     dependenciesValidationStarted: (toolCount: number) =>
       createSafeLogMessage(`Validating tool dependencies (${toolCount} tools)`),
     dependenciesOrderResolved: (orderedTools: string) =>

@@ -69,9 +69,19 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   async generateAll(toolConfigs: Record<string, ToolConfig>, options?: IGenerateAllOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
 
+    // Filter out disabled tools with warning
+    const enabledToolConfigs: Record<string, ToolConfig> = {};
+    for (const [name, config] of Object.entries(toolConfigs)) {
+      if (config.disabled) {
+        logger.warn(messages.generateAll.toolDisabled(name));
+        continue;
+      }
+      enabledToolConfigs[name] = config;
+    }
+
     const orderedToolConfigs: Record<string, ToolConfig> = orderToolConfigsByDependencies(
       this.logger,
-      toolConfigs,
+      enabledToolConfigs,
       this.systemInfo
     );
 

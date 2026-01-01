@@ -449,4 +449,40 @@ describe('IToolConfigBuilder', () => {
       v: 'vim',
     });
   });
+
+  test('disable method sets disabled to true', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin').install('github-release', { repo: 'owner/repo' }).disable();
+
+    const config = builder.build();
+    expect(config.disabled).toBe(true);
+  });
+
+  test('disable method returns builder for chaining', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    const result = builder.disable();
+    expect(result).toBe(builder);
+  });
+
+  test('build method includes disabled property when set', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin').disable();
+
+    const config = builder.build();
+    expect(config.disabled).toBe(true);
+    expect(config.name).toBe('test-tool');
+    expect(config.installationMethod).toBe('manual');
+  });
+
+  test('build method does not include disabled property when not set', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+
+    builder.bin('test-bin');
+
+    const config = builder.build();
+    expect(config.disabled).toBeUndefined();
+  });
 });

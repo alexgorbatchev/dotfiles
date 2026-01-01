@@ -286,6 +286,13 @@ export interface IToolConfigBuilder {
   ): this;
 
   /**
+   * Mark this tool as disabled.
+   * A disabled tool is skipped during generation with a warning message.
+   * Useful for temporarily disabling a tool without removing its configuration.
+   */
+  disable(): this;
+
+  /**
    * Finalize and build the tool configuration.
    * Call this as the last method in the chain.
    * @returns The complete ToolConfig object

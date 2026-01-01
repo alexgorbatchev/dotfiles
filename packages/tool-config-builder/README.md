@@ -30,6 +30,7 @@ interface IToolConfigBuilder {
   zsh(callback: (shell: IShellConfigurator) => void): this;
   bash(callback: (shell: IShellConfigurator) => void): this;
   powershell(callback: (shell: IShellConfigurator) => void): this;
+  disable(): this;
   build(): ToolConfig;
 }
 ```
@@ -154,6 +155,19 @@ c.bin('system-tool')
   .install('manual', {
     binaryPath: '/usr/local/bin/system-tool',
   });
+```
+
+### Disabling a Tool
+
+Use `.disable()` to temporarily skip a tool during generation. A warning will be logged indicating the tool is disabled.
+
+```typescript
+c.bin('deprecated-tool')
+  .version('1.0.0')
+  .install('github-release', {
+    repo: 'owner/deprecated-tool',
+  })
+  .disable(); // Tool will be skipped with a warning
 ```
 
 ### With Hooks

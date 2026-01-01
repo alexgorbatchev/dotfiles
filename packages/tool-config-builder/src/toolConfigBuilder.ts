@@ -62,6 +62,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   public currentInstallationMethod?: string;
   public currentInstallParams?: InstallParams | Record<string, unknown>;
   private dependencies: string[] = [];
+  private isDisabled: boolean = false;
 
   // Organized shell storage matching final ToolConfig structure
   private internalShellConfigs: InternalShellConfigs = {
@@ -345,6 +346,19 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
   }
 
   /**
+   * Marks the tool as disabled.
+   *
+   * A disabled tool is skipped during generation with a warning message.
+   * This is useful for temporarily disabling a tool without removing its configuration.
+   *
+   * @returns The `IToolConfigBuilder` instance for chaining.
+   */
+  disable(): this {
+    this.isDisabled = true;
+    return this;
+  }
+
+  /**
    * Configures the behavior for checking for tool updates.
    *
    * **This method should only be called once**; subsequent calls will override the previous value.
@@ -416,6 +430,7 @@ export class IToolConfigBuilder implements ToolConfigBuilderInterface {
       binaries:
         this.binaries.length > 0 ? this.binaries.map((b) => (b.pattern === `*/${b.name}` ? b.name : b)) : undefined,
       version: this.versionNum,
+      disabled: this.isDisabled ? true : undefined,
       shellConfigs: this.buildShellConfigs(),
       symlinks: this.symlinkPairs.length > 0 ? this.symlinkPairs : undefined,
       updateCheck: this.updateCheckConfig,

@@ -18,6 +18,11 @@ export const commonToolConfigPropertiesSchema = z
     binaries: z.array(z.union([z.string().min(1), binaryConfigSchema])).optional(),
     /** Binary dependencies that must be available before generating this tool. */
     dependencies: z.array(z.string().min(1)).optional(),
+    /**
+     * When true, the tool is skipped during generation.
+     * Useful for temporarily disabling a tool without removing its configuration.
+     */
+    disabled: z.boolean().optional(),
     /** The desired version of the tool, defined by `c.version()`. Defaults to 'latest'. */
     version: z.string().optional(),
     /** Shell configurations organized by shell type, added via `c.zsh()`, `c.bash()`, `c.powershell()`. */
