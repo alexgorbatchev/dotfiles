@@ -50,5 +50,8 @@
   "type": "module",
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@github/copilot": "^0.0.372"
+  }
 }

@@ -7,8 +7,8 @@ import { expectError } from 'tsd';
 // Augment the registry with test values
 declare module '@gitea/dotfiles' {
   interface IKnownBinNameRegistry {
-    'foo': never;
-    'bar': never;
+    foo: never;
+    bar: never;
   }
 }
 

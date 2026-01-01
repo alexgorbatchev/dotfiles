@@ -465,10 +465,7 @@ export class TestHarness {
     // Look for subshell blocks (bash/zsh) or try-finally blocks (PowerShell)
     // The toolName parameter is kept for API compatibility but is no longer used
     // since we now use subshells instead of named functions
-    const alwaysRegex =
-      shellType === 'powershell'
-        ? /try\s*\{([\s\S]*?)\}\s*finally\s*\{\}/gm
-        : /\(([\s\S]*?)\)/gm;
+    const alwaysRegex = shellType === 'powershell' ? /try\s*\{([\s\S]*?)\}\s*finally\s*\{\}/gm : /\(([\s\S]*?)\)/gm;
 
     const matches = Array.from(content.matchAll(alwaysRegex));
     const isMatch = matches.some((match) => {

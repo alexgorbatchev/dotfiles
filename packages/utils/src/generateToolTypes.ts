@@ -58,10 +58,7 @@ export function generateUnionType(binaryNames: Set<string>): string {
   return quotedNames.join(' | ');
 }
 
-export function generateToolTypesContent(
-  toolConfigs: Record<string, ToolConfig>,
-  moduleName?: string
-): string {
+export function generateToolTypesContent(toolConfigs: Record<string, ToolConfig>, moduleName?: string): string {
   const binaryNames: Set<string> = extractBinaryNames(toolConfigs);
   const unionType: string = generateUnionType(binaryNames);
   const sortedNames: string[] = unionType === 'string' ? [] : Array.from(binaryNames).sort();
