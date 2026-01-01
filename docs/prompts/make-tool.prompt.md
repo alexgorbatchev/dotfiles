@@ -125,6 +125,7 @@ install('github-release', { repo: 'owner/tool' })
 **Script Timing**:
 - `.always(template)` - Runs every time shell starts (fast operations only)
 - `.once(template)` - Runs only once after install/update (expensive operations)
+- `.functions(record)` - Define shell functions with HOME override for isolation
 
 **Shell Configurator Methods**:
 - `.environment(record)` - Set environment variables
@@ -133,6 +134,7 @@ install('github-release', { repo: 'owner/tool' })
 - `.source(path)` - Source a file (skips if missing)
 - `.always(script)` - Fast runtime setup scripts
 - `.once(script)` - Expensive one-time setup scripts
+- `.functions(record)` - Define shell functions with HOME isolation
 
 **Completions Syntax**:
 ```ts
@@ -149,6 +151,17 @@ install('github-release', { repo: 'owner/tool' })
   targetDir: `${ctx.projectConfig.paths.generatedDir}/completions`  // Custom directory
 })
 ```
+
+**Functions Syntax**:
+```ts
+// Define shell functions with HOME isolation
+.functions({
+  'my-wrapper': 'original-command --my-defaults "$@"',
+  'tool-safe': 'tool --config="$TOOL_CONFIG" "$@"',
+})
+```
+
+Functions defined via `.functions()` automatically run in a subshell with `HOME` set to the project's home directory. This provides isolation and ensures the function uses the correct configuration paths. Use this for wrapper functions that need consistent environment behavior.
 
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md) and [Completions Guide](<root>/docs/completions.md)
 
@@ -367,7 +380,39 @@ export default defineTool((install) =>
 );
 ```
 
-### Example 6: Tool with Dynamic Shell Functions
+### Example 6: Tool with Shell Functions
+```ts
+import { defineTool } from '@gitea/dotfiles';
+
+/**
+ * kubectl - Kubernetes command-line tool with custom wrappers.
+ *
+ * https://kubernetes.io/docs/reference/kubectl/
+ */
+export default defineTool((install, ctx) =>
+  install('github-release', {
+    repo: 'kubernetes/kubectl',
+  })
+    .bin('kubectl')
+    .zsh((shell) =>
+      shell
+        .environment({
+          KUBECONFIG: `${ctx.projectConfig.paths.homeDir}/.kube/config`,
+        })
+        .aliases({
+          k: 'kubectl',
+          kgp: 'kubectl get pods',
+        })
+        .completions({ cmd: 'kubectl completion zsh' })
+        .functions({
+          'kns': 'kubectl config set-context --current --namespace="$1"',
+          'kctx': 'kubectl config use-context "$1"',
+        })
+    )
+);
+```
+
+### Example 7: Tool with Dynamic Initialization
 ```ts
 import { defineTool } from '@gitea/dotfiles';
 
@@ -414,7 +459,8 @@ export default defineTool((install, ctx) =>
 **Shell integration**
 - ✅ Use `.completions({ cmd: '...' })` for dynamic completions (not `.once()`)
 - ✅ Use `.once()` only for expensive one-time setup (cache building, initialization)
-- ✅ Use `.always()` for fast runtime setup (environment, aliases, functions)
+- ✅ Use `.always()` for fast runtime setup (environment, eval statements)
+- ✅ Use `.functions()` for shell function wrappers that need HOME isolation
 - ✅ Shell scripts are fast and use context variables
 - ✅ Completions configured within shell blocks (`.zsh()`, `.bash()`, `.powershell()`)
 

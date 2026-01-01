@@ -72,6 +72,7 @@ describe('PATH generation', () => {
             completionSetup: [],
             onceScripts: [],
             alwaysScripts: [],
+            functions: {},
           },
         ],
         [
@@ -83,6 +84,7 @@ describe('PATH generation', () => {
             completionSetup: [],
             onceScripts: [],
             alwaysScripts: [],
+            functions: {},
           },
         ],
       ]);

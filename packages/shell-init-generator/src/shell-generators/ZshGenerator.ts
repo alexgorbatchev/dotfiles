@@ -16,7 +16,9 @@ export class ZshGenerator extends BaseShellGenerator {
     super(projectConfig, new ZshStringProducer(projectConfig));
   }
 
-  protected getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined {
+  protected getShellConfig(
+    toolConfig: ToolConfig
+  ): { completions?: ShellCompletionConfig; functions?: Record<string, string> } | undefined {
     return toolConfig.shellConfigs?.zsh;
   }
 }

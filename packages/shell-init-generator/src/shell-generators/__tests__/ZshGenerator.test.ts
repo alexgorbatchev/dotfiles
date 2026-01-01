@@ -64,6 +64,7 @@ describe('ZshGenerator', () => {
           completionSetup: ['fpath=("/completions/zsh" $fpath)'],
           onceScripts: [],
           alwaysScripts: [],
+          functions: {},
         },
       ],
       [
@@ -75,6 +76,7 @@ describe('ZshGenerator', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [],
+          functions: {},
         },
       ],
     ]);
@@ -152,5 +154,55 @@ describe('ZshGenerator', () => {
     expect(content.toolInit).toContain('alias tt="test-tool"');
     expect(content.toolInit).toContain('alias ttd="test-tool --debug"');
     expect(content.toolInit).toContain('alias tts="test-tool status"');
+  });
+
+  it('should extract functions from declarative configuration', () => {
+    const toolConfig: ToolConfig = {
+      name: 'test-tool',
+      binaries: ['test-tool'],
+      version: '1.0.0',
+      shellConfigs: {
+        zsh: {
+          functions: {
+            mycommand: 'echo "Running my command"',
+            setup: 'cd /path && ./setup.sh',
+          },
+        },
+      },
+      installationMethod: 'manual',
+      installParams: {},
+    };
+
+    const content = generator.extractShellContent('test-tool', toolConfig);
+
+    expect(Object.keys(content.functions)).toHaveLength(2);
+    expect(content.functions['mycommand']).toBe('echo "Running my command"');
+    expect(content.functions['setup']).toBe('cd /path && ./setup.sh');
+  });
+
+  it('should generate functions with HOME override in output', () => {
+    const toolContents = new Map([
+      [
+        'tool1',
+        {
+          configFilePath: '/path/to/tool1.tool.ts',
+          toolInit: [],
+          pathModifications: [],
+          environmentVariables: [],
+          completionSetup: [],
+          onceScripts: [],
+          alwaysScripts: [],
+          functions: {
+            mycommand: 'echo "hello"',
+          },
+        },
+      ],
+    ]);
+
+    const content = generator.generateFileContent(toolContents);
+
+    expect(content).toContain('mycommand() {');
+    expect(content).toContain('HOME="/home/test"');
+    expect(content).toContain('echo "hello"');
   });
 });

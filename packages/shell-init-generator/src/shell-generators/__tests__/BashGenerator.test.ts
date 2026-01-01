@@ -67,6 +67,7 @@ describe('BashGenerator', () => {
           completionSetup: ['[[ -f "/completions/tool1.bash" ]] && source "/completions/tool1.bash"'],
           onceScripts: [],
           alwaysScripts: [],
+          functions: {},
         },
       ],
     ]);

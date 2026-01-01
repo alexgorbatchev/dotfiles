@@ -22,6 +22,12 @@ export interface IShellStorage {
   environment: Record<string, string>;
 
   /**
+   * Map of function names to their bodies.
+   * Functions are wrapped with HOME override similar to always scripts.
+   */
+  functions: Record<string, string>;
+
+  /**
    * Configuration for shell completions.
    */
   completions?: ShellCompletionConfig;

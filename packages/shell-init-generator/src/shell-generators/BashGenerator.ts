@@ -16,7 +16,9 @@ export class BashGenerator extends BaseShellGenerator {
     super(projectConfig, new BashStringProducer(projectConfig));
   }
 
-  protected getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined {
+  protected getShellConfig(
+    toolConfig: ToolConfig
+  ): { completions?: ShellCompletionConfig; functions?: Record<string, string> } | undefined {
     return toolConfig.shellConfigs?.bash;
   }
 }

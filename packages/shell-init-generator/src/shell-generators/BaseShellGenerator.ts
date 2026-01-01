@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ShellCompletionConfig, ShellScript, ShellType, ToolConfig } from '@dotfiles/core';
 import { getScriptContent, isAlwaysScript, isOnceScript } from '@dotfiles/core';
-import { AlwaysScriptFormatter, OnceScriptFormatter } from '../script-formatters';
+import { AlwaysScriptFormatter, FunctionScriptFormatter, OnceScriptFormatter } from '../script-formatters';
 import { OnceScriptInitializer } from '../script-initializers';
 import {
   generateDefaultPathModification,
@@ -62,7 +62,9 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     this.stringProducer = stringProducer;
   }
 
-  protected abstract getShellConfig(toolConfig: ToolConfig): { completions?: ShellCompletionConfig } | undefined;
+  protected abstract getShellConfig(
+    toolConfig: ToolConfig
+  ): { completions?: ShellCompletionConfig; functions?: Record<string, string> } | undefined;
 
   extractShellContent(toolName: string, toolConfig: ToolConfig): IShellInitContent {
     const content: IShellInitContent = {
@@ -73,6 +75,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
       completionSetup: [],
       onceScripts: [],
       alwaysScripts: [],
+      functions: {},
     };
 
     // Use string producer to extract shell-specific scripts
@@ -93,11 +96,16 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     const aliases = this.stringProducer.processAliases(toolConfig);
     content.toolInit.push(...aliases);
 
-    // Process shell-specific completions
+    // Process shell-specific config
     const shellConfig = this.getShellConfig(toolConfig);
     if (shellConfig?.completions) {
       const completionSetup = this.stringProducer.processCompletions(toolName, shellConfig.completions);
       content.completionSetup.push(...completionSetup);
+    }
+
+    // Extract shell functions
+    if (shellConfig?.functions) {
+      content.functions = { ...shellConfig.functions };
     }
 
     return content;
@@ -225,17 +233,7 @@ export abstract class BaseShellGenerator implements IShellGenerator {
    * Each tool gets a header followed by its always scripts and tool init content.
    */
   private generateToolSection(toolContents: Map<string, IShellInitContent>): string {
-    const alwaysFormatter = new AlwaysScriptFormatter(this.projectConfig.paths.homeDir);
-    let hasContent = false;
-
-    // Check if any tool has content to render
-    for (const [, content] of toolContents) {
-      if (content.toolInit.length > 0 || content.alwaysScripts.length > 0) {
-        hasContent = true;
-        break;
-      }
-    }
-
+    const hasContent = this.hasAnyToolContent(toolContents);
     if (!hasContent) {
       return '';
     }
@@ -243,36 +241,71 @@ export abstract class BaseShellGenerator implements IShellGenerator {
     let section = `${generateSectionHeader(this.shellType, 'Tool-Specific Initializations')}\n`;
 
     for (const [toolName, content] of toolContents) {
-      const hasToolContent = content.toolInit.length > 0 || content.alwaysScripts.length > 0;
-
-      if (!hasToolContent) {
-        continue;
-      }
-
-      // Add tool header
-      const toolHeader = generateToolHeader(this.shellType, content.configFilePath);
-      section += toolHeader;
-
-      // Add always scripts for this tool
-      const formattedAlwaysScripts: string[] = [];
-      for (const script of content.alwaysScripts) {
-        const formatted = alwaysFormatter.format(script, toolName, this.shellType);
-        formattedAlwaysScripts.push(formatted.content);
-      }
-
-      if (formattedAlwaysScripts.length > 0) {
-        section += `\n${formattedAlwaysScripts.join('\n\n')}`;
-      }
-
-      // Add tool init (aliases, etc.)
-      if (content.toolInit.length > 0) {
-        section += `\n${content.toolInit.join('\n')}`;
-      }
-
-      section += '\n';
+      const toolSection = this.generateSingleToolContent(toolName, content);
+      section += toolSection;
     }
 
     return `${section}\n`;
+  }
+
+  /**
+   * Checks if any tool in the map has content to render.
+   */
+  private hasAnyToolContent(toolContents: Map<string, IShellInitContent>): boolean {
+    for (const [, content] of toolContents) {
+      if (this.hasToolContent(content)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks if a single tool's content has any renderable content.
+   */
+  private hasToolContent(content: IShellInitContent): boolean {
+    const hasFunctions = Object.keys(content.functions).length > 0;
+    return content.toolInit.length > 0 || content.alwaysScripts.length > 0 || hasFunctions;
+  }
+
+  /**
+   * Generates the content section for a single tool.
+   */
+  private generateSingleToolContent(toolName: string, content: IShellInitContent): string {
+    if (!this.hasToolContent(content)) {
+      return '';
+    }
+
+    const alwaysFormatter = new AlwaysScriptFormatter(this.projectConfig.paths.homeDir);
+    const functionFormatter = new FunctionScriptFormatter(this.projectConfig.paths.homeDir);
+
+    let section = generateToolHeader(this.shellType, content.configFilePath);
+
+    // Add always scripts for this tool
+    const formattedAlwaysScripts = content.alwaysScripts.map((script) =>
+      alwaysFormatter.format(script, toolName, this.shellType).content
+    );
+
+    if (formattedAlwaysScripts.length > 0) {
+      section += `\n${formattedAlwaysScripts.join('\n\n')}`;
+    }
+
+    // Add shell functions for this tool
+    const formattedFunctions = Object.entries(content.functions).map(([funcName, funcBody]) =>
+      functionFormatter.format(funcName, funcBody, this.shellType).content
+    );
+
+    if (formattedFunctions.length > 0) {
+      section += `\n${formattedFunctions.join('\n')}`;
+    }
+
+    // Add tool init (aliases, etc.)
+    if (content.toolInit.length > 0) {
+      section += `\n${content.toolInit.join('\n')}`;
+    }
+
+    section += '\n';
+    return section;
   }
 
   /**

@@ -161,6 +161,61 @@ describe('IToolConfigBuilder', () => {
     ]);
   });
 
+  test('zsh functions method adds shell functions correctly', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+    builder.zsh((shell) =>
+      shell.functions({
+        mycommand: 'echo "Running my command"',
+        anotherFunc: 'cd /some/path && ./run.sh',
+      })
+    );
+    const config = builder.build();
+    expect(config.shellConfigs?.zsh?.functions).toEqual({
+      mycommand: 'echo "Running my command"',
+      anotherFunc: 'cd /some/path && ./run.sh',
+    });
+  });
+
+  test('bash functions method adds shell functions correctly', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+    builder.bash((shell) =>
+      shell.functions({
+        myfunc: 'echo "hello from bash"',
+      })
+    );
+    const config = builder.build();
+    expect(config.shellConfigs?.bash?.functions).toEqual({
+      myfunc: 'echo "hello from bash"',
+    });
+  });
+
+  test('functions method filters out invalid function names and logs error', () => {
+    const builder = new IToolConfigBuilder(logger, 'test-tool');
+    builder.zsh((shell) =>
+      shell.functions({
+        'valid_name': 'echo valid',
+        '123invalid': 'echo starts with number',
+        'has space': 'echo has space',
+        'valid-name': 'echo valid with hyphen',
+        'func;injection': 'echo injection attempt',
+      })
+    );
+    const config = builder.build();
+
+    // Only valid names should be kept
+    expect(config.shellConfigs?.zsh?.functions).toEqual({
+      'valid_name': 'echo valid',
+      'valid-name': 'echo valid with hyphen',
+    });
+
+    // Errors should be logged for invalid names
+    logger.expect(['ERROR'], ['IToolConfigBuilder', 'ShellConfigurator'], [
+      /Invalid function name: "123invalid"/,
+      /Invalid function name: "has space"/,
+      /Invalid function name: "func;injection"/,
+    ]);
+  });
+
   test('symlink method adds symlinks correctly', () => {
     const builder = new IToolConfigBuilder(logger, 'test-tool');
     builder.symlink('configs/.mytoolrc', '~/.mytoolrc');

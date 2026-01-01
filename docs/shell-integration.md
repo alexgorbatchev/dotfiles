@@ -17,9 +17,10 @@ Configure shell environments, aliases, completions, and functions.
   shell
     .environment({ VAR: 'value' })      // Environment variables
     .aliases({ t: 'tool' })             // Shell aliases
+    .functions({ myFunc: 'cmd' })       // Shell functions with HOME override
     .completions('completions/_tool')   // Completion file path
     .source('shell/init.zsh')           // Source a file (skips if missing)
-    .always(`function helper() {...}`)  // Run every shell startup
+    .always(`eval "$(tool init)"`)      // Run every shell startup
     .once(`tool gen-completions`)       // Run once after install
 )
 ```
@@ -35,25 +36,55 @@ export default defineTool((install, ctx) =>
         .environment({ TOOL_HOME: ctx.currentDir })
         .aliases({ t: 'tool', ts: 'tool status' })
         .completions('completions/_tool')
-        .always(`
-          function tool-helper() {
-            tool --config "$TOOL_HOME/config.toml" "$@"
-          }
-        `)
+        .functions({
+          'tool-helper': 'tool --config "$TOOL_HOME/config.toml" "$@"',
+        })
     )
 );
+```
+
+## Shell Functions
+
+### `.functions()` - Define Shell Functions
+
+Define shell functions with automatic HOME override. Function bodies are wrapped
+in subshells with HOME set to the configured home directory, preventing tools
+from accessing the real home directory.
+
+```typescript
+.zsh((shell) =>
+  shell.functions({
+    'my-command': 'echo "Running with HOME=$HOME"',
+    'tool-setup': 'cd /some/path && ./setup.sh',
+  })
+)
+```
+
+**Generated output:**
+
+```zsh
+my-command() {
+  (
+    HOME="/configured/home/path"
+    echo "Running with HOME=$HOME"
+  )
+}
+```
+
+This is useful when you need functions that should operate with the sandboxed
+HOME environment, similar to `always()` and `once()` scripts.
 ```
 
 ## Script Timing
 
 ### `.always()` - Every Shell Startup
 
-For fast operations only:
+For fast inline operations. Runs in a subshell with HOME override:
 
 ```typescript
 .zsh((shell) =>
   shell.always(`
-    function quick-helper() { tool "$@"; }
+    eval "$(tool init zsh)"
   `)
 )
 ```

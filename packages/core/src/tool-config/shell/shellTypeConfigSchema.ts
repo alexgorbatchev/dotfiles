@@ -10,6 +10,8 @@ export const shellTypeConfigSchema = z
     aliases: z.record(z.string(), z.string()).optional(),
     /** Environment variables to define (variable name -> value) */
     environment: z.record(z.string(), z.string()).optional(),
+    /** Shell functions (function name -> body) */
+    functions: z.record(z.string(), z.string()).optional(),
     /** Shell completion configuration */
     completions: shellCompletionConfigSchema.optional(),
   })

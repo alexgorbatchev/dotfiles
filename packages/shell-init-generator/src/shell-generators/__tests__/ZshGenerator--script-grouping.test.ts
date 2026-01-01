@@ -23,6 +23,7 @@ describe('ZshGenerator - Script Grouping', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [always`source "/path/to/tool1/init"`, always`eval "$(tool1 env)"`],
+          functions: {},
         },
       ],
       [
@@ -35,6 +36,7 @@ describe('ZshGenerator - Script Grouping', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [always`eval "$(tool2 init)"`],
+          functions: {},
         },
       ],
     ]);
@@ -83,6 +85,7 @@ describe('ZshGenerator - Script Grouping', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [],
+          functions: {},
         },
       ],
     ]);
@@ -113,6 +116,7 @@ describe('ZshGenerator - Script Grouping', () => {
           completionSetup: [],
           onceScripts: [],
           alwaysScripts: [always`source "/path/to/something"`],
+          functions: {},
         },
       ],
     ]);

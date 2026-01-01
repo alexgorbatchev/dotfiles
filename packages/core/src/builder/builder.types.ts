@@ -165,6 +165,27 @@ export interface IShellConfigurator {
    */
   always(script: AlwaysScript): IShellConfigurator;
   always(script: string): IShellConfigurator;
+
+  /**
+   * Defines shell functions with automatic HOME override.
+   * Function bodies are wrapped in subshells with HOME set to the configured home directory,
+   * consistent with the behavior of `always` and `once` scripts.
+   *
+   * @param values - A record of function names to their body content.
+   *
+   * @example
+   * shell.functions({
+   *   mycommand: 'echo "Running with HOME=$HOME"'
+   * })
+   * // Generates:
+   * // mycommand() {
+   * //   (
+   * //     HOME="/configured/home/path"
+   * //     echo "Running with HOME=$HOME"
+   * //   )
+   * // }
+   */
+  functions(values: Record<string, string>): IShellConfigurator;
 }
 
 export type ShellConfiguratorSyncResult = IShellConfigurator | undefined;

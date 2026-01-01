@@ -9,6 +9,7 @@ import type {
 } from '@dotfiles/core';
 import { always, once } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
+import { VALID_FUNCTION_NAME_PATTERN } from '@dotfiles/shell-init-generator';
 import { messages } from './log-messages';
 import type { IShellStorage, ShellTypeKey } from './types';
 
@@ -41,7 +42,7 @@ export class ShellConfigurator implements IShellConfigurator {
     this.storage = storage;
     this.shellType = shellType;
     this.context = context;
-    this.logger = logger;
+    this.logger = logger.getSubLogger({ name: 'ShellConfigurator' }).setPrefix(toolName);
     this.toolName = toolName;
   }
 
@@ -94,6 +95,33 @@ export class ShellConfigurator implements IShellConfigurator {
     const normalizedScript: AlwaysScript = this.normalizeAlwaysScript(script);
     this.storage.scripts.push(normalizedScript);
     return this;
+  }
+
+  /** @inheritdoc */
+  public functions(values: Record<string, string>): IShellConfigurator {
+    const validatedFunctions = this.validateFunctionNames(values);
+    this.storage.functions = {
+      ...this.storage.functions,
+      ...validatedFunctions,
+    };
+    return this;
+  }
+
+  /**
+   * Validates function names and filters out invalid ones with error logging.
+   */
+  private validateFunctionNames(values: Record<string, string>): Record<string, string> {
+    const result: Record<string, string> = {};
+
+    for (const [functionName, functionBody] of Object.entries(values)) {
+      if (!functionName || !VALID_FUNCTION_NAME_PATTERN.test(functionName)) {
+        this.logger.error(messages.invalidFunctionName(functionName));
+        continue;
+      }
+      result[functionName] = functionBody;
+    }
+
+    return result;
   }
 
   /**

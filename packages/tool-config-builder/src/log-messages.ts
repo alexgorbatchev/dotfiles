@@ -7,4 +7,5 @@ export const messages = {
     createSafeLogMessage(`Required configuration missing: ${field}${example ? `. Example: ${example}` : ''}`),
   configurationFieldInvalid: (field: string, value: string, expected: string) =>
     createSafeLogMessage(`Invalid ${field}: "${value}" (expected ${expected})`),
+  invalidFunctionName: (functionName: string) => createSafeLogMessage(`Invalid function name: "${functionName}"`),
 } satisfies SafeLogMessageMap;

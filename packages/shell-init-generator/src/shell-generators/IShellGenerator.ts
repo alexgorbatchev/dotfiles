@@ -18,6 +18,8 @@ export interface IShellInitContent {
   onceScripts: ShellScript[];
   /** Scripts that run every time the shell starts */
   alwaysScripts: ShellScript[];
+  /** Shell functions (function name -> body) */
+  functions: Record<string, string>;
 }
 
 /**
