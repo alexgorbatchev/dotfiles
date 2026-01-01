@@ -5,7 +5,7 @@ import { TestLogger } from '@dotfiles/logger';
 import { createAllBinaryEntrypoints, createBinaryEntrypoint } from '../createBinaryEntrypoint';
 
 describe('createBinaryEntrypoint', () => {
-  it('creates a real entrypoint file for a binary', async () => {
+  it('creates a symlink entrypoint pointing to the original binary location', async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     const binariesDir = '/app/binaries';
@@ -22,17 +22,21 @@ describe('createBinaryEntrypoint', () => {
     await createBinaryEntrypoint(fs, toolName, binaryName, timestamp, binaryPath, binariesDir, logger);
 
     const entrypointPath = path.join(binariesDir, toolName, timestamp, binaryName);
-    const legacyEntrypointPath = path.join(binariesDir, toolName, binaryName);
 
+    // Entrypoint must exist
     expect(await fs.exists(entrypointPath)).toBe(true);
 
+    // Entrypoint must be a symlink to preserve access to co-located supplementary files
     const entrypointStats = await fs.lstat(entrypointPath);
-    expect(entrypointStats.isSymbolicLink()).toBe(false);
+    expect(entrypointStats.isSymbolicLink()).toBe(true);
 
+    // The symlink must point to the relative path of the binary
+    const linkTarget = await fs.readlink(entrypointPath);
+    expect(linkTarget).toBe('extracted/test-binary');
+
+    // Reading through the symlink should return the actual binary contents
     const entrypointContents = await fs.readFile(entrypointPath, 'utf8');
     expect(entrypointContents).toBe('#!/bin/bash\necho "test binary"');
-
-    expect(await fs.exists(legacyEntrypointPath)).toBe(false);
   });
 
   it('replaces an existing entrypoint file', async () => {
@@ -61,7 +65,7 @@ describe('createBinaryEntrypoint', () => {
 });
 
 describe('createAllBinaryEntrypoints', () => {
-  it('creates entrypoint files for multiple binaries', async () => {
+  it('creates symlink entrypoints for multiple binaries', async () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     const binariesDir = '/app/binaries';
@@ -83,8 +87,13 @@ describe('createAllBinaryEntrypoints', () => {
       const entrypointPath = path.join(binariesDir, toolName, timestamp, binaryName);
       expect(await fs.exists(entrypointPath)).toBe(true);
 
+      // Entrypoints must be symlinks
       const entrypointStats = await fs.lstat(entrypointPath);
-      expect(entrypointStats.isSymbolicLink()).toBe(false);
+      expect(entrypointStats.isSymbolicLink()).toBe(true);
+
+      // Each symlink should point to the correct relative path
+      const linkTarget = await fs.readlink(entrypointPath);
+      expect(linkTarget).toBe(path.join(binaryBasePath, binaryName));
 
       const entrypointContents = await fs.readFile(entrypointPath, 'utf8');
       expect(entrypointContents).toBe(`#!/bin/bash\necho "${binaryName}"`);
