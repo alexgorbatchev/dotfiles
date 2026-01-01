@@ -12,6 +12,7 @@ import {
   withInstallErrorHandling,
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
+import { resolveValue } from '@dotfiles/unwrap-value';
 import { detectVersionViaCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
 import type { CurlScriptToolConfig } from './schemas';
@@ -37,16 +38,13 @@ async function resolveScriptArgs(
     return [];
   }
 
-  if (typeof params.args === 'function') {
-    const argsContext: ICurlScriptArgsContext = {
-      projectConfig: context.projectConfig,
-      scriptPath,
-      stagingDir: context.stagingDir,
-    };
-    return await params.args(argsContext);
-  }
+  const argsContext: ICurlScriptArgsContext = {
+    projectConfig: context.projectConfig,
+    scriptPath,
+    stagingDir: context.stagingDir,
+  };
 
-  return params.args;
+  return await resolveValue(argsContext, params.args);
 }
 
 /**
