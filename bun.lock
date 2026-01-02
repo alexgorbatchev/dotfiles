@@ -570,7 +570,7 @@
         "@dotfiles/installer": "workspace:*",
         "@dotfiles/installer-github": "workspace:*",
         "@dotfiles/logger": "workspace:*",
-        "semver": "^7.6.3",
+        "semver": "^7.7.3",
       },
       "devDependencies": {
         "@dotfiles/testing-helpers": "workspace:*",
