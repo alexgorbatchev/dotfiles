@@ -213,7 +213,11 @@ describe('IToolConfigContext', () => {
         env: {},
       });
 
-      const customSystemInfo: ISystemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: customTestDirs.paths.homeDir };
+      const customSystemInfo: ISystemInfo = {
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
+        homeDir: customTestDirs.paths.homeDir,
+      };
 
       const toolConfigFilePath = path.join(
         customProjectConfig.paths.toolConfigsDir,

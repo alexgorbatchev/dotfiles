@@ -1,4 +1,4 @@
-import { Architecture, Platform, type ISystemInfo } from '@gitea/dotfiles';
+import { Architecture, type ISystemInfo, Platform } from '@gitea/dotfiles';
 import { expectType } from 'tsd';
 
 // This test verifies that ISystemInfo uses Platform and Architecture enum types

@@ -210,7 +210,14 @@ function createTrackedFileSystems(
     projectConfig
   );
 
-  return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs, completionTrackedFs };
+  return {
+    shimTrackedFs,
+    shellInitTrackedFs,
+    symlinkTrackedFs,
+    installerTrackedFs,
+    catalogTrackedFs,
+    completionTrackedFs,
+  };
 }
 
 export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<IServices> {
@@ -294,8 +301,14 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const cargoClient = new CargoClient(parentLogger, projectConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
 
   // Create tracked filesystem instances for each generator
-  const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs, completionTrackedFs } =
-    createTrackedFileSystems(parentLogger, resolvedFs, fileRegistry, projectConfig);
+  const {
+    shimTrackedFs,
+    shellInitTrackedFs,
+    symlinkTrackedFs,
+    installerTrackedFs,
+    catalogTrackedFs,
+    completionTrackedFs,
+  } = createTrackedFileSystems(parentLogger, resolvedFs, fileRegistry, projectConfig);
 
   // Create system-context logger for generators that operate at system level
   const systemLogger = parentLogger.getSubLogger({ context: 'system' });

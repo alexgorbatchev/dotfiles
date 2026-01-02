@@ -152,9 +152,7 @@ export class CompletionGenerator implements ICompletionGenerator {
    *
    * @param options - Generation options including optional fs override for tracking.
    */
-  async generateAndWriteCompletionFile(
-    options: IGenerateAndWriteCompletionFileOptions
-  ): Promise<IGeneratedCompletion> {
+  async generateAndWriteCompletionFile(options: IGenerateAndWriteCompletionFileOptions): Promise<IGeneratedCompletion> {
     const { config, toolName, shellType, context, fs } = options;
 
     const result = await this.generateCompletionFile(config, toolName, shellType, context);

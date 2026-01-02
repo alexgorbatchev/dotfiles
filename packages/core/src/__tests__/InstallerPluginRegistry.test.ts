@@ -34,7 +34,11 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   const fileSystem = new MemFileSystem({});
   const testDirs = await createTestDirectories(logger, fileSystem, { testName: 'InstallerPluginRegistry' });
 
-  const systemInfo: ISystemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
+  const systemInfo: ISystemInfo = {
+    platform: Platform.Linux,
+    arch: Architecture.X86_64,
+    homeDir: testDirs.paths.homeDir,
+  };
 
   const projectConfig = await createMockProjectConfig({
     config: { paths: testDirs.paths },

@@ -102,11 +102,7 @@ describe('matchesArchitecture with FZF release assets', () => {
     'fzf_0.66.0_checksums.txt',
   ];
 
-  function expectMatchingAssets(
-    platform: Platform,
-    arch: Architecture,
-    expectedAssets: string[]
-  ): void {
+  function expectMatchingAssets(platform: Platform, arch: Architecture, expectedAssets: string[]): void {
     it(`should find correct file for ${platform}/${arch}`, () => {
       const systemInfo: ISystemInfo = {
         platform,

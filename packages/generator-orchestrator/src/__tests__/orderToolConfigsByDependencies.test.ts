@@ -101,7 +101,9 @@ describe('orderToolConfigsByDependencies', () => {
     logger.expect(
       ['ERROR'],
       ['orderToolConfigsByDependencies'],
-      ['Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x86_64.']
+      [
+        'Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x86_64.',
+      ]
     );
   });
 

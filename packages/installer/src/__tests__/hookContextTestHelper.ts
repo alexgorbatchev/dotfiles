@@ -1,5 +1,11 @@
-import { Architecture, type IInstallContext, Platform, type ProjectConfig, type ToolConfig } from '@dotfiles/core';
-import { projectConfigSchema } from '@dotfiles/core';
+import {
+  Architecture,
+  type IInstallContext,
+  Platform,
+  type ProjectConfig,
+  projectConfigSchema,
+  type ToolConfig,
+} from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$ } from '@dotfiles/testing-helpers';

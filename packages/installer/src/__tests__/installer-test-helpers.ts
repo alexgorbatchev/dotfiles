@@ -3,8 +3,8 @@ import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
 import {
-  Architecture,
   type $extended,
+  Architecture,
   type IExtractResult,
   type IGitHubRelease,
   type IInstallContext,
@@ -436,7 +436,11 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   // Create installer instance - import here to avoid circular dependency
   const { Installer } = await import('../Installer.js');
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
-  const mockSystemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir };
+  const mockSystemInfo: ISystemInfo = {
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
+    homeDir: testDirs.paths.homeDir,
+  };
   const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
   const shell = createConfiguredShell(createMock$(), process.env);
   const installer = new Installer(

@@ -215,7 +215,10 @@ async function selectAsset(
     asset = release.assets.find((a) => matchAssetPattern(a.name, pattern));
   } else {
     logger.debug(
-      messages.assetPlatformMatch(platformToString(context.systemInfo.platform), architectureToString(context.systemInfo.arch))
+      messages.assetPlatformMatch(
+        platformToString(context.systemInfo.platform),
+        architectureToString(context.systemInfo.arch)
+      )
     );
     asset = findPlatformAsset(release.assets, context.systemInfo);
   }

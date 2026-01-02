@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
-import { always, Architecture, architectureToString, Platform, platformToString } from '@dotfiles/core';
+import { Architecture, always, architectureToString, Platform, platformToString } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
