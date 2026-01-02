@@ -124,15 +124,49 @@ Enum for architecture-specific configurations.
 
 ### replaceInFile
 
-Replace text in files during hooks.
+Replace text in files during hooks. Supports regex or string patterns with optional async callbacks.
 
 ```typescript
+import type { IReplaceInFileMatch } from '@gitea/dotfiles';
 import { replaceInFile } from '@gitea/dotfiles';
 
 .hook('after-extract', async (ctx) => {
+  // Simple string replacement
   await replaceInFile(ctx.fileSystem, 'path/to/file', 'old', 'new');
+
+  // Regex replacement
+  await replaceInFile(ctx.fileSystem, 'path/to/file', /pattern/, 'replacement');
+
+  // Async callback replacement
+  await replaceInFile(
+    ctx.fileSystem,
+    'path/to/file',
+    /version=(\d+)/,
+    async ({ substring, captures }: IReplaceInFileMatch): Promise<string> => {
+      return `version=${Number(captures[0]) + 1}`;
+    }
+  );
+
+  // Line-by-line mode (preserves EOLs)
+  await replaceInFile(ctx.fileSystem, 'path/to/file', /pattern/, 'replacement', {
+    mode: 'line',
+  });
 })
 ```
+
+**Parameters:**
+- `fileSystem` - `IResolvedFileSystem` instance (from `ctx.fileSystem`)
+- `filePath` - Path to the file (supports `~` expansion)
+- `from` - `RegExp` or `string` pattern to match (strings are escaped)
+- `to` - Replacement string or callback function
+- `options.mode` - `'file'` (default) or `'line'`
+
+**Callback receives `IReplaceInFileMatch`:**
+- `substring` - The matched text
+- `captures` - Array of capture groups
+- `offset` - Match position in the string
+- `input` - Original input string
+- `groups` - Named capture groups (if any)
 
 ### dedentTemplate
 

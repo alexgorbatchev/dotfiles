@@ -1,25 +1,26 @@
-import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
+import type { Resolvable } from '@dotfiles/unwrap-value';
+import { resolveValue } from '@dotfiles/unwrap-value';
 
 export type ReplaceInFileMode = 'file' | 'line';
 
 type ReplaceCapture = string | undefined;
 type ReplaceGroups = Record<string, string>;
 
-export type ReplaceInFileReplacerResult = string | Promise<string>;
-export type ReplaceInFileReplacerFunctionArgs = unknown[];
-export type ReplaceInFileReplacerFunction = (
-  substring: string,
-  ...args: ReplaceInFileReplacerFunctionArgs
-) => ReplaceInFileReplacerResult;
-export type ReplaceInFileReplacer = string | ReplaceInFileReplacerFunction;
+export interface IReplaceInFileMatch {
+  substring: string;
+  captures: ReplaceCapture[];
+  offset: number;
+  input: string;
+  groups?: ReplaceGroups;
+}
+
+export type ReplaceInFileReplacer = Resolvable<IReplaceInFileMatch, string>;
+export type ReplaceInFilePattern = RegExp | string;
 
 export interface IReplaceInFileOptions {
-  /** Optional. Defaults to `new NodeFileSystem()` when not provided. */
-  fileSystem?: IFileSystem;
-  filePath: string;
-  from: RegExp;
-  to: ReplaceInFileReplacer;
-  mode: ReplaceInFileMode;
+  /** Optional. Defaults to `'file'` when not provided. */
+  mode?: ReplaceInFileMode;
 }
 
 /**
@@ -31,71 +32,64 @@ export interface IReplaceInFileOptions {
  * **Key behaviors**
  * - Always replaces *all* matches (global replacement), even if `from` does not include the `g` flag.
  * - Supports `to` as either a string or a (a)sync callback.
- * - Supports `mode: 'file'` (process the whole file as one string) and `mode: 'line'` (process each
- *   line separately, preserving the original end-of-line sequences encountered in the file).
+ * - Supports `mode: 'file'` (default, process the whole file as one string) and `mode: 'line'`
+ *   (process each line separately, preserving the original end-of-line sequences encountered in the file).
  * - No-op write: if the computed output is identical to the input content, the file is not written.
  *
  * **Replacement callback arguments**
  *
- * When `to` is a function, it is called in a way that mirrors `String.prototype.replace` callback
- * semantics for regular expressions:
- * - First argument is the matched substring.
- * - Followed by all capture groups (which may be `undefined`).
- * - Followed by the match offset (number).
- * - Followed by the original input string.
- * - If named capture groups are present, a final groups object is provided.
+ * When `to` is a function, it receives an `IReplaceInFileMatch` object:
+ * - `substring`: the matched substring
+ * - `captures`: array of capture groups (which may be `undefined`)
+ * - `offset`: the match offset (number)
+ * - `input`: the original input string
+ * - `groups`: named capture groups object (if present)
  *
  * @example
  * ```ts
- * await replaceInFile({
- *   fileSystem,
- *   filePath: '/tmp/input.txt',
- *   mode: 'file',
- *   from: /foo/,
- *   to: 'bar',
- * });
+ * await replaceInFile(fileSystem, '/tmp/input.txt', /foo/, 'bar');
+ * ```
+ *
+ * @example
+ * ```ts
+ * await replaceInFile(fileSystem, '~/config.txt', 'foo', 'bar', { mode: 'line' });
  * ```
  */
-export async function replaceInFile(options: IReplaceInFileOptions): Promise<void> {
-  const fileSystem: IFileSystem = options.fileSystem ?? new NodeFileSystem();
+export async function replaceInFile(
+  fileSystem: IResolvedFileSystem,
+  filePath: string,
+  from: ReplaceInFilePattern,
+  to: ReplaceInFileReplacer,
+  options?: IReplaceInFileOptions
+): Promise<void> {
+  const mode: ReplaceInFileMode = options?.mode ?? 'file';
+  const pattern: RegExp = normalizePattern(from);
 
-  const content = await fileSystem.readFile(options.filePath, 'utf8');
+  const content = await fileSystem.readFile(filePath, 'utf8');
 
   const finalContent: string =
-    options.mode === 'line'
-      ? await replaceInLines(content, options.from, options.to)
-      : await replaceInString(content, options.from, options.to);
+    mode === 'line' ? await replaceInLines(content, pattern, to) : await replaceInString(content, pattern, to);
 
   if (finalContent === content) {
     return;
   }
 
-  await fileSystem.writeFile(options.filePath, finalContent, 'utf8');
+  await fileSystem.writeFile(filePath, finalContent, 'utf8');
 }
 
-function ensureGlobalRegExp(pattern: RegExp): RegExp {
-  const flags: string = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-  const globalPattern: RegExp = new RegExp(pattern.source, flags);
-  return globalPattern;
-}
-
-async function resolveReplacement(
-  to: ReplaceInFileReplacer,
-  substring: string,
-  args: ReplaceInFileReplacerFunctionArgs
-): Promise<string> {
-  if (typeof to === 'string') {
-    const result: string = to;
-    return result;
+function normalizePattern(from: ReplaceInFilePattern): RegExp {
+  if (typeof from === 'string') {
+    const escaped: string = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern: RegExp = new RegExp(escaped, 'g');
+    return pattern;
   }
 
-  const replacementOrPromise: ReplaceInFileReplacerResult = to(substring, ...args);
-  const result: string = await replacementOrPromise;
-  return result;
+  const flags: string = from.flags.includes('g') ? from.flags : `${from.flags}g`;
+  const pattern: RegExp = new RegExp(from.source, flags);
+  return pattern;
 }
 
-async function replaceInString(input: string, from: RegExp, to: ReplaceInFileReplacer): Promise<string> {
-  const pattern: RegExp = ensureGlobalRegExp(from);
+async function replaceInString(input: string, pattern: RegExp, to: ReplaceInFileReplacer): Promise<string> {
   const matches: RegExpMatchArray[] = Array.from(input.matchAll(pattern));
 
   let result: string = input;
@@ -104,16 +98,18 @@ async function replaceInString(input: string, from: RegExp, to: ReplaceInFileRep
   for (const match of matches) {
     const substring: string = match[0] ?? '';
     const index: number = match.index ?? 0;
-
     const captures: ReplaceCapture[] = match.slice(1);
-    const callbackArgs: ReplaceInFileReplacerFunctionArgs = [...captures, index, input];
-
     const groups: ReplaceGroups | undefined = match.groups;
-    if (groups) {
-      callbackArgs.push(groups);
-    }
 
-    const replacement: string = await resolveReplacement(to, substring, callbackArgs);
+    const matchParams: IReplaceInFileMatch = {
+      substring,
+      captures,
+      offset: index,
+      input,
+      groups,
+    };
+
+    const replacement: string = await resolveValue(matchParams, to);
     const start: number = index + offset;
     const end: number = start + substring.length;
 
@@ -124,7 +120,7 @@ async function replaceInString(input: string, from: RegExp, to: ReplaceInFileRep
   return result;
 }
 
-async function replaceInLines(content: string, from: RegExp, to: ReplaceInFileReplacer): Promise<string> {
+async function replaceInLines(content: string, pattern: RegExp, to: ReplaceInFileReplacer): Promise<string> {
   const parts: string[] = content.split(/(\r\n|\n)/);
 
   let result: string = '';
@@ -133,7 +129,7 @@ async function replaceInLines(content: string, from: RegExp, to: ReplaceInFileRe
     const line: string = parts[index] ?? '';
     const eol: string = parts[index + 1] ?? '';
 
-    const replacedLine: string = await replaceInString(line, from, to);
+    const replacedLine: string = await replaceInString(line, pattern, to);
     result += replacedLine + eol;
   }
 

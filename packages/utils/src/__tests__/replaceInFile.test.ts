@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { createMemFileSystem } from '@dotfiles/file-system';
+import type { IReplaceInFileMatch } from '../replaceInFile';
 import { replaceInFile } from '../replaceInFile';
 
 describe('replaceInFile', () => {
@@ -10,13 +11,7 @@ describe('replaceInFile', () => {
       },
     });
 
-    await replaceInFile({
-      fileSystem: memFs.fs.asIFileSystem,
-      filePath: '/tmp/input.txt',
-      mode: 'file',
-      from: /a/, // intentionally not /g
-      to: 'b',
-    });
+    await replaceInFile(memFs.fs.asIResolvedFileSystem, '/tmp/input.txt', /a/, 'b');
 
     const updated: string = await memFs.fs.readFile('/tmp/input.txt', 'utf8');
     expect(updated).toBe('b b b');
@@ -30,16 +25,15 @@ describe('replaceInFile', () => {
       },
     });
 
-    await replaceInFile({
-      fileSystem: memFs.fs.asIFileSystem,
-      filePath: '/tmp/input.txt',
-      mode: 'file',
-      from: /\d+/,
-      to: async (match: string): Promise<string> => {
-        const replacement: string = `(${match})`;
+    await replaceInFile(
+      memFs.fs.asIResolvedFileSystem,
+      '/tmp/input.txt',
+      /\d+/,
+      async ({ substring }: IReplaceInFileMatch): Promise<string> => {
+        const replacement: string = `(${substring})`;
         return replacement;
-      },
-    });
+      }
+    );
 
     const updated: string = await memFs.fs.readFile('/tmp/input.txt', 'utf8');
     expect(updated).toBe('x(1)y(2)z');
@@ -53,13 +47,7 @@ describe('replaceInFile', () => {
       },
     });
 
-    await replaceInFile({
-      fileSystem: memFs.fs.asIFileSystem,
-      filePath: '/tmp/input.txt',
-      mode: 'file',
-      from: /does-not-match/,
-      to: 'x',
-    });
+    await replaceInFile(memFs.fs.asIResolvedFileSystem, '/tmp/input.txt', /does-not-match/, 'x');
 
     const updated: string = await memFs.fs.readFile('/tmp/input.txt', 'utf8');
     expect(updated).toBe('hello');
@@ -73,12 +61,8 @@ describe('replaceInFile', () => {
       },
     });
 
-    await replaceInFile({
-      fileSystem: memFs.fs.asIFileSystem,
-      filePath: '/tmp/input.txt',
+    await replaceInFile(memFs.fs.asIResolvedFileSystem, '/tmp/input.txt', /o/, '0', {
       mode: 'line',
-      from: /o/,
-      to: '0',
     });
 
     const updated: string = await memFs.fs.readFile('/tmp/input.txt', 'utf8');

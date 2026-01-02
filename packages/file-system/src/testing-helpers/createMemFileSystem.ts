@@ -2,7 +2,9 @@ import { type Mock, mock } from 'bun:test';
 import path from 'node:path';
 import type { DirectoryJSON } from 'memfs';
 import type { IFileSystem } from '../IFileSystem';
+import type { IResolvedFileSystem } from '../IResolvedFileSystem';
 import { MemFileSystem } from '../MemFileSystem';
+import { ResolvedFileSystem } from '../ResolvedFileSystem';
 
 /**
  * Options for creating a customizable in-memory file system.
@@ -41,7 +43,10 @@ export type FileSystemSpies = {
 /**
  * Type for the collection of spies/mocks on the file system methods.
  */
-export type MockedFileSystem = IFileSystem & { asIFileSystem: IFileSystem } & {
+export type MockedFileSystem = IFileSystem & {
+  asIFileSystem: IFileSystem;
+  asIResolvedFileSystem: IResolvedFileSystem;
+} & {
   [K in keyof IFileSystem as IFileSystem[K] extends (...args: unknown[]) => unknown ? K : never]: Mock<IFileSystem[K]>;
 };
 
@@ -91,7 +96,8 @@ export async function createMemFileSystem(options: IMemFileSystemOptions = {}): 
   const memFs = new MemFileSystem(initialVolumeJson);
 
   const spies = createFileSystemSpies(memFs, mocks);
-  const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem };
+  const resolvedFs = new ResolvedFileSystem(spies as IFileSystem, '/test-home');
+  const fs: MockedFileSystem = { ...spies, asIFileSystem: spies as IFileSystem, asIResolvedFileSystem: resolvedFs };
 
   const addSymlinks = createSymlinkAdder(spies);
   const addFiles = createFileAdder(spies);

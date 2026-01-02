@@ -114,31 +114,44 @@ const script = dedentTemplate`
 
 ### File Editing
 
-#### `replaceInFile(options: IReplaceInFileOptions): Promise<void>`
+#### `replaceInFile(fileSystem, filePath, from, to, options?): Promise<void>`
 
 Performs a regex-based replacement within a file.
 
-- Supports processing the whole file (`mode: 'file'`) or line-by-line (`mode: 'line'`) while preserving original EOLs.
+- Requires an `IResolvedFileSystem` for proper home path normalization (`~` expansion).
+- `from` can be a `RegExp` or a `string` (strings are escaped and matched literally).
+- `to` can be a string, sync function, or async function receiving `IReplaceInFileMatch`.
+- Supports processing the whole file (`mode: 'file'`, default) or line-by-line (`mode: 'line'`), preserving original EOLs.
 - Always replaces all matches (global replacement), even if `from` does not include the `g` flag.
-- Supports `to` as either a string or a (a)sync callback.
 - Does not write the file when the resulting content is unchanged.
 
 ```typescript
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
+import type { IReplaceInFileMatch } from '@dotfiles/utils';
 import { replaceInFile } from '@dotfiles/utils';
 
-declare const fileSystem: IFileSystem;
+declare const fileSystem: IResolvedFileSystem;
 
-await replaceInFile({
-  // Optional. Pass a memfs/Node fs implementation explicitly if needed.
-  fileSystem,
-  filePath: '/tmp/input.txt',
+// Simple string replacement
+await replaceInFile(fileSystem, '/tmp/input.txt', 'foo', 'bar');
+
+// Regex replacement with home path
+await replaceInFile(fileSystem, '~/config.txt', /foo/, 'bar');
+
+// Line mode replacement
+await replaceInFile(fileSystem, '/tmp/input.txt', /foo/, 'bar', {
   mode: 'line',
-  from: /foo/,
-  to: async (match: string): Promise<string> => {
-    return match.toUpperCase();
-  },
 });
+
+// Async callback replacement with match params
+await replaceInFile(
+  fileSystem,
+  '/tmp/input.txt',
+  /foo/,
+  async ({ substring, captures, offset, input, groups }: IReplaceInFileMatch): Promise<string> => {
+    return substring.toUpperCase();
+  }
+);
 ```
 
 ### Version Utilities
