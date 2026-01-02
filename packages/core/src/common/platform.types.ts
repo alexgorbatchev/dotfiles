@@ -120,3 +120,79 @@ export function hasArchitecture(targetArchitectures: Architecture, architecture:
   }
   return (targetArchitectures & architecture) === architecture;
 }
+
+/**
+ * Converts a Node.js platform string to a Platform enum value.
+ *
+ * @param platform - The platform string from `process.platform`
+ * @returns The corresponding Platform enum value, or `Platform.None` if not supported
+ */
+export function platformFromNodeJS(platform: NodeJS.Platform): Platform {
+  switch (platform) {
+    case 'darwin':
+      return Platform.MacOS;
+    case 'linux':
+      return Platform.Linux;
+    case 'win32':
+      return Platform.Windows;
+    default:
+      return Platform.None;
+  }
+}
+
+/**
+ * Converts a Node.js architecture string to an Architecture enum value.
+ *
+ * @param arch - The architecture string from `process.arch`
+ * @returns The corresponding Architecture enum value, or `Architecture.None` if not supported
+ */
+export function architectureFromNodeJS(arch: NodeJS.Architecture): Architecture {
+  switch (arch) {
+    case 'x64':
+      return Architecture.X86_64;
+    case 'arm64':
+      return Architecture.Arm64;
+    default:
+      return Architecture.None;
+  }
+}
+
+/**
+ * Converts a Platform enum value to a human-readable string.
+ *
+ * @param platform - The platform enum value
+ * @returns The platform name as a string
+ */
+export function platformToString(platform: Platform): string {
+  switch (platform) {
+    case Platform.MacOS:
+      return 'macos';
+    case Platform.Linux:
+      return 'linux';
+    case Platform.Windows:
+      return 'windows';
+    case Platform.None:
+      return 'none';
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Converts an Architecture enum value to a human-readable string.
+ *
+ * @param arch - The architecture enum value
+ * @returns The architecture name as a string
+ */
+export function architectureToString(arch: Architecture): string {
+  switch (arch) {
+    case Architecture.X86_64:
+      return 'x86_64';
+    case Architecture.Arm64:
+      return 'arm64';
+    case Architecture.None:
+      return 'none';
+    default:
+      return 'unknown';
+  }
+}

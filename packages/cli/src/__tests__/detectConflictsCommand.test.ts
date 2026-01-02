@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
+import { Architecture, Platform } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
@@ -85,8 +86,8 @@ describe('detectConflictsCommand', () => {
         mockFs.fs.asIFileSystem,
         mockProjectConfig,
         expect.objectContaining({
-          platform: 'linux',
-          arch: 'x64',
+          platform: Platform.Linux,
+          arch: Architecture.X86_64,
           homeDir: mockProjectConfig.paths.homeDir,
         })
       );

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
+import { Architecture, Platform } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { TestLogger } from '@dotfiles/logger';
@@ -73,8 +74,8 @@ describe('generateCommand', () => {
       mockFs.fs.asIFileSystem,
       mockProjectConfig,
       expect.objectContaining({
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
       })
     );
@@ -92,8 +93,8 @@ describe('generateCommand', () => {
       mockFs.fs.asIFileSystem,
       mockProjectConfig,
       expect.objectContaining({
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
       })
     );

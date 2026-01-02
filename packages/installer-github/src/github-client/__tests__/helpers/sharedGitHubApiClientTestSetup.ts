@@ -1,6 +1,7 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
+import { Architecture, Platform } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -22,7 +23,7 @@ export const createMockProjectConfigForGitHubApi = async (
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
     fileSystem: memFs.fs,
     logger,
-    systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
     env: {},
   });
 };

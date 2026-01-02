@@ -1,7 +1,7 @@
 import { describe, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import type { IAfterInstallContext, ISystemInfo } from '@dotfiles/core';
+import { Architecture, type IAfterInstallContext, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
@@ -19,8 +19,8 @@ describe('HookExecutor - error reporting', () => {
     const testDirs = await createTestDirectories(logger, fs, { testName: 'hook-executor-error-reporting' });
 
     const systemInfo: ISystemInfo = {
-      platform: 'darwin',
-      arch: 'arm64',
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
     };
 

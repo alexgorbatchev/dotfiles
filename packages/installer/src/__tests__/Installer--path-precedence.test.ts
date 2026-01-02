@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
+import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
 import { InstallerPluginRegistry } from '@dotfiles/core';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -111,7 +111,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       close: async () => {},
     };
 
-    const systemInfo: ISystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: tempDir };
+    const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: tempDir };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
     const hookExecutor = new HookExecutor(logger, (): void => {});
 

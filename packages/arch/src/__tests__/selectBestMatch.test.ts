@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import type { ISystemInfo } from '@dotfiles/core';
+import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { selectBestMatch } from '../selectBestMatch';
 
 describe('selectBestMatch', () => {
   it('should return undefined when no assets match', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'darwin',
-      arch: 'arm64',
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
       homeDir: '/home/test',
     };
 
@@ -17,8 +17,8 @@ describe('selectBestMatch', () => {
 
   it('should return the only matching asset', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'darwin',
-      arch: 'arm64',
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
       homeDir: '/home/test',
     };
 
@@ -32,8 +32,8 @@ describe('selectBestMatch', () => {
 
   it('should prefer musl variant when both musl and gnu are available for Linux', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'linux',
-      arch: 'x86_64',
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
       homeDir: '/home/test',
     };
 
@@ -52,8 +52,8 @@ describe('selectBestMatch', () => {
 
   it('should accept gnu variant if musl is not available', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'linux',
-      arch: 'x86_64',
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
       homeDir: '/home/test',
     };
 
@@ -67,8 +67,8 @@ describe('selectBestMatch', () => {
 
   it('should work with assets that have no variant info (most common case)', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'linux',
-      arch: 'x86_64',
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
       homeDir: '/home/test',
     };
 
@@ -82,8 +82,8 @@ describe('selectBestMatch', () => {
 
   it('should return first match when multiple assets match without variants', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'linux',
-      arch: 'x86_64',
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
       homeDir: '/home/test',
     };
 
@@ -99,8 +99,8 @@ describe('selectBestMatch', () => {
 
   it('should prefer mingw variant for Windows when multiple Windows variants exist', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'win32',
-      arch: 'x64',
+      platform: Platform.Windows,
+      arch: Architecture.X86_64,
       homeDir: '/home/test',
     };
 
@@ -119,8 +119,8 @@ describe('selectBestMatch', () => {
 
   it('should handle ARM eabihf variant correctly', () => {
     const systemInfo: ISystemInfo = {
-      platform: 'linux',
-      arch: 'armv7l',
+      platform: Platform.Linux,
+      arch: Architecture.None,
       homeDir: '/home/test',
     };
 

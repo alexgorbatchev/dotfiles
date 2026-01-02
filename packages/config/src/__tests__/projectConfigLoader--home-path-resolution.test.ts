@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { ISystemInfo } from '@dotfiles/core';
+import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createProjectConfigFromObject } from '../stagedProjectConfigLoader';
 
 describe('projectConfigLoader - staged home/path resolution', () => {
   const bootstrapSystemInfo: ISystemInfo = {
-    platform: 'darwin',
-    arch: 'arm64',
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
     homeDir: '/bootstrap-home',
   };
 

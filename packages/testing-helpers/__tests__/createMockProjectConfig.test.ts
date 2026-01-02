@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { createProjectConfigFromObject } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
+import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, type PartialProjectConfig } from '../src/createMockProjectConfig';
@@ -20,7 +21,7 @@ describe('createMockProjectConfig', () => {
     const { fs } = await createMemFileSystem();
     const logger = new TestLogger();
     const filePath = '/test.yaml';
-    const systemInfo: ISystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' };
+    const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' };
     const env: Record<string, string | undefined> = {};
     await createMockProjectConfig({
       config: mockConfig,

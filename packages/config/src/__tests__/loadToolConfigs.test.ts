@@ -8,7 +8,7 @@ import type {
   IToolConfigContext,
   ProjectConfig,
 } from '@dotfiles/core';
-import { createToolConfigContext } from '@dotfiles/core';
+import { Architecture, createToolConfigContext, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
@@ -25,7 +25,7 @@ describe('IToolConfigContext', () => {
     const mockFs = await createMemFileSystem({});
     const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'toolconfig-context-test' });
 
-    systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
+    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {
@@ -56,7 +56,7 @@ describe('IToolConfigContext', () => {
       expect(context.toolDir).toBe(path.dirname(toolConfigFilePath));
 
       // systemInfo should be injectable (provided by main.ts), not derived from process.
-      expect(context.systemInfo.platform).toBe('linux');
+      expect(context.systemInfo.platform).toBe(Platform.Linux);
     });
 
     it('should work correctly with IToolConfigBuilder and context', async () => {
@@ -209,11 +209,11 @@ describe('IToolConfigContext', () => {
         filePath: path.join(customTestDirs.paths.dotfilesDir, 'config.yaml'),
         fileSystem: customMockFs.fs,
         logger,
-        systemInfo: { platform: 'linux', arch: 'x64', homeDir: customTestDirs.paths.homeDir },
+        systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: customTestDirs.paths.homeDir },
         env: {},
       });
 
-      const customSystemInfo: ISystemInfo = { platform: 'linux', arch: 'x64', homeDir: customTestDirs.paths.homeDir };
+      const customSystemInfo: ISystemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: customTestDirs.paths.homeDir };
 
       const toolConfigFilePath = path.join(
         customProjectConfig.paths.toolConfigsDir,

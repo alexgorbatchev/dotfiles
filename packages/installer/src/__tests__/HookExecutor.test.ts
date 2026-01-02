@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import assert from 'node:assert';
-import type { AsyncInstallHook, IInstallContext, ToolConfig } from '@dotfiles/core';
+import { Architecture, type AsyncInstallHook, type IInstallContext, Platform, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
@@ -202,7 +202,7 @@ describe('HookExecutor', () => {
         filePath: '/test/config.yaml',
         fileSystem: memFs.fs,
         logger,
-        systemInfo: { platform: 'linux', arch: 'x64', homeDir: '/home/test' },
+        systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: '/home/test' },
         env: {},
       });
 

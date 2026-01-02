@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { ProjectConfigPaths } from '@dotfiles/config';
 import { getDefaultConfig } from '@dotfiles/config';
+import { Architecture, Platform } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
@@ -73,7 +74,7 @@ export async function createTestDirectories(
   const defaultConfig = await getDefaultConfig(
     logger,
     fs,
-    { homeDir, platform: 'linux', arch: 'x64' },
+    { homeDir, platform: Platform.Linux, arch: Architecture.X86_64 },
     { HOME: homeDir },
     `${homeDir}/config.yaml`
   );

@@ -71,17 +71,28 @@ function deepMerge(target: RecordUnknown, source: RecordUnknown): RecordUnknown 
   return output;
 }
 
-function detectOS(platform: string): string {
-  if (platform === 'darwin') return 'macos';
-  if (platform === 'linux') return 'linux';
-  if (platform === 'win32') return 'windows';
-  return platform;
+function detectOS(platform: Platform): string {
+  switch (platform) {
+    case Platform.MacOS:
+      return 'macos';
+    case Platform.Linux:
+      return 'linux';
+    case Platform.Windows:
+      return 'windows';
+    default:
+      return 'unknown';
+  }
 }
 
-function detectArch(arch: string): string {
-  if (arch === 'x64') return 'x86_64';
-  if (arch === 'arm64') return 'arm64';
-  return arch;
+function detectArch(arch: Architecture): string {
+  switch (arch) {
+    case Architecture.X86_64:
+      return 'x86_64';
+    case Architecture.Arm64:
+      return 'arm64';
+    default:
+      return 'unknown';
+  }
 }
 
 function applyPlatformOverrides(parentLogger: TsLogger, config: RecordUnknown, systemInfo: ISystemInfo): RecordUnknown {
@@ -427,7 +438,7 @@ export async function createProjectConfigFromObject(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfig: ProjectConfigPartial = {},
-  systemInfo: ISystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
+  systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/Users/testuser' },
   env: EnvMap = {},
   options: ICreateProjectConfigFromObjectOptions
 ): Promise<ProjectConfig> {

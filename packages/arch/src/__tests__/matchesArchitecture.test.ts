@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'bun:test';
 import type { IArchitectureRegex } from '@dotfiles/arch';
 import { getArchitectureRegex, matchesArchitecture } from '@dotfiles/arch';
-import type { ISystemInfo } from '@dotfiles/core';
+import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 
 describe('matchesArchitecture', () => {
   const macosArm64SystemInfo: ISystemInfo = {
-    platform: 'darwin',
-    arch: 'arm64',
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
     homeDir: '/home/test',
   };
 
   const linuxX64SystemInfo: ISystemInfo = {
-    platform: 'linux',
-    arch: 'x86_64',
+    platform: Platform.Linux,
+    arch: Architecture.X86_64,
     homeDir: '/home/test',
   };
 
@@ -102,7 +102,11 @@ describe('matchesArchitecture with FZF release assets', () => {
     'fzf_0.66.0_checksums.txt',
   ];
 
-  function expectMatchingAssets(platform: string, arch: string, expectedAssets: string[]): void {
+  function expectMatchingAssets(
+    platform: Platform,
+    arch: Architecture,
+    expectedAssets: string[]
+  ): void {
     it(`should find correct file for ${platform}/${arch}`, () => {
       const systemInfo: ISystemInfo = {
         platform,
@@ -115,11 +119,10 @@ describe('matchesArchitecture with FZF release assets', () => {
     });
   }
 
-  expectMatchingAssets('darwin', 'arm64', ['fzf-0.66.0-darwin_arm64.tar.gz']);
-  expectMatchingAssets('darwin', 'x64', ['fzf-0.66.0-darwin_amd64.tar.gz']);
-  expectMatchingAssets('linux', 'x86_64', ['fzf-0.66.0-linux_amd64.tar.gz']);
-  expectMatchingAssets('linux', 'arm64', ['fzf-0.66.0-linux_arm64.tar.gz']);
-  expectMatchingAssets('win32', 'x64', ['fzf-0.66.0-windows_amd64.zip']);
-  expectMatchingAssets('win32', 'arm64', ['fzf-0.66.0-windows_arm64.zip']);
-  expectMatchingAssets('freebsd', 'x64', ['fzf-0.66.0-freebsd_amd64.tar.gz']);
+  expectMatchingAssets(Platform.MacOS, Architecture.Arm64, ['fzf-0.66.0-darwin_arm64.tar.gz']);
+  expectMatchingAssets(Platform.MacOS, Architecture.X86_64, ['fzf-0.66.0-darwin_amd64.tar.gz']);
+  expectMatchingAssets(Platform.Linux, Architecture.X86_64, ['fzf-0.66.0-linux_amd64.tar.gz']);
+  expectMatchingAssets(Platform.Linux, Architecture.Arm64, ['fzf-0.66.0-linux_arm64.tar.gz']);
+  expectMatchingAssets(Platform.Windows, Architecture.X86_64, ['fzf-0.66.0-windows_amd64.zip']);
+  expectMatchingAssets(Platform.Windows, Architecture.Arm64, ['fzf-0.66.0-windows_arm64.zip']);
 });

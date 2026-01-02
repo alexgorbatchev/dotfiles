@@ -11,6 +11,7 @@ import type {
   IInstallContext,
   ISystemInfo,
 } from '@dotfiles/core';
+import { architectureToString, platformToString } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor, IInstallOptions } from '@dotfiles/installer';
@@ -213,7 +214,9 @@ async function selectAsset(
     const pattern: AssetPattern = params.assetPattern;
     asset = release.assets.find((a) => matchAssetPattern(a.name, pattern));
   } else {
-    logger.debug(messages.assetPlatformMatch(context.systemInfo.platform, context.systemInfo.arch));
+    logger.debug(
+      messages.assetPlatformMatch(platformToString(context.systemInfo.platform), architectureToString(context.systemInfo.arch))
+    );
     asset = findPlatformAsset(release.assets, context.systemInfo);
   }
 
@@ -246,8 +249,8 @@ function createAssetNotFoundError(
   context: IInstallContext
 ): string {
   const availableAssetNames = release.assets.map((a) => a.name);
-  const platform = context.systemInfo.platform.toLowerCase();
-  const arch = context.systemInfo.arch.toLowerCase();
+  const platform = platformToString(context.systemInfo.platform);
+  const arch = architectureToString(context.systemInfo.arch);
   let searchedForMessage = '';
 
   if (params.assetSelector) {

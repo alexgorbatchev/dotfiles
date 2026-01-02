@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
-import { always } from '@dotfiles/core';
+import { always, Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
@@ -41,7 +41,7 @@ describe('Profile Updates E2E Tests', () => {
       filePath: configFilePath,
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
       env: {},
     });
 

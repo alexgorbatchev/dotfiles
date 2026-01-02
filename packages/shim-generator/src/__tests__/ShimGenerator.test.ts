@@ -4,6 +4,7 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
+import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type FileSystemSpies, type IFileSystem, type Stats } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { FileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
@@ -36,7 +37,7 @@ describe('ShimGenerator', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+      systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
       env: {},
     });
 

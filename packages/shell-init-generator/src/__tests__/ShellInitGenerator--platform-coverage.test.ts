@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { always, Platform } from '@dotfiles/core';
+import { always, Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
@@ -30,7 +30,7 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir },
       env: {},
     });
 
@@ -40,8 +40,8 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
   describe('multiple shell types with platform-specific code', () => {
     it('should generate platform-specific code for all shell types', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
@@ -101,8 +101,8 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
   describe('platform-specific symlinks processing', () => {
     it('should not directly process symlinks but should include them in resolved config', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
@@ -148,8 +148,8 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
   describe('environment variables and PATH modifications', () => {
     it('should properly categorize and hoist platform-specific env vars and PATH mods', async () => {
       const linuxSystemInfo: ISystemInfo = {
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: '/home/test',
       };
 
@@ -217,14 +217,14 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
   describe('real-world tool configurations', () => {
     it('should work with aerospace-like macOS-only tool', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
       const linuxSystemInfo: ISystemInfo = {
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: '/home/test',
       };
 
@@ -278,14 +278,14 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
     it('should work with eza-like multi-platform tool with different install methods', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
       const linuxSystemInfo: ISystemInfo = {
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: '/home/test',
       };
 
@@ -359,8 +359,8 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
   describe('edge cases and error conditions', () => {
     it('should handle empty platform-specific shell init arrays', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
@@ -397,8 +397,8 @@ describe('ShellInitGenerator - Platform Coverage Tests', () => {
 
     it('should handle tools with only platform-specific configs and no base shell init', async () => {
       const windowsSystemInfo: ISystemInfo = {
-        platform: 'win32',
-        arch: 'x64',
+        platform: Platform.Windows,
+        arch: Architecture.X86_64,
         homeDir: 'C:\\Users\\test',
       };
 

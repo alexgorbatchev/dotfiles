@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
-import { always, Platform } from '@dotfiles/core';
+import { always, Architecture, architectureToString, Platform, platformToString } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -42,8 +42,8 @@ function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, system
     if (config.platformConfigs) {
       for (const platformConfig of config.platformConfigs) {
         const isMatch =
-          ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === 'darwin') ||
-          ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === 'linux');
+          ((platformConfig.platforms & Platform.MacOS) !== 0 && systemInfo.platform === Platform.MacOS) ||
+          ((platformConfig.platforms & Platform.Linux) !== 0 && systemInfo.platform === Platform.Linux);
 
         const config = platformConfig.config as PlatformConfig;
         if (isMatch && config.shellConfigs?.zsh?.scripts) {
@@ -61,8 +61,8 @@ function createMockShellContent(toolConfigs: Record<string, ToolConfig>, systemI
   let mockContent = '# Generated shell init\n';
 
   if (systemInfo) {
-    mockContent += `# Platform: ${systemInfo.platform}\n`;
-    mockContent += `# Arch: ${systemInfo.arch}\n`;
+    mockContent += `# Platform: ${platformToString(systemInfo.platform)}\n`;
+    mockContent += `# Arch: ${architectureToString(systemInfo.arch)}\n`;
     mockContent += generatePlatformContent(toolConfigs, systemInfo);
   }
 
@@ -90,14 +90,14 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'orchestrator-platform-integration' });
 
     macosSystemInfo = {
-      platform: 'darwin',
-      arch: 'arm64',
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
       homeDir: testDirs.paths.homeDir,
     };
 
     linuxSystemInfo = {
-      platform: 'linux',
-      arch: 'x64',
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
       homeDir: testDirs.paths.homeDir,
     };
 
@@ -218,7 +218,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
 
       // Verify the shell generator received systemInfo and processed platform configs
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: darwin');
+      expect(shellContent).toContain('# Platform: macos');
       expect(shellContent).toContain('# Arch: arm64');
       expect(shellContent).toContain('# Platform-specific content for aerospace: # macOS aerospace init');
     });
@@ -277,7 +277,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       // Verify the shell generator received Linux systemInfo
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
       expect(shellContent).toContain('# Platform: linux');
-      expect(shellContent).toContain('# Arch: x64');
+      expect(shellContent).toContain('# Arch: x86_64');
       expect(shellContent).toContain(
         '# Platform-specific content for cross-platform-tool: # Linux specific - should appear'
       );
@@ -319,7 +319,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
       // Should still work even with no platform configs
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
       expect(shellContent).toContain('# Platform: linux');
-      expect(shellContent).toContain('# Arch: x64');
+      expect(shellContent).toContain('# Arch: x86_64');
       // No platform-specific content expected since there are no platform configs
     });
   });
@@ -371,7 +371,7 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
 
       // Verify shell content includes platform-aware information
       const shellContent = await mockFileSystem.readFile(path.join(testDirs.paths.shellScriptsDir, 'main.zsh'));
-      expect(shellContent).toContain('# Platform: darwin');
+      expect(shellContent).toContain('# Platform: macos');
       expect(shellContent).toContain('# Platform-specific content for full-platform-tool: # macOS shell init');
     });
   });

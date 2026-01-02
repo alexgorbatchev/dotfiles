@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { Architecture, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
@@ -15,7 +16,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
     const mockDownloader = {
@@ -37,7 +38,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
     const mockDownloader = {
@@ -86,7 +87,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
     const mockDownloader = {
@@ -119,7 +120,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
 
@@ -194,7 +195,7 @@ describe('CargoClient', () => {
       filePath: '/test/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
 

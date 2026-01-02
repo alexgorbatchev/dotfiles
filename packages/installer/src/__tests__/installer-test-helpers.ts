@@ -2,13 +2,15 @@ import { mock } from 'bun:test';
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { ProjectConfig } from '@dotfiles/config';
-import type {
-  $extended,
-  IExtractResult,
-  IGitHubRelease,
-  IInstallContext,
-  InstallerPluginRegistry,
-  ISystemInfo,
+import {
+  Architecture,
+  type $extended,
+  type IExtractResult,
+  type IGitHubRelease,
+  type IInstallContext,
+  type InstallerPluginRegistry,
+  type ISystemInfo,
+  Platform,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
@@ -343,7 +345,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
     fileSystem: fs,
     logger,
-    systemInfo: { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir },
+    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir },
     env: {},
   });
 
@@ -434,7 +436,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   // Create installer instance - import here to avoid circular dependency
   const { Installer } = await import('../Installer.js');
   const mockToolInstallationRegistry = createMockToolInstallationRegistry();
-  const mockSystemInfo: ISystemInfo = { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir };
+  const mockSystemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir };
   const mockSymlinkGenerator = createMockSymlinkGenerator(fs);
   const shell = createConfiguredShell(createMock$(), process.env);
   const installer = new Installer(
@@ -592,7 +594,7 @@ export function createTestContext(
     currentDir: baseCurrentDir,
     stagingDir: path.join(setup.testDirs.paths.binariesDir, MOCK_TOOL_NAME, 'staging'),
     timestamp: '2024-08-13-16-45-23',
-    systemInfo: { platform: 'linux', arch: 'x64', homeDir: setup.testDirs.paths.homeDir },
+    systemInfo: { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: setup.testDirs.paths.homeDir },
     toolConfig: createGithubReleaseToolConfig(),
     projectConfig: setup.mockProjectConfig,
     $: shell,

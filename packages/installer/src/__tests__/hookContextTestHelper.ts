@@ -1,4 +1,4 @@
-import type { IInstallContext, ProjectConfig, ToolConfig } from '@dotfiles/core';
+import { Architecture, type IInstallContext, Platform, type ProjectConfig, type ToolConfig } from '@dotfiles/core';
 import { projectConfigSchema } from '@dotfiles/core';
 import { MemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -65,8 +65,8 @@ export function createTestInstallHookContext(
     // InstallContext specific properties
     stagingDir: '/test/staging/dir',
     systemInfo: {
-      platform: 'darwin',
-      arch: 'x64',
+      platform: Platform.MacOS,
+      arch: Architecture.X86_64,
       homeDir: '/home/user',
     },
     $: configuredShell,

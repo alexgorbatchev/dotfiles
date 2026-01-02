@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import path from 'node:path';
-import type { ISystemInfo } from '@dotfiles/core';
+import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories } from '@dotfiles/testing-helpers';
@@ -8,8 +8,8 @@ import { loadConfig } from '../loadConfig';
 
 describe('loadConfig - TypeScript path substitution', () => {
   const mockSystemInfo: ISystemInfo = {
-    platform: 'darwin',
-    arch: 'arm64',
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
     homeDir: '/Users/testuser',
   };
 

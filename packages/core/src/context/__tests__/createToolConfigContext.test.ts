@@ -6,15 +6,15 @@ import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { z } from 'zod';
-import type { ISystemInfo } from '../../common';
+import { Architecture, type ISystemInfo, Platform } from '../../common';
 import { createToolConfigContext } from '../createToolConfigContext';
 
 describe('createToolConfigContext', () => {
   let projectConfig: ProjectConfig;
 
   const systemInfo: ISystemInfo = {
-    platform: 'darwin',
-    arch: 'arm64',
+    platform: Platform.MacOS,
+    arch: Architecture.Arm64,
     homeDir: '/Users/testuser',
   };
 

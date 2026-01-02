@@ -7,6 +7,7 @@ import { createConfiguredShell } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$, createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { z } from 'zod';
+import { Architecture, Platform } from '../common';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
 import type { IInstallerPlugin, IInstallOptions, InstallResult, IValidationResult } from '../types';
 
@@ -33,7 +34,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   const fileSystem = new MemFileSystem({});
   const testDirs = await createTestDirectories(logger, fileSystem, { testName: 'InstallerPluginRegistry' });
 
-  const systemInfo: ISystemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
+  const systemInfo: ISystemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
 
   const projectConfig = await createMockProjectConfig({
     config: { paths: testDirs.paths },

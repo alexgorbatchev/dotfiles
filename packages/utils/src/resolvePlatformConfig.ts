@@ -2,55 +2,29 @@ import type { ISystemInfo, PlatformConfig, PlatformConfigEntry, ToolConfig } fro
 import { Architecture, hasArchitecture, hasPlatform, Platform } from '@dotfiles/core';
 
 /**
- * Detects the current operating system using the same logic as projectConfigLoader
- * @param platform - The platform from ISystemInfo (from NodeJS.Process)
- * @returns The detected OS as a Platform enum
- */
-function detectPlatformEnum(platform: string): Platform {
-  if (platform === 'darwin') return Platform.MacOS;
-  if (platform === 'linux') return Platform.Linux;
-  if (platform === 'win32') return Platform.Windows;
-  return Platform.None;
-}
-
-/**
- * Detects the current architecture using the same logic as projectConfigLoader
- * @param arch - The architecture from ISystemInfo (from NodeJS.Process)
- * @returns The detected architecture as an Architecture enum
- */
-function detectArchitectureEnum(arch: string): Architecture {
-  if (arch === 'x64') return Architecture.X86_64;
-  if (arch === 'arm64') return Architecture.Arm64;
-  return Architecture.None;
-}
-
-/**
  * Checks if a platform config entry matches the given system info.
  * @param entry - The platform configuration entry to check
  * @param systemInfo - The current system information
  * @returns True if the platform config matches the system
  */
 function matchesPlatform(entry: PlatformConfigEntry, systemInfo: ISystemInfo): boolean {
-  const currentPlatformEnum = detectPlatformEnum(systemInfo.platform);
-  const currentArchEnum = detectArchitectureEnum(systemInfo.arch);
-
   // If system platform is unknown, no match
-  if (currentPlatformEnum === Platform.None) {
+  if (systemInfo.platform === Platform.None) {
     return false;
   }
 
   // Check if system platform matches the entry's platforms using hasPlatform helper
-  const platformMatches = hasPlatform(entry.platforms, currentPlatformEnum);
+  const platformMatches = hasPlatform(entry.platforms, systemInfo.platform);
   if (!platformMatches) {
     return false;
   }
 
   // If architectures are specified in the entry, check for architecture match
   if (entry.architectures !== undefined) {
-    if (currentArchEnum === Architecture.None) {
+    if (systemInfo.arch === Architecture.None) {
       return false; // Unknown architecture doesn't match any specific requirement
     }
-    const archMatches = hasArchitecture(entry.architectures, currentArchEnum);
+    const archMatches = hasArchitecture(entry.architectures, systemInfo.arch);
     if (!archMatches) {
       return false;
     }

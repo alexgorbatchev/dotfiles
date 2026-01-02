@@ -28,20 +28,20 @@ describe('resolvePlatformConfig', () => {
     };
 
     macosSystemInfo = {
-      platform: 'darwin',
-      arch: 'arm64',
+      platform: Platform.MacOS,
+      arch: Architecture.Arm64,
       homeDir: '/Users/test',
     };
 
     linuxSystemInfo = {
-      platform: 'linux',
-      arch: 'x64',
+      platform: Platform.Linux,
+      arch: Architecture.X86_64,
       homeDir: '/home/test',
     };
 
     windowsSystemInfo = {
-      platform: 'win32',
-      arch: 'x64',
+      platform: Platform.Windows,
+      arch: Architecture.X86_64,
       homeDir: 'C:\\Users\\test',
     };
   });
@@ -260,8 +260,8 @@ describe('resolvePlatformConfig', () => {
   describe('unknown platform/architecture handling', () => {
     it('should not match when system platform is unknown', () => {
       const unknownPlatformSystem: ISystemInfo = {
-        platform: 'freebsd',
-        arch: 'x64',
+        platform: Platform.None,
+        arch: Architecture.X86_64,
         homeDir: '/home/test',
       };
 
@@ -283,8 +283,8 @@ describe('resolvePlatformConfig', () => {
 
     it('should not match when system architecture is unknown but architecture is specified', () => {
       const unknownArchSystem: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'sparc', // Unknown architecture
+        platform: Platform.MacOS,
+        arch: Architecture.None, // Unknown architecture
         homeDir: '/Users/test',
       };
 

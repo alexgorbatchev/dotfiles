@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { Architecture, Platform } from '@dotfiles/core';
 import { FileCache } from '@dotfiles/downloader';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -30,7 +31,7 @@ describe('CargoClient caching', () => {
       filePath: '/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
 
@@ -64,7 +65,7 @@ describe('CargoClient caching', () => {
       filePath: '/config.yaml',
       fileSystem: fs,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: '/home/test' },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/home/test' },
       env: {},
     });
 

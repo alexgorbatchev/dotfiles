@@ -19,25 +19,36 @@ import { messages } from './log-messages';
 /**
  * Detects the current operating system
  *
- * @param platform - The platform from NodeJS.Process
+ * @param platform - The platform enum value
  * @returns The detected OS as a string ('macos', 'linux', or 'windows')
  */
-function detectOS(platform: string): string {
-  if (platform === 'darwin') return 'macos';
-  if (platform === 'linux') return 'linux';
-  if (platform === 'win32') return 'windows';
-  return platform;
+function detectOS(platform: Platform): string {
+  switch (platform) {
+    case Platform.MacOS:
+      return 'macos';
+    case Platform.Linux:
+      return 'linux';
+    case Platform.Windows:
+      return 'windows';
+    default:
+      return 'unknown';
+  }
 }
 
 /**
  * Detects the current architecture
- * @param arch - The architecture from NodeJS.Process
+ * @param arch - The architecture enum value
  * @returns The detected architecture as a string ('x86_64' or 'arm64')
  */
-function detectArch(arch: string): string {
-  if (arch === 'x64') return 'x86_64';
-  if (arch === 'arm64') return 'arm64';
-  return arch;
+function detectArch(arch: Architecture): string {
+  switch (arch) {
+    case Architecture.X86_64:
+      return 'x86_64';
+    case Architecture.Arm64:
+      return 'arm64';
+    default:
+      return 'unknown';
+  }
 }
 
 /**
@@ -403,7 +414,7 @@ export async function createProjectConfigFromObject(
   parentLogger: TsLogger,
   fileSystem: IFileSystem,
   userConfig: ProjectConfigPartial = {},
-  systemInfo: ISystemInfo = { platform: 'darwin', arch: 'x64', homeDir: '/Users/testuser' },
+  systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: '/Users/testuser' },
   env: Record<string, string | undefined> = {},
   options: ICreateProjectConfigFromObjectOptions
 ): Promise<ProjectConfig> {

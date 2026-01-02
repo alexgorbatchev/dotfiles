@@ -5,8 +5,8 @@ import { TestLogger } from '@dotfiles/logger';
 import { orderToolConfigsByDependencies } from '../orderToolConfigsByDependencies';
 
 const systemInfoLinux: ISystemInfo = {
-  platform: 'linux',
-  arch: 'x64',
+  platform: Platform.Linux,
+  arch: Architecture.X86_64,
   homeDir: '/home/test',
 };
 
@@ -101,7 +101,7 @@ describe('orderToolConfigsByDependencies', () => {
     logger.expect(
       ['ERROR'],
       ['orderToolConfigsByDependencies'],
-      ['Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x64.']
+      ['Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x86_64.']
     );
   });
 
@@ -174,8 +174,8 @@ describe('orderToolConfigsByDependencies', () => {
       ],
     });
     const linuxArmSystem: ISystemInfo = {
-      platform: 'linux',
-      arch: 'arm64',
+      platform: Platform.Linux,
+      arch: Architecture.Arm64,
       homeDir: '/home/test-arm',
     };
     const consumerConfig: ToolConfig = createManualToolConfig({

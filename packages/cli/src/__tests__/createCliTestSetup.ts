@@ -1,7 +1,7 @@
 import { mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo } from '@dotfiles/core';
+import { Architecture, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockFileRegistry } from '@dotfiles/registry/file';
@@ -91,8 +91,8 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
   const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: options.testName });
 
   const systemInfo: ISystemInfo = {
-    platform: 'linux',
-    arch: 'x64',
+    platform: Platform.Linux,
+    arch: Architecture.X86_64,
     homeDir: testDirs.paths.homeDir,
   };
 

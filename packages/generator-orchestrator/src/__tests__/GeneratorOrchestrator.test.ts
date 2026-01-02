@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it, mock, type spyOn } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { always } from '@dotfiles/core';
+import { always, Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
@@ -86,7 +85,7 @@ describe('GeneratorOrchestrator', () => {
 
     testDirs = await createTestDirectories(logger, mockFileSystem, { testName: 'generator-orchestrator' });
 
-    systemInfo = { platform: 'linux', arch: 'x64', homeDir: testDirs.paths.homeDir };
+    systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
 
     mockProjectConfig = await createMockProjectConfig({
       config: {

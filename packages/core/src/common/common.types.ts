@@ -1,3 +1,5 @@
+import type { Architecture, Platform } from './platform.types';
+
 /**
  * Represents essential system information used for architecture detection and compatibility checks.
  * This information is typically derived from the operating system's properties.
@@ -5,15 +7,13 @@
  */
 export interface ISystemInfo {
   /**
-   * The operating system platform identifier.
-   * Corresponds to the value returned by `os.platform()` in Node.js (e.g., 'darwin', 'linux', 'win32').
+   * The operating system platform.
    */
-  platform: string;
+  platform: Platform;
   /**
-   * The CPU architecture identifier.
-   * Corresponds to the value returned by `os.arch()` in Node.js (e.g., 'x64', 'arm64').
+   * The CPU architecture.
    */
-  arch: string;
+  arch: Architecture;
   /**
    * The user's home directory path.
    * Corresponds to the value returned by `os.homedir()` in Node.js.

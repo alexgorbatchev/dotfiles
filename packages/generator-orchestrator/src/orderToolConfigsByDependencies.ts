@@ -1,4 +1,5 @@
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
+import { architectureToString, platformToString } from '@dotfiles/core';
 import type { TsLogger } from '@dotfiles/logger';
 import { resolvePlatformConfig } from '@dotfiles/utils';
 import { messages } from './log-messages';
@@ -126,7 +127,12 @@ function resolveDependencyProvider(
   const providers = binaryProviders.get(dependencyName);
   if (!providers || providers.size === 0) {
     logger.error(
-      messages.generateAll.missingDependency(toolName, dependencyName, systemInfo.platform, systemInfo.arch)
+      messages.generateAll.missingDependency(
+        toolName,
+        dependencyName,
+        platformToString(systemInfo.platform),
+        architectureToString(systemInfo.arch)
+      )
     );
     throw new Error('Dependency validation failed');
   }
@@ -140,7 +146,12 @@ function resolveDependencyProvider(
   const [providerToolName] = providers;
   if (!providerToolName) {
     logger.error(
-      messages.generateAll.missingDependency(toolName, dependencyName, systemInfo.platform, systemInfo.arch)
+      messages.generateAll.missingDependency(
+        toolName,
+        dependencyName,
+        platformToString(systemInfo.platform),
+        architectureToString(systemInfo.arch)
+      )
     );
     throw new Error('Dependency validation failed');
   }

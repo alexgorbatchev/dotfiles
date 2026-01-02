@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ToolConfig } from '@dotfiles/core';
+import { Architecture, Platform } from '@dotfiles/core';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller, InstallResult } from '@dotfiles/installer';
 import type { TestLogger } from '@dotfiles/logger';
@@ -100,8 +101,8 @@ describe('installCommand', () => {
       mockServices.fs,
       mockProjectConfig,
       expect.objectContaining({
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
       })
     );

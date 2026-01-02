@@ -5,7 +5,7 @@ import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
-import { InstallerPluginRegistry } from '@dotfiles/core';
+import { architectureFromNodeJS, InstallerPluginRegistry, platformFromNodeJS } from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
 import { type IFileSystem, MemFileSystem, NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
@@ -63,9 +63,13 @@ function initializeFileSystem(logger: TsLogger, dryRun: boolean): IFileSystem {
 }
 
 function createSystemInfo(options: SetupServicesOptions, logger: TsLogger): ISystemInfo {
+  // CLI options are user-provided strings that override process.platform/arch for testing
+  const platformString: NodeJS.Platform = (options.platform as NodeJS.Platform) || process.platform;
+  const archString: NodeJS.Architecture = (options.arch as NodeJS.Architecture) || process.arch;
+
   const systemInfo: ISystemInfo = {
-    platform: options.platform || process.platform,
-    arch: options.arch || process.arch,
+    platform: platformFromNodeJS(platformString),
+    arch: architectureFromNodeJS(archString),
     homeDir: os.homedir(),
   };
 

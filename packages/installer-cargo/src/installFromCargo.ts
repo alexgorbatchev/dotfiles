@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { IArchiveExtractor } from '@dotfiles/archive-extractor';
 import type { IExtractResult, IInstallContext, IInstallOptions } from '@dotfiles/core';
+import { Architecture, Platform } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
@@ -251,26 +252,26 @@ async function buildDownloadUrl(
   }
 }
 
-function getPlatformString(platform: string): string {
+function getPlatformString(platform: Platform): string {
   switch (platform) {
-    case 'darwin':
+    case Platform.MacOS:
       return 'apple-darwin';
-    case 'linux':
+    case Platform.Linux:
       return 'unknown-linux-gnu';
-    case 'win32':
+    case Platform.Windows:
       return 'pc-windows-msvc';
     default:
-      return platform;
+      return 'unknown';
   }
 }
 
-function getArchString(arch: string): string {
+function getArchString(arch: Architecture): string {
   switch (arch) {
-    case 'arm64':
+    case Architecture.Arm64:
       return 'aarch64';
-    case 'x64':
+    case Architecture.X86_64:
       return 'x86_64';
     default:
-      return arch;
+      return 'unknown';
   }
 }

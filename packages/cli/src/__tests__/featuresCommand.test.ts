@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
-import type { ToolConfig } from '@dotfiles/core';
+import { Architecture, Platform, type ToolConfig } from '@dotfiles/core';
 import type { IMemFileSystemReturn } from '@dotfiles/file-system';
 import type { TestLogger } from '@dotfiles/logger';
 import type { MockedInterface } from '@dotfiles/testing-helpers';
@@ -66,8 +66,8 @@ describe('featuresCommand', () => {
       mockFs.fs.asIFileSystem,
       mockProjectConfig,
       expect.objectContaining({
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
       })
     );
@@ -85,8 +85,8 @@ describe('featuresCommand', () => {
       mockFs.fs.asIFileSystem,
       mockProjectConfig,
       expect.objectContaining({
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: mockProjectConfig.paths.homeDir,
       })
     );

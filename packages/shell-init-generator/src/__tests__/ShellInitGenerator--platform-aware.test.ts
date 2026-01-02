@@ -30,7 +30,7 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
       fileSystem: mockFileSystem,
       logger,
-      systemInfo: { platform: 'darwin', arch: 'arm64', homeDir: testDirs.paths.homeDir },
+      systemInfo: { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: testDirs.paths.homeDir },
       env: {},
     });
 
@@ -40,8 +40,8 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
   describe('with platform-specific tool configurations', () => {
     it('should generate shell code including macOS platform-specific content', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
@@ -91,8 +91,8 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
     it('should generate shell code excluding non-matching platform content', async () => {
       const linuxSystemInfo: ISystemInfo = {
-        platform: 'linux',
-        arch: 'x64',
+        platform: Platform.Linux,
+        arch: Architecture.X86_64,
         homeDir: '/home/test',
       };
 
@@ -132,8 +132,8 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
     it('should handle multiple platform-specific configurations', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
@@ -188,14 +188,14 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
     it('should handle architecture-specific configurations', async () => {
       const macosArmSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
       const macosIntelSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'x64',
+        platform: Platform.MacOS,
+        arch: Architecture.X86_64,
         homeDir: '/Users/test',
       };
 
@@ -293,8 +293,8 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
 
     it('should process platform-specific completions', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
@@ -341,8 +341,8 @@ describe('ShellInitGenerator - Platform-Aware Generation', () => {
   describe('multiple tools with mixed platform configurations', () => {
     it('should handle mix of platform-specific and regular tools', async () => {
       const macosSystemInfo: ISystemInfo = {
-        platform: 'darwin',
-        arch: 'arm64',
+        platform: Platform.MacOS,
+        arch: Architecture.Arm64,
         homeDir: '/Users/test',
       };
 
