@@ -164,8 +164,12 @@ install('github-release', { repo: 'owner/tool' })
 ```ts
 // Define shell functions with HOME isolation
 .functions({
-  'my-wrapper': 'original-command --my-defaults "$@"',
-  'tool-safe': 'tool --config="$TOOL_CONFIG" "$@"',
+  'my-wrapper': /* zsh */`
+    original-command --my-defaults "$@"
+  `,
+  'tool-safe': /* zsh */`
+    TOOL_CONFIG="${ctx.toolDir}/config.yaml" tool "$@"
+  `,
 })
 ```
 
@@ -413,8 +417,12 @@ export default defineTool((install, ctx) =>
         })
         .completions({ cmd: 'kubectl completion zsh' })
         .functions({
-          'kns': 'kubectl config set-context --current --namespace="$1"',
-          'kctx': 'kubectl config use-context "$1"',
+          'kns': /* zsh */`
+            kubectl config set-context --current --namespace="$1"
+          `,
+          'kctx': /* zsh */`
+            kubectl config use-context "$1"
+          `,
         })
     )
 );
