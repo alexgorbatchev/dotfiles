@@ -1,12 +1,12 @@
 import type { InstallResultFailure, InstallResultSuccess } from '@dotfiles/core';
 import type { IToolInstallationDetails } from '@dotfiles/registry';
+import type { Resolvable } from '@dotfiles/unwrap-value';
 
 export * from './types/ICurlScriptArgsContext';
 
 import type { ICurlScriptArgsContext } from './types/ICurlScriptArgsContext';
 
-export type CurlScriptArgsFunction = (ctx: ICurlScriptArgsContext) => string[] | Promise<string[]>;
-export type CurlScriptArgs = string[] | CurlScriptArgsFunction;
+export type CurlScriptArgs = Resolvable<ICurlScriptArgsContext, string[]>;
 
 /**
  * Metadata specific to curl-script tool installation.
