@@ -42,4 +42,16 @@ export interface IGeneratorOrchestrator {
    * @returns A promise that resolves when completion generation is complete.
    */
   generateCompletionsForTool(toolName: string, toolConfig: ToolConfig, version?: string): Promise<void>;
+
+  /**
+   * Cleans up generated artifacts for a tool.
+   *
+   * This removes shims, symlinks, and completions that were generated for the tool,
+   * while preserving downloaded binaries. Used when a tool is disabled or when
+   * removing a tool from the system.
+   *
+   * @param toolName - The name of the tool to clean up.
+   * @returns A promise that resolves when cleanup is complete.
+   */
+  cleanupToolArtifacts(toolName: string): Promise<void>;
 }

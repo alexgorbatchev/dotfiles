@@ -38,4 +38,17 @@ export const messages = {
     symlinkGenerationComplete: (resultCount: number) =>
       createSafeLogMessage(`Symlink generation completed with ${resultCount} operations recorded`),
   } satisfies SafeLogMessageMap,
+  cleanup: {
+    started: (toolName: string) => createSafeLogMessage(`Cleaning up artifacts for disabled tool: ${toolName}`),
+    noFilesToCleanup: (toolName: string) =>
+      createSafeLogMessage(`No tracked artifacts found to clean up for: ${toolName}`),
+    filesFound: (toolName: string, count: number) =>
+      createSafeLogMessage(`Found ${count} artifacts to clean up for: ${toolName}`),
+    fileDeleted: (filePath: string, fileType: string) =>
+      createSafeLogMessage(`Removed ${fileType}: ${filePath}`),
+    deleteError: (filePath: string, _error: unknown) =>
+      createSafeLogMessage(`Failed to delete: ${filePath}`),
+    completed: (toolName: string, count: number) =>
+      createSafeLogMessage(`Cleanup completed for ${toolName}: ${count} files removed`),
+  } satisfies SafeLogMessageMap,
 } as const;

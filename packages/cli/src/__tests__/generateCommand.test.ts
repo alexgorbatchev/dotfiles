@@ -48,6 +48,7 @@ describe('generateCommand', () => {
     mockGeneratorOrchestrator = {
       generateAll: mock(async () => {}),
       generateCompletionsForTool: mock(async () => {}),
+      cleanupToolArtifacts: mock(async () => {}),
     };
 
     registerGenerateCommand(logger, program, async () => ({

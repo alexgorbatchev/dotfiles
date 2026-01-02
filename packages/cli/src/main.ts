@@ -158,6 +158,7 @@ function createTrackedFileSystems(
   symlinkTrackedFs: TrackedFileSystem;
   installerTrackedFs: TrackedFileSystem;
   catalogTrackedFs: TrackedFileSystem;
+  completionTrackedFs: TrackedFileSystem;
 } {
   const shimTrackedFs = new TrackedFileSystem(
     parentLogger,
@@ -199,7 +200,15 @@ function createTrackedFileSystems(
     projectConfig
   );
 
-  return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs };
+  const completionTrackedFs = new TrackedFileSystem(
+    parentLogger,
+    fs,
+    fileRegistry,
+    TrackedFileSystem.createContext('system', 'completion'),
+    projectConfig
+  );
+
+  return { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs, completionTrackedFs };
 }
 
 export async function setupServices(parentLogger: TsLogger, options: SetupServicesOptions): Promise<IServices> {
@@ -283,7 +292,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const cargoClient = new CargoClient(parentLogger, projectConfig, downloader, cargoCratesIoCache, cargoGithubRawCache);
 
   // Create tracked filesystem instances for each generator
-  const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs } =
+  const { shimTrackedFs, shellInitTrackedFs, symlinkTrackedFs, installerTrackedFs, catalogTrackedFs, completionTrackedFs } =
     createTrackedFileSystems(parentLogger, resolvedFs, fileRegistry, projectConfig);
 
   // Create system-context logger for generators that operate at system level
@@ -296,7 +305,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
 
   const archiveExtractor = new ArchiveExtractor(parentLogger, resolvedFs);
 
-  const completionGenerator = new CompletionGenerator(systemLogger, resolvedFs, completionCommandExecutor, {
+  const completionGenerator = new CompletionGenerator(systemLogger, completionTrackedFs, completionCommandExecutor, {
     downloader,
     archiveExtractor,
   });
@@ -308,7 +317,10 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     symlinkGenerator,
     completionGenerator,
     systemInfo,
-    projectConfig
+    projectConfig,
+    fileRegistry,
+    resolvedFs,
+    completionTrackedFs
   );
 
   // Initialize plugin registry

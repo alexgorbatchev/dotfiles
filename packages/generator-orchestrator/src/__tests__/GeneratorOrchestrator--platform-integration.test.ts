@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, PlatformConfig, ToolConfig } from '@dotfiles/core';
@@ -6,6 +6,7 @@ import { always, Platform } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import type { TrackedFileSystem } from '@dotfiles/registry/file';
 import type {
   ICompletionGenerator,
   IShellInitGenerationResult,
@@ -13,8 +14,25 @@ import type {
 } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
-import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
+import {
+  createMockFileRegistry,
+  createMockProjectConfig,
+  createTestDirectories,
+  type ITestDirectories,
+} from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+
+/**
+ * Creates a mock TrackedFileSystem for testing.
+ */
+function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
+  const mockTrackedFs: TrackedFileSystem = {
+    ...fs,
+    withContext: mock(() => mockTrackedFs),
+    setSuppressLogging: mock(() => {}),
+  } as unknown as TrackedFileSystem;
+  return mockTrackedFs;
+}
 
 // Helper function to generate platform-specific content
 function generatePlatformContent(toolConfigs: Record<string, ToolConfig>, systemInfo: ISystemInfo): string {
@@ -157,7 +175,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockSymlinkGenerator,
         mockCompletionGenerator,
         macosSystemInfo, // macOS system info
-        mockProjectConfig
+        mockProjectConfig,
+        createMockFileRegistry(),
+        mockFileSystem,
+        createMockTrackedFileSystem(mockFileSystem)
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -210,7 +231,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockSymlinkGenerator,
         mockCompletionGenerator,
         linuxSystemInfo, // Linux system info
-        mockProjectConfig
+        mockProjectConfig,
+        createMockFileRegistry(),
+        mockFileSystem,
+        createMockTrackedFileSystem(mockFileSystem)
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -268,7 +292,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockSymlinkGenerator,
         mockCompletionGenerator,
         linuxSystemInfo,
-        mockProjectConfig
+        mockProjectConfig,
+        createMockFileRegistry(),
+        mockFileSystem,
+        createMockTrackedFileSystem(mockFileSystem)
       );
 
       const toolConfigs: Record<string, ToolConfig> = {
@@ -306,7 +333,10 @@ describe('GeneratorOrchestrator - Platform Integration Tests', () => {
         mockSymlinkGenerator,
         mockCompletionGenerator,
         macosSystemInfo,
-        mockProjectConfig
+        mockProjectConfig,
+        createMockFileRegistry(),
+        mockFileSystem,
+        createMockTrackedFileSystem(mockFileSystem)
       );
 
       const toolConfigs: Record<string, ToolConfig> = {

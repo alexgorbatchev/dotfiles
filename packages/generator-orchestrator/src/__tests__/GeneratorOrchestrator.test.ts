@@ -7,11 +7,25 @@ import { always } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
+import { createMockFileRegistry, type TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';
 import { createMockProjectConfig, createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
 import { GeneratorOrchestrator } from '../GeneratorOrchestrator';
+
+/**
+ * Creates a mock TrackedFileSystem for testing.
+ * The mock implements withContext() by returning itself with the new context.
+ */
+function createMockTrackedFileSystem(fs: IFileSystem): TrackedFileSystem {
+  const mockTrackedFs: TrackedFileSystem = {
+    ...fs,
+    withContext: mock(() => mockTrackedFs),
+    setSuppressLogging: mock(() => {}),
+  } as unknown as TrackedFileSystem;
+  return mockTrackedFs;
+}
 
 describe('GeneratorOrchestrator', () => {
   let mockShimGenerator: IShimGenerator;
@@ -92,7 +106,10 @@ describe('GeneratorOrchestrator', () => {
       mockSymlinkGenerator,
       mockCompletionGenerator,
       systemInfo,
-      mockProjectConfig
+      mockProjectConfig,
+      createMockFileRegistry(),
+      mockFileSystem,
+      createMockTrackedFileSystem(mockFileSystem)
     );
   });
 
@@ -388,8 +405,9 @@ describe('GeneratorOrchestrator', () => {
           const calls = (mockCompletionGenerator.generateAndWriteCompletionFile as ReturnType<typeof mock>).mock.calls;
           const firstCall = calls[0];
           assert(firstCall);
-          // First arg is the completion config with resolved URL
-          expect(firstCall[0].url).toBe('https://example.com/completions/2.5.0/completion.zsh');
+          // First arg is the options object containing the completion config with resolved URL
+          const options = firstCall[0] as { config: { url?: string } };
+          expect(options.config.url).toBe('https://example.com/completions/2.5.0/completion.zsh');
         });
       });
 

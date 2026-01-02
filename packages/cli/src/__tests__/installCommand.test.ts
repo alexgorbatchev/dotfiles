@@ -72,6 +72,7 @@ describe('installCommand', () => {
     mockGeneratorOrchestrator = {
       generateAll: mock(async () => {}),
       generateCompletionsForTool: mock(async () => {}),
+      cleanupToolArtifacts: mock(async () => {}),
     };
 
     registerInstallCommand(testLogger, program, async () => ({

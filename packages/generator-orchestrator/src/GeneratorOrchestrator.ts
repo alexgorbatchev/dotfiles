@@ -9,7 +9,9 @@ import type {
   ShellType,
   ToolConfig,
 } from '@dotfiles/core';
+import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
+import type { IFileRegistry, IFileState, TrackedFileSystem } from '@dotfiles/registry/file';
 import type {
   ICompletionGenerationContext,
   ICompletionGenerator,
@@ -23,6 +25,12 @@ import { resolvePlatformConfig } from '@dotfiles/utils';
 import type { IGenerateAllOptions, IGeneratorOrchestrator } from './IGeneratorOrchestrator';
 import { messages } from './log-messages';
 import { orderToolConfigsByDependencies } from './orderToolConfigsByDependencies';
+
+/**
+ * File types that should be cleaned up when a tool is disabled.
+ * Binary files are intentionally excluded to preserve downloaded tools.
+ */
+const CLEANABLE_FILE_TYPES: IFileState['fileType'][] = ['shim', 'symlink', 'completion'];
 
 /**
  * Orchestrates the generation of all dotfiles artifacts.
@@ -40,6 +48,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private readonly completionGenerator: ICompletionGenerator;
   private readonly systemInfo: ISystemInfo;
   private readonly projectConfig: ProjectConfig;
+  private readonly fileRegistry: IFileRegistry;
+  private readonly fs: IFileSystem;
+  private readonly completionTrackedFs: TrackedFileSystem;
 
   /**
    * Creates a new GeneratorOrchestrator instance.
@@ -51,6 +62,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * @param completionGenerator - The completion generator service.
    * @param systemInfo - System information for platform-specific operations.
    * @param projectConfig - Project configuration containing paths and settings.
+   * @param fileRegistry - Registry for tracking file operations.
+   * @param fs - Filesystem interface for file operations.
+   * @param completionTrackedFs - Tracked filesystem for completion operations.
    */
   constructor(
     parentLogger: TsLogger,
@@ -59,7 +73,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     symlinkGenerator: ISymlinkGenerator,
     completionGenerator: ICompletionGenerator,
     systemInfo: ISystemInfo,
-    projectConfig: ProjectConfig
+    projectConfig: ProjectConfig,
+    fileRegistry: IFileRegistry,
+    fs: IFileSystem,
+    completionTrackedFs: TrackedFileSystem
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'GeneratorOrchestrator' });
     const logger = this.logger.getSubLogger({ name: 'constructor' });
@@ -70,6 +87,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.completionGenerator = completionGenerator;
     this.systemInfo = systemInfo;
     this.projectConfig = projectConfig;
+    this.fileRegistry = fileRegistry;
+    this.fs = fs;
+    this.completionTrackedFs = completionTrackedFs;
   }
 
   /**
@@ -78,11 +98,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   async generateAll(toolConfigs: Record<string, ToolConfig>, options?: IGenerateAllOptions): Promise<void> {
     const logger = this.logger.getSubLogger({ name: 'generateAll' });
 
-    // Filter out disabled tools with warning
+    // Filter out disabled tools and cleanup their artifacts
     const enabledToolConfigs: Record<string, ToolConfig> = {};
     for (const [name, config] of Object.entries(toolConfigs)) {
       if (config.disabled) {
         logger.warn(messages.generateAll.toolDisabled(name));
+        // Clean up artifacts for disabled tools
+        await this.cleanupToolArtifacts(name);
         continue;
       }
       enabledToolConfigs[name] = config;
@@ -175,12 +197,16 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
           configFilePath: toolConfig.configFilePath,
         };
 
-        const completionResult = await this.completionGenerator.generateAndWriteCompletionFile(
-          completionConfig,
+        // Create a per-tool tracked filesystem for proper attribution
+        const toolTrackedFs = this.completionTrackedFs.withContext({ toolName });
+
+        const completionResult = await this.completionGenerator.generateAndWriteCompletionFile({
+          config: completionConfig,
           toolName,
           shellType,
-          generationContext
-        );
+          context: generationContext,
+          fs: toolTrackedFs,
+        });
 
         logger.info(messages.generateAll.completionGeneratedAtPath(completionResult.targetPath));
       } catch {
@@ -207,5 +233,47 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       ...(value.targetDir && { targetDir: value.targetDir }),
     };
     return result;
+  }
+
+  /**
+   * Cleans up generated artifacts for a tool.
+   *
+   * This removes shims, symlinks, and completions that were generated for the tool,
+   * while preserving downloaded binaries. Used when a tool is disabled to ensure
+   * its contributions are removed from the system.
+   *
+   * @param toolName - The name of the tool to clean up.
+   */
+  async cleanupToolArtifacts(toolName: string): Promise<void> {
+    const logger = this.logger.getSubLogger({ name: 'cleanupToolArtifacts', context: toolName });
+    logger.debug(messages.cleanup.started(toolName));
+
+    // Get all file states for this tool from the registry
+    const fileStates = await this.fileRegistry.getFileStatesForTool(toolName);
+
+    // Filter for cleanable file types (shims, symlinks, completions - NOT binaries)
+    const filesToCleanup = fileStates.filter((state) => CLEANABLE_FILE_TYPES.includes(state.fileType));
+
+    if (filesToCleanup.length === 0) {
+      logger.debug(messages.cleanup.noFilesToCleanup(toolName));
+      return;
+    }
+
+    logger.debug(messages.cleanup.filesFound(toolName, filesToCleanup.length));
+
+    // Delete each file
+    for (const fileState of filesToCleanup) {
+      try {
+        const fileExists = await this.fs.exists(fileState.filePath);
+        if (fileExists) {
+          await this.fs.rm(fileState.filePath);
+          logger.warn(messages.cleanup.fileDeleted(fileState.filePath, fileState.fileType));
+        }
+      } catch (error) {
+        logger.debug(messages.cleanup.deleteError(fileState.filePath, error));
+      }
+    }
+
+    logger.debug(messages.cleanup.completed(toolName, filesToCleanup.length));
   }
 }

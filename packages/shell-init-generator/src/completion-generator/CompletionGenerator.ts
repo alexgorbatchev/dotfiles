@@ -12,6 +12,7 @@ import type {
   ICompletionCommandExecutor,
   ICompletionGenerationContext,
   ICompletionGenerator,
+  IGenerateAndWriteCompletionFileOptions,
   IGeneratedCompletion,
 } from './types';
 
@@ -148,27 +149,28 @@ export class CompletionGenerator implements ICompletionGenerator {
    * Generates and writes a completion file in one operation.
    * For command-based completions, writes the generated content to a file.
    * For source-based completions, creates a symlink to the source file.
+   *
+   * @param options - Generation options including optional fs override for tracking.
    */
   async generateAndWriteCompletionFile(
-    config: ShellCompletionConfig,
-    toolName: string,
-    shellType: ShellType,
-    context: ICompletionGenerationContext
+    options: IGenerateAndWriteCompletionFileOptions
   ): Promise<IGeneratedCompletion> {
+    const { config, toolName, shellType, context, fs } = options;
+
     const result = await this.generateCompletionFile(config, toolName, shellType, context);
 
-    await this.fs.ensureDir(path.dirname(result.targetPath));
+    await fs.ensureDir(path.dirname(result.targetPath));
 
     if (result.generatedBy === 'source' && result.sourcePath) {
       // For source-based completions, create a symlink
-      if (await this.fs.exists(result.targetPath)) {
-        await this.fs.rm(result.targetPath);
+      if (await fs.exists(result.targetPath)) {
+        await fs.rm(result.targetPath);
       }
-      await this.fs.symlink(result.sourcePath, result.targetPath);
+      await fs.symlink(result.sourcePath, result.targetPath);
       this.logger.debug(messages.symlinkCreated(result.sourcePath, result.targetPath));
     } else {
       // For command-based completions, write the content
-      await this.fs.writeFile(result.targetPath, result.content);
+      await fs.writeFile(result.targetPath, result.content);
     }
 
     return result;

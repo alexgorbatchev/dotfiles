@@ -135,7 +135,13 @@ describe('CompletionGenerator', () => {
       version: '1.0.0',
     };
 
-    await generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context);
+    await generator.generateAndWriteCompletionFile({
+      config,
+      toolName: 'my-tool',
+      shellType: 'zsh',
+      context,
+      fs: memFs.fs,
+    });
 
     const expectedPath = '/tmp/shell-scripts/zsh/completions/_my-tool';
     const fileExists = await memFs.fs.exists(expectedPath);
@@ -159,7 +165,13 @@ describe('CompletionGenerator', () => {
       version: '1.0.0',
     };
 
-    const result = await generator.generateAndWriteCompletionFile(config, 'my-tool', 'bash', context);
+    const result = await generator.generateAndWriteCompletionFile({
+      config,
+      toolName: 'my-tool',
+      shellType: 'bash',
+      context,
+      fs: memFs.fs,
+    });
 
     expect(result.targetPath).toBe('/custom/dir/my-tool.bash');
     const fileExists = await memFs.fs.exists('/custom/dir/my-tool.bash');
@@ -188,7 +200,13 @@ describe('CompletionGenerator', () => {
       version: '1.0.0',
     };
 
-    const result = await generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context);
+    const result = await generator.generateAndWriteCompletionFile({
+      config,
+      toolName: 'my-tool',
+      shellType: 'zsh',
+      context,
+      fs: memFs.fs,
+    });
 
     expect(result.generatedBy).toBe('source');
     expect(result.sourcePath).toBe(sourcePath);
@@ -218,7 +236,13 @@ describe('CompletionGenerator', () => {
       version: '1.0.0',
     };
 
-    const result = await generator.generateAndWriteCompletionFile(config, 'rg', 'zsh', context);
+    const result = await generator.generateAndWriteCompletionFile({
+      config,
+      toolName: 'rg',
+      shellType: 'zsh',
+      context,
+      fs: memFs.fs,
+    });
 
     expect(result.generatedBy).toBe('source');
     expect(result.sourcePath).toBe(sourcePath);
@@ -242,9 +266,15 @@ describe('CompletionGenerator', () => {
       version: '1.0.0',
     };
 
-    expect(generator.generateAndWriteCompletionFile(config, 'my-tool', 'zsh', context)).rejects.toThrow(
-      'Completion source file not found'
-    );
+    expect(
+      generator.generateAndWriteCompletionFile({
+        config,
+        toolName: 'my-tool',
+        shellType: 'zsh',
+        context,
+        fs: memFs.fs,
+      })
+    ).rejects.toThrow('Completion source file not found');
   });
 
   test('should use bin for filename when provided and different from toolName', async () => {

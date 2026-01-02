@@ -159,7 +159,10 @@ c.bin('system-tool')
 
 ### Disabling a Tool
 
-Use `.disable()` to temporarily skip a tool during generation. A warning will be logged indicating the tool is disabled.
+Use `.disable()` to temporarily skip a tool during generation. When a tool is disabled:
+- A warning is logged indicating the tool is disabled
+- Any previously generated artifacts (shims, symlinks, completions) are automatically removed
+- Downloaded binaries are preserved for quick re-enablement
 
 ```typescript
 c.bin('deprecated-tool')
@@ -167,7 +170,7 @@ c.bin('deprecated-tool')
   .install('github-release', {
     repo: 'owner/deprecated-tool',
   })
-  .disable(); // Tool will be skipped with a warning
+  .disable(); // Tool will be skipped and its artifacts cleaned up
 ```
 
 ### With Hooks
