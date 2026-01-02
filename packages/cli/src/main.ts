@@ -43,8 +43,6 @@ import { DEFAULT_CONFIG_FILES, resolveConfigPath } from './resolveConfigPath';
 import type { IGlobalProgram, IGlobalProgramOptions, IServices } from './types';
 import { registerUpdateCommand } from './updateCommand';
 
-export * from './schema-exports';
-
 type SetupServicesOptions = IGlobalProgramOptions & {
   cwd: string;
   env: NodeJS.ProcessEnv;

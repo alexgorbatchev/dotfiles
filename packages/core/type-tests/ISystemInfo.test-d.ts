@@ -1,27 +1,27 @@
-import type { ISystemInfo } from '@gitea/dotfiles';
+import { Architecture, Platform, type ISystemInfo } from '@gitea/dotfiles';
 import { expectType } from 'tsd';
 
-// This test verifies that ISystemInfo uses proper NodeJS types for platform and arch
+// This test verifies that ISystemInfo uses Platform and Architecture enum types
 
-// Valid: Using proper NodeJS.Platform values
-const darwinSystem: ISystemInfo = {
-  platform: 'darwin',
-  arch: 'arm64',
+// Valid: Using Platform and Architecture enum values
+const macosSystem: ISystemInfo = {
+  platform: Platform.MacOS,
+  arch: Architecture.Arm64,
   homeDir: '/Users/test',
 };
 
 const _linuxSystem: ISystemInfo = {
-  platform: 'linux',
-  arch: 'x64',
+  platform: Platform.Linux,
+  arch: Architecture.X86_64,
   homeDir: '/home/test',
 };
 
-const _win32System: ISystemInfo = {
-  platform: 'win32',
-  arch: 'x64',
+const _windowsSystem: ISystemInfo = {
+  platform: Platform.Windows,
+  arch: Architecture.X86_64,
   homeDir: 'C:\\Users\\test',
 };
 
 // Verify the types are correct
-expectType<NodeJS.Platform>(darwinSystem.platform);
-expectType<NodeJS.Architecture>(darwinSystem.arch);
+expectType<Platform>(macosSystem.platform);
+expectType<Architecture>(macosSystem.arch);

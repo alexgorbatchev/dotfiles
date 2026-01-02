@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/suspicious/noConsole: testing */
-import { defineTool } from '@dotfiles/cli';
+import { defineTool, Platform } from '@dotfiles/cli';
 
 export default defineTool((install) =>
   install('curl-script', {
@@ -8,7 +8,9 @@ export default defineTool((install) =>
     args: (ctx) => ['--skip-shell', '--install-dir', ctx.stagingDir, '--force-no-brew'],
   })
     .hook('after-install', async (ctx) => {
-      console.log(`fnm installed to ${ctx.currentDir}`);
+      if (ctx.systemInfo.platform === Platform.MacOS) {
+        console.log(`fnm installed to ${ctx.currentDir}`);
+      }
     })
     .bin('fnm')
     .zsh((shell) =>
