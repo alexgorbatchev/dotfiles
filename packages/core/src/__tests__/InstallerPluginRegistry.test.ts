@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import type { IInstallContext, ISystemInfo, ToolConfig } from '@dotfiles/core';
-import { MemFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$, createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
+import { replaceInFile } from '@dotfiles/utils';
 import { z } from 'zod';
 import { Architecture, Platform } from '../common';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
@@ -31,8 +32,8 @@ const createMockPlugin = (method: string, options: Partial<IInstallerPlugin> = {
 };
 
 const createMockContext = async (logger: TestLogger): Promise<IInstallContext> => {
-  const fileSystem = new MemFileSystem({});
-  const testDirs = await createTestDirectories(logger, fileSystem, { testName: 'InstallerPluginRegistry' });
+  const { fs } = await createMemFileSystem({});
+  const testDirs = await createTestDirectories(logger, fs, { testName: 'InstallerPluginRegistry' });
 
   const systemInfo: ISystemInfo = {
     platform: Platform.Linux,
@@ -43,7 +44,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
   const projectConfig = await createMockProjectConfig({
     config: { paths: testDirs.paths },
     filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
-    fileSystem,
+    fileSystem: fs,
     logger,
     systemInfo,
     env: {},
@@ -76,7 +77,9 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     stagingDir: path.join(projectConfig.paths.binariesDir, toolConfig.name, 'staging'),
     timestamp: '2025-01-01-00-00-00',
     $: createConfiguredShell(createMock$(), {}),
-    fileSystem,
+    fileSystem: fs,
+    replaceInFile: (filePath, from, to, options) =>
+      replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
   };
 
   return context;

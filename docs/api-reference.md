@@ -10,7 +10,6 @@ import {
   defineConfig,    // Create project configuration
   Platform,        // Platform enum for cross-platform configs
   Architecture,    // Architecture enum
-  replaceInFile,   // Utility for file modifications
   dedentString,    // Utility for template strings
   dedentTemplate,  // Tagged template for dedenting
 } from '@gitea/dotfiles';
@@ -122,51 +121,47 @@ Enum for architecture-specific configurations.
 
 ## Utilities
 
-### replaceInFile
+### ctx.replaceInFile
 
-Replace text in files during hooks. Supports regex or string patterns with optional async callbacks.
+Performs a regex-based replacement within a file. Pre-bound with the context's file system.
+
+**Key behaviors:**
+- Always replaces *all* matches (global replacement), even if `from` does not include the `g` flag
+- Supports `to` as either a string or a (a)sync callback
+- Supports `mode: 'file'` (default) and `mode: 'line'` (process each line separately)
+- No-op write: if output equals input, the file is not written
 
 ```typescript
-import type { IReplaceInFileMatch } from '@gitea/dotfiles';
-import { replaceInFile } from '@gitea/dotfiles';
-
-.hook('after-extract', async (ctx) => {
-  // Simple string replacement
-  await replaceInFile(ctx.fileSystem, 'path/to/file', 'old', 'new');
-
-  // Regex replacement
-  await replaceInFile(ctx.fileSystem, 'path/to/file', /pattern/, 'replacement');
-
-  // Async callback replacement
-  await replaceInFile(
-    ctx.fileSystem,
-    'path/to/file',
-    /version=(\d+)/,
-    async ({ substring, captures }: IReplaceInFileMatch): Promise<string> => {
-      return `version=${Number(captures[0]) + 1}`;
-    }
+.hook('after-install', async (ctx) => {
+  // Simple replacement (replaces all matches)
+  await ctx.replaceInFile(
+    `${ctx.installedDir}/config.toml`,
+    /placeholder/,
+    'actual_value'
   );
 
-  // Line-by-line mode (preserves EOLs)
-  await replaceInFile(ctx.fileSystem, 'path/to/file', /pattern/, 'replacement', {
-    mode: 'line',
-  });
+  // Line-by-line with callback
+  await ctx.replaceInFile(
+    `${ctx.installedDir}/settings.ini`,
+    /version=(\d+)/,
+    (match) => `version=${Number(match.captures[0]) + 1}`,
+    { mode: 'line' }
+  );
 })
 ```
 
 **Parameters:**
-- `fileSystem` - `IResolvedFileSystem` instance (from `ctx.fileSystem`)
 - `filePath` - Path to the file (supports `~` expansion)
-- `from` - `RegExp` or `string` pattern to match (strings are escaped)
-- `to` - Replacement string or callback function
-- `options.mode` - `'file'` (default) or `'line'`
+- `from` - Pattern to match (string or RegExp, always global)
+- `to` - Replacement string or callback receiving `IReplaceInFileMatch`
+- `options` - Optional: `{ mode: 'file' | 'line' }` (default: `'file'`)
 
-**Callback receives `IReplaceInFileMatch`:**
-- `substring` - The matched text
-- `captures` - Array of capture groups
-- `offset` - Match position in the string
+**Callback argument (`IReplaceInFileMatch`):**
+- `substring` - The matched substring
+- `captures` - Array of capture groups (may contain `undefined`)
+- `offset` - Match offset in the input
 - `input` - Original input string
-- `groups` - Named capture groups (if any)
+- `groups` - Named capture groups (if present)
 
 ### dedentTemplate
 

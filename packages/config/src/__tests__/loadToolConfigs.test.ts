@@ -9,6 +9,7 @@ import type {
   ProjectConfig,
 } from '@dotfiles/core';
 import { Architecture, createToolConfigContext, Platform } from '@dotfiles/core';
+import type { IResolvedFileSystem, MockedFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
@@ -18,12 +19,16 @@ describe('IToolConfigContext', () => {
   let logger: TestLogger;
   let mockProjectConfig: ProjectConfig;
   let systemInfo: ISystemInfo;
+  let fileSystem: MockedFileSystem;
+  let resolvedFs: IResolvedFileSystem;
 
   beforeEach(async () => {
     logger = new TestLogger();
 
     const mockFs = await createMemFileSystem({});
-    const testDirs = await createTestDirectories(logger, mockFs.fs, { testName: 'toolconfig-context-test' });
+    fileSystem = mockFs.fs;
+    resolvedFs = mockFs.fs.asIResolvedFileSystem;
+    const testDirs = await createTestDirectories(logger, fileSystem, { testName: 'toolconfig-context-test' });
 
     systemInfo = { platform: Platform.Linux, arch: Architecture.X86_64, homeDir: testDirs.paths.homeDir };
 
@@ -32,7 +37,7 @@ describe('IToolConfigContext', () => {
         paths: testDirs.paths,
       },
       filePath: path.join(testDirs.paths.dotfilesDir, 'config.yaml'),
-      fileSystem: mockFs.fs,
+      fileSystem,
       logger,
       systemInfo,
       env: {},
@@ -46,7 +51,8 @@ describe('IToolConfigContext', () => {
         mockProjectConfig,
         systemInfo,
         'test-tool',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        resolvedFs
       );
 
       expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
@@ -65,7 +71,8 @@ describe('IToolConfigContext', () => {
         mockProjectConfig,
         systemInfo,
         'shell-tool',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        resolvedFs
       );
 
       // Test that context can be used in a tool configuration function
@@ -113,7 +120,8 @@ describe('IToolConfigContext', () => {
         mockProjectConfig,
         systemInfo,
         'dependent-tool',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        resolvedFs
       );
 
       // Test a tool that references other tools
@@ -161,7 +169,8 @@ describe('IToolConfigContext', () => {
         mockProjectConfig,
         systemInfo,
         'completion-tool',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        resolvedFs
       );
 
       // Test a tool that generates completions
@@ -228,7 +237,8 @@ describe('IToolConfigContext', () => {
         customProjectConfig,
         customSystemInfo,
         'custom-path-tool',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        customMockFs.fs.asIResolvedFileSystem
       );
 
       expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
@@ -248,7 +258,8 @@ describe('IToolConfigContext', () => {
         mockProjectConfig,
         systemInfo,
         'fzf-like',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        resolvedFs
       );
 
       // Test fzf-like pattern with context
@@ -289,7 +300,8 @@ describe('IToolConfigContext', () => {
         mockProjectConfig,
         systemInfo,
         'atuin-like',
-        path.dirname(toolConfigFilePath)
+        path.dirname(toolConfigFilePath),
+        resolvedFs
       );
 
       // Test atuin-like pattern with context

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem, Stats } from '@dotfiles/file-system';
+import type { IFileSystem, IResolvedFileSystem, Stats } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
@@ -18,7 +18,7 @@ export const DETECT_CONFLICTS_COMMAND_COMPLETION: ICommandCompletionMeta = {
 async function loadToolConfigs(
   logger: TsLogger,
   projectConfig: ProjectConfig,
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   configService: IConfigService,
   systemInfo: ISystemInfo
 ): Promise<{ toolConfigs: ToolConfig[]; exitCode: ExitCode }> {

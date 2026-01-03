@@ -16,6 +16,7 @@
     "@dotfiles/installer-manual": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/unwrap-value": "workspace:*",
+    "@dotfiles/utils": "workspace:*",
     "type-fest": "catalog:",
     "zod": "catalog:"
   },

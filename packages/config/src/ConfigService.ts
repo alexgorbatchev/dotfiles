@@ -1,5 +1,5 @@
 import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import type { IConfigService } from './IConfigService';
 import {
@@ -21,7 +21,7 @@ export class ConfigService implements IConfigService {
     logger: TsLogger,
     toolName: string,
     toolConfigsDir: string,
-    fs: IFileSystem,
+    fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo
   ): Promise<ToolConfig | undefined> {
@@ -34,7 +34,7 @@ export class ConfigService implements IConfigService {
   async loadToolConfigs(
     logger: TsLogger,
     toolConfigsDir: string,
-    fs: IFileSystem,
+    fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo
   ): Promise<Record<string, ToolConfig>> {

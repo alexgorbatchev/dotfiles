@@ -378,6 +378,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const installer = new Installer(
     logger,
     installerTrackedFs,
+    resolvedFs,
     projectConfig,
     toolInstallationRegistry,
     finalSystemInfo,

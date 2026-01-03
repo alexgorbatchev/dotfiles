@@ -13,7 +13,7 @@ import {
   Platform,
 } from '@dotfiles/core';
 import type { IDownloader } from '@dotfiles/downloader';
-import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
+import { createMemFileSystem, type IFileSystem, type MockedFileSystem } from '@dotfiles/file-system';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
 import type { CargoToolConfig, ICargoClient } from '@dotfiles/installer-cargo';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
@@ -28,6 +28,7 @@ import {
   createTestDirectories,
   type ITestDirectories,
 } from '@dotfiles/testing-helpers';
+import { replaceInFile } from '@dotfiles/utils';
 import type { ILogObj } from 'tslog';
 import { z } from 'zod';
 import type { Installer } from '../Installer';
@@ -243,7 +244,7 @@ export const MOCK_GITHUB_RELEASE_WITH_VARIANTS: IGitHubRelease = {
 // Test setup interface
 export interface IInstallerTestSetup {
   logger: TestLogger<ILogObj>;
-  fs: IFileSystem;
+  fs: MockedFileSystem;
   mockDownloader: IDownloader;
   mockGitHubApiClient: IGitHubApiClient;
   mockCargoClient: ICargoClient;
@@ -446,6 +447,7 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const installer = new Installer(
     logger,
     fs,
+    fs.asIResolvedFileSystem,
     mockProjectConfig,
     mockToolInstallationRegistry,
     mockSystemInfo,
@@ -603,6 +605,8 @@ export function createTestContext(
     projectConfig: setup.mockProjectConfig,
     $: shell,
     fileSystem: setup.fs,
+    replaceInFile: (filePath, from, to, options) =>
+      replaceInFile(setup.fs.asIResolvedFileSystem, filePath, from, to, options),
   };
 
   const currentDir: string = overrides.currentDir ?? baseContext.currentDir;

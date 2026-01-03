@@ -11,6 +11,7 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 | `ctx.currentDir` | Tool's stable `current` directory (after install) |
 | `ctx.projectConfig` | Full project configuration |
 | `ctx.systemInfo` | Platform, architecture, and home directory |
+| `ctx.replaceInFile` | Replace text in files using regex patterns |
 
 ### Path Properties via projectConfig
 
@@ -66,6 +67,62 @@ export default defineTool((install, ctx) =>
     )
 );
 ```
+
+### Using replaceInFile for File Modifications
+
+The `ctx.replaceInFile` method performs regex-based replacements within files.
+
+**Key behaviors:**
+- Always replaces *all* matches (global replacement), even if `from` does not include the `g` flag
+- Supports `to` as either a string or a (a)sync callback
+- Supports `mode: 'file'` (default) and `mode: 'line'` (process each line separately)
+- No-op write: if output equals input, the file is not written
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .afterInstall(async () => {
+      // Simple replacement (replaces all matches)
+      await ctx.replaceInFile(
+        `${ctx.currentDir}/config.toml`,
+        /placeholder_value/,
+        'actual_value'
+      );
+
+      // Line-by-line replacement with callback
+      await ctx.replaceInFile(
+        `${ctx.currentDir}/settings.ini`,
+        /version=(\d+)/,
+        (match) => `version=${Number(match.captures[0]) + 1}`,
+        { mode: 'line' }
+      );
+
+      // Async replacer function
+      await ctx.replaceInFile(
+        `${ctx.currentDir}/config.yaml`,
+        /api_key: .*/,
+        async () => {
+          const key = await fetchApiKey();
+          return `api_key: ${key}`;
+        }
+      );
+    })
+);
+```
+
+**Parameters:**
+- `filePath` - Path to the file (supports `~` expansion)
+- `from` - Pattern to match (string or RegExp, always global)
+- `to` - Replacement string or callback receiving `IReplaceInFileMatch`
+- `options` - Optional: `{ mode: 'file' | 'line' }` (default: `'file'`)
+
+**Callback argument (`IReplaceInFileMatch`):**
+- `substring` - The matched substring
+- `captures` - Array of capture groups (may contain `undefined`)
+- `offset` - Match offset in the input
+- `input` - Original input string
+- `groups` - Named capture groups (if present)
 
 ## Directory Structure
 

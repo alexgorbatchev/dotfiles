@@ -94,6 +94,7 @@ install('github-release', { repo: 'owner/tool' })
 - `ctx.projectConfig.paths.homeDir` → User's home directory
 - `ctx.projectConfig.paths.binariesDir` → Tool binaries directory
 - `ctx.projectConfig.paths.generatedDir` → Generated files directory
+- `ctx.replaceInFile()` → Perform regex-based file modifications (see Step 6)
 
 Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
 
@@ -234,6 +235,29 @@ install('github-release', { repo: 'owner/tool' })
 ```
 
 **Hook Events**: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
+
+**File Modifications in Hooks**: Use `ctx.replaceInFile()` for regex-based file modifications:
+
+```ts
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .hook('after-install', async (ctx) => {
+    // Replace a value in a config file
+    await ctx.replaceInFile(
+      `${ctx.installedDir}/config.toml`,
+      /default_theme = ".*"/,
+      'default_theme = "dark"'
+    );
+    
+    // Line-by-line replacement with callback
+    await ctx.replaceInFile(
+      `${ctx.installedDir}/settings.ini`,
+      /version=(\d+)/,
+      (match) => `version=${Number(match.captures[0]) + 1}`,
+      { mode: 'line' }
+    );
+  });
+```
 
 Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
 

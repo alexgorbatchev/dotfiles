@@ -1,5 +1,50 @@
+import type { IReplaceInFileOptions, ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
 import type { ProjectConfig } from '../config';
 import type { ISystemInfo } from './common.types';
+
+/**
+ * Bound replace-in-file function with pre-configured file system.
+ *
+ * Performs a regex-based replacement within a file. This utility is pre-bound
+ * with the resolved file system, so you don't need to pass the fileSystem parameter.
+ *
+ * **Key behaviors**
+ * - Always replaces *all* matches (global replacement), even if `from` does not include the `g` flag.
+ * - Supports `to` as either a string or a (a)sync callback.
+ * - Supports `mode: 'file'` (default, process the whole file as one string) and `mode: 'line'`
+ *   (process each line separately, preserving the original end-of-line sequences).
+ * - No-op write: if the computed output is identical to the input content, the file is not written.
+ *
+ * **Replacement callback arguments**
+ *
+ * When `to` is a function, it receives an `IReplaceInFileMatch` object:
+ * - `substring`: the matched substring
+ * - `captures`: array of capture groups (which may be `undefined`)
+ * - `offset`: the match offset (number)
+ * - `input`: the original input string
+ * - `groups`: named capture groups object (if present)
+ *
+ * @param filePath - Path to the file (supports `~` expansion)
+ * @param from - Pattern to match (string or RegExp)
+ * @param to - Replacement value (string or async callback)
+ * @param options - Optional settings (`mode: 'file' | 'line'`)
+ *
+ * @example
+ * ```ts
+ * await ctx.replaceInFile('/path/to/file', /foo/, 'bar');
+ * ```
+ *
+ * @example
+ * ```ts
+ * await ctx.replaceInFile('~/config.txt', 'foo', 'bar', { mode: 'line' });
+ * ```
+ */
+export type BoundReplaceInFile = (
+  filePath: string,
+  from: ReplaceInFilePattern,
+  to: ReplaceInFileReplacer,
+  options?: IReplaceInFileOptions
+) => Promise<void>;
 
 /**
  * Provides a base context with common properties and utilities that are shared
@@ -61,4 +106,22 @@ export interface IBaseToolContext {
    * - Hooks that run before installation must not assume it exists.
    */
   currentDir: string;
+
+  /**
+   * Performs a regex-based replacement within a file.
+   *
+   * Pre-bound with the resolved file system. See {@link BoundReplaceInFile} for full documentation.
+   *
+   * @example
+   * ```ts
+   * // Replace all occurrences of 'foo' with 'bar'
+   * await ctx.replaceInFile('/path/to/file', /foo/, 'bar');
+   *
+   * // Line-by-line replacement with callback
+   * await ctx.replaceInFile('~/config.txt', /version=(\d+)/, (match) => {
+   *   return `version=${Number(match.captures[0]) + 1}`;
+   * }, { mode: 'line' });
+   * ```
+   */
+  replaceInFile: BoundReplaceInFile;
 }

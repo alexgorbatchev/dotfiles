@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, InstallerPluginRegistry, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
-import { NodeFileSystem } from '@dotfiles/file-system';
+import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
@@ -113,10 +113,12 @@ describe('Installer - Path Precedence (Real FS)', () => {
     const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: tempDir };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
     const hookExecutor = new HookExecutor(logger, (): void => {});
+    const resolvedFs = new ResolvedFileSystem(fileSystem, tempDir);
 
     const installer = new Installer(
       logger,
       fileSystem,
+      resolvedFs,
       projectConfig,
       toolRegistry,
       systemInfo,

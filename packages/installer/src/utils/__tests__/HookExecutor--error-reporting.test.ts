@@ -6,6 +6,7 @@ import { createMemFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
+import { replaceInFile } from '@dotfiles/utils';
 import { $ } from 'bun';
 import type { ILogObj } from 'tslog';
 import { createConfiguredShell } from '../createConfiguredShell';
@@ -65,6 +66,8 @@ describe('HookExecutor - error reporting', () => {
       timestamp: '2025-12-18-00-00-00',
       $: configuredShell,
       fileSystem: fs,
+      replaceInFile: (filePath, from, to, options) =>
+        replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
     };
 
     const hookExecutor = new HookExecutor(logger, (chunk: string): void => {

@@ -14,7 +14,7 @@ import type {
   ToolConfig,
 } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IFileSystem, IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
@@ -150,6 +150,7 @@ function getPluginMetadataRecord(result: InstallResult): UnknownRecord {
 export class Installer implements IInstaller {
   private readonly logger: TsLogger;
   private readonly fs: IFileSystem;
+  private readonly resolvedFs: IResolvedFileSystem;
   private readonly projectConfig: ProjectConfig;
   public readonly hookExecutor: HookExecutor;
   private readonly toolInstallationRegistry: IToolInstallationRegistry;
@@ -162,6 +163,7 @@ export class Installer implements IInstaller {
   constructor(
     parentLogger: TsLogger,
     fileSystem: IFileSystem,
+    resolvedFileSystem: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     toolInstallationRegistry: IToolInstallationRegistry,
     systemInfo: ISystemInfo,
@@ -172,6 +174,7 @@ export class Installer implements IInstaller {
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });
     this.fs = fileSystem;
+    this.resolvedFs = resolvedFileSystem;
     this.projectConfig = projectConfig;
     this.hookExecutor = hookExecutor;
     this.toolInstallationRegistry = toolInstallationRegistry;
@@ -888,7 +891,13 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
-    const baseContext = createToolConfigContext(this.projectConfig, this.getSystemInfo(), toolName, toolDir);
+    const baseContext = createToolConfigContext(
+      this.projectConfig,
+      this.getSystemInfo(),
+      toolName,
+      toolDir,
+      this.resolvedFs
+    );
 
     const minimalContext: IInstallContext = {
       ...baseContext,
@@ -934,7 +943,13 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
-    const baseContext = createToolConfigContext(this.projectConfig, this.getSystemInfo(), toolName, toolDir);
+    const baseContext = createToolConfigContext(
+      this.projectConfig,
+      this.getSystemInfo(),
+      toolName,
+      toolDir,
+      this.resolvedFs
+    );
 
     const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 

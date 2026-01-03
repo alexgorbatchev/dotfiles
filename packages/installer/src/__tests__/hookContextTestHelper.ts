@@ -6,9 +6,11 @@ import {
   projectConfigSchema,
   type ToolConfig,
 } from '@dotfiles/core';
-import { MemFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
+import { MemFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMock$ } from '@dotfiles/testing-helpers';
+import { replaceInFile } from '@dotfiles/utils';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
 
 interface ICreateTestInstallHookContextResult {
@@ -61,6 +63,8 @@ export function createTestInstallHookContext(
   const configuredShell = createConfiguredShell(createMock$(), {});
 
   const currentDir: string = `${mockProjectConfig.paths.binariesDir}/${toolConfig.name}/current`;
+  const memFs = new MemFileSystem({});
+  const resolvedFs: IResolvedFileSystem = new ResolvedFileSystem(memFs, '/home/user');
 
   const baseContext: IInstallContext = {
     toolName: 'test-tool',
@@ -78,7 +82,8 @@ export function createTestInstallHookContext(
     $: configuredShell,
     toolConfig,
     timestamp: '2025-01-01-00-00-00',
-    fileSystem: new MemFileSystem({}),
+    fileSystem: memFs,
+    replaceInFile: (filePath, from, to, options) => replaceInFile(resolvedFs, filePath, from, to, options),
   };
 
   const context: IInstallContext = {

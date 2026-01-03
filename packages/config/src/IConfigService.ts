@@ -1,5 +1,5 @@
 import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 
 /**
@@ -17,13 +17,14 @@ export interface IConfigService {
    * @param toolConfigsDir - Directory containing tool configuration files.
    * @param fs - File system interface for reading configuration files.
    * @param projectConfig - Parsed project configuration object.
+   * @param systemInfo - System information for context creation.
    * @returns The tool configuration if found, undefined otherwise.
    */
   loadSingleToolConfig(
     logger: TsLogger,
     toolName: string,
     toolConfigsDir: string,
-    fs: IFileSystem,
+    fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo
   ): Promise<ToolConfig | undefined>;
@@ -35,12 +36,13 @@ export interface IConfigService {
    * @param toolConfigsDir - Directory containing tool configuration files.
    * @param fs - File system interface for reading configuration files.
    * @param projectConfig - Parsed project configuration object.
+   * @param systemInfo - System information for context creation.
    * @returns A record mapping tool names to their configurations.
    */
   loadToolConfigs(
     logger: TsLogger,
     toolConfigsDir: string,
-    fs: IFileSystem,
+    fs: IResolvedFileSystem,
     projectConfig: ProjectConfig,
     systemInfo: ISystemInfo
   ): Promise<Record<string, ToolConfig>>;

@@ -3,7 +3,7 @@ import type { IConfigService, ProjectConfig } from '@dotfiles/config';
 import type { InstallerPluginRegistry, ISystemInfo } from '@dotfiles/core';
 import type { ICache, IDownloader } from '@dotfiles/downloader';
 import type { IReadmeService } from '@dotfiles/features';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { IGeneratorOrchestrator } from '@dotfiles/generator-orchestrator';
 import type { IInstaller } from '@dotfiles/installer';
 import type { ICargoClient } from '@dotfiles/installer-cargo';
@@ -55,7 +55,7 @@ export interface ICommandCompletionMeta {
 
 export interface IServices {
   projectConfig: ProjectConfig;
-  fs: IFileSystem;
+  fs: IResolvedFileSystem;
   configService: IConfigService;
   fileRegistry: IFileRegistry;
   toolInstallationRegistry: IToolInstallationRegistry;

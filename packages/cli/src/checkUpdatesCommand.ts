@@ -1,10 +1,10 @@
 import path from 'node:path';
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
 import type { IInstallContext } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
-import { ExitCode, exitCli } from '@dotfiles/utils';
+import { ExitCode, exitCli, replaceInFile } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
 import { $ } from 'bun';
 import { messages } from './log-messages';
@@ -26,7 +26,7 @@ async function loadToolConfigs(
   configService: IConfigService,
   toolName: string | undefined,
   projectConfig: ProjectConfig,
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   systemInfo: ISystemInfo
 ): Promise<Record<string, ToolConfig> | null> {
   let toolConfigs: Record<string, ToolConfig> = {};
@@ -77,7 +77,7 @@ function createInstallContext(
   config: ToolConfig,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-  fs: IFileSystem
+  fs: IResolvedFileSystem
 ): IInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const toolDir: string = config.configFilePath
@@ -97,6 +97,7 @@ function createInstallContext(
     projectConfig: projectConfig,
     $: createConfiguredShell($, process.env),
     fileSystem: fs,
+    replaceInFile: (filePath, from, to, options) => replaceInFile(fs, filePath, from, to, options),
   };
 
   return context;

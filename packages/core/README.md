@@ -113,6 +113,7 @@ interface IBaseToolContext {
   toolName: string;
   toolDir: string;
   currentDir: string;
+  replaceInFile: BoundReplaceInFile;  // Regex-based file text replacement
 }
 
 interface IToolConfigContext extends IBaseToolContext {}

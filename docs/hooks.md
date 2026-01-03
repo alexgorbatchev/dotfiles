@@ -37,6 +37,7 @@ All hooks receive a context object with:
 | `currentDir` | Stable path (symlink) for this tool |
 | `systemInfo` | Platform, architecture, home directory |
 | `fileSystem` | File operations (mkdir, writeFile, exists, etc.) |
+| `replaceInFile` | Regex-based file text replacement |
 | `logger` | Structured logging (info, warn, error) |
 | `projectConfig` | Project configuration |
 | `toolConfig` | Tool configuration |
@@ -76,6 +77,27 @@ All hooks receive a context object with:
   } else if (systemInfo.platform === 'linux') {
     await $`./setup-linux.sh`;
   }
+})
+```
+
+### File Text Replacement
+
+```typescript
+.hook('after-install', async ({ replaceInFile, installedDir }) => {
+  // Replace a config value
+  await replaceInFile(
+    `${installedDir}/config.toml`,
+    /theme = ".*"/,
+    'theme = "dark"'
+  );
+
+  // Increment version numbers line-by-line
+  await replaceInFile(
+    `${installedDir}/versions.txt`,
+    /version=(\d+)/,
+    (match) => `version=${Number(match.captures[0]) + 1}`,
+    { mode: 'line' }
+  );
 })
 ```
 

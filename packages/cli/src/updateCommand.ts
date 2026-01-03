@@ -1,6 +1,6 @@
 import type { IConfigService } from '@dotfiles/config';
 import type { ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli } from '@dotfiles/utils';
 import { messages } from './log-messages';
@@ -34,7 +34,7 @@ async function loadToolConfigSafely(
   configService: IConfigService,
   toolName: string,
   toolConfigsDir: string,
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo
 ): Promise<ILoadToolConfigSafelyResult> {

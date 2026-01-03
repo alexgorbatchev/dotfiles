@@ -7,7 +7,7 @@ import type {
   ToolConfig,
 } from '@dotfiles/core';
 import { createToolConfigContext } from '@dotfiles/core';
-import type { IFileSystem } from '@dotfiles/file-system';
+import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { createInstallFunction } from '@dotfiles/tool-config-builder';
 import { messages } from './log-messages';
@@ -63,6 +63,8 @@ function validateToolConfig(config: unknown): ToolConfig | null {
  * @param toolName - Name of the tool being configured.
  * @param filePath - Path to the configuration file (for error reporting).
  * @param projectConfig - Parsed project configuration for creating context.
+ * @param systemInfo - System information for context creation.
+ * @param fileSystem - File system for context utilities.
  * @returns The validated tool configuration, or null if processing failed.
  */
 async function processFunctionExport(
@@ -71,10 +73,11 @@ async function processFunctionExport(
   toolName: string,
   filePath: string,
   projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
+  fileSystem: IResolvedFileSystem
 ): Promise<ToolConfig | null> {
   const toolDir = path.dirname(filePath);
-  const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir);
+  const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, fileSystem);
   const install = createInstallFunction(logger, toolName, context);
   const result = await configureToolFn(install, context);
 
@@ -137,7 +140,8 @@ async function loadToolConfigFromModule(
   filePath: string,
   toolName: string,
   projectConfig: ProjectConfig,
-  systemInfo: ISystemInfo
+  systemInfo: ISystemInfo,
+  fileSystem: IResolvedFileSystem
 ): Promise<ToolConfig | null> {
   try {
     const moduleExports: IToolConfigModule = await import(filePath);
@@ -151,7 +155,15 @@ async function loadToolConfigFromModule(
     const exportedValue: unknown = moduleExports.default;
 
     if (isConfigureToolFunction(exportedValue)) {
-      toolConfig = await processFunctionExport(exportedValue, logger, toolName, filePath, projectConfig, systemInfo);
+      toolConfig = await processFunctionExport(
+        exportedValue,
+        logger,
+        toolName,
+        filePath,
+        projectConfig,
+        systemInfo,
+        fileSystem
+      );
     } else {
       toolConfig = processDirectExport(exportedValue, logger, filePath, toolName);
     }
@@ -196,7 +208,7 @@ function validateAndStoreToolConfig(
  * @returns Array of objects containing file paths and corresponding tool names.
  */
 async function scanDirectoryForToolFiles(
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   dirPath: string,
   logger: TsLogger
 ): Promise<{ filePath: string; toolName: string }[]> {
@@ -245,13 +257,14 @@ async function scanDirectoryForToolFiles(
  * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
  * @param fs - File system interface for reading files and directories.
  * @param projectConfig - Parsed project configuration for context creation.
+ * @param systemInfo - System information for context creation.
  * @param toolName - Optional tool name to filter by. If provided, only loads that tool's configuration.
  * @returns A record mapping tool names to their configurations.
  */
 export async function loadToolConfigs(
   parentLogger: TsLogger,
   toolConfigsDir: string,
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
   toolName?: string
@@ -288,7 +301,8 @@ export async function loadToolConfigs(
         filePath,
         discoveredToolName,
         projectConfig,
-        systemInfo
+        systemInfo,
+        fs
       );
       validateAndStoreToolConfig(logger, toolConfig, filePath, toolConfigs);
     }
@@ -312,13 +326,14 @@ export async function loadToolConfigs(
  * @param toolConfigsDir - Root directory containing `.tool.ts` configuration files.
  * @param fs - File system interface for reading files and directories.
  * @param projectConfig - Parsed project configuration for context creation.
+ * @param systemInfo - System information for context creation.
  * @returns The tool's configuration if found, undefined otherwise.
  */
 export async function loadSingleToolConfig(
   parentLogger: TsLogger,
   toolName: string,
   toolConfigsDir: string,
-  fs: IFileSystem,
+  fs: IResolvedFileSystem,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo
 ): Promise<ToolConfig | undefined> {

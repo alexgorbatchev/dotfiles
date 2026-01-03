@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
+import type { IResolvedFileSystem, MockedFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
@@ -11,6 +12,8 @@ import { createToolConfigContext } from '../createToolConfigContext';
 
 describe('createToolConfigContext', () => {
   let projectConfig: ProjectConfig;
+  let fileSystem: MockedFileSystem;
+  let resolvedFs: IResolvedFileSystem;
 
   const systemInfo: ISystemInfo = {
     platform: Platform.MacOS,
@@ -21,7 +24,9 @@ describe('createToolConfigContext', () => {
   beforeEach(async () => {
     const logger = new TestLogger();
     const memFs = await createMemFileSystem();
-    await memFs.fs.ensureDir('/test');
+    fileSystem = memFs.fs;
+    resolvedFs = memFs.fs.asIResolvedFileSystem;
+    await fileSystem.ensureDir('/test');
 
     projectConfig = await createMockProjectConfig({
       config: {
@@ -35,7 +40,7 @@ describe('createToolConfigContext', () => {
         },
       },
       filePath: '/test/config.yaml',
-      fileSystem: memFs.fs,
+      fileSystem,
       logger,
       systemInfo,
       env: {},
@@ -46,7 +51,7 @@ describe('createToolConfigContext', () => {
     const toolName = 'test-tool';
     const toolDir = '/tmp/tools/test-tool';
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
 
     const currentDirParsed = z.object({ currentDir: z.string() }).safeParse(context);
     expect(currentDirParsed.success).toBe(true);
@@ -59,5 +64,24 @@ describe('createToolConfigContext', () => {
     const legacyShape: Record<string, z.ZodString> = { [legacyKey]: z.string() };
     const legacyParsed = z.object(legacyShape).safeParse(context);
     expect(legacyParsed.success).toBe(false);
+  });
+
+  it('should expose replaceInFile function that uses injected fileSystem', async () => {
+    const toolName = 'test-tool';
+    const toolDir = '/tmp/tools/test-tool';
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+
+    expect(typeof context.replaceInFile).toBe('function');
+
+    // Create a test file
+    await fileSystem.ensureDir('/test/files');
+    await fileSystem.writeFile('/test/files/config.txt', 'version=1\nname=test', 'utf8');
+
+    // Use the context's replaceInFile with positional params
+    await context.replaceInFile('/test/files/config.txt', /version=(\d+)/, 'version=2');
+
+    const content = await fileSystem.readFile('/test/files/config.txt', 'utf8');
+    expect(content).toBe('version=2\nname=test');
   });
 });

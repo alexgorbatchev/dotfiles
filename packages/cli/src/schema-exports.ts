@@ -7,7 +7,7 @@
  */
 
 export { Architecture, Platform, type ProjectConfig, defineConfig } from '@dotfiles/config';
-export { replaceInFile, dedentString, dedentTemplate } from '@dotfiles/utils';
+export { dedentString, dedentTemplate } from '@dotfiles/utils';
 
 // Re-export the defineTool function with all plugin augmentations loaded
 export { defineTool } from './defineToolWithPlugins';
