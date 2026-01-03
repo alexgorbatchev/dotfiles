@@ -35,6 +35,7 @@ export interface IReplaceInFileOptions {
  * - Supports `mode: 'file'` (default, process the whole file as one string) and `mode: 'line'`
  *   (process each line separately, preserving the original end-of-line sequences encountered in the file).
  * - No-op write: if the computed output is identical to the input content, the file is not written.
+ * - Returns `true` if replacements were made, `false` otherwise.
  *
  * **Replacement callback arguments**
  *
@@ -45,9 +46,14 @@ export interface IReplaceInFileOptions {
  * - `input`: the original input string
  * - `groups`: named capture groups object (if present)
  *
+ * @returns `true` if any replacements were made, `false` if no matches were found.
+ *
  * @example
  * ```ts
- * await replaceInFile(fileSystem, '/tmp/input.txt', /foo/, 'bar');
+ * const wasReplaced = await replaceInFile(fileSystem, '/tmp/input.txt', /foo/, 'bar');
+ * if (!wasReplaced) {
+ *   console.log('Pattern not found');
+ * }
  * ```
  *
  * @example
@@ -61,7 +67,7 @@ export async function replaceInFile(
   from: ReplaceInFilePattern,
   to: ReplaceInFileReplacer,
   options?: IReplaceInFileOptions
-): Promise<void> {
+): Promise<boolean> {
   const mode: ReplaceInFileMode = options?.mode ?? 'file';
   const pattern: RegExp = normalizePattern(from);
 
@@ -70,11 +76,13 @@ export async function replaceInFile(
   const finalContent: string =
     mode === 'line' ? await replaceInLines(content, pattern, to) : await replaceInString(content, pattern, to);
 
-  if (finalContent === content) {
-    return;
+  const wasReplaced: boolean = finalContent !== content;
+
+  if (wasReplaced) {
+    await fileSystem.writeFile(filePath, finalContent, 'utf8');
   }
 
-  await fileSystem.writeFile(filePath, finalContent, 'utf8');
+  return wasReplaced;
 }
 
 function normalizePattern(from: ReplaceInFilePattern): RegExp {

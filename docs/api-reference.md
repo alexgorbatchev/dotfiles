@@ -130,11 +130,12 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 - Supports `to` as either a string or a (a)sync callback
 - Supports `mode: 'file'` (default) and `mode: 'line'` (process each line separately)
 - No-op write: if output equals input, the file is not written
+- Returns `true` if replacements were made, `false` otherwise
 
 ```typescript
 .hook('after-install', async (ctx) => {
   // Simple replacement (replaces all matches)
-  await ctx.replaceInFile(
+  const wasReplaced = await ctx.replaceInFile(
     `${ctx.installedDir}/config.toml`,
     /placeholder/,
     'actual_value'
@@ -147,6 +148,14 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
     (match) => `version=${Number(match.captures[0]) + 1}`,
     { mode: 'line' }
   );
+
+  // With error message for debugging missing patterns
+  await ctx.replaceInFile(
+    `${ctx.installedDir}/config.toml`,
+    /theme = ".*"/,
+    'theme = "dark"',
+    { errorMessage: 'Could not find theme setting in config.toml' }
+  );
 })
 ```
 
@@ -154,7 +163,11 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 - `filePath` - Path to the file (supports `~` expansion)
 - `from` - Pattern to match (string or RegExp, always global)
 - `to` - Replacement string or callback receiving `IReplaceInFileMatch`
-- `options` - Optional: `{ mode: 'file' | 'line' }` (default: `'file'`)
+- `options` - Optional settings:
+  - `mode` - `'file'` (default) or `'line'` (process each line separately)
+  - `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
+
+**Returns:** `Promise<boolean>` - `true` if replacements were made, `false` if no matches found
 
 **Callback argument (`IReplaceInFileMatch`):**
 - `substring` - The matched substring

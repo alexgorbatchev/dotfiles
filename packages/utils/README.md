@@ -114,7 +114,7 @@ const script = dedentTemplate`
 
 ### File Editing
 
-#### `replaceInFile(fileSystem, filePath, from, to, options?): Promise<void>`
+#### `replaceInFile(fileSystem, filePath, from, to, options?): Promise<boolean>`
 
 Performs a regex-based replacement within a file.
 
@@ -124,6 +124,7 @@ Performs a regex-based replacement within a file.
 - Supports processing the whole file (`mode: 'file'`, default) or line-by-line (`mode: 'line'`), preserving original EOLs.
 - Always replaces all matches (global replacement), even if `from` does not include the `g` flag.
 - Does not write the file when the resulting content is unchanged.
+- Returns `true` if replacements were made, `false` if no matches found.
 
 ```typescript
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
@@ -132,8 +133,8 @@ import { replaceInFile } from '@dotfiles/utils';
 
 declare const fileSystem: IResolvedFileSystem;
 
-// Simple string replacement
-await replaceInFile(fileSystem, '/tmp/input.txt', 'foo', 'bar');
+// Simple string replacement (returns true if replaced)
+const wasReplaced = await replaceInFile(fileSystem, '/tmp/input.txt', 'foo', 'bar');
 
 // Regex replacement with home path
 await replaceInFile(fileSystem, '~/config.txt', /foo/, 'bar');

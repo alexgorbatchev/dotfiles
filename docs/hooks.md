@@ -84,8 +84,8 @@ All hooks receive a context object with:
 
 ```typescript
 .hook('after-install', async ({ replaceInFile, installedDir }) => {
-  // Replace a config value
-  await replaceInFile(
+  // Replace a config value (returns true if replaced, false otherwise)
+  const wasReplaced = await replaceInFile(
     `${installedDir}/config.toml`,
     /theme = ".*"/,
     'theme = "dark"'
@@ -97,6 +97,14 @@ All hooks receive a context object with:
     /version=(\d+)/,
     (match) => `version=${Number(match.captures[0]) + 1}`,
     { mode: 'line' }
+  );
+
+  // Log error if pattern not found (helpful for debugging)
+  await replaceInFile(
+    `${installedDir}/config.toml`,
+    /api_key = ".*"/,
+    'api_key = "secret"',
+    { errorMessage: 'Could not find api_key setting' }
   );
 })
 ```

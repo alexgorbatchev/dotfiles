@@ -102,7 +102,7 @@ describe('HookExecutor - error reporting', () => {
     // - do not pass the raw error object (which triggers prettyErrorTemplate stack output)
     assert.equal(errorLog[1], undefined);
 
-    assert(message.includes('Installation failed'));
+    assert(message.includes('hook failed:'));
 
     assert(capturedOutput.includes('exit code: 1'), capturedOutput);
     assert(capturedOutput.includes('stderr:'), capturedOutput);

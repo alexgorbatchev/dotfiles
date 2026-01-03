@@ -36,4 +36,7 @@ export const messages = {
   pluginCleanupFailed: (method: string) => createSafeLogMessage(`Failed to cleanup plugin ${method}`),
 
   pluginCleanupComplete: () => createSafeLogMessage('Plugin cleanup complete'),
+
+  replaceInFileNoMatch: (pattern: string, filePath: string) =>
+    createSafeLogMessage(`Could not find '${pattern}' in ${filePath}`),
 } satisfies SafeLogMessageMap;

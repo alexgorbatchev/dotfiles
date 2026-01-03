@@ -1,6 +1,36 @@
-import type { IReplaceInFileOptions, ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
+import type { ReplaceInFileMode, ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
 import type { ProjectConfig } from '../config';
 import type { ISystemInfo } from './common.types';
+
+/**
+ * Options for the bound replaceInFile function.
+ *
+ * Extends the base options with error messaging capability.
+ */
+export interface IBoundReplaceInFileOptions {
+  /** Optional. Defaults to `'file'` when not provided. */
+  mode?: ReplaceInFileMode;
+
+  /**
+   * Optional error message to log if no replacements were made.
+   *
+   * When provided and no matches are found, an error is logged with the tool name prefix:
+   * `[toolName] <errorMessage>`
+   *
+   * This is useful for detecting when expected patterns aren't found in config files.
+   *
+   * @example
+   * ```ts
+   * await ctx.replaceInFile(
+   *   `${ctx.installedDir}/config.toml`,
+   *   /theme = ".*"/,
+   *   'theme = "dark"',
+   *   { errorMessage: 'Could not find theme setting in config.toml' }
+   * );
+   * ```
+   */
+  errorMessage?: string;
+}
 
 /**
  * Bound replace-in-file function with pre-configured file system.
@@ -14,6 +44,7 @@ import type { ISystemInfo } from './common.types';
  * - Supports `mode: 'file'` (default, process the whole file as one string) and `mode: 'line'`
  *   (process each line separately, preserving the original end-of-line sequences).
  * - No-op write: if the computed output is identical to the input content, the file is not written.
+ * - Returns `true` if replacements were made, `false` if no matches found.
  *
  * **Replacement callback arguments**
  *
@@ -27,24 +58,36 @@ import type { ISystemInfo } from './common.types';
  * @param filePath - Path to the file (supports `~` expansion)
  * @param from - Pattern to match (string or RegExp)
  * @param to - Replacement value (string or async callback)
- * @param options - Optional settings (`mode: 'file' | 'line'`)
+ * @param options - Optional settings (`mode`, `errorMessage`)
+ * @returns `true` if any replacements were made, `false` if no matches found
  *
  * @example
  * ```ts
- * await ctx.replaceInFile('/path/to/file', /foo/, 'bar');
+ * const wasReplaced = await ctx.replaceInFile('/path/to/file', /foo/, 'bar');
  * ```
  *
  * @example
  * ```ts
  * await ctx.replaceInFile('~/config.txt', 'foo', 'bar', { mode: 'line' });
  * ```
+ *
+ * @example
+ * ```ts
+ * // Log error if pattern not found
+ * await ctx.replaceInFile(
+ *   '~/config.txt',
+ *   /theme = ".*"/,
+ *   'theme = "dark"',
+ *   { errorMessage: 'Could not find theme setting' }
+ * );
+ * ```
  */
 export type BoundReplaceInFile = (
   filePath: string,
   from: ReplaceInFilePattern,
   to: ReplaceInFileReplacer,
-  options?: IReplaceInFileOptions
-) => Promise<void>;
+  options?: IBoundReplaceInFileOptions
+) => Promise<boolean>;
 
 /**
  * Provides a base context with common properties and utilities that are shared
@@ -112,15 +155,25 @@ export interface IBaseToolContext {
    *
    * Pre-bound with the resolved file system. See {@link BoundReplaceInFile} for full documentation.
    *
+   * @returns `true` if replacements were made, `false` if no matches found
+   *
    * @example
    * ```ts
    * // Replace all occurrences of 'foo' with 'bar'
-   * await ctx.replaceInFile('/path/to/file', /foo/, 'bar');
+   * const wasReplaced = await ctx.replaceInFile('/path/to/file', /foo/, 'bar');
    *
    * // Line-by-line replacement with callback
    * await ctx.replaceInFile('~/config.txt', /version=(\d+)/, (match) => {
    *   return `version=${Number(match.captures[0]) + 1}`;
    * }, { mode: 'line' });
+   *
+   * // Log error if pattern not found
+   * await ctx.replaceInFile(
+   *   '~/config.txt',
+   *   /theme = ".*"/,
+   *   'theme = "dark"',
+   *   { errorMessage: 'Could not find theme setting' }
+   * );
    * ```
    */
   replaceInFile: BoundReplaceInFile;

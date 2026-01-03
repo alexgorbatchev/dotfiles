@@ -242,8 +242,8 @@ install('github-release', { repo: 'owner/tool' })
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
   .hook('after-install', async (ctx) => {
-    // Replace a value in a config file
-    await ctx.replaceInFile(
+    // Replace a value in a config file (returns true if replaced)
+    const wasReplaced = await ctx.replaceInFile(
       `${ctx.installedDir}/config.toml`,
       /default_theme = ".*"/,
       'default_theme = "dark"'
@@ -256,8 +256,22 @@ install('github-release', { repo: 'owner/tool' })
       (match) => `version=${Number(match.captures[0]) + 1}`,
       { mode: 'line' }
     );
+
+    // With error message - logs "message: filePath: pattern" if pattern not found
+    await ctx.replaceInFile(
+      `${ctx.installedDir}/config.toml`,
+      /api_key = ".*"/,
+      'api_key = "secret"',
+      { errorMessage: 'Could not find api_key setting in config.toml' }
+    );
   });
 ```
+
+**`replaceInFile` options:**
+- `mode` - `'file'` (default) or `'line'` (process each line separately)
+- `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
+
+**Returns:** `Promise<boolean>` - `true` if replacements were made, `false` if no matches found
 
 Reference: [Hooks Guide](<root>/docs/hooks.md) and [API Reference](<root>/docs/api-reference.md#hook-event-string-handler-hookhandler)
 

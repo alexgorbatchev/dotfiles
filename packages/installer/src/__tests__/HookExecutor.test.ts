@@ -441,11 +441,7 @@ describe('HookExecutor', () => {
 
       await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
 
-      logger.expect(
-        ['ERROR'],
-        ['HookExecutor', 'executeHook'],
-        ['Installation failed [testHook hook] for tool "test-tool"']
-      );
+      logger.expect(['ERROR'], ['HookExecutor', 'executeHook'], ['testHook hook failed: Test hook error']);
     });
 
     it('should handle non-Error exceptions', async () => {

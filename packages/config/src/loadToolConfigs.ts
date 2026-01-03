@@ -77,7 +77,7 @@ async function processFunctionExport(
   fileSystem: IResolvedFileSystem
 ): Promise<ToolConfig | null> {
   const toolDir = path.dirname(filePath);
-  const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, fileSystem);
+  const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, fileSystem, logger);
   const install = createInstallFunction(logger, toolName, context);
   const result = await configureToolFn(install, context);
 

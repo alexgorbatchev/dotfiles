@@ -1,17 +1,20 @@
 import path from 'node:path';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
-import type { IReplaceInFileOptions, ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
+import type { TsLogger } from '@dotfiles/logger';
+import type { ReplaceInFilePattern, ReplaceInFileReplacer } from '@dotfiles/utils';
 import { replaceInFile } from '@dotfiles/utils';
 import type { IToolConfigContext } from '../builder';
-import type { BoundReplaceInFile, ISystemInfo } from '../common';
+import type { BoundReplaceInFile, IBoundReplaceInFileOptions, ISystemInfo } from '../common';
 import type { ProjectConfig } from '../config';
+import { messages } from '../log-messages';
 
 export function createToolConfigContext(
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
   toolName: string,
   toolDir: string,
-  fileSystem: IResolvedFileSystem
+  fileSystem: IResolvedFileSystem,
+  logger?: TsLogger
 ): IToolConfigContext {
   const currentDir = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -21,12 +24,21 @@ export function createToolConfigContext(
     homeDir: projectConfig.paths.homeDir,
   };
 
-  const boundReplaceInFile: BoundReplaceInFile = (
+  const boundReplaceInFile: BoundReplaceInFile = async (
     filePath: string,
     from: ReplaceInFilePattern,
     to: ReplaceInFileReplacer,
-    options?: IReplaceInFileOptions
-  ): Promise<void> => replaceInFile(fileSystem, filePath, from, to, options);
+    options?: IBoundReplaceInFileOptions
+  ): Promise<boolean> => {
+    const wasReplaced = await replaceInFile(fileSystem, filePath, from, to, options);
+
+    if (!wasReplaced && options?.errorMessage && logger) {
+      const patternString = from instanceof RegExp ? from.source : from;
+      logger.error(messages.replaceInFileNoMatch(patternString, filePath));
+    }
+
+    return wasReplaced;
+  };
 
   const context: IToolConfigContext = {
     toolName,

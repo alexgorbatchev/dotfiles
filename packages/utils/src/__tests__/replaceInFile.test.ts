@@ -69,4 +69,74 @@ describe('replaceInFile', () => {
     expect(updated).toBe('hell0\r\nw0rld\r\n');
     expect(memFs.fs.writeFile).toHaveBeenCalledTimes(1);
   });
+
+  test('returns true when replacements were made', async () => {
+    const memFs = await createMemFileSystem({
+      initialVolumeJson: {
+        '/tmp/input.txt': 'foo bar foo',
+      },
+    });
+
+    const wasReplaced: boolean = await replaceInFile(
+      memFs.fs.asIResolvedFileSystem,
+      '/tmp/input.txt',
+      /foo/,
+      'baz'
+    );
+
+    expect(wasReplaced).toBe(true);
+  });
+
+  test('returns false when no matches found', async () => {
+    const memFs = await createMemFileSystem({
+      initialVolumeJson: {
+        '/tmp/input.txt': 'hello world',
+      },
+    });
+
+    const wasReplaced: boolean = await replaceInFile(
+      memFs.fs.asIResolvedFileSystem,
+      '/tmp/input.txt',
+      /does-not-exist/,
+      'replacement'
+    );
+
+    expect(wasReplaced).toBe(false);
+  });
+
+  test('returns true in line mode when replacements were made', async () => {
+    const memFs = await createMemFileSystem({
+      initialVolumeJson: {
+        '/tmp/input.txt': 'line1\nline2\n',
+      },
+    });
+
+    const wasReplaced: boolean = await replaceInFile(
+      memFs.fs.asIResolvedFileSystem,
+      '/tmp/input.txt',
+      /line/,
+      'row',
+      { mode: 'line' }
+    );
+
+    expect(wasReplaced).toBe(true);
+  });
+
+  test('returns false in line mode when no matches found', async () => {
+    const memFs = await createMemFileSystem({
+      initialVolumeJson: {
+        '/tmp/input.txt': 'line1\nline2\n',
+      },
+    });
+
+    const wasReplaced: boolean = await replaceInFile(
+      memFs.fs.asIResolvedFileSystem,
+      '/tmp/input.txt',
+      /does-not-exist/,
+      'replacement',
+      { mode: 'line' }
+    );
+
+    expect(wasReplaced).toBe(false);
+  });
 });

@@ -84,4 +84,83 @@ describe('createToolConfigContext', () => {
     const content = await fileSystem.readFile('/test/files/config.txt', 'utf8');
     expect(content).toBe('version=2\nname=test');
   });
+
+  it('should return true when replaceInFile makes replacements', async () => {
+    const toolName = 'test-tool';
+    const toolDir = '/tmp/tools/test-tool';
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+
+    await fileSystem.ensureDir('/test/files');
+    await fileSystem.writeFile('/test/files/config.txt', 'foo bar foo', 'utf8');
+
+    const wasReplaced: boolean = await context.replaceInFile('/test/files/config.txt', /foo/, 'baz');
+
+    expect(wasReplaced).toBe(true);
+  });
+
+  it('should return false when replaceInFile finds no matches', async () => {
+    const toolName = 'test-tool';
+    const toolDir = '/tmp/tools/test-tool';
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+
+    await fileSystem.ensureDir('/test/files');
+    await fileSystem.writeFile('/test/files/config.txt', 'hello world', 'utf8');
+
+    const wasReplaced: boolean = await context.replaceInFile('/test/files/config.txt', /does-not-exist/, 'replacement');
+
+    expect(wasReplaced).toBe(false);
+  });
+
+  it('should log error with pattern and file when errorMessage provided and no matches found', async () => {
+    const toolName = 'my-test-tool';
+    const toolDir = '/tmp/tools/test-tool';
+    const logger = new TestLogger();
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+    await fileSystem.ensureDir('/test/files');
+    await fileSystem.writeFile('/test/files/config.txt', 'hello world', 'utf8');
+
+    await context.replaceInFile('/test/files/config.txt', /does-not-exist/, 'replacement', {
+      errorMessage: 'Could not find pattern in config file',
+    });
+
+    logger.expect(['ERROR'], [], ["Could not find 'does-not-exist' in /test/files/config.txt"]);
+  });
+
+  it('should not log error when errorMessage provided but matches found', async () => {
+    const toolName = 'my-test-tool';
+    const toolDir = '/tmp/tools/test-tool';
+    const logger = new TestLogger();
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+    await fileSystem.ensureDir('/test/files');
+    await fileSystem.writeFile('/test/files/config.txt', 'foo bar foo', 'utf8');
+
+    await context.replaceInFile('/test/files/config.txt', /foo/, 'baz', {
+      errorMessage: 'Could not find pattern',
+    });
+
+    // No error should be logged since matches were found
+    expect(logger.logs.length).toBe(0);
+  });
+
+  it('should not log error when no errorMessage provided even if no matches', async () => {
+    const toolName = 'my-test-tool';
+    const toolDir = '/tmp/tools/test-tool';
+    const logger = new TestLogger();
+
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+    await fileSystem.ensureDir('/test/files');
+    await fileSystem.writeFile('/test/files/config.txt', 'hello world', 'utf8');
+
+    await context.replaceInFile('/test/files/config.txt', /does-not-exist/, 'replacement');
+
+    // No error should be logged since errorMessage wasn't provided
+    expect(logger.logs.length).toBe(0);
+  });
 });

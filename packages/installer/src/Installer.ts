@@ -943,15 +943,16 @@ export class Installer implements IInstaller {
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
 
+    const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
+
     const baseContext = createToolConfigContext(
       this.projectConfig,
       this.getSystemInfo(),
       toolName,
       toolDir,
-      this.resolvedFs
+      this.resolvedFs,
+      contextLogger
     );
-
-    const contextLogger = methodLogger.getSubLogger({ name: `install-${toolName}` });
 
     const context: IInstallContextWithEmitter = {
       ...baseContext,

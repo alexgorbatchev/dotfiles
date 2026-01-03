@@ -13,6 +13,14 @@ import type { ShellExpression } from 'bun';
 import { messages } from './log-messages';
 import { writeHookErrorDetails } from './writeHookErrorDetails';
 
+function isShellError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const errorObj = error as Record<string, unknown>;
+  return errorObj['name'] === 'ShellError';
+}
+
 export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseContext> = AsyncInstallHook<TContext>;
 
 function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
@@ -145,37 +153,33 @@ export class HookExecutor {
       return result;
     } catch (error) {
       const durationMs: number = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
 
-      methodLogger.error(messages.outcome.installFailed(`${hookName} hook`, enhancedContext.toolName));
+      methodLogger.error(messages.outcome.hookFailed(hookName, errorMessage));
 
-      await writeHookErrorDetails({
-        fileSystem: enhancedContext.fileSystem,
-        logger: methodLogger,
-        hookName,
-        toolName: enhancedContext.toolName,
-        error,
-        writeOutput: this.writeOutput,
-      });
+      // Write detailed error output only for shell errors (includes stdout/stderr)
+      if (isShellError(error)) {
+        await writeHookErrorDetails({
+          fileSystem: enhancedContext.fileSystem,
+          logger: methodLogger,
+          hookName,
+          toolName: enhancedContext.toolName,
+          error,
+          writeOutput: this.writeOutput,
+        });
+      }
 
       if (continueOnError) {
         methodLogger.debug(messages.hookExecutor.continuingDespiteFailure(hookName));
-
-        const result: HookExecutionResult = {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-          durationMs,
-          skipped: false,
-        };
-        return result;
-      } else {
-        const result: HookExecutionResult = {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-          durationMs,
-          skipped: false,
-        };
-        return result;
       }
+
+      const result: HookExecutionResult = {
+        success: false,
+        error: errorMessage,
+        durationMs,
+        skipped: false,
+      };
+      return result;
     }
   }
 

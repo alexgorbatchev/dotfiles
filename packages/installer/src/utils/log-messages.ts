@@ -80,6 +80,8 @@ export const messages = {
       createSafeLogMessage(`Tool "${toolName}" version ${currentVersion} is outdated (latest: ${latestVersion})`),
     installFailed: (method: string, toolName: string) =>
       createSafeLogMessage(`Installation failed [${method}] for tool "${toolName}"`),
+    hookFailed: (hookName: string, errorMessage: string) =>
+      createSafeLogMessage(`${hookName} hook failed: ${errorMessage}`),
     unsupportedOperation: (operation: string, details: string) =>
       createSafeLogMessage(`${operation} not yet supported (${details})`),
   } satisfies SafeLogMessageMap,

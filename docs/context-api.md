@@ -77,6 +77,7 @@ The `ctx.replaceInFile` method performs regex-based replacements within files.
 - Supports `to` as either a string or a (a)sync callback
 - Supports `mode: 'file'` (default) and `mode: 'line'` (process each line separately)
 - No-op write: if output equals input, the file is not written
+- Returns `true` if replacements were made, `false` otherwise
 
 ```typescript
 export default defineTool((install, ctx) =>
@@ -84,7 +85,7 @@ export default defineTool((install, ctx) =>
     .bin('tool')
     .afterInstall(async () => {
       // Simple replacement (replaces all matches)
-      await ctx.replaceInFile(
+      const wasReplaced = await ctx.replaceInFile(
         `${ctx.currentDir}/config.toml`,
         /placeholder_value/,
         'actual_value'
@@ -107,6 +108,14 @@ export default defineTool((install, ctx) =>
           return `api_key: ${key}`;
         }
       );
+
+      // With error message for debugging missing patterns
+      await ctx.replaceInFile(
+        `${ctx.currentDir}/config.toml`,
+        /theme = ".*"/,
+        'theme = "dark"',
+        { errorMessage: 'Could not find theme setting in config.toml' }
+      );
     })
 );
 ```
@@ -115,7 +124,11 @@ export default defineTool((install, ctx) =>
 - `filePath` - Path to the file (supports `~` expansion)
 - `from` - Pattern to match (string or RegExp, always global)
 - `to` - Replacement string or callback receiving `IReplaceInFileMatch`
-- `options` - Optional: `{ mode: 'file' | 'line' }` (default: `'file'`)
+- `options` - Optional settings:
+  - `mode` - `'file'` (default) or `'line'` (process each line separately)
+  - `errorMessage` - If provided and no matches found, logs error: `Could not find '<pattern>' in <filePath>`
+
+**Returns:** `Promise<boolean>` - `true` if replacements were made, `false` if no matches found
 
 **Callback argument (`IReplaceInFileMatch`):**
 - `substring` - The matched substring
