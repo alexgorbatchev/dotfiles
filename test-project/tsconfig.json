@@ -1,4 +1,4 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["tools", ".generated/tool-types.d.ts"]
+  "include": ["./config.ts", "tools", ".generated/tool-types.d.ts"]
 }

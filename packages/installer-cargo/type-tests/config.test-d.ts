@@ -1,6 +1,14 @@
-import type { CargoInstallParams, IInstallParamsRegistry, InstallMethod } from '@gitea/dotfiles';
-import { defineTool } from '@gitea/dotfiles';
+import {
+  type z_internal_CargoInstallParams,
+  type z_internal_IInstallParamsRegistry,
+  type z_internal_InstallMethod,
+  defineTool,
+} from '@gitea/dotfiles';
 import { expectError } from 'tsd';
+
+type CargoInstallParams = z_internal_CargoInstallParams;
+type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 

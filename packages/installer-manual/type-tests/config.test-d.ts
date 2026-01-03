@@ -1,6 +1,14 @@
-import type { IInstallParamsRegistry, InstallMethod, ManualInstallParams } from '@gitea/dotfiles';
-import { defineTool } from '@gitea/dotfiles';
+import {
+  type z_internal_IInstallParamsRegistry,
+  type z_internal_InstallMethod,
+  type z_internal_ManualInstallParams,
+  defineTool,
+} from '@gitea/dotfiles';
 import { expectError } from 'tsd';
+
+type ManualInstallParams = z_internal_ManualInstallParams;
+type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 

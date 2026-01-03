@@ -1,6 +1,14 @@
-import type { CurlScriptInstallParams, IInstallParamsRegistry, InstallMethod } from '@gitea/dotfiles';
-import { defineTool } from '@gitea/dotfiles';
+import {
+  type z_internal_CurlScriptInstallParams,
+  type z_internal_IInstallParamsRegistry,
+  type z_internal_InstallMethod,
+  defineTool,
+} from '@gitea/dotfiles';
 import { expectError } from 'tsd';
+
+type CurlScriptInstallParams = z_internal_CurlScriptInstallParams;
+type IInstallParamsRegistry = z_internal_IInstallParamsRegistry;
+type InstallMethod = z_internal_InstallMethod;
 
 type ExpectTrue<T extends true> = T;
 

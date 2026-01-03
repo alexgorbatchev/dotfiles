@@ -6,7 +6,7 @@ import { expectError } from 'tsd';
 
 // Augment the registry with test values
 declare module '@gitea/dotfiles' {
-  interface IKnownBinNameRegistry {
+  export interface z_internal_IKnownBinNameRegistry {
     foo: never;
     bar: never;
   }

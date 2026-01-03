@@ -33,7 +33,7 @@ export async function buildSchemaTypes(context: IBuildContext, dependencyVersion
       --project ${context.paths.buildTsconfigPath} \
       --out-file ${context.paths.outputSchemasDtsPath} \
       --no-check \
-      --export-referenced-types \
+      --export-referenced-types=false \
       --external-imports=@dotfiles/core \
       --external-imports=zod \
       --external-imports=bun \
