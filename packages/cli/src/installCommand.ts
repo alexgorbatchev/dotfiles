@@ -74,11 +74,8 @@ function handleInstallationResult(
     if (shimMode) {
       // In shim mode, output user-friendly error message to stderr only
       process.stderr.write(`Failed to install '${toolName}': ${result.error ?? 'Unknown error'}\n`);
-    } else {
-      // Normal mode: use logger only
-      const failedMethod = result.installationMethod ?? 'unknown';
-      logger.error(messages.toolInstallFailed(failedMethod, toolName, result.error ?? 'Unknown error'));
     }
+    // Error already logged by Installer - just return exit code
     return 1;
   }
 }

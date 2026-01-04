@@ -127,6 +127,7 @@ describe('cleanupCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCleanupCommand'],
+      [],
       [
         'Registry-based cleanup: Removing all tracked files',
         '[cleanup] rm /usr/bin/shim1',
@@ -149,6 +150,7 @@ describe('cleanupCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCleanupCommand'],
+      [],
       [
         "Registry-based cleanup: files for tool 'tool1'",
         '[cleanup] rm /usr/bin/shim1',
@@ -168,6 +170,7 @@ describe('cleanupCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerCleanupCommand'],
+      [],
       [
         'Registry-based cleanup: Removing all tracked files',
         `Would delete: /usr/bin/shim1`,

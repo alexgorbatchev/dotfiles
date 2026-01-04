@@ -102,6 +102,7 @@ describe('checkUpdatesCommand - Mixed Tool Types', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand'],
+      [],
       [messages.toolUpToDate('fzf', '0.40.0', '0.40.0'), messages.toolUpdateAvailable('lazygit', '0.35.0', '0.36.0')]
     );
   });

@@ -365,7 +365,12 @@ describe('GeneratorOrchestrator', () => {
 
           await orchestrator.generateCompletionsForTool(toolName, toolConfig);
 
-          logger.expect(['INFO'], ['GeneratorOrchestrator', 'generateCompletionsForTool'], [expectedCompletionPath]);
+          logger.expect(
+            ['INFO'],
+            ['GeneratorOrchestrator', 'generateCompletionsForTool'],
+            [],
+            [expectedCompletionPath]
+          );
         });
 
         it('should resolve callback-based completions with context', async () => {
@@ -452,7 +457,7 @@ describe('GeneratorOrchestrator', () => {
           });
 
           // Verify warning was logged for disabled tool
-          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], ['disabledTool']);
+          logger.expect(['WARN'], ['GeneratorOrchestrator', 'generateAll'], [], ['disabledTool']);
         });
 
         it('should handle all tools disabled', async () => {

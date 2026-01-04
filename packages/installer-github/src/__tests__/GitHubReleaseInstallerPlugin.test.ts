@@ -149,6 +149,7 @@ describe('GitHubReleaseInstallerPlugin', () => {
       testLogger.expect(
         ['DEBUG'],
         [],
+        [],
         ['Getting latest release for owner/repo', 'Failed to resolve version for test-tool']
       );
     });
@@ -171,7 +172,12 @@ describe('GitHubReleaseInstallerPlugin', () => {
       const version: string | null = await plugin.resolveVersion('test-tool', mockToolConfig, mockContext, testLogger);
 
       expect(version).toBeNull();
-      testLogger.expect(['DEBUG'], [], ['Getting latest release for owner/repo', /Exception while resolving version/]);
+      testLogger.expect(
+        ['DEBUG'],
+        [],
+        [],
+        ['Getting latest release for owner/repo', /Exception while resolving version/]
+      );
     });
 
     it('should normalize version by stripping v prefix', async () => {

@@ -94,6 +94,7 @@ describe('detectConflictsCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerDetectConflictsCommand'],
+        [],
         [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)]
       );
     });
@@ -104,7 +105,12 @@ describe('detectConflictsCommand', () => {
 
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-      logger.expect(['ERROR'], ['registerDetectConflictsCommand'], [messages.configLoadFailed('tool configurations')]);
+      logger.expect(
+        ['ERROR'],
+        ['registerDetectConflictsCommand'],
+        [],
+        [messages.configLoadFailed('tool configurations')]
+      );
     });
 
     test('No conflicts found - should log info and exit 0', async () => {
@@ -113,7 +119,7 @@ describe('detectConflictsCommand', () => {
 
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
 
-      logger.expect(['INFO'], ['registerDetectConflictsCommand'], [messages.noConflictsDetected()]);
+      logger.expect(['INFO'], ['registerDetectConflictsCommand'], [], [messages.noConflictsDetected()]);
     });
 
     test('Shim path conflict (not a generator shim) - should log warning and exit 1', async () => {
@@ -132,7 +138,7 @@ describe('detectConflictsCommand', () => {
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
-      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [expectedMessageShim]);
+      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessageShim]);
     });
 
     test('Shim path exists and IS a generator shim - should NOT log warning for this shim', async () => {
@@ -145,7 +151,7 @@ describe('detectConflictsCommand', () => {
       });
 
       expect(program.parseAsync(['detect-conflicts'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_0');
-      logger.expect(['INFO'], ['registerDetectConflictsCommand'], [messages.noConflictsDetected()]);
+      logger.expect(['INFO'], ['registerDetectConflictsCommand'], [], [messages.noConflictsDetected()]);
     });
 
     test('Symlink target exists as a file - should log warning and exit 1', async () => {
@@ -163,7 +169,7 @@ describe('detectConflictsCommand', () => {
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
-      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [expectedMessageSymlinkFile]);
+      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessageSymlinkFile]);
     });
 
     test('Symlink target exists as a symlink to a different source - should log warning and exit 1', async () => {
@@ -185,7 +191,7 @@ describe('detectConflictsCommand', () => {
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
-      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [expectedMessage]);
+      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessage]);
     });
 
     test('Multiple conflicts (shim and symlink) - should log all warnings and exit 1', async () => {
@@ -212,7 +218,7 @@ describe('detectConflictsCommand', () => {
         'Conflicts detected with files not owned by the generator:',
         conflictsMessage
       );
-      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [expectedMessageMultiple]);
+      logger.expect(['WARN'], ['registerDetectConflictsCommand'], [], [expectedMessageMultiple]);
     });
   });
 });

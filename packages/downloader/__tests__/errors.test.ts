@@ -24,7 +24,7 @@ describe('Downloader Errors', () => {
     expect(err.name).toBe('DownloaderError');
     expect(err.message).toBe('message');
     expect(err.url).toBe('url');
-    logger.expect(['DEBUG'], ['DownloaderError'], ['DownloaderError created: message=message, url=url']);
+    logger.expect(['DEBUG'], ['DownloaderError'], [], ['DownloaderError created: message=message, url=url']);
   });
 
   it('NetworkError', () => {
@@ -34,6 +34,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['NetworkError'],
+      [],
       ['NetworkError created: message=message, url=url, originalError=undefined']
     );
   });
@@ -45,6 +46,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['HttpError'],
+      [],
       [
         /^HttpError created: message=message, url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
       ]
@@ -59,6 +61,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['NotFoundError'],
+      [],
       [/^NotFoundError created: url=url, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/]
     );
   });
@@ -71,6 +74,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['ForbiddenError'],
+      [],
       [/^ForbiddenError created: url=url, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/]
     );
   });
@@ -83,6 +87,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['RateLimitError'],
+      [],
       [
         /^RateLimitError created: message=message, url=url, statusCode=429, statusText=Too Many Requests, responseBody=undefined, responseHeaders=\{\}, resetTimestamp=undefined(?:[\s\S]*)$/,
       ]
@@ -96,6 +101,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['ClientError'],
+      [],
       [
         /^ClientError created: url=url, statusCode=400, statusText=Bad Request, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
       ]
@@ -109,6 +115,7 @@ describe('Downloader Errors', () => {
     logger.expect(
       ['DEBUG'],
       ['ServerError'],
+      [],
       [
         /^ServerError created: url=url, statusCode=500, statusText=Internal Server Error, responseBody=undefined, responseHeaders=\{\}(?:[\s\S]*)$/,
       ]

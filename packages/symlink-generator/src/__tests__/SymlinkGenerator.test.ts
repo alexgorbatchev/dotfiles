@@ -130,6 +130,7 @@ describe('SymlinkGenerator', () => {
     logger.expect(
       ['WARN'],
       ['SymlinkGenerator', 'generate', 'processSymlink'],
+      [],
       [
         'Tool "test-tool" source file not found', // partial matcher
       ]

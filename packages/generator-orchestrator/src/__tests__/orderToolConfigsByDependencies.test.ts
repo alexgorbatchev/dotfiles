@@ -101,6 +101,7 @@ describe('orderToolConfigsByDependencies', () => {
     logger.expect(
       ['ERROR'],
       ['orderToolConfigsByDependencies'],
+      [],
       [
         'Missing dependency: tool "consumer" requires binary "mac-bin" but no tool provides it for platform linux/x86_64.',
       ]
@@ -134,6 +135,7 @@ describe('orderToolConfigsByDependencies', () => {
     logger.expect(
       ['ERROR'],
       ['orderToolConfigsByDependencies'],
+      [],
       [/Ambiguous dependency: binary "shared-bin" is provided by multiple tools/]
     );
   });
@@ -159,7 +161,12 @@ describe('orderToolConfigsByDependencies', () => {
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
       'Dependency validation failed'
     );
-    logger.expect(['ERROR'], ['orderToolConfigsByDependencies'], [/Circular dependency detected between tools/]);
+    logger.expect(
+      ['ERROR'],
+      ['orderToolConfigsByDependencies'],
+      [],
+      [/Circular dependency detected between tools/]
+    );
   });
 
   test('allows platform-specific providers for matching architecture', () => {

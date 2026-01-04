@@ -127,7 +127,7 @@ describe('createToolConfigContext', () => {
       errorMessage: 'Could not find pattern in config file',
     });
 
-    logger.expect(['ERROR'], [], ["Could not find 'does-not-exist' in /test/files/config.txt"]);
+    logger.expect(['ERROR'], [], [], ["Could not find 'does-not-exist' in /test/files/config.txt"]);
   });
 
   it('should not log error when errorMessage provided but matches found', async () => {

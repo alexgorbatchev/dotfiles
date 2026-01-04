@@ -414,6 +414,7 @@ describe('ShimGenerator', () => {
       logger.expect(
         ['ERROR'],
         ['ShimGenerator', 'generateShimForBinary'],
+        [],
         [/Cannot create shim for "test-tool": conflicting file exists/]
       );
     });
@@ -463,6 +464,7 @@ describe('ShimGenerator', () => {
       logger.expect(
         ['ERROR'],
         ['ShimGenerator', 'generateShimForBinary'],
+        [],
         [/Cannot create shim for "test-tool": conflicting file exists/]
       );
     });
@@ -513,6 +515,7 @@ describe('ShimGenerator', () => {
       logger.expect(
         ['ERROR'],
         ['ShimGenerator', 'generateShimForBinary'],
+        [],
         [/Cannot create shim for "test-tool": conflicting file exists/]
       );
     });

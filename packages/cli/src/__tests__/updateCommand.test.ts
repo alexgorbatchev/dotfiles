@@ -154,6 +154,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerUpdateCommand'],
+      [],
       [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', '0.40.0', '0.40.0')]
     );
 
@@ -190,6 +191,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerUpdateCommand'],
+      [],
       [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', '0.40.0', '0.41.0')]
     );
     expect(mockInstaller.install).toHaveBeenCalled();
@@ -208,7 +210,12 @@ describe('updateCommand', () => {
 
     expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['registerUpdateCommand'], [messages.toolUpdateFailed('fzf', 'Install failed miserably')]);
+    logger.expect(
+      ['ERROR'],
+      ['registerUpdateCommand'],
+      [],
+      [messages.toolUpdateFailed('fzf', 'Install failed miserably')]
+    );
   });
 
   test('tool config not found', async () => {
@@ -221,6 +228,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['ERROR'],
       ['registerUpdateCommand'],
+      [],
       [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
@@ -233,6 +241,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerUpdateCommand'],
+      [],
       [
         messages.commandCheckingUpdatesFor('manualtool'),
         messages.commandUnsupportedOperation('Update', 'installation method: "manual" for tool "manualtool"'),
@@ -254,7 +263,12 @@ describe('updateCommand', () => {
 
     expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['registerUpdateCommand'], [messages.toolUpdateFailed('fzf', 'GitHub API failed')]);
+    logger.expect(
+      ['ERROR'],
+      ['registerUpdateCommand'],
+      [],
+      [messages.toolUpdateFailed('fzf', 'GitHub API failed')]
+    );
   });
 
   test('tool configured with "latest" version', async () => {
@@ -288,6 +302,7 @@ describe('updateCommand', () => {
     logger.expect(
       ['INFO'],
       ['registerUpdateCommand'],
+      [],
       [messages.commandCheckingUpdatesFor('fzf'), messages.toolUpdated('fzf', 'latest', '0.50.0')]
     );
     expect(mockInstaller.install).toHaveBeenCalled();
@@ -324,6 +339,7 @@ describe('updateCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerUpdateCommand'],
+        [],
         [messages.toolShimUpdateStarting('fzf', '0.40.0', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')]
       );
       expect(mockInstaller.install).toHaveBeenCalled();
@@ -360,6 +376,7 @@ describe('updateCommand', () => {
       logger.expect(
         ['INFO'],
         ['registerUpdateCommand'],
+        [],
         [messages.toolShimUpdateStarting('fzf', 'latest', '0.41.0'), messages.toolShimUpdateSuccess('fzf', '0.41.0')]
       );
       expect(mockInstaller.install).toHaveBeenCalled();
@@ -392,7 +409,7 @@ describe('updateCommand', () => {
 
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
-      logger.expect(['INFO'], ['registerUpdateCommand'], [messages.toolShimUpToDate('fzf', '0.40.0')]);
+      logger.expect(['INFO'], ['registerUpdateCommand'], [], [messages.toolShimUpToDate('fzf', '0.40.0')]);
       expect(mockInstaller.install).toHaveBeenCalled();
     });
 
@@ -423,7 +440,7 @@ describe('updateCommand', () => {
 
       await program.parseAsync(['update', 'fzf', '--shim-mode'], { from: 'user' });
 
-      logger.expect(['INFO'], ['registerUpdateCommand'], [messages.toolShimUpToDate('fzf', '0.40.0')]);
+      logger.expect(['INFO'], ['registerUpdateCommand'], [], [messages.toolShimUpToDate('fzf', '0.40.0')]);
       expect(mockInstaller.install).toHaveBeenCalled();
     });
   });

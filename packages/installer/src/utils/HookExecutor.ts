@@ -121,7 +121,7 @@ export class HookExecutor {
     enhancedContext: TContext,
     options: IHookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
-    const methodLogger = this.logger.getSubLogger({ name: 'executeHook' });
+    const methodLogger = this.logger.getSubLogger({ name: 'executeHook', context: hookName });
     const timeoutMs: number = options.timeoutMs ?? this.defaultTimeoutMs;
     const continueOnError: boolean = options.continueOnError ?? false;
     const startTime = Date.now();
@@ -155,7 +155,7 @@ export class HookExecutor {
       const durationMs: number = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      methodLogger.error(messages.outcome.hookFailed(hookName, errorMessage));
+      methodLogger.error(messages.outcome.hookFailed(), error);
 
       // Write detailed error output only for shell errors (includes stdout/stderr)
       if (isShellError(error)) {

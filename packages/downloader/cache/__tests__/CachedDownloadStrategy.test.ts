@@ -123,6 +123,7 @@ describe('CachedDownloadStrategy', () => {
       logger.expect(
         ['DEBUG'],
         ['CachedDownloadStrategy'],
+        [],
         ['Wrapping strategy mock-strategy with cache, TTL: 60000 ms']
       );
     });
@@ -158,7 +159,12 @@ describe('CachedDownloadStrategy', () => {
       expect(mockStrategy.downloadCalls).toHaveLength(1);
       expect(mockCache.getCalls).toHaveLength(0);
       expect(mockCache.setDownloadCalls).toHaveLength(0);
-      logger.expect(['TRACE'], ['CachedDownloadStrategy', 'download'], ['Cache disabled, caching for key:']);
+      logger.expect(
+        ['TRACE'],
+        ['CachedDownloadStrategy', 'download'],
+        [],
+        ['Cache disabled, caching for key:']
+      );
     });
 
     it('should use cache when destination path is provided', async () => {
@@ -251,6 +257,7 @@ describe('CachedDownloadStrategy', () => {
       logger.expect(
         ['TRACE'],
         ['CachedDownloadStrategy', 'download'],
+        [],
         [
           /Error checking cache for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,
@@ -272,6 +279,7 @@ describe('CachedDownloadStrategy', () => {
       logger.expect(
         ['TRACE'],
         ['CachedDownloadStrategy', 'download'],
+        [],
         [
           /No cache entry found for key: download:[a-f0-9]{64}/,
           /download from mock-strategy/,

@@ -81,7 +81,7 @@ describe('generateCommand', () => {
     );
 
     // Should log DONE message at the end
-    logger.expect(['INFO'], ['registerGenerateCommand'], [messages.commandCompleted(false)]);
+    logger.expect(['INFO'], ['registerGenerateCommand'], [], [messages.commandCompleted(false)]);
   });
 
   test('should successfully generate artifacts in dry run mode', async () => {
@@ -100,7 +100,7 @@ describe('generateCommand', () => {
     );
 
     // Should log DONE (dry run) message at the end
-    logger.expect(['INFO'], ['registerGenerateCommand'], [messages.commandCompleted(true)]);
+    logger.expect(['INFO'], ['registerGenerateCommand'], [], [messages.commandCompleted(true)]);
   });
 
   test('should handle errors during artifact generation', async () => {
@@ -110,7 +110,7 @@ describe('generateCommand', () => {
 
     expect(program.parseAsync(['generate'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(['ERROR'], ['registerGenerateCommand'], [messages.commandExecutionFailed('generate', 1)]);
+    logger.expect(['ERROR'], ['registerGenerateCommand'], [], [messages.commandExecutionFailed('generate', 1)]);
   });
 
   test('should generate tool-types.d.ts in generatedDir', async () => {

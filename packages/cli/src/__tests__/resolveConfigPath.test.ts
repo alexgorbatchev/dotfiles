@@ -50,7 +50,7 @@ describe('resolveConfigPath', () => {
     it('logs resolved path', async () => {
       await resolveConfigPath(logger, 'config.ts', '/home/user');
 
-      logger.expect(['DEBUG'], ['test', 'resolveConfigPath'], ['Using configuration: /home/user/config.ts']);
+      logger.expect(['DEBUG'], ['test', 'resolveConfigPath'], [], ['Using configuration: /home/user/config.ts']);
     });
   });
 
@@ -102,7 +102,12 @@ describe('resolveConfigPath', () => {
 
       await resolveConfigPath(logger, '', '/project');
 
-      logger.expect(['DEBUG'], ['test', 'resolveConfigPath'], ['Using configuration: /project/dotfiles.config.yaml']);
+      logger.expect(
+        ['DEBUG'],
+        ['test', 'resolveConfigPath'],
+        [],
+        ['Using configuration: /project/dotfiles.config.yaml']
+      );
     });
   });
 

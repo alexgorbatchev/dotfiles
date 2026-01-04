@@ -79,7 +79,12 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolUpToDate('exa', '0.10.1', '0.10.1')]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.toolUpToDate('exa', '0.10.1', '0.10.1')]
+    );
   });
 
   test('should report cargo crate update available', async () => {
@@ -93,7 +98,12 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolUpdateAvailable('exa', '0.10.1', '0.11.0')]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.toolUpdateAvailable('exa', '0.10.1', '0.11.0')]
+    );
   });
 
   test('should handle cargo tool configured with "latest" version', async () => {
@@ -108,7 +118,12 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [messages.toolConfiguredToLatest('exa', '0.12.0')]);
+    logger.expect(
+      ['INFO'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.toolConfiguredToLatest('exa', '0.12.0')]
+    );
   });
 
   test('should handle missing crateName in cargo tool config', async () => {
@@ -124,7 +139,12 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
+    logger.expect(
+      ['ERROR'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.serviceGithubApiFailed('check update', 0)]
+    );
   });
 
   test('should handle cargo client error gracefully', async () => {
@@ -136,7 +156,12 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
+    logger.expect(
+      ['ERROR'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.serviceGithubApiFailed('check update', 0)]
+    );
   });
 
   test('should handle cargo API returning null version', async () => {
@@ -148,6 +173,11 @@ describe('checkUpdatesCommand - Cargo Updates', () => {
 
     await program.parseAsync(['check-updates', 'exa'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.serviceGithubApiFailed('check update', 0)]);
+    logger.expect(
+      ['ERROR'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.serviceGithubApiFailed('check update', 0)]
+    );
   });
 });

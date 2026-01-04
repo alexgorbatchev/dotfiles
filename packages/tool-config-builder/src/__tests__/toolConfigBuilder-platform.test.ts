@@ -168,6 +168,7 @@ describe('IToolConfigBuilder - Platform Support', () => {
     testLogger.expect(
       ['ERROR'],
       ['IToolConfigBuilder'],
+      [],
       [
         messages.configurationFieldRequired(
           'configure callback',

@@ -111,7 +111,7 @@ describe('installCommand', () => {
       verbose: false,
       shimMode: false,
     });
-    testLogger.expect(['INFO'], ['registerInstallCommand'], [messages.toolInstalled('toolA', '1.0.0', 'brew')]);
+    testLogger.expect(['INFO'], ['registerInstallCommand'], [], [messages.toolInstalled('toolA', '1.0.0', 'brew')]);
   });
 
   test('should skip installation for configuration-only tool configs', async () => {
@@ -142,7 +142,7 @@ describe('installCommand', () => {
     });
 
     // Should not log success message in shim mode
-    expect(() => testLogger.expect(['INFO'], ['registerInstallCommand'], [/installed successfully/])).toThrow();
+    expect(() => testLogger.expect(['INFO'], ['registerInstallCommand'], [], [/installed successfully/])).toThrow();
   });
 
   test('should output error to stderr in shim mode when installation fails', async () => {
@@ -198,6 +198,7 @@ describe('installCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerInstallCommand'],
+      [],
       [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
@@ -210,13 +211,8 @@ describe('installCommand', () => {
       error: 'Installation failed',
     });
 
+    // Error is logged by Installer, CLI just exits with code 1
     expect(program.parseAsync(['install', 'toolA'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
-
-    testLogger.expect(
-      ['ERROR'],
-      ['registerInstallCommand'],
-      [messages.toolInstallFailed('unknown', 'toolA', 'Installation failed')]
-    );
   });
 
   test('should pass force option to installer', async () => {

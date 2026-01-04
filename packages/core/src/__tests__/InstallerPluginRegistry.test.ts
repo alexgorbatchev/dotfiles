@@ -117,7 +117,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin1);
       await registry.register(plugin2);
 
-      logger.expect(['WARN'], ['InstallerPluginRegistry'], ['Plugin test-method is already registered']);
+      logger.expect(['WARN'], ['InstallerPluginRegistry'], [], ['Plugin test-method is already registered']);
       expect(registry.get('test-method')).toBe(plugin2);
     });
 
@@ -239,7 +239,12 @@ describe('InstallerPluginRegistry', () => {
 
       registry.composeSchemas();
 
-      logger.expect(['INFO'], ['InstallerPluginRegistry'], [/Composed schemas from 2 plugins: method1, method2/]);
+      logger.expect(
+        ['INFO'],
+        ['InstallerPluginRegistry'],
+        [],
+        [/Composed schemas from 2 plugins: method1, method2/]
+      );
     });
 
     test('validates tool configs using composed schema', async () => {
@@ -400,6 +405,7 @@ describe('InstallerPluginRegistry', () => {
       logger.expect(
         ['WARN'],
         ['InstallerPluginRegistry', 'install'],
+        [],
         ['Validation warning for test-method: Warning 1', 'Validation warning for test-method: Warning 2']
       );
     });
@@ -480,6 +486,7 @@ describe('InstallerPluginRegistry', () => {
       logger.expect(
         ['DEBUG'],
         ['InstallerPluginRegistry', 'install'],
+        [],
         ['Delegating installation to plugin: test-method']
       );
     });
@@ -513,7 +520,7 @@ describe('InstallerPluginRegistry', () => {
     test('logs cache cleared message', () => {
       registry.clearValidationCache();
 
-      logger.expect(['DEBUG'], ['InstallerPluginRegistry'], ['Validation cache cleared']);
+      logger.expect(['DEBUG'], ['InstallerPluginRegistry'], [], ['Validation cache cleared']);
     });
   });
 
@@ -569,6 +576,7 @@ describe('InstallerPluginRegistry', () => {
       logger.expect(
         ['INFO', 'DEBUG'],
         ['InstallerPluginRegistry', 'cleanup'],
+        [],
         ['Cleaning up plugins...', 'Cleaned up plugin: test-method', 'Plugin cleanup complete']
       );
     });
@@ -594,7 +602,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.cleanup();
 
       expect(cleanup2Called).toBe(true);
-      logger.expect(['ERROR'], ['InstallerPluginRegistry', 'cleanup'], ['Failed to cleanup plugin method1']);
+      logger.expect(['ERROR'], ['InstallerPluginRegistry', 'cleanup'], [], ['Failed to cleanup plugin method1']);
     });
   });
 });

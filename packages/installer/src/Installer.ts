@@ -445,7 +445,7 @@ export class Installer implements IInstaller {
       });
       logger.debug(messages.outcome.installSuccess(toolName, version, 'registry-recorded'));
     } catch (error) {
-      logger.error(messages.outcome.installFailed('registry-record', toolName), error);
+      logger.error(messages.outcome.installFailed('registry-record'), error);
     }
   }
 
@@ -727,7 +727,7 @@ export class Installer implements IInstaller {
         error: error instanceof Error ? error.message : String(error),
         installationMethod: resolvedToolConfig.installationMethod,
       };
-      logger.error(messages.outcome.installFailed('install', toolName), errorResult.error);
+      logger.error(messages.outcome.installFailed(resolvedToolConfig.installationMethod), errorResult.error);
       return errorResult;
     }
   }

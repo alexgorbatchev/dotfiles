@@ -140,6 +140,7 @@ describe('IToolConfigBuilder', () => {
     testLogger.expect(
       ['WARN'],
       ['IToolConfigBuilder'],
+      [],
       [
         messages.configurationFieldIgnored(
           'hook',
@@ -212,6 +213,7 @@ describe('IToolConfigBuilder', () => {
     logger.expect(
       ['ERROR'],
       ['IToolConfigBuilder', 'ShellConfigurator'],
+      [],
       [
         /Invalid function name: "123invalid"/,
         /Invalid function name: "has space"/,
@@ -382,6 +384,7 @@ describe('IToolConfigBuilder', () => {
     testLogger.expect(
       ['ERROR'],
       ['IToolConfigBuilder'],
+      [],
       [
         messages.configurationFieldInvalid(
           'installationMethod',
@@ -410,6 +413,7 @@ describe('IToolConfigBuilder', () => {
     testLogger.expect(
       ['ERROR'],
       ['IToolConfigBuilder'],
+      [],
       [
         messages.configurationFieldRequired(
           'tool definition',

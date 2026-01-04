@@ -73,7 +73,7 @@ describe('featuresCommand', () => {
     );
 
     // Should log DONE message at the end
-    logger.expect(['INFO'], ['registerFeaturesCommand'], [messages.commandCompleted(false)]);
+    logger.expect(['INFO'], ['registerFeaturesCommand'], [], [messages.commandCompleted(false)]);
   });
 
   test('should successfully generate catalog in dry run mode', async () => {
@@ -92,7 +92,7 @@ describe('featuresCommand', () => {
     );
 
     // Should log DONE (dry run) message at the end
-    logger.expect(['INFO'], ['registerFeaturesCommand'], [messages.commandCompleted(true)]);
+    logger.expect(['INFO'], ['registerFeaturesCommand'], [], [messages.commandCompleted(true)]);
   });
 
   test('should handle errors during catalog generation', async () => {
@@ -133,6 +133,7 @@ describe('featuresCommand', () => {
     errorLogger.expect(
       ['ERROR'],
       ['registerFeaturesCommand'],
+      [],
       [messages.commandExecutionFailed('features catalog', 1)]
     );
   });

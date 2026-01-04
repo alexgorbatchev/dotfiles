@@ -26,7 +26,7 @@ export type TestLogLevel = '*' | 'SILLY' | 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' |
  * const logger = new TestLogger();
  * logger.info('Hello, world!');
  *
- * logger.expect(['INFO'], [], ['Hello, world!']);
+ * logger.expect(['INFO'], [], [], ['Hello, world!']);
  * ```
  *
  * @see {@link https://tslog.js.org}
@@ -84,7 +84,12 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     return subLogger;
   }
 
-  private getLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): ILogObjMeta[] {
+  private getLogs(
+    levels: TestLogLevel[],
+    path: string[],
+    context: string[],
+    matcher?: string | RegExp
+  ): ILogObjMeta[] {
     return this.logs.filter((log) => {
       const meta = log['_meta'];
       if (!meta) {
@@ -96,6 +101,10 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
       }
 
       if (!this.isPathMatch(path, meta)) {
+        return false;
+      }
+
+      if (!this.isContextMatch(context, log)) {
         return false;
       }
 
@@ -115,6 +124,22 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     }
 
     return path.every((part, i) => part === logPath[i]);
+  }
+
+  private isContextMatch(context: string[], log: ILogObjMeta): boolean {
+    if (context.length === 0) {
+      return true;
+    }
+
+    const logMessage = formatLogMessage(log);
+    if (!logMessage) {
+      return false;
+    }
+
+    // Context appears as [context] prefix in the log message
+    // Multiple contexts are chained: [ctx1][ctx2]
+    const expectedPrefix = context.map((c) => `[${c}]`).join('');
+    return logMessage.startsWith(expectedPrefix);
   }
 
   private isMatcherMatch(log: ILogObjMeta, matcher?: string | RegExp): boolean {
@@ -146,10 +171,11 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
    *
    * @param levels - An array of log levels to match.
    * @param path - An array of logger names representing the path to the logger.
+   * @param context - An array of context strings to match against (appears as [context] prefix).
    * @param matcher - An optional string or regex to match against the log message.
    */
-  printLogs(levels: TestLogLevel[], path: string[], matcher?: string | RegExp): void {
-    const logs = this.getLogs(levels, path, matcher);
+  printLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: string | RegExp): void {
+    const logs = this.getLogs(levels, path, context, matcher);
     for (const log of logs) {
       const { _meta, ...rest } = log;
       // biome-ignore lint/suspicious/noConsole: needed for debugging
@@ -167,10 +193,11 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
    *
    * @param levels - An array of log levels to match.
    * @param path - An array of logger names representing the path to the logger.
+   * @param context - An array of context strings to match against (appears as [context] prefix).
    * @param matchers - An array of strings or regular expressions to match against the log messages.
    */
-  expect(levels: TestLogLevel[], path: string[], matchers: (string | RegExp)[]): void {
-    const logs = this.getLogs(levels, path);
+  expect(levels: TestLogLevel[], path: string[], context: string[], matchers: (string | RegExp)[]): void {
+    const logs = this.getLogs(levels, path, context);
 
     if (logs.length < matchers.length) {
       this.failExpectation(logs, matchers);

@@ -122,6 +122,7 @@ describe('filesCommand', () => {
     testLogger.expect(
       ['ERROR'],
       ['registerFilesCommand'],
+      [],
       [messages.toolNotFound('nonexistent', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
@@ -137,7 +138,7 @@ describe('filesCommand', () => {
     expect(program.parseAsync(['files', 'test-tool'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
     // Should log error about no installed version
-    testLogger.expect(['ERROR'], ['registerFilesCommand'], [/not installed/i]);
+    testLogger.expect(['ERROR'], ['registerFilesCommand'], [], [/not installed/i]);
   });
 
   test('should handle empty directory', async () => {

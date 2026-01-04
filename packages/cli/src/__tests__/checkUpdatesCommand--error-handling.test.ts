@@ -65,6 +65,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     logger.expect(
       ['INFO'],
       ['registerCheckUpdatesCommand'],
+      [],
       [messages.commandUnsupportedOperation('check-updates', 'installation method: "manual" for tool "manualtool"')]
     );
   });
@@ -77,6 +78,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand'],
+      [],
       [messages.toolNotFound('nonexistenttool', mockProjectConfig.paths.toolConfigsDir)]
     );
   });
@@ -89,6 +91,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
     logger.expect(
       ['ERROR'],
       ['registerCheckUpdatesCommand'],
+      [],
       [messages.toolNoConfigurationsFound(mockProjectConfig.paths.toolConfigsDir)]
     );
   });
@@ -98,7 +101,12 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
 
     await program.parseAsync(['check-updates'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.configLoadFailed('tool configurations')]);
+    logger.expect(
+      ['ERROR'],
+      ['registerCheckUpdatesCommand'],
+      [],
+      [messages.configLoadFailed('tool configurations')]
+    );
   });
 
   test('should handle error during loadSingleToolConfig', async () => {
@@ -106,6 +114,6 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
 
     await program.parseAsync(['check-updates', 'sometool'], { from: 'user' });
 
-    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [messages.configLoadFailed('tool "sometool"')]);
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [], [messages.configLoadFailed('tool "sometool"')]);
   });
 });

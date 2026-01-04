@@ -411,6 +411,7 @@ describe('ReadmeService', () => {
       logger.expect(
         ['WARN'],
         ['ReadmeService'],
+        [],
         ['No GitHub tools installed. Run the generate command to install tools before generating a catalog.']
       );
     });

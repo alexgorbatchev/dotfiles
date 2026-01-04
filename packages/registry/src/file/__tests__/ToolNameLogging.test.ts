@@ -46,7 +46,7 @@ test('should include tool name in filesystem operation logs', async () => {
   await trackedFs.writeFile('/test/file.txt', 'content');
 
   // Verify the logs include the tool name in sequence
-  logger.expect(['INFO'], ['TrackedFileSystem'], ['[nodejs] mkdir /test', '[nodejs] write /test/file.txt']);
+  logger.expect(['INFO'], ['TrackedFileSystem'], [], ['[nodejs] mkdir /test', '[nodejs] write /test/file.txt']);
 });
 
 test('should show different tool names for different contexts', async () => {
@@ -71,6 +71,7 @@ test('should show different tool names for different contexts', async () => {
   logger.expect(
     ['INFO'],
     ['TrackedFileSystem'],
+    [],
     ['[nodejs] mkdir /nodejs', '[curl] mkdir /curl', '[nodejs] write /nodejs/file.txt', '[curl] write /curl/file.txt']
   );
 });

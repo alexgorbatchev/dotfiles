@@ -1,4 +1,4 @@
-import { describe, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import { Architecture, type IAfterInstallContext, type ISystemInfo, Platform } from '@dotfiles/core';
@@ -92,17 +92,22 @@ describe('HookExecutor - error reporting', () => {
     const errorLog = errorLogs[0];
     assert(errorLog);
 
-    const firstArg = errorLog[0];
-    assert.equal(typeof firstArg, 'string');
-    const message = String(firstArg);
+    // With context logging, the first argument is the context prefix [after-install]
+    // and second argument is the log message "Hook failed"
+    const contextArg = errorLog[0];
+    const messageArg = errorLog[1];
+    assert.equal(typeof contextArg, 'string');
+    expect(String(contextArg)).toBe('[after-install]');
 
     // Desired behavior:
-    // - short user-facing error goes through tslog
+    // - short user-facing error goes through tslog with error object for stack trace
     // - detailed multiline output goes through stdout writer
-    // - do not pass the raw error object (which triggers prettyErrorTemplate stack output)
-    assert.equal(errorLog[1], undefined);
+    assert.equal(typeof messageArg, 'string');
+    expect(String(messageArg)).toContain('Hook failed');
 
-    assert(message.includes('hook failed:'));
+    // The error object is passed as third argument
+    const errorArg = errorLog[2];
+    assert(errorArg !== undefined);
 
     assert(capturedOutput.includes('exit code: 1'), capturedOutput);
     assert(capturedOutput.includes('stderr:'), capturedOutput);

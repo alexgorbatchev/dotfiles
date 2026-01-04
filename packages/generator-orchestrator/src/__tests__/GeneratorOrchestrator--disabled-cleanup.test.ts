@@ -368,6 +368,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       logger.expect(
         ['DEBUG', 'WARN'],
         ['GeneratorOrchestrator', 'cleanupToolArtifacts'],
+        [],
         [/cleaning up artifacts/i, /found.*artifact/i, /removed.*shim/i, /cleanup completed/i]
       );
     });
@@ -391,6 +392,7 @@ describe('GeneratorOrchestrator - Disabled Tool Cleanup', () => {
       logger.expect(
         ['DEBUG'],
         ['GeneratorOrchestrator', 'cleanupToolArtifacts'],
+        [],
         [/cleaning up artifacts/i, /no tracked artifacts/i]
       );
     });
