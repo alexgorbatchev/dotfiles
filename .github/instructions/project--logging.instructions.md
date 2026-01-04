@@ -1,35 +1,134 @@
 ---
-description: Project logging requirements.
+description: Detailed instructions on how to correctly handle logging in the project.
 applyTo: '**/*'
 ---
 # Project Logging Requirements
 
-The purpose of the logging is to provide insights into what application is doing to the END USER.
-INFO, WARN and ERROR are always printed to the user and must easily readable.
+The purpose of logging is to provide insights into what the application is doing to the END USER.
+INFO, WARN, and ERROR levels are always printed to the user and must be easily readable.
 
-## Important
+## Logger Architecture
 
-- `packages/logger/README.md` must be used for all log messages.
+The project uses `tslog` with a custom `SafeLogger` wrapper. See `packages/logger/README.md` for API details.
 
-- The project uses `tslog` for structured logging.
-- Code must not have any `console.[fn]` statements.
-- `log-messages.ts` should export one `messages` object.
+### Sublogger Hierarchy
 
-- Log messages must be short and clear.
-- Log messages will be translated to the user's language by another system.
-- Values and strings passed into the logger can only represent system values and must not contain partial sentences in English.
+Every function/method that logs must create a sublogger with `name` for the structural hierarchy:
 
-- Log message templates must not be indented, formatting is handled by the logger.
-- Log templates must not change logged values.
-- Each log template must be single responsibility and must not be reused in different contexts.
+```typescript
+function installTool(parentLogger: TsLogger, toolName: string): void {
+  const logger = parentLogger.getSubLogger({ name: 'installTool' });
+  // ...
+}
+```
 
-- Only `main.ts` and tests can create new logger instances, everywhere else it must be passed in.
-- Any function, method, or class that uses a logger must receive a logger instance as a parameter AND create a sublogger.
-- Log messages must not include method names, subloggers are used for this.
-- Do not log objects, arrays or long string/values.
+### Context for Runtime Values
 
-- There must not be duplicate consequitive logger call with the same message, eg `logger.error('message')` followed by `logger.debug('message')`.
-- Do not wrap function calls with begin and end logs, especially if those function have their own logging.
-- Pass errors in the catch block directly to the logger without extracting messages, the logger will take care of the formatting.
-- Do not log more than one message per event.
+Use `context` for runtime values that identify WHAT is being operated on (tool names, hook names, etc.):
+
+```typescript
+// ✅ CORRECT: context identifies the specific tool
+const logger = parentLogger.getSubLogger({ name: 'install', context: toolName });
+logger.error(messages.installFailed()); // Output: [toolName] Installation failed
+
+// ✅ CORRECT: context identifies the specific hook  
+const logger = parentLogger.getSubLogger({ name: 'executeHook', context: hookName });
+logger.error(messages.hookFailed()); // Output: [after-install] Hook failed
+```
+
+**Key distinction:**
+- `name` = structural hierarchy (method/class names) - used for log filtering by path
+- `context` = runtime identifier (tool name, hook name) - appears as `[value]` prefix in output
+
+### What NOT to embed in log messages
+
+Since `context` provides the runtime identifier, log messages should NOT include:
+- Tool names (use `context: toolName`)
+- Hook names (use `context: hookName`)  
+- Any value that varies per invocation
+
+```typescript
+// ❌ BAD: toolName embedded in message
+installFailed: (toolName: string) => createSafeLogMessage(`[${toolName}] Installation failed`)
+
+// ✅ GOOD: simple message, toolName comes from logger context
+installFailed: () => createSafeLogMessage('Installation failed')
+```
+
+## Log Message Templates
+
+### File Organization
+
+- Each package has one `log-messages.ts` file exporting a single `messages` object
+- Messages are grouped by domain/feature within the object
+
+### Message Content Rules
+
+- Messages must be short and clear
+- Messages will be translated - no partial English sentences in parameters
+- Parameters can only be system values (paths, versions, method names, counts)
+- Each template is single responsibility - never reuse in different contexts
+
+```typescript
+// ✅ GOOD: system values only
+installFailed: (method: string) => createSafeLogMessage(`Installation failed via ${method}`)
+extracted: (count: number) => createSafeLogMessage(`Extracted ${count} files`)
+
+// ❌ BAD: partial English sentence in parameter
+logMessage: (action: string) => createSafeLogMessage(`${action} completed`) // "Downloading" is English
+```
+
+## Error Handling
+
+### Pass errors directly to logger
+
+```typescript
+// ✅ CORRECT: pass error object directly
+try {
+  await operation();
+} catch (error) {
+  logger.error(messages.operationFailed(), error);
+}
+
+// ❌ WRONG: extracting message
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error(messages.operationFailed(message)); // Don't embed in template!
+}
+```
+
+### No duplicate logging
+
+When an error occurs, log it ONCE at the appropriate level:
+
+```typescript
+// ❌ WRONG: same failure logged twice
+async function install(toolName: string): Promise<Result> {
+  try {
+    return await doInstall();
+  } catch (error) {
+    logger.error(messages.installFailed()); // Logged here
+    return { success: false, error: error.message };
+  }
+}
+
+// Then in caller:
+const result = await install(toolName);
+if (!result.success) {
+  logger.error(messages.installFailed()); // Logged AGAIN - wrong!
+}
+
+// ✅ CORRECT: log only in one place (where error originates)
+```
+
+## General Rules
+
+- Code must not have any `console.[fn]` statements
+- Only `main.ts` and tests can create root logger instances
+- All other code receives logger as parameter and creates sublogger
+- Log messages must not include method names (sublogger `name` provides this)
+- Do not log objects, arrays, or long string values
+- Do not wrap function calls with begin/end logs if those functions have their own logging
+- Do not log more than one message per event
+
 
