@@ -36,10 +36,8 @@
     "test:task": "bun test",
     "test-project": "DOTFILES_BUILT_PACKAGE_NAME='@dotfiles/core' bun run --silent cli --config test-project/config.ts",
     "build": "bun packages/build/src/build/index.ts",
-    "version": "bun packages/build/src/version/index.ts",
-    "publish": "bun packages/build/src/publish/index.ts",
+    "release": "bun packages/build/src/release/index.ts",
     "find-unused": "bun packages/build/src/unused-analyzer/analyze.ts",
-    "release-next": "bun run build && bun run version && bun run publish",
     "test:agent": "AGENT=1 bun test",
     "cli": "bun run ./cli.ts",
     "check": "bun lint && bun typecheck && bun test"
