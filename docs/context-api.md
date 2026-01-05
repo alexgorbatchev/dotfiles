@@ -17,12 +17,13 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 
 | Path | Description |
 |------|-------------|
-| `ctx.projectConfig.paths.homeDir` | User's home directory |
 | `ctx.projectConfig.paths.dotfilesDir` | Root dotfiles directory |
 | `ctx.projectConfig.paths.binariesDir` | Tool binaries directory |
 | `ctx.projectConfig.paths.generatedDir` | Generated files directory |
 | `ctx.projectConfig.paths.targetDir` | Shim directory |
 | `ctx.projectConfig.paths.shellScriptsDir` | Shell scripts directory |
+
+> **Note:** For home directory paths, use `~/` instead of `ctx.projectConfig.paths.homeDir`. Tilde expansion is automatic.
 
 ## Examples
 
@@ -167,8 +168,8 @@ ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 // ❌ Hardcoded paths
 .symlink('./config', '/home/user/.config/tool')
 
-// ✅ Use context
-.symlink('./config', `${ctx.projectConfig.paths.homeDir}/.config/tool`)
+// ✅ Use tilde expansion
+.symlink('./config', '~/.config/tool')
 
 // ❌ Shell variable references
 .always(`source $DOTFILES/init.zsh`)
@@ -183,5 +184,5 @@ Always use forward slashes - context variables handle platform differences:
 
 ```typescript
 // Works on all platforms
-.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
+.symlink('./config.toml', '~/.config/tool/config.toml')
 ```

@@ -91,10 +91,10 @@ install('github-release', { repo: 'owner/tool' })
 - `ctx.toolDir` → Directory containing the `.tool.ts` file (for files next to tool config)
 - `ctx.currentDir` → Tool's stable `current` symlink directory (for installed assets after install)
 - `ctx.toolName` → Name of the tool being configured
-- `ctx.projectConfig.paths.homeDir` → User's home directory
 - `ctx.projectConfig.paths.binariesDir` → Tool binaries directory
 - `ctx.projectConfig.paths.generatedDir` → Generated files directory
 - `ctx.replaceInFile()` → Perform regex-based file modifications (see Step 6)
+- Use `~/` for paths relative to user's home directory (tilde expansion is automatic)
 
 Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)
 
@@ -184,8 +184,8 @@ Symlink sources starting with `./` are relative to the tool config directory (sa
 ```ts
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
-  .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-  .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`);
+  .symlink('./config.toml', '~/.config/tool/config.toml')
+  .symlink('./themes/', '~/.config/tool/themes');
 ```
 
 Reference: [Shell Integration Guide](<root>/docs/shell-integration.md#symbolic-links)
@@ -370,12 +370,12 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://example.com/deploy
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('manual', {
     binaryPath: './scripts/deploy.sh',
   })
     .bin('deploy')
-    .symlink('./deploy.config.yaml', `${ctx.projectConfig.paths.homeDir}/.config/deploy/config.yaml`)
+    .symlink('./deploy.config.yaml', '~/.config/deploy/config.yaml')
 );
 ```
 
@@ -388,9 +388,9 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://git-scm.com
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install()  // Configuration-only: no install params, no .bin()
-    .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+    .symlink('./gitconfig', '~/.gitconfig')
     .zsh((shell) =>
       shell.aliases({
         g: 'git',
@@ -439,7 +439,7 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://kubernetes.io/docs/reference/kubectl/
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', {
     repo: 'kubernetes/kubectl',
   })
@@ -447,7 +447,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          KUBECONFIG: `${ctx.projectConfig.paths.homeDir}/.kube/config`,
+          KUBECONFIG: '~/.kube/config',
         })
         .aliases({
           k: 'kubectl',
@@ -475,7 +475,7 @@ import { defineTool } from '@gitea/dotfiles';
  *
  * https://github.com/ajeetdsouza/zoxide
  */
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', {
     repo: 'ajeetdsouza/zoxide',
   })
@@ -483,7 +483,7 @@ export default defineTool((install, ctx) =>
     .zsh((shell) =>
       shell
         .environment({
-          _ZO_DATA_DIR: `${ctx.projectConfig.paths.homeDir}/.local/share/zoxide`,
+          _ZO_DATA_DIR: '~/.local/share/zoxide',
         })
         .completions({ cmd: 'zoxide completions zsh' })
         .always(/* zsh */`
@@ -505,8 +505,7 @@ export default defineTool((install, ctx) =>
 **Paths**
 - ✅ Use `ctx.toolDir` for files next to `.tool.ts` (tool configuration directory)
 - ✅ Use `ctx.currentDir` for installed assets (stable symlink to versioned directory)
-- ✅ For symlink targets: use `~` or `${ctx.projectConfig.paths.homeDir}`
-- ✅ For shell scripts/environment: use context variables (no `~`)
+- ✅ For symlink targets and environment variables: use `~/` (tilde expansion is automatic)
 - ✅ Completion `source` paths are relative to extracted archive
 - ✅ Never use hardcoded absolute paths like `/home/user/...`
 

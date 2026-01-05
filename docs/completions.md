@@ -118,12 +118,12 @@ When tool filename differs from binary name (e.g., `curl-script--fnm.tool.ts` fo
 ## Custom Target Directory
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) => shell.completions({
       source: 'completions/_tool.zsh',
-      targetDir: `${ctx.projectConfig.paths.homeDir}/.zsh/completions`
+      targetDir: '~/.zsh/completions'
     }))
 );
 ```

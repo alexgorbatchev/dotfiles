@@ -141,7 +141,7 @@ export default defineTool((install, ctx) =>
       shell
         .environment({
           TOOL_CONFIG: ctx.toolDir,                              // Tool config directory
-          TOOL_DATA: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`,
+          TOOL_DATA: '~/.local/share/tool',
         })
         .always(`
           FZF_DIR="${ctx.projectConfig.paths.binariesDir}/fzf"
@@ -182,8 +182,7 @@ Create symlinks for configuration files with `.symlink()`.
 
 | Target | Resolution |
 |--------|------------|
-| `~/.config/tool` | Expanded to `ctx.projectConfig.paths.homeDir` |
-| `${ctx.projectConfig.paths.homeDir}/.config/tool` | Explicit context variable |
+| `~/.config/tool` | Expanded automatically via home path expansion |
 
 ### Example
 
@@ -197,14 +196,14 @@ tools/my-tool/
 ```
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', { repo: 'owner/my-tool' })
     .bin('my-tool')
-    .symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`)
-    .symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/my-tool/themes`)
+    .symlink('./config.toml', '~/.config/my-tool/config.toml')
+    .symlink('./themes/', '~/.config/my-tool/themes')
     .zsh((shell) =>
       shell.environment({
-        MY_TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/my-tool/config.toml`,
+        MY_TOOL_CONFIG: '~/.config/my-tool/config.toml',
       })
     )
 );
@@ -214,22 +213,19 @@ export default defineTool((install, ctx) =>
 
 ```typescript
 // Configuration files
-.symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+.symlink('./gitconfig', '~/.gitconfig')
 
 // Directories
-.symlink('./themes/', `${ctx.projectConfig.paths.homeDir}/.config/tool/themes`)
+.symlink('./themes/', '~/.config/tool/themes')
 
 // Scripts
-.symlink('./scripts/helper.sh', `${ctx.projectConfig.paths.homeDir}/bin/helper`)
+.symlink('./scripts/helper.sh', '~/bin/helper')
 ```
 
 ### Correct vs Incorrect
 
 ```typescript
-// ✅ Context variable
-.symlink('./config.toml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.toml`)
-
-// ✅ Tilde expansion
+// ✅ Tilde expansion (recommended)
 .symlink('./config.toml', '~/.config/tool/config.toml')
 
 // ❌ Hardcoded path

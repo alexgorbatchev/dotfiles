@@ -62,19 +62,19 @@ export default defineTool((install, ctx) =>
 ## Cross-Shell Configuration
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .zsh((shell) =>
       shell
         .completions('completions/_tool')
-        .environment({ TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool` })
+        .environment({ TOOL_CONFIG: '~/.config/tool' })
         .aliases({ t: 'tool' })
     )
     .bash((shell) =>
       shell
         .completions('completions/tool.bash')
-        .environment({ TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool` })
+        .environment({ TOOL_CONFIG: '~/.config/tool' })
         .aliases({ t: 'tool' })
     )
 );
@@ -85,10 +85,10 @@ export default defineTool((install, ctx) =>
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .symlink('./config.yml', `${ctx.projectConfig.paths.homeDir}/.config/tool/config.yml`)
+    .symlink('./config.yml', '~/.config/tool/config.yml')
     .hook('after-install', async ({ installedDir, fileSystem, $ }) => {
       await $`${installedDir}/tool init`;
     })
@@ -141,10 +141,10 @@ export default defineTool((install) =>
 ## Manual Script
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('manual', { binaryPath: './scripts/deploy.sh' })
     .bin('deploy')
-    .symlink('./deploy.config.yaml', `${ctx.projectConfig.paths.homeDir}/.config/deploy/config.yaml`)
+    .symlink('./deploy.config.yaml', '~/.config/deploy/config.yaml')
     .zsh((shell) =>
       shell.aliases({
         dp: 'deploy',
@@ -157,9 +157,9 @@ export default defineTool((install, ctx) =>
 ## Configuration-Only (No Binary)
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install()
-    .symlink('./gitconfig', `${ctx.projectConfig.paths.homeDir}/.gitconfig`)
+    .symlink('./gitconfig', '~/.gitconfig')
     .zsh((shell) =>
       shell
         .aliases({ g: 'git', gs: 'git status', ga: 'git add' })

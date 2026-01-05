@@ -36,7 +36,7 @@ export default defineTool((install) =>
 ```typescript
 .zsh((shell) =>
   shell.environment({
-    TOOL_HOME: `${ctx.projectConfig.paths.homeDir}/.local/share/tool`
+    TOOL_HOME: '~/.local/share/tool'
   })
 )
 ```
@@ -66,9 +66,9 @@ export default defineTool((install) =>
 
 ## Path Variables
 
-| Old Path | Context Variable |
-|----------|------------------|
-| `$HOME` | `ctx.projectConfig.paths.homeDir` |
+| Old Path | Recommended |
+|----------|-------------|
+| `$HOME` | `~/` (tilde expansion) |
 | `$DOTFILES` | `ctx.projectConfig.paths.dotfilesDir` |
 | Tool directory | `ctx.projectConfig.paths.binariesDir` |
 

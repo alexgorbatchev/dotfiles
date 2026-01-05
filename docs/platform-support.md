@@ -98,14 +98,14 @@ export default defineTool((install) =>
 ## Platform-Specific Shell Config
 
 ```typescript
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .platform(Platform.Unix, (install) =>
       install()
         .zsh((shell) =>
           shell.environment({
-            TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}/.config/tool`,
+            TOOL_CONFIG: '~/.config/tool',
           })
         )
     )
@@ -113,7 +113,7 @@ export default defineTool((install, ctx) =>
       install()
         .powershell((shell) =>
           shell.environment({
-            TOOL_CONFIG: `${ctx.projectConfig.paths.homeDir}\\.config\\tool`,
+            TOOL_CONFIG: '~\.config\tool',
           })
         )
     )

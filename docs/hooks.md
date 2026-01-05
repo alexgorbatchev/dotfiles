@@ -193,12 +193,12 @@ Set environment variables during installation (for curl-script installs):
 ```typescript
 import { defineTool } from '@gitea/dotfiles';
 
-export default defineTool((install, ctx) =>
+export default defineTool((install) =>
   install('curl-script', {
     url: 'https://example.com/install.sh',
     shell: 'bash',
     env: {
-      INSTALL_DIR: `${ctx.projectConfig.paths.homeDir}/.local/bin`,
+      INSTALL_DIR: '~/.local/bin',
       ENABLE_FEATURE: 'true',
       API_KEY: process.env.TOOL_API_KEY || 'default',
     },
@@ -236,7 +236,7 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .symlink('./config.yml', path.join(ctx.projectConfig.paths.homeDir, '.config', 'custom-tool', 'config.yml'))
+    .symlink('./config.yml', '~/.config/custom-tool/config.yml')
     .hook('before-install', async ({ logger }) => {
       logger.info('Starting custom-tool installation...');
     })
@@ -262,7 +262,7 @@ export default defineTool((install, ctx) =>
     })
     .zsh((shell) =>
       shell
-        .environment({ CUSTOM_TOOL_DATA: path.join(ctx.projectConfig.paths.homeDir, '.local/share', 'custom-tool') })
+        .environment({ CUSTOM_TOOL_DATA: '~/.local/share/custom-tool' })
         .aliases({ ct: 'custom-tool' })
     )
 );
