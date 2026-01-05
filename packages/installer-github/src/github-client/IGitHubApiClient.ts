@@ -55,4 +55,22 @@ export interface IGitHubApiClient {
    * @returns A promise that resolves to the GitHub rate limit information.
    */
   getRateLimit(): Promise<IGitHubRateLimit>;
+
+  /**
+   * Probes the tag pattern used by a repository by checking the latest release redirect.
+   * This uses a HEAD request to github.com (not the API), so it does NOT count against rate limits.
+   * @param owner The owner of the repository.
+   * @param repo The name of the repository.
+   * @returns A promise that resolves to the latest release tag name, or null if detection fails.
+   */
+  probeLatestTag(owner: string, repo: string): Promise<string | null>;
+
+  /**
+   * Fetches the tags from the most recent releases.
+   * @param owner The owner of the repository.
+   * @param repo The name of the repository.
+   * @param count The number of release tags to fetch (default: 5).
+   * @returns A promise that resolves to an array of release tag names.
+   */
+  getLatestReleaseTags(owner: string, repo: string, count?: number): Promise<string[]>;
 }

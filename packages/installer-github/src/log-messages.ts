@@ -34,4 +34,13 @@ export const messages = {
     createSafeLogMessage(`Exception while resolving version for ${toolName}`),
   updateCheckFailed: (toolName: string) => createSafeLogMessage(`Failed to check update for ${toolName}`),
   updateFailed: (toolName: string) => createSafeLogMessage(`Failed to update ${toolName}`),
+  detectingTagPattern: () => createSafeLogMessage('Detecting tag pattern from latest release'),
+  tagPatternDetectionFailed: () => createSafeLogMessage('Failed to detect tag pattern'),
+  tryingCorrectedTag: (correctedTag: string, originalTag: string) =>
+    createSafeLogMessage(`Trying corrected tag '${correctedTag}' (original: '${originalTag}')`),
+  usingCorrectedTag: (correctedTag: string, originalTag: string) =>
+    createSafeLogMessage(`Found release with corrected tag '${correctedTag}' (you specified: '${originalTag}')`),
+  availableReleaseTags: () => createSafeLogMessage('Available release tags:'),
+  releaseTagItem: (tag: string) => createSafeLogMessage(`  - ${tag}`),
+  noReleaseTagsAvailable: () => createSafeLogMessage('No release tags available for this repository'),
 } as const satisfies SafeLogMessageMap;

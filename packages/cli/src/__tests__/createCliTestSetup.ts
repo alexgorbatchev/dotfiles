@@ -160,6 +160,8 @@ export async function createCliTestSetup(options: ICliTestSetupOptions): Promise
                 used: 0,
                 resource: 'core',
               })),
+              probeLatestTag: mock(async () => null),
+              getLatestReleaseTags: mock(async () => []),
             };
             break;
           case 'versionChecker':

@@ -506,4 +506,60 @@ export class GitHubApiClient implements IGitHubApiClient {
     const response = await this.request<RateLimitResponse>('/rate_limit');
     return response.resources.core; // Or response.rate, depending on which one is more relevant
   }
+
+  async getLatestReleaseTags(owner: string, repo: string, count: number = 5): Promise<string[]> {
+    const logger = this.logger.getSubLogger({ name: 'getLatestReleaseTags' });
+    logger.debug(messages.releases.fetchingLatestTags(owner, repo, count));
+
+    try {
+      // Fetch just enough releases to get the requested count
+      const releases = await this.request<IGitHubRelease[]>(
+        `/repos/${owner}/${repo}/releases?per_page=${count}`
+      );
+      const tags: string[] = releases.map((release) => release.tag_name);
+      logger.debug(messages.releases.fetchedTags(tags.length));
+      return tags;
+    } catch (error) {
+      logger.debug(messages.releases.fetchTagsError(owner, repo), error);
+      return [];
+    }
+  }
+
+  async probeLatestTag(owner: string, repo: string): Promise<string | null> {
+    const logger = this.logger.getSubLogger({ name: 'probeLatestTag' });
+    logger.debug(messages.tagPattern.probing(owner, repo));
+
+    // Use github.com (not api.github.com) - this does NOT count against API rate limits
+    const probeUrl = `https://github.com/${owner}/${repo}/releases/latest`;
+
+    try {
+      // HEAD request with redirect: 'manual' to capture the redirect location
+      const response = await fetch(probeUrl, {
+        method: 'HEAD',
+        redirect: 'manual',
+      });
+
+      // GitHub returns 302 redirect to the actual release tag URL
+      const location = response.headers.get('location');
+      if (!location) {
+        logger.debug(messages.tagPattern.noRedirect(owner, repo));
+        return null;
+      }
+
+      // Extract tag from URL: https://github.com/{owner}/{repo}/releases/tag/{tag}
+      const tagMatch = location.match(/\/releases\/tag\/(.+)$/);
+      const extractedTag = tagMatch?.[1];
+      if (!extractedTag) {
+        logger.debug(messages.tagPattern.noRedirect(owner, repo));
+        return null;
+      }
+
+      const tag = decodeURIComponent(extractedTag);
+      logger.debug(messages.tagPattern.detected(tag));
+      return tag;
+    } catch (error) {
+      logger.debug(messages.tagPattern.probeFailed(owner, repo), error);
+      return null;
+    }
+  }
 }

@@ -45,6 +45,14 @@ class MockGitHubApiClient implements IGitHubApiClient {
       );
     }
   );
+
+  probeLatestTag = mock(async (_owner: string, _repo: string): Promise<string | null> => {
+    return null;
+  });
+
+  getLatestReleaseTags = mock(async (_owner: string, _repo: string, _count?: number): Promise<string[]> => {
+    return [];
+  });
 }
 
 describe('VersionChecker', () => {

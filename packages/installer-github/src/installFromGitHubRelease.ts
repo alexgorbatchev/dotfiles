@@ -156,12 +156,15 @@ interface IDownloadAssetResultData {
   downloadPath: string;
 }
 
+const TAG_SUGGESTIONS_COUNT = 5;
+
 export async function fetchGitHubRelease(
   repo: string,
   version: string,
   githubApiClient: IGitHubApiClient,
-  logger: TsLogger
+  parentLogger: TsLogger
 ): Promise<OperationResult<IGitHubRelease>> {
+  const logger = parentLogger.getSubLogger({ name: 'fetchGitHubRelease' });
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     const result: OperationResult<IGitHubRelease> = {
@@ -171,25 +174,106 @@ export async function fetchGitHubRelease(
     return result;
   }
 
-  let release: IGitHubRelease | null;
+  // Handle 'latest' version request
   if (version === 'latest') {
     logger.debug(messages.fetchLatest(repo));
-    release = await githubApiClient.getLatestRelease(owner, repoName);
-  } else {
-    logger.debug(messages.fetchByTag(version, repo));
-    release = await githubApiClient.getReleaseByTag(owner, repoName, version);
-  }
-
-  if (!release) {
-    const result: OperationResult<IGitHubRelease> = {
-      success: false,
-      error: `Failed to fetch release information for ${repo}`,
-    };
+    const release = await githubApiClient.getLatestRelease(owner, repoName);
+    if (!release) {
+      const result: OperationResult<IGitHubRelease> = {
+        success: false,
+        error: `Failed to fetch latest release for ${repo}`,
+      };
+      return result;
+    }
+    const result: OperationResult<IGitHubRelease> = { success: true, data: release };
     return result;
   }
 
-  const result: OperationResult<IGitHubRelease> = { success: true, data: release };
+  // Try fetching with the exact version provided
+  logger.debug(messages.fetchByTag(version, repo));
+  const release = await githubApiClient.getReleaseByTag(owner, repoName, version);
+  if (release) {
+    const result: OperationResult<IGitHubRelease> = { success: true, data: release };
+    return result;
+  }
+
+  // First attempt failed - try to detect the tag pattern
+  const releaseWithCorrectedTag = await fetchWithTagPatternDetection(
+    owner,
+    repoName,
+    version,
+    githubApiClient,
+    logger
+  );
+  if (releaseWithCorrectedTag) {
+    const result: OperationResult<IGitHubRelease> = { success: true, data: releaseWithCorrectedTag };
+    return result;
+  }
+
+  // All attempts failed - show available tags to help the user
+  await showAvailableReleaseTags(owner, repoName, githubApiClient, logger);
+
+  const result: OperationResult<IGitHubRelease> = {
+    success: false,
+    error: `Release '${version}' not found for ${repo}. Check the available tags above.`,
+  };
   return result;
+}
+
+async function fetchWithTagPatternDetection(
+  owner: string,
+  repoName: string,
+  version: string,
+  githubApiClient: IGitHubApiClient,
+  parentLogger: TsLogger
+): Promise<IGitHubRelease | null> {
+  const logger = parentLogger.getSubLogger({ name: 'fetchWithTagPatternDetection' });
+  // Import utilities from github-client
+  const { buildCorrectedTag } = await import('./github-client');
+
+  // Probe the latest release to detect the tag pattern
+  logger.debug(messages.detectingTagPattern());
+  const latestTag = await githubApiClient.probeLatestTag(owner, repoName);
+
+  if (!latestTag) {
+    logger.debug(messages.tagPatternDetectionFailed());
+    return null;
+  }
+
+  // Build corrected tag using detected pattern
+  const correctedTag = buildCorrectedTag(latestTag, version);
+
+  // If the corrected tag is different, try fetching with it
+  if (correctedTag !== version) {
+    logger.debug(messages.tryingCorrectedTag(correctedTag, version));
+    const release = await githubApiClient.getReleaseByTag(owner, repoName, correctedTag);
+    if (release) {
+      logger.info(messages.usingCorrectedTag(correctedTag, version));
+      return release;
+    }
+  }
+
+  return null;
+}
+
+async function showAvailableReleaseTags(
+  owner: string,
+  repoName: string,
+  githubApiClient: IGitHubApiClient,
+  parentLogger: TsLogger
+): Promise<void> {
+  const logger = parentLogger.getSubLogger({ name: 'showAvailableReleaseTags' });
+  const tags = await githubApiClient.getLatestReleaseTags(owner, repoName, TAG_SUGGESTIONS_COUNT);
+
+  if (tags.length === 0) {
+    logger.error(messages.noReleaseTagsAvailable());
+    return;
+  }
+
+  logger.info(messages.availableReleaseTags());
+  for (const tag of tags) {
+    logger.info(messages.releaseTagItem(tag));
+  }
 }
 
 async function selectAsset(

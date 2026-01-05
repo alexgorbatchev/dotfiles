@@ -311,6 +311,8 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     getAllReleases: mock(() => Promise.resolve([MOCK_GITHUB_RELEASE])),
     getReleaseByConstraint: mock(() => Promise.resolve(MOCK_GITHUB_RELEASE)),
     getRateLimit: mock(() => Promise.resolve({ limit: 5000, remaining: 4999, reset: 0, used: 1, resource: 'core' })),
+    probeLatestTag: mock(() => Promise.resolve(null)),
+    getLatestReleaseTags: mock(() => Promise.resolve([])),
   };
 
   // Setup mock CargoClient

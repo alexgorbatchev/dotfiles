@@ -55,6 +55,11 @@ export const messages = {
       createSafeLogMessage(`Fetched ${count} GitHub releases for ${owner}/${repo}`),
     filteredPrereleases: (count: number) =>
       createSafeLogMessage(`Filtered prereleases leaving ${count} GitHub releases`),
+    fetchingLatestTags: (owner: string, repo: string, count: number) =>
+      createSafeLogMessage(`Fetching ${count} latest release tags for ${owner}/${repo}`),
+    fetchedTags: (count: number) => createSafeLogMessage(`Fetched ${count} release tags`),
+    fetchTagsError: (owner: string, repo: string) =>
+      createSafeLogMessage(`Error fetching release tags for ${owner}/${repo}`),
   } satisfies SafeLogMessageMap,
   constraints: {
     searching: (constraint: string, owner: string, repo: string) =>
@@ -71,5 +76,14 @@ export const messages = {
   } satisfies SafeLogMessageMap,
   rateLimit: {
     fetching: () => createSafeLogMessage('Fetching GitHub API rate limit status'),
+  } satisfies SafeLogMessageMap,
+  tagPattern: {
+    probing: (owner: string, repo: string) =>
+      createSafeLogMessage(`Probing release tag pattern for ${owner}/${repo}`),
+    detected: (tag: string) => createSafeLogMessage(`Detected latest release tag: ${tag}`),
+    noRedirect: (owner: string, repo: string) =>
+      createSafeLogMessage(`No redirect found for ${owner}/${repo} latest release`),
+    probeFailed: (owner: string, repo: string) =>
+      createSafeLogMessage(`Failed to probe tag pattern for ${owner}/${repo}`),
   } satisfies SafeLogMessageMap,
 } as const;
