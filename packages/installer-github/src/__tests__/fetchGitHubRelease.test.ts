@@ -187,12 +187,7 @@ describe('fetchGitHubRelease', () => {
 
       expect(result.success).toBe(false);
       // Should show error about no release tags
-      logger.expect(
-        ['ERROR'],
-        ['fetchGitHubRelease', 'showAvailableReleaseTags'],
-        [],
-        [/No release tags available/]
-      );
+      logger.expect(['ERROR'], ['fetchGitHubRelease', 'showAvailableReleaseTags'], [], [/No release tags available/]);
     });
   });
 

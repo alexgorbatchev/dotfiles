@@ -263,12 +263,7 @@ describe('updateCommand', () => {
 
     expect(program.parseAsync(['update', 'fzf'], { from: 'user' })).rejects.toThrow('MOCK_EXIT_CLI_CALLED_WITH_1');
 
-    logger.expect(
-      ['ERROR'],
-      ['registerUpdateCommand'],
-      [],
-      [messages.toolUpdateFailed('fzf', 'GitHub API failed')]
-    );
+    logger.expect(['ERROR'], ['registerUpdateCommand'], [], [messages.toolUpdateFailed('fzf', 'GitHub API failed')]);
   });
 
   test('tool configured with "latest" version', async () => {

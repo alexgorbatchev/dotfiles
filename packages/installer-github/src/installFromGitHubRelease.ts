@@ -198,13 +198,7 @@ export async function fetchGitHubRelease(
   }
 
   // First attempt failed - try to detect the tag pattern
-  const releaseWithCorrectedTag = await fetchWithTagPatternDetection(
-    owner,
-    repoName,
-    version,
-    githubApiClient,
-    logger
-  );
+  const releaseWithCorrectedTag = await fetchWithTagPatternDetection(owner, repoName, version, githubApiClient, logger);
   if (releaseWithCorrectedTag) {
     const result: OperationResult<IGitHubRelease> = { success: true, data: releaseWithCorrectedTag };
     return result;

@@ -78,8 +78,7 @@ export const messages = {
     fetching: () => createSafeLogMessage('Fetching GitHub API rate limit status'),
   } satisfies SafeLogMessageMap,
   tagPattern: {
-    probing: (owner: string, repo: string) =>
-      createSafeLogMessage(`Probing release tag pattern for ${owner}/${repo}`),
+    probing: (owner: string, repo: string) => createSafeLogMessage(`Probing release tag pattern for ${owner}/${repo}`),
     detected: (tag: string) => createSafeLogMessage(`Detected latest release tag: ${tag}`),
     noRedirect: (owner: string, repo: string) =>
       createSafeLogMessage(`No redirect found for ${owner}/${repo} latest release`),

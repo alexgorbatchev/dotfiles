@@ -161,6 +161,10 @@ describe('GitHubApiClient with custom host', () => {
     await mocks.apiClient.getRateLimit();
 
     // Verify the URL used in the request contains the custom host
-    expect(mocks.mockDownloader.download).toHaveBeenCalledWith(expect.anything(), `${customHost}/rate_limit`, expect.anything());
+    expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+      expect.anything(),
+      `${customHost}/rate_limit`,
+      expect.anything()
+    );
   });
 });

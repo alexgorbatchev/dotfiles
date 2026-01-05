@@ -80,12 +80,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['INFO'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.toolUpToDate('fzf', '0.40.0', '0.40.0')]
-    );
+    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [], [messages.toolUpToDate('fzf', '0.40.0', '0.40.0')]);
   });
 
   test('should report an update is available', async () => {
@@ -119,12 +114,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['INFO'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.toolConfiguredToLatest('fzf', '0.42.0')]
-    );
+    logger.expect(['INFO'], ['registerCheckUpdatesCommand'], [], [messages.toolConfiguredToLatest('fzf', '0.42.0')]);
   });
 
   test('should handle GitHub API error gracefully', async () => {
@@ -136,12 +126,7 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.serviceGithubApiFailed('check update', 0)]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 
   test('should handle invalid repo format in tool config', async () => {
@@ -157,11 +142,6 @@ describe('checkUpdatesCommand - GitHub Release Updates', () => {
 
     await program.parseAsync(['check-updates', 'fzf'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.serviceGithubApiFailed('check update', 0)]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 });

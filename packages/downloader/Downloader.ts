@@ -80,7 +80,11 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.download
    */
-  public async download(parentLogger: TsLogger, url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
+  public async download(
+    parentLogger: TsLogger,
+    url: string,
+    options: IDownloadOptions = {}
+  ): Promise<Buffer | undefined> {
     const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'download' });
     logger.debug(downloaderLogMessages.downloadStarted(url));
 
@@ -152,7 +156,12 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.downloadToFile
    */
-  public async downloadToFile(parentLogger: TsLogger, url: string, filePath: string, options: IDownloadOptions = {}): Promise<void> {
+  public async downloadToFile(
+    parentLogger: TsLogger,
+    url: string,
+    filePath: string,
+    options: IDownloadOptions = {}
+  ): Promise<void> {
     const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'downloadToFile' });
     logger.debug(downloaderLogMessages.downloadToFileStarted(url, filePath));
 

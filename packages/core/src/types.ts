@@ -8,17 +8,19 @@ type DeepPartialArray<T extends readonly unknown[]> = number extends T['length']
   ? readonly PartialDeep<T[number]>[]
   : { [K in keyof T]?: PartialDeep<T[K]> };
 
-type DeepPartialSet<T> = T extends Set<infer TValue>
-  ? Set<PartialDeep<TValue>>
-  : T extends ReadonlySet<infer TValue>
-    ? ReadonlySet<PartialDeep<TValue>>
-    : never;
+type DeepPartialSet<T> =
+  T extends Set<infer TValue>
+    ? Set<PartialDeep<TValue>>
+    : T extends ReadonlySet<infer TValue>
+      ? ReadonlySet<PartialDeep<TValue>>
+      : never;
 
-type DeepPartialMap<T> = T extends Map<infer TKey, infer TValue>
-  ? Map<TKey, PartialDeep<TValue>>
-  : T extends ReadonlyMap<infer TKey, infer TValue>
-    ? ReadonlyMap<TKey, PartialDeep<TValue>>
-    : never;
+type DeepPartialMap<T> =
+  T extends Map<infer TKey, infer TValue>
+    ? Map<TKey, PartialDeep<TValue>>
+    : T extends ReadonlyMap<infer TKey, infer TValue>
+      ? ReadonlyMap<TKey, PartialDeep<TValue>>
+      : never;
 
 type DeepPartialObject<T extends object> = {
   [K in keyof T]?: PartialDeep<T[K]>;
@@ -204,17 +206,19 @@ export type RegisterPluginResult<TMethod extends string, TResult> = {
  * Union of all registered plugin tool config types.
  * Built dynamically from plugins via module augmentation.
  */
-export type ToolConfig = IToolConfigRegistry extends Record<string, never>
-  ? never // No plugins registered - this should be an error case
-  : IToolConfigRegistry[keyof IToolConfigRegistry];
+export type ToolConfig =
+  IToolConfigRegistry extends Record<string, never>
+    ? never // No plugins registered - this should be an error case
+    : IToolConfigRegistry[keyof IToolConfigRegistry];
 
 /**
  * Union of all registered plugin result types
  * If no plugins are registered, falls back to generic InstallResult<unknown>
  */
-export type AggregateInstallResult = IPluginResultRegistry extends Record<string, never>
-  ? InstallResult<unknown>
-  : IPluginResultRegistry[keyof IPluginResultRegistry];
+export type AggregateInstallResult =
+  IPluginResultRegistry extends Record<string, never>
+    ? InstallResult<unknown>
+    : IPluginResultRegistry[keyof IPluginResultRegistry];
 
 /**
  * Plugin validation result

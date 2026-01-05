@@ -513,9 +513,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
     try {
       // Fetch just enough releases to get the requested count
-      const releases = await this.request<IGitHubRelease[]>(
-        `/repos/${owner}/${repo}/releases?per_page=${count}`
-      );
+      const releases = await this.request<IGitHubRelease[]>(`/repos/${owner}/${repo}/releases?per_page=${count}`);
       const tags: string[] = releases.map((release) => release.tag_name);
       logger.debug(messages.releases.fetchedTags(tags.length));
       return tags;

@@ -22,16 +22,6 @@ type RecordUnknown = Record<string, unknown>;
 
 type StringMap = Record<string, string>;
 
-export interface IPlatformMatch {
-  os?: 'macos' | 'linux' | 'windows';
-  arch?: 'x86_64' | 'arm64';
-}
-
-export interface IPlatformOverride {
-  match: IPlatformMatch[];
-  config: Record<string, unknown>;
-}
-
 export interface ICreateProjectConfigFromObjectOptions {
   userConfigPath: string;
 }

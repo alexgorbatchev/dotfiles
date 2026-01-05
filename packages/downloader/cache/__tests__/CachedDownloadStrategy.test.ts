@@ -159,12 +159,7 @@ describe('CachedDownloadStrategy', () => {
       expect(mockStrategy.downloadCalls).toHaveLength(1);
       expect(mockCache.getCalls).toHaveLength(0);
       expect(mockCache.setDownloadCalls).toHaveLength(0);
-      logger.expect(
-        ['TRACE'],
-        ['CachedDownloadStrategy', 'download'],
-        [],
-        ['Cache disabled, caching for key:']
-      );
+      logger.expect(['TRACE'], ['CachedDownloadStrategy', 'download'], [], ['Cache disabled, caching for key:']);
     });
 
     it('should use cache when destination path is provided', async () => {

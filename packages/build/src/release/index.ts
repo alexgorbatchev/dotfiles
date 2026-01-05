@@ -152,7 +152,10 @@ async function release(): Promise<void> {
       try {
         await revertVersionChange();
       } catch (revertError) {
-        console.error('⚠️  Failed to revert version change:', revertError instanceof Error ? revertError.message : revertError);
+        console.error(
+          '⚠️  Failed to revert version change:',
+          revertError instanceof Error ? revertError.message : revertError
+        );
       }
     }
 

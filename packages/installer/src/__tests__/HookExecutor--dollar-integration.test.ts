@@ -150,7 +150,12 @@ describe('HookExecutor $ Integration', () => {
 
     const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs);
 
-    const hookResult = await hookExecutor.executeHook(logger, 'afterInstall', hookThatUsesShellFallback, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(
+      logger,
+      'afterInstall',
+      hookThatUsesShellFallback,
+      enhancedContext
+    );
     expect(hookResult.success).toBe(true);
   });
 });

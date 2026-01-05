@@ -161,12 +161,7 @@ describe('orderToolConfigsByDependencies', () => {
     expect(() => orderToolConfigsByDependencies(logger, toolConfigs, systemInfoLinux)).toThrowError(
       'Dependency validation failed'
     );
-    logger.expect(
-      ['ERROR'],
-      ['orderToolConfigsByDependencies'],
-      [],
-      [/Circular dependency detected between tools/]
-    );
+    logger.expect(['ERROR'], ['orderToolConfigsByDependencies'], [], [/Circular dependency detected between tools/]);
   });
 
   test('allows platform-specific providers for matching architecture', () => {

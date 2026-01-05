@@ -239,12 +239,7 @@ describe('InstallerPluginRegistry', () => {
 
       registry.composeSchemas();
 
-      logger.expect(
-        ['INFO'],
-        ['InstallerPluginRegistry'],
-        [],
-        [/Composed schemas from 2 plugins: method1, method2/]
-      );
+      logger.expect(['INFO'], ['InstallerPluginRegistry'], [], [/Composed schemas from 2 plugins: method1, method2/]);
     });
 
     test('validates tool configs using composed schema', async () => {

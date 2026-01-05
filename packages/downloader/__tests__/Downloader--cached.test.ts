@@ -41,12 +41,7 @@ describe('Downloader with Cache', () => {
       expect(downloader).toBeDefined();
 
       // Verify constructor log
-      logger.expect(
-        ['DEBUG'],
-        ['Downloader'],
-        [],
-        ['Created CachedDownloadStrategy wrapping NodeFetchStrategy']
-      );
+      logger.expect(['DEBUG'], ['Downloader'], [], ['Created CachedDownloadStrategy wrapping NodeFetchStrategy']);
     });
 
     it('should work without cache when none provided', () => {

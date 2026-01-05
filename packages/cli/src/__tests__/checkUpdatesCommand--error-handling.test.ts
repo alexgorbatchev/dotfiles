@@ -101,12 +101,7 @@ describe('checkUpdatesCommand - Error Handling & Unsupported Methods', () => {
 
     await program.parseAsync(['check-updates'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.configLoadFailed('tool configurations')]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [], [messages.configLoadFailed('tool configurations')]);
   });
 
   test('should handle error during loadSingleToolConfig', async () => {

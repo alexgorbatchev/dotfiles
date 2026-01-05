@@ -1,8 +1,8 @@
 import {
+  defineTool,
   type z_internal_GithubReleaseInstallParams,
   type z_internal_IInstallParamsRegistry,
   type z_internal_InstallMethod,
-  defineTool,
 } from '@gitea/dotfiles';
 import { expectError } from 'tsd';
 

@@ -166,12 +166,7 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.serviceGithubApiFailed('check update', 0)]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 
   test('should handle brew info command failure', async () => {
@@ -183,11 +178,6 @@ describe('checkUpdatesCommand - Brew Updates', () => {
 
     await program.parseAsync(['check-updates', 'ripgrep'], { from: 'user' });
 
-    logger.expect(
-      ['ERROR'],
-      ['registerCheckUpdatesCommand'],
-      [],
-      [messages.serviceGithubApiFailed('check update', 0)]
-    );
+    logger.expect(['ERROR'], ['registerCheckUpdatesCommand'], [], [messages.serviceGithubApiFailed('check update', 0)]);
   });
 });

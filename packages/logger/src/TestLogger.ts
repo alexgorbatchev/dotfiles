@@ -84,12 +84,7 @@ export class TestLogger<LogObj = ILogObj> extends SafeLogger<LogObj> {
     return subLogger;
   }
 
-  private getLogs(
-    levels: TestLogLevel[],
-    path: string[],
-    context: string[],
-    matcher?: string | RegExp
-  ): ILogObjMeta[] {
+  private getLogs(levels: TestLogLevel[], path: string[], context: string[], matcher?: string | RegExp): ILogObjMeta[] {
     return this.logs.filter((log) => {
       const meta = log['_meta'];
       if (!meta) {

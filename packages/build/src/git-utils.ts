@@ -8,8 +8,6 @@ interface IExecuteCommandOptions {
   cwd?: string;
   /** Environment variables to merge with process.env. */
   env?: Record<string, string>;
-  /** If true, suppresses error logging when the command fails. */
-  expectToFail?: boolean;
 }
 
 function truncateCommandOutput(output: string, maxChars: number): string {
@@ -56,26 +54,5 @@ export async function executeCommand(args: string[], opts: IExecuteCommandOption
 
     const details: string = detailsParts.length > 0 ? `\n\n${detailsParts.join('\n\n')}` : '';
     throw new Error(`Command failed (exit code ${result.exitCode}): ${command}${details}`);
-  }
-}
-
-/**
- * Validates that the current directory is within a git repository.
- *
- * Runs `git rev-parse --git-dir` to verify that git is available and the
- * current directory is part of a git repository.
- *
- * @param cwd - Working directory to check. Defaults to current directory.
- * @throws {Error} If not in a git repository or git is not available.
- */
-export async function validateGitRepository(cwd: string = process.cwd()): Promise<void> {
-  try {
-    const args = ['rev-parse', '--git-dir'];
-    const result = await $`git ${args}`.cwd(cwd).quiet();
-    if (result.exitCode !== 0) {
-      throw new Error('Not a git repository');
-    }
-  } catch {
-    throw new Error('Not in a git repository. Please run this script from the project root.');
   }
 }

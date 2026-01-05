@@ -59,13 +59,15 @@ describe('updateCommand - Logger Context Propagation', () => {
     };
 
     mockInstaller = {
-      install: mock(async (): Promise<InstallResult> => ({
-        success: true,
-        binaryPaths: ['/fake/bin/test-tool'],
-        version: '1.1.0',
-        originalTag: 'v1.1.0',
-        metadata: githubReleaseMetadata,
-      })),
+      install: mock(
+        async (): Promise<InstallResult> => ({
+          success: true,
+          binaryPaths: ['/fake/bin/test-tool'],
+          version: '1.1.0',
+          originalTag: 'v1.1.0',
+          metadata: githubReleaseMetadata,
+        })
+      ),
     };
 
     mockPlugin = {
@@ -137,13 +139,15 @@ describe('updateCommand - Logger Context Propagation', () => {
     };
     mockToolInstallationRegistry.getToolInstallation.mockResolvedValue(installationRecord);
 
-    mockInstaller.install.mockImplementation(async (): Promise<InstallResult> => ({
-      success: true,
-      binaryPaths: ['/fake/bin/test-tool'],
-      version: '1.0.0',
-      originalTag: 'v1.0.0',
-      metadata: githubReleaseMetadata,
-    }));
+    mockInstaller.install.mockImplementation(
+      async (): Promise<InstallResult> => ({
+        success: true,
+        binaryPaths: ['/fake/bin/test-tool'],
+        version: '1.0.0',
+        originalTag: 'v1.0.0',
+        metadata: githubReleaseMetadata,
+      })
+    );
 
     await program.parseAsync(['update', TOOL_NAME], { from: 'user' });
 

@@ -77,12 +77,7 @@ describe('replaceInFile', () => {
       },
     });
 
-    const wasReplaced: boolean = await replaceInFile(
-      memFs.fs.asIResolvedFileSystem,
-      '/tmp/input.txt',
-      /foo/,
-      'baz'
-    );
+    const wasReplaced: boolean = await replaceInFile(memFs.fs.asIResolvedFileSystem, '/tmp/input.txt', /foo/, 'baz');
 
     expect(wasReplaced).toBe(true);
   });
@@ -111,13 +106,9 @@ describe('replaceInFile', () => {
       },
     });
 
-    const wasReplaced: boolean = await replaceInFile(
-      memFs.fs.asIResolvedFileSystem,
-      '/tmp/input.txt',
-      /line/,
-      'row',
-      { mode: 'line' }
-    );
+    const wasReplaced: boolean = await replaceInFile(memFs.fs.asIResolvedFileSystem, '/tmp/input.txt', /line/, 'row', {
+      mode: 'line',
+    });
 
     expect(wasReplaced).toBe(true);
   });

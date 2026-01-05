@@ -10,7 +10,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import { Architecture, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { TrackedFileSystem, createMockFileRegistry } from '@dotfiles/registry/file';
+import { createMockFileRegistry, TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ICompletionGenerator, IShellInitGenerator } from '@dotfiles/shell-init-generator';
 import type { IShimGenerator } from '@dotfiles/shim-generator';
 import type { ISymlinkGenerator, SymlinkOperationResult } from '@dotfiles/symlink-generator';

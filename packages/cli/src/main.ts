@@ -372,9 +372,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     )
   );
   pluginRegistry.register(new CurlScriptInstallerPlugin(installerTrackedFs, downloader, hookExecutor));
-  pluginRegistry.register(
-    new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor)
-  );
+  pluginRegistry.register(new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor));
   pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
 
   const installer = new Installer(

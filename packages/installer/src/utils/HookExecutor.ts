@@ -124,7 +124,9 @@ export class HookExecutor {
     enhancedContext: TContext,
     options: IHookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
-    const methodLogger = parentLogger.getSubLogger({ name: 'HookExecutor' }).getSubLogger({ name: 'executeHook', context: hookName });
+    const methodLogger = parentLogger
+      .getSubLogger({ name: 'HookExecutor' })
+      .getSubLogger({ name: 'executeHook', context: hookName });
     const timeoutMs: number = options.timeoutMs ?? this.defaultTimeoutMs;
     const continueOnError: boolean = options.continueOnError ?? false;
     const startTime = Date.now();
