@@ -186,7 +186,7 @@ export class CargoClient implements ICargoClient {
 
   private async performDownload(url: string, headers: Record<string, string>): Promise<Buffer> {
     const logger = this.logger.getSubLogger({ name: 'performDownload' });
-    const result = await this.downloader.download(url, { headers });
+    const result = await this.downloader.download(logger, url, { headers });
     if (!result) {
       logger.error(messages.errors.emptyResponse(url));
       throw new NetworkError(logger, 'Empty response received from API', url);
@@ -236,7 +236,7 @@ export class CargoClient implements ICargoClient {
     }
 
     try {
-      const responseBuffer = await this.downloader.download(url, { headers: this.buildRequestHeaders() });
+      const responseBuffer = await this.downloader.download(logger, url, { headers: this.buildRequestHeaders() });
       if (!responseBuffer || responseBuffer.length === 0) {
         logger.error(messages.errors.emptyResponse(url));
         return null;

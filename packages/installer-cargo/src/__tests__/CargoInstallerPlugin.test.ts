@@ -27,7 +27,6 @@ describe('CargoInstallerPlugin', () => {
     mockHookExecutor = {} as HookExecutor;
 
     plugin = new CargoInstallerPlugin(
-      logger,
       mockFs,
       mockDownloader,
       mockCargoClient,

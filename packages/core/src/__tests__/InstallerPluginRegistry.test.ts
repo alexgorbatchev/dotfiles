@@ -332,7 +332,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      const result = await registry.install('test-method', 'test-tool', {}, context);
+      const result = await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       expect(installCalled).toBe(true);
       expect(result.success).toBe(true);
@@ -340,7 +340,7 @@ describe('InstallerPluginRegistry', () => {
 
     test('returns error if plugin not found', async () => {
       const context = await createMockContext(logger);
-      const result = await registry.install('nonexistent', 'test-tool', {}, context);
+      const result = await registry.install(logger, 'nonexistent', 'test-tool', {}, context);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -360,7 +360,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       expect(validateCalled).toBe(true);
     });
@@ -379,7 +379,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      const result = await registry.install('test-method', 'test-tool', {}, context);
+      const result = await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -400,7 +400,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       logger.expect(
         ['WARN'],
@@ -424,9 +424,9 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install('test-method', 'test-tool', {}, context);
-      await registry.install('test-method', 'test-tool', {}, context);
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       expect(validateCallCount).toBe(1);
     });
@@ -445,9 +445,9 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install('test-method', 'test-tool', {}, context);
-      await registry.install('test-method', 'test-tool', {}, context);
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       expect(validateCallCount).toBe(3);
     });
@@ -467,7 +467,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install('test-method', 'test-tool', { config: 'value' }, context, options);
+      await registry.install(logger, 'test-method', 'test-tool', { config: 'value' }, context, options);
 
       expect(receivedParams[0]).toBe('test-tool');
       expect(receivedParams[1]).toEqual({ config: 'value' });
@@ -481,7 +481,7 @@ describe('InstallerPluginRegistry', () => {
       await registry.register(plugin);
 
       const context = await createMockContext(logger);
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
 
       logger.expect(
         ['DEBUG'],
@@ -508,12 +508,12 @@ describe('InstallerPluginRegistry', () => {
 
       const context = await createMockContext(logger);
 
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
       expect(validateCallCount).toBe(1);
 
       registry.clearValidationCache();
 
-      await registry.install('test-method', 'test-tool', {}, context);
+      await registry.install(logger, 'test-method', 'test-tool', {}, context);
       expect(validateCallCount).toBe(2);
     });
 

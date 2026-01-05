@@ -345,7 +345,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
   const pluginRegistry = new InstallerPluginRegistry(parentLogger);
 
   // Initialize hook executor for plugins
-  const hookExecutor = new HookExecutor(parentLogger, (chunk: string): void => {
+  const hookExecutor = new HookExecutor((chunk: string): void => {
     process.stdout.write(chunk);
   });
 
@@ -360,10 +360,9 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       hookExecutor
     )
   );
-  pluginRegistry.register(new BrewInstallerPlugin(parentLogger));
+  pluginRegistry.register(new BrewInstallerPlugin());
   pluginRegistry.register(
     new CargoInstallerPlugin(
-      parentLogger,
       installerTrackedFs,
       downloader,
       cargoClient,
@@ -372,11 +371,11 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
       projectConfig.cargo.githubRelease.host
     )
   );
-  pluginRegistry.register(new CurlScriptInstallerPlugin(parentLogger, installerTrackedFs, downloader, hookExecutor));
+  pluginRegistry.register(new CurlScriptInstallerPlugin(installerTrackedFs, downloader, hookExecutor));
   pluginRegistry.register(
-    new CurlTarInstallerPlugin(parentLogger, installerTrackedFs, downloader, archiveExtractor, hookExecutor)
+    new CurlTarInstallerPlugin(installerTrackedFs, downloader, archiveExtractor, hookExecutor)
   );
-  pluginRegistry.register(new ManualInstallerPlugin(parentLogger, installerTrackedFs));
+  pluginRegistry.register(new ManualInstallerPlugin(installerTrackedFs));
 
   const installer = new Installer(
     logger,

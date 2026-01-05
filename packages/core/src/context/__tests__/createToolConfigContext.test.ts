@@ -14,6 +14,7 @@ describe('createToolConfigContext', () => {
   let projectConfig: ProjectConfig;
   let fileSystem: MockedFileSystem;
   let resolvedFs: IResolvedFileSystem;
+  let logger: TestLogger;
 
   const systemInfo: ISystemInfo = {
     platform: Platform.MacOS,
@@ -22,7 +23,7 @@ describe('createToolConfigContext', () => {
   };
 
   beforeEach(async () => {
-    const logger = new TestLogger();
+    logger = new TestLogger();
     const memFs = await createMemFileSystem();
     fileSystem = memFs.fs;
     resolvedFs = memFs.fs.asIResolvedFileSystem;
@@ -51,7 +52,7 @@ describe('createToolConfigContext', () => {
     const toolName = 'test-tool';
     const toolDir = '/tmp/tools/test-tool';
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
     const currentDirParsed = z.object({ currentDir: z.string() }).safeParse(context);
     expect(currentDirParsed.success).toBe(true);
@@ -70,7 +71,7 @@ describe('createToolConfigContext', () => {
     const toolName = 'test-tool';
     const toolDir = '/tmp/tools/test-tool';
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
     expect(typeof context.replaceInFile).toBe('function');
 
@@ -89,7 +90,7 @@ describe('createToolConfigContext', () => {
     const toolName = 'test-tool';
     const toolDir = '/tmp/tools/test-tool';
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
     await fileSystem.ensureDir('/test/files');
     await fileSystem.writeFile('/test/files/config.txt', 'foo bar foo', 'utf8');
@@ -103,7 +104,7 @@ describe('createToolConfigContext', () => {
     const toolName = 'test-tool';
     const toolDir = '/tmp/tools/test-tool';
 
-    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs);
+    const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
     await fileSystem.ensureDir('/test/files');
     await fileSystem.writeFile('/test/files/config.txt', 'hello world', 'utf8');

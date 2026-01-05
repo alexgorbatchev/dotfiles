@@ -70,7 +70,7 @@ describe('HookExecutor - error reporting', () => {
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
     };
 
-    const hookExecutor = new HookExecutor(logger, (chunk: string): void => {
+    const hookExecutor = new HookExecutor((chunk: string): void => {
       capturedOutput += chunk;
     });
     const enhancedContext = hookExecutor.createEnhancedContext(baseContext, fs);
@@ -79,7 +79,7 @@ describe('HookExecutor - error reporting', () => {
       await context.$`sh -c "echo shell-stderr 1>&2; exit 1"`.quiet();
     };
 
-    await hookExecutor.executeHook('after-install', failingHook, enhancedContext, { continueOnError: true });
+    await hookExecutor.executeHook(logger, 'after-install', failingHook, enhancedContext, { continueOnError: true });
 
     const errorLogs = logger.logs.filter((log) => {
       const meta = log['_meta'];

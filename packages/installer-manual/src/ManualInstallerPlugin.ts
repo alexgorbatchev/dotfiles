@@ -36,13 +36,9 @@ export class ManualInstallerPlugin
   /**
    * Creates a new ManualInstallerPlugin instance.
    *
-   * @param logger - The logger instance for logging operations.
    * @param fs - The file system interface for file operations.
    */
-  constructor(
-    private readonly logger: TsLogger,
-    private readonly fs: IFileSystem
-  ) {}
+  constructor(private readonly fs: IFileSystem) {}
 
   /**
    * Installs a manually managed tool by verifying binaries and creating symlinks.
@@ -51,15 +47,17 @@ export class ManualInstallerPlugin
    * @param toolConfig - The configuration for the manual tool.
    * @param context - The base installation context.
    * @param options - Optional installation options.
+   * @param logger - The logger with tool context for logging operations.
    * @returns A promise that resolves to the installation result.
    */
   async install(
     toolName: string,
     toolConfig: ManualToolConfig,
     context: IInstallContext,
-    options?: IInstallOptions
+    options: IInstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult<ManualPluginMetadata>> {
-    const result = await installManually(toolName, toolConfig, context, options, this.fs, this.logger);
+    const result = await installManually(toolName, toolConfig, context, options, this.fs, logger);
 
     if (!result.success) {
       return {

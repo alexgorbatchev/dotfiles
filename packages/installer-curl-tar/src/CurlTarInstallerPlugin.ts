@@ -39,14 +39,12 @@ export class CurlTarInstallerPlugin
   /**
    * Creates a new CurlTarInstallerPlugin instance.
    *
-   * @param logger - The logger instance for logging operations.
    * @param fs - The file system interface for file operations.
    * @param downloader - The downloader for fetching tarballs.
    * @param archiveExtractor - The archive extractor for unpacking tarballs.
    * @param hookExecutor - The hook executor for running lifecycle hooks.
    */
   constructor(
-    private readonly logger: TsLogger,
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly archiveExtractor: IArchiveExtractor,
@@ -60,13 +58,15 @@ export class CurlTarInstallerPlugin
    * @param toolConfig - The configuration for the curl-tar tool.
    * @param context - The base installation context.
    * @param options - Optional installation options.
+   * @param logger - The logger with tool context for logging operations.
    * @returns A promise that resolves to the installation result.
    */
   async install(
     toolName: string,
     toolConfig: CurlTarToolConfig,
     context: IInstallContext,
-    options?: IInstallOptions
+    options: IInstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult<ICurlTarInstallMetadata>> {
     const result = await installFromCurlTar(
       toolName,
@@ -77,7 +77,7 @@ export class CurlTarInstallerPlugin
       this.downloader,
       this.archiveExtractor,
       this.hookExecutor,
-      this.logger
+      logger
     );
 
     if (!result.success) {

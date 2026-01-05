@@ -80,8 +80,8 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.download
    */
-  public async download(url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
-    const logger = this.logger.getSubLogger({ name: 'download' });
+  public async download(parentLogger: TsLogger, url: string, options: IDownloadOptions = {}): Promise<Buffer | undefined> {
+    const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'download' });
     logger.debug(downloaderLogMessages.downloadStarted(url));
 
     if (this.strategies.length === 0) {
@@ -152,8 +152,8 @@ export class Downloader implements IDownloader {
   /**
    * @inheritdoc IDownloader.downloadToFile
    */
-  public async downloadToFile(url: string, filePath: string, options: IDownloadOptions = {}): Promise<void> {
-    const logger = this.logger.getSubLogger({ name: 'downloadToFile' });
+  public async downloadToFile(parentLogger: TsLogger, url: string, filePath: string, options: IDownloadOptions = {}): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'Downloader' }).getSubLogger({ name: 'downloadToFile' });
     logger.debug(downloaderLogMessages.downloadToFileStarted(url, filePath));
 
     // Set destination path in options to indicate file download

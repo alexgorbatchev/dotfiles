@@ -19,7 +19,7 @@ import type { CargoToolConfig, ICargoClient } from '@dotfiles/installer-cargo';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
 import type { GithubReleaseToolConfig, IGitHubApiClient } from '@dotfiles/installer-github';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
-import { TestLogger } from '@dotfiles/logger';
+import { TestLogger, type TsLogger } from '@dotfiles/logger';
 import type { IToolInstallationDetails, IToolInstallationRecord, IToolInstallationRegistry } from '@dotfiles/registry';
 import type { ISymlinkGenerator } from '@dotfiles/symlink-generator';
 import {
@@ -83,7 +83,7 @@ export const MOCK_TOOL_REPO = 'owner/repo';
 export function createMockSymlinkGenerator(fs: IFileSystem): ISymlinkGenerator {
   const result: ISymlinkGenerator = {
     generate: mock(async () => []),
-    createBinarySymlink: mock(async (sourcePath: string, targetPath: string) => {
+    createBinarySymlink: mock(async (_parentLogger: TsLogger, sourcePath: string, targetPath: string) => {
       // Check if symlink already exists and is valid
       try {
         const stats = await fs.lstat(targetPath);
@@ -275,14 +275,14 @@ export interface IInstallerTestSetup {
  */
 export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const logger = new TestLogger();
-  const hookExecutor = new HookExecutor(logger, (): void => {});
+  const hookExecutor = new HookExecutor((): void => {});
   const { fs, spies } = await createMemFileSystem();
   const testDirs = await createTestDirectories(logger, fs, { testName: 'installer-tests' });
 
   const mockToolBinaryPath = path.join(testDirs.paths.binariesDir, MOCK_TOOL_NAME, MOCK_TOOL_NAME);
 
   // Setup mock downloader
-  const mockDownload = mock(async (_url: string, options?: IDownloadOptions) => {
+  const mockDownload = mock(async (_parentLogger: TsLogger, _url: string, options?: IDownloadOptions) => {
     // Create the file in the mock filesystem if destinationPath is provided
     if (options?.destinationPath) {
       await fs.ensureDir(path.dirname(options.destinationPath));
@@ -290,10 +290,16 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     }
     return Promise.resolve(Buffer.from('mock data'));
   });
+  const mockDownloadToFile = mock(
+    async (_parentLogger: TsLogger, _url: string, filePath: string, _options?: IDownloadOptions) => {
+      await fs.ensureDir(path.dirname(filePath));
+      await fs.writeFile(filePath, 'mock binary content');
+    }
+  );
   const mockDownloader: IDownloader = {
     download: mockDownload,
     registerStrategy: mock(() => {}),
-    downloadToFile: mock(() => Promise.resolve()),
+    downloadToFile: mockDownloadToFile,
   };
 
   // Setup mock GitHub API client
@@ -311,24 +317,26 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
   const mockCargoClient = createMockCargoClient();
 
   // Setup mock ArchiveExtractor
-  const mockExtract = mock(async (_archivePath: string, options?: IExtractOptions): Promise<IExtractResult> => {
-    // Create the extracted files in the target directory
-    if (options?.targetDir) {
-      await fs.ensureDir(options.targetDir);
-      // Create both the specific tool name and a generic 'tool' file for hooks to use
-      await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), 'mock-binary-content');
-      await fs.chmod(path.join(options.targetDir, MOCK_TOOL_NAME), 0o755);
-      await fs.writeFile(path.join(options.targetDir, 'tool'), 'mock-binary-content');
-      await fs.chmod(path.join(options.targetDir, 'tool'), 0o755);
-      await fs.writeFile(path.join(options.targetDir, 'README.md'), 'mock-readme');
-      await fs.writeFile(path.join(options.targetDir, 'LICENSE'), 'mock-license');
-      await fs.writeFile(path.join(options.targetDir, 'Makefile'), 'CC=gcc\nall:\n\tgcc -o tool tool.c');
+  const mockExtract = mock(
+    async (_parentLogger: TsLogger, _archivePath: string, options?: IExtractOptions): Promise<IExtractResult> => {
+      // Create the extracted files in the target directory
+      if (options?.targetDir) {
+        await fs.ensureDir(options.targetDir);
+        // Create both the specific tool name and a generic 'tool' file for hooks to use
+        await fs.writeFile(path.join(options.targetDir, MOCK_TOOL_NAME), 'mock-binary-content');
+        await fs.chmod(path.join(options.targetDir, MOCK_TOOL_NAME), 0o755);
+        await fs.writeFile(path.join(options.targetDir, 'tool'), 'mock-binary-content');
+        await fs.chmod(path.join(options.targetDir, 'tool'), 0o755);
+        await fs.writeFile(path.join(options.targetDir, 'README.md'), 'mock-readme');
+        await fs.writeFile(path.join(options.targetDir, 'LICENSE'), 'mock-license');
+        await fs.writeFile(path.join(options.targetDir, 'Makefile'), 'CC=gcc\nall:\n\tgcc -o tool tool.c');
+      }
+      return {
+        extractedFiles: [MOCK_TOOL_NAME, 'tool', 'README.md', 'LICENSE', 'Makefile'],
+        executables: [MOCK_TOOL_NAME, 'tool'],
+      };
     }
-    return {
-      extractedFiles: [MOCK_TOOL_NAME, 'tool', 'README.md', 'LICENSE', 'Makefile'],
-      executables: [MOCK_TOOL_NAME, 'tool'],
-    };
-  });
+  );
   const mockArchiveExtractor: IArchiveExtractor = {
     extract: mockExtract,
     detectFormat: mock(async () => {

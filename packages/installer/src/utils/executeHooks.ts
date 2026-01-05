@@ -61,7 +61,7 @@ export async function executeAfterDownloadHook(
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
 
   for (const hook of afterDownloadHooks) {
-    const hookResult = await hookExecutor.executeHook('after-download', hook, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, 'after-download', hook, enhancedContext);
 
     if (!hookResult.success) {
       return {
@@ -111,7 +111,7 @@ export async function executeAfterExtractHook(
   const enhancedContext = hookExecutor.createEnhancedContext(context, fs);
 
   for (const hook of afterExtractHooks) {
-    const hookResult = await hookExecutor.executeHook('after-extract', hook, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, 'after-extract', hook, enhancedContext);
 
     if (!hookResult.success) {
       return {

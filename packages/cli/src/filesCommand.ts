@@ -92,9 +92,9 @@ function formatTree(nodes: ITreeNode[], prefix: string = ''): string {
 
 async function displayTreeForTool(
   logger: TsLogger,
-  toolName: string,
   fs: IFileSystem,
   toolInstallationRegistry: IToolInstallationRegistry,
+  toolName: string,
   print: PrintFunction
 ): Promise<ExitCode> {
   const installation = await toolInstallationRegistry.getToolInstallation(toolName);
@@ -154,7 +154,7 @@ async function filesActionLogic(
       return;
     }
 
-    const exitCode = await displayTreeForTool(logger, toolName, fs, toolInstallationRegistry, print);
+    const exitCode = await displayTreeForTool(logger, fs, toolInstallationRegistry, toolName, print);
     if (exitCode !== ExitCode.SUCCESS) {
       exitCli(exitCode);
     }

@@ -46,6 +46,7 @@ describe('GitHubApiClient', () => {
       const release = await mocks.apiClient.getReleaseByTag('test-owner', 'test-repo', 'v0.5.0');
       expect(release).toEqual(mockReleaseData);
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+        expect.anything(), // parentLogger
         'https://api.github.com/repos/test-owner/test-repo/releases/tags/v0.5.0',
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -54,6 +55,9 @@ describe('GitHubApiClient', () => {
           }),
         })
       );
+
+      // Verify logger received request message
+      mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
     });
 
     it('should return null if the release tag is not found (404)', async () => {

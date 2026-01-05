@@ -59,6 +59,7 @@ describe('Installer - install (orchestrator)', () => {
     await setup.installer.install(MOCK_TOOL_NAME, toolConfig);
 
     expect(installSpy).toHaveBeenCalledWith(
+      expect.anything(), // parentLogger
       'github-release', // method
       MOCK_TOOL_NAME, // toolName
       toolConfig, // toolConfig
@@ -101,7 +102,7 @@ describe('Installer - install (orchestrator)', () => {
     });
 
     const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
-      async (_method: string, _name: string, _config: unknown, context: IInstallContext) => {
+      async (_parentLogger, _method: string, _name: string, _config: unknown, context: IInstallContext) => {
         // Create the binary in a temporary location (mimicking what a real plugin does)
         const binaryPath = path.join(context.stagingDir, MOCK_TOOL_NAME);
         await setup.fs.ensureDir(path.dirname(binaryPath));
@@ -178,6 +179,7 @@ describe('Installer - install (orchestrator)', () => {
     const result = await setup.installer.install('eza', toolConfig);
     expect(result.success).toBe(true);
     expect(installSpy).toHaveBeenCalledWith(
+      expect.anything(), // parentLogger
       'manual', // method stays manual
       'eza', // toolName
       expect.objectContaining({

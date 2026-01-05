@@ -20,7 +20,7 @@ describe('HookExecutor $ Integration', () => {
 
   beforeEach(async () => {
     logger = new TestLogger();
-    hookExecutor = new HookExecutor(logger, (): void => {});
+    hookExecutor = new HookExecutor((): void => {});
     memFs = await createMemFileSystem();
 
     // Create a temporary directory for integration tests
@@ -71,7 +71,7 @@ describe('HookExecutor $ Integration', () => {
 
     const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
-    await hookExecutor.executeHook('afterInstall', hookThatUsesShell, enhancedContext);
+    await hookExecutor.executeHook(logger, 'afterInstall', hookThatUsesShell, enhancedContext);
 
     // Verify the working directory was set to the tool config directory
     // Use realpathSync to resolve symlinks for proper comparison on macOS
@@ -112,7 +112,7 @@ describe('HookExecutor $ Integration', () => {
 
     const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
-    await hookExecutor.executeHook('afterInstall', hookThatCreatesFile, enhancedContext);
+    await hookExecutor.executeHook(logger, 'afterInstall', hookThatCreatesFile, enhancedContext);
 
     // Verify the file exists in the expected location
     const createdFilePath = path.join(tempDir, 'created-by-hook.txt');
@@ -150,7 +150,7 @@ describe('HookExecutor $ Integration', () => {
 
     const enhancedContext = hookExecutor.createEnhancedContext(contextWithoutConfigPath, memFs.fs);
 
-    const hookResult = await hookExecutor.executeHook('afterInstall', hookThatUsesShellFallback, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, 'afterInstall', hookThatUsesShellFallback, enhancedContext);
     expect(hookResult.success).toBe(true);
   });
 });

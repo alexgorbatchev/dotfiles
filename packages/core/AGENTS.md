@@ -47,7 +47,8 @@ registry.register(new BrewPlugin());
 registry.composeSchemas();
 
 // Install using registered plugin
-const result = await registry.install('github-release', toolName, config, context);
+const toolLogger = logger.getSubLogger({ context: toolName });
+const result = await registry.install(toolLogger, 'github-release', toolName, config, context);
 ```
 
 ## API
@@ -65,7 +66,7 @@ Main registry class for managing plugins.
 - `getMethods()` - Get all registered method names
 - `composeSchemas()` - Compose schemas from all plugins (call once after registration)
 - `getToolConfigSchema()` - Get the composed tool config schema
-- `install(method, toolName, config, context, options)` - Execute installation via plugin
+- `install(parentLogger, method, toolName, config, context, options)` - Execute installation via plugin. The `parentLogger` should have tool context already added.
 
 ### Types
 
@@ -160,7 +161,8 @@ describe('MyInstallerPlugin', () => {
     registry.register(plugin);
     registry.composeSchemas();
     
-    const result = await registry.install('my-method', 'tool', config, context);
+    const toolLogger = logger.getSubLogger({ context: 'tool' });
+    const result = await registry.install(toolLogger, 'my-method', 'tool', config, context);
     expect(result.success).toBe(true);
   });
 });

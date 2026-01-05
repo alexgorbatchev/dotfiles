@@ -1,4 +1,5 @@
 import { type IDownloader, ProgressBar, shouldShowProgress } from '@dotfiles/downloader';
+import type { TsLogger } from '@dotfiles/logger';
 import type { IInstallOptions } from '../types';
 
 /**
@@ -11,6 +12,7 @@ import type { IInstallOptions } from '../types';
  * - Displays download filename and progress percentage
  * - Automatically finished and cleaned up after download completes or errors
  *
+ * @param parentLogger - Logger with context from calling operation (e.g., tool name)
  * @param url - URL to download from
  * @param destinationPath - Full path where file should be saved
  * @param filename - Display name for progress bar
@@ -18,6 +20,7 @@ import type { IInstallOptions } from '../types';
  * @param options - Installation options (checks quiet flag)
  */
 export async function downloadWithProgress(
+  parentLogger: TsLogger,
   url: string,
   destinationPath: string,
   filename: string,
@@ -28,7 +31,7 @@ export async function downloadWithProgress(
   const progressBar = new ProgressBar(filename, { enabled: showProgress });
 
   try {
-    await downloader.download(url, {
+    await downloader.download(parentLogger, url, {
       destinationPath,
       onProgress: progressBar.createCallback(),
     });

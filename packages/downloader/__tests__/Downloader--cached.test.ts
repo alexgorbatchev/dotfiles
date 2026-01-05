@@ -68,22 +68,21 @@ describe('Downloader with Cache', () => {
       });
 
       // First download - should hit the network
-      const result1 = await downloader.download(testUrl);
+      const result1 = await downloader.download(logger, testUrl);
       expect(result1).toEqual(Buffer.from(testData));
 
       // Verify fetch was called once
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
 
       // Second download - should hit cache, no additional network call
-      const result2 = await downloader.download(testUrl);
+      const result2 = await downloader.download(logger, testUrl);
       expect(result2).toEqual(Buffer.from(testData));
 
       // Verify fetch was still only called once (cache hit)
       expect(fetchMockHelper.getSpy()).toHaveBeenCalledTimes(1);
 
-      // Log verification - just check that we have logs indicating cache behavior
-      // We can't easily check specific content due to logger changes
-      expect(logger.logs.length).toBeGreaterThan(0);
+      // Verify logger received download started message
+      logger.expect(['DEBUG'], ['Downloader', 'download'], [], ['Downloading URL']);
     });
 
     it('should bypass cache when progress callback is provided', async () => {
@@ -100,11 +99,11 @@ describe('Downloader with Cache', () => {
       };
 
       // First download with progress callback - should bypass cache
-      const result1 = await downloader.download(testUrl, { onProgress });
+      const result1 = await downloader.download(logger, testUrl, { onProgress });
       expect(result1).toEqual(Buffer.from(testData));
 
       // Second download with progress callback - should bypass cache again
-      const result2 = await downloader.download(testUrl, { onProgress });
+      const result2 = await downloader.download(logger, testUrl, { onProgress });
       expect(result2).toEqual(Buffer.from(testData));
 
       // Verify fetch was called twice (cache bypassed)
@@ -127,11 +126,11 @@ describe('Downloader with Cache', () => {
       });
 
       // First download - should hit network
-      const result1 = await downloaderWithDisabledCache.download(testUrl);
+      const result1 = await downloaderWithDisabledCache.download(logger, testUrl);
       expect(result1).toEqual(Buffer.from(testData));
 
       // Second download - should hit network again (cache disabled)
-      const result2 = await downloaderWithDisabledCache.download(testUrl);
+      const result2 = await downloaderWithDisabledCache.download(logger, testUrl);
       expect(result2).toEqual(Buffer.from(testData));
 
       // Verify fetch was called twice (cache disabled)
@@ -156,15 +155,15 @@ describe('Downloader with Cache', () => {
       });
 
       // Download both URLs
-      const result1 = await downloader.download(testUrl1);
-      const result2 = await downloader.download(testUrl2);
+      const result1 = await downloader.download(logger, testUrl1);
+      const result2 = await downloader.download(logger, testUrl2);
 
       expect(result1).toEqual(Buffer.from(testData1));
       expect(result2).toEqual(Buffer.from(testData2));
 
       // Both should be cached now - second requests should hit cache
-      const cachedResult1 = await downloader.download(testUrl1);
-      const cachedResult2 = await downloader.download(testUrl2);
+      const cachedResult1 = await downloader.download(logger, testUrl1);
+      const cachedResult2 = await downloader.download(logger, testUrl2);
 
       expect(cachedResult1).toEqual(Buffer.from(testData1));
       expect(cachedResult2).toEqual(Buffer.from(testData2));
@@ -183,7 +182,7 @@ describe('Downloader with Cache', () => {
       });
 
       // Download to file - should bypass cache but still work
-      await downloader.downloadToFile(testUrl, filePath);
+      await downloader.downloadToFile(logger, testUrl, filePath);
 
       // Verify file was written
       const fileExists = await mockFileSystem.exists(filePath);

@@ -67,7 +67,6 @@ export class CargoInstallerPlugin
   /**
    * Creates a new CargoInstallerPlugin instance.
    *
-   * @param logger - The logger instance for logging operations.
    * @param fs - The file system interface for file operations.
    * @param downloader - The downloader for fetching crates and binaries.
    * @param cargoClient - The Cargo client for interacting with crates.io and cargo commands.
@@ -76,7 +75,6 @@ export class CargoInstallerPlugin
    * @param githubHost - The GitHub hostname for API requests (e.g., 'api.github.com').
    */
   constructor(
-    private readonly logger: TsLogger,
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly cargoClient: ICargoClient,
@@ -89,7 +87,8 @@ export class CargoInstallerPlugin
     toolName: string,
     toolConfig: CargoToolConfig,
     context: IInstallContext,
-    options?: IInstallOptions
+    options: IInstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult<CargoPluginMetadata>> {
     const result = await installFromCargo(
       toolName,
@@ -101,7 +100,7 @@ export class CargoInstallerPlugin
       this.cargoClient,
       this.archiveExtractor,
       this.hookExecutor,
-      this.logger,
+      logger,
       this.githubHost
     );
 

@@ -209,13 +209,14 @@ export class InstallerPluginRegistry {
    * Execute installation using appropriate plugin
    */
   async install(
+    parentLogger: TsLogger,
     method: string,
     toolName: string,
     toolConfig: unknown,
     context: IInstallContext,
     options?: IInstallOptions
   ): Promise<AggregateInstallResult> {
-    const logger = this.logger.getSubLogger({ name: 'install' });
+    const logger = parentLogger.getSubLogger({ name: 'InstallerPluginRegistry' }).getSubLogger({ name: 'install' });
     const plugin = this.get(method);
 
     if (!plugin) {

@@ -269,8 +269,8 @@ export interface IInstallerPlugin<
     toolName: string,
     toolConfig: TConfig,
     context: IInstallContext,
-    options?: IInstallOptions,
-    logger?: TsLogger
+    options: IInstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult<TMetadata>>;
 
   /** Optional: Validate plugin can run in current environment */

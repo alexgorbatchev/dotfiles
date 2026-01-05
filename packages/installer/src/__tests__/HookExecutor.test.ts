@@ -18,7 +18,7 @@ describe('HookExecutor', () => {
 
   beforeEach(async () => {
     logger = new TestLogger();
-    hookExecutor = new HookExecutor(logger, (): void => {});
+    hookExecutor = new HookExecutor((): void => {});
     memFs = await createMemFileSystem();
 
     // Create a proper TrackedFileSystem mock that will pass instanceof check
@@ -43,7 +43,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
+      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(true);
       assert(result.success);
@@ -57,7 +57,7 @@ describe('HookExecutor', () => {
       });
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
-      const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
+      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -74,7 +74,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
       const options: IHookExecutionOptions = { timeoutMs: 50 };
-      const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
+      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -90,7 +90,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
       const options: IHookExecutionOptions = { continueOnError: true };
-      const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext, options);
+      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext, options);
 
       expect(result.success).toBe(false);
       assert(!result.success);
@@ -102,7 +102,7 @@ describe('HookExecutor', () => {
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
       const setTimeoutSpy = spyOn(global, 'setTimeout');
 
-      await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
+      await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
 
       // Check that setTimeout was called with default timeout (60000ms)
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60000);
@@ -235,7 +235,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      await hookExecutor.executeHook('testShellHook', hookThatUsesShell, enhancedContext);
+      await hookExecutor.executeHook(logger, 'testShellHook', hookThatUsesShell, enhancedContext);
 
       expect(capturedDollar).toBeDefined();
       expect(typeof capturedDollar).toBe('function');
@@ -267,7 +267,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(contextWithToolConfig, memFs.fs);
 
-      await hookExecutor.executeHook('afterExtract', hook, enhancedContext);
+      await hookExecutor.executeHook(logger, 'afterExtract', hook, enhancedContext);
 
       expect(receivedDollar).toBeDefined();
       expect(hook).toHaveBeenCalledTimes(1);
@@ -323,7 +323,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const results = await hookExecutor.executeHooks(hooks, enhancedContext);
+      const results = await hookExecutor.executeHooks(logger, hooks, enhancedContext);
 
       expect(results).toHaveLength(3);
       expect(results.every((r) => r.success)).toBe(true);
@@ -348,7 +348,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const results = await hookExecutor.executeHooks(hooks, enhancedContext);
+      const results = await hookExecutor.executeHooks(logger, hooks, enhancedContext);
 
       expect(results).toHaveLength(2); // Should stop after hook2 fails
       expect(results[0]?.success).toBe(true);
@@ -374,7 +374,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const results = await hookExecutor.executeHooks(hooks, enhancedContext);
+      const results = await hookExecutor.executeHooks(logger, hooks, enhancedContext);
 
       expect(results).toHaveLength(3); // All hooks should be executed
       expect(results[0]?.success).toBe(true);
@@ -403,7 +403,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const results = await hookExecutor.executeHooks(hooks, enhancedContext);
+      const results = await hookExecutor.executeHooks(logger, hooks, enhancedContext);
 
       expect(results).toHaveLength(2); // Should stop after hook2 fails
       expect(results[0]?.success).toBe(false); // hook1 failed but continued
@@ -421,7 +421,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
+      await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
 
       logger.expect(
         ['DEBUG'],
@@ -440,7 +440,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
+      await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
 
       logger.expect(['ERROR'], ['HookExecutor', 'executeHook'], ['testHook'], ['Hook failed']);
     });
@@ -453,7 +453,7 @@ describe('HookExecutor', () => {
 
       const enhancedContext = hookExecutor.createEnhancedContext(baseContext, memFs.fs);
 
-      const result = await hookExecutor.executeHook('testHook', mockHook, enhancedContext);
+      const result = await hookExecutor.executeHook(logger, 'testHook', mockHook, enhancedContext);
 
       expect(result.success).toBe(false);
       assert(!result.success);

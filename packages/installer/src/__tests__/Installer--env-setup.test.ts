@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import type { ToolConfig } from '@dotfiles/core';
+import type { IInstallContext, ToolConfig } from '@dotfiles/core';
 import type { IManualInstallSuccess } from '@dotfiles/installer-manual';
 import { createInstallerTestSetup, type IInstallerTestSetup } from './installer-test-helpers';
 
@@ -22,16 +22,18 @@ describe('Installer - Environment Setup', () => {
     let pathDuringInstall: string | undefined;
     let stagingDir: string | undefined;
 
-    spyOn(setup.pluginRegistry, 'install').mockImplementation(async (_method, _name, _config, context) => {
-      pathDuringInstall = process.env['PATH'];
-      stagingDir = context.stagingDir;
-      return {
-        success: true,
-        binaryPaths: ['/fake/path'],
-        version: '1.0.0',
-        metadata: { method: 'manual', manualInstall: true },
-      } as IManualInstallSuccess;
-    });
+    spyOn(setup.pluginRegistry, 'install').mockImplementation(
+      async (_parentLogger, _method, _name, _config, context: IInstallContext) => {
+        pathDuringInstall = process.env['PATH'];
+        stagingDir = context.stagingDir;
+        return {
+          success: true,
+          binaryPaths: ['/fake/path'],
+          version: '1.0.0',
+          metadata: { method: 'manual', manualInstall: true },
+        } as IManualInstallSuccess;
+      }
+    );
 
     const originalPath = process.env['PATH'];
     await setup.installer.install(toolName, toolConfig);

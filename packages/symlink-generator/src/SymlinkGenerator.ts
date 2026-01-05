@@ -109,8 +109,8 @@ export class SymlinkGenerator implements ISymlinkGenerator {
   /**
    * @inheritdoc ISymlinkGenerator.createBinarySymlink
    */
-  async createBinarySymlink(sourcePath: string, targetPath: string, parentLogger?: TsLogger): Promise<void> {
-    const logger = (parentLogger ?? this.logger).getSubLogger({ name: 'createBinarySymlink' });
+  async createBinarySymlink(parentLogger: TsLogger, sourcePath: string, targetPath: string): Promise<void> {
+    const logger = parentLogger.getSubLogger({ name: 'createBinarySymlink' });
 
     // Check if symlink already exists and is valid
     try {

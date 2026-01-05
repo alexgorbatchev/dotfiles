@@ -41,28 +41,23 @@ export class BrewInstallerPlugin
   readonly externallyManaged = true;
 
   /**
-   * Creates a new BrewInstallerPlugin instance.
-   *
-   * @param logger - The logger instance for logging operations.
-   */
-  constructor(private readonly logger: TsLogger) {}
-
-  /**
    * Installs a tool using Homebrew.
    *
    * @param toolName - The name of the tool to install.
    * @param toolConfig - The configuration for the Homebrew tool.
    * @param context - The base installation context.
    * @param options - Optional installation options.
+   * @param logger - The logger with tool context for logging operations.
    * @returns A promise that resolves to the installation result.
    */
   async install(
     toolName: string,
     toolConfig: BrewToolConfig,
     context: IInstallContext,
-    options?: IInstallOptions
+    options: IInstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult<BrewPluginMetadata>> {
-    const result = await installFromBrew(toolName, toolConfig, context, options, this.logger);
+    const result = await installFromBrew(toolName, toolConfig, context, options, logger);
 
     if (!result.success) {
       return {

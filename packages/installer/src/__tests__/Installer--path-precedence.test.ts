@@ -112,7 +112,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
 
     const systemInfo: ISystemInfo = { platform: Platform.MacOS, arch: Architecture.Arm64, homeDir: tempDir };
     const symlinkGenerator = new SymlinkGenerator(logger, fileSystem, projectConfig, systemInfo);
-    const hookExecutor = new HookExecutor(logger, (): void => {});
+    const hookExecutor = new HookExecutor((): void => {});
     const resolvedFs = new ResolvedFileSystem(fileSystem, tempDir);
 
     const installer = new Installer(

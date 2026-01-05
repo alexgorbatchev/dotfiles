@@ -129,7 +129,7 @@ export async function installFromCurlScript(
     logger.debug(messages.downloadingScript(url));
     const scriptPath = path.join(context.stagingDir, `${toolName}-install.sh`);
 
-    await downloadWithProgress(url, scriptPath, `${toolName}-install.sh`, downloader, options);
+    await downloadWithProgress(logger, url, scriptPath, `${toolName}-install.sh`, downloader, options);
 
     // Make the script executable
     await toolFs.chmod(scriptPath, 0o755);

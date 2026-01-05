@@ -38,9 +38,13 @@ describe('GitHubApiClient', () => {
       const release = await mocks.apiClient.getReleaseByConstraint('test-owner', 'test-repo', 'latest');
       expect(release).toEqual(mockLatestRelease);
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+        expect.anything(),
         'https://api.github.com/repos/test-owner/test-repo/releases/latest',
         expect.anything()
       );
+
+      // Verify logger received request message
+      mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
     });
 
     it("should return null if constraint is 'latest' and getLatestRelease fails with NotFoundError from downloader", async () => {
@@ -137,8 +141,8 @@ describe('GitHubApiClient', () => {
       expect(release).toEqual(targetRelease);
       // Expect 2 calls: page 1, and page 2. The loop terminates after page 2 because releasesPage.length < perPage.
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(2);
-      expect(mocks.mockDownloader.download.mock.calls[0]?.[0]).toContain(`per_page=${perPage}&page=1`);
-      expect(mocks.mockDownloader.download.mock.calls[1]?.[0]).toContain(`per_page=${perPage}&page=2`);
+      expect(mocks.mockDownloader.download.mock.calls[0]?.[1]).toContain(`per_page=${perPage}&page=1`);
+      expect(mocks.mockDownloader.download.mock.calls[1]?.[1]).toContain(`per_page=${perPage}&page=2`);
     });
   });
 });

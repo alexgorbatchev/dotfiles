@@ -52,7 +52,8 @@ describe('IToolConfigContext', () => {
         systemInfo,
         'test-tool',
         path.dirname(toolConfigFilePath),
-        resolvedFs
+        resolvedFs,
+        logger
       );
 
       expect(context.projectConfig.paths.homeDir).toBe(mockProjectConfig.paths.homeDir);
@@ -72,7 +73,8 @@ describe('IToolConfigContext', () => {
         systemInfo,
         'shell-tool',
         path.dirname(toolConfigFilePath),
-        resolvedFs
+        resolvedFs,
+        logger
       );
 
       // Test that context can be used in a tool configuration function
@@ -121,7 +123,8 @@ describe('IToolConfigContext', () => {
         systemInfo,
         'dependent-tool',
         path.dirname(toolConfigFilePath),
-        resolvedFs
+        resolvedFs,
+        logger
       );
 
       // Test a tool that references other tools
@@ -170,7 +173,8 @@ describe('IToolConfigContext', () => {
         systemInfo,
         'completion-tool',
         path.dirname(toolConfigFilePath),
-        resolvedFs
+        resolvedFs,
+        logger
       );
 
       // Test a tool that generates completions
@@ -238,7 +242,8 @@ describe('IToolConfigContext', () => {
         customSystemInfo,
         'custom-path-tool',
         path.dirname(toolConfigFilePath),
-        customMockFs.fs.asIResolvedFileSystem
+        customMockFs.fs.asIResolvedFileSystem,
+        logger
       );
 
       expect(context.projectConfig.paths.homeDir).toBe(customProjectConfig.paths.homeDir);
@@ -259,7 +264,8 @@ describe('IToolConfigContext', () => {
         systemInfo,
         'fzf-like',
         path.dirname(toolConfigFilePath),
-        resolvedFs
+        resolvedFs,
+        logger
       );
 
       // Test fzf-like pattern with context
@@ -301,7 +307,8 @@ describe('IToolConfigContext', () => {
         systemInfo,
         'atuin-like',
         path.dirname(toolConfigFilePath),
-        resolvedFs
+        resolvedFs,
+        logger
       );
 
       // Test atuin-like pattern with context

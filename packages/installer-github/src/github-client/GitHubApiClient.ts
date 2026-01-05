@@ -161,7 +161,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   private async performRequest<T>(url: string, headers: Record<string, string>): Promise<T> {
     const logger = this.logger.getSubLogger({ name: 'performRequest' });
-    const responseBuffer = await this.downloader.download(url, { headers });
+    const responseBuffer = await this.downloader.download(logger, url, { headers });
     if (!responseBuffer || responseBuffer.length === 0) {
       logger.debug(messages.request.emptyResponse(url));
       throw new NetworkError(this.logger, 'Empty response received from API', url);

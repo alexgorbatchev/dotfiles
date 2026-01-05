@@ -1,4 +1,5 @@
 import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/core';
+import type { TsLogger } from '@dotfiles/logger';
 
 /**
  * Interface for a service that extracts various archive formats.
@@ -7,6 +8,7 @@ export interface IArchiveExtractor {
   /**
    * Extracts an archive file to a specified target directory.
    *
+   * @param parentLogger The logger with tool context for logging extraction operations.
    * @param archivePath The path to the archive file.
    * @param options Optional settings for the extraction process, such as the
    *                archive format (if not auto-detected), number of path
@@ -16,7 +18,7 @@ export interface IArchiveExtractor {
    *          information about the extracted files and any detected executables.
    * @throws Will throw an error if extraction fails (e.g., unsupported format, corrupted archive, I/O error).
    */
-  extract(archivePath: string, options?: IExtractOptions): Promise<IExtractResult>;
+  extract(parentLogger: TsLogger, archivePath: string, options?: IExtractOptions): Promise<IExtractResult>;
 
   /**
    * Attempts to detect the format of an archive file.

@@ -77,7 +77,7 @@ export class ReadmeService implements IReadmeService {
       this.logger.debug(messages.fetchingReadme(owner, repo, version));
 
       // Download README content
-      const response: Buffer | undefined = await this.downloader.download(url);
+      const response: Buffer | undefined = await this.downloader.download(this.logger, url);
 
       if (!response) {
         this.logger.debug(messages.readmeNotFound(owner, repo, version, url));

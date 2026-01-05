@@ -63,7 +63,7 @@ export async function installFromCargo(
     const filename = `${crateName}-${versionResult.version}.tar.gz`;
     const downloadPath = path.join(context.stagingDir, filename);
 
-    await downloadWithProgress(downloadUrl, downloadPath, filename, downloader, options);
+    await downloadWithProgress(logger, downloadUrl, downloadPath, filename, downloader, options);
 
     const hookContext: ICargoHookContext = { ...context, version: versionResult.version };
     const afterDownloadResult = await executeAfterDownloadHook(
@@ -71,13 +71,14 @@ export async function installFromCargo(
       hookExecutor,
       hookContext,
       downloadPath,
-      toolFs
+      toolFs,
+      logger
     );
     if (!afterDownloadResult.success) {
       return afterDownloadResult;
     }
 
-    const extractResult = await archiveExtractor.extract(downloadPath, {
+    const extractResult = await archiveExtractor.extract(logger, downloadPath, {
       targetDir: context.stagingDir,
     });
     logger.debug(messages.archiveExtracted(), extractResult);
@@ -89,7 +90,8 @@ export async function installFromCargo(
       hookExecutor,
       hookContext,
       extractResult,
-      toolFs
+      toolFs,
+      logger
     );
     if (!afterInstallResult.success) {
       return afterInstallResult;
@@ -126,7 +128,8 @@ async function executeAfterDownloadHook(
   hookExecutor: HookExecutor,
   hookContext: ICargoHookContext,
   downloadPath: string,
-  toolFs: IFileSystem
+  toolFs: IFileSystem,
+  logger: TsLogger
 ): Promise<HookExecutionResult> {
   const afterDownloadHooks = toolConfig['installParams']?.hooks?.['after-download'];
   if (!afterDownloadHooks) {
@@ -136,7 +139,7 @@ async function executeAfterDownloadHook(
   const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, downloadPath }, toolFs);
 
   for (const hook of afterDownloadHooks) {
-    const hookResult = await hookExecutor.executeHook('afterDownload', hook, enhancedContext);
+    const hookResult = await hookExecutor.executeHook(logger, 'afterDownload', hook, enhancedContext);
     if (!hookResult.success) {
       return { success: false, error: hookResult.error };
     }
@@ -150,7 +153,8 @@ async function executeAfterInstallHook(
   hookExecutor: HookExecutor,
   hookContext: ICargoHookContext,
   extractResult: IExtractResult,
-  toolFs: IFileSystem
+  toolFs: IFileSystem,
+  logger: TsLogger
 ): Promise<HookExecutionResult> {
   const afterInstallHooks = toolConfig['installParams']?.hooks?.['after-install'];
   if (!afterInstallHooks) {
@@ -160,7 +164,7 @@ async function executeAfterInstallHook(
   const enhancedContext = hookExecutor.createEnhancedContext({ ...hookContext, extractResult }, toolFs);
 
   for (const hook of afterInstallHooks) {
-    const finalHookResult = await hookExecutor.executeHook('afterInstall', hook, enhancedContext);
+    const finalHookResult = await hookExecutor.executeHook(logger, 'afterInstall', hook, enhancedContext);
     if (!finalHookResult.success) {
       return { success: false, error: finalHookResult.error };
     }

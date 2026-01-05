@@ -33,9 +33,13 @@ describe('GitHubApiClient with custom host', () => {
 
     // Verify the URL used in the request contains the custom host
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+      expect.anything(),
       `${customHost}/repos/test-owner/test-repo/releases/latest`,
       expect.anything()
     );
+
+    // Verify logger received request message with custom host
+    mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
   });
 
   it('should use the custom host for getReleaseByTag', async () => {
@@ -60,6 +64,7 @@ describe('GitHubApiClient with custom host', () => {
 
     // Verify the URL used in the request contains the custom host
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+      expect.anything(),
       `${customHost}/repos/test-owner/test-repo/releases/tags/v1.0.0`,
       expect.anything()
     );
@@ -73,6 +78,7 @@ describe('GitHubApiClient with custom host', () => {
 
     // Verify the URL used in the request contains the custom host
     expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+      expect.anything(),
       `${customHost}/repos/test-owner/test-repo/releases?per_page=30&page=1`,
       expect.anything()
     );
@@ -155,6 +161,6 @@ describe('GitHubApiClient with custom host', () => {
     await mocks.apiClient.getRateLimit();
 
     // Verify the URL used in the request contains the custom host
-    expect(mocks.mockDownloader.download).toHaveBeenCalledWith(`${customHost}/rate_limit`, expect.anything());
+    expect(mocks.mockDownloader.download).toHaveBeenCalledWith(expect.anything(), `${customHost}/rate_limit`, expect.anything());
   });
 });

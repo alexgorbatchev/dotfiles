@@ -49,9 +49,12 @@ describe('GitHubApiClient', () => {
       const releases = await mocks.apiClient.getAllReleases('test-owner', 'test-repo');
       expect(releases).toEqual([...page1Releases, ...page2Releases]);
       expect(mocks.mockDownloader.download).toHaveBeenCalledTimes(3);
-      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[0]).toContain('/releases?per_page=30&page=1');
-      expect(mocks.mockDownloader.download.mock.calls?.[1]?.[0]).toContain('/releases?per_page=30&page=2');
-      expect(mocks.mockDownloader.download.mock.calls?.[2]?.[0]).toContain('/releases?per_page=30&page=3');
+      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[1]).toContain('/releases?per_page=30&page=1');
+      expect(mocks.mockDownloader.download.mock.calls?.[1]?.[1]).toContain('/releases?per_page=30&page=2');
+      expect(mocks.mockDownloader.download.mock.calls?.[2]?.[1]).toContain('/releases?per_page=30&page=3');
+
+      // Verify logger received request messages for pagination
+      mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
     });
 
     it('should fetch releases with custom perPage option', async () => {
@@ -64,7 +67,7 @@ describe('GitHubApiClient', () => {
         perPage: 1,
       });
       expect(releases).toEqual(customPageReleases);
-      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[0]).toContain('per_page=1&page=1');
+      expect(mocks.mockDownloader.download.mock.calls?.[0]?.[1]).toContain('per_page=1&page=1');
     });
 
     it('should filter out prereleases if includePrerelease is false', async () => {

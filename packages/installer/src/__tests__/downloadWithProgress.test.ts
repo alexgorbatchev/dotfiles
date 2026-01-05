@@ -14,13 +14,17 @@ describe('downloadWithProgress utility', () => {
     const destinationPath = '/tmp/test-file.tar.gz';
     const filename = 'test-file.tar.gz';
 
-    await downloadWithProgress(url, destinationPath, filename, setup.mocks.downloader, undefined);
+    await downloadWithProgress(setup.logger, url, destinationPath, filename, setup.mocks.downloader, undefined);
 
     expect(setup.mocks.downloader.download).toHaveBeenCalledWith(
+      expect.anything(),
       url,
       expect.objectContaining({
         destinationPath,
       })
     );
+
+    // Verify downloader was called with correct parameters (logger is mocked)
+    expect(setup.mocks.downloader.download).toHaveBeenCalled();
   });
 });

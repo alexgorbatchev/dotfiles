@@ -79,6 +79,9 @@ describe('SymlinkGenerator', () => {
         status: 'created',
       },
     ]);
+
+    // Verify logger received symlink creation message
+    logger.expect(['DEBUG'], ['SymlinkGenerator', 'generate', 'processSymlink'], [], ['Processing symlink']);
   });
 
   it('should expand ~ in target path to home directory and return result', async () => {
@@ -541,7 +544,7 @@ describe('SymlinkGenerator', () => {
       await mockFs.fs.chmod(sourcePath, 0o755);
 
       // Create symlink
-      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+      await symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath);
 
       // Verify symlink was created
       const targetExists = await mockFs.fs.exists(targetPath);
@@ -569,7 +572,7 @@ describe('SymlinkGenerator', () => {
       await mockFs.fs.symlink(sourcePath, targetPath);
 
       // Call createBinarySymlink - should detect existing valid symlink
-      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+      await symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath);
 
       // Verify symlink still exists and wasn't recreated
       const statsAfter = await mockFs.fs.lstat(targetPath);
@@ -605,7 +608,7 @@ describe('SymlinkGenerator', () => {
       expect(resolvedInitial).toBe(path.resolve(oldSourcePath));
 
       // Update symlink to new version
-      await symlinkGenerator.createBinarySymlink(newSourcePath, targetPath);
+      await symlinkGenerator.createBinarySymlink(logger, newSourcePath, targetPath);
 
       // Verify symlink now points to new version
       const linkTarget = await mockFs.fs.readlink(targetPath);
@@ -627,7 +630,7 @@ describe('SymlinkGenerator', () => {
       await mockFs.fs.writeFile(targetPath, 'old file content');
 
       // Create symlink - should replace the regular file
-      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+      await symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath);
 
       // Verify target is now a symlink
       const stats = await mockFs.fs.lstat(targetPath);
@@ -645,7 +648,7 @@ describe('SymlinkGenerator', () => {
       // Don't create source binary
 
       // Attempt to create symlink - should fail
-      expect(symlinkGenerator.createBinarySymlink(sourcePath, targetPath)).rejects.toThrow(
+      expect(symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath)).rejects.toThrow(
         `Cannot create symlink: binary does not exist at ${sourcePath}`
       );
     });
@@ -677,7 +680,7 @@ describe('SymlinkGenerator', () => {
       await mockFs.fs.chmod(newSourcePath, 0o755);
 
       // Create symlink to new version - should remove invalid old symlink and create new one
-      await symlinkGenerator.createBinarySymlink(newSourcePath, targetPath);
+      await symlinkGenerator.createBinarySymlink(logger, newSourcePath, targetPath);
 
       // Verify symlink now points to new version
       const linkTarget = await mockFs.fs.readlink(targetPath);
@@ -699,7 +702,7 @@ describe('SymlinkGenerator', () => {
       await mockFs.fs.chmod(sourcePath, 0o755);
 
       // Create symlink
-      await symlinkGenerator.createBinarySymlink(sourcePath, targetPath);
+      await symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath);
 
       // Verify symlink can be read and resolved correctly
       const linkTarget = await mockFs.fs.readlink(targetPath);
@@ -736,7 +739,7 @@ describe('SymlinkGenerator', () => {
       });
 
       // Attempt to create symlink - should fail verification
-      expect(symlinkGenerator.createBinarySymlink(sourcePath, targetPath)).rejects.toThrow(
+      expect(symlinkGenerator.createBinarySymlink(logger, sourcePath, targetPath)).rejects.toThrow(
         /Symlink verification failed/
       );
     });

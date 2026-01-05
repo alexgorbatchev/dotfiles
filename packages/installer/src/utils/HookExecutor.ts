@@ -87,16 +87,17 @@ export interface IHookDefinition<TContext extends IInstallBaseContext = IInstall
  * - Tool-specific logging via subloggers
  * - Enhanced context creation with file system and shell access
  * - Sequential execution of multiple hooks
+ *
+ * Note: This class does NOT store a logger. All methods require a parentLogger parameter
+ * to ensure proper tool context propagation through the logging hierarchy.
  */
 type WriteOutput = (chunk: string) => void;
 
 export class HookExecutor {
-  private readonly logger: TsLogger;
   private readonly defaultTimeoutMs = 60000; // 1 minute default
   private readonly writeOutput: WriteOutput;
 
-  constructor(parentLogger: TsLogger, writeOutput: WriteOutput) {
-    this.logger = parentLogger.getSubLogger({ name: 'HookExecutor' });
+  constructor(writeOutput: WriteOutput) {
     this.writeOutput = writeOutput;
   }
 
@@ -109,6 +110,7 @@ export class HookExecutor {
    * - toolConfig: Tool configuration (if available in base context)
    * - $: Bun's shell operator for executing commands
    *
+   * @param parentLogger - Logger with tool context for proper log hierarchy
    * @param hookName - Name of the hook for logging (e.g., 'beforeInstall', 'afterDownload')
    * @param hook - Hook function to execute
    * @param enhancedContext - Enhanced context with file system and shell access
@@ -116,12 +118,13 @@ export class HookExecutor {
    * @returns Result with success status, duration, and error details if failed
    */
   async executeHook<TContext extends IInstallBaseContext>(
+    parentLogger: TsLogger,
     hookName: string,
     hook: HookHandler<TContext>,
     enhancedContext: TContext,
     options: IHookExecutionOptions = {}
   ): Promise<HookExecutionResult> {
-    const methodLogger = this.logger.getSubLogger({ name: 'executeHook', context: hookName });
+    const methodLogger = parentLogger.getSubLogger({ name: 'HookExecutor' }).getSubLogger({ name: 'executeHook', context: hookName });
     const timeoutMs: number = options.timeoutMs ?? this.defaultTimeoutMs;
     const continueOnError: boolean = options.continueOnError ?? false;
     const startTime = Date.now();
@@ -229,15 +232,17 @@ export class HookExecutor {
    * Use this method to run a series of hooks at once, useful for batch operations
    * or when hooks have dependencies on each other's execution order.
    *
+   * @param parentLogger - Logger with tool context for proper log hierarchy
    * @param hooks - Array of hook definitions with names, functions, and options
    * @param enhancedContext - Enhanced context shared across all hooks
    * @returns Array of execution results for each hook
    */
   async executeHooks<TContext extends IInstallBaseContext>(
+    parentLogger: TsLogger,
     hooks: IHookDefinition<TContext>[],
     enhancedContext: TContext
   ): Promise<HookExecutionResult[]> {
-    const methodLogger = this.logger.getSubLogger({ name: 'executeHooks' });
+    const methodLogger = parentLogger.getSubLogger({ name: 'HookExecutor' }).getSubLogger({ name: 'executeHooks' });
     const results: HookExecutionResult[] = [];
 
     for (const hookDefinition of hooks) {
@@ -245,7 +250,7 @@ export class HookExecutor {
       const hook: HookHandler<TContext> = hookDefinition.hook;
       const options: IHookExecutionOptions | undefined = hookDefinition.options;
 
-      const result = await this.executeHook(name, hook, enhancedContext, options);
+      const result = await this.executeHook(parentLogger, name, hook, enhancedContext, options);
       results.push(result);
 
       // If hook failed and we're not continuing on error, stop execution

@@ -220,13 +220,16 @@ export class Installer implements IInstaller {
       return;
     }
 
+    // Extract logger from event context (includes tool context)
+    const eventLogger = event.context['logger'] as TsLogger;
+
     // Create enhanced context with fileSystem from event
     const toolFs = event.context.fileSystem;
     const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs);
 
     // Execute all hooks in sequence
     for (const hook of hookArray) {
-      const result = await this.hookExecutor.executeHook(event.type, hook, enhancedContext);
+      const result = await this.hookExecutor.executeHook(eventLogger, event.type, hook, enhancedContext);
 
       // If hook failed, throw error to propagate back to plugin
       if (!result.success) {
@@ -324,7 +327,7 @@ export class Installer implements IInstaller {
 
     // Execute all hooks in sequence
     for (const hook of beforeInstallHooks) {
-      const result = await this.hookExecutor.executeHook('before-install', hook, enhancedContext);
+      const result = await this.hookExecutor.executeHook(logger, 'before-install', hook, enhancedContext);
 
       if (!result.success) {
         const failureResult: InstallResult = {
@@ -379,7 +382,7 @@ export class Installer implements IInstaller {
 
     // Execute all hooks in sequence
     for (const hook of afterInstallHooks) {
-      await this.hookExecutor.executeHook('after-install', hook, enhancedContext, { continueOnError: true });
+      await this.hookExecutor.executeHook(logger, 'after-install', hook, enhancedContext, { continueOnError: true });
     }
   }
 
@@ -458,17 +461,18 @@ export class Installer implements IInstaller {
    * @param resolvedToolConfig - Platform-resolved tool configuration
    * @param context - Base install context with paths and system info
    * @param options - Installation options (force, quiet, verbose, shimMode)
-   * @param _logger - Unused logger parameter (plugins use context.logger)
+   * @param parentLogger - Logger with tool context for plugin operations
    * @returns Installation result from the plugin
    */
   private async executeInstallationMethod(
     toolName: string,
     resolvedToolConfig: ToolConfig,
     context: IInstallContext,
-    options?: IInstallOptions,
-    _logger?: TsLogger
+    options: IInstallOptions | undefined,
+    parentLogger: TsLogger
   ): Promise<InstallResult> {
     const result: InstallResult = await this.registry.install(
+      parentLogger,
       resolvedToolConfig.installationMethod,
       toolName,
       resolvedToolConfig,
@@ -537,7 +541,7 @@ export class Installer implements IInstaller {
 
       if (!isExternallyManaged && plugin?.resolveVersion) {
         // Create minimal context for version resolution
-        const tempContext: IInstallContext = this.createMinimalContext(toolName, resolvedToolConfig);
+        const tempContext: IInstallContext = this.createMinimalContext(toolName, resolvedToolConfig, logger);
 
         try {
           const resolvedVersion: string | null = await plugin.resolveVersion(
@@ -790,7 +794,7 @@ export class Installer implements IInstaller {
         const symlinkPath = path.join(externalDir, binaryName);
 
         try {
-          await this.symlinkGenerator.createBinarySymlink(binaryPath, symlinkPath, logger);
+          await this.symlinkGenerator.createBinarySymlink(logger, binaryPath, symlinkPath);
         } catch (error) {
           logger.error(messages.lifecycle.externalBinaryMissing(toolName, binaryName, binaryPath));
           throw error;
@@ -884,19 +888,23 @@ export class Installer implements IInstaller {
    *
    * @param toolName - Tool name
    * @param toolConfig - Complete tool configuration
+   * @param parentLogger - Parent logger for context creation
    * @returns Minimal context with system info
    */
-  private createMinimalContext(toolName: string, toolConfig: ToolConfig): IInstallContext {
+  private createMinimalContext(toolName: string, toolConfig: ToolConfig, parentLogger: TsLogger): IInstallContext {
     const toolDir: string = toolConfig.configFilePath
       ? path.dirname(toolConfig.configFilePath)
       : this.projectConfig.paths.toolConfigsDir;
+
+    const contextLogger = parentLogger.getSubLogger({ name: 'minimalContext' });
 
     const baseContext = createToolConfigContext(
       this.projectConfig,
       this.getSystemInfo(),
       toolName,
       toolDir,
-      this.resolvedFs
+      this.resolvedFs,
+      contextLogger
     );
 
     const minimalContext: IInstallContext = {

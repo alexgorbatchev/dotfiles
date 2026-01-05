@@ -107,11 +107,14 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       const outputDir = join(testDirs.paths.homeDir, 'output-tar');
       await nodeFs.mkdir(outputDir);
 
-      await extractor.extract(realArchivePath, { targetDir: outputDir });
+      await extractor.extract(logger, realArchivePath, { targetDir: outputDir });
 
       const extractedFilePath = join(outputDir, fileName);
       expect(await nodeFs.exists(extractedFilePath)).toBe(true);
       expect(await nodeFs.readFile(extractedFilePath, 'utf-8')).toBe(fileContent);
+
+      // Verify logger received calls
+      logger.expect(['DEBUG'], ['ArchiveExtractor', 'extract'], [], []);
     });
 
     it('should extract a .tar.gz archive when the archive path contains a single quote', async (): Promise<void> => {
@@ -123,7 +126,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       const outputDir = join(testDirs.paths.homeDir, 'output-tar-quote');
       await nodeFs.mkdir(outputDir);
 
-      await extractor.extract(realArchivePath, { targetDir: outputDir });
+      await extractor.extract(logger, realArchivePath, { targetDir: outputDir });
 
       const extractedFilePath = join(outputDir, fileName);
       expect(await nodeFs.exists(extractedFilePath)).toBe(true);
@@ -138,7 +141,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       const outputDir = join(testDirs.paths.homeDir, 'output-zip');
       await nodeFs.mkdir(outputDir);
 
-      await extractor.extract(realArchivePath, { targetDir: outputDir, format: 'zip' });
+      await extractor.extract(logger, realArchivePath, { targetDir: outputDir, format: 'zip' });
 
       const extractedFilePath = join(outputDir, fileName);
       expect(await nodeFs.exists(extractedFilePath)).toBe(true);
@@ -153,7 +156,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       const outputDir = join(testDirs.paths.homeDir, 'output-zip-quote');
       await nodeFs.mkdir(outputDir);
 
-      await extractor.extract(realArchivePath, { targetDir: outputDir, format: 'zip' });
+      await extractor.extract(logger, realArchivePath, { targetDir: outputDir, format: 'zip' });
 
       const extractedFilePath = join(outputDir, fileName);
       expect(await nodeFs.exists(extractedFilePath)).toBe(true);
@@ -167,7 +170,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       const outputDir = join(testDirs.paths.homeDir, 'output_cleanup_success');
       await nodeFs.mkdir(outputDir);
 
-      await extractor.extract(realArchivePath, { targetDir: outputDir });
+      await extractor.extract(logger, realArchivePath, { targetDir: outputDir });
 
       const itemsInOutputDir = await nodeFs.readdir(outputDir);
       for (const item of itemsInOutputDir) {
@@ -182,7 +185,7 @@ describe('ArchiveExtractor (with NodeFS)', (): void => {
       const outputDir = join(testDirs.paths.homeDir, 'output_cleanup_fail');
       await nodeFs.mkdir(outputDir);
 
-      expect(extractor.extract(invalidArchivePath, { targetDir: outputDir })).rejects.toThrow();
+      expect(extractor.extract(logger, invalidArchivePath, { targetDir: outputDir })).rejects.toThrow();
 
       const itemsInOutputDir = await nodeFs.readdir(outputDir);
       for (const item of itemsInOutputDir) {

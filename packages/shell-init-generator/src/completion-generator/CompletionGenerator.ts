@@ -95,7 +95,7 @@ export class CompletionGenerator implements ICompletionGenerator {
       return;
     }
 
-    await this.downloader.downloadToFile(url, downloadPath);
+    await this.downloader.downloadToFile(logger, url, downloadPath);
     logger.debug(messages.completionDownloaded(downloadPath));
 
     // Check if it's an archive that needs extraction
@@ -116,7 +116,7 @@ export class CompletionGenerator implements ICompletionGenerator {
     }
 
     logger.debug(messages.extractingCompletionArchive(archivePath));
-    await this.archiveExtractor.extract(archivePath, {
+    await this.archiveExtractor.extract(logger, archivePath, {
       targetDir: toolInstallDir,
     });
     logger.debug(messages.completionArchiveExtracted(toolInstallDir));

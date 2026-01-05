@@ -50,6 +50,7 @@ describe('GitHubApiClient', () => {
       const rateLimit = await mocks.apiClient.getRateLimit();
       expect(rateLimit).toEqual(mockCoreRateLimitData);
       expect(mocks.mockDownloader.download).toHaveBeenCalledWith(
+        expect.anything(),
         'https://api.github.com/rate_limit',
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -58,6 +59,9 @@ describe('GitHubApiClient', () => {
           }),
         })
       );
+
+      // Verify logger received request message
+      mocks.logger.expect(['DEBUG'], ['GitHubApiClient', 'request'], [], ['GitHub API GET request to']);
     });
 
     it('should throw a GitHubApiClientError if fetching rate limit fails with HttpError', async () => {

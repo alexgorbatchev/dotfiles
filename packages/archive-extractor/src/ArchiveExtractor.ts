@@ -185,8 +185,8 @@ export class ArchiveExtractor implements IArchiveExtractor {
   /**
    * @inheritdoc IArchiveExtractor.extract
    */
-  public async extract(archivePath: string, options: IExtractOptions = {}): Promise<IExtractResult> {
-    const logger = this.logger.getSubLogger({ name: 'extract' });
+  public async extract(parentLogger: TsLogger, archivePath: string, options: IExtractOptions = {}): Promise<IExtractResult> {
+    const logger = parentLogger.getSubLogger({ name: 'extract' });
     const {
       format: explicitFormat,
       targetDir = '.', // Default to current directory if not specified

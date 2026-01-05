@@ -1,15 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { BrewToolConfig } from '@dotfiles/installer-brew';
-import { TestLogger } from '@dotfiles/logger';
 import { BrewInstallerPlugin } from '../BrewInstallerPlugin';
 
 describe('BrewInstallerPlugin', () => {
-  let logger: TestLogger;
   let plugin: BrewInstallerPlugin;
 
   beforeEach(() => {
-    logger = new TestLogger();
-    plugin = new BrewInstallerPlugin(logger);
+    plugin = new BrewInstallerPlugin();
   });
 
   it('should have correct plugin metadata', () => {

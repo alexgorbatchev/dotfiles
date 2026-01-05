@@ -1,19 +1,16 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { ManualToolConfig } from '@dotfiles/installer-manual';
-import { TestLogger } from '@dotfiles/logger';
 import { ManualInstallerPlugin } from '../ManualInstallerPlugin';
 
 describe('ManualInstallerPlugin', () => {
-  let logger: TestLogger;
   let plugin: ManualInstallerPlugin;
   let mockFs: IFileSystem;
 
   beforeEach(() => {
-    logger = new TestLogger();
     mockFs = {} as IFileSystem;
 
-    plugin = new ManualInstallerPlugin(logger, mockFs);
+    plugin = new ManualInstallerPlugin(mockFs);
   });
 
   it('should have correct plugin metadata', () => {

@@ -82,7 +82,7 @@ export async function installFromCurlTar(
     logger.debug(messages.downloadingTarball(url));
     const tarballPath = path.join(context.stagingDir, `${toolName}.tar.gz`);
 
-    await downloadWithProgress(url, tarballPath, `${toolName}.tar.gz`, downloader, options);
+    await downloadWithProgress(logger, url, tarballPath, `${toolName}.tar.gz`, downloader, options);
 
     // Update context with download path
     postDownloadContext = {
@@ -108,7 +108,7 @@ export async function installFromCurlTar(
     // Extract the tarball directly to install directory
     logger.debug(messages.extractingTarball());
 
-    const extractResult: IExtractResult = await archiveExtractor.extract(tarballPath, {
+    const extractResult: IExtractResult = await archiveExtractor.extract(logger, tarballPath, {
       targetDir: context.stagingDir,
     });
     logger.debug(messages.tarballExtracted(), extractResult);

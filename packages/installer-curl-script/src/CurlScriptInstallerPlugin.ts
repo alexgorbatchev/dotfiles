@@ -38,13 +38,11 @@ export class CurlScriptInstallerPlugin
   /**
    * Creates a new CurlScriptInstallerPlugin instance.
    *
-   * @param logger - The logger instance for logging operations.
    * @param fs - The file system interface for file operations.
    * @param downloader - The downloader for fetching installation scripts.
    * @param hookExecutor - The hook executor for running post-download hooks.
    */
   constructor(
-    private readonly logger: TsLogger,
     private readonly fs: IFileSystem,
     private readonly downloader: IDownloader,
     private readonly hookExecutor: HookExecutor
@@ -57,15 +55,16 @@ export class CurlScriptInstallerPlugin
    * @param toolConfig - The configuration for the curl-script tool.
    * @param context - The base installation context.
    * @param options - Optional installation options.
+   * @param logger - The logger with tool context for logging operations.
    * @returns A promise that resolves to the installation result.
    */
   async install(
     toolName: string,
     toolConfig: CurlScriptToolConfig,
     context: IInstallContext,
-    options?: IInstallOptions
+    options: IInstallOptions | undefined,
+    logger: TsLogger
   ): Promise<InstallResult<ICurlScriptInstallMetadata>> {
-    const toolLogger = this.logger.getSubLogger({ context: toolName });
     const result = await installFromCurlScript(
       toolName,
       toolConfig,
@@ -74,7 +73,7 @@ export class CurlScriptInstallerPlugin
       this.fs,
       this.downloader,
       this.hookExecutor,
-      toolLogger
+      logger
     );
 
     if (!result.success) {

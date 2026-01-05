@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { TestLogger } from '@dotfiles/logger';
 import { BrewInstallerPlugin } from '../BrewInstallerPlugin';
 
 describe('BrewInstallerPlugin - externallyManaged property', () => {
-  let logger: TestLogger;
   let plugin: BrewInstallerPlugin;
 
   beforeEach(() => {
-    logger = new TestLogger();
-    plugin = new BrewInstallerPlugin(logger);
+    plugin = new BrewInstallerPlugin();
   });
 
   it('should have externallyManaged set to true', () => {

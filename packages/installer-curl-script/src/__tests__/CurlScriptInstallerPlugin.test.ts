@@ -3,23 +3,20 @@ import type { IDownloader } from '@dotfiles/downloader';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { HookExecutor } from '@dotfiles/installer';
 import type { CurlScriptToolConfig } from '@dotfiles/installer-curl-script';
-import { TestLogger } from '@dotfiles/logger';
 import { CurlScriptInstallerPlugin } from '../CurlScriptInstallerPlugin';
 
 describe('CurlScriptInstallerPlugin', () => {
-  let logger: TestLogger;
   let plugin: CurlScriptInstallerPlugin;
   let mockFs: IFileSystem;
   let mockDownloader: IDownloader;
   let mockHookExecutor: HookExecutor;
 
   beforeEach(() => {
-    logger = new TestLogger();
     mockFs = {} as IFileSystem;
     mockDownloader = {} as IDownloader;
     mockHookExecutor = {} as HookExecutor;
 
-    plugin = new CurlScriptInstallerPlugin(logger, mockFs, mockDownloader, mockHookExecutor);
+    plugin = new CurlScriptInstallerPlugin(mockFs, mockDownloader, mockHookExecutor);
   });
 
   it('should have correct plugin metadata', () => {

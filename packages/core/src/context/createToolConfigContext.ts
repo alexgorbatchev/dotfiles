@@ -14,7 +14,7 @@ export function createToolConfigContext(
   toolName: string,
   toolDir: string,
   fileSystem: IResolvedFileSystem,
-  logger?: TsLogger
+  logger: TsLogger
 ): IToolConfigContext {
   const currentDir = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -32,7 +32,7 @@ export function createToolConfigContext(
   ): Promise<boolean> => {
     const wasReplaced = await replaceInFile(fileSystem, filePath, from, to, options);
 
-    if (!wasReplaced && options?.errorMessage && logger) {
+    if (!wasReplaced && options?.errorMessage) {
       const patternString = from instanceof RegExp ? from.source : from;
       logger.error(messages.replaceInFileNoMatch(patternString, filePath));
     }

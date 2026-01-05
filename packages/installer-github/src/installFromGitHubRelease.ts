@@ -354,7 +354,7 @@ async function downloadAsset(
   const downloadPath = path.join(context.stagingDir, asset.name);
 
   try {
-    await downloadWithProgress(downloadUrl, downloadPath, asset.name, downloader, options);
+    await downloadWithProgress(logger, downloadUrl, downloadPath, asset.name, downloader, options);
     const data: IDownloadAssetResultData = { downloadPath };
     const result: OperationResult<IDownloadAssetResultData> = { success: true, data };
     return result;
@@ -439,7 +439,7 @@ async function processArchiveInstallation(
 ): Promise<OperationResult<void>> {
   logger.debug(messages.extractingArchive(asset.name));
 
-  const extractResult: IExtractResult = await archiveExtractor.extract(downloadPath, {
+  const extractResult: IExtractResult = await archiveExtractor.extract(logger, downloadPath, {
     targetDir: context.stagingDir,
   });
   logger.debug(messages.archiveExtracted(extractResult.extractedFiles.length, extractResult.executables.length));

@@ -25,6 +25,7 @@ describe('Installer - Reproduction of curl-script loop issue', () => {
 
     const installSpy = spyOn(setup.pluginRegistry, 'install').mockImplementation(
       async (
+        _parentLogger,
         _method: string,
         _toolName: string,
         _toolConfig: unknown,
