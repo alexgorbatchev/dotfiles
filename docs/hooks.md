@@ -68,6 +68,22 @@ All hooks receive a context object with:
 })
 ```
 
+### Executing Installed Binaries by Name
+
+In `after-install` hooks, the shell's PATH is automatically enhanced to include the directories containing the installed binaries. This means you can execute freshly installed tools by name without specifying the full path:
+
+```typescript
+.hook('after-install', async ({ $ }) => {
+  // The installed binary is automatically available by name
+  await $`my-tool --version`;
+  
+  // No need to use full paths like:
+  // await $`${installedDir}/bin/my-tool --version`;
+})
+```
+
+This PATH enhancement only applies to `after-install` hooks where `binaryPaths` is available in the context.
+
 ### Platform-Specific Setup
 
 ```typescript

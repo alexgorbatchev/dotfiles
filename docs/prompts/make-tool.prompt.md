@@ -236,6 +236,19 @@ install('github-release', { repo: 'owner/tool' })
 
 **Hook Events**: `'before-install'`, `'after-download'`, `'after-extract'`, `'after-install'`
 
+**Executing Installed Binaries**: In `after-install` hooks, the shell's PATH is automatically enhanced to include directories containing installed binaries. You can execute freshly installed tools by name:
+
+```ts
+install('github-release', { repo: 'owner/tool' })
+  .bin('tool')
+  .hook('after-install', async ({ $, logger }) => {
+    // Binary is automatically available by name - no full path needed
+    await $`tool --version`;
+    await $`tool init`;
+    logger.info('Tool initialized');
+  })
+```
+
 **File Modifications in Hooks**: Use `ctx.replaceInFile()` for regex-based file modifications:
 
 ```ts
