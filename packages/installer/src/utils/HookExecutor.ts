@@ -37,6 +37,54 @@ function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended
 }
 
 /**
+ * Creates a shell wrapper that includes additional directories in the PATH environment variable.
+ * This allows commands to find binaries in the specified directories without needing full paths.
+ *
+ * WORKAROUND: Due to a bun shell bug where `.env()` PATH changes don't affect command resolution
+ * (command lookup uses process.env.PATH, not the shell's export_env), we wrap commands in `sh -c`.
+ * This delegates command resolution to the subshell which correctly inherits the modified PATH.
+ * See: https://github.com/oven-sh/bun/issues/XXXX
+ *
+ * @param $shell - The base shell instance to wrap
+ * @param additionalPaths - Array of directory paths to prepend to PATH
+ * @returns A new shell instance with enhanced PATH
+ */
+function createShellWithEnhancedPath($shell: $extended, additionalPaths: string[]): $extended {
+  if (additionalPaths.length === 0) {
+    return $shell;
+  }
+
+  const pathSeparator = process.platform === 'win32' ? ';' : ':';
+  const currentPath = process.env['PATH'] || '';
+  const enhancedPath = [...additionalPaths, currentPath].join(pathSeparator);
+
+  // Merge the enhanced PATH with current process.env to preserve all environment variables
+  const enhancedEnv: Record<string, string | undefined> = {
+    ...process.env,
+    PATH: enhancedPath,
+  };
+
+  const configuredShell: $extended = Object.assign(
+    (strings: TemplateStringsArray, ...expressions: ShellExpression[]) => {
+      // Build the command string from the template literal
+      // Bun shell escapes ${} expressions, so we reconstruct the intended command
+      let command = strings[0] || '';
+      for (let i = 0; i < expressions.length; i++) {
+        command += String(expressions[i]) + (strings[i + 1] || '');
+      }
+
+      // Wrap in sh -c so the subshell inherits PATH and performs command resolution
+      // Bun escapes ${command} as a single argument, preventing injection
+      const shellPromise = $shell`sh -c ${command}`.env(enhancedEnv);
+      return shellPromise;
+    },
+    $shell
+  );
+
+  return configuredShell;
+}
+
+/**
  * Configuration options for controlling hook execution behavior.
  */
 export interface IHookExecutionOptions {
@@ -198,10 +246,21 @@ export class HookExecutor {
    * Enhancements:
    * - fileSystem: Tool-specific TrackedFileSystem or provided filesystem
    * - toolConfig: Extracted from InstallContext if available
-   * - $: Bun's shell operator for executing commands
+   * - $: Bun's shell operator for executing commands with:
+   *   - Working directory set to tool config directory (if configFilePath exists)
+   *   - PATH enhanced with binary directories (if binaryPaths exists, e.g., for after-install hooks)
+   *     This allows hooks to execute freshly installed binaries by name without full paths.
    *
    * The TrackedFileSystem integration allows proper tracking of file operations
    * performed by hooks for registry management.
+   *
+   * @example
+   * ```typescript
+   * // In after-install hooks, binaries are automatically in PATH:
+   * .hook('after-install', async ({ $ }) => {
+   *   await $`my-tool --version`; // Works without full path
+   * })
+   * ```
    *
    * @param baseContext - Base install or hook context with tool information
    * @param fileSystem - File system instance (may be TrackedFileSystem)
@@ -218,13 +277,27 @@ export class HookExecutor {
     const toolConfigFilePath: string | undefined = baseContext.toolConfig?.configFilePath;
     const toolConfigDirPath: string | undefined = toolConfigFilePath ? path.dirname(toolConfigFilePath) : undefined;
 
-    const shellWithDefaultCwd: $extended = toolConfigDirPath
-      ? createToolConfigCwdShell(baseContext.$, toolConfigDirPath)
-      : baseContext.$;
+    // Extract unique binary directories from binaryPaths (if present, e.g., for after-install context)
+    const binaryPaths: string[] =
+      'binaryPaths' in baseContext && Array.isArray(baseContext.binaryPaths) ? baseContext.binaryPaths : [];
+    const binaryDirs: string[] = [...new Set(binaryPaths.map((p) => path.dirname(p)))];
+
+    // Start with the base shell
+    let enhancedShell: $extended = baseContext.$;
+
+    // Add binary directories to PATH if present
+    if (binaryDirs.length > 0) {
+      enhancedShell = createShellWithEnhancedPath(enhancedShell, binaryDirs);
+    }
+
+    // Set working directory to tool config directory if available
+    if (toolConfigDirPath) {
+      enhancedShell = createToolConfigCwdShell(enhancedShell, toolConfigDirPath);
+    }
 
     const result: TContext = {
       ...baseContext,
-      $: shellWithDefaultCwd,
+      $: enhancedShell,
       fileSystem: enhancedFileSystem,
     };
     return result;
