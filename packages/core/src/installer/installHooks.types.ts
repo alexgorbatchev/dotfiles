@@ -29,11 +29,10 @@ export interface IInstallBaseContext extends IBaseToolContext {
   timestamp: string;
 
   /**
-   * Bun's shell executor for running shell commands.
+   * Bun's shell executor for running shell commands that inherit the current environment.
+   * 
    * Use the `$` tagged template literal to execute shell commands within hooks.
    * The working directory can be changed using `cd` commands or `process.chdir()`.
-   *
-   * Note: The installer configures the shell so hooks inherit the current environment.
    */
   $: $extended;
 
