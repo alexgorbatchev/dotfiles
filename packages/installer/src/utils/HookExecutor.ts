@@ -10,6 +10,7 @@ import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import type { ShellExpression } from 'bun';
+import { extractErrorCause } from './extractErrorCause';
 import { messages } from './log-messages';
 import { writeHookErrorDetails } from './writeHookErrorDetails';
 
@@ -159,10 +160,12 @@ export class HookExecutor {
     } catch (error) {
       const durationMs: number = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCause = extractErrorCause(error);
 
-      methodLogger.error(messages.outcome.hookFailed(), error);
+      // Log the error with cause in message - the logger filters stack traces for user-facing levels
+      methodLogger.error(messages.outcome.hookFailed(errorCause), error);
 
-      // Write detailed error output only for shell errors (includes stdout/stderr)
+      // For shell errors, write additional details (code frame) via writeHookErrorDetails
       if (isShellError(error)) {
         await writeHookErrorDetails({
           fileSystem: enhancedContext.fileSystem,

@@ -1,6 +1,8 @@
 import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import type { ZodError } from 'zod';
+import { filterErrorStackToToolFiles, isError } from './filterErrorStack';
 import { formatZodErrors } from './formatZodErrors';
+import { LogLevel } from './LogLevel';
 import type { SafeLogMessage } from './types';
 
 /**
@@ -43,6 +45,34 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
     super({ ...settings, prefix });
   }
 
+  /**
+   * Checks if this logger is at trace level (verbose mode).
+   * When in trace mode, full error stacks are shown.
+   */
+  private isTraceLevel(): boolean {
+    return this.settings.minLevel === LogLevel.TRACE;
+  }
+
+  /**
+   * Filters error arguments to only show .tool.ts stack frames.
+   * Only applies when NOT in trace mode (trace shows full stacks for debugging).
+   */
+  private filterErrorArgs(args: unknown[]): unknown[] {
+    if (this.isTraceLevel()) {
+      return args;
+    }
+
+    const filteredArgs: unknown[] = [];
+    for (const arg of args) {
+      if (isError(arg)) {
+        filteredArgs.push(filterErrorStackToToolFiles(arg));
+      } else {
+        filteredArgs.push(arg);
+      }
+    }
+    return filteredArgs;
+  }
+
   /** @inheritdoc */
   override trace(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
     return super.trace(message as string, ...args);
@@ -55,22 +85,26 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
 
   /** @inheritdoc */
   override info(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.info(message as string, ...args);
+    const filteredArgs = this.filterErrorArgs(args);
+    return super.info(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */
   override warn(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.warn(message as string, ...args);
+    const filteredArgs = this.filterErrorArgs(args);
+    return super.warn(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */
   override error(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.error(message as string, ...args);
+    const filteredArgs = this.filterErrorArgs(args);
+    return super.error(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */
   override fatal(message: SafeLogMessage, ...args: unknown[]): (LogObj & ILogObjMeta) | undefined {
-    return super.fatal(message as string, ...args);
+    const filteredArgs = this.filterErrorArgs(args);
+    return super.fatal(message as string, ...filteredArgs);
   }
 
   /** @inheritdoc */

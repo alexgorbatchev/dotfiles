@@ -41,7 +41,8 @@ describe('writeHookErrorDetails - code frame', () => {
 
     const normalized = stripAnsi(output);
 
-    assert(normalized.includes('source:'), normalized);
+    // Output is wrapped in --- delimiters
+    assert(normalized.includes('---'), normalized);
     assert(normalized.includes(`${toolPath}:3:6`), normalized);
     assert(normalized.includes('> 3 | line3 boom'), normalized);
     assert(normalized.includes('  1 | line1'), normalized);

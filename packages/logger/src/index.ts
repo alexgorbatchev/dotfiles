@@ -1,5 +1,6 @@
 export * from './createSafeLogMessage';
 export * from './createTsLogger';
+export * from './filterErrorStack';
 export * from './formatZodErrors';
 export * from './getLogLevelFromFlags';
 export * from './LogLevel';

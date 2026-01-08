@@ -209,31 +209,18 @@ interface IWriteHookErrorDetailsParams {
   writeOutput: WriteOutput;
 }
 
-function buildHeader(toolName: string, hookName: string): string {
-  const result = `\n--- ${toolName} ${hookName} hook error details ---`;
-  return result;
-}
-
-async function buildSourceLines(fileSystem: IFileSystem, stack: string | undefined): Promise<string[]> {
+async function buildCodeFrameSection(fileSystem: IFileSystem, stack: string | undefined): Promise<string | null> {
   if (!stack) {
-    const result: string[] = [];
-    return result;
+    return null;
   }
 
   const toolFrame = parseFirstToolFrame(stack);
   if (!toolFrame) {
-    const result: string[] = [];
-    return result;
+    return null;
   }
 
   const codeFrame = await buildToolCodeFrame(fileSystem, toolFrame);
-  if (!codeFrame) {
-    const result: string[] = [];
-    return result;
-  }
-
-  const result: string[] = ['source:', codeFrame];
-  return result;
+  return codeFrame;
 }
 
 function buildStackLines(stack: string | undefined, includeStack: boolean): string[] {
@@ -251,17 +238,10 @@ function buildStackLines(stack: string | undefined, includeStack: boolean): stri
   return result;
 }
 
-async function buildShellErrorLines(
-  params: IWriteHookErrorDetailsParams,
-  error: IShellErrorLike,
-  includeStack: boolean
-): Promise<string[]> {
+async function buildShellErrorVerboseSection(error: IShellErrorLike, includeStack: boolean): Promise<string[]> {
   const chunks: string[] = [buildShellOutputDetails(error)];
 
   const stack = typeof error.stack === 'string' ? error.stack : undefined;
-  const sourceLines = await buildSourceLines(params.fileSystem, stack);
-  chunks.push(...sourceLines);
-
   const stackLines = buildStackLines(stack, includeStack);
   chunks.push(...stackLines);
 
@@ -269,36 +249,60 @@ async function buildShellErrorLines(
   return result;
 }
 
-async function buildNonShellErrorLines(params: IWriteHookErrorDetailsParams, includeStack: boolean): Promise<string[]> {
-  const chunks: string[] = [buildNonShellErrorDetails(params.error, includeStack)];
-
-  const stack = params.error instanceof Error ? params.error.stack : undefined;
-  const sourceLines = await buildSourceLines(params.fileSystem, stack);
-  chunks.push(...sourceLines);
+async function buildNonShellErrorVerboseSection(error: unknown, includeStack: boolean): Promise<string[]> {
+  const chunks: string[] = [buildNonShellErrorDetails(error, includeStack)];
 
   const result: string[] = chunks;
   return result;
 }
 
 async function buildHookErrorOutput(params: IWriteHookErrorDetailsParams): Promise<string> {
-  const includeStack = isTraceEnabled(params.logger);
-  const chunks: string[] = [buildHeader(params.toolName, params.hookName)];
+  const includeVerbose = isTraceEnabled(params.logger);
+  const chunks: string[] = [];
 
-  if (isShellErrorLike(params.error)) {
-    const shellLines = await buildShellErrorLines(params, params.error, includeStack);
-    chunks.push(...shellLines);
-  } else {
-    const nonShellLines = await buildNonShellErrorLines(params, includeStack);
-    chunks.push(...nonShellLines);
+  // Get the stack from the error
+  const stack = getErrorStack(params.error);
+
+  // Build the code frame section (always shown if available)
+  const codeFrame = await buildCodeFrameSection(params.fileSystem, stack);
+  if (codeFrame) {
+    chunks.push('---');
+    chunks.push(codeFrame);
+    chunks.push('---');
   }
 
-  chunks.push('---\n');
+  // In verbose mode, also include detailed error info
+  if (includeVerbose) {
+    if (isShellErrorLike(params.error)) {
+      const verboseLines = await buildShellErrorVerboseSection(params.error, true);
+      chunks.push(...verboseLines);
+    } else {
+      const verboseLines = await buildNonShellErrorVerboseSection(params.error, true);
+      chunks.push(...verboseLines);
+    }
+  }
+
+  if (chunks.length === 0) {
+    return '';
+  }
 
   const output = normalizeMultiline(chunks.join('\n'));
   return output;
 }
 
+function getErrorStack(error: unknown): string | undefined {
+  if (isShellErrorLike(error)) {
+    return typeof error.stack === 'string' ? error.stack : undefined;
+  }
+  if (error instanceof Error) {
+    return error.stack;
+  }
+  return undefined;
+}
+
 export async function writeHookErrorDetails(params: IWriteHookErrorDetailsParams): Promise<void> {
   const output = await buildHookErrorOutput(params);
-  params.writeOutput(output);
+  if (output.length > 0) {
+    params.writeOutput(output);
+  }
 }

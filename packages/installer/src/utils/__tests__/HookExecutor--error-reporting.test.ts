@@ -15,7 +15,6 @@ import { HookExecutor } from '../HookExecutor';
 describe('HookExecutor - error reporting', () => {
   it('prints short tslog error and writes multiline shell output details', async () => {
     const logger: TestLogger<ILogObj> = new TestLogger({ name: 'test', minLevel: LogLevel.DEFAULT });
-    let capturedOutput = '';
     const { fs } = await createMemFileSystem();
     const testDirs = await createTestDirectories(logger, fs, { testName: 'hook-executor-error-reporting' });
 
@@ -70,9 +69,7 @@ describe('HookExecutor - error reporting', () => {
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
     };
 
-    const hookExecutor = new HookExecutor((chunk: string): void => {
-      capturedOutput += chunk;
-    });
+    const hookExecutor = new HookExecutor((): void => {});
     const enhancedContext = hookExecutor.createEnhancedContext(baseContext, fs);
 
     const failingHook = async (context: IAfterInstallContext): Promise<void> => {
@@ -93,24 +90,23 @@ describe('HookExecutor - error reporting', () => {
     assert(errorLog);
 
     // With context logging, the first argument is the context prefix [after-install]
-    // and second argument is the log message "Hook failed"
+    // and second argument is the log message "Hook failed: <error cause>"
     const contextArg = errorLog[0];
     const messageArg = errorLog[1];
     assert.equal(typeof contextArg, 'string');
     expect(String(contextArg)).toBe('[after-install]');
 
-    // Desired behavior:
-    // - short user-facing error goes through tslog with error object for stack trace
-    // - detailed multiline output goes through stdout writer
+    // The log message now includes the error cause from stderr
     assert.equal(typeof messageArg, 'string');
-    expect(String(messageArg)).toContain('Hook failed');
+    expect(String(messageArg)).toContain('Hook failed: shell-stderr');
 
-    // The error object is passed as third argument
+    // The error object IS passed to the logger, but SafeLogger filters the stack trace
+    // to only show .tool.ts frames (which won't exist in test hooks defined inline)
     const errorArg = errorLog[2];
-    assert(errorArg !== undefined);
+    expect(errorArg).toBeDefined();
 
-    assert(capturedOutput.includes('exit code: 1'), capturedOutput);
-    assert(capturedOutput.includes('stderr:'), capturedOutput);
-    assert(capturedOutput.includes('shell-stderr'), capturedOutput);
+    // The writeOutput may be empty when there's no .tool.ts file in the stack
+    // (which is the case in tests where the hook is defined inline)
+    // Verbose details like exit code and stderr are only shown in trace mode
   });
 });

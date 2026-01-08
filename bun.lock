@@ -7,6 +7,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
         "@typescript/native-preview": "catalog:typescript",
+        "ts-unused": "^1.0.3",
         "tsd": "^0.33.0",
       },
     },
@@ -1127,7 +1128,7 @@
 
     "ts-morph": ["ts-morph@24.0.0", "https://registry.npmjs.org/ts-morph/-/ts-morph-24.0.0.tgz", { "dependencies": { "@ts-morph/common": "~0.25.0", "code-block-writer": "^13.0.3" } }, "sha512-2OAOg/Ob5yx9Et7ZX4CvTCc0UFoZHwLEJ+dpDPSUi5TgwwlTlX47w+iFRrEwzUZwYACjq83cgjS/Da50Ga37uw=="],
 
-    "ts-unused": ["ts-unused@1.0.0", "https://registry.npmjs.org/ts-unused/-/ts-unused-1.0.0.tgz", { "dependencies": { "ts-morph": "^27.0.2", "typescript": "^5" }, "bin": { "ts-unused": "dist/cli.js" } }, "sha512-7bRwlZQHQnU7alRGCUkN7nznCEcnoV0i8V12xUE8v2x3iW44oRtim3BLiK9fQWD/K+vR6gWIcv1s14Zx/Pzf2w=="],
+    "ts-unused": ["ts-unused@1.0.3", "https://registry.npmjs.org/ts-unused/-/ts-unused-1.0.3.tgz", { "dependencies": { "ts-morph": "^27.0.2", "typescript": "^5" }, "bin": { "ts-unused": "dist/cli.js" } }, "sha512-GkTgxyzp8TbDRyrs9CCvrKVWGrZ0Fi9L/jvSc3iIQxAS3KiR5Lj3stxNnXBVTVhtTKK3au+8ml0WAw9GGyllOg=="],
 
     "tsd": ["tsd@0.33.0", "https://registry.npmjs.org/tsd/-/tsd-0.33.0.tgz", { "dependencies": { "@tsd/typescript": "^5.9.2", "eslint-formatter-pretty": "^4.1.0", "globby": "^11.0.1", "jest-diff": "^29.0.3", "meow": "^9.0.0", "path-exists": "^4.0.0", "read-pkg-up": "^7.0.0" }, "bin": { "tsd": "dist/cli.js" } }, "sha512-/PQtykJFVw90QICG7zyPDMIyueOXKL7jOJVoX5pILnb3Ux+7QqynOxfVvarE+K+yi7BZyOSY4r+OZNWSWRiEwQ=="],
 
@@ -1162,6 +1163,8 @@
     "yargs-parser": ["yargs-parser@20.2.9", "https://registry.npmjs.org/yargs-parser/-/yargs-parser-20.2.9.tgz", {}, "sha512-y11nGElTIV+CT3Zv9t7VKl+Q3hTQoT9a1Qzezhhl6Rp21gJ/IVTW7Z3y9EWXhuUBC2Shnf+DX0antecpAwSP8w=="],
 
     "zod": ["zod@4.1.12", "https://registry.npmjs.org/zod/-/zod-4.1.12.tgz", {}, "sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ=="],
+
+    "@dotfiles/build/ts-unused": ["ts-unused@1.0.0", "https://registry.npmjs.org/ts-unused/-/ts-unused-1.0.0.tgz", { "dependencies": { "ts-morph": "^27.0.2", "typescript": "^5" }, "bin": { "ts-unused": "dist/cli.js" } }, "sha512-7bRwlZQHQnU7alRGCUkN7nznCEcnoV0i8V12xUE8v2x3iW44oRtim3BLiK9fQWD/K+vR6gWIcv1s14Zx/Pzf2w=="],
 
     "@ts-morph/common/minimatch": ["minimatch@9.0.5", "https://registry.npmjs.org/minimatch/-/minimatch-9.0.5.tgz", { "dependencies": { "brace-expansion": "^2.0.1" } }, "sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow=="],
 
@@ -1203,10 +1206,14 @@
 
     "yargs/yargs-parser": ["yargs-parser@21.1.1", "https://registry.npmjs.org/yargs-parser/-/yargs-parser-21.1.1.tgz", {}, "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw=="],
 
+    "@dotfiles/build/ts-unused/ts-morph": ["ts-morph@27.0.2", "https://registry.npmjs.org/ts-morph/-/ts-morph-27.0.2.tgz", { "dependencies": { "@ts-morph/common": "~0.28.1", "code-block-writer": "^13.0.3" } }, "sha512-fhUhgeljcrdZ+9DZND1De1029PrE+cMkIP7ooqkLRTrRLTqcki2AstsyJm0vRNbTbVCNJ0idGlbBrfqc7/nA8w=="],
+
     "read-pkg/normalize-package-data/hosted-git-info": ["hosted-git-info@2.8.9", "https://registry.npmjs.org/hosted-git-info/-/hosted-git-info-2.8.9.tgz", {}, "sha512-mxIDAb9Lsm6DoOJ7xH+5+X4y1LU/4Hi50L9C5sIswK3JzULS4bwk1FvjdBgvYR4bzT4tuUQiC15FE2f5HbLvYw=="],
 
     "read-pkg/normalize-package-data/semver": ["semver@5.7.2", "https://registry.npmjs.org/semver/-/semver-5.7.2.tgz", { "bin": { "semver": "bin/semver" } }, "sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g=="],
 
     "ts-unused/ts-morph/@ts-morph/common": ["@ts-morph/common@0.28.1", "https://registry.npmjs.org/@ts-morph/common/-/common-0.28.1.tgz", { "dependencies": { "minimatch": "^10.0.1", "path-browserify": "^1.0.1", "tinyglobby": "^0.2.14" } }, "sha512-W74iWf7ILp1ZKNYXY5qbddNaml7e9Sedv5lvU1V8lftlitkc9Pq1A+jlH23ltDgWYeZFFEqGCD1Ies9hqu3O+g=="],
+
+    "@dotfiles/build/ts-unused/ts-morph/@ts-morph/common": ["@ts-morph/common@0.28.1", "https://registry.npmjs.org/@ts-morph/common/-/common-0.28.1.tgz", { "dependencies": { "minimatch": "^10.0.1", "path-browserify": "^1.0.1", "tinyglobby": "^0.2.14" } }, "sha512-W74iWf7ILp1ZKNYXY5qbddNaml7e9Sedv5lvU1V8lftlitkc9Pq1A+jlH23ltDgWYeZFFEqGCD1Ies9hqu3O+g=="],
   }
 }

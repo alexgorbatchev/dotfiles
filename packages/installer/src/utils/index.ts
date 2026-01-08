@@ -3,6 +3,7 @@ export * from './createConfiguredShell';
 export * from './createToolFileSystem';
 export * from './downloadWithProgress';
 export * from './executeHooks';
+export * from './extractErrorCause';
 export * from './getBinaryNames';
 export * from './getBinaryPaths';
 export * from './HookExecutor';
