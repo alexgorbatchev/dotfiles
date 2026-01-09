@@ -4,6 +4,8 @@ applyTo: '**/*'
 ---
 # TypeScript Code Quality Requirements
 
+--- 
+
 ## General Requirements
 - `any` type is PROHIBITED
 - Line length is 120 characters
@@ -12,11 +14,15 @@ applyTo: '**/*'
 - Use typeguard functions instead of `as Type`
 - Don't use inline imports or require statements
 
+--- 
+
 ## File Name Rules
 Filenames must match the exact name and casing of the main exported element.
 - If exporting a function `createUser`, the file should be `createUser.ts`
 - If exporting a class `UserProfile`, the file should be `UserProfile.ts`
 - If exporting a type `Config`, the file should be `Config.ts`
+
+--- 
 
 **Edge Cases:**
 - **Constants files**: Use `constants.ts` for package-specific constants
@@ -25,11 +31,15 @@ Filenames must match the exact name and casing of the main exported element.
 - **Index files**: Always named `index.ts` and re-export package's public API
 - **Test files**: Use `{sourceFileName}.test.ts` pattern in `__tests__` directories
 
+--- 
+
 ## Variable Naming Rules
 - **camelCase**: Variables, functions, methods, properties
 - **PascalCase**: Classes, interfaces, types, enums
 - **SCREAMING_SNAKE_CASE**: Constants
 - **IInterface**: Interface names must start with `I`
+
+--- 
 
 ## Type Safety Rules
 
@@ -69,9 +79,45 @@ Only use `as` for:
 
 **If you find yourself using `as`, ask: "Can I use proper type checking instead?"**
 
-## Test File Organization
+### Return Value Standards
 
+- **Explicit Return Types**: All functions must declare explicit return types
+- **No Inline Object Returns**: Functions must never return `{...}` object literals directly
+- **Typed Variable Pattern**: Declare result with explicit type, then return the typed variable
+
+```typescript
+// ❌ BAD - Inline object return
+function createUser(name: string) {
+  return {
+    id: generateId(),
+    name,
+    createdAt: new Date()
+  };
+}
+
+// ✅ GOOD - Explicit return type and typed variable
+function createUser(name: string): UserResult {
+  const result: UserResult = {
+    id: generateId(),
+    name,
+    createdAt: new Date()
+  };
+  return result;
+}
+```
+
+**Rationale**: Explicit return types and typed variables improve:
+- Type safety and compile-time error detection
+- Code readability and documentation
+- Refactoring safety and IDE support
+- Debugging experience with clear variable names
+
+---
+
+## Test File Organization
 - Break up large test files into smaller files using `{fileName}--{part}` naming convention.
+
+--- 
 
 ## Functional Programming Approach
 
@@ -80,94 +126,54 @@ Only use `as` for:
 - **Dependency Injection for Effects:** Functions that orchestrate operations but need to invoke side effects must receive the necessary handlers (e.g., `FileSystem` instance, HTTP client, logger instance) as arguments.
 - **Configuration:** Configuration objects derived from external sources (like environment variables) must be created by pure functions. These functions receive all necessary raw inputs (e.g., an object representing environment variables, system properties) as arguments and should use appropriate validation libraries to parse and transform these inputs into a typed configuration object. This validated configuration object is then created at the application's main entry point and passed down via dependency injection.
 
+--- 
+
 ## Import Statements
 
 - All import statements must be placed at the top of the file, before any other code
-- Dynamic imports using `await import()` are PROHIBITED 
-- Inline imports and require statements are PROHIBITED
+- Dynamic imports using `await import()` are PROHIBITED
+- Require statements are PROHIBITED
 - Importing `* as Foo` is PROHIBITED (e.g., `import * as Foo from 'foo'`) 
 - Exporting `* as Foo` is PROHIBITED (e.g., `export * as Foo from 'foo'`)
 - Renaming import bindings is PROHIBITED (e.g., `import { Foo as Bar } from 'foo'`)
 - When editing files with `as Foo` imports, replace them with the actual binding name
 - When using `@foo/bar` imports use the shortest path possible (e.g., `@foo/bar` instead of `@foo/bar/baz`)
 
-## Returns Types
-Return types MUST NEVER be defined inline.
+--- 
 
-```typescript
-// ✅ Good - Returns known type
-function getResults(): Promise<OperationResults>
-
-// ❌ Bad - Defines type inline
-function getResults(): Promise<{ success: boolean }>
-```
-
-## Parameter Types
-Function argument types MUST NEVER be defined inline.
-```typescript
-// ✅ Good - Uses known type
-function load(record: ID)
-
-// ❌ Bad - Defines type inline
-function load(record: { id: string })
-```
-
-## Variable Types
-- **camelCase**: Variables, functions, methods, properties
-- **PascalCase**: Classes, interfaces, types, enums
-- **SCREAMING_SNAKE_CASE**: Constants
-- **kebab-case**: CSS classes
-
-## Variable Type Annotations
+## Awlays Use Existing Types
 - **Explicit Types Required**: Every declared variable that is not a result of a function call must have an explicit type annotation
 - **Function Call Results**: Variables assigned from function calls can rely on type inference
 - **Primitive Literals Exception**: String, number, and boolean literals can rely on type inference
 
 ```typescript
-// ✅ Good - Strings, booleans and numbers can use inference
-const userName = 'john';
-const userAge = 25;
-const isActive = true;
-const schema = zod...;
-
-// ✅ Good - Explicit types for complex declarations
-const items: string[] = [];
-const config: AppConfig = {};
-const result: PatternResult = {
-  systemPattern,
-  cpuPattern,
-  variantPattern,
-};
-
-// ✅ Good - Function calls can use inference
-const result = calculateTotal(items);
+// ✅ Good
+function getResults(): Promise<OperationResults>
+function load(record: ID)
+const user: UserProfile = { ... };
 const user = await fetchUser(id);
-const data = JSON.parse(response);
+const bool = true;
+const num = 42;
+const str = "hello";
 
-// ❌ Bad - Missing type annotations for complex declarations
-const items = [];
-const config = {};
-const result = {
-  systemPattern,
-  cpuPattern,
-  variantPattern,
-};
+// ❌ Bad
+function getResults(): Promise<{ success: boolean }>
+function getResults(): Promise<OperationResults & { exitCode: number }>
+function load(record: { id: string })
+function load(record: ID & { name: string })
+const user: UserProfile & { timestamp: number } = { ... };
+const user = { ... } as UserProfile;
 ```
 
-**Specific Requirements**:
-- **Object literals**: Must have explicit type annotations (e.g., `const obj: MyType = { ... }`)
-- **Array literals**: Must have explicit type annotations (e.g., `const arr: string[] = []`)
-- **Complex expressions**: Any non-primitive assignment must include type annotation
+--- 
 
-**Rationale**: Explicit type annotations for non-function-call variables improve:
-- Code readability and self-documentation
-- Type safety and compile-time error detection
-- IDE support and autocomplete accuracy
-- Easier refactoring and maintenance
+## Variable Naming Conventions
+- **camelCase**: Variables, functions, methods, properties
+- **PascalCase**: Classes, interfaces, types, enums
+- **SCREAMING_SNAKE_CASE**: Constants
+- **kebab-case**: CSS classes
 
-**Enforcement**: When working with existing code that violates this standard, ALL violations in the file must be corrected during any modification session.
-
-## Boolean Variables
+### Boolean Variables
 
 **Required Prefixes**: `is`, `has`, `can`, `should`, `will`, `does`
 
@@ -205,7 +211,7 @@ try {
 }
 ```
 
-## Path Variables
+### Path Variables
 
 **Consistent Suffix Usage**: Use `Path` suffix consistently within same context
 
@@ -225,18 +231,19 @@ const sourcePath = '/src/file.txt';
 const dest = '/dest/file.txt';
 ```
 
-## Temporary Variables
-
-**Avoid Copy-Paste Artifacts**: Remove method-specific suffixes from shared variable names
+### Temporary Variables
+Avoid defining single use variables.
 
 ```typescript
-// ❌ Bad - Copy-paste artifacts
-const finalBinaryPathCurl = determinePath();
-const finalBinaryPathTar = determinePath();
+// ✅ Good
+console.log(determinePath());
 
-// ✅ Good - Clean naming
-const finalBinaryPath = determinePath();
+// ❌ Bad
+const finalBinaryPathCurl = determinePath();
+console.log(finalBinaryPathCurl);
 ```
+
+---
 
 ## Stongest Type Possible
 
@@ -246,29 +253,14 @@ const finalBinaryPath = determinePath();
 
 ```typescript
 // ✅ Good
-type Success = { success: true; data: string };
-type Failure = { success: false; error: string };
-type ReturnType<TMetadata> = (Success & {
-  metadata: TMetadata;
-}) | Failure; 
-
-// ✅ Good
-const finalContext: BaseContext & AdditionalContext = {
+type Metadata = { tarballUrl: string; };
+type ReturnType = { success: boolean; metadata: Metadata; };
 
 // ❌ Bad
-type ReturnType = {
-  success: boolean;
-  error?: string;
-  metadata: {
-    method: 'curl-tar';
-    tarballUrl: string;
-  };
-};
-
-// ❌ Bad
-const finalContext: BaseContext & { binaryPaths?: string[]; version?: string } = {
+type ReturnType = { success: boolean; metadata: { tarballUrl: string; } };
 ```
 
+---
 
 ## Module Import Rules
 
@@ -307,6 +299,8 @@ packages/user/
 └── tsconfig.json
 ```
 
+---
+
 ## Index File Export Rules
 
 - **Index.ts Files**: `index.ts` files can use `export *` statements to re-export package contents
@@ -331,11 +325,3 @@ export { createUser, updateUser } from './userUtils';
 export { ValidationUtils } from './validation';
 export type { User, UserConfig } from './types';
 ```
-
-## Project Analysis and Tooling
-- Use TypeScript tool calling to access LSP-based project analysis for the current codebase
-- Leverage TypeScript tooling to understand project structure, types, and dependencies before making changes
-
-## ENFORCEMENT
-
-When working with existing code that violates this standard, ALL violations in the file must be corrected during any modification session.

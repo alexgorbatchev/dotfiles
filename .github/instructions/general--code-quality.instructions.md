@@ -1,5 +1,5 @@
 ---
-description: Universal code quality standards for LLM assistance.
+description: Universal and mandatory code quality standards for the project.
 applyTo: '**/*'
 ---
 # Universal Code Quality Standards
@@ -24,39 +24,6 @@ applyTo: '**/*'
 - Separate core logic from external dependencies and side effects
 - Make dependencies explicit through parameters rather than implicit through globals
 - Structure code to be testable and maintainable
-
-## Return Value Standards
-
-- **Explicit Return Types**: All functions must declare explicit return types
-- **No Inline Object Returns**: Functions must never return `{...}` object literals directly
-- **Typed Variable Pattern**: Declare result with explicit type, then return the typed variable
-
-```typescript
-// ❌ BAD - Inline object return
-function createUser(name: string) {
-  return {
-    id: generateId(),
-    name,
-    createdAt: new Date()
-  };
-}
-
-// ✅ GOOD - Explicit return type and typed variable
-function createUser(name: string): UserResult {
-  const result: UserResult = {
-    id: generateId(),
-    name,
-    createdAt: new Date()
-  };
-  return result;
-}
-```
-
-**Rationale**: Explicit return types and typed variables improve:
-- Type safety and compile-time error detection
-- Code readability and documentation
-- Refactoring safety and IDE support
-- Debugging experience with clear variable names
 
 ## Consistency
 
