@@ -17,10 +17,10 @@ import type { ISystemInfo } from './common.types';
  * export default defineTool((install, ctx) =>
  *   install('github-release', { repo: 'sharkdp/bat' })
  *     .bin('bat')
- *     .hook('after-install', async ({ log }) => {
- *       log.info('Running post-install setup...');
- *       log.debug('Checking configuration files');
- *       log.warn('Config file not found, using defaults');
+ *     .hook('after-install', async () => {
+ *       ctx.log.info('Running post-install setup...');
+ *       ctx.log.debug('Checking configuration files');
+ *       ctx.log.warn('Config file not found, using defaults');
  *     })
  * );
  * ```
@@ -245,9 +245,9 @@ export interface IBaseToolContext {
    * export default defineTool((install, ctx) =>
    *   install('github-release', { repo: 'sharkdp/bat' })
    *     .bin('bat')
-   *     .hook('after-install', async ({ log }) => {
-   *       log.info('Running post-install setup...');
-   *       log.debug('Checking configuration files');
+   *     .hook('after-install', async () => {
+   *       ctx.log.info('Running post-install setup...');
+   *       ctx.log.debug('Checking configuration files');
    *     })
    * );
    * ```
