@@ -8,3 +8,4 @@ export * from '../__tests__/scenarios/install';
 export * from '../__tests__/scenarios/typeSafety';
 export * from '../__tests__/scenarios/update';
 export * from '../__tests__/scenarios/versionDetection';
+export * from '../__tests__/scenarios/trace';

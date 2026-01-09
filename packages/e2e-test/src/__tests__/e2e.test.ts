@@ -4,6 +4,7 @@
  * Main entry point that runs all e2e test scenarios.
  */
 import { describe } from 'bun:test';
+import '@dotfiles/testing-helpers';
 import { Architecture, Platform } from '@dotfiles/core';
 import {
   completionScenarios,
@@ -16,6 +17,7 @@ import {
   typeSafetyScenarios,
   updateScenarios,
   versionDetectionScenarios,
+  traceScenarios,
 } from '../helpers';
 import { TestHarness } from '../TestHarness';
 import { withMockServer } from '../withMockServer';
@@ -48,6 +50,7 @@ describe('E2E: Dotfiles CLI', () => {
         installScenarios(harness);
         hookScenarios(harness);
         versionDetectionScenarios(harness);
+        traceScenarios(harness);
       });
 
       filesScenarios(harness);

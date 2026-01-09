@@ -130,5 +130,6 @@ if (!result.success) {
 - Do not log objects, arrays, or long string values
 - Do not wrap function calls with begin/end logs if those functions have their own logging
 - Do not log more than one message per event
+- Log output uses the tab character (`\t`) as a separator between fields (eg `WARN\t`). Tests verifying log output must match this character explicitly.
 
 

@@ -3,7 +3,7 @@
 ## Enable Debug Logging
 
 ```bash
-dotfiles install tool-name --log=trace
+dotfiles install tool-name --trace --log=verbose
 ```
 
 ## Common Issues
@@ -18,7 +18,7 @@ dotfiles install tool-name --log=trace
 
 1. Check asset patterns match actual GitHub release assets
 2. Verify repository name is correct
-3. Use `--log=trace` to see detailed error messages
+3. Use `--trace --log=verbose` to see detailed error messages
 
 ### Infinite Recursion Error
 
@@ -75,7 +75,7 @@ bun typecheck
 ```bash
 dotfiles install tool-name           # Install
 dotfiles install tool-name --force   # Force reinstall
-dotfiles install tool-name --log=trace  # Debug logging
+dotfiles install tool-name --trace --log=verbose  # Debug logging
 dotfiles files tool-name             # List generated files
 dotfiles check-updates               # Check all for updates
 ```

@@ -49,6 +49,7 @@ export function createProgram(): IGlobalProgram {
     .version(process.env.DOTFILES_VERSION ?? '0.0.0')
     .option('--config <path>', 'Path to a configuration file', '')
     .option('--dry-run', 'Simulate all operations without making changes to the file system', false)
+    .option('--trace', 'Show file paths and line numbers in log output', false)
     .option(`--log <level>`, `Set log level (${LOG_LEVEL_NAMES.join(', ')})`, 'default')
     .option('--verbose', 'Enable detailed debug messages (alias for --log=verbose)', false)
     .option(

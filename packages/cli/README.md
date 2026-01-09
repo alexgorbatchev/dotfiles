@@ -353,7 +353,7 @@ dotfiles install <TAB>   # Shows configured tool names
 
 - All CLI commands (install, generate, cleanup, etc.)
 - Command-specific options (--force, --overwrite, etc.)
-- Global options (--config, --dry-run, --log, --verbose, etc.)
+- Global options (--config, --dry-run, --log, --verbose, --trace, etc.)
 - Subcommands (features catalog)
 - Positional arguments with descriptions
 - Tool name suggestions sourced from the current configuration

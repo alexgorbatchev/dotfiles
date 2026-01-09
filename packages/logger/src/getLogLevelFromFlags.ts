@@ -22,9 +22,6 @@ import { LogLevel, type LogLevelValue, parseLogLevel } from './LogLevel';
  *
  * // --verbose flag is present
  * getLogLevelFromFlags('default', false, true); // LogLevel.VERBOSE
- *
- * // --log=trace flag is present
- * getLogLevelFromFlags('trace', false, false); // LogLevel.TRACE
  * ```
  *
  * @see {@link LogLevel}

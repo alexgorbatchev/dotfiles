@@ -90,8 +90,8 @@ describe('SafeLogger - stack trace filtering', () => {
     }
   });
 
-  it('preserves full stack trace at TRACE level for debugging', () => {
-    const logger = new TestLogger<ILogObj>({ name: 'test', minLevel: LogLevel.TRACE });
+  it('preserves full stack trace when tracing is enabled', () => {
+    const logger = new TestLogger<ILogObj>({ name: 'test', trace: true });
 
     const error = new Error('Debug error');
     error.stack = `Error: Debug error

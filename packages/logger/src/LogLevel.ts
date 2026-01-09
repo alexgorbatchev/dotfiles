@@ -4,7 +4,6 @@
  * Each level corresponds to a specific `tslog` level number, determining which
  * messages are displayed based on their severity.
  *
- * @property TRACE - Level 0: The most verbose level, showing all messages.
  * @property VERBOSE - Level 1: Equivalent to a debug level, showing debug, info, warn, error, and fatal messages.
  * @property DEFAULT - Level 3: The standard info level, showing info, warn, error, and fatal messages.
  * @property QUIET - Level 5: The error level, showing only error and fatal messages.
@@ -17,7 +16,6 @@
  * ```
  */
 export const LogLevel = {
-  TRACE: 0,
   VERBOSE: 1,
   DEFAULT: 3,
   QUIET: 5,
@@ -32,7 +30,7 @@ export type LogLevelValue = (typeof LogLevel)[keyof typeof LogLevel];
  * Defines the valid string representations of log levels, typically used for
  * parsing command-line arguments or configuration values.
  */
-export const LOG_LEVEL_NAMES = ['trace', 'verbose', 'default', 'quiet'] as const;
+export const LOG_LEVEL_NAMES = ['verbose', 'default', 'quiet'] as const;
 
 /**
  * A type representing the string name of a log level.
@@ -50,7 +48,6 @@ export type LogLevelName = (typeof LOG_LEVEL_NAMES)[number];
  * ```
  */
 export const LOG_LEVEL_MAP: Record<LogLevelName, LogLevelValue> = {
-  trace: LogLevel.TRACE,
   verbose: LogLevel.VERBOSE,
   default: LogLevel.DEFAULT,
   quiet: LogLevel.QUIET,

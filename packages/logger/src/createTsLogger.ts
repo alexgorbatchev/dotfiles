@@ -53,19 +53,16 @@ export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
 
   config.level = config.level ?? LogLevel.DEFAULT;
 
-  const prettyLogTemplate =
-    // here if trace, we will add more details
-    config.level === LogLevel.TRACE
-      ? // add full name in verbose mode
-        '{{logLevelName}}\t{{filePathWithLine}} - '
-      : // for all other levels this
-        '{{logLevelName}}\t';
+  const prettyLogTemplate = config.trace
+    ? '{{logLevelName}}\t{{filePathWithLine}} - '
+    : '{{logLevelName}}\t';
 
   const isColorDisabled = process.env['NO_COLOR'] === '1' || process.env['TERM'] === 'dumb';
 
   return new SafeLogger({
     name: config.name,
     minLevel: config.level,
+    trace: config.trace,
     prettyLogTemplate,
     stylePrettyLogs: !isColorDisabled,
 

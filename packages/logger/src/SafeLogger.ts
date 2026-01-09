@@ -2,7 +2,6 @@ import { type ILogObjMeta, type ISettingsParam, Logger } from 'tslog';
 import type { ZodError } from 'zod';
 import { filterErrorStackToToolFiles, isError } from './filterErrorStack';
 import { formatZodErrors } from './formatZodErrors';
-import { LogLevel } from './LogLevel';
 import type { SafeLogMessage } from './types';
 
 /**
@@ -15,6 +14,10 @@ export interface ISafeLoggerSettings<LogObj> extends ISettingsParam<LogObj> {
    * Uses tslog's built-in `prefix` array internally.
    */
   context?: string;
+  /**
+   * Whether source location tracing is enabled.
+   */
+  trace?: boolean;
 }
 
 /**
@@ -46,11 +49,12 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
   }
 
   /**
-   * Checks if this logger is at trace level (verbose mode).
-   * When in trace mode, full error stacks are shown.
+   * Checks if this logger has tracing enabled.
+   * When enabled, full error stacks and source locations are shown.
    */
-  private isTraceLevel(): boolean {
-    return this.settings.minLevel === LogLevel.TRACE;
+  public isTracingEnabled(): boolean {
+    const settings = this.settings as ISafeLoggerSettings<LogObj>;
+    return settings.trace === true;
   }
 
   /**
@@ -58,7 +62,7 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
    * Only applies when NOT in trace mode (trace shows full stacks for debugging).
    */
   private filterErrorArgs(args: unknown[]): unknown[] {
-    if (this.isTraceLevel()) {
+    if (this.isTracingEnabled()) {
       return args;
     }
 

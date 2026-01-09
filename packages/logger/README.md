@@ -8,7 +8,7 @@ The `@dotfiles/logger` package provides a robust, type-safe, and structured logg
 - **`SafeLogger`**: A custom logger class that extends `tslog`'s `Logger`. It enforces that all log messages are of type `SafeLogMessage`, preventing the use of raw strings. Supports context strings that are prepended to log messages as `[context]`.
 - **`SafeLogMessage`**: A branded string type that represents a message that is safe for logging. This is the cornerstone of the type-safe logging system.
 - **`TestLogger`**: An extension of the logger designed for testing. It captures log messages in memory, allowing assertions on logs emitted during a test run.
-- **Log Levels**: Defines standard log levels (`TRACE`, `VERBOSE`, `DEFAULT`, `QUIET`) and provides helpers like `parseLogLevel` and `getLogLevelFromFlags`.
+- **Log Levels**: Defines standard log levels (`VERBOSE`, `DEFAULT`, `QUIET`) and provides helpers like `parseLogLevel` and `getLogLevelFromFlags`.
 
 ## Logger Context
 

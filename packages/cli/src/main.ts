@@ -463,7 +463,7 @@ export async function main(argv: string[]) {
 
   // Create logger with appropriate level based on CLI flags
   const logLevel = resolveLogLevel(argv, options);
-  const rootLogger = createTsLogger({ name: 'cli', level: logLevel });
+  const rootLogger = createTsLogger({ name: 'cli', level: logLevel, trace: options.trace });
   const logger = rootLogger.getSubLogger({ name: 'main' });
 
   logger.trace(messages.cliStarted(), argv);

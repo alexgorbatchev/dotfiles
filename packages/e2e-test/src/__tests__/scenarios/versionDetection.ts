@@ -22,7 +22,7 @@ function getToolInstallation(generatedDir: string, toolName: string): ToolInstal
 
 export function versionDetectionScenarios(harness: TestHarness): void {
   async function verifyVersionDetection(toolName: string, expectedVersion: string): Promise<void> {
-    const result = await harness.install([toolName], ['--log=trace']);
+    const result = await harness.install([toolName], ['--log=verbose', '--trace']);
     expect(result.exitCode).toBe(0);
 
     const binPath = path.join(harness.generatedDir, 'binaries', toolName, 'current', toolName);
@@ -53,7 +53,7 @@ export function versionDetectionScenarios(harness: TestHarness): void {
 
     it('should fall back to timestamp when version detection fails', async () => {
       const toolName = 'version-detection--curl-script--no-version';
-      const result = await harness.install([toolName], ['--log=trace']);
+      const result = await harness.install([toolName], ['--log=verbose', '--trace']);
 
       expect(result.exitCode).toBe(0);
 

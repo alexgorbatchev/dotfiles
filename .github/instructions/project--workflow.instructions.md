@@ -20,7 +20,7 @@ When user reports an issue
 - Fix the issue and ensure the test passes.
 - Ensure all tests pass.
 - When user requests specific implementation, never switch to alternative solutions.
-- CLI supports `--log=trace` for detailed logging, use it to gather more information about issues.
+- CLI supports `--trace --log=verbose` for detailed logging, use it to gather more information about issues.
 
 ## Task Completion Definition
 

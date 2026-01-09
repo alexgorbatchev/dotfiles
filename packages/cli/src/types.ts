@@ -85,6 +85,7 @@ export interface IGlobalProgramOptions {
   log: string;
   verbose: boolean;
   quiet: boolean;
+  trace: boolean;
   platform?: string;
   arch?: string;
 }

@@ -12,6 +12,7 @@ describe('resolveLogLevel', () => {
       log: 'default',
       verbose: false,
       quiet: false,
+      trace: false,
       platform: undefined,
       arch: undefined,
     };
@@ -28,6 +29,7 @@ describe('resolveLogLevel', () => {
       log: 'default',
       verbose: false,
       quiet: false,
+      trace: false,
       platform: undefined,
       arch: undefined,
     };

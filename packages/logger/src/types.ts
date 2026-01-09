@@ -46,4 +46,9 @@ export interface ILoggerConfig {
    * @default LogLevel.DEFAULT
    */
   level?: LogLevelValue;
+  /**
+   * Whether to include source file paths and line numbers in log output.
+   * @default false
+   */
+  trace?: boolean;
 }

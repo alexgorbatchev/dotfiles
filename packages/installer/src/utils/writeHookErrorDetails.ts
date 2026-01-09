@@ -1,7 +1,6 @@
 import { codeFrameColumns } from '@babel/code-frame';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
-import { LogLevel } from '@dotfiles/logger';
 
 interface IToolStackFrame {
   filePath: string;
@@ -38,7 +37,7 @@ function isShellErrorLike(value: unknown): value is IShellErrorLike {
 }
 
 function isTraceEnabled(logger: TsLogger): boolean {
-  return logger.settings.minLevel === LogLevel.TRACE;
+  return logger.isTracingEnabled();
 }
 
 function normalizeMultiline(value: string): string {
