@@ -11,9 +11,10 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/logger": "workspace:*",
-    "@dotfiles/core": "workspace:*"
+    "dax-sh": "catalog:"
   },
   "devDependencies": {
     "@dotfiles/testing-helpers": "workspace:*",

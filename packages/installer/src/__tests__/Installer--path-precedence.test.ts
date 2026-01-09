@@ -4,12 +4,19 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
-import { Architecture, InstallerPluginRegistry, type ISystemInfo, Platform, type ToolConfig } from '@dotfiles/core';
+import {
+  type $extended,
+  Architecture,
+  InstallerPluginRegistry,
+  type ISystemInfo,
+  Platform,
+  type ToolConfig,
+} from '@dotfiles/core';
 import { NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import type { IToolInstallationRegistry } from '@dotfiles/registry/tool';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { z } from 'zod';
 import { Installer } from '../Installer';
 import { HookExecutor } from '../utils/HookExecutor';
@@ -124,7 +131,7 @@ describe('Installer - Path Precedence (Real FS)', () => {
       systemInfo,
       registry,
       symlinkGenerator,
-      $,
+      $ as unknown as $extended,
       hookExecutor
     );
 

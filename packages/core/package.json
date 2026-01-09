@@ -17,6 +17,7 @@
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/unwrap-value": "workspace:*",
     "@dotfiles/utils": "workspace:*",
+    "dax-sh": "catalog:",
     "type-fest": "catalog:",
     "zod": "catalog:"
   },

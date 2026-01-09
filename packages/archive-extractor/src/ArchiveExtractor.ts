@@ -4,7 +4,7 @@ import type { ArchiveFormat, IExtractOptions, IExtractResult } from '@dotfiles/c
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { getAllFilesRecursively } from '@dotfiles/utils';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import type { IArchiveExtractor } from './IArchiveExtractor';
 import { messages } from './log-messages';
 
@@ -85,7 +85,7 @@ export class ArchiveExtractor implements IArchiveExtractor {
       const commandName = 'file';
       logger.debug(messages.shellCommandStarted(commandName));
       const result = await $`file -b --mime-type ${filePath}`.quiet();
-      const output = (await result.text()).trim();
+      const output = result.stdout.trim();
 
       return this.detectFormatByMimeType(output);
     } catch (error) {

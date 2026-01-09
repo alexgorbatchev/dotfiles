@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
+import fs from 'node:fs';
 import path from 'node:path';
-import { $ } from 'bun';
 import type { TestHarness } from '../../TestHarness';
 
 /**
@@ -24,14 +24,14 @@ export function conflictScenarios(harness: TestHarness): void {
 
     it('should detect conflicts with existing non-generator files', async () => {
       // Create a conflicting file that is NOT a generator shim
-      await $`mkdir -p ${harness.userBinDir}`.quiet();
-      await $`touch ${conflictingShimPath}`.quiet();
+      await fs.promises.mkdir(harness.userBinDir, { recursive: true });
+      await fs.promises.writeFile(conflictingShimPath, '');
 
       // Run detect-conflicts command
       const detectResult = await harness.detectConflicts();
 
       // Should exit with error code 1
-      expect(detectResult.exitCode).toBe(1);
+      expect(detectResult.code).toBe(1);
 
       // Should warn about the conflict (output goes to stdout)
       expect(detectResult.stdout).toContain('Conflicts detected with files not owned by the generator');
@@ -48,7 +48,7 @@ export function conflictScenarios(harness: TestHarness): void {
       const generateResult = await harness.generate();
 
       // Generate completes successfully but skips the conflicting shim
-      expect(generateResult.exitCode).toBe(0);
+      expect(generateResult.code).toBe(0);
 
       // Should error about the conflict
       expect(generateResult.stdout).toContain('Cannot create shim for "github-release-tool"');
@@ -74,7 +74,7 @@ export function conflictScenarios(harness: TestHarness): void {
       const generateResult = await harness.generate(['--overwrite']);
 
       // Should succeed
-      expect(generateResult.exitCode).toBe(0);
+      expect(generateResult.code).toBe(0);
 
       // Shim should now exist and be executable
       await harness.verifyShim('github-release-tool');

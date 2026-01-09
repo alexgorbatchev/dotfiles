@@ -1,6 +1,6 @@
-import type { $ } from 'bun';
+import type { $ } from 'dax-sh';
 
-declare const extendedShellBrand: unique symbol;
+export const extendedShellBrand: unique symbol = Symbol('extendedShellBrand');
 
 /**
  * A configured Bun shell instance that extends Bun's `$`.
@@ -18,4 +18,7 @@ declare const extendedShellBrand: unique symbol;
  * - If the tool does not originate from a `.tool.ts` file (rare), the working directory is inherited
  *   from the running process (`process.cwd()`).
  */
-export type $extended = typeof $ & { readonly [extendedShellBrand]: true };
+export type $extended = typeof $ & {
+  (command: string): ReturnType<typeof $>;
+  readonly [extendedShellBrand]: true;
+};

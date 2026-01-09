@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
 import { copyFileIfExists, createDistCheckPackageJson } from '../helpers';
 import type { IBuildContext } from '../types';
@@ -42,14 +42,14 @@ export async function verifyDistCheckInstall(context: IBuildContext): Promise<vo
 
   copyFileIfExists(context.paths.npmrcPath, distCheckPaths.distCheckNpmrcPath);
 
-  const installResult = await $`bun install`.quiet().throws(false).cwd(distCheckPaths.distCheckDir);
+  const installResult = await $`bun install`.quiet().noThrow().cwd(distCheckPaths.distCheckDir);
 
-  if (installResult.exitCode === 0) {
+  if (installResult.code === 0) {
     console.log('✅ .dist install check passed');
     return;
   }
 
-  console.error(`❌ .dist install check failed with exit code: ${installResult.exitCode}`);
+  console.error(`❌ .dist install check failed with exit code: ${installResult.code}`);
   console.error(`Error output: ${installResult.stderr.toString()}`);
   throw new BuildError('Dist install check failed');
 }

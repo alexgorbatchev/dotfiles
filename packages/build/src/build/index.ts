@@ -10,13 +10,13 @@
  *   bun run build
  */
 
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { getPackageJson } from '../getPackageJson';
 
 async function main() {
   const results = await $`bun run build.ts`
     //
-    .throws(false)
+    .noThrow()
     .cwd(__dirname)
     .env({
       ...process.env,
@@ -24,7 +24,7 @@ async function main() {
       DOTFILES_VERSION: getPackageJson().version,
     });
 
-  process.exit(results.exitCode);
+  process.exit(results.code);
 }
 
 await main();

@@ -11,12 +11,12 @@ export function filesScenarios(harness: TestHarness): void {
     it('should display tree of installed tool files', async () => {
       // Install the tool first
       const installResult = await harness.install(['github-release-tool']);
-      expect(installResult.exitCode).toBe(0);
+      expect(installResult.code).toBe(0);
 
       // Then check files command
       const result = await harness.runCommand(['files', '--config', harness.configPath, 'github-release-tool']);
 
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
       expect(result.stdout).toContain('github-release-tool');
       expect(result.stdout).toContain('└─');
     });
@@ -24,7 +24,7 @@ export function filesScenarios(harness: TestHarness): void {
     it('should fail for tool that exists but is not installed', async () => {
       const result = await harness.runCommand(['files', '--config', harness.configPath, 'cargo-quickinstall-tool']);
 
-      expect(result.exitCode).not.toBe(0);
+      expect(result.code).not.toBe(0);
       expect(result.stdout).toContain('not installed');
     });
   });

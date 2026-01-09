@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import { Architecture, createToolLog, type IAfterInstallContext, type ISystemInfo, Platform } from '@dotfiles/core';
+import { Architecture, createToolLog, type IAfterInstallContext, type ISystemInfo, Platform, createLoggingShell } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import type { ILogObj } from 'tslog';
 import { createConfiguredShell } from '../createConfiguredShell';
 import { HookExecutor } from '../HookExecutor';
@@ -49,7 +49,7 @@ describe('HookExecutor - error reporting', () => {
     const toolConfigFilePath = path.join(process.cwd(), `${toolName}.tool.ts`);
     toolConfig.configFilePath = toolConfigFilePath;
 
-    const configuredShell = createConfiguredShell($, process.env);
+    const configuredShell = createConfiguredShell(createLoggingShell($, logger), process.env);
 
     const currentDir: string = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -99,7 +99,7 @@ describe('HookExecutor - error reporting', () => {
 
     // The log message now includes the error cause from stderr
     assert.equal(typeof messageArg, 'string');
-    expect(String(messageArg)).toContain('Hook failed: shell-stderr');
+    expect(String(messageArg)).toContain('shell-stderr');
 
     // The error object IS passed to the logger, but SafeLogger filters the stack trace
     // to only show .tool.ts frames (which won't exist in test hooks defined inline)

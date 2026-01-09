@@ -30,7 +30,7 @@ export function installScenarios(harness: TestHarness): void {
 
       // Run install command
       const result = await harness.install(['github-release-tool']);
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
 
       // Check symlink exists
       expect(await harness.fileExists(binaryPath)).toBe(true);

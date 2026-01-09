@@ -23,7 +23,7 @@ function getToolInstallation(generatedDir: string, toolName: string): ToolInstal
 export function versionDetectionScenarios(harness: TestHarness): void {
   async function verifyVersionDetection(toolName: string, expectedVersion: string): Promise<void> {
     const result = await harness.install([toolName], ['--log=verbose', '--trace']);
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
 
     const binPath = path.join(harness.generatedDir, 'binaries', toolName, 'current', toolName);
     expect(await harness.fileExists(binPath)).toBe(true);
@@ -55,7 +55,7 @@ export function versionDetectionScenarios(harness: TestHarness): void {
       const toolName = 'version-detection--curl-script--no-version';
       const result = await harness.install([toolName], ['--log=verbose', '--trace']);
 
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
 
       const binPath = path.join(harness.generatedDir, 'binaries', toolName, 'current', toolName);
       expect(await harness.fileExists(binPath)).toBe(true);

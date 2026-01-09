@@ -6,7 +6,7 @@ import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { ExitCode, exitCli, replaceInFile } from '@dotfiles/utils';
 import { type IVersionChecker, VersionComparisonStatus } from '@dotfiles/version-checker';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { messages } from './log-messages';
 import type { ICommandCompletionMeta, IGlobalProgram, IServices } from './types';
 

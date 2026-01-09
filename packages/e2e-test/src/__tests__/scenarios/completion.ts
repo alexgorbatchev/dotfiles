@@ -19,7 +19,7 @@ export function completionScenarios(harness: TestHarness): void {
 
       // Install the tool explicitly
       const installResult = await harness.install(['curl-script--cmd-completion-test']);
-      expect(installResult.exitCode).toBe(0);
+      expect(installResult.code).toBe(0);
 
       // Verify completion files were generated
       const zshCompletionPath = harness.getCompletionPath('curl-script--cmd-completion-test', 'zsh');

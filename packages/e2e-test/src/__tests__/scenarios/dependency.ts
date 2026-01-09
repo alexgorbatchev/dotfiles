@@ -27,7 +27,7 @@ export function dependencyScenarios(baseTestDir: string, platform: Platform, arc
         cleanBeforeRun: true,
       });
       const result = await harness.generate();
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
       await harness.verifyShim('dependency-provider');
       await harness.verifyShim('dependency-consumer');
     });
@@ -41,7 +41,7 @@ export function dependencyScenarios(baseTestDir: string, platform: Platform, arc
         cleanBeforeRun: true,
       });
       const result = await harness.generate();
-      expect(result.exitCode).toBe(1);
+      expect(result.code).toBe(1);
       const combinedOutput = `${result.stdout}${result.stderr}`;
       expect(combinedOutput).toContain('Missing dependency: tool "dependency-consumer-missing" requires binary');
       expect(combinedOutput).toContain('missing-provider');
@@ -56,7 +56,7 @@ export function dependencyScenarios(baseTestDir: string, platform: Platform, arc
         cleanBeforeRun: true,
       });
       const result = await harness.generate();
-      expect(result.exitCode).toBe(1);
+      expect(result.code).toBe(1);
       const combinedOutput = `${result.stdout}${result.stderr}`;
       expect(combinedOutput).toContain(
         'Ambiguous dependency: binary "shared-dependency" is provided by multiple tools'
@@ -75,7 +75,7 @@ export function dependencyScenarios(baseTestDir: string, platform: Platform, arc
         cleanBeforeRun: true,
       });
       const result = await harness.generate();
-      expect(result.exitCode).toBe(1);
+      expect(result.code).toBe(1);
       const combinedOutput = `${result.stdout}${result.stderr}`;
       expect(combinedOutput).toContain('Circular dependency detected between tools');
       expect(combinedOutput).toContain('dependency-cycle-a');
@@ -91,7 +91,7 @@ export function dependencyScenarios(baseTestDir: string, platform: Platform, arc
         cleanBeforeRun: true,
       });
       const result = await harness.generate();
-      expect(result.exitCode).toBe(1);
+      expect(result.code).toBe(1);
       const combinedOutput = `${result.stdout}${result.stderr}`;
       expect(combinedOutput).toContain('Missing dependency: tool "dependency-platform-consumer" requires binary');
       expect(combinedOutput).toContain('platform-specific-binary');

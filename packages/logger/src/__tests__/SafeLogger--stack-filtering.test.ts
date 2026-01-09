@@ -90,7 +90,7 @@ describe('SafeLogger - stack trace filtering', () => {
     }
   });
 
-  it('preserves full stack trace when tracing is enabled', () => {
+  it('filters stack traces even when tracing is enabled', () => {
     const logger = new TestLogger<ILogObj>({ name: 'test', trace: true });
 
     const error = new Error('Debug error');
@@ -104,14 +104,12 @@ describe('SafeLogger - stack trace filtering', () => {
     const loggedError = errorLogs[0]?.[1];
 
     if (isTslogErrorObject(loggedError)) {
-      // At TRACE level, both frames should be preserved
-      expect(loggedError.stack.length).toBeGreaterThanOrEqual(2);
+      // Stack filtering is always on - only .tool.ts frames shown
+      expect(loggedError.stack).toHaveLength(1);
+      expect(loggedError.stack[0]?.fileName).toBe('my.tool.ts');
 
       const hasInternalFrame = loggedError.stack.some((frame) => frame.method === 'internalFunction');
-      const hasToolFrame = loggedError.stack.some((frame) => frame.fileName === 'my.tool.ts');
-
-      expect(hasInternalFrame).toBe(true);
-      expect(hasToolFrame).toBe(true);
+      expect(hasInternalFrame).toBe(false);
     }
   });
 

@@ -1,11 +1,14 @@
-import type { $extended } from '@dotfiles/core';
-import type { $, ShellExpression } from 'bun';
+import { extendedShellBrand, type $extended } from '@dotfiles/core';
+import type { $ } from 'dax-sh';
 
 /**
  * Creates a configured shell instance that automatically applies the provided environment variables
  * to all commands executed with it.
  *
- * @param $shell - The base Bun shell instance
+ * With dax-sh, subsequent .env() calls are additive (they merge with existing env vars),
+ * so we simply need to ensure the base environment is applied to each command.
+ *
+ * @param $shell - The base dax shell instance
  * @param env - The environment variables to apply to all commands
  * @returns A new shell instance that wraps the base shell with the provided environment
  */
@@ -14,23 +17,20 @@ export function createConfiguredShell(
   env: Record<string, string | undefined>
 ): $extended {
   // Create a wrapper function that applies the environment to every command
-  const configuredShell = (strings: TemplateStringsArray, ...expressions: ShellExpression[]) => {
-    const shellPromise = $shell(strings, ...expressions).env(env);
-
-    // Intercept .env() to merge with the base environment instead of replacing it
-    // This ensures that critical environment variables (like PATH and recursion guards)
-    // are preserved when plugins add their own variables.
-    const originalEnv = shellPromise.env;
-    shellPromise.env = function (newEnv: Record<string, string | undefined>) {
-      return originalEnv.call(this, { ...env, ...newEnv });
-    };
-
-    return shellPromise;
+  const configuredShell = (first: TemplateStringsArray | string, ...expressions: unknown[]) => {
+    if (typeof first === 'string') {
+      return ($shell as $extended)(first).env(env);
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: dax-sh typing for template expressions
+    return $shell(first, ...(expressions as any[])).env(env);
   };
 
   // Copy all properties from the original shell to the wrapper
   // This ensures that properties like $.escape, $.text, etc. are available
   Object.assign(configuredShell, $shell);
 
-  return configuredShell as $extended;
+  // Add the brand symbol to mark this as an extended shell
+  Object.defineProperty(configuredShell, extendedShellBrand, { value: true, enumerable: false });
+
+  return configuredShell as unknown as $extended;
 }

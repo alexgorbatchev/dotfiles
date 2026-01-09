@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import type { $ } from 'dax-sh';
 import { detectVersionViaCli } from '../detectVersionViaCli';
 
 // Helper to create a mock shell
@@ -7,16 +8,16 @@ function createMockShell(stdout: string, stderr = '', exitCode = 0) {
     return {
       env: () => ({
         quiet: () => ({
-          nothrow: async () => ({
-            stdout: Buffer.from(stdout),
-            stderr: Buffer.from(stderr),
-            exitCode,
+          noThrow: async () => ({
+            stdout: stdout,
+            stderr: stderr,
+            code: exitCode,
           }),
         }),
       }),
     };
   };
-  return mockShell as unknown as typeof import('bun').$;
+  return mockShell as unknown as typeof import('dax-sh').$;
 }
 
 describe('detectVersionViaCli', () => {
@@ -73,7 +74,7 @@ describe('detectVersionViaCli', () => {
     };
     const version = await detectVersionViaCli({
       binaryPath: 'tool',
-      shellExecutor: mockShell as unknown as typeof import('bun').$,
+      shellExecutor: mockShell as unknown as typeof $,
     });
     expect(version).toBeUndefined();
   });

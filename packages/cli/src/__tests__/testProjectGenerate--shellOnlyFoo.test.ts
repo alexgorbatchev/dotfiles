@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import assert from 'node:assert';
 import { access, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 
 function getRepoRootPath(): string {
   const repoRootPath: string = path.resolve(__dirname, '../../../..');
@@ -19,9 +19,9 @@ describe('test-project generate', () => {
     const result = await $`bun run --silent cli --config test-project/config.ts --quiet generate`
       .cwd(repoRootPath)
       .quiet()
-      .nothrow();
+      .noThrow();
 
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
 
     const mainZshPath: string = path.join(repoRootPath, 'test-project', '.generated', 'shell-scripts', 'main.zsh');
     const content = await readFile(mainZshPath, 'utf8');

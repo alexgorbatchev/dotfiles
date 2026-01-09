@@ -1,3 +1,3 @@
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 
 export const shell = $;

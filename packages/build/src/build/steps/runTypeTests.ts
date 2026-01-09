@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConsole: build script */
 
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
 import { setupTsdTestsProject } from '../helpers/setupTsdTestsProject';
 import type { IBuildContext } from '../types';
@@ -15,10 +15,10 @@ export async function runTypeTests(context: IBuildContext): Promise<void> {
     await setupTsdTestsProject(context);
 
     const tsdResult = await $`bunx tsd --typings ./index.d.ts --files './**/*.test-d.ts'`
-      .throws(false)
+      .noThrow()
       .cwd(context.paths.tsdTestsDir);
 
-    if (tsdResult.exitCode !== 0) {
+    if (tsdResult.code !== 0) {
       throw new BuildError('Schema type validation failed');
     }
 

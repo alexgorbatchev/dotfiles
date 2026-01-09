@@ -19,7 +19,7 @@ export function generateScenarios(harness: TestHarness, additionalTests?: () => 
     beforeAll(async () => {
       await harness.clean();
       const result = await harness.generate();
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
     });
 
     it('should generate user-bin and shell-scripts directories', async () => {

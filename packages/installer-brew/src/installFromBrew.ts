@@ -2,7 +2,7 @@ import type { IInstallContext, IInstallOptions } from '@dotfiles/core';
 import { getBinaryPaths, withInstallErrorHandling } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli, normalizeVersion } from '@dotfiles/utils';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { z } from 'zod';
 import { messages } from './log-messages';
 import type { BrewToolConfig } from './schemas';
@@ -115,7 +115,7 @@ export async function installFromBrew(
 async function getBrewVersion(formula: string, logger: TsLogger, $: ShellExecutor): Promise<string | null> {
   try {
     logger.debug(messages.fetchingVersion(formula));
-    const result = await $`brew info --json ${formula}`.quiet().nothrow();
+    const result = await $`brew info --json ${formula}`.quiet().noThrow();
     const output: string = result.stdout.toString();
     const rawData = JSON.parse(output);
     const info: BrewInfo[] = z.array(BrewInfoSchema).parse(rawData);

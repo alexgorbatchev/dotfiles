@@ -15,7 +15,7 @@ import {
 } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
 import { detectVersionViaCli } from '@dotfiles/utils';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { messages } from './log-messages';
 import type { CurlTarToolConfig } from './schemas';
 import type { CurlTarInstallResult, ICurlTarInstallMetadata } from './types';

@@ -157,7 +157,7 @@ export class Installer implements IInstaller {
   private readonly systemInfo: ISystemInfo;
   private readonly registry: InstallerPluginRegistry;
   private readonly symlinkGenerator: ISymlinkGenerator;
-  private readonly $: typeof import('bun').$;
+  private readonly $: $extended;
   private currentToolConfig?: ToolConfig;
 
   constructor(
@@ -169,7 +169,7 @@ export class Installer implements IInstaller {
     systemInfo: ISystemInfo,
     registry: InstallerPluginRegistry,
     symlinkGenerator: ISymlinkGenerator,
-    $shell: typeof import('bun').$,
+    $shell: $extended,
     hookExecutor: HookExecutor
   ) {
     this.logger = parentLogger.getSubLogger({ name: 'Installer' });

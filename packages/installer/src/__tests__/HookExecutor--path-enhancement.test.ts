@@ -3,10 +3,10 @@ import { chmod } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { IAfterInstallContext, ToolConfig } from '@dotfiles/core';
+import { createLoggingShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor, type HookHandler } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
@@ -63,7 +63,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     const testBinaryPath = path.join(binaryDir, 'test-tool');
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell($, process.env),
+      $: createConfiguredShell(createLoggingShell($, logger), process.env),
     });
 
     const afterInstallContext: IAfterInstallContext = {
@@ -79,7 +79,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
 
     const hookThatUsesInstalledBinary: HookHandler<IAfterInstallContext> = async (ctx) => {
       // Check what PATH the shell has access to
-      const pathResult = await ctx.$`echo $PATH`.quiet();
+      const pathResult = await ctx.$`printenv PATH`.quiet();
       pathFromShell = pathResult.stdout.toString().trim();
 
       // Execute the binary directly by name - bun shell should find it via enhanced PATH
@@ -122,7 +122,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     };
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell($, process.env),
+      $: createConfiguredShell(createLoggingShell($, logger), process.env),
     });
 
     const afterInstallContext: IAfterInstallContext = {
@@ -136,7 +136,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     let pathFromShell: string | undefined;
 
     const hookThatChecksPath: HookHandler<IAfterInstallContext> = async (ctx) => {
-      const pathResult = await ctx.$`echo $PATH`.quiet();
+      const pathResult = await ctx.$`printenv PATH`.quiet();
       pathFromShell = pathResult.stdout.toString().trim();
 
       // Both binaries should be executable directly by name
@@ -167,7 +167,7 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
     };
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell($, process.env),
+      $: createConfiguredShell(createLoggingShell($, logger), process.env),
     });
 
     const afterInstallContext: IAfterInstallContext = {

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@dotfiles/core": "workspace:*",
+    "dax-sh": "catalog:",
     "semver": "^7.6.3"
   },
   "devDependencies": {

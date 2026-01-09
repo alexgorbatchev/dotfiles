@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import type { IInstallContext } from '@dotfiles/core';
 import { TestLogger } from '@dotfiles/logger';
-import type { $ } from 'bun';
+import type { $ } from 'dax-sh';
 import { installFromBrew } from '../installFromBrew';
 import type { BrewToolConfig } from '../schemas';
 
@@ -28,6 +28,7 @@ describe('installFromBrew', () => {
         stdout: Buffer.from(stdout),
         stderr: Buffer.from(''),
         exitCode: 0,
+        code: 0,
         toString: () => stdout,
       };
 
@@ -36,6 +37,7 @@ describe('installFromBrew', () => {
       const self = promise as any;
       self.quiet = () => self;
       self.nothrow = () => self;
+      self.noThrow = () => self;
       self.env = () => self;
 
       return self;

@@ -5,7 +5,12 @@ import path from 'node:path';
 import { ArchiveExtractor } from '@dotfiles/archive-extractor';
 import { ConfigService, loadConfig, type ProjectConfig } from '@dotfiles/config';
 import type { ISystemInfo } from '@dotfiles/core';
-import { architectureFromNodeJS, InstallerPluginRegistry, platformFromNodeJS } from '@dotfiles/core';
+import {
+  architectureFromNodeJS,
+  createLoggingShell,
+  InstallerPluginRegistry,
+  platformFromNodeJS,
+} from '@dotfiles/core';
 import { Downloader, FileCache, type ICache } from '@dotfiles/downloader';
 import { ReadmeService } from '@dotfiles/features';
 import { type IFileSystem, MemFileSystem, NodeFileSystem, ResolvedFileSystem } from '@dotfiles/file-system';
@@ -26,7 +31,7 @@ import { ShimGenerator } from '@dotfiles/shim-generator';
 import { SymlinkGenerator } from '@dotfiles/symlink-generator';
 import { contractHomePath } from '@dotfiles/utils';
 import { VersionChecker } from '@dotfiles/version-checker';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 
 import { registerCheckUpdatesCommand } from './checkUpdatesCommand';
 import { registerCleanupCommand } from './cleanupCommand';
@@ -384,7 +389,7 @@ export async function setupServices(parentLogger: TsLogger, options: SetupServic
     finalSystemInfo,
     pluginRegistry,
     symlinkGenerator,
-    $,
+    createLoggingShell($, logger),
     hookExecutor
   );
   const versionChecker = new VersionChecker(logger, githubApiClient);

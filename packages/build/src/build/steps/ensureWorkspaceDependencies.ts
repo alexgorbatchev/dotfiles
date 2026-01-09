@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConsole: build script */
 
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
 import { ensureBunCacheDirectory } from '../helpers';
 import type { IBuildContext } from '../types';

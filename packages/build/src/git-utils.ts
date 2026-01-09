@@ -1,4 +1,4 @@
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 
 /**
  * Options for configuring command execution.
@@ -35,9 +35,9 @@ export async function executeCommand(args: string[], opts: IExecuteCommandOption
   const command = args.join(' ');
 
   const mergedEnv = env ? { ...process.env, ...env } : process.env;
-  const result = await $`${args}`.cwd(cwd).env(mergedEnv).quiet().nothrow();
+  const result = await $`${args}`.cwd(cwd).env(mergedEnv).quiet().noThrow();
 
-  if (result.exitCode !== 0) {
+  if (result.code !== 0) {
     const stdout: string = result.stdout.toString().trim();
     const stderr: string = result.stderr.toString().trim();
 
@@ -53,6 +53,6 @@ export async function executeCommand(args: string[], opts: IExecuteCommandOption
     }
 
     const details: string = detailsParts.length > 0 ? `\n\n${detailsParts.join('\n\n')}` : '';
-    throw new Error(`Command failed (exit code ${result.exitCode}): ${command}${details}`);
+    throw new Error(`Command failed (exit code ${result.code}): ${command}${details}`);
   }
 }

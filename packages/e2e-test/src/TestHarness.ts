@@ -2,7 +2,6 @@ import { expect } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Architecture, Platform } from '@dotfiles/core';
-import { $ } from 'bun';
 import { architectureToString, platformToString } from './platformUtils';
 
 /**
@@ -39,10 +38,9 @@ export interface ITestHarnessOptions {
  * Result of executing a CLI command through the test harness.
  */
 export interface ICommandResult {
-  exitCode: number;
+  code: number;
   stdout: string;
   stderr: string;
-  text: string;
 }
 
 function findProjectRoot(startDir: string): string {
@@ -111,7 +109,7 @@ export class TestHarness {
    * @returns A Promise that resolves when the cleanup is complete.
    */
   async clean(): Promise<void> {
-    await $`rm -rf ${this.generatedDir}`.cwd(this.testDir).quiet().nothrow();
+    await fs.promises.rm(this.generatedDir, { recursive: true, force: true });
   }
 
   /**
@@ -122,7 +120,10 @@ export class TestHarness {
   async cleanBinaries(): Promise<void> {
     const binariesDir = path.join(this.generatedDir, 'binaries');
     const registryDb = path.join(this.generatedDir, 'registry.db');
-    await $`rm -rf ${binariesDir} ${registryDb}`.cwd(this.testDir).quiet().nothrow();
+    await Promise.all([
+      fs.promises.rm(binariesDir, { recursive: true, force: true }),
+      fs.promises.rm(registryDb, { recursive: true, force: true })
+    ]);
   }
 
   /**
@@ -145,17 +146,22 @@ export class TestHarness {
     const archString = architectureToString(this.architecture);
     const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
 
-    const result = await $`NODE_ENV=production NO_COLOR=1 bun ${this.dotfilesBin} ${argsWithPlatform}`
-      .cwd(this.testDir)
-      .quiet()
-      .nothrow()
-      .env({ ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' });
+    const proc = Bun.spawn({
+      cmd: ['bun', this.dotfilesBin, ...argsWithPlatform],
+      cwd: this.testDir,
+      env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+
+    const code = await proc.exited;
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
 
     const commandResult: ICommandResult = {
-      exitCode: result.exitCode,
-      stdout: result.stdout.toString(),
-      stderr: result.stderr.toString(),
-      text: result.text().toString(),
+      code,
+      stdout: stdout.trim(),
+      stderr: stderr.trim(),
     };
     return commandResult;
   }
@@ -209,8 +215,13 @@ export class TestHarness {
    * @returns A Promise that resolves to true if the file exists, false otherwise.
    */
   async fileExists(filePath: string): Promise<boolean> {
-    const result = await $`test -f ${filePath}`.quiet().nothrow();
-    return result.exitCode === 0;
+    try {
+      await fs.promises.access(filePath, fs.constants.F_OK);
+      const stats = await fs.promises.stat(filePath);
+      return stats.isFile();
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -220,8 +231,13 @@ export class TestHarness {
    * @returns A Promise that resolves to true if the directory exists, false otherwise.
    */
   async dirExists(dirPath: string): Promise<boolean> {
-    const result = await $`test -d ${dirPath}`.quiet().nothrow();
-    return result.exitCode === 0;
+    try {
+        await fs.promises.access(dirPath, fs.constants.F_OK);
+        const stats = await fs.promises.stat(dirPath);
+        return stats.isDirectory();
+    } catch {
+        return false;
+    }
   }
 
   /**
@@ -231,8 +247,12 @@ export class TestHarness {
    * @returns A Promise that resolves to true if the file is executable, false otherwise.
    */
   async isExecutable(filePath: string): Promise<boolean> {
-    const result = await $`test -x ${filePath}`.quiet().nothrow();
-    return result.exitCode === 0;
+    try {
+      await fs.promises.access(filePath, fs.constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -242,8 +262,7 @@ export class TestHarness {
    * @returns A Promise that resolves to the file contents as a string.
    */
   async readFile(filePath: string): Promise<string> {
-    const result = await $`cat ${filePath}`.quiet();
-    return result.stdout.toString();
+    return fs.promises.readFile(filePath, 'utf8');
   }
 
   /**
@@ -317,23 +336,32 @@ export class TestHarness {
     let stdout = '';
     if (options) {
       const args: string[] = options.args ?? [];
-      const result = await $`NODE_ENV=production ${shimPath} ${args}`.cwd(this.testDir).quiet().nothrow();
+      const proc = Bun.spawn({
+        cmd: [shimPath, ...args],
+        cwd: this.testDir,
+        env: { ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+
+      const code = await proc.exited;
+      const procStdout = await new Response(proc.stdout).text();
+      const procStderr = await new Response(proc.stderr).text();
 
       const commandResult: ICommandResult = {
-        exitCode: result.exitCode,
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
-        text: result.text().toString(),
+        code,
+        stdout: procStdout.toString(),
+        stderr: procStderr.toString(),
       };
 
       stdout = commandResult.stdout.trim();
 
       if (options.expectedExitCode !== undefined) {
-        if (commandResult.exitCode !== options.expectedExitCode) {
+        if (commandResult.code !== options.expectedExitCode) {
           const errorMessage = [
             `Shim execution failed: ${shimName}`,
             `Expected exit code: ${options.expectedExitCode}`,
-            `Actual exit code: ${commandResult.exitCode}`,
+            `Actual exit code: ${commandResult.code}`,
             '--- stdout ---',
             commandResult.stdout,
             '--- stderr ---',

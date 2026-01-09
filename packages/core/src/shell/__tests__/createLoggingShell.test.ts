@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { TestLogger } from '@dotfiles/logger';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { createLoggingShell } from '../createLoggingShell';
 import type { $extended } from '../extendedShell.types';
 

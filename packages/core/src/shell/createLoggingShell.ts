@@ -1,7 +1,6 @@
 import { createSafeLogMessage, type TsLogger } from '@dotfiles/logger';
-import { spawn } from 'bun';
-import type { ShellExpression } from 'bun';
-import type { $extended } from './extendedShell.types';
+import { $ } from 'dax-sh';
+import { extendedShellBrand, type $extended } from './extendedShell.types';
 
 interface LoggingShellOptions {
   cwd?: string;
@@ -30,21 +29,27 @@ interface LoggingShellOptions {
  * // Logs: | hello
  * ```
  */
-export function createLoggingShell($shell: $extended, logger: TsLogger, options?: LoggingShellOptions): $extended {
+export function createLoggingShell($shell: typeof $ | $extended, logger: TsLogger, options?: LoggingShellOptions): $extended {
   const defaultCwd = options?.cwd ?? process.cwd();
 
-  const loggingShell: $extended = Object.assign((strings: TemplateStringsArray, ...expressions: ShellExpression[]) => {
-    // Reconstruct the command string from the template literal
-    const command = reconstructCommand(strings, expressions);
+  const loggingShell = Object.assign(
+    (first: TemplateStringsArray | string, ...expressions: unknown[]) => {
+      // Reconstruct the command string from the template literal
+      const command = typeof first === 'string' ? first : reconstructCommand(first, expressions);
 
-    // Log the command before execution
-    logger.info(createSafeLogMessage(`$ ${command}`));
+      // Log the command before execution
+      logger.info(createSafeLogMessage(`$ ${command}`));
 
-    // Create a deferred execution that captures cwd/env from chaining
-    return createDeferredExecution(command, logger, defaultCwd, process.env as Record<string, string>);
-  }, $shell);
+      // Create a deferred execution that captures cwd/env from chaining
+      return createDeferredExecution(command, logger, defaultCwd, process.env as Record<string, string>);
+    },
+    $shell
+  );
 
-  return loggingShell;
+  // Add the brand symbol to mark this as an extended shell
+  Object.defineProperty(loggingShell, extendedShellBrand, { value: true, enumerable: false });
+
+  return loggingShell as $extended;
 }
 
 interface SpawnConfig {
@@ -87,12 +92,17 @@ function createDeferredExecution(
       return executeIfNeeded()
         .then((result): ShellResult => {
           const resultLines = result.stdout.toString().split('\n');
+          const stdoutText = result.stdout.toString();
+          const stderrText = result.stderr.toString();
           return {
-            exitCode: result.exitCode,
-            stdout: result.stdout,
-            stderr: result.stderr,
-            text: () => result.stdout.toString() + result.stderr.toString(),
-            json: () => JSON.parse(result.stdout.toString()),
+            code: result.exitCode,
+            stdoutBytes: new Uint8Array(result.stdout),
+            stderrBytes: new Uint8Array(result.stderr),
+            get stdout() { return stdoutText; },
+            get stderr() { return stderrText; },
+            get combined() { return stdoutText + stderrText; }, // simplified
+            text: () => stdoutText,
+            json: () => JSON.parse(stdoutText),
             blob: () => new Blob([new Uint8Array(result.stdout)]),
             arrayBuffer: () => new Uint8Array(result.stdout).buffer as ArrayBuffer,
             bytes: () => new Uint8Array(result.stdout),
@@ -111,7 +121,7 @@ function createDeferredExecution(
                 };
               },
             }),
-          };
+          } as unknown as ShellResult;
         })
         .then(onfulfilled, onrejected);
     },
@@ -140,6 +150,10 @@ function createDeferredExecution(
     quiet: () => enhanced,
     nothrow: () => {
       config.shouldThrow = false;
+      return enhanced;
+    },
+    noThrow: (value?: boolean) => {
+      config.shouldThrow = value === false;
       return enhanced;
     },
     cwd: (newCwd: string) => {
@@ -197,9 +211,12 @@ function createDeferredExecution(
 }
 
 interface ShellResult {
-  exitCode: number;
-  stdout: Buffer;
-  stderr: Buffer;
+  code: number;
+  stdout: string;
+  stderr: string;
+  stdoutBytes: Uint8Array;
+  stderrBytes: Uint8Array;
+  // Compat methods
   text: () => string;
   json: () => unknown;
   blob: () => Blob;
@@ -215,14 +232,23 @@ async function executeCommand(
   command: string,
   config: SpawnConfig,
   logger: TsLogger
-): Promise<{ exitCode: number; stdout: Buffer; stderr: Buffer }> {
-  const proc = spawn({
-    cmd: ['sh', '-c', command],
-    cwd: config.cwd,
-    env: config.env,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+): Promise<{ exitCode: number; code: number; stdout: Buffer; stderr: Buffer }> {
+  // Use dax-sh to spawn the command
+  // biome-ignore lint/suspicious/noExplicitAny: dax internals
+  const child = ($.raw as any)(command)
+    .cwd(config.cwd)
+    .env(config.env)
+    .stdout('piped')
+    .stderr('piped')
+    .noThrow()
+    .spawn();
+
+  const proc = {
+    stdout: child.stdout(),
+    stderr: child.stderr(),
+    // biome-ignore lint/suspicious/noExplicitAny: dax internals
+    exited: child.then((r: any) => r.code),
+  };
 
   return streamOutputAndWait(proc, logger, config.shouldThrow, command);
 }
@@ -297,23 +323,44 @@ function processStreamResult(
  * Uses concurrent reading with proper tracking to interleave output.
  */
 async function streamOutputAndWait(
-  proc: ReturnType<typeof spawn>,
+  proc: { stdout: ReadableStream | null; stderr: ReadableStream | null; exited: Promise<number> },
   logger: TsLogger,
   shouldThrow: boolean,
   command: string
-): Promise<{ exitCode: number; stdout: Buffer; stderr: Buffer }> {
+): Promise<{ exitCode: number; code: number; stdout: Buffer; stderr: Buffer }> {
   // Get readers if stdout/stderr are ReadableStream (not number)
-  const stdoutStream = typeof proc.stdout === 'object' ? proc.stdout : null;
-  const stderrStream = typeof proc.stderr === 'object' ? proc.stderr : null;
+  const stdoutStream = proc.stdout;
+  const stderrStream = proc.stderr;
 
-  const stdout = createStreamState(stdoutStream?.getReader() ?? null);
-  const stderr = createStreamState(stderrStream?.getReader() ?? null);
+  const stdout = createStreamState(stdoutStream?.getReader() as ReadableStreamDefaultReader<Uint8Array> ?? null);
+  const stderr = createStreamState(stderrStream?.getReader() as ReadableStreamDefaultReader<Uint8Array> ?? null);
 
   // Start initial reads
   stdout.pending = createReadPromise(stdout, 'stdout');
   stderr.pending = createReadPromise(stderr, 'stderr');
 
   // Read from both streams using Promise.race to interleave output
+  await processStreamsAndWait(stdout, stderr, logger);
+
+  const exitCode = await proc.exited;
+  const stdoutBuffer = Buffer.concat(stdout.chunks);
+  const stderrBuffer = Buffer.concat(stderr.chunks);
+
+  await handleExit(exitCode, stdoutBuffer, stderrBuffer, shouldThrow, command);
+
+  return { 
+    exitCode, 
+    code: exitCode, 
+    stdout: stdoutBuffer, 
+    stderr: stderrBuffer 
+  };
+}
+
+async function processStreamsAndWait(
+  stdout: StreamState,
+  stderr: StreamState,
+  logger: TsLogger
+): Promise<void> {
   while (!stdout.done || !stderr.done) {
     const promises: Promise<StreamResult>[] = [];
 
@@ -336,25 +383,33 @@ async function streamOutputAndWait(
       state.pending = createReadPromise(state, result.source);
     }
   }
+}
 
-  const exitCode = await proc.exited;
-  const stdoutBuffer = Buffer.concat(stdout.chunks);
-  const stderrBuffer = Buffer.concat(stderr.chunks);
-
+async function handleExit(
+  exitCode: number,
+  stdoutBuffer: Buffer,
+  stderrBuffer: Buffer,
+  shouldThrow: boolean,
+  command: string
+): Promise<void> {
   if (shouldThrow && exitCode !== 0) {
-    const error = new Error(`Command failed: ${command}`);
+    let errorMessage = `Command failed: ${command}`;
+    const stderrString = stderrBuffer.toString().trim();
+    if (stderrString) {
+      errorMessage += `\n${stderrString}`;
+    }
+    const error = new Error(errorMessage);
     (error as Error & { exitCode: number }).exitCode = exitCode;
+    Object.assign(error, { stdout: stdoutBuffer, stderr: stderrBuffer });
     throw error;
   }
-
-  return { exitCode, stdout: stdoutBuffer, stderr: stderrBuffer };
 }
 
 /**
  * Reconstructs the command string from template literal parts.
  * Handles arrays by joining with spaces (shell-style expansion).
  */
-function reconstructCommand(strings: TemplateStringsArray, expressions: ShellExpression[]): string {
+function reconstructCommand(strings: TemplateStringsArray, expressions: unknown[]): string {
   let command = strings[0] || '';
   for (let i = 0; i < expressions.length; i++) {
     const expression = expressions[i];

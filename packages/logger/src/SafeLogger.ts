@@ -59,13 +59,9 @@ export class SafeLogger<LogObj = unknown> extends Logger<LogObj> {
 
   /**
    * Filters error arguments to only show .tool.ts stack frames.
-   * Only applies when NOT in trace mode (trace shows full stacks for debugging).
+   * Stack filtering is always applied to keep output clean for end users.
    */
   private filterErrorArgs(args: unknown[]): unknown[] {
-    if (this.isTracingEnabled()) {
-      return args;
-    }
-
     const filteredArgs: unknown[] = [];
     for (const arg of args) {
       if (isError(arg)) {

@@ -11,7 +11,8 @@
   "catalog": {
     "type-fest": "^5.1.0",
     "zod": "^4.1.12",
-    "tslog": "^4.10.2"
+    "tslog": "^4.10.2",
+    "dax-sh": "^0.44.1"
   },
   "catalogs": {
     "system": {

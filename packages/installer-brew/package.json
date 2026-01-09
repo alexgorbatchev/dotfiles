@@ -6,11 +6,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@dotfiles/installer": "workspace:*",
     "@dotfiles/core": "workspace:*",
+    "@dotfiles/installer": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/utils": "workspace:*",
+    "dax-sh": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

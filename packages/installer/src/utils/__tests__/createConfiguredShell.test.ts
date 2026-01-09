@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'bun:test';
-import { $ } from 'bun';
+import type { $extended } from '@dotfiles/core';
+import { extendedShellBrand } from '@dotfiles/core';
+import { $ } from 'dax-sh';
 import { createConfiguredShell } from '../createConfiguredShell';
 
 describe('createConfiguredShell', () => {
+  it('should return a branded $extended type', () => {
+    const shell = createConfiguredShell($, {});
+
+    // Verify it has the extended shell brand
+    expect(extendedShellBrand in shell).toBe(true);
+
+    // Type-level assertion: this line would fail to compile if shell is not $extended
+    const _typeCheck: $extended = shell;
+    expect(_typeCheck).toBeDefined();
+  });
+
   it('should apply environment variables to commands', async () => {
     const env = {
       TEST_VAR: 'test-value',

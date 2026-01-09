@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConsole: build script */
 
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
 import type { IBuildContext } from '../types';
 
@@ -10,14 +10,14 @@ import type { IBuildContext } from '../types';
 export async function testBuiltCli(context: IBuildContext): Promise<void> {
   console.log('🧪 Testing built CLI...');
 
-  const testResult = await $`bun ${context.paths.cliOutputFile} --version`.quiet().throws(false);
+  const testResult = await $`bun ${context.paths.cliOutputFile} --version`.quiet().noThrow();
 
-  if (testResult.exitCode === 0) {
+  if (testResult.code === 0) {
     console.log(`✅ CLI test passed - version: ${testResult.stdout.toString().trim()}`);
     return;
   }
 
-  console.error(`❌ CLI test failed with exit code: ${testResult.exitCode}`);
+  console.error(`❌ CLI test failed with exit code: ${testResult.code}`);
   console.error(`Error output: ${testResult.stderr.toString()}`);
   throw new BuildError('CLI test failed');
 }

@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConsole: build script */
 
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { BuildError } from '../handleBuildError';
 import type { IBuildContext } from '../types';
 import { ensureBunCacheDirectory } from './ensureBunCacheDirectory';
@@ -18,9 +18,9 @@ export async function installDependenciesInOutputDir(context: IBuildContext): Pr
   ensureBunCacheDirectory(context);
 
   try {
-    const installResult = await $`cd ${context.paths.outputDir} && bun install`.throws(false);
+    const installResult = await $`cd ${context.paths.outputDir} && bun install`.noThrow();
 
-    if (installResult.exitCode !== 0) {
+    if (installResult.code !== 0) {
       throw new BuildError('Temporary dependency installation failed');
     }
   } catch (error) {

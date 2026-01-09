@@ -1,4 +1,4 @@
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 
 import { BuildError } from '../handleBuildError';
 import { escapeRegExp } from './escapeRegExp';

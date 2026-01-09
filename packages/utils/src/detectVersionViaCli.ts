@@ -1,4 +1,4 @@
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { normalizeVersion } from './normalizeVersion';
 
 type ShellExecutor = typeof $;
@@ -39,7 +39,7 @@ export async function detectVersionViaCli(options: DetectVersionOptions): Promis
     const result = await shellExecutor`${binaryPath} ${args}`
       .env({ ...process.env, ...env })
       .quiet()
-      .nothrow();
+      .noThrow();
     const output = (result.stdout.toString() + result.stderr.toString()).trim();
 
     if (regex) {

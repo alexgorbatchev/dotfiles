@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import { Architecture, createToolLog, type IAfterInstallContext, type ISystemInfo, Platform } from '@dotfiles/core';
+import { Architecture, createToolLog, type IAfterInstallContext, type ISystemInfo, Platform, createLoggingShell } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig, createTestDirectories } from '@dotfiles/testing-helpers';
 import { replaceInFile } from '@dotfiles/utils';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import type { ILogObj } from 'tslog';
 import { createConfiguredShell } from '../createConfiguredShell';
 import { HookExecutor } from '../HookExecutor';
@@ -49,7 +49,7 @@ describe('HookExecutor - stack trace filtering', () => {
     const toolConfigFilePath = path.join(process.cwd(), `${toolName}.tool.ts`);
     toolConfig.configFilePath = toolConfigFilePath;
 
-    const configuredShell = createConfiguredShell($, process.env);
+    const configuredShell = createConfiguredShell(createLoggingShell($, logger), process.env);
 
     const currentDir: string = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -103,7 +103,7 @@ describe('HookExecutor - stack trace filtering', () => {
     const contextArg = String(errorLog[0]);
     const messageArg = String(errorLog[1]);
     expect(contextArg).toBe('[after-install]');
-    expect(messageArg).toContain('Hook failed: command not found: fake-tool');
+    expect(messageArg).toContain('command not found: fake-tool');
 
     // The writeOutput may be empty if there's no .tool.ts file in the stack
     // (which is the case in tests where the hook is defined inline)
@@ -147,7 +147,7 @@ describe('HookExecutor - stack trace filtering', () => {
     const toolConfigFilePath = path.join(process.cwd(), `${toolName}.tool.ts`);
     toolConfig.configFilePath = toolConfigFilePath;
 
-    const configuredShell = createConfiguredShell($, process.env);
+    const configuredShell = createConfiguredShell(createLoggingShell($, logger), process.env);
 
     const currentDir: string = path.join(projectConfig.paths.binariesDir, toolName, 'current');
 
@@ -201,6 +201,6 @@ describe('HookExecutor - stack trace filtering', () => {
 
     // This test will fail until we implement the fix
     // The message should include the stderr output
-    expect(messageArg).toContain('bun: command not found: navi');
+    expect(messageArg).toContain('command not found: navi');
   });
 });

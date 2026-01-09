@@ -29,7 +29,7 @@ export function updateScenarios(harness: TestHarness, additionalTests?: () => vo
 
       // Run update command - should now get the NEW version
       const updateResult = await harness.update('github-release-tool');
-      expect(updateResult.exitCode).toBe(0);
+      expect(updateResult.code).toBe(0);
 
       // Verify we now have the NEWER version
       const versionAfter = await harness.verifyShim('github-release-tool', {
@@ -42,7 +42,7 @@ export function updateScenarios(harness: TestHarness, additionalTests?: () => vo
     it('should handle updating non-existent tool gracefully', async () => {
       const result = await harness.update('non-existent-tool');
       // Update command should fail gracefully for non-existent tools
-      expect(result.exitCode).not.toBe(0);
+      expect(result.code).not.toBe(0);
     });
 
     // Execute additional tests if provided

@@ -6,7 +6,8 @@
   },
   "dependencies": {
     "@dotfiles/cli": "workspace:*",
-    "@dotfiles/core": "workspace:*"
+    "@dotfiles/core": "workspace:*",
+    "dax-sh": "catalog:"
   },
   "devDependencies": {
     "@rageltd/bun-test-utils": "catalog:testing",

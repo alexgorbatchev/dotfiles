@@ -32,7 +32,7 @@ export function hookScenarios(harness: TestHarness): void {
       const result = await harness.install(['hook-test-tool']);
 
       // Verify the install completed successfully
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
 
       // Verify the binary was installed
       expect(await harness.fileExists(binaryPath)).toBe(true);
@@ -46,9 +46,9 @@ export function hookScenarios(harness: TestHarness): void {
       await harness.cleanBinaries();
 
       const result = await harness.install(['hook-test-tool']);
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
 
-      expect(result.text.trim()).toMatchLooseInlineSnapshot`
+      expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
         WARN	Platform overridden to: ${expect.anything}
         WARN	Arch overridden to: ${expect.anything}
         INFO	Caching disabled

@@ -3,10 +3,10 @@ import { existsSync, realpathSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { IAfterInstallContext, ToolConfig } from '@dotfiles/core';
+import { createLoggingShell, type IAfterInstallContext, type ToolConfig } from '@dotfiles/core';
 import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { createConfiguredShell } from '../utils/createConfiguredShell';
 import { HookExecutor, type HookHandler } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
@@ -47,7 +47,7 @@ describe('HookExecutor $ Integration', () => {
     };
 
     const { context: baseContext } = createTestInstallHookContext({
-      $: createConfiguredShell($, process.env),
+      $: createConfiguredShell(createLoggingShell($, logger), process.env),
     });
 
     const contextWithToolConfig: IAfterInstallContext = {
@@ -91,7 +91,7 @@ describe('HookExecutor $ Integration', () => {
     const { context: baseContext } = createTestInstallHookContext({
       toolName: 'file-creator-tool',
       stagingDir: '/test/staging/dir',
-      $: createConfiguredShell($, process.env),
+      $: createConfiguredShell(createLoggingShell($, logger), process.env),
     });
 
     const contextWithToolConfig: IAfterInstallContext = {
@@ -132,7 +132,7 @@ describe('HookExecutor $ Integration', () => {
     const { context: baseContext } = createTestInstallHookContext({
       toolName: 'fallback-tool',
       stagingDir: '/test/staging/dir',
-      $: createConfiguredShell($, process.env),
+      $: createConfiguredShell(createLoggingShell($, logger), process.env),
     });
 
     const contextWithoutConfigPath: IAfterInstallContext = {

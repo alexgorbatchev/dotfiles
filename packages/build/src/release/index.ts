@@ -26,7 +26,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { executeCommand } from '../git-utils';
 import { cdToRepoRoot } from '../path-utils';
 
@@ -108,7 +108,7 @@ async function publishToNpm(): Promise<void> {
  * Checks if there are uncommitted changes in the working directory.
  */
 async function hasUncommittedChanges(): Promise<boolean> {
-  const result = await $`git status --porcelain`.quiet().nothrow();
+  const result = await $`git status --porcelain`.quiet().noThrow();
   const output = result.stdout.toString().trim();
   return output.length > 0;
 }

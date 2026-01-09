@@ -6,13 +6,14 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@dotfiles/core": "workspace:*",
     "@dotfiles/downloader": "workspace:*",
     "@dotfiles/file-system": "workspace:*",
     "@dotfiles/installer": "workspace:*",
-    "@dotfiles/core": "workspace:*",
     "@dotfiles/logger": "workspace:*",
     "@dotfiles/registry": "workspace:*",
     "@dotfiles/utils": "workspace:*",
+    "dax-sh": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

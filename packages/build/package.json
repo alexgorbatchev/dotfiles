@@ -15,5 +15,8 @@
     "@types/bun": "catalog:system",
     "@types/node": "catalog:system",
     "@typescript/native-preview": "catalog:typescript"
+  },
+  "dependencies": {
+    "dax-sh": "catalog:"
   }
 }

@@ -5,7 +5,7 @@ import { createMemFileSystem, type IMemFileSystemReturn } from '@dotfiles/file-s
 import { TestLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
-import type { $ } from 'bun';
+import type { $ } from 'dax-sh';
 import { HookExecutor, type IHookExecutionOptions } from '../utils/HookExecutor';
 import { createTestInstallHookContext } from './hookContextTestHelper';
 

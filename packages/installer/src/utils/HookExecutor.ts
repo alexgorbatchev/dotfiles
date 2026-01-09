@@ -10,7 +10,6 @@ import {
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
 import { TrackedFileSystem } from '@dotfiles/registry/file';
-import type { ShellExpression } from 'bun';
 import { extractErrorCause } from './extractErrorCause';
 import { messages } from './log-messages';
 import { writeHookErrorDetails } from './writeHookErrorDetails';
@@ -27,8 +26,9 @@ export type HookHandler<TContext extends IInstallBaseContext = IInstallBaseConte
 
 function createToolConfigCwdShell($shell: $extended, cwdPath: string): $extended {
   const configuredShell: $extended = Object.assign(
-    (strings: TemplateStringsArray, ...expressions: ShellExpression[]) => {
-      const shellPromise = $shell(strings, ...expressions).cwd(cwdPath);
+    (strings: TemplateStringsArray, ...expressions: unknown[]) => {
+      // biome-ignore lint/suspicious/noExplicitAny: dax-sh typing
+      const shellPromise = $shell(strings, ...(expressions as any[])).cwd(cwdPath);
       return shellPromise;
     },
     $shell
@@ -66,7 +66,7 @@ function createShellWithEnhancedPath($shell: $extended, additionalPaths: string[
   };
 
   const configuredShell: $extended = Object.assign(
-    (strings: TemplateStringsArray, ...expressions: ShellExpression[]) => {
+    (strings: TemplateStringsArray, ...expressions: unknown[]) => {
       // Build the command string from the template literal
       // Bun shell escapes ${} expressions, so we reconstruct the intended command
       let command = strings[0] || '';

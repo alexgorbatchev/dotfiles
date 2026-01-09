@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { type IFileSystem, NodeFileSystem } from '@dotfiles/file-system';
 import { TestLogger } from '@dotfiles/logger';
 import { createTestDirectories, type ITestDirectories } from '@dotfiles/testing-helpers';
-import { $ } from 'bun';
+import { $ } from 'dax-sh';
 import { ArchiveExtractor } from '../ArchiveExtractor';
 import type { IArchiveExtractor } from '../IArchiveExtractor';
 

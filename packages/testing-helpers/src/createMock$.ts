@@ -1,4 +1,5 @@
-import type { $ } from 'bun';
+import { extendedShellBrand } from '@dotfiles/core';
+import type { $ } from 'dax-sh';
 
 export interface IMockShellExtensions {
   reset(): void;
@@ -6,13 +7,37 @@ export interface IMockShellExtensions {
 }
 
 export interface IMockShellResponse {
-  stdout: Buffer;
-  stderr: Buffer;
-  exitCode: number;
+  stdout: string | Buffer;
+  stderr: string | Buffer;
+  code?: number;
+  exitCode?: number; // Compat
   shouldThrow?: boolean;
 }
 
-export type MockShell = typeof $ & IMockShellExtensions;
+export type MockShell = typeof $ & IMockShellExtensions & {
+  (command: string): ReturnType<typeof $>;
+  readonly [extendedShellBrand]: true;
+};
+
+function reconstructCommand(pieces: TemplateStringsArray | string, args: unknown[]): string {
+  if (typeof pieces === 'string') {
+    return pieces;
+  }
+  let command = '';
+  for (let i = 0; i < pieces.length; i++) {
+    command += pieces[i];
+    if (i < args.length) {
+      const arg = args[i];
+      // Handle arrays properly - join with spaces instead of commas
+      if (Array.isArray(arg)) {
+        command += arg.join(' ');
+      } else {
+        command += String(arg);
+      }
+    }
+  }
+  return command;
+}
 
 /**
  * Creates a mock shell instance that matches the Bun $ interface.
@@ -25,31 +50,33 @@ export function createMock$(): MockShell {
   const responses: Map<string, IMockShellResponse> = new Map();
   let lastCommand: string | null = null;
 
-  const mockBuffer = Buffer.from('');
-
   // Create a chainable result that supports Bun's $ methods
   const createChainableResult = (command: string, shouldNothrow = false): ReturnType<typeof $> => {
     // Check if we have a mocked response for this command
     const mockedResponse: IMockShellResponse | undefined = responses.get(command);
 
-    const resultData = mockedResponse || {
-      stdout: mockBuffer,
-      stderr: mockBuffer,
-      exitCode: 0,
+    const stdoutVal = mockedResponse?.stdout !== undefined ? mockedResponse.stdout.toString() : '';
+    const stderrVal = mockedResponse?.stderr !== undefined ? mockedResponse.stderr.toString() : '';
+    const exitCodeVal = mockedResponse?.code ?? mockedResponse?.exitCode ?? 0;
+
+    const resultData = {
+      stdout: stdoutVal,
+      stderr: stderrVal,
+      code: exitCodeVal,
     };
 
     const mockResult = {
       ...resultData,
-      text: () => Promise.resolve(resultData.stdout.toString()),
-      json: () => Promise.resolve(JSON.parse(resultData.stdout.toString() || '{}')),
-      blob: () => Promise.resolve(new Blob()),
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+      get stdoutBytes() { return new TextEncoder().encode(stdoutVal) },
+      get stderrBytes() { return new TextEncoder().encode(stderrVal) },
+      // Legacy compat properties if needed by consumers of result directly ??
+      // But typically tests use result.stdout or .text()
     };
 
     // If shouldThrow is true and nothrow wasn't called, create a rejected promise
     const shouldThrowError: boolean = Boolean(mockedResponse?.shouldThrow && !shouldNothrow);
     const resultPromise: Promise<typeof mockResult> = shouldThrowError
-      ? Promise.reject(new Error(resultData.stderr.toString()))
+      ? Promise.reject(new Error(stderrVal))
       : Promise.resolve(mockResult);
 
     // Add all Bun ShellPromise methods with proper chaining
@@ -59,35 +86,23 @@ export function createMock$(): MockShell {
       env: (_env: Record<string, string>) => createChainableResult(command, shouldNothrow),
       quiet: () => createChainableResult(command, shouldNothrow),
       nothrow: () => createChainableResult(command, true),
-      text: () => Promise.resolve(resultData.stdout.toString()),
-      json: () => Promise.resolve(JSON.parse(resultData.stdout.toString() || '{}')),
-      blob: () => Promise.resolve(new Blob()),
-      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-      lines: () => Promise.resolve([]),
-      bytes: () => Promise.resolve(new Uint8Array()),
-      throws: true,
+      noThrow: (val?: boolean) => createChainableResult(command, val !== false),
+      text: () => Promise.resolve(stdoutVal),
+      json: () => Promise.resolve(JSON.parse(stdoutVal || '{}')),
+      blob: () => Promise.resolve(new Blob([new TextEncoder().encode(stdoutVal)])),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode(stdoutVal).buffer as ArrayBuffer),
+      lines: () => Promise.resolve(stdoutVal.split('\n')),
+      bytes: () => Promise.resolve(new TextEncoder().encode(stdoutVal)),
+      throws: (val: boolean) => createChainableResult(command, !val),
     });
 
     return chainable as unknown as ReturnType<typeof $>;
   };
 
   // Main shell function with proper typing for Bun
-  const mockShellFunction = (pieces: TemplateStringsArray, ...args: unknown[]) => {
+  const mockShellFunction = (pieces: TemplateStringsArray | string, ...args: unknown[]) => {
     // Reconstruct the command string from template literal
-    let command = '';
-    for (let i = 0; i < pieces.length; i++) {
-      command += pieces[i];
-      if (i < args.length) {
-        const arg = args[i];
-        // Handle arrays properly - join with spaces instead of commas
-        if (Array.isArray(arg)) {
-          command += arg.join(' ');
-        } else {
-          command += String(arg);
-        }
-      }
-    }
-
+    const command = reconstructCommand(pieces, args);
     const trimmedCommand: string = command.trim();
     commands.push(trimmedCommand);
     lastCommand = trimmedCommand;
@@ -117,6 +132,17 @@ export function createMock$(): MockShell {
     escape: (str: string) => str,
     env: {},
     cwd: () => process.cwd(),
+    [extendedShellBrand]: true as const,
+    // Stubs for dax
+    cd: () => {},
+    echo: () => {},
+    sleep: () => Promise.resolve(),
+    which: () => Promise.resolve(undefined),
+    // biome-ignore lint/suspicious/noExplicitAny: dax internals
+    fetch: () => Promise.resolve({} as any),
+    withTimeout: () => {},
+    retry: () => {},
+    raw: (s: string) => s,
   });
 
   // Use type assertion to make it compatible

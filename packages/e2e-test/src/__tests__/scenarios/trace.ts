@@ -15,8 +15,8 @@ export function traceScenarios(harness: TestHarness): void {
   describe('trace configuration', () => {
     it('should show file paths when --trace is used', async () => {
       const result = await harness.generate(['--trace']);
-      expect(result.exitCode).toBe(0);
-      expect(result.text.trim()).toMatchLooseInlineSnapshot`
+      expect(result.code).toBe(0);
+      expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
         WARN	${/[^\s]+\.ts:\d+/} - Platform overridden to: ${expect.anything}
         WARN	${/[^\s]+\.ts:\d+/} - Arch overridden to: ${expect.anything}
         INFO	${/[^\s]+\.ts:\d+/} - Caching disabled
@@ -30,8 +30,8 @@ export function traceScenarios(harness: TestHarness): void {
 
     it('should NOT show file paths when --trace is NOT used', async () => {
       const result = await harness.generate([]);
-      expect(result.exitCode).toBe(0);
-      expect(result.text.trim()).toMatchLooseInlineSnapshot`
+      expect(result.code).toBe(0);
+      expect(result.stdout.trim()).toMatchLooseInlineSnapshot`
         WARN	Platform overridden to: ${expect.anything}
         WARN	Arch overridden to: ${expect.anything}
         INFO	Caching disabled
@@ -45,9 +45,9 @@ export function traceScenarios(harness: TestHarness): void {
 
     it('should NOT show anything when --quiet --trace is used', async () => {
       const result = await harness.generate(['--quiet', '--trace']);
-      expect(result.exitCode).toBe(0);
+      expect(result.code).toBe(0);
       // Usually quiet means empty stdout/stderr or very minimal
-      expect(result.text.trim()).toBe('');
+      expect(result.stdout.trim()).toBe('');
     });
   });
 }
