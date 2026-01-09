@@ -48,11 +48,11 @@ The installer has built-in recursion guards. If you see this, check that your in
 ### Hook Not Executing
 
 ```typescript
-.hook('after-install', async ({ logger, $ }) => {
+.hook('after-install', async ({ log, $ }) => {
   try {
     await $`./setup.sh`;
   } catch (error) {
-    logger.error('Setup failed');
+    log.error('Setup failed');
     throw error;
   }
 })

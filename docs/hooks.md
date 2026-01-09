@@ -11,9 +11,9 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .hook('after-install', async (context) => {
-      const { $, logger, fileSystem } = context;
+      const { $, log, fileSystem } = context;
       await $`./tool init`;
-      logger.info('Tool initialized');
+      log.info('Tool initialized');
     })
 );
 ```
@@ -38,7 +38,7 @@ All hooks receive a context object with:
 | `systemInfo` | Platform, architecture, home directory |
 | `fileSystem` | File operations (mkdir, writeFile, exists, etc.) |
 | `replaceInFile` | Regex-based file text replacement |
-| `logger` | Structured logging (info, warn, error) |
+| `log` | Structured logging (trace, debug, info, warn, error) |
 | `projectConfig` | Project configuration |
 | `toolConfig` | Tool configuration |
 | `$` | Bun shell executor |
@@ -48,11 +48,11 @@ All hooks receive a context object with:
 ### File Operations
 
 ```typescript
-.hook('after-install', async ({ fileSystem, systemInfo, logger }) => {
+.hook('after-install', async ({ fileSystem, systemInfo, log }) => {
   const configDir = `${systemInfo.homeDir}/.config/tool`;
   await fileSystem.mkdir(configDir, { recursive: true });
   await fileSystem.writeFile(`${configDir}/config.toml`, 'theme = "dark"');
-  logger.info('Configuration created');
+  log.info('Configuration created');
 })
 ```
 
@@ -156,11 +156,11 @@ This logging happens regardless of whether `.quiet()` is used on the shell comma
 ## Error Handling
 
 ```typescript
-.hook('after-install', async ({ $, logger }) => {
+.hook('after-install', async ({ $, log }) => {
   try {
     await $`./tool self-test`;
   } catch (error) {
-    logger.error('Self-test failed');
+    log.error('Self-test failed');
     throw error; // Re-throw to fail installation
   }
 });
@@ -175,7 +175,7 @@ import path from 'path';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .hook('after-extract', async ({ extractDir, stagingDir, fileSystem, logger }) => {
+    .hook('after-extract', async ({ extractDir, stagingDir, fileSystem, log }) => {
       if (extractDir) {
         // Custom binary selection and processing
         const binaries = await fileSystem.readdir(path.join(extractDir, 'bin'));
@@ -185,7 +185,7 @@ export default defineTool((install, ctx) =>
           const sourcePath = path.join(extractDir, 'bin', mainBinary);
           const targetPath = path.join(stagingDir ?? '', 'tool');
           await fileSystem.copy(sourcePath, targetPath);
-          logger.info(`Selected binary: ${mainBinary}`);
+          log.info(`Selected binary: ${mainBinary}`);
         }
       }
     })
@@ -200,7 +200,7 @@ import { defineTool } from '@gitea/dotfiles';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
-    .hook('after-install', async ({ systemInfo, fileSystem, logger, $ }) => {
+    .hook('after-install', async ({ systemInfo, fileSystem, log, $ }) => {
       // Platform-specific setup
       if (systemInfo.platform === 'darwin') {
         // macOS-specific setup
@@ -212,7 +212,7 @@ export default defineTool((install, ctx) =>
       
       // Architecture-specific setup
       if (systemInfo.arch === 'arm64') {
-        logger.info('Configuring for ARM64 architecture');
+        log.info('Configuring for ARM64 architecture');
         await $`./configure-arm64.sh`;
       }
     })
@@ -245,10 +245,11 @@ export default defineTool((install) =>
 1. **Use `$` for shell operations** that need to work with files relative to your tool config
 2. **Use `fileSystem` methods** for cross-platform file operations that don't require shell features
 3. **Always handle errors appropriately** in hooks to provide clear feedback
-4. **Use `logger` for all output** - avoid `console.log()` in favor of structured logging:
-   - `logger.info()` for general information
-   - `logger.warn()` for debugging and troubleshooting
-   - `logger.error()` for error conditions
+4. **Use `log` for all output** - avoid `console.log()` in favor of structured logging:
+   - `log.info()` for general information
+   - `log.warn()` for warnings
+   - `log.error()` for error conditions
+   - `log.debug()` for debugging and troubleshooting
 5. **Test your hooks** on different platforms to ensure compatibility
 6. **Keep hooks focused** - each hook should have a single responsibility
 7. **Document complex logic** - explain what your hooks are doing and why
@@ -270,17 +271,17 @@ export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/custom-tool' })
     .bin('custom-tool')
     .symlink('./config.yml', '~/.config/custom-tool/config.yml')
-    .hook('before-install', async ({ logger }) => {
-      logger.info('Starting custom-tool installation...');
+    .hook('before-install', async ({ log }) => {
+      log.info('Starting custom-tool installation...');
     })
-    .hook('after-extract', async ({ extractDir, logger, $ }) => {
+    .hook('after-extract', async ({ extractDir, log, $ }) => {
       if (extractDir) {
         // Build additional components
-        logger.info('Building plugins...');
+        log.info('Building plugins...');
         await $`cd ${extractDir} && make plugins`;
       }
     })
-    .hook('after-install', async ({ toolName, installedDir, systemInfo, fileSystem, logger, $ }) => {
+    .hook('after-install', async ({ toolName, installedDir, systemInfo, fileSystem, log, $ }) => {
       // Create data directory
       const dataDir = path.join(systemInfo.homeDir, '.local/share', toolName);
       await fileSystem.mkdir(dataDir, { recursive: true });
@@ -291,7 +292,7 @@ export default defineTool((install, ctx) =>
       // Set up completion
       await $`${path.join(installedDir ?? '', toolName)} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
       
-      logger.info(`Initialized ${toolName} with data directory: ${dataDir}`);
+      log.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })
     .zsh((shell) =>
       shell

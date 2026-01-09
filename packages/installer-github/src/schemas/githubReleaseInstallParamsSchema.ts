@@ -21,13 +21,13 @@ export interface IAssetSelectionContext extends IInstallContext {
  * Asset selector function signature using context object.
  * Receives rich context object for consistent interface with install hooks.
  *
- * @param context - Complete context including assets, system info, logger, and configuration
+ * @param context - Complete context including assets, system info, log, and configuration
  * @returns Selected asset or undefined if no suitable asset found
  *
  * @example
  * ```typescript
  * const assetSelector: AssetSelector = (context) => {
- *   context.logger.debug('Selecting asset for', context.toolName);
+ *   context.log.debug('Selecting asset for ' + context.toolName);
  *
  *   const { assets, systemInfo } = context;
  *   const osMap = { 'darwin': 'macos', 'linux': 'linux', 'win32': 'windows' };

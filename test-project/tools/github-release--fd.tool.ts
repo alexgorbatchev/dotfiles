@@ -3,7 +3,7 @@ import { defineTool } from '@dotfiles/cli';
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'sharkdp/fd' })
     .bin('fd')
-    .hook('after-install', () => {
+    .hook('after-install', async () => {
       ctx.log.trace('This is a TRACE message');
       ctx.log.debug('This is a DEBUG message');
       ctx.log.info('This is an INFO message');

@@ -23,7 +23,7 @@ describe('createToolConfigContext', () => {
   };
 
   beforeEach(async () => {
-    logger = new TestLogger({ minLevel: LogLevel.TRACE });
+    logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
     const memFs = await createMemFileSystem();
     fileSystem = memFs.fs;
     resolvedFs = memFs.fs.asIResolvedFileSystem;
@@ -117,7 +117,7 @@ describe('createToolConfigContext', () => {
   it('should log error with pattern and file when errorMessage provided and no matches found', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger({ minLevel: LogLevel.TRACE });
+    const logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
 
     const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
@@ -134,7 +134,7 @@ describe('createToolConfigContext', () => {
   it('should not log error when errorMessage provided but matches found', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger({ minLevel: LogLevel.TRACE });
+    const logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
 
     const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
@@ -152,7 +152,7 @@ describe('createToolConfigContext', () => {
   it('should not log error when no errorMessage provided even if no matches', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger({ minLevel: LogLevel.TRACE });
+    const logger = new TestLogger({ minLevel: LogLevel.VERBOSE });
 
     const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 

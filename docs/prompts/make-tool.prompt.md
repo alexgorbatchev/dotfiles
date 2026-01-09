@@ -229,9 +229,9 @@ Use hooks for custom installation logic when fluent configuration is insufficien
 ```ts
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
-  .hook('after-install', async ({ logger, $, installedDir }) => {
+  .hook('after-install', async ({ log, $, installedDir }) => {
     await $`${installedDir}/tool init`;
-    logger.info('Tool initialized');
+    log.info('Tool initialized');
   })
 ```
 
@@ -242,11 +242,11 @@ install('github-release', { repo: 'owner/tool' })
 ```ts
 install('github-release', { repo: 'owner/tool' })
   .bin('tool')
-  .hook('after-install', async ({ $, logger }) => {
+  .hook('after-install', async ({ $, log }) => {
     // Binary is automatically available by name - no full path needed
     await $`tool --version`;
     await $`tool init`;
-    logger.info('Tool initialized');
+    log.info('Tool initialized');
   })
 ```
 

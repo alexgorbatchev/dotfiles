@@ -10,7 +10,7 @@ For non-standard release naming, use `assetSelector`:
 export default defineTool((install) =>
   install('github-release', {
     repo: 'owner/tool',
-    assetSelector: ({ assets, systemInfo, release, logger }) => {
+    assetSelector: ({ assets, systemInfo, release, log }) => {
       const osMap: Record<string, string> = { darwin: 'macos', linux: 'linux' };
       const archMap: Record<string, string> = { x64: 'amd64', arm64: 'arm64' };
       
@@ -80,12 +80,12 @@ export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
     .dependsOn('node')
-    .hook('before-install', async ({ logger, $ }) => {
+    .hook('before-install', async ({ log, $ }) => {
       const result = await $`node --version`.nothrow();
       if (result.exitCode !== 0) {
         throw new Error('Node is required but not available');
       }
-      logger.info(`Using Node ${result.stdout.toString().trim()}`);
+      log.info(`Using Node ${result.stdout.toString().trim()}`);
     })
 );
 ```
@@ -130,13 +130,13 @@ export default defineTool((install, ctx) =>
 export default defineTool((install) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .hook('after-install', async ({ $, logger }) => {
+    .hook('after-install', async ({ $, log }) => {
       await Promise.all([
         $`tool setup-task-1`,
         $`tool setup-task-2`,
         $`tool setup-task-3`,
       ]);
-      logger.info('All setup tasks completed');
+      log.info('All setup tasks completed');
     })
 );
 ```
