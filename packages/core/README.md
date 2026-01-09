@@ -114,6 +114,16 @@ interface IBaseToolContext {
   toolDir: string;
   currentDir: string;
   replaceInFile: BoundReplaceInFile;  // Regex-based file text replacement
+  log: IToolLog;  // User-facing logger for tool operations
+}
+
+// User-facing logging interface for tool configurations
+interface IToolLog {
+  trace(message: string): void;
+  debug(message: string): void;
+  info(message: string): void;
+  warn(message: string): void;
+  error(message: string, error?: unknown): void;
 }
 
 interface IToolConfigContext extends IBaseToolContext {}

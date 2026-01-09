@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { ProjectConfig } from '@dotfiles/config';
 import type { IResolvedFileSystem, MockedFileSystem } from '@dotfiles/file-system';
 import { createMemFileSystem } from '@dotfiles/file-system';
-import { TestLogger } from '@dotfiles/logger';
+import { LogLevel, TestLogger } from '@dotfiles/logger';
 import { createMockProjectConfig } from '@dotfiles/testing-helpers';
 import { z } from 'zod';
 import { Architecture, type ISystemInfo, Platform } from '../../common';
@@ -23,7 +23,7 @@ describe('createToolConfigContext', () => {
   };
 
   beforeEach(async () => {
-    logger = new TestLogger();
+    logger = new TestLogger({ minLevel: LogLevel.TRACE });
     const memFs = await createMemFileSystem();
     fileSystem = memFs.fs;
     resolvedFs = memFs.fs.asIResolvedFileSystem;
@@ -117,7 +117,7 @@ describe('createToolConfigContext', () => {
   it('should log error with pattern and file when errorMessage provided and no matches found', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger();
+    const logger = new TestLogger({ minLevel: LogLevel.TRACE });
 
     const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
@@ -134,7 +134,7 @@ describe('createToolConfigContext', () => {
   it('should not log error when errorMessage provided but matches found', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger();
+    const logger = new TestLogger({ minLevel: LogLevel.TRACE });
 
     const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
@@ -152,7 +152,7 @@ describe('createToolConfigContext', () => {
   it('should not log error when no errorMessage provided even if no matches', async () => {
     const toolName = 'my-test-tool';
     const toolDir = '/tmp/tools/test-tool';
-    const logger = new TestLogger();
+    const logger = new TestLogger({ minLevel: LogLevel.TRACE });
 
     const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
 
@@ -164,4 +164,89 @@ describe('createToolConfigContext', () => {
     // No error should be logged since errorMessage wasn't provided
     expect(logger.logs.length).toBe(0);
   });
+
+  describe('log property', () => {
+    it('should expose log property with info, warn, error, debug, trace methods', () => {
+      const toolName = 'test-tool';
+      const toolDir = '/tmp/tools/test-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+      expect(context.log).toBeDefined();
+      expect(typeof context.log.info).toBe('function');
+      expect(typeof context.log.warn).toBe('function');
+      expect(typeof context.log.error).toBe('function');
+      expect(typeof context.log.debug).toBe('function');
+      expect(typeof context.log.trace).toBe('function');
+    });
+
+    it('should log info message with toolName context prefix', () => {
+      const toolName = 'my-tool';
+      const toolDir = '/tmp/tools/my-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+      context.log.info('Installing dependencies');
+
+      logger.expect(['INFO'], [], ['my-tool'], ['Installing dependencies']);
+    });
+
+    it('should log warn message with toolName context prefix', () => {
+      const toolName = 'my-tool';
+      const toolDir = '/tmp/tools/my-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+      context.log.warn('Configuration file missing, using defaults');
+
+      logger.expect(['WARN'], [], ['my-tool'], ['Configuration file missing, using defaults']);
+    });
+
+    it('should log error message with toolName context prefix', () => {
+      const toolName = 'my-tool';
+      const toolDir = '/tmp/tools/my-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+      context.log.error('Failed to download asset');
+
+      logger.expect(['ERROR'], [], ['my-tool'], ['Failed to download asset']);
+    });
+
+    it('should log error message with error object', () => {
+      const toolName = 'my-tool';
+      const toolDir = '/tmp/tools/my-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+      const testError = new Error('Network timeout');
+
+      context.log.error('Download failed', testError);
+
+      // Should log the message with context and include the error
+      logger.expect(['ERROR'], [], ['my-tool'], ['Download failed']);
+    });
+
+    it('should log debug message with toolName context prefix', () => {
+      const toolName = 'my-tool';
+      const toolDir = '/tmp/tools/my-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+      context.log.debug('Extracting archive to staging directory');
+
+      logger.expect(['DEBUG'], [], ['my-tool'], ['Extracting archive to staging directory']);
+    });
+
+    it('should log trace message with toolName context prefix', () => {
+      const toolName = 'my-tool';
+      const toolDir = '/tmp/tools/my-tool';
+
+      const context = createToolConfigContext(projectConfig, systemInfo, toolName, toolDir, resolvedFs, logger);
+
+      context.log.trace('Processing file: config.yaml');
+
+      logger.expect(['TRACE'], [], ['my-tool'], ['Processing file: config.yaml']);
+    });
+  });
 });
+

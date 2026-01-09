@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { IConfigService, ISystemInfo, ProjectConfig, ToolConfig } from '@dotfiles/config';
-import type { IInstallContext } from '@dotfiles/core';
+import { createToolLog, type IInstallContext } from '@dotfiles/core';
 import type { IResolvedFileSystem } from '@dotfiles/file-system';
 import { createConfiguredShell } from '@dotfiles/installer';
 import type { TsLogger } from '@dotfiles/logger';
@@ -77,7 +77,8 @@ function createInstallContext(
   config: ToolConfig,
   projectConfig: ProjectConfig,
   systemInfo: ISystemInfo,
-  fs: IResolvedFileSystem
+  fs: IResolvedFileSystem,
+  logger: TsLogger
 ): IInstallContext {
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const toolDir: string = config.configFilePath
@@ -98,6 +99,7 @@ function createInstallContext(
     $: createConfiguredShell($, process.env),
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) => replaceInFile(fs, filePath, from, to, options),
+    log: createToolLog(logger, config.name),
   };
 
   return context;
@@ -135,7 +137,7 @@ async function logVersionStatus(
 async function checkToolUpdate(logger: TsLogger, config: ToolConfig, services: IServices): Promise<void> {
   const { projectConfig, versionChecker, pluginRegistry, systemInfo, fs } = services;
 
-  const context = createInstallContext(config, projectConfig, systemInfo, fs);
+  const context = createInstallContext(config, projectConfig, systemInfo, fs, logger);
   const plugin = pluginRegistry.get(config.installationMethod);
 
   if (!plugin) {

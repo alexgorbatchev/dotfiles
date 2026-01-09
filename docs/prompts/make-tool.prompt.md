@@ -94,6 +94,7 @@ install('github-release', { repo: 'owner/tool' })
 - `ctx.projectConfig.paths.binariesDir` → Tool binaries directory
 - `ctx.projectConfig.paths.generatedDir` → Generated files directory
 - `ctx.replaceInFile()` → Perform regex-based file modifications (see Step 6)
+- `ctx.log` → Logger for user-facing messages (trace/debug/info/warn/error)
 - Use `~/` for paths relative to user's home directory (tilde expansion is automatic)
 
 Reference: [API Reference](<root>/docs/api-reference.md) and [Context API](<root>/docs/context-api.md)

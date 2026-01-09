@@ -5,6 +5,7 @@ import type { ProjectConfig } from '@dotfiles/config';
 import {
   type $extended,
   Architecture,
+  createToolLog,
   type IExtractResult,
   type IGitHubRelease,
   type IInstallContext,
@@ -622,6 +623,7 @@ export function createTestContext(
     fileSystem: setup.fs,
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(setup.fs.asIResolvedFileSystem, filePath, from, to, options),
+    log: createToolLog(setup.logger, MOCK_TOOL_NAME),
   };
 
   const currentDir: string = overrides.currentDir ?? baseContext.currentDir;

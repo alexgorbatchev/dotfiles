@@ -176,6 +176,36 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 - `input` - Original input string
 - `groups` - Named capture groups (if present)
 
+### ctx.log
+
+User-facing logger for tool operations. Messages are automatically prefixed with the tool name.
+
+```typescript
+.hook('after-install', async () => {
+  ctx.log.info('Configuring tool settings...');
+  
+  const result = await configureSettings();
+  
+  if (result.warnings.length > 0) {
+    ctx.log.warn('Some settings could not be applied');
+  }
+  
+  ctx.log.debug('Configuration complete');
+})
+```
+
+**Methods:**
+- `ctx.log.trace(message)` - Detailed debugging (hidden by default)
+- `ctx.log.debug(message)` - Debug information (hidden by default)
+- `ctx.log.info(message)` - Informational messages
+- `ctx.log.warn(message)` - Warning messages
+- `ctx.log.error(message, error?)` - Error messages (optionally with error object)
+
+**Output:** Messages include the tool name as context:
+```
+INFO    [my-tool] Configuring tool settings...
+```
+
 ### dedentTemplate
 
 Tagged template for removing indentation from multi-line strings.

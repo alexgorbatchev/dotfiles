@@ -12,6 +12,7 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 | `ctx.projectConfig` | Full project configuration |
 | `ctx.systemInfo` | Platform, architecture, and home directory |
 | `ctx.replaceInFile` | Replace text in files using regex patterns |
+| `ctx.log` | Logger for user-facing output |
 
 ### Path Properties via projectConfig
 
@@ -84,7 +85,7 @@ The `ctx.replaceInFile` method performs regex-based replacements within files.
 export default defineTool((install, ctx) =>
   install('github-release', { repo: 'owner/tool' })
     .bin('tool')
-    .afterInstall(async () => {
+    .hook('after-install', async () => {
       // Simple replacement (replaces all matches)
       const wasReplaced = await ctx.replaceInFile(
         `${ctx.currentDir}/config.toml`,
@@ -137,6 +138,41 @@ export default defineTool((install, ctx) =>
 - `offset` - Match offset in the input
 - `input` - Original input string
 - `groups` - Named capture groups (if present)
+
+### Using log for User Output
+
+The `ctx.log` provides a simple logging interface for user-facing messages:
+
+```typescript
+export default defineTool((install, ctx) =>
+  install('github-release', { repo: 'owner/tool' })
+    .bin('tool')
+    .hook('after-install', async () => {
+      ctx.log.info('Configuring tool settings...');
+      
+      // Perform configuration
+      const result = await configureSettings();
+      
+      if (result.warnings.length > 0) {
+        ctx.log.warn('Some settings could not be applied');
+      }
+      
+      ctx.log.debug('Configuration complete');
+    })
+);
+```
+
+**Log Levels:**
+- `ctx.log.trace(message)` - Detailed debugging (hidden by default)
+- `ctx.log.debug(message)` - Debug information (hidden by default)
+- `ctx.log.info(message)` - Informational messages
+- `ctx.log.warn(message)` - Warning messages
+- `ctx.log.error(message, error?)` - Error messages (optionally with error object)
+
+**Output:** Log messages are automatically prefixed with the tool name:
+```
+[my-tool] Configuring tool settings...
+```
 
 ## Directory Structure
 

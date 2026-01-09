@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import { Architecture, type IAfterInstallContext, type ISystemInfo, Platform } from '@dotfiles/core';
+import { Architecture, createToolLog, type IAfterInstallContext, type ISystemInfo, Platform } from '@dotfiles/core';
 import { createMemFileSystem } from '@dotfiles/file-system';
 import type { GithubReleaseToolConfig } from '@dotfiles/installer-github';
 import { LogLevel, TestLogger } from '@dotfiles/logger';
@@ -67,6 +67,7 @@ describe('HookExecutor - stack trace filtering', () => {
       fileSystem: fs,
       replaceInFile: (filePath, from, to, options) =>
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
+      log: createToolLog(logger, toolName),
     };
 
     const hookExecutor = new HookExecutor(() => {
@@ -164,6 +165,7 @@ describe('HookExecutor - stack trace filtering', () => {
       fileSystem: fs,
       replaceInFile: (filePath, from, to, options) =>
         replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
+      log: createToolLog(logger, toolName),
     };
 
     const hookExecutor = new HookExecutor(() => {

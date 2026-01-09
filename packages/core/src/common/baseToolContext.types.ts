@@ -3,6 +3,62 @@ import type { ProjectConfig } from '../config';
 import type { ISystemInfo } from './common.types';
 
 /**
+ * User-facing logging interface for tool configurations.
+ *
+ * This interface provides a simplified logging API for use in `defineTool` callbacks
+ * and hooks. Messages are plain strings (not `SafeLogMessage`), making it easy for
+ * users to log messages without needing to understand the internal logging system.
+ *
+ * All log messages are automatically prefixed with `[toolName]` to identify which
+ * tool produced the output.
+ *
+ * @example
+ * ```ts
+ * export default defineTool((install, ctx) =>
+ *   install('github-release', { repo: 'sharkdp/bat' })
+ *     .bin('bat')
+ *     .hook('after-install', async ({ log }) => {
+ *       log.info('Running post-install setup...');
+ *       log.debug('Checking configuration files');
+ *       log.warn('Config file not found, using defaults');
+ *     })
+ * );
+ * ```
+ */
+export interface IToolLog {
+  /**
+   * Log a trace-level message (most verbose).
+   * @param message - The message to log
+   */
+  trace(message: string): void;
+
+  /**
+   * Log a debug-level message.
+   * @param message - The message to log
+   */
+  debug(message: string): void;
+
+  /**
+   * Log an info-level message.
+   * @param message - The message to log
+   */
+  info(message: string): void;
+
+  /**
+   * Log a warning-level message.
+   * @param message - The message to log
+   */
+  warn(message: string): void;
+
+  /**
+   * Log an error-level message.
+   * @param message - The message to log
+   * @param error - Optional error object to include in the log output
+   */
+  error(message: string, error?: unknown): void;
+}
+
+/**
  * Options for the bound replaceInFile function.
  *
  * Extends the base options with error messaging capability.
@@ -177,4 +233,24 @@ export interface IBaseToolContext {
    * ```
    */
   replaceInFile: BoundReplaceInFile;
+
+  /**
+   * A user-facing logger for logging messages from tool configurations and hooks.
+   *
+   * All log messages are automatically prefixed with `[toolName]` to identify which
+   * tool produced the output.
+   *
+   * @example
+   * ```ts
+   * export default defineTool((install, ctx) =>
+   *   install('github-release', { repo: 'sharkdp/bat' })
+   *     .bin('bat')
+   *     .hook('after-install', async ({ log }) => {
+   *       log.info('Running post-install setup...');
+   *       log.debug('Checking configuration files');
+   *     })
+   * );
+   * ```
+   */
+  log: IToolLog;
 }

@@ -9,6 +9,7 @@ import { createMock$, createMockProjectConfig, createTestDirectories } from '@do
 import { replaceInFile } from '@dotfiles/utils';
 import { z } from 'zod';
 import { Architecture, Platform } from '../common';
+import { createToolLog } from '../context/createToolConfigContext';
 import { InstallerPluginRegistry } from '../InstallerPluginRegistry';
 import type { IInstallerPlugin, IInstallOptions, InstallResult, IValidationResult } from '../types';
 
@@ -80,6 +81,7 @@ const createMockContext = async (logger: TestLogger): Promise<IInstallContext> =
     fileSystem: fs,
     replaceInFile: (filePath, from, to, options) =>
       replaceInFile(fs.asIResolvedFileSystem, filePath, from, to, options),
+    log: createToolLog(logger, toolConfig.name),
   };
 
   return context;
