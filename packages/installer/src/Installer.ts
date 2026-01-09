@@ -225,7 +225,7 @@ export class Installer implements IInstaller {
 
     // Create enhanced context with fileSystem from event
     const toolFs = event.context.fileSystem;
-    const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs);
+    const enhancedContext = this.hookExecutor.createEnhancedContext(event.context, toolFs, eventLogger);
 
     // Execute all hooks in sequence
     for (const hook of hookArray) {
@@ -323,7 +323,7 @@ export class Installer implements IInstaller {
     }
 
     logger.debug(messages.lifecycle.hookExecution('before-install'));
-    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
+    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
 
     // Execute all hooks in sequence
     for (const hook of beforeInstallHooks) {
@@ -378,7 +378,7 @@ export class Installer implements IInstaller {
 
     logger.debug(messages.lifecycle.hookExecution('after-install'));
 
-    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs);
+    const enhancedContext = this.hookExecutor.createEnhancedContext(context, toolFs, logger);
 
     // Execute all hooks in sequence
     for (const hook of afterInstallHooks) {

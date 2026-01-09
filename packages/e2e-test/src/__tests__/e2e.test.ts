@@ -11,6 +11,7 @@ import {
   dependencyScenarios,
   filesScenarios,
   generateScenarios,
+  hookScenarios,
   installScenarios,
   typeSafetyScenarios,
   updateScenarios,
@@ -45,6 +46,7 @@ describe('E2E: Dotfiles CLI', () => {
         updateScenarios(harness);
         completionScenarios(harness);
         installScenarios(harness);
+        hookScenarios(harness);
         versionDetectionScenarios(harness);
       });
 

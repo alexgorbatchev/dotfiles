@@ -442,6 +442,11 @@ export async function createInstallerTestSetup(): Promise<IInstallerTestSetup> {
     },
   });
 
+  // Register manual plugin for manual installation tests
+  const { ManualInstallerPlugin } = await import('@dotfiles/installer-manual');
+  const manualPlugin = new ManualInstallerPlugin(fs);
+  await pluginRegistry.register(manualPlugin);
+
   pluginRegistry.composeSchemas();
 
   // Create installer instance - import here to avoid circular dependency

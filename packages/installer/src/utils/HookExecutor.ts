@@ -1,10 +1,11 @@
 import path from 'node:path';
-import type {
-  $extended,
-  AsyncInstallHook,
-  IInstallBaseContext,
-  IOperationFailure,
-  IOperationSuccess,
+import {
+  type $extended,
+  type AsyncInstallHook,
+  createLoggingShell,
+  type IInstallBaseContext,
+  type IOperationFailure,
+  type IOperationSuccess,
 } from '@dotfiles/core';
 import type { IFileSystem } from '@dotfiles/file-system';
 import type { TsLogger } from '@dotfiles/logger';
@@ -182,19 +183,27 @@ export class HookExecutor {
 
     methodLogger.debug(messages.hookExecutor.executingHook(hookName, timeoutMs));
 
+    // Track the timeout timer so we can clear it when hook completes
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     try {
       // Create a promise that resolves when the hook completes
       const hookPromise = hook(enhancedContext);
 
-      // Create a timeout promise
+      // Create a timeout promise that rejects after timeoutMs
       const timeoutPromise: Promise<never> = new Promise<never>((_, reject) => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           reject(new Error(messages.hookExecutor.timeoutExceeded(hookName, timeoutMs)));
         }, timeoutMs);
       });
 
       // Race the hook against the timeout
       await Promise.race([hookPromise, timeoutPromise]);
+
+      // Clear the timeout to prevent it from keeping the event loop alive
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
 
       const durationMs: number = Date.now() - startTime;
       methodLogger.debug(messages.hookExecutor.hookCompleted(hookName, durationMs));
@@ -206,6 +215,11 @@ export class HookExecutor {
       };
       return result;
     } catch (error) {
+      // Clear the timeout to prevent it from keeping the event loop alive
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+
       const durationMs: number = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorCause = extractErrorCause(error);
@@ -250,6 +264,7 @@ export class HookExecutor {
    *   - Working directory set to tool config directory (if configFilePath exists)
    *   - PATH enhanced with binary directories (if binaryPaths exists, e.g., for after-install hooks)
    *     This allows hooks to execute freshly installed binaries by name without full paths.
+   *   - Command logging (if logger provided): Commands logged as `$ cmd`, output as `| line`
    *
    * The TrackedFileSystem integration allows proper tracking of file operations
    * performed by hooks for registry management.
@@ -264,11 +279,13 @@ export class HookExecutor {
    *
    * @param baseContext - Base install or hook context with tool information
    * @param fileSystem - File system instance (may be TrackedFileSystem)
+   * @param logger - Optional logger for command/output logging
    * @returns Enhanced context ready for hook execution
    */
   createEnhancedContext<TContext extends IInstallBaseContext>(
     baseContext: TContext,
-    fileSystem: IFileSystem
+    fileSystem: IFileSystem,
+    logger?: TsLogger
   ): TContext {
     // Create a tool-specific TrackedFileSystem if we have one
     const enhancedFileSystem: IFileSystem =
@@ -293,6 +310,11 @@ export class HookExecutor {
     // Set working directory to tool config directory if available
     if (toolConfigDirPath) {
       enhancedShell = createToolConfigCwdShell(enhancedShell, toolConfigDirPath);
+    }
+
+    // Wrap shell with logging if logger is provided
+    if (logger) {
+      enhancedShell = createLoggingShell(enhancedShell, logger, { cwd: toolConfigDirPath });
     }
 
     const result: TContext = {

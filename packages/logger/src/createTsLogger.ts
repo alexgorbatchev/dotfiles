@@ -61,10 +61,13 @@ export function createTsLogger(configOrName: ILoggerConfig | string): TsLogger {
       : // for all other levels this
         '{{logLevelName}}\t';
 
+  const isColorDisabled = process.env['NO_COLOR'] === '1' || process.env['TERM'] === 'dumb';
+
   return new SafeLogger({
     name: config.name,
     minLevel: config.level,
     prettyLogTemplate,
+    stylePrettyLogs: !isColorDisabled,
 
     hideLogPositionForProduction: false,
 

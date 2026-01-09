@@ -42,6 +42,7 @@ export interface ICommandResult {
   exitCode: number;
   stdout: string;
   stderr: string;
+  text: string;
 }
 
 function findProjectRoot(startDir: string): string {
@@ -144,15 +145,17 @@ export class TestHarness {
     const archString = architectureToString(this.architecture);
     const argsWithPlatform: string[] = [...args, '--platform', platformString, '--arch', archString];
 
-    const result = await $`NODE_ENV=production bun ${this.dotfilesBin} ${argsWithPlatform}`
+    const result = await $`NODE_ENV=production NO_COLOR=1 bun ${this.dotfilesBin} ${argsWithPlatform}`
       .cwd(this.testDir)
       .quiet()
-      .nothrow();
+      .nothrow()
+      .env({ ...process.env, NODE_ENV: 'production', NO_COLOR: '1', TERM: 'dumb' });
 
     const commandResult: ICommandResult = {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
       stderr: result.stderr.toString(),
+      text: result.text().toString(),
     };
     return commandResult;
   }
@@ -320,6 +323,7 @@ export class TestHarness {
         exitCode: result.exitCode,
         stdout: result.stdout.toString(),
         stderr: result.stderr.toString(),
+        text: result.text().toString(),
       };
 
       stdout = commandResult.stdout.trim();

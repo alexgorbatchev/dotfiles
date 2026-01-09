@@ -163,4 +163,4 @@ configuration methods (e.g. `.zsh(...)`) without calling `.bin()`.
 - No download or extraction capabilities
 - Single binary support when using `binaryPath`
 - Requires manual user intervention for actual tool installation
-- No hooks support (not needed for manual installations)
+- Only `before-install` and `after-install` hooks are available (no `after-download` or `after-extract` since there's no download/extract phase)

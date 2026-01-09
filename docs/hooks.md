@@ -84,6 +84,23 @@ In `after-install` hooks, the shell's PATH is automatically enhanced to include 
 
 This PATH enhancement only applies to `after-install` hooks where `binaryPaths` is available in the context.
 
+### Shell Command Logging
+
+Shell commands executed in hooks are automatically logged to help with debugging and visibility:
+
+- Commands are logged as `$ command` at info level before execution
+- Stdout lines are logged as `| line` at info level
+- Stderr lines are logged as `| line` at error level (only if stderr has content)
+
+Example output:
+```
+$ my-tool init
+| Initializing configuration...
+| Configuration complete!
+```
+
+This logging happens regardless of whether `.quiet()` is used on the shell command, since logging occurs at the hook executor level.
+
 ### Platform-Specific Setup
 
 ```typescript

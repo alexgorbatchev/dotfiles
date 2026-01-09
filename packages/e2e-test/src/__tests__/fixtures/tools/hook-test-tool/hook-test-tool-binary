@@ -1,0 +1,7 @@
+#!/bin/bash
+# Simple mock binary for hook test tool
+if [[ "$1" == "--version" ]]; then
+  echo "1.0.0"
+  exit 0
+fi
+echo "hook-test-tool running"

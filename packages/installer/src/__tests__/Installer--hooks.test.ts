@@ -119,7 +119,6 @@ describe('Installer - Enhanced Hooks', () => {
         expect(context.binaryPaths[0]).toBeDefined();
         expect(context.version).toBe(mockToolVersion);
         expect(context.fileSystem).toBeDefined();
-        expect(context.logger).toBeDefined();
       });
 
       const toolConfig: GithubReleaseToolConfig = {

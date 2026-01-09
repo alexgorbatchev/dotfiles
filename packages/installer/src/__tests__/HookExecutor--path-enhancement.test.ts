@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { chmod } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IAfterInstallContext, ToolConfig } from '@dotfiles/core';
@@ -55,7 +55,9 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
       binaries: ['test-tool'],
       version: '1.0.0',
       installationMethod: 'github-release',
-      installParams: {},
+      installParams: {
+        repo: 'test/test-repo',
+      },
     };
 
     const testBinaryPath = path.join(binaryDir, 'test-tool');
@@ -114,7 +116,9 @@ describe('HookExecutor PATH Enhancement for after-install', () => {
       binaries: ['test-tool', 'test-tool-2'],
       version: '1.0.0',
       installationMethod: 'github-release',
-      installParams: {},
+      installParams: {
+        repo: 'test/test-repo',
+      },
     };
 
     const { context: baseContext } = createTestInstallHookContext({
