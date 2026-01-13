@@ -74,6 +74,37 @@ describe('createLoggingShell', () => {
     logger.expect(['INFO'], ['ShellTest'], [], ['$ echo \'{"key":"value"}\'', '| {"key":"value"}']);
   });
 
+  it('works with .lines() result method', async () => {
+    const result = await loggingShell`printf "line1\nline2\nline3"`.lines();
+
+    expect(result).toEqual(['line1', 'line2', 'line3']);
+  });
+
+  it('works with .bytes() result method', async () => {
+    const result = await loggingShell`echo "bytes"`.bytes();
+
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(new TextDecoder().decode(result).trim()).toBe('bytes');
+  });
+
+  it('works with .blob() result method', async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: blob() exists on CommandBuilder but not in TS types
+    const result = await (loggingShell`echo "blob"` as any).blob();
+
+    expect(result).toBeInstanceOf(Blob);
+    const text = await result.text();
+    expect(text.trim()).toBe('blob');
+  });
+
+  it('works with .arrayBuffer() result method', async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: arrayBuffer() exists on CommandBuilder but not in TS types
+    const result = await (loggingShell`echo "buffer"` as any).arrayBuffer();
+
+    expect(result).toBeInstanceOf(ArrayBuffer);
+    const text = new TextDecoder().decode(result);
+    expect(text.trim()).toBe('buffer');
+  });
+
   it('handles template expressions correctly', async () => {
     const name = 'world';
     await loggingShell`echo hello ${name}`.quiet();
