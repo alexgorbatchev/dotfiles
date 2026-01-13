@@ -15,23 +15,6 @@
     "**/Thumbs.db": true,
     "**/bun.lock": true
   },
-
-  "workbench.colorCustomizations": {
-    "titleBar.activeBackground": "#601369",
-    "titleBar.activeForeground": "#ffffff",
-    "titleBar.inactiveBackground": "#430d4a",
-    "titleBar.inactiveForeground": "#ffffff99",
-    "statusBar.background": "#C026D3",
-    "statusBar.foreground": "#ffffff",
-    "statusBar.noFolderBackground": "#601369",
-    "statusBar.debuggingBackground": "#c63cd7",
-    "statusBar.debuggingForeground": "#ffffff",
-    "activityBar.background": "#601369",
-    "activityBar.foreground": "#ffffff",
-    "activityBar.inactiveForeground": "#ffffff80",
-    "activityBarBadge.background": "#C026D3",
-    "activityBarBadge.foreground": "#ffffff"
-  },
   "peacock.color": "#632399",
 
   "bun.test.customScript": "bun test:agent",
@@ -42,5 +25,5 @@
 
   "todo-tree.filtering.includeGlobs": ["**/packages/**"],
   "todo-tree.filtering.excludeGlobs": ["**/node_modules/**", "**/README.md"],
-  "todo-tree.tree.autoRefresh": false
+  "todo-tree.tree.autoRefresh": false,
 }
